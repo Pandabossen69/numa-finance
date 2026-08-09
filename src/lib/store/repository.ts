@@ -66,6 +66,16 @@ export async function listTransactions(accountId?: string) {
   return api().listTransactions(accountId);
 }
 
+export async function voidTransaction(id: string) {
+  return api().voidTransaction(id);
+}
+
+export async function updateManualTransaction(
+  input: Parameters<typeof local.updateManualTransaction>[0],
+) {
+  return api().updateManualTransaction(input);
+}
+
 export async function createScreenshotObservation(
   input: Parameters<typeof local.createScreenshotObservation>[0],
 ) {

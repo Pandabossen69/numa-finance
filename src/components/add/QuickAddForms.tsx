@@ -15,10 +15,25 @@ export type ShellAccount = {
   accountType: string;
 };
 
-const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
+const EXPENSE_CATEGORIES = [
+  "Mat",
+  "Café",
+  "Transport",
+  "Boende",
+  "Räkning",
+  "Hälsa",
+  "Shopping",
+  "Nöje",
+  "Övrigt",
+] as const;
+
+const INCOME_PRESETS = ["Lön", "CSN", "Återbetalning", "Present", "Övrigt"] as const;
+
 const LAST_CATEGORY_KEY = "numa.lastExpenseCategory";
+const LAST_INCOME_KEY = "numa.lastIncomeName";
 
 type Mode = "expense" | "income" | "transfer" | "cash";
+type When = "today" | "yesterday";
 
 export function QuickAddForms({
   primaryAccountId,
@@ -31,16 +46,16 @@ export function QuickAddForms({
 }) {
   const [mode, setMode] = useState<Mode>("expense");
   const [savedNote, setSavedNote] = useState<string | null>(null);
-  const modes: Array<{ id: Mode; label: string }> = [
-    { id: "expense", label: "Utgift" },
-    { id: "income", label: "Inkomst" },
-    { id: "transfer", label: "Flytta" },
-    { id: "cash", label: "Kontant" },
+  const modes: Array<{ id: Mode; label: string; hint: string }> = [
+    { id: "expense", label: "Utgift", hint: "Köp & vardag" },
+    { id: "income", label: "Inkomst", hint: "Pengar in" },
+    { id: "transfer", label: "Flytta", hint: "Mellan konton" },
+    { id: "cash", label: "Kontant", hint: "ATM / cash" },
   ];
 
   function handleSuccess(note: string) {
     setSavedNote(note);
-    window.setTimeout(() => onSuccess?.(), 850);
+    window.setTimeout(() => onSuccess?.(), 700);
   }
 
   return (
@@ -53,19 +68,29 @@ export function QuickAddForms({
           {savedNote}
         </p>
       ) : null}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+
+      <div className="grid grid-cols-4 gap-1.5">
         {modes.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => setMode(m.id)}
-            className={`min-h-9 shrink-0 rounded-xl px-3 text-sm transition ${
+            className={`min-h-[3.4rem] rounded-2xl px-1.5 py-2 text-center transition ${
               mode === m.id
-                ? "bg-[var(--numa-accent-soft)] font-medium text-[var(--numa-accent-ink)]"
-                : "text-[var(--numa-muted)]"
+                ? "bg-[var(--numa-accent)] text-white"
+                : "border border-[var(--numa-border)] bg-[var(--numa-surface)] text-[var(--numa-ink)]"
             }`}
           >
-            {m.label}
+            <span className="block text-[13px] font-semibold leading-tight">
+              {m.label}
+            </span>
+            <span
+              className={`mt-0.5 block text-[10px] leading-tight ${
+                mode === m.id ? "text-white/80" : "text-[var(--numa-faint)]"
+              }`}
+            >
+              {m.hint}
+            </span>
           </button>
         ))}
       </div>
@@ -73,14 +98,18 @@ export function QuickAddForms({
       {mode === "expense" ? (
         <ExpenseForm
           accountId={primaryAccountId}
-          onSuccess={() => handleSuccess("Utgift sparad — dagens läge uppdateras.")}
+          onSuccess={() =>
+            handleSuccess("Utgift sparad — Idag och månaden uppdateras.")
+          }
         />
       ) : null}
       {mode === "income" ? (
         <IncomeForm
           accountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={() => handleSuccess("Inkomst sparad — saldot ökar.")}
+          onSuccess={() =>
+            handleSuccess("Inkomst sparad — saldot ökar.")
+          }
         />
       ) : null}
       {mode === "transfer" ? (
@@ -109,11 +138,13 @@ function ExpenseForm({
   onSuccess?: () => void;
 }) {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  const [when, setWhen] = useState<When>("today");
   const [category, setCategory] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(LAST_CATEGORY_KEY);
-      if (saved && (CATEGORIES as readonly string[]).includes(saved)) {
+      if (saved && (EXPENSE_CATEGORIES as readonly string[]).includes(saved)) {
         return saved;
       }
     } catch {
@@ -121,7 +152,6 @@ function ExpenseForm({
     }
     return "Mat";
   });
-  const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -131,12 +161,17 @@ function ExpenseForm({
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
+        if (!name.trim()) {
+          setError("Ge utgiften ett namn, t.ex. Lunch eller Grab");
+          return;
+        }
         startTransition(async () => {
           const result = await createExpenseAction({
             accountId,
             amount,
             category,
-            description: description || undefined,
+            description: name.trim(),
+            when,
           });
           if (!result.ok) {
             setError(result.error);
@@ -148,36 +183,33 @@ function ExpenseForm({
             // ignore
           }
           setAmount("");
-          setDescription("");
+          setName("");
           onSuccess?.();
           router.refresh();
         });
       }}
     >
+      <NameField
+        label="Vad var det?"
+        value={name}
+        onChange={setName}
+        placeholder="t.ex. Lunch, Grab, 7-Eleven"
+        autoFocus
+      />
       <AmountField value={amount} onChange={setAmount} />
-      <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCategory(c)}
-            className={`min-h-10 rounded-xl px-3 text-sm transition ${
-              category === c
-                ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
-                : "text-[var(--numa-muted)]"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-      <TextField
-        value={description}
-        onChange={setDescription}
-        placeholder="Valfri beskrivning"
+      <WhenPicker value={when} onChange={setWhen} />
+      <ChipRow
+        label="Kategori"
+        options={EXPENSE_CATEGORIES}
+        value={category}
+        onChange={setCategory}
       />
       <ErrorText error={error} />
-      <Submit pending={pending} disabled={!amount.trim()} label="Spara utgift" />
+      <Submit
+        pending={pending}
+        disabled={!amount.trim() || !name.trim()}
+        label="Spara utgift"
+      />
     </form>
   );
 }
@@ -192,9 +224,16 @@ function IncomeForm({
   onSuccess?: () => void;
 }) {
   const router = useRouter();
+  const [name, setName] = useState(() => {
+    try {
+      return localStorage.getItem(LAST_INCOME_KEY) ?? "Lön";
+    } catch {
+      return "Lön";
+    }
+  });
   const [targetId, setTargetId] = useState(accountId);
   const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [when, setWhen] = useState<When>("today");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -204,24 +243,46 @@ function IncomeForm({
       onSubmit={(e) => {
         e.preventDefault();
         setError(null);
+        if (!name.trim()) {
+          setError("Ge inkomsten ett namn, t.ex. Lön eller CSN");
+          return;
+        }
         startTransition(async () => {
           const result = await createIncomeAction({
             accountId: targetId,
             amount,
-            description: description || undefined,
+            description: name.trim(),
+            when,
           });
           if (!result.ok) {
             setError(result.error);
             return;
           }
+          try {
+            localStorage.setItem(LAST_INCOME_KEY, name.trim());
+          } catch {
+            // ignore
+          }
+          setAmount("");
           onSuccess?.();
           router.refresh();
         });
       }}
     >
-      <p className="text-sm text-[var(--numa-muted)]">
-        Lön, återbetalning eller annat som ökar saldot.
-      </p>
+      <ChipRow
+        label="Vanliga inkomster"
+        options={INCOME_PRESETS}
+        value={
+          (INCOME_PRESETS as readonly string[]).includes(name) ? name : "Övrigt"
+        }
+        onChange={(v) => setName(v === "Övrigt" ? "" : v)}
+      />
+      <NameField
+        label="Namn på inkomsten"
+        value={name}
+        onChange={setName}
+        placeholder="t.ex. Lön, CSN, återbetalning"
+      />
       {accounts.length > 1 ? (
         <AccountSelect
           label="Till konto"
@@ -231,13 +292,13 @@ function IncomeForm({
         />
       ) : null}
       <AmountField value={amount} onChange={setAmount} />
-      <TextField
-        value={description}
-        onChange={setDescription}
-        placeholder="t.ex. Lön"
-      />
+      <WhenPicker value={when} onChange={setWhen} />
       <ErrorText error={error} />
-      <Submit pending={pending} disabled={!amount.trim()} label="Spara inkomst" />
+      <Submit
+        pending={pending}
+        disabled={!amount.trim() || !name.trim()}
+        label="Spara inkomst"
+      />
     </form>
   );
 }
@@ -256,7 +317,8 @@ function TransferForm({
   const [fromId, setFromId] = useState(primaryAccountId);
   const [toId, setToId] = useState(others[0]?.id ?? "");
   const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState("Överföring");
+  const [when, setWhen] = useState<When>("today");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -280,17 +342,25 @@ function TransferForm({
             fromAccountId: fromId,
             toAccountId: toId,
             amount,
-            description: description || undefined,
+            description: name.trim() || "Överföring",
+            when,
           });
           if (!result.ok) {
             setError(result.error);
             return;
           }
+          setAmount("");
           onSuccess?.();
           router.refresh();
         });
       }}
     >
+      <NameField
+        label="Vad kallar du flytten?"
+        value={name}
+        onChange={setName}
+        placeholder="t.ex. Till sparande"
+      />
       <AccountSelect
         label="Från"
         value={fromId}
@@ -310,16 +380,12 @@ function TransferForm({
         accounts={accounts.filter((a) => a.id !== fromId)}
       />
       <AmountField value={amount} onChange={setAmount} />
-      <TextField
-        value={description}
-        onChange={setDescription}
-        placeholder="Valfri notis"
-      />
+      <WhenPicker value={when} onChange={setWhen} />
       <ErrorText error={error} />
       <Submit
         pending={pending}
         disabled={!amount.trim() || !toId}
-        label="Flytta"
+        label="Spara flytt"
       />
     </form>
   );
@@ -342,7 +408,8 @@ function CashForm({
   const [fromId, setFromId] = useState(primaryAccountId);
   const [toId, setToId] = useState(cashAccounts[0]?.id ?? "");
   const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState("Kontantuttag");
+  const [when, setWhen] = useState<When>("today");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -357,21 +424,28 @@ function CashForm({
             fromAccountId: fromId,
             toAccountId: toId || null,
             amount,
-            description: description || undefined,
+            description: name.trim() || "Kontantuttag",
+            when,
           });
           if (!result.ok) {
             setError(result.error);
             return;
           }
+          setAmount("");
           onSuccess?.();
           router.refresh();
         });
       }}
     >
       <p className="text-sm text-[var(--numa-muted)]">
-        Uttag från bank/konto. Räknas inte som shopping — bara att pengarna
-        byter form.
+        Uttag från bank. Räknas inte som shopping — pengarna byter bara form.
       </p>
+      <NameField
+        label="Namn"
+        value={name}
+        onChange={setName}
+        placeholder="t.ex. ATM Bangkok Bank"
+      />
       <AccountSelect
         label="Från"
         value={fromId}
@@ -392,14 +466,39 @@ function CashForm({
         </p>
       )}
       <AmountField value={amount} onChange={setAmount} />
-      <TextField
-        value={description}
-        onChange={setDescription}
-        placeholder="t.ex. ATM"
-      />
+      <WhenPicker value={when} onChange={setWhen} />
       <ErrorText error={error} />
       <Submit pending={pending} disabled={!amount.trim()} label="Spara uttag" />
     </form>
+  );
+}
+
+function NameField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        className="min-h-14 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] font-medium text-[var(--numa-ink)] outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+      />
+    </label>
   );
 }
 
@@ -413,7 +512,7 @@ function AmountField({
   return (
     <label className="block">
       <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-        Belopp
+        Hur mycket?
       </span>
       <input
         inputMode="decimal"
@@ -421,29 +520,78 @@ function AmountField({
         placeholder="0"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="money w-full rounded-2xl border border-[var(--numa-border)] bg-white/70 px-4 py-4 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
+        className="money min-h-16 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-3xl font-semibold text-[var(--numa-ink)] outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         aria-label="Belopp"
       />
     </label>
   );
 }
 
-function TextField({
+function WhenPicker({
   value,
   onChange,
-  placeholder,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
+  value: When;
+  onChange: (v: When) => void;
 }) {
   return (
-    <input
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-    />
+    <div className="flex gap-2">
+      {(
+        [
+          { id: "today", label: "Idag" },
+          { id: "yesterday", label: "Igår" },
+        ] as const
+      ).map((opt) => (
+        <button
+          key={opt.id}
+          type="button"
+          onClick={() => onChange(opt.id)}
+          className={`min-h-10 flex-1 rounded-xl text-sm font-medium transition ${
+            value === opt.id
+              ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
+              : "border border-[var(--numa-border)] text-[var(--numa-muted)]"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChipRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(c)}
+            className={`min-h-10 rounded-xl px-3 text-sm transition ${
+              value === c
+                ? "bg-[var(--numa-accent-soft)] font-medium text-[var(--numa-accent-ink)]"
+                : "border border-[var(--numa-border)] text-[var(--numa-muted)]"
+            }`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -466,7 +614,7 @@ function AccountSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+        className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm text-[var(--numa-ink)] outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
       >
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>
@@ -500,7 +648,7 @@ function Submit({
     <button
       type="submit"
       disabled={pending || disabled}
-      className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-medium text-white transition enabled:active:scale-[0.99] disabled:opacity-50"
+      className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition enabled:active:scale-[0.99] disabled:opacity-50"
     >
       {pending ? "Sparar…" : label}
     </button>

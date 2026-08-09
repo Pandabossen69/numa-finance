@@ -441,6 +441,111 @@ export async function listTransactions(
   return (data ?? []).map(mapTransaction);
 }
 
+export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data: target, error: readError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!target) throw new Error("Rörelsen hittades inte");
+
+  const ids = [id];
+  if (
+    (target.transaction_type === "transfer" ||
+      target.transaction_type === "cash_withdrawal") &&
+    target.counter_account_id
+  ) {
+    const { data: siblings } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("transaction_type", target.transaction_type)
+      .eq("amount_minor", target.amount_minor)
+      .eq("occurred_at", target.occurred_at)
+      .eq("account_id", target.counter_account_id)
+      .eq("counter_account_id", target.account_id)
+      .neq("status", "voided");
+    for (const row of siblings ?? []) {
+      ids.push(row.id as string);
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({ status: "voided", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .in("id", ids);
+  if (updateError) throw new Error(updateError.message);
+
+  const { data: voided, error: afterError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (afterError) throw new Error(afterError.message);
+  return mapTransaction(voided);
+}
+
+export async function updateManualTransaction(input: {
+  id: string;
+  description?: string;
+  category?: string | null;
+  amountMinor?: number;
+}): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data: target, error: readError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!target) throw new Error("Rörelsen hittades inte");
+  if (target.status === "voided") {
+    throw new Error("Borttagen rörelse kan inte ändras");
+  }
+  if (target.source !== "manual" && target.source !== "receipt_camera") {
+    throw new Error("Den här rörelsen kan inte ändras här ännu");
+  }
+  if (
+    target.transaction_type === "transfer" ||
+    target.transaction_type === "cash_withdrawal"
+  ) {
+    throw new Error("Flytt/uttag ändras genom att ta bort och lägga till på nytt");
+  }
+
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.description !== undefined) {
+    patch.description = input.description.trim() || target.description;
+  }
+  if (input.category !== undefined) {
+    patch.category = input.category;
+  }
+  if (input.amountMinor != null) {
+    if (input.amountMinor <= 0) {
+      throw new Error("Beloppet måste vara större än noll");
+    }
+    patch.amount_minor = input.amountMinor;
+  }
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(patch)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapTransaction(data);
+}
+
 export async function createScreenshotObservation(input: {
   notes?: string | null;
   institutionHint?: string | null;
@@ -692,7 +797,9 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     bufferMinor: totals.bufferMinor,
     flexibleMinor: totals.flexibleMinor,
     daysUntilIncome: totals.daysUntilNextIncome,
-    recentTransactions: accountTx.slice(0, 8),
+    recentTransactions: accountTx
+      .filter((t) => t.status !== "voided")
+      .slice(0, 8),
     planItems,
     currency,
     progress,

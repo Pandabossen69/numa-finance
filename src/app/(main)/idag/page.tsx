@@ -206,7 +206,7 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
             href="/transaktioner"
             className="text-sm text-[var(--numa-accent)]"
           >
-            Visa alla
+            Historik
           </Link>
         </div>
         {snap.recentTransactions.length === 0 ? (

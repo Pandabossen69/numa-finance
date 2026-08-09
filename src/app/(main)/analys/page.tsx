@@ -1,72 +1,106 @@
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { MonthNav } from "@/components/transactions/MonthNav";
+import {
+  buildMonthSummary,
+  monthOutcomeCopy,
+  parseMonthKey,
+} from "@/domain/finance";
+import { listTransactions } from "@/lib/store/repository";
 import { getTodaySnapshotCached } from "@/lib/store/today";
 
-export default async function AnalysPage() {
+export default async function AnalysPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ m?: string }>;
+}) {
+  const params = await searchParams;
   const snap = await getTodaySnapshotCached();
 
   if (!snap.primaryAccount) {
     return (
-      <div className="space-y-5 pt-2">
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Analys</h1>
+      <div className="space-y-5 pt-2 text-[var(--numa-ink)]">
+        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
+          Analys
+        </h1>
         <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Här ser du hur dagen och månaden rör sig när saldot är på plats.
+          Här följer du hur månaderna går — plus eller minus — när saldot är på
+          plats.
         </p>
-        <Link href="/idag" className="text-sm font-medium text-[var(--numa-accent)]">
+        <Link
+          href="/idag"
+          className="text-sm font-medium text-[var(--numa-accent)]"
+        >
           Ange mitt saldo →
         </Link>
       </div>
     );
   }
 
+  const transactions = await listTransactions(snap.primaryAccount.id);
+  const monthKey = parseMonthKey(params.m, snap.profile.timezone);
+  const summary = buildMonthSummary({
+    transactions,
+    monthKey,
+    currency: snap.currency,
+    timezone: snap.profile.timezone,
+  });
+
   const room = snap.safeToSpendTodayMinor - snap.todaySpendingMinor;
-  const hasPlan = snap.reservedMinor > 0 || snap.bufferMinor > 0;
-
-  const insight =
+  const todayLine =
     room < 0
-      ? "Du har använt mer än dagens trygga nivå. Imorgon är en ny chans — ingen skuld."
+      ? "Idag ligger du över tryggt belopp — imorgon är en ny chans."
       : room === 0
-        ? "Du ligger exakt på dagens nivå — fint balanserat."
-        : hasPlan
-          ? "Det finns fortfarande utrymme idag, även efter det du reserverat i planen."
-          : "Det finns utrymme idag. Lägg in hinkar under Plan så blir siffran ännu ärligare.";
-
-  const nextHint =
-    snap.daysUntilIncome <= 3
-      ? "Nästa inkomst är nära — bra läge att hålla lite mer buffert."
-      : `Cirka ${snap.daysUntilIncome} dagar till nästa inkomst i beräkningen.`;
+        ? "Idag ligger du exakt på planen."
+        : "Idag finns det fortfarande utrymme kvar.";
 
   return (
-    <div className="space-y-6 pt-2 pb-4">
+    <div className="space-y-6 pt-2 pb-4 text-[var(--numa-ink)]">
       <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Analys</h1>
+        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
+          Analys
+        </h1>
         <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Korta svar — vad som händer med pengarna just nu.
+          Följ din riktning — dag för dag och månad för månad.
         </p>
       </header>
 
+      <MonthNav
+        monthKey={summary.monthKey}
+        label={summary.labelSv}
+        basePath="/analys"
+      />
+
       <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
-        <p className="text-sm font-medium">Just nu</p>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">{insight}</p>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">{nextHint}</p>
-        <div className="flex flex-wrap gap-3 pt-1">
-          <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
-            Fota kvitto →
-          </Link>
-          <Link href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
-            Justera plan →
-          </Link>
+        <p className="text-sm font-medium">Månadens läge</p>
+        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+          {monthOutcomeCopy(summary)}
+        </p>
+        <div className="grid grid-cols-3 gap-3 pt-1">
+          <Mini label="Ut" amount={summary.spending.amountMinor} currency={snap.currency} />
+          <Mini label="In" amount={summary.income.amountMinor} currency={snap.currency} />
+          <Mini label="Netto" amount={summary.net.amountMinor} currency={snap.currency} />
         </div>
+        <Link
+          href={`/transaktioner?m=${summary.monthKey}`}
+          className="inline-flex text-sm font-medium text-[var(--numa-accent)]"
+        >
+          Öppna månadens rörelser →
+        </Link>
       </section>
 
-      <section className="space-y-4 border-t border-[var(--numa-border)] pt-5">
-        <h2 className="text-sm font-medium text-[var(--numa-muted)]">Siffror</h2>
-        <div className="space-y-3">
-          <Row label="Använt den här månaden">
+      <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] px-4 py-4">
+        <p className="text-sm font-medium">Just nu (idag)</p>
+        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+          {todayLine}
+        </p>
+        <div className="space-y-2">
+          <Row label="Tryggt idag">
             <MoneyDisplay
-              amountMinor={snap.monthSpendingMinor}
+              amountMinor={snap.safeToSpendTodayMinor}
               currency={snap.currency}
               size="md"
+              compact
             />
           </Row>
           <Row label="Använt idag">
@@ -74,30 +108,15 @@ export default async function AnalysPage() {
               amountMinor={snap.todaySpendingMinor}
               currency={snap.currency}
               size="md"
-            />
-          </Row>
-          <Row label="Tryggt idag">
-            <MoneyDisplay
-              amountMinor={snap.safeToSpendTodayMinor}
-              currency={snap.currency}
-              size="md"
+              compact
             />
           </Row>
           <Row label="Kvar av dagens plan">
-            <MoneyDisplay amountMinor={room} currency={snap.currency} size="md" />
-          </Row>
-          <Row label="Reserverat i plan">
             <MoneyDisplay
-              amountMinor={snap.reservedMinor}
+              amountMinor={room}
               currency={snap.currency}
               size="md"
-            />
-          </Row>
-          <Row label="Buffert">
-            <MoneyDisplay
-              amountMinor={snap.bufferMinor}
-              currency={snap.currency}
-              size="md"
+              compact
             />
           </Row>
         </div>
@@ -116,6 +135,30 @@ export default async function AnalysPage() {
           </p>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+function Mini({
+  label,
+  amount,
+  currency,
+}: {
+  label: string;
+  amount: number;
+  currency: "THB" | "SEK";
+}) {
+  return (
+    <div>
+      <p className="text-[11px] text-[var(--numa-faint)]">{label}</p>
+      <div className="mt-1">
+        <MoneyDisplay
+          amountMinor={amount}
+          currency={currency}
+          size="sm"
+          compact
+        />
+      </div>
     </div>
   );
 }

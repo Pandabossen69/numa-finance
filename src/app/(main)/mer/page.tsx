@@ -4,7 +4,7 @@ import { listObservations } from "@/lib/store/repository";
 
 const links = [
   { href: "/konton", label: "Mina saldon" },
-  { href: "/transaktioner", label: "Utgifter & rörelser" },
+  { href: "/transaktioner", label: "Rörelser (månad för månad)" },
   { href: "/fota", label: "Fota kvitto" },
   { href: "/importera", label: "Importer" },
   { href: "/installningar", label: "Inställningar" },

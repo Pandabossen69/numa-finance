@@ -12,6 +12,8 @@ import {
   createTransfer,
   getTodaySnapshot,
   recordOnTrackDayIfNeeded,
+  updateManualTransaction,
+  voidTransaction,
 } from "@/lib/store/repository";
 import { calculateDayPulse } from "@/domain/gamification";
 import { money, parseUiAmountToMinor } from "@/domain/money";
@@ -33,12 +35,20 @@ const accountSchema = z.object({
   makeDefault: z.boolean().optional(),
 });
 
+const whenSchema = z.enum(["today", "yesterday"]).optional();
+
 const expenseSchema = z.object({
   accountId: z.string().uuid(),
   amount: z.string().trim().min(1),
-  description: z.string().trim().max(120).optional(),
+  description: z.string().trim().min(1).max(120),
   category: z.string().trim().max(40).optional().nullable(),
+  when: whenSchema,
 });
+
+function occurredAtFromWhen(when?: "today" | "yesterday"): string | undefined {
+  if (!when || when === "today") return undefined;
+  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+}
 
 export type ActionResult =
   | { ok: true }
@@ -98,6 +108,7 @@ export async function createExpenseAction(
       amountMinor,
       description: input.description,
       category: input.category,
+      occurredAt: occurredAtFromWhen(input.when),
     });
 
     try {
@@ -127,7 +138,8 @@ export async function createExpenseAction(
 const incomeSchema = z.object({
   accountId: z.string().uuid(),
   amount: z.string().trim().min(1),
-  description: z.string().trim().max(120).optional(),
+  description: z.string().trim().min(1).max(120),
+  when: whenSchema,
 });
 
 const transferSchema = z.object({
@@ -135,6 +147,7 @@ const transferSchema = z.object({
   toAccountId: z.string().uuid(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
+  when: whenSchema,
 });
 
 const cashSchema = z.object({
@@ -142,6 +155,7 @@ const cashSchema = z.object({
   toAccountId: z.string().uuid().optional().nullable(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
+  when: whenSchema,
 });
 
 function revalidateMoneyPaths() {
@@ -165,6 +179,7 @@ export async function createIncomeAction(
       accountId: input.accountId,
       amountMinor,
       description: input.description,
+      occurredAt: occurredAtFromWhen(input.when),
     });
     revalidateMoneyPaths();
     return { ok: true };
@@ -190,6 +205,7 @@ export async function createTransferAction(
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
+      occurredAt: occurredAtFromWhen(input.when),
     });
     revalidateMoneyPaths();
     return { ok: true };
@@ -216,6 +232,7 @@ export async function createCashWithdrawalAction(
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
+      occurredAt: occurredAtFromWhen(input.when),
     });
     revalidateMoneyPaths();
     return { ok: true };
@@ -224,6 +241,56 @@ export async function createCashWithdrawalAction(
       ok: false,
       error:
         error instanceof Error ? error.message : "Kunde inte spara kontantuttag",
+    };
+  }
+}
+
+export async function voidTransactionAction(
+  id: string,
+): Promise<ActionResult> {
+  try {
+    await voidTransaction(z.string().uuid().parse(id));
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte ta bort rörelsen",
+    };
+  }
+}
+
+export async function updateTransactionAction(raw: {
+  id: string;
+  description: string;
+  category?: string | null;
+  amount: string;
+}): Promise<ActionResult> {
+  try {
+    const id = z.string().uuid().parse(raw.id);
+    const description = z.string().trim().min(1).max(120).parse(raw.description);
+    const category =
+      raw.category == null
+        ? undefined
+        : z.string().trim().max(40).nullable().parse(raw.category);
+    const amountMinor = parseUiAmountToMinor(raw.amount);
+    if (amountMinor <= 0) {
+      return { ok: false, error: "Ange ett belopp större än noll" };
+    }
+    await updateManualTransaction({
+      id,
+      description,
+      category,
+      amountMinor,
+    });
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte uppdatera rörelsen",
     };
   }
 }

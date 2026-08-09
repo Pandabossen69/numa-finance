@@ -86,7 +86,7 @@ export function AddActionSheet({
             ? "NUMA behöver först veta hur mycket du har just nu. Ingen bankkoppling — du anger saldot själv."
             : updateSaldo
               ? "Titta i bankappen eller senaste SMS och skriv in beloppet."
-              : "Fota kvitto, eller registrera utgift, inkomst, flytt och kontanter."}
+              : "Skriv vad det var och hur mycket — namn, belopp, klart. Du kan ändra eller ta bort efteråt under Rörelser."}
         </p>
 
         {needsSetup ? (

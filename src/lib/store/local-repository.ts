@@ -367,6 +367,96 @@ export async function listTransactions(accountId?: string): Promise<CanonicalTra
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
 }
 
+export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
+  const store = await readStore();
+  const target = store.transactions.find((t) => t.id === id);
+  if (!target) throw new Error("Rörelsen hittades inte");
+
+  const updated = await updateStore((s) => {
+    const ts = nowIso();
+    const ids = new Set<string>([id]);
+
+    // Void linked transfer/cash legs so both sides disappear together.
+    if (
+      (target.transactionType === "transfer" ||
+        target.transactionType === "cash_withdrawal") &&
+      target.counterAccountId
+    ) {
+      for (const tx of s.transactions) {
+        if (tx.id === id) continue;
+        if (tx.status === "voided") continue;
+        if (tx.transactionType !== target.transactionType) continue;
+        if (tx.amountMinor !== target.amountMinor) continue;
+        if (tx.occurredAt !== target.occurredAt) continue;
+        if (
+          tx.accountId === target.counterAccountId &&
+          tx.counterAccountId === target.accountId
+        ) {
+          ids.add(tx.id);
+        }
+      }
+    }
+
+    for (const tx of s.transactions) {
+      if (!ids.has(tx.id)) continue;
+      tx.status = "voided";
+      tx.updatedAt = ts;
+    }
+  });
+
+  const voided = updated.transactions.find((t) => t.id === id);
+  if (!voided) throw new Error("Rörelsen hittades inte");
+  return voided;
+}
+
+export async function updateManualTransaction(input: {
+  id: string;
+  description?: string;
+  category?: string | null;
+  amount?: string;
+  amountMinor?: number;
+}): Promise<CanonicalTransaction> {
+  const store = await readStore();
+  const target = store.transactions.find((t) => t.id === input.id);
+  if (!target) throw new Error("Rörelsen hittades inte");
+  if (target.status === "voided") {
+    throw new Error("Borttagen rörelse kan inte ändras");
+  }
+  if (target.source !== "manual" && target.source !== "receipt_camera") {
+    throw new Error("Den här rörelsen kan inte ändras här ännu");
+  }
+  if (
+    target.transactionType === "transfer" ||
+    target.transactionType === "cash_withdrawal"
+  ) {
+    throw new Error("Flytt/uttag ändras genom att ta bort och lägga till på nytt");
+  }
+
+  let nextAmount = target.amountMinor;
+  if (input.amountMinor != null) {
+    nextAmount = input.amountMinor;
+  }
+  if (nextAmount <= 0) throw new Error("Beloppet måste vara större än noll");
+
+  const updated = await updateStore((s) => {
+    const tx = s.transactions.find((t) => t.id === input.id);
+    if (!tx) return;
+    const ts = nowIso();
+    if (input.description !== undefined) {
+      tx.description = input.description.trim() || tx.description;
+    }
+    if (input.category !== undefined) {
+      tx.category = input.category;
+    }
+    tx.amountMinor = nextAmount;
+    tx.updatedAt = ts;
+  });
+
+  const row = updated.transactions.find((t) => t.id === input.id);
+  if (!row) throw new Error("Rörelsen hittades inte");
+  return row;
+}
+
 export async function createScreenshotObservation(input: {
   notes?: string | null;
   institutionHint?: string | null;
@@ -819,6 +909,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     flexibleMinor: totals.flexibleMinor,
     daysUntilIncome: totals.daysUntilNextIncome,
     recentTransactions: [...accountTx]
+      .filter((t) => t.status !== "voided")
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
       .slice(0, 8),
     planItems,
