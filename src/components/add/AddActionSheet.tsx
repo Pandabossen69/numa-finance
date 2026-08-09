@@ -53,15 +53,15 @@ export function AddActionSheet({
         {!hasAccount || !accountId ? (
           <div className="space-y-3">
             <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-              Du är inloggad. Lägg till ett bankkonto med verifierat saldo innan
-              du registrerar utgifter.
+              NUMA behöver först veta hur mycket du har just nu. Ingen
+              bankkoppling — du anger saldot själv.
             </p>
             <Link
               href="/konton/ny"
               onClick={onClose}
               className="flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-[15px] font-semibold text-white"
             >
-              Lägg till bankkonto
+              Ange mitt saldo
             </Link>
           </div>
         ) : (

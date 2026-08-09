@@ -1,9 +1,10 @@
-import Link from "next/link";
+import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DayPulseHero } from "@/components/idag/DayPulseHero";
 import { calculateDayPulse, rankForOnTrackDays } from "@/domain/gamification";
 import { formatMoney, money } from "@/domain/money";
 import { getTodaySnapshot } from "@/lib/store/repository";
+import Link from "next/link";
 
 export default async function IdagPage() {
   let snap;
@@ -27,31 +28,22 @@ export default async function IdagPage() {
 
   if (!snap.primaryAccount) {
     return (
-      <div className="flex min-h-[70dvh] flex-col pt-4">
+      <div className="space-y-6 pt-4 pb-4">
         <BrandHeader />
-        <div className="mt-8 flex flex-1 flex-col justify-center space-y-5 pb-8">
-          <p className="text-[2.5rem] font-semibold leading-none tracking-[-0.05em]">
-            NUMA
+        <section className="space-y-3">
+          <p className="text-sm font-medium text-[var(--numa-accent)]">
+            Steg 1 · Kom igång
           </p>
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-[var(--numa-accent)]">
-              Steg 1 av 2 · Du är inloggad
-            </p>
-            <h1 className="max-w-[16ch] text-[1.7rem] font-semibold tracking-tight">
-              Lägg till ditt bankkonto
-            </h1>
-            <p className="max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-              Ange verifierat saldo. Sedan kan du registrera utgifter och se live
-              om dagen ligger plus eller minus.
-            </p>
-          </div>
-          <Link
-            href="/konton/ny"
-            className="inline-flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-5 text-[15px] font-semibold text-white"
-          >
-            Lägg till bankkonto
-          </Link>
-        </div>
+          <h1 className="text-[1.7rem] font-semibold tracking-tight">
+            Vad har du just nu?
+          </h1>
+          <p className="max-w-[36ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
+            NUMA kopplas inte till någon bank. Du anger ditt saldo själv — sedan
+            kan systemet räkna vad som är ledigt och om dagen ligger plus eller
+            minus.
+          </p>
+        </section>
+        <CreateAccountForm />
       </div>
     );
   }
@@ -66,9 +58,9 @@ export default async function IdagPage() {
 
   const balanceLabel =
     snap.balanceKind === "calculated"
-      ? "Beräknat från verifierat saldo"
+      ? "Beräknat från senaste saldot du angav"
       : snap.balanceKind === "verified_checkpoint_only"
-        ? "Verifierat saldo"
+        ? "Senaste angivna saldo"
         : "Saldo saknas";
 
   return (
@@ -184,7 +176,7 @@ export default async function IdagPage() {
                 : ""}
             </p>
             <p className="mt-1 text-sm text-[var(--numa-muted)]">
-              {snap.verificationLabel ?? "Ej verifierat ännu"}
+              {snap.verificationLabel ?? "Ej uppdaterat ännu"}
             </p>
           </div>
           <Link href="/konton" className="text-sm text-[var(--numa-accent)]">

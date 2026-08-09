@@ -9,11 +9,11 @@ export default function NyttKontoPage() {
           ← Tillbaka
         </Link>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
-          Lägg till bankkonto
+          Ditt saldo i NUMA
         </h1>
         <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
-          Du är inloggad. Nu behövs ett bankkonto med verifierat saldo — det är
-          startpunkten för dagens plan och live plus/minus.
+          Ingen bankkoppling. Du anger hur mycket du har just nu — NUMA använder
+          det som startpunkt för planen.
         </p>
       </header>
       <CreateAccountForm />

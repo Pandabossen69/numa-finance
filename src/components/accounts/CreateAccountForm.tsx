@@ -46,17 +46,17 @@ export function CreateAccountForm() {
       className="space-y-4 rounded-[1.5rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] p-4"
     >
       <Field
-        label="Kontonamn"
+        label="Namn (t.ex. Bangkok Bank eller Kontanter)"
         value={form.name}
         onChange={(v) => setForm((f) => ({ ...f, name: v }))}
       />
       <Field
-        label="Bank / institution"
+        label="Var pengarna finns"
         value={form.institution}
         onChange={(v) => setForm((f) => ({ ...f, institution: v }))}
       />
       <Field
-        label="Kontosiffra (maskerad)"
+        label="Kort etikett (valfritt)"
         value={form.maskedIdentifier}
         onChange={(v) => setForm((f) => ({ ...f, maskedIdentifier: v }))}
         placeholder="t.ex. 6591"
@@ -103,7 +103,7 @@ export function CreateAccountForm() {
       </label>
 
       <Field
-        label="Verifierat saldo just nu"
+        label="Hur mycket har du just nu?"
         value={form.openingBalance}
         onChange={(v) => setForm((f) => ({ ...f, openingBalance: v }))}
         placeholder="t.ex. 10058,04"
@@ -124,8 +124,11 @@ export function CreateAccountForm() {
         disabled={pending || !form.openingBalance.trim()}
         className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white disabled:opacity-45"
       >
-        {pending ? "Sparar…" : "Spara och fortsätt"}
+        {pending ? "Sparar…" : "Spara saldo och fortsätt"}
       </button>
+      <p className="text-center text-xs leading-relaxed text-[var(--numa-faint)]">
+        Tips: använd saldot du ser i bankappen eller senaste SMS just nu.
+      </p>
     </form>
   );
 }
