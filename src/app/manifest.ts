@@ -1,0 +1,35 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "NUMA",
+    short_name: "NUMA",
+    description: "Personlig ekonomisk kontroll",
+    start_url: "/idag",
+    display: "standalone",
+    background_color: "#eef2ef",
+    theme_color: "#eef2ef",
+    lang: "sv",
+    orientation: "portrait-primary",
+    icons: [
+      {
+        src: "/icons/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-maskable-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ],
+  };
+}

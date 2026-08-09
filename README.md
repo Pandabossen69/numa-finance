@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NUMA
 
-## Getting Started
+Personlig ekonomisk kontroll — inte bara en budgetapp.
 
-First, run the development server:
+NUMA håller en kontinuerligt uppdaterad och verifierbar bild av dina saldon, utgifter, reserver och hur mycket du tryggt kan spendera.
+
+## Phase 0 (Foundation)
+
+Detta repo innehåller **fas 0**: projektfundament, domänmodell, svensk mobil UI-skal, PWA-grund, lokal vertikal slice och Supabase-schema med RLS.
+
+### Stack
+
+- Next.js (App Router) + TypeScript (strict)
+- Tailwind CSS
+- Supabase (PostgreSQL, Auth, RLS, Storage) — schema redo; lokal JSON-lagring som default tills nycklar finns
+- Zod + React Hook Form
+- Vitest
+- PWA (manifest + service worker)
+
+### Quick start
 
 ```bash
+npm install
+npm run icons
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Öppna [http://localhost:3000](http://localhost:3000) — du skickas till `/idag`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Useful commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
-## Learn More
+### Environment
 
-To learn more about Next.js, take a look at the following resources:
+Kopiera `.env.example` till `.env.local`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Utan Supabase-nycklar kör appen i **lokalt läge** och sparar data i `.data/numa-store.json`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+När `NEXT_PUBLIC_SUPABASE_URL` och `NEXT_PUBLIC_SUPABASE_ANON_KEY` är satta aktiveras Supabase-klienterna. Kör migrationen i `supabase/migrations/` mot ditt projekt.
 
-## Deploy on Vercel
+### Vertical slice
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Skapa konto + verifierat/ingående saldo
+2. Lägg till manuell utgift via **+**
+3. Se uppdaterat beräknat saldo och dagens/månadens spending på **Idag**
+4. `tryggt att spendera` beräknas i domänlagret (inte hårdkodat i UI)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Documentation
+
+- `docs/PRODUCT-VISION.md`
+- `docs/ARCHITECTURE.md`
+- `docs/FINANCIAL-INVARIANTS.md`
+- `docs/DATA-MODEL.md`
+- `docs/ROADMAP.md`
+
+### Language
+
+- **UI:** svenska
+- **Kod/docs/DB:** engelska
