@@ -4,9 +4,13 @@ import { money, clampNonNegative } from "@/domain/money";
 /**
  * Live day status — derived only from canonical finance inputs.
  * Gamification may *display* this; it must never invent a second budget.
+ *
+ * `plannedToday` is the morning day-plan (safe-to-spend before today's
+ * activity). Do not pass the live post-spend STS — that double-counts spend.
  */
 export type DayPulseInput = {
-  safeToSpendToday: Money;
+  /** Morning day-plan (not live post-spend safe-to-spend). */
+  plannedToday: Money;
   spentToday: Money;
 };
 
@@ -23,12 +27,12 @@ export type DayPulse = {
 };
 
 export function calculateDayPulse(input: DayPulseInput): DayPulse {
-  if (input.safeToSpendToday.currency !== input.spentToday.currency) {
+  if (input.plannedToday.currency !== input.spentToday.currency) {
     throw new Error("Day pulse currency mismatch");
   }
 
-  const currency = input.safeToSpendToday.currency;
-  const planned = Math.max(0, input.safeToSpendToday.amountMinor);
+  const currency = input.plannedToday.currency;
+  const planned = Math.max(0, input.plannedToday.amountMinor);
   const spent = Math.max(0, input.spentToday.amountMinor);
   const deltaMinor = planned - spent;
 

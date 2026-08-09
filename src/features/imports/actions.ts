@@ -8,7 +8,6 @@ import { money } from "@/domain/money";
 import {
   confirmReceiptExpense,
   getTodaySnapshot,
-  recordOnTrackDayIfNeeded,
   uploadReceiptAndExtract,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
@@ -91,10 +90,10 @@ export async function confirmReceiptExpenseAction(
 
     const snap = await getTodaySnapshot();
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
+      plannedToday: money(snap.dayPlanMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
-    await recordOnTrackDayIfNeeded(pulse.status !== "minus");
+    // Streak is awarded at day close — not when confirming a receipt mid-day.
 
     revalidatePath("/idag");
     revalidatePath("/transaktioner");

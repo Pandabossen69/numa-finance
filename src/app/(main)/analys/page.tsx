@@ -46,7 +46,7 @@ export default async function AnalysPage({
     timezone: snap.profile.timezone,
   });
 
-  const room = snap.safeToSpendTodayMinor - snap.todaySpendingMinor;
+  const room = snap.dayPlanMinor - snap.todaySpendingMinor;
   const todayLine =
     room < 0
       ? "Idag ligger du över tryggt belopp — imorgon är en ny chans."

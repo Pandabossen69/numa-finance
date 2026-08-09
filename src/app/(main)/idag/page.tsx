@@ -76,10 +76,9 @@ function OnboardingView() {
 
 function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
   const currency = snap.currency;
-  const safeToday = moneyFromUnknown(snap.safeToSpendTodayMinor, currency);
   const spentToday = moneyFromUnknown(snap.todaySpendingMinor, currency);
   const pulse = calculateDayPulse({
-    safeToSpendToday: safeToday,
+    plannedToday: moneyFromUnknown(snap.dayPlanMinor, currency),
     spentToday,
   });
 

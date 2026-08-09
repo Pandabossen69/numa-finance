@@ -1,5 +1,6 @@
 import {
   calculateAccountBalance,
+  calculateDayPlanMinor,
   calculatePlanTotals,
   calculateSafeToSpend,
   filterTransactionsAfterCheckpoint,
@@ -785,14 +786,18 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const currency = primary.currency;
   const todaySpending = sumSpending(todayTx, currency);
   const monthSpending = sumSpending(monthTx, currency);
-  const periodSpend = monthTx.map((t) => ({
+  const toSpendInput = (t: CanonicalTransaction) => ({
     amountMinor: t.amountMinor,
     description: t.description,
     category: t.category,
     currency: t.currency,
     transactionType: t.transactionType,
     status: t.status,
-  }));
+  });
+  const periodSpend = monthTx.map(toSpendInput);
+  const periodSpendBeforeToday = monthTx
+    .filter((t) => !isSameZonedDay(t.occurredAt, now, timezone))
+    .map(toSpendInput);
   const totals = calculatePlanTotals(planItems, currency, now, 17, periodSpend);
   const available = calculated ?? money(0, currency);
   const safe = calculateSafeToSpend({
@@ -804,6 +809,14 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       totals.flexibleMinor > 0
         ? money(totals.flexibleMinor, currency)
         : undefined,
+  });
+  const dayPlanMinor = calculateDayPlanMinor({
+    availableNowMinor: available.amountMinor,
+    currency,
+    todayTransactions: todayTx,
+    periodSpendBeforeToday,
+    planItems,
+    now,
   });
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
@@ -824,6 +837,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       : null,
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
+    dayPlanMinor,
     safeToSpendTodayMinor: safe.today.amountMinor,
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
@@ -859,6 +873,7 @@ function emptySnapshot(
     verificationLabel: null,
     todaySpendingMinor: 0,
     monthSpendingMinor: 0,
+    dayPlanMinor: 0,
     safeToSpendTodayMinor: 0,
     safeToSpendWeekMinor: 0,
     freeMinor: 0,
@@ -906,6 +921,10 @@ export async function getUserProgress(): Promise<UserProgress | null> {
   return mapUserProgress(created);
 }
 
+/**
+ * Persist an on-track day (streak). Call only from day-close flows —
+ * never from mid-day expense/receipt writes (those can lock a wrong status).
+ */
 export async function recordOnTrackDayIfNeeded(
   isOnTrack: boolean,
 ): Promise<UserProgress | null> {

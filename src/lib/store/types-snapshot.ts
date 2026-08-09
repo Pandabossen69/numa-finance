@@ -18,6 +18,11 @@ export type TodaySnapshot = {
   verificationLabel: string | null;
   todaySpendingMinor: number;
   monthSpendingMinor: number;
+  /**
+   * Morning day-plan for plus/minus pulse (STS before today's activity).
+   * Distinct from live `safeToSpendTodayMinor`.
+   */
+  dayPlanMinor: number;
   safeToSpendTodayMinor: number;
   safeToSpendWeekMinor: number;
   freeMinor: number;

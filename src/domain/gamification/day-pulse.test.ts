@@ -5,7 +5,7 @@ import { money } from "@/domain/money";
 describe("day pulse", () => {
   it("marks plus when under today's plan", () => {
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(90000, "THB"),
+      plannedToday: money(90000, "THB"),
       spentToday: money(25000, "THB"),
     });
     expect(pulse.status).toBe("plus");
@@ -15,7 +15,7 @@ describe("day pulse", () => {
 
   it("marks minus when over today's plan", () => {
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(90000, "THB"),
+      plannedToday: money(90000, "THB"),
       spentToday: money(120000, "THB"),
     });
     expect(pulse.status).toBe("minus");
