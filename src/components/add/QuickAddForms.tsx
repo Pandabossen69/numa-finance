@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCashWithdrawalAction,
@@ -16,6 +16,7 @@ export type ShellAccount = {
 };
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
+const LAST_CATEGORY_KEY = "numa.lastExpenseCategory";
 
 type Mode = "expense" | "income" | "transfer" | "cash";
 
@@ -29,6 +30,7 @@ export function QuickAddForms({
   onSuccess?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>("expense");
+  const [savedNote, setSavedNote] = useState<string | null>(null);
   const modes: Array<{ id: Mode; label: string }> = [
     { id: "expense", label: "Utgift" },
     { id: "income", label: "Inkomst" },
@@ -36,8 +38,21 @@ export function QuickAddForms({
     { id: "cash", label: "Kontant" },
   ];
 
+  function handleSuccess(note: string) {
+    setSavedNote(note);
+    window.setTimeout(() => onSuccess?.(), 850);
+  }
+
   return (
     <div className="space-y-4">
+      {savedNote ? (
+        <p
+          className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-positive)_14%,transparent)] px-3 py-2.5 text-sm text-[var(--numa-positive)]"
+          role="status"
+        >
+          {savedNote}
+        </p>
+      ) : null}
       <div className="flex gap-1 overflow-x-auto pb-1">
         {modes.map((m) => (
           <button
@@ -56,27 +71,30 @@ export function QuickAddForms({
       </div>
 
       {mode === "expense" ? (
-        <ExpenseForm accountId={primaryAccountId} onSuccess={onSuccess} />
+        <ExpenseForm
+          accountId={primaryAccountId}
+          onSuccess={() => handleSuccess("Utgift sparad — dagens läge uppdateras.")}
+        />
       ) : null}
       {mode === "income" ? (
         <IncomeForm
           accountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={onSuccess}
+          onSuccess={() => handleSuccess("Inkomst sparad — saldot ökar.")}
         />
       ) : null}
       {mode === "transfer" ? (
         <TransferForm
           primaryAccountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={onSuccess}
+          onSuccess={() => handleSuccess("Flytt sparad mellan dina saldon.")}
         />
       ) : null}
       {mode === "cash" ? (
         <CashForm
           primaryAccountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={onSuccess}
+          onSuccess={() => handleSuccess("Kontantuttag sparat.")}
         />
       ) : null}
     </div>
@@ -97,6 +115,17 @@ function ExpenseForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAST_CATEGORY_KEY);
+      if (saved && (CATEGORIES as readonly string[]).includes(saved)) {
+        setCategory(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   return (
     <form
       className="space-y-4"
@@ -114,6 +143,13 @@ function ExpenseForm({
             setError(result.error);
             return;
           }
+          try {
+            localStorage.setItem(LAST_CATEGORY_KEY, category);
+          } catch {
+            // ignore
+          }
+          setAmount("");
+          setDescription("");
           onSuccess?.();
           router.refresh();
         });

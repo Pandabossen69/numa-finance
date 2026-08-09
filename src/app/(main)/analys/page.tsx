@@ -20,25 +20,43 @@ export default async function AnalysPage() {
   }
 
   const room = snap.safeToSpendTodayMinor - snap.todaySpendingMinor;
+  const hasPlan = snap.reservedMinor > 0 || snap.bufferMinor > 0;
+
   const insight =
     room < 0
-      ? "Du har använt mer än dagens trygga nivå. Imorgon är en ny chans."
+      ? "Du har använt mer än dagens trygga nivå. Imorgon är en ny chans — ingen skuld."
       : room === 0
         ? "Du ligger exakt på dagens nivå — fint balanserat."
-        : "Det finns fortfarande utrymme idag utan att pressa planen.";
+        : hasPlan
+          ? "Det finns fortfarande utrymme idag, även efter det du reserverat i planen."
+          : "Det finns utrymme idag. Lägg in hinkar under Plan så blir siffran ännu ärligare.";
+
+  const nextHint =
+    snap.daysUntilIncome <= 3
+      ? "Nästa inkomst är nära — bra läge att hålla lite mer buffert."
+      : `Cirka ${snap.daysUntilIncome} dagar till nästa inkomst i beräkningen.`;
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-6 pt-2 pb-4">
       <header>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Analys</h1>
         <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          En tydlig överblick över hur pengarna rör sig just nu.
+          Korta svar — vad som händer med pengarna just nu.
         </p>
       </header>
 
       <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
         <p className="text-sm font-medium">Just nu</p>
         <p className="text-sm leading-relaxed text-[var(--numa-muted)]">{insight}</p>
+        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">{nextHint}</p>
+        <div className="flex flex-wrap gap-3 pt-1">
+          <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
+            Fota kvitto →
+          </Link>
+          <Link href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
+            Justera plan →
+          </Link>
+        </div>
       </section>
 
       <section className="space-y-4 border-t border-[var(--numa-border)] pt-5">
@@ -66,8 +84,18 @@ export default async function AnalysPage() {
             />
           </Row>
           <Row label="Kvar av dagens plan">
+            <MoneyDisplay amountMinor={room} currency={snap.currency} size="md" />
+          </Row>
+          <Row label="Reserverat i plan">
             <MoneyDisplay
-              amountMinor={room}
+              amountMinor={snap.reservedMinor}
+              currency={snap.currency}
+              size="md"
+            />
+          </Row>
+          <Row label="Buffert">
+            <MoneyDisplay
+              amountMinor={snap.bufferMinor}
               currency={snap.currency}
               size="md"
             />
@@ -81,6 +109,10 @@ export default async function AnalysPage() {
           <p className="text-sm text-[var(--numa-muted)]">
             Streak {snap.progress.currentStreak} · {snap.progress.onTrackDays}{" "}
             dagar i fas · nivå {snap.progress.level}
+          </p>
+          <p className="text-sm text-[var(--numa-faint)]">
+            Det handlar om hur konsekvent du håller dig till din egen plan — inte
+            hur mycket pengar du har.
           </p>
         </section>
       ) : null}

@@ -32,7 +32,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
     <form onSubmit={onSubmit} className="space-y-3">
       <label className="block">
         <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-          Verifierat saldo
+          Hur mycket har du just nu?
         </span>
         <input
           value={balance}
@@ -52,7 +52,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
         disabled={pending || !balance.trim()}
         className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium disabled:opacity-50"
       >
-        {pending ? "Sparar…" : "Uppdatera verifierat saldo"}
+        {pending ? "Sparar…" : "Spara saldo"}
       </button>
     </form>
   );

@@ -90,11 +90,12 @@ export function DayPulseHero({
 
         {pulse.status === "minus" ? (
           <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            Ingen katastrof — kommande dagars rekommendation justeras automatiskt.
+            Ingen katastrof — kommande dagar justeras automatiskt. Fota nästa
+            kvitto så håller du koll utan stress.
           </p>
         ) : (
           <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            Registrera utgifter via + så uppdateras läget direkt.
+            Fota kvitto eller tryck + — läget uppdateras direkt.
           </p>
         )}
       </div>

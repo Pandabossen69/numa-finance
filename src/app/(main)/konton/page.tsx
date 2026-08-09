@@ -20,7 +20,7 @@ export default async function KontonPage() {
         <div>
           <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Konton</h1>
           <p className="mt-2 text-sm text-[var(--numa-muted)]">
-            Beräknat saldo utgår från verifierade punkter.
+            Uppdatera saldot när du vill — NUMA räknar vidare därifrån.
           </p>
         </div>
         <Link
@@ -33,9 +33,9 @@ export default async function KontonPage() {
 
       {accounts.length === 0 ? (
         <p className="text-sm text-[var(--numa-muted)]">
-          Inga konton ännu.{" "}
+          Inga saldon ännu.{" "}
           <Link href="/konton/ny" className="text-[var(--numa-accent)]">
-            Skapa ditt första
+            Ange hur mycket du har
           </Link>
         </p>
       ) : (

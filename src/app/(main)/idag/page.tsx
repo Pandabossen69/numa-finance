@@ -1,7 +1,9 @@
 import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DayPulseHero } from "@/components/idag/DayPulseHero";
+import { IdagQuickActions } from "@/components/idag/IdagQuickActions";
 import { calculateDayPulse, rankForOnTrackDays } from "@/domain/gamification";
+import { hoursSince } from "@/domain/finance";
 import { formatMoney, money } from "@/domain/money";
 import { getTodaySnapshot } from "@/lib/store/repository";
 import Link from "next/link";
@@ -64,14 +66,28 @@ export default async function IdagPage() {
         ? "Senaste angivna saldo"
         : "Saldo saknas";
 
+  const stale =
+    !snap.checkpoint || hoursSince(snap.checkpoint.verifiedAt) > 48;
+
+  const planHint =
+    snap.reservedMinor > 0 || snap.bufferMinor > 0
+      ? `Efter ${formatMoney(money(snap.reservedMinor + snap.bufferMinor, snap.currency))} i plan & buffert · ${snap.daysUntilIncome} dagar kvar`
+      : `Ingen plan lagd ännu · ${snap.daysUntilIncome} dagar till nästa inkomst`;
+
   return (
-    <div className="space-y-8 pt-2">
+    <div className="space-y-7 pt-2">
       <BrandHeader
         rankTitle={rank.titleSv}
         streakLabel={streak > 0 ? `Streak ${streak}` : undefined}
       />
 
       <DayPulseHero pulse={pulse} currency={snap.currency} />
+
+      <IdagQuickActions
+        accountId={snap.primaryAccount.id}
+        verificationLabel={snap.verificationLabel}
+        stale={stale}
+      />
 
       <section className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
@@ -114,6 +130,12 @@ export default async function IdagPage() {
             <p className="mt-1 text-sm text-[var(--numa-muted)]">denna vecka</p>
           </div>
         </div>
+        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+          {planHint}{" "}
+          <Link href="/plan" className="font-medium text-[var(--numa-accent)]">
+            Öppna plan
+          </Link>
+        </p>
       </section>
 
       <section className="space-y-4 border-t border-[var(--numa-border)] pt-6">
@@ -121,7 +143,7 @@ export default async function IdagPage() {
           Den här månaden
         </p>
         <div className="grid grid-cols-2 gap-y-5">
-          <Stat label="Spenderat" amount={snap.monthSpendingMinor} currency={snap.currency} />
+          <Stat label="Använt" amount={snap.monthSpendingMinor} currency={snap.currency} />
           <Stat label="Idag" amount={snap.todaySpendingMinor} currency={snap.currency} />
           <Stat label="Reserverat" amount={snap.reservedMinor} currency={snap.currency} />
           <Stat label="Fritt" amount={snap.freeMinor} currency={snap.currency} />
@@ -140,7 +162,7 @@ export default async function IdagPage() {
         {snap.recentTransactions.length === 0 ? (
           <div className="space-y-2">
             <p className="text-sm text-[var(--numa-muted)]">
-              Inga utgifter ännu idag. Fota ett kvitto eller skriv beloppet via +.
+              Inga rörelser ännu. Börja med ett kvitto — det tar några sekunder.
             </p>
             <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
               Fota kvitto →
@@ -189,7 +211,7 @@ export default async function IdagPage() {
             </p>
           </div>
           <Link href="/konton" className="text-sm text-[var(--numa-accent)]">
-            Hantera
+            Mer
           </Link>
         </div>
       </section>
@@ -245,8 +267,10 @@ function typeLabel(type: string): string {
     case "income":
       return "Inkomst";
     case "transfer":
-      return "Överföring";
+      return "Flytt";
+    case "cash_withdrawal":
+      return "Kontant";
     default:
-      return "Transaktion";
+      return "Rörelse";
   }
 }
