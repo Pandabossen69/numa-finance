@@ -9,7 +9,12 @@ import {
   createPlanItemAction,
   deletePlanItemAction,
   setNextIncomeDateAction,
+  updatePlanItemAmountAction,
 } from "@/features/plan/actions";
+
+function minorToInputValue(amountMinor: number): string {
+  return (amountMinor / 100).toString().replace(".", ",");
+}
 
 const KIND_OPTIONS: Array<{ id: PlanCategoryKind; label: string; hint: string }> =
   [
@@ -50,6 +55,9 @@ export function PlanEditor({
   });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editAmount, setEditAmount] = useState("");
 
   const visible = useMemo(
     () => items.filter((i) => i.name !== NEXT_INCOME_NAME),
@@ -96,7 +104,7 @@ export function PlanEditor({
         <h2 className="font-medium">Dina planposter</h2>
         <p className="text-sm text-[var(--numa-muted)]">
           När du betalar något som matchar en post minskar “kvar” — så tryggt
-          idag inte straffar dig två gånger.
+          idag inte straffar dig två gånger. Tryck beloppet för att ändra.
         </p>
         {visible.length === 0 ? (
           <p className="text-sm text-[var(--numa-muted)]">
@@ -109,48 +117,136 @@ export function PlanEditor({
               const rem = itemRemaining.find((r) => r.itemId === item.id);
               const remaining = rem?.remainingMinor ?? item.amountMinor;
               const spent = rem?.spentMinor ?? 0;
+              const isEditing = editingId === item.id;
+
+              function startEdit() {
+                setError(null);
+                setEditingId(item.id);
+                setEditName(item.name);
+                setEditAmount(minorToInputValue(item.amountMinor));
+              }
+
+              function cancelEdit() {
+                setEditingId(null);
+              }
+
+              function saveEdit() {
+                setError(null);
+                startTransition(async () => {
+                  const trimmedName = editName.trim();
+                  const result = await updatePlanItemAmountAction({
+                    id: item.id,
+                    amount: editAmount,
+                    name:
+                      trimmedName && trimmedName !== item.name
+                        ? trimmedName
+                        : undefined,
+                  });
+                  if (!result.ok) {
+                    setError(result.error);
+                    return;
+                  }
+                  setEditingId(null);
+                  router.refresh();
+                });
+              }
+
               return (
                 <li
                   key={item.id}
                   className="flex items-start justify-between gap-3 py-3"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{item.name}</p>
+                  <div className="min-w-0 flex-1">
+                    {isEditing ? (
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Namn"
+                        className="min-h-9 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-2 text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+                      />
+                    ) : (
+                      <p className="truncate font-medium">{item.name}</p>
+                    )}
                     <p className="text-xs text-[var(--numa-faint)]">
                       {kindLabel(item.kind)} · månadsvis
-                      {spent > 0
+                      {!isEditing && spent > 0
                         ? ` · betalt ${formatMoney(money(spent, item.currency))}`
                         : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
-                    <span className="money text-sm font-semibold">
-                      {remaining === item.amountMinor
-                        ? formatMoney(money(item.amountMinor, item.currency))
-                        : `Kvar ${formatMoney(money(remaining, item.currency))}`}
-                    </span>
-                    {remaining !== item.amountMinor ? (
-                      <span className="text-[11px] text-[var(--numa-faint)]">
-                        av {formatMoney(money(item.amountMinor, item.currency))}
-                      </span>
-                    ) : null}
-                    <button
-                      type="button"
-                      className="text-xs text-[var(--numa-muted)]"
-                      disabled={pending}
-                      onClick={() => {
-                        startTransition(async () => {
-                          const result = await deletePlanItemAction(item.id);
-                          if (!result.ok) {
-                            setError(result.error);
-                            return;
-                          }
-                          router.refresh();
-                        });
-                      }}
-                    >
-                      Ta bort
-                    </button>
+                    {isEditing ? (
+                      <>
+                        <input
+                          autoFocus
+                          inputMode="decimal"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          placeholder={`Belopp (${currency})`}
+                          className="money min-h-9 w-28 rounded-xl border border-[var(--numa-border)] bg-white/70 px-2 text-right text-sm font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+                        />
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            className="text-xs text-[var(--numa-muted)]"
+                            disabled={pending}
+                            onClick={cancelEdit}
+                          >
+                            Avbryt
+                          </button>
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-[var(--numa-accent-ink)]"
+                            disabled={pending || !editAmount.trim()}
+                            onClick={saveEdit}
+                          >
+                            Spara
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="money text-sm font-semibold"
+                          disabled={pending}
+                          onClick={startEdit}
+                          aria-label={`Ändra ${item.name}`}
+                        >
+                          {remaining === item.amountMinor
+                            ? formatMoney(money(item.amountMinor, item.currency))
+                            : `Kvar ${formatMoney(money(remaining, item.currency))}`}
+                        </button>
+                        {remaining !== item.amountMinor ? (
+                          <button
+                            type="button"
+                            className="text-[11px] text-[var(--numa-faint)]"
+                            disabled={pending}
+                            onClick={startEdit}
+                          >
+                            av{" "}
+                            {formatMoney(money(item.amountMinor, item.currency))}
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="text-xs text-[var(--numa-muted)]"
+                          disabled={pending}
+                          onClick={() => {
+                            startTransition(async () => {
+                              const result = await deletePlanItemAction(item.id);
+                              if (!result.ok) {
+                                setError(result.error);
+                                return;
+                              }
+                              router.refresh();
+                            });
+                          }}
+                        >
+                          Ta bort
+                        </button>
+                      </>
+                    )}
                   </div>
                 </li>
               );
