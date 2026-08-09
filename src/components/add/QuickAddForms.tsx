@@ -423,9 +423,15 @@ function CashForm({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
+          if (!toId) {
+            setError(
+              "Skapa först ett saldo av typen Kontanter under Mina saldon",
+            );
+            return;
+          }
           const result = await createCashWithdrawalAction({
             fromAccountId: fromId,
-            toAccountId: toId || null,
+            toAccountId: toId,
             amount,
             description: name.trim() || "Kontantuttag",
             when,
@@ -463,15 +469,19 @@ function CashForm({
           accounts={cashAccounts}
         />
       ) : (
-        <p className="text-xs text-[var(--numa-faint)]">
-          Tips: skapa ett saldo av typen Kontanter under Mina saldon om du vill
-          följa plånboken också.
+        <p className="text-sm text-[var(--numa-muted)]">
+          Skapa ett saldo av typen Kontanter under Mina saldon innan du sparar
+          uttag — annars försvinner pengarna i modellen.
         </p>
       )}
       <AmountField value={amount} onChange={setAmount} />
       <WhenPicker value={when} onChange={setWhen} />
       <ErrorText error={error} />
-      <Submit pending={pending} disabled={!amount.trim()} label="Spara uttag" />
+      <Submit
+        pending={pending}
+        disabled={!amount.trim() || !toId}
+        label="Spara uttag"
+      />
     </form>
   );
 }

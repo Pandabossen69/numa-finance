@@ -192,6 +192,7 @@ export async function createManualExpense(input: {
       balanceAfterMinor: null,
       fingerprint: null,
       sourceObservationId: input.sourceObservationId ?? null,
+      transferGroupId: null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -234,6 +235,7 @@ export async function createManualIncome(input: {
       balanceAfterMinor: null,
       fingerprint: null,
       sourceObservationId: null,
+      transferGroupId: null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -269,6 +271,7 @@ export async function createTransfer(input: {
     const ts = nowIso();
     const occurredAt = input.occurredAt ?? ts;
     const description = input.description?.trim() || "Överföring";
+    const transferGroupId = newId();
 
     const out: CanonicalTransaction = {
       id: newId(),
@@ -288,6 +291,7 @@ export async function createTransfer(input: {
       balanceAfterMinor: null,
       fingerprint: null,
       sourceObservationId: null,
+      transferGroupId,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -313,37 +317,45 @@ export async function createTransfer(input: {
 
 export async function createCashWithdrawal(input: {
   fromAccountId: string;
-  toAccountId?: string | null;
+  toAccountId: string;
   amountMinor: number;
   description?: string;
   occurredAt?: string;
-}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction | null }> {
+}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
+  }
+  if (!input.toAccountId) {
+    throw new Error("Välj ett kontantkonto — annars försvinner pengarna i modellen");
+  }
+  if (input.fromAccountId === input.toAccountId) {
+    throw new Error("Välj två olika konton");
   }
 
   const store = await readStore();
   const from = store.accounts.find((a) => a.id === input.fromAccountId);
   if (!from) throw new Error("Kontot hittades inte");
-  const to = input.toAccountId
-    ? store.accounts.find((a) => a.id === input.toAccountId)
-    : null;
-  if (input.toAccountId && !to) throw new Error("Kontantkontot hittades inte");
-  if (to && from.currency !== to.currency) {
+  const to = store.accounts.find((a) => a.id === input.toAccountId);
+  if (!to) throw new Error("Kontantkontot hittades inte");
+  if (to.accountType !== "cash") {
+    throw new Error("Kontantuttag måste gå till ett konto av typen Kontanter");
+  }
+  if (from.currency !== to.currency) {
     throw new Error("Olika valutor stöds inte ännu");
   }
 
   let outId = "";
-  let inId: string | null = null;
+  let inId = "";
   await updateStore((s) => {
     const ts = nowIso();
     const occurredAt = input.occurredAt ?? ts;
     const description = input.description?.trim() || "Kontantuttag";
+    const transferGroupId = newId();
     const out: CanonicalTransaction = {
       id: newId(),
       userId: LOCAL_DEMO_USER_ID,
       accountId: from.id,
-      counterAccountId: to?.id ?? null,
+      counterAccountId: to.id,
       direction: "debit",
       transactionType: "cash_withdrawal",
       amountMinor: input.amountMinor,
@@ -357,29 +369,27 @@ export async function createCashWithdrawal(input: {
       balanceAfterMinor: null,
       fingerprint: null,
       sourceObservationId: null,
+      transferGroupId,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
     };
+    const inn: CanonicalTransaction = {
+      ...out,
+      id: newId(),
+      accountId: to.id,
+      counterAccountId: from.id,
+      direction: "credit",
+    };
     outId = out.id;
-    s.transactions.push(out);
-    if (to) {
-      const inn: CanonicalTransaction = {
-        ...out,
-        id: newId(),
-        accountId: to.id,
-        counterAccountId: from.id,
-        direction: "credit",
-      };
-      inId = inn.id;
-      s.transactions.push(inn);
-    }
+    inId = inn.id;
+    s.transactions.push(out, inn);
   });
 
   const after = await readStore();
   return {
     out: after.transactions.find((t) => t.id === outId)!,
-    inn: inId ? after.transactions.find((t) => t.id === inId)! : null,
+    inn: after.transactions.find((t) => t.id === inId)!,
   };
 }
 
@@ -401,21 +411,30 @@ export async function voidTransaction(id: string): Promise<CanonicalTransaction>
 
     // Void linked transfer/cash legs so both sides disappear together.
     if (
-      (target.transactionType === "transfer" ||
-        target.transactionType === "cash_withdrawal") &&
-      target.counterAccountId
+      target.transactionType === "transfer" ||
+      target.transactionType === "cash_withdrawal"
     ) {
       for (const tx of s.transactions) {
         if (tx.id === id) continue;
         if (tx.status === "voided") continue;
-        if (tx.transactionType !== target.transactionType) continue;
-        if (tx.amountMinor !== target.amountMinor) continue;
-        if (tx.occurredAt !== target.occurredAt) continue;
         if (
-          tx.accountId === target.counterAccountId &&
-          tx.counterAccountId === target.accountId
+          target.transferGroupId &&
+          tx.transferGroupId === target.transferGroupId
         ) {
           ids.add(tx.id);
+          continue;
+        }
+        // Legacy rows without transferGroupId: heuristic sibling match.
+        if (!target.transferGroupId && target.counterAccountId) {
+          if (tx.transactionType !== target.transactionType) continue;
+          if (tx.amountMinor !== target.amountMinor) continue;
+          if (tx.occurredAt !== target.occurredAt) continue;
+          if (
+            tx.accountId === target.counterAccountId &&
+            tx.counterAccountId === target.accountId
+          ) {
+            ids.add(tx.id);
+          }
         }
       }
     }
@@ -690,6 +709,7 @@ export async function confirmReceiptExpense(
   );
   if (!observation) throw new Error("Importen hittades inte");
 
+  // Idempotent: double-submit must not create a second expense.
   if (input.candidateId) {
     const cand = store.candidates.find(
       (c) =>
@@ -698,7 +718,20 @@ export async function confirmReceiptExpense(
         c.observationId === input.observationId,
     );
     if (!cand) throw new Error("Kandidaten hittades inte");
+    if (cand.canonicalTransactionId) {
+      const existing = store.transactions.find(
+        (t) => t.id === cand.canonicalTransactionId && t.status !== "voided",
+      );
+      if (existing) return existing;
+    }
   }
+  const already = store.transactions.find(
+    (t) =>
+      t.sourceObservationId === input.observationId &&
+      t.source === "receipt_camera" &&
+      t.status !== "voided",
+  );
+  if (already) return already;
 
   const tx = await createManualExpense({
     accountId: input.accountId,

@@ -6,6 +6,7 @@ import {
   startOfMonth,
   startOfWeek,
   endOfWeek,
+  subDays,
 } from "date-fns";
 
 export const DEFAULT_TIMEZONE = "Asia/Bangkok";
@@ -74,6 +75,29 @@ export function isSameZonedDay(
     da.getMonth() === db.getMonth() &&
     da.getDate() === db.getDate()
   );
+}
+
+/**
+ * Timestamp for "today" / "yesterday" in the user's calendar timezone.
+ * Uses local noon so the instant stays on that calendar day across offsets.
+ */
+export function occurredAtForRelativeDay(
+  when: "today" | "yesterday",
+  timezone: string = DEFAULT_TIMEZONE,
+  now = new Date(),
+): string {
+  const zoned = toZonedTime(now, timezone);
+  const day = when === "yesterday" ? subDays(zoned, 1) : zoned;
+  const localNoon = new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
+    12,
+    0,
+    0,
+    0,
+  );
+  return fromZonedTime(localNoon, timezone).toISOString();
 }
 
 export function formatRelativeVerificationSv(

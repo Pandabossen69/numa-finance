@@ -10,11 +10,13 @@ import {
   createManualIncome,
   createScreenshotObservation,
   createTransfer,
+  getProfile,
   listAccounts,
   setDefaultAccount,
   updateManualTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
+import { occurredAtForRelativeDay } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
 
 const accountSchema = z.object({
@@ -44,9 +46,12 @@ const expenseSchema = z.object({
   when: whenSchema,
 });
 
-function occurredAtFromWhen(when?: "today" | "yesterday"): string | undefined {
-  if (!when || when === "today") return undefined;
-  return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+async function occurredAtFromWhen(
+  when?: "today" | "yesterday",
+): Promise<string | undefined> {
+  if (!when) return undefined;
+  const profile = await getProfile();
+  return occurredAtForRelativeDay(when, profile.timezone);
 }
 
 export type ActionResult =
@@ -137,7 +142,7 @@ export async function createExpenseAction(
       amountMinor,
       description: input.description,
       category: input.category,
-      occurredAt: occurredAtFromWhen(input.when),
+      occurredAt: await occurredAtFromWhen(input.when),
     });
 
     // Streak / on-track days are awarded at day close, not mid-day.
@@ -173,7 +178,9 @@ const transferSchema = z.object({
 
 const cashSchema = z.object({
   fromAccountId: z.string().uuid(),
-  toAccountId: z.string().uuid().optional().nullable(),
+  toAccountId: z.string().uuid({
+    error: "Välj ett kontantkonto — skapa ett under Mina saldon först",
+  }),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
   when: whenSchema,
@@ -200,7 +207,7 @@ export async function createIncomeAction(
       accountId: input.accountId,
       amountMinor,
       description: input.description,
-      occurredAt: occurredAtFromWhen(input.when),
+      occurredAt: await occurredAtFromWhen(input.when),
     });
     revalidateMoneyPaths();
     return { ok: true };
@@ -226,7 +233,7 @@ export async function createTransferAction(
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
-      occurredAt: occurredAtFromWhen(input.when),
+      occurredAt: await occurredAtFromWhen(input.when),
     });
     revalidateMoneyPaths();
     return { ok: true };
@@ -253,7 +260,7 @@ export async function createCashWithdrawalAction(
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
-      occurredAt: occurredAtFromWhen(input.when),
+      occurredAt: await occurredAtFromWhen(input.when),
     });
     revalidateMoneyPaths();
     return { ok: true };

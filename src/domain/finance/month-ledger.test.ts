@@ -31,6 +31,7 @@ function tx(
     balanceAfterMinor: null,
     fingerprint: null,
     sourceObservationId: null,
+    transferGroupId: partial.transferGroupId ?? null,
     syncStatus: "synced",
     createdAt: partial.occurredAt,
     updatedAt: partial.occurredAt,
