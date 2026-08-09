@@ -12,7 +12,7 @@ export default async function IdagPage() {
   } catch (error) {
     console.error("[numa] idag snapshot failed", error);
     return (
-      <div className="animate-rise space-y-4 pt-6">
+      <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
         <BrandHeader />
         <h1 className="text-2xl font-semibold tracking-tight">Kunde inte ladda idag</h1>
         <p className="text-sm text-[var(--numa-muted)]">
@@ -27,7 +27,7 @@ export default async function IdagPage() {
 
   if (!snap.primaryAccount) {
     return (
-      <div className="animate-rise flex min-h-[70dvh] flex-col pt-4">
+      <div className="flex min-h-[70dvh] flex-col pt-4 text-[var(--numa-ink)]">
         <BrandHeader />
         <div className="mt-10 flex flex-1 flex-col justify-center space-y-5 pb-8">
           <p className="text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.045em]">
@@ -68,7 +68,7 @@ export default async function IdagPage() {
         : "Saldo saknas";
 
   return (
-    <div className="animate-rise space-y-8 pt-2">
+    <div className="space-y-8 pt-2 text-[var(--numa-ink)]">
       <BrandHeader rankTitle={rank.titleSv} />
 
       <DayPulseHero pulse={pulse} currency={snap.currency} />

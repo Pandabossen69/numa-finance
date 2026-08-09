@@ -124,16 +124,26 @@ body {
   }
 }
 
+/* Never use animation-fill-mode: both with opacity:0 — it can leave content
+   permanently invisible if the animation is interrupted or skipped. */
 .animate-rise {
-  animation: numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .animate-sheet {
-  animation: numa-sheet-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-sheet-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .animate-backdrop {
-  animation: numa-backdrop-in 220ms ease both;
+  animation: numa-backdrop-in 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-sheet,
+  .animate-backdrop {
+    animation: none !important;
+  }
 }
 
 .auth-stage {
