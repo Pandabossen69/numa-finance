@@ -4,6 +4,7 @@ import type {
   CanonicalTransaction,
   ExtractedTransactionCandidate,
   ExtractionRun,
+  PlanItem,
   Profile,
   SourceObservation,
 } from "@/domain/finance";
@@ -261,5 +262,35 @@ export function mapUserProgress(row: DbUserProgress): UserProgress {
     leaderboardVisible: row.leaderboard_visible,
     updatedAt: row.updated_at,
     createdAt: row.created_at,
+  };
+}
+
+type DbPlanItem = {
+  id: string;
+  user_id: string;
+  name: string;
+  kind: PlanItem["kind"];
+  amount_minor: number;
+  currency: CurrencyCode;
+  cadence: string | null;
+  next_due_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export function mapPlanItem(row: DbPlanItem): PlanItem {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    kind: row.kind,
+    amountMinor: Number(row.amount_minor),
+    currency: row.currency,
+    cadence: row.cadence,
+    nextDueAt: row.next_due_at,
+    isActive: row.is_active,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }

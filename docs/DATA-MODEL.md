@@ -36,7 +36,9 @@ Preserves original amount, rate, converted amount, timestamp, source.
 Discrepancies between expected calculated balance and newly observed bank balance. Never silent overwrite.
 
 ### plan_items
-Stub for Phase 1+ planning (mandatory / flexible / goal / buffer).
+Monthly planning buckets (mandatory / expected / flexible / goal / buffer).
+Active totals feed reserved + buffer into safe-to-spend. Optional `next_due_at`
+(especially the “Nästa inkomst” row) sets runway days.
 
 ## Deduplication philosophy
 

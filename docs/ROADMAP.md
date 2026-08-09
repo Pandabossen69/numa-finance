@@ -23,8 +23,8 @@ Phases are planning structure, not a contract.
 ## Phase 1 — Core daily finance + personal game loop
 
 - Better manual transactions (income, transfers, cash withdrawal) *(wired in + sheet)*
-- Recurring expenses
-- Monthly plans + reservations
+- Recurring expenses *(monthly plan buckets on Plan)*
+- Monthly plans + reservations *(reserved/buffer/flex → safe-to-spend)*
 - Richer Idag screen with live day pulse *(partially live)*
 - Persist streak / on-track days / personal level *(thin touch wired)*
 - Default account / recent categories polish

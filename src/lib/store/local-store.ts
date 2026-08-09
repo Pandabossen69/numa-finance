@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createEmptyStore, type NumaStoreData } from "./types";
+import { createEmptyStore, normalizeStore, type NumaStoreData } from "./types";
 
 /**
  * Persistence strategy:
@@ -60,7 +60,9 @@ export async function readStore(): Promise<NumaStoreData> {
   const resolved = await resolveBackend();
 
   if (resolved.backend === "memory") {
-    return structuredClone(memoryStore ?? createEmptyStore());
+    return structuredClone(
+      normalizeStore(memoryStore ?? createEmptyStore()),
+    );
   }
 
   try {
@@ -69,7 +71,7 @@ export async function readStore(): Promise<NumaStoreData> {
     if (parsed.version !== 1) {
       return createEmptyStore();
     }
-    return parsed;
+    return normalizeStore(parsed);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       const empty = createEmptyStore();

@@ -2,6 +2,7 @@ import type {
   Account,
   BalanceCheckpoint,
   CanonicalTransaction,
+  PlanItem,
   Profile,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
@@ -22,8 +23,10 @@ export type TodaySnapshot = {
   freeMinor: number;
   reservedMinor: number;
   bufferMinor: number;
+  flexibleMinor: number;
   daysUntilIncome: number;
   recentTransactions: CanonicalTransaction[];
+  planItems: PlanItem[];
   currency: CurrencyCode;
   /** Personal game progress — never includes balances. */
   progress: UserProgress | null;

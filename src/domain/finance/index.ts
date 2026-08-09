@@ -4,3 +4,4 @@ export * from "./safe-to-spend";
 export * from "./fingerprint";
 export * from "./reconciliation";
 export * from "./datetime";
+export * from "./plan-totals";

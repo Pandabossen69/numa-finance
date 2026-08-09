@@ -112,4 +112,28 @@ export async function recordOnTrackDayIfNeeded(isOnTrack: boolean) {
   return api().recordOnTrackDayIfNeeded(isOnTrack);
 }
 
-export { hoursSince } from "./local-repository";
+export async function listPlanItems() {
+  return api().listPlanItems();
+}
+
+export async function createPlanItem(
+  input: Parameters<typeof local.createPlanItem>[0],
+) {
+  return api().createPlanItem(input);
+}
+
+export async function updatePlanItem(
+  input: Parameters<typeof local.updatePlanItem>[0],
+) {
+  return api().updatePlanItem(input);
+}
+
+export async function deletePlanItem(id: string) {
+  return api().deletePlanItem(id);
+}
+
+export async function setNextIncomeDate(isoDate: string) {
+  return api().setNextIncomeDate(isoDate);
+}
+
+export { hoursSince, NEXT_INCOME_NAME } from "./local-repository";

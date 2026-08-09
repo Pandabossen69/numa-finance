@@ -1,6 +1,8 @@
 import {
   calculateAccountBalance,
+  calculatePlanTotals,
   calculateSafeToSpend,
+  NEXT_INCOME_NAME,
   filterTransactionsAfterCheckpoint,
   formatRelativeVerificationSv,
   hoursSince,
@@ -13,6 +15,8 @@ import {
   type CanonicalTransaction,
   type ExtractedTransactionCandidate,
   type ExtractionRun,
+  type PlanCategoryKind,
+  type PlanItem,
   type Profile,
   type SourceObservation,
   type TransactionSource,
@@ -619,12 +623,112 @@ export function latestCheckpointForAccount(
   return list[0] ?? null;
 }
 
+export async function listPlanItems(): Promise<PlanItem[]> {
+  const store = await readStore();
+  return [...(store.planItems ?? [])]
+    .filter((p) => p.isActive)
+    .sort((a, b) => a.name.localeCompare(b.name, "sv"));
+}
+
+export async function createPlanItem(input: {
+  name: string;
+  kind: PlanCategoryKind;
+  amountMinor: number;
+  currency: CurrencyCode;
+  cadence?: string | null;
+  nextDueAt?: string | null;
+}): Promise<PlanItem> {
+  if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
+  const updated = await updateStore((s) => {
+    const ts = nowIso();
+    const item: PlanItem = {
+      id: newId(),
+      userId: LOCAL_DEMO_USER_ID,
+      name: input.name.trim(),
+      kind: input.kind,
+      amountMinor: input.amountMinor,
+      currency: input.currency,
+      cadence: input.cadence ?? "monthly",
+      nextDueAt: input.nextDueAt ?? null,
+      isActive: true,
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    s.planItems = s.planItems ?? [];
+    s.planItems.push(item);
+  });
+  return updated.planItems[updated.planItems.length - 1]!;
+}
+
+export async function updatePlanItem(input: {
+  id: string;
+  name?: string;
+  kind?: PlanCategoryKind;
+  amountMinor?: number;
+  nextDueAt?: string | null;
+  isActive?: boolean;
+}): Promise<PlanItem> {
+  let found: PlanItem | null = null;
+  await updateStore((s) => {
+    const item = (s.planItems ?? []).find((p) => p.id === input.id);
+    if (!item) throw new Error("Planposten hittades inte");
+    if (input.name != null) item.name = input.name.trim();
+    if (input.kind != null) item.kind = input.kind;
+    if (input.amountMinor != null) {
+      if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
+      item.amountMinor = input.amountMinor;
+    }
+    if (input.nextDueAt !== undefined) item.nextDueAt = input.nextDueAt;
+    if (input.isActive != null) item.isActive = input.isActive;
+    item.updatedAt = nowIso();
+    found = item;
+  });
+  return found!;
+}
+
+export async function deletePlanItem(id: string): Promise<void> {
+  await updateStore((s) => {
+    const item = (s.planItems ?? []).find((p) => p.id === id);
+    if (!item) throw new Error("Planposten hittades inte");
+    item.isActive = false;
+    item.updatedAt = nowIso();
+  });
+}
+
+export { NEXT_INCOME_NAME };
+
+export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
+  const store = await readStore();
+  const currency =
+    store.accounts.find((a) => a.isDefault)?.currency ??
+    store.profile.primaryCurrency;
+  const existing = (store.planItems ?? []).find(
+    (p) => p.isActive && p.name === NEXT_INCOME_NAME,
+  );
+  if (existing) {
+    return updatePlanItem({
+      id: existing.id,
+      nextDueAt: isoDate,
+      amountMinor: existing.amountMinor,
+    });
+  }
+  return createPlanItem({
+    name: NEXT_INCOME_NAME,
+    kind: "expected",
+    amountMinor: 0,
+    currency,
+    cadence: "income",
+    nextDueAt: isoDate,
+  });
+}
+
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const store = await readStore();
   const profile = store.profile;
   const accounts = store.accounts.filter((a) => a.isActive);
   const primary =
     accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
+  const planItems = (store.planItems ?? []).filter((p) => p.isActive);
 
   if (!primary) {
     return {
@@ -642,8 +746,10 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       freeMinor: 0,
       reservedMinor: 0,
       bufferMinor: 0,
+      flexibleMinor: 0,
       daysUntilIncome: 17,
       recentTransactions: [],
+      planItems,
       currency: profile.primaryCurrency,
       progress: await getUserProgress(),
     };
@@ -676,17 +782,17 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const currency = primary.currency;
   const todaySpending = sumSpending(todayTx, currency);
   const monthSpending = sumSpending(monthTx, currency);
-
-  // Phase 0 placeholders for reserved/buffer until planning engine lands.
-  const reservedMinor = 0;
-  const bufferMinor = 0;
-  const daysUntilIncome = 17;
+  const totals = calculatePlanTotals(planItems, currency, now, 17);
   const available = calculated ?? money(0, currency);
   const safe = calculateSafeToSpend({
     available,
-    reserved: money(reservedMinor, currency),
-    safetyBuffer: money(bufferMinor, currency),
-    daysUntilNextIncome: daysUntilIncome,
+    reserved: money(totals.reservedMinor, currency),
+    safetyBuffer: money(totals.bufferMinor, currency),
+    daysUntilNextIncome: totals.daysUntilNextIncome,
+    flexiblePlanRemaining:
+      totals.flexibleMinor > 0
+        ? money(totals.flexibleMinor, currency)
+        : undefined,
   });
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
@@ -708,12 +814,14 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     safeToSpendTodayMinor: safe.today.amountMinor,
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
-    reservedMinor,
-    bufferMinor,
-    daysUntilIncome,
+    reservedMinor: totals.reservedMinor,
+    bufferMinor: totals.bufferMinor,
+    flexibleMinor: totals.flexibleMinor,
+    daysUntilIncome: totals.daysUntilNextIncome,
     recentTransactions: [...accountTx]
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
       .slice(0, 8),
+    planItems,
     currency,
     progress: await getUserProgress(),
   };

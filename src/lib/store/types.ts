@@ -4,6 +4,7 @@ import type {
   CanonicalTransaction,
   ExtractedTransactionCandidate,
   ExtractionRun,
+  PlanItem,
   Profile,
   ReconciliationIssue,
   SourceObservation,
@@ -19,6 +20,7 @@ export type NumaStoreData = {
   extractionRuns: ExtractionRun[];
   candidates: ExtractedTransactionCandidate[];
   reconciliationIssues: ReconciliationIssue[];
+  planItems: PlanItem[];
 };
 
 export const LOCAL_DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
@@ -43,5 +45,14 @@ export function createEmptyStore(): NumaStoreData {
     extractionRuns: [],
     candidates: [],
     reconciliationIssues: [],
+    planItems: [],
+  };
+}
+
+/** Normalize older local JSON that predates planItems. */
+export function normalizeStore(data: NumaStoreData): NumaStoreData {
+  return {
+    ...data,
+    planItems: Array.isArray(data.planItems) ? data.planItems : [],
   };
 }

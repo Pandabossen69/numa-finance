@@ -1,9 +1,11 @@
 import {
   calculateAccountBalance,
+  calculatePlanTotals,
   calculateSafeToSpend,
   filterTransactionsAfterCheckpoint,
   formatRelativeVerificationSv,
   isSameZonedDay,
+  NEXT_INCOME_NAME,
   startOfZonedDay,
   startOfZonedMonth,
   sumSpending,
@@ -11,6 +13,8 @@ import {
   type BalanceCheckpoint,
   type CanonicalTransaction,
   type ExtractedTransactionCandidate,
+  type PlanCategoryKind,
+  type PlanItem,
   type Profile,
   type SourceObservation,
   type TransactionSource,
@@ -25,6 +29,7 @@ import {
   mapCheckpoint,
   mapExtractionRun,
   mapObservation,
+  mapPlanItem,
   mapProfile,
   mapTransaction,
   mapUserProgress,
@@ -508,14 +513,118 @@ export async function latestCheckpointForAccount(
   return data ? mapCheckpoint(data) : null;
 }
 
+export async function listPlanItems(): Promise<PlanItem[]> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("plan_items")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapPlanItem);
+}
+
+export async function createPlanItem(input: {
+  name: string;
+  kind: PlanCategoryKind;
+  amountMinor: number;
+  currency: CurrencyCode;
+  cadence?: string | null;
+  nextDueAt?: string | null;
+}): Promise<PlanItem> {
+  if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
+  const userId = await requireUserId();
+  await ensureProfile(userId);
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("plan_items")
+    .insert({
+      user_id: userId,
+      name: input.name.trim(),
+      kind: input.kind,
+      amount_minor: input.amountMinor,
+      currency: input.currency,
+      cadence: input.cadence ?? "monthly",
+      next_due_at: input.nextDueAt ?? null,
+      is_active: true,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapPlanItem(data);
+}
+
+export async function updatePlanItem(input: {
+  id: string;
+  name?: string;
+  kind?: PlanCategoryKind;
+  amountMinor?: number;
+  nextDueAt?: string | null;
+  isActive?: boolean;
+}): Promise<PlanItem> {
+  const userId = await requireUserId();
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.name != null) patch.name = input.name.trim();
+  if (input.kind != null) patch.kind = input.kind;
+  if (input.amountMinor != null) {
+    if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
+    patch.amount_minor = input.amountMinor;
+  }
+  if (input.nextDueAt !== undefined) patch.next_due_at = input.nextDueAt;
+  if (input.isActive != null) patch.is_active = input.isActive;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("plan_items")
+    .update(patch)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapPlanItem(data);
+}
+
+export async function deletePlanItem(id: string): Promise<void> {
+  await updatePlanItem({ id, isActive: false });
+}
+
+export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
+  const items = await listPlanItems();
+  const existing = items.find((p) => p.name === NEXT_INCOME_NAME);
+  const profile = await getProfile();
+  const accounts = await listAccounts();
+  const currency =
+    accounts.find((a) => a.isDefault)?.currency ?? profile.primaryCurrency;
+  if (existing) {
+    return updatePlanItem({
+      id: existing.id,
+      nextDueAt: isoDate,
+    });
+  }
+  return createPlanItem({
+    name: NEXT_INCOME_NAME,
+    kind: "expected",
+    amountMinor: 0,
+    currency,
+    cadence: "income",
+    nextDueAt: isoDate,
+  });
+}
+
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const profile = await getProfile();
   const accounts = await listAccounts();
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
+  const planItems = await listPlanItems().catch(() => [] as PlanItem[]);
 
   if (!primary) {
     const progress = await getUserProgress();
-    return emptySnapshot(profile, accounts, progress);
+    return emptySnapshot(profile, accounts, progress, planItems);
   }
 
   const checkpoint = await latestCheckpointForAccount(primary.id);
@@ -545,15 +654,17 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const currency = primary.currency;
   const todaySpending = sumSpending(todayTx, currency);
   const monthSpending = sumSpending(monthTx, currency);
-  const reservedMinor = 0;
-  const bufferMinor = 0;
-  const daysUntilIncome = 17;
+  const totals = calculatePlanTotals(planItems, currency, now, 17);
   const available = calculated ?? money(0, currency);
   const safe = calculateSafeToSpend({
     available,
-    reserved: money(reservedMinor, currency),
-    safetyBuffer: money(bufferMinor, currency),
-    daysUntilNextIncome: daysUntilIncome,
+    reserved: money(totals.reservedMinor, currency),
+    safetyBuffer: money(totals.bufferMinor, currency),
+    daysUntilNextIncome: totals.daysUntilNextIncome,
+    flexiblePlanRemaining:
+      totals.flexibleMinor > 0
+        ? money(totals.flexibleMinor, currency)
+        : undefined,
   });
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
@@ -577,10 +688,12 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     safeToSpendTodayMinor: safe.today.amountMinor,
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
-    reservedMinor,
-    bufferMinor,
-    daysUntilIncome,
+    reservedMinor: totals.reservedMinor,
+    bufferMinor: totals.bufferMinor,
+    flexibleMinor: totals.flexibleMinor,
+    daysUntilIncome: totals.daysUntilNextIncome,
     recentTransactions: accountTx.slice(0, 8),
+    planItems,
     currency,
     progress,
   };
@@ -590,6 +703,7 @@ function emptySnapshot(
   profile: Profile,
   accounts: Account[],
   progress: UserProgress | null,
+  planItems: PlanItem[] = [],
 ): TodaySnapshot {
   return {
     profile,
@@ -606,8 +720,10 @@ function emptySnapshot(
     freeMinor: 0,
     reservedMinor: 0,
     bufferMinor: 0,
+    flexibleMinor: 0,
     daysUntilIncome: 17,
     recentTransactions: [],
+    planItems,
     currency: profile.primaryCurrency,
     progress: progress ?? emptyUserProgress(profile.id),
   };

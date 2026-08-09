@@ -65,6 +65,20 @@ export type PlanCategoryKind =
   | "goal"
   | "buffer";
 
+export type PlanItem = {
+  id: string;
+  userId: string;
+  name: string;
+  kind: PlanCategoryKind;
+  amountMinor: number;
+  currency: CurrencyCode;
+  cadence: string | null;
+  nextDueAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SyncStatus = "saved" | "pending_sync" | "synced" | "failed";
 
 export type Profile = {
