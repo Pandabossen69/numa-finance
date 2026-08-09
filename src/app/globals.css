@@ -6,16 +6,16 @@
   --numa-ink: #132019;
   --numa-muted: #5a6b61;
   --numa-faint: #8a9a91;
-  --numa-surface: rgba(255, 255, 255, 0.78);
+  --numa-surface: rgba(255, 255, 255, 0.92);
   --numa-surface-solid: #fbfcfb;
-  --numa-border: rgba(19, 32, 25, 0.08);
+  --numa-border: rgba(19, 32, 25, 0.1);
   --numa-accent: #1f6f5b;
   --numa-accent-soft: #d5ebe3;
   --numa-accent-ink: #0d3f34;
   --numa-danger: #a61f1f;
   --numa-positive: #1b6b45;
   --numa-shadow: 0 18px 40px rgba(19, 32, 25, 0.08);
-  --numa-nav: rgba(251, 252, 251, 0.92);
+  --numa-nav: rgba(251, 252, 251, 0.96);
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   --background: var(--numa-bg);
@@ -46,16 +46,16 @@
     --numa-ink: #e8eee9;
     --numa-muted: #9aaba2;
     --numa-faint: #6f8178;
-    --numa-surface: rgba(22, 32, 28, 0.88);
+    --numa-surface: rgba(22, 32, 28, 0.96);
     --numa-surface-solid: #15201b;
-    --numa-border: rgba(232, 238, 233, 0.08);
+    --numa-border: rgba(232, 238, 233, 0.12);
     --numa-accent: #3d9f86;
     --numa-accent-soft: #1a3530;
     --numa-accent-ink: #d5ebe3;
     --numa-danger: #f07171;
     --numa-positive: #5dc28f;
     --numa-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-    --numa-nav: rgba(13, 20, 17, 0.92);
+    --numa-nav: rgba(13, 20, 17, 0.96);
   }
 }
 
@@ -65,6 +65,7 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: light dark;
 }
 
 body {
@@ -87,67 +88,50 @@ body {
   width: min(100%, 28rem);
   margin-inline: auto;
   min-height: 100dvh;
+  color: var(--numa-ink);
 }
 
 .numa-bottom-pad {
   padding-bottom: calc(5.75rem + var(--numa-safe-bottom));
 }
 
+/* Motion: transform only. Never animate opacity on page content. */
 @keyframes numa-rise {
   from {
-    opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
 
 @keyframes numa-sheet-in {
   from {
-    opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(28px);
   }
   to {
-    opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes numa-backdrop-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Never use animation-fill-mode: both with opacity:0 — it can leave content
-   permanently invisible if the animation is interrupted or skipped. */
 .animate-rise {
-  animation: numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: numa-rise 380ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .animate-sheet {
-  animation: numa-sheet-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.animate-backdrop {
-  animation: numa-backdrop-in 220ms ease;
+  animation: numa-sheet-in 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
-  .animate-sheet,
-  .animate-backdrop {
+  .animate-sheet {
     animation: none !important;
   }
 }
 
 .auth-stage {
   min-height: 100dvh;
+  color: var(--numa-ink);
 }
 
 .auth-glow {

@@ -16,7 +16,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const snapshot = await loadShellSnapshot();
 
   return (
-    <div className="numa-shell relative">
+    <div className="numa-shell relative text-[var(--numa-ink)]">
       <main className="numa-bottom-pad px-5 pt-[max(1.25rem,var(--numa-safe-top))]">
         {children}
       </main>

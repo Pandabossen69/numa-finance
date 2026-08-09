@@ -34,7 +34,7 @@ export function AddActionSheet({
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(19,32,25,0.42)] animate-backdrop"
+        className="absolute inset-0 bg-[rgba(19,32,25,0.55)]"
         aria-label="Stäng"
         onClick={onClose}
       />
@@ -42,7 +42,7 @@ export function AddActionSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Lägg till"
-        className="relative w-full max-w-md rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] shadow-[var(--numa-shadow)] animate-sheet"
+        className="relative w-full max-w-md rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--numa-border)]" />
         <h2 className="mb-1 text-lg font-semibold tracking-tight">Lägg till</h2>
@@ -52,15 +52,16 @@ export function AddActionSheet({
 
         {!hasAccount || !accountId ? (
           <div className="space-y-3">
-            <p className="text-sm text-[var(--numa-muted)]">
-              Skapa ett konto först så att utgifter får någonstans att landa.
+            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+              Du är inloggad. Lägg till ett bankkonto med verifierat saldo innan
+              du registrerar utgifter.
             </p>
             <Link
               href="/konton/ny"
               onClick={onClose}
-              className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-medium text-white"
+              className="flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-[15px] font-semibold text-white"
             >
-              Skapa konto
+              Lägg till bankkonto
             </Link>
           </div>
         ) : (

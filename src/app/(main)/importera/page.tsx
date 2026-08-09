@@ -6,7 +6,7 @@ export default async function ImporteraPage() {
   const observations = await listObservations();
 
   return (
-    <div className="animate-rise space-y-6 pt-2">
+    <div className="space-y-6 pt-2">
       <header>
         <Link href="/mer" className="text-sm text-[var(--numa-muted)]">
           ← Mer

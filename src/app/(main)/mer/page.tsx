@@ -14,7 +14,7 @@ export default async function MerPage() {
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="animate-rise space-y-6 pt-2">
+    <div className="space-y-6 pt-2">
       <header>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Mer</h1>
         <p className="mt-2 text-sm text-[var(--numa-muted)]">

@@ -5,7 +5,7 @@ export default async function AnalysPage() {
   const snap = await getTodaySnapshot();
 
   return (
-    <div className="animate-rise space-y-6 pt-2">
+    <div className="space-y-6 pt-2">
       <header>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Analys</h1>
         <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">

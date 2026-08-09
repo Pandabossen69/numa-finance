@@ -12,7 +12,7 @@ export default async function IdagPage() {
   } catch (error) {
     console.error("[numa] idag snapshot failed", error);
     return (
-      <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
+      <div className="space-y-4 pt-6">
         <BrandHeader />
         <h1 className="text-2xl font-semibold tracking-tight">Kunde inte ladda idag</h1>
         <p className="text-sm text-[var(--numa-muted)]">
@@ -27,24 +27,29 @@ export default async function IdagPage() {
 
   if (!snap.primaryAccount) {
     return (
-      <div className="flex min-h-[70dvh] flex-col pt-4 text-[var(--numa-ink)]">
+      <div className="flex min-h-[70dvh] flex-col pt-4">
         <BrandHeader />
-        <div className="mt-10 flex flex-1 flex-col justify-center space-y-5 pb-8">
-          <p className="text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.045em]">
+        <div className="mt-8 flex flex-1 flex-col justify-center space-y-5 pb-8">
+          <p className="text-[2.5rem] font-semibold leading-none tracking-[-0.05em]">
             NUMA
           </p>
-          <h1 className="max-w-[14ch] text-[1.65rem] font-semibold tracking-tight">
-            Börja med ditt verkliga saldo
-          </h1>
-          <p className="max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-            Lägg in ett konto. Sedan ser du live om dagen ligger plus eller minus
-            mot planen — varje gång du registrerar en utgift.
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-[var(--numa-accent)]">
+              Steg 1 av 2 · Du är inloggad
+            </p>
+            <h1 className="max-w-[16ch] text-[1.7rem] font-semibold tracking-tight">
+              Lägg till ditt bankkonto
+            </h1>
+            <p className="max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
+              Ange verifierat saldo. Sedan kan du registrera utgifter och se live
+              om dagen ligger plus eller minus.
+            </p>
+          </div>
           <Link
             href="/konton/ny"
             className="inline-flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-5 text-[15px] font-semibold text-white"
           >
-            Skapa konto
+            Lägg till bankkonto
           </Link>
         </div>
       </div>
@@ -56,7 +61,6 @@ export default async function IdagPage() {
     spentToday: money(snap.todaySpendingMinor, snap.currency),
   });
 
-  // Persisted streak comes later — Phase 0 shows rank ladder from a soft hint.
   const onTrackHint = pulse.status === "minus" ? 0 : 1;
   const rank = rankForOnTrackDays(onTrackHint);
 
@@ -68,7 +72,7 @@ export default async function IdagPage() {
         : "Saldo saknas";
 
   return (
-    <div className="space-y-8 pt-2 text-[var(--numa-ink)]">
+    <div className="space-y-8 pt-2">
       <BrandHeader rankTitle={rank.titleSv} />
 
       <DayPulseHero pulse={pulse} currency={snap.currency} />

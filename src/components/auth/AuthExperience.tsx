@@ -120,7 +120,7 @@ function WelcomeScreen({
 }) {
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col justify-end pb-10 animate-rise">
+      <div className="flex flex-1 flex-col justify-end pb-10">
         <p className="text-[2.75rem] font-semibold leading-none tracking-[-0.05em]">
           NUMA
         </p>
@@ -133,7 +133,7 @@ function WelcomeScreen({
         </p>
       </div>
 
-      <div className="space-y-3 animate-rise" style={{ animationDelay: "80ms" }}>
+      <div className="space-y-3" style={{ animationDelay: "80ms" }}>
         <button
           type="button"
           onClick={onStart}
@@ -179,7 +179,7 @@ function LoginScreen({
   onCreateAccount: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col animate-rise">
+    <div className="flex flex-1 flex-col">
       <BackButton onClick={onBack} />
       <header className="mt-6 space-y-2">
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Logga in</h1>
@@ -245,7 +245,7 @@ function SignupEmailScreen({
   onLogin: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col animate-rise">
+    <div className="flex flex-1 flex-col">
       <BackButton onClick={onBack} />
       <StepDots current={1} total={2} />
       <header className="mt-6 space-y-2">
@@ -317,7 +317,7 @@ function SignupPasswordScreen({
   const strongEnough = password.length >= 8;
 
   return (
-    <div className="flex flex-1 flex-col animate-rise">
+    <div className="flex flex-1 flex-col">
       <BackButton onClick={onBack} />
       <StepDots current={2} total={2} />
       <header className="mt-6 space-y-2">

@@ -15,7 +15,7 @@ export default async function KontonPage() {
   const accounts = await listAccounts();
 
   return (
-    <div className="animate-rise space-y-6 pt-2">
+    <div className="space-y-6 pt-2">
       <header className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Konton</h1>
