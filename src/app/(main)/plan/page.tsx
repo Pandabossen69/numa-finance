@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PlanEditor } from "@/components/plan/PlanEditor";
-import { getTodaySnapshot } from "@/lib/store/repository";
+import { getTodaySnapshotCached } from "@/lib/store/today";
 
 export default async function PlanPage() {
-  const snap = await getTodaySnapshot();
+  const snap = await getTodaySnapshotCached();
 
   if (!snap.primaryAccount) {
     return (

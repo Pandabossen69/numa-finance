@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCashWithdrawalAction,
@@ -110,21 +110,20 @@ function ExpenseForm({
 }) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<string>("Mat");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
+  const [category, setCategory] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(LAST_CATEGORY_KEY);
       if (saved && (CATEGORIES as readonly string[]).includes(saved)) {
-        setCategory(saved);
+        return saved;
       }
     } catch {
       // ignore
     }
-  }, []);
+    return "Mat";
+  });
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   return (
     <form

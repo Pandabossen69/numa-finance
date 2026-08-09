@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
-import { getTodaySnapshot } from "@/lib/store/repository";
+import { getTodaySnapshotCached } from "@/lib/store/today";
 
 export default async function FotaPage() {
-  const snap = await getTodaySnapshot();
+  const snap = await getTodaySnapshotCached();
 
   if (!snap.primaryAccount) {
     return (

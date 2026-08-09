@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { getTodaySnapshot } from "@/lib/store/repository";
+import { getTodaySnapshotCached } from "@/lib/store/today";
 
 export default async function AnalysPage() {
-  const snap = await getTodaySnapshot();
+  const snap = await getTodaySnapshotCached();
 
   if (!snap.primaryAccount) {
     return (

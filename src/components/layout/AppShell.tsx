@@ -1,11 +1,12 @@
 import { BottomNav } from "@/components/layout/BottomNav";
-import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
+import type { TodaySnapshot } from "@/lib/store/repository";
+import { getTodaySnapshotCached } from "@/lib/store/today";
 
 async function loadShellSnapshot(): Promise<
   Pick<TodaySnapshot, "primaryAccount" | "accounts">
 > {
   try {
-    return await getTodaySnapshot();
+    return await getTodaySnapshotCached();
   } catch (error) {
     console.error("[numa] failed to load shell snapshot", error);
     return { primaryAccount: null, accounts: [] };

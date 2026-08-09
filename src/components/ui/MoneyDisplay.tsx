@@ -1,4 +1,9 @@
-import { formatMoney, formatMoneyCompact, money, type CurrencyCode } from "@/domain/money";
+import {
+  formatMoney,
+  formatMoneyCompact,
+  moneyFromUnknown,
+  type CurrencyCode,
+} from "@/domain/money";
 
 export function MoneyDisplay({
   amountMinor,
@@ -11,7 +16,7 @@ export function MoneyDisplay({
   size?: "sm" | "md" | "lg" | "xl";
   compact?: boolean;
 }) {
-  const value = money(amountMinor, currency);
+  const value = moneyFromUnknown(amountMinor, currency);
   const text = compact ? formatMoneyCompact(value) : formatMoney(value);
 
   const sizeClass =

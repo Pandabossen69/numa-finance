@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   addMoney,
+  coerceMinor,
   CurrencyMismatchError,
   formatMoney,
   fromMajorUnits,
   money,
+  moneyFromUnknown,
   parseUiAmountToMinor,
   subtractMoney,
 } from "@/domain/money";
@@ -18,6 +20,13 @@ describe("Money", () => {
   it("stores THB in minor units", () => {
     expect(fromMajorUnits(750, "THB").amountMinor).toBe(75000);
     expect(fromMajorUnits(100.5, "SEK").amountMinor).toBe(10050);
+  });
+
+  it("coerces DB/JSON minor units into safe integers", () => {
+    expect(coerceMinor("1005804")).toBe(1005804);
+    expect(coerceMinor(1005804.9)).toBe(1005804);
+    expect(moneyFromUnknown("62000", "THB").amountMinor).toBe(62000);
+    expect(moneyFromUnknown(undefined, "THB").amountMinor).toBe(0);
   });
 
   it("adds and subtracts same currency", () => {

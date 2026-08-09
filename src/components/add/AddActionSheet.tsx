@@ -26,14 +26,19 @@ export function AddActionSheet({
   const [setupSaldo, setSetupSaldo] = useState(false);
   const [updateSaldo, setUpdateSaldo] = useState(false);
 
+  function close() {
+    setSetupSaldo(false);
+    setUpdateSaldo(false);
+    onClose();
+  }
+
   useEffect(() => {
-    if (!open) {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
       setSetupSaldo(false);
       setUpdateSaldo(false);
-      return;
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
@@ -46,9 +51,8 @@ export function AddActionSheet({
   if (!open) return null;
 
   function go(href: string) {
-    // Navigate first so unmounting the sheet cannot cancel the route change.
     router.push(href);
-    onClose();
+    close();
   }
 
   const needsSetup = !hasAccount || !accountId;
@@ -59,7 +63,7 @@ export function AddActionSheet({
         type="button"
         className="absolute inset-0 z-0 bg-[rgba(19,32,25,0.55)]"
         aria-label="Stäng"
-        onClick={onClose}
+        onClick={close}
       />
       <div
         role="dialog"
@@ -89,7 +93,7 @@ export function AddActionSheet({
           setupSaldo ? (
             <CreateAccountForm
               onSuccess={() => {
-                onClose();
+                close();
                 router.refresh();
               }}
             />
@@ -118,8 +122,7 @@ export function AddActionSheet({
                 <VerifyBalanceForm
                   accountId={accountId}
                   onSuccess={() => {
-                    onClose();
-                    router.refresh();
+                    close();
                   }}
                 />
                 <button
@@ -159,7 +162,7 @@ export function AddActionSheet({
                 <QuickAddForms
                   primaryAccountId={accountId}
                   accounts={accounts}
-                  onSuccess={onClose}
+                  onSuccess={close}
                 />
 
                 <button
