@@ -25,9 +25,21 @@ At any moment the product should answer:
 
 SEK is shown for larger amounts and planning totals, not next to every small purchase.
 
+## Experience direction
+
+NUMA should feel as engaging as a small game — but the game is **your own economy**:
+
+- Live feedback: plus / minus vs today’s plan
+- Levels and ranks for staying on track
+- Later: optional world standing (“plats i världen”) based on discipline, not wealth
+- Built as a mobile PWA first so opening NUMA feels natural every day
+
+Start with one user; architecture stays multi-user from the beginning (`user_id` + RLS). See `docs/GAMIFICATION.md`.
+
 ## What NUMA is not
 
 - Not a crypto dashboard
 - Not an accounting package for bookkeepers
 - Not a screenshot-to-ledger autopilot without review
 - Not a place where expected future income is treated as money already available
+- Not a wealth flex leaderboard (no ranking by bank balance)

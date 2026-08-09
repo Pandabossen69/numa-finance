@@ -12,12 +12,13 @@ Phases are planning structure, not a contract.
 - Supabase schema + RLS
 - Tests for critical money/balance behavior
 
-## Phase 1 — Core daily finance
+## Phase 1 — Core daily finance + personal game loop
 
 - Better manual transactions (income, transfers, cash withdrawal)
 - Recurring expenses
 - Monthly plans + reservations
-- Richer Idag screen
+- Richer Idag screen with live day pulse
+- Persist streak / on-track days / personal level
 - Default account / recent categories polish
 
 ## Phase 2 — Screenshot intelligence
@@ -46,8 +47,10 @@ Phases are planning structure, not a contract.
 - Broader bank imports
 - Auto-categorization with review gates
 
-## Phase 6 — Polish
+## Phase 6 — Social progress + polish
 
+- Global leaderboard (discipline score, place in world) — no balances
+- Shareable progress cards
 - Analytics depth
 - Ask NUMA
 - Stronger offline

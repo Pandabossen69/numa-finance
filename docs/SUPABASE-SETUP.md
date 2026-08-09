@@ -14,11 +14,13 @@ NUMA shares the Supabase **project host** with NextStep leads staging, but must 
 
 Do **not** put NUMA tables in `public`.
 
-## Apply schema (one-time)
+## Apply schema (one-time / incremental)
 
 1. Open Supabase → **NextStep leads staging** → **SQL Editor**
-2. Paste and run the full contents of:
-   `supabase/migrations/20260809000000_numa_schema.sql`
+2. Run migrations in order if not already applied:
+   - `supabase/migrations/20260809000000_numa_schema.sql`
+   - `supabase/migrations/20260809000001_numa_grants.sql`
+   - `supabase/migrations/20260809000002_numa_progress.sql` (levels / streak / future leaderboard)
 3. Confirm success (no errors).
 
 ## Expose schema to the Data API

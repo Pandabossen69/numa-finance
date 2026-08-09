@@ -56,19 +56,30 @@ export type StreakHint = {
 };
 
 /**
- * Rank ladder is display metadata only. Advancement rules must use
- * deterministic finance outcomes (on-plan days, surplus), never vanity metrics alone.
+ * Personal ranks unlock from on-track days (self competition).
+ * Global "place in the world" later ranks by discipline_score among
+ * users who opted into leaderboard_visible — never by bank balance.
  */
 export const RANK_LADDER = [
-  { id: "start", titleSv: "Start", minOnTrackDays: 0 },
-  { id: "stadig", titleSv: "Stadig", minOnTrackDays: 3 },
-  { id: "disciplinerad", titleSv: "Disciplinerad", minOnTrackDays: 7 },
-  { id: "trygg", titleSv: "Trygg", minOnTrackDays: 14 },
-  { id: "mästare", titleSv: "Mästare", minOnTrackDays: 30 },
+  { id: "start", titleSv: "Start", minOnTrackDays: 0, minLevel: 1 },
+  { id: "stadig", titleSv: "Stadig", minOnTrackDays: 3, minLevel: 2 },
+  { id: "disciplinerad", titleSv: "Disciplinerad", minOnTrackDays: 7, minLevel: 3 },
+  { id: "trygg", titleSv: "Trygg", minOnTrackDays: 14, minLevel: 4 },
+  { id: "mästare", titleSv: "Mästare", minOnTrackDays: 30, minLevel: 5 },
 ] as const;
 
 export type Rank = (typeof RANK_LADDER)[number];
 export type RankId = Rank["id"];
+
+/** Public-safe leaderboard row shape (no money fields). */
+export type LeaderboardEntry = {
+  place: number;
+  displayName: string;
+  level: number;
+  rankId: RankId;
+  disciplineScore: number;
+  currentStreak: number;
+};
 
 export function rankForOnTrackDays(onTrackDays: number): Rank {
   let current: Rank = RANK_LADDER[0]!;
