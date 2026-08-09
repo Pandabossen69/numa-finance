@@ -1,8 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  HOME_PATH,
+  LOGIN_PATH,
+  PASSWORD_RESET_REQUEST_PATH,
+  PASSWORD_UPDATE_PATH,
+} from "@/features/auth/routes";
 import { supabaseClientOptions } from "./options";
 
-const PUBLIC_PATHS = ["/logga-in"];
+const PUBLIC_PATHS = [
+  LOGIN_PATH,
+  PASSWORD_RESET_REQUEST_PATH,
+  PASSWORD_UPDATE_PATH,
+  "/auth",
+];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,14 +53,14 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && !isPublic) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/logga-in";
+    redirectUrl.pathname = LOGIN_PATH;
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && pathname === "/logga-in") {
+  if (user && pathname === LOGIN_PATH) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/idag";
+    redirectUrl.pathname = HOME_PATH;
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }

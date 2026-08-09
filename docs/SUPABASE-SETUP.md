@@ -45,13 +45,35 @@ Production **requires** Supabase. The local JSON store (`.data/`) is single-tena
 
 ## Auth (required for RLS)
 
-NUMA uses Supabase Auth. For solo use, disable email confirmation:
+NUMA uses Supabase Auth with e-post + lösenord. Both flows work with email
+confirmation **on** or **off** — the app tells the user in Swedish what to do
+next either way.
 
-1. Authentication → Providers → Email
-2. Turn **off** “Confirm email”
-3. Save
+Open `/logga-in`, create an account, and use the app.
 
-Then open `/logga-in`, create an account, and use the app.
+### Redirect URLs (needed for confirmation and password reset)
+
+Supabase only follows redirect links it recognises:
+
+1. **Authentication → URL Configuration**
+2. Set **Site URL** to the deployed origin (e.g. `https://numa.example.com`)
+3. Add these **Redirect URLs**:
+   - `http://localhost:3000/auth/callback`
+   - `https://<your-domain>/auth/callback`
+
+The app builds the link as `<origin>/auth/callback`, where `<origin>` is
+`NEXT_PUBLIC_SITE_URL` when set, otherwise the request host. Set
+`NEXT_PUBLIC_SITE_URL` in production so the link always matches the allow-list.
+
+### Forgot password
+
+`/glomt-losenord` sends a recovery mail through Supabase. The link lands on
+`/auth/callback`, which creates a recovery session and forwards to
+`/aterstall-losenord` where the user picks a new password. Open the link on the
+same device that requested it — the PKCE verifier lives in that browser.
+
+If mails never arrive, check **Authentication → Emails** (templates and SMTP);
+the default Supabase SMTP is heavily rate limited.
 
 ## Security
 

@@ -2,17 +2,44 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import {
+  AuthStage,
+  BackButton,
+  ErrorText,
+  Field,
+  NoticeText,
+  PasswordField,
+  PrimaryButton,
+  StepDots,
+} from "@/components/auth/AuthUi";
 import { signInAction, signUpAction } from "@/features/auth/actions";
+import { AUTH_COPY } from "@/features/auth/messages";
+import {
+  HOME_PATH,
+  PASSWORD_RESET_REQUEST_PATH,
+} from "@/features/auth/routes";
 
-type Screen = "welcome" | "login" | "signup-email" | "signup-password";
+type Screen =
+  | "welcome"
+  | "login"
+  | "signup-email"
+  | "signup-password"
+  | "check-email";
 
-export function AuthExperience() {
+export function AuthExperience({
+  initialScreen = "welcome",
+  initialError = null,
+}: {
+  initialScreen?: "welcome" | "login";
+  initialError?: string | null;
+}) {
   const router = useRouter();
-  const [screen, setScreen] = useState<Screen>("welcome");
+  const [screen, setScreen] = useState<Screen>(initialScreen);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
+  const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function go(next: Screen) {
@@ -29,7 +56,7 @@ export function AuthExperience() {
         setError(result.error);
         return;
       }
-      router.replace("/idag");
+      router.replace(HOME_PATH);
       router.refresh();
     });
   }
@@ -43,71 +70,88 @@ export function AuthExperience() {
         setError(result.error);
         return;
       }
-      router.replace("/idag");
+      if (result.status === "check-email") {
+        setNotice(result.message);
+        setScreen("check-email");
+        return;
+      }
+      router.replace(HOME_PATH);
       router.refresh();
     });
   }
 
+  function goToPasswordReset() {
+    const query = email.trim()
+      ? `?epost=${encodeURIComponent(email.trim())}`
+      : "";
+    router.push(`${PASSWORD_RESET_REQUEST_PATH}${query}`);
+  }
+
   return (
-    <div className="auth-stage relative flex min-h-dvh flex-col overflow-hidden">
-      <div className="auth-glow" aria-hidden />
+    <AuthStage>
+      {screen === "welcome" ? (
+        <WelcomeScreen
+          onStart={() => go("signup-email")}
+          onLogin={() => go("login")}
+        />
+      ) : null}
 
-      <div className="numa-shell relative z-10 flex flex-1 flex-col px-5 pt-[max(1.5rem,var(--numa-safe-top))] pb-[max(1.5rem,var(--numa-safe-bottom))]">
-        {screen === "welcome" ? (
-          <WelcomeScreen
-            onStart={() => go("signup-email")}
-            onLogin={() => go("login")}
-          />
-        ) : null}
+      {screen === "login" ? (
+        <LoginScreen
+          email={email}
+          password={password}
+          showPassword={showPassword}
+          error={error}
+          pending={pending}
+          onBack={() => go("welcome")}
+          onEmail={setEmail}
+          onPassword={setPassword}
+          onTogglePassword={() => setShowPassword((v) => !v)}
+          onSubmit={submitLogin}
+          onCreateAccount={() => go("signup-email")}
+          onForgotPassword={goToPasswordReset}
+        />
+      ) : null}
 
-        {screen === "login" ? (
-          <LoginScreen
-            email={email}
-            password={password}
-            showPassword={showPassword}
-            error={error}
-            pending={pending}
-            onBack={() => go("welcome")}
-            onEmail={setEmail}
-            onPassword={setPassword}
-            onTogglePassword={() => setShowPassword((v) => !v)}
-            onSubmit={submitLogin}
-            onCreateAccount={() => go("signup-email")}
-          />
-        ) : null}
+      {screen === "signup-email" ? (
+        <SignupEmailScreen
+          email={email}
+          error={error}
+          onBack={() => go("welcome")}
+          onEmail={setEmail}
+          onContinue={() => {
+            if (!email.trim() || !email.includes("@")) {
+              setError(AUTH_COPY.invalidEmail);
+              return;
+            }
+            go("signup-password");
+          }}
+          onLogin={() => go("login")}
+        />
+      ) : null}
 
-        {screen === "signup-email" ? (
-          <SignupEmailScreen
-            email={email}
-            error={error}
-            onBack={() => go("welcome")}
-            onEmail={setEmail}
-            onContinue={() => {
-              if (!email.trim() || !email.includes("@")) {
-                setError("Ange en giltig e-postadress");
-                return;
-              }
-              go("signup-password");
-            }}
-            onLogin={() => go("login")}
-          />
-        ) : null}
+      {screen === "signup-password" ? (
+        <SignupPasswordScreen
+          email={email}
+          password={password}
+          showPassword={showPassword}
+          error={error}
+          pending={pending}
+          onBack={() => go("signup-email")}
+          onPassword={setPassword}
+          onTogglePassword={() => setShowPassword((v) => !v)}
+          onSubmit={submitSignup}
+        />
+      ) : null}
 
-        {screen === "signup-password" ? (
-          <SignupPasswordScreen
-            email={email}
-            password={password}
-            showPassword={showPassword}
-            error={error}
-            pending={pending}
-            onBack={() => go("signup-email")}
-            onPassword={setPassword}
-            onTogglePassword={() => setShowPassword((v) => !v)}
-            onSubmit={submitSignup}
-          />
-        ) : null}
-      </div>
-    </div>
+      {screen === "check-email" ? (
+        <CheckEmailScreen
+          email={email}
+          message={notice ?? AUTH_COPY.confirmEmail}
+          onLogin={() => go("login")}
+        />
+      ) : null}
+    </AuthStage>
   );
 }
 
@@ -165,6 +209,7 @@ function LoginScreen({
   onTogglePassword,
   onSubmit,
   onCreateAccount,
+  onForgotPassword,
 }: {
   email: string;
   password: string;
@@ -177,6 +222,7 @@ function LoginScreen({
   onTogglePassword: () => void;
   onSubmit: (e: React.FormEvent) => void;
   onCreateAccount: () => void;
+  onForgotPassword: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col">
@@ -206,6 +252,15 @@ function LoginScreen({
             onChange={onPassword}
             onToggle={onTogglePassword}
           />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="min-h-11 text-sm font-medium text-[var(--numa-accent)]"
+            >
+              Glömt lösenord?
+            </button>
+          </div>
           {error ? <ErrorText>{error}</ErrorText> : null}
         </div>
 
@@ -362,152 +417,38 @@ function SignupPasswordScreen({
   );
 }
 
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex min-h-11 w-fit items-center gap-1 text-sm font-medium text-[var(--numa-muted)]"
-      aria-label="Tillbaka"
-    >
-      <span aria-hidden className="text-lg leading-none">
-        ←
-      </span>
-      Tillbaka
-    </button>
-  );
-}
-
-function StepDots({ current, total }: { current: number; total: number }) {
-  return (
-    <div className="mt-4 flex gap-1.5" aria-label={`Steg ${current} av ${total}`}>
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          key={i}
-          className={`h-1 rounded-full transition-all ${
-            i + 1 === current
-              ? "w-6 bg-[var(--numa-accent)]"
-              : i + 1 < current
-                ? "w-4 bg-[var(--numa-accent)]/50"
-                : "w-4 bg-[var(--numa-border)]"
-          }`}
-        />
-      ))}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  type,
-  value,
-  onChange,
-  placeholder,
-  autoComplete,
-  autoFocus,
+function CheckEmailScreen({
+  email,
+  message,
+  onLogin,
 }: {
-  label: string;
-  type: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  autoComplete?: string;
-  autoFocus?: boolean;
+  email: string;
+  message: string;
+  onLogin: () => void;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
-        {label}
-      </span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        autoFocus={autoFocus}
-        required
-        className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-[16px] outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
-      />
-    </label>
-  );
-}
+    <div className="flex flex-1 flex-col">
+      <header className="mt-6 space-y-2">
+        <h1 className="text-[1.75rem] font-semibold tracking-tight">
+          Kolla din e-post
+        </h1>
+        {email ? (
+          <p className="text-[15px] text-[var(--numa-muted)]">
+            Vi skickade ett mejl till{" "}
+            <span className="text-[var(--numa-ink)]">{email}</span>
+          </p>
+        ) : null}
+      </header>
 
-function PasswordField({
-  label,
-  value,
-  show,
-  onChange,
-  onToggle,
-  autoComplete,
-  autoFocus,
-}: {
-  label: string;
-  value: string;
-  show: boolean;
-  onChange: (v: string) => void;
-  onToggle: () => void;
-  autoComplete?: string;
-  autoFocus?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
-        {label}
-      </span>
-      <div className="relative">
-        <input
-          type={show ? "text" : "password"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          required
-          minLength={8}
-          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 pr-20 text-[16px] outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg px-2 py-1.5 text-sm font-medium text-[var(--numa-accent)]"
-        >
-          {show ? "Dölj" : "Visa"}
-        </button>
+      <div className="mt-6">
+        <NoticeText>{message}</NoticeText>
       </div>
-    </label>
-  );
-}
 
-function PrimaryButton({
-  children,
-  disabled,
-  type = "submit",
-  onClick,
-}: {
-  children: React.ReactNode;
-  disabled?: boolean;
-  type?: "submit" | "button";
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type={type}
-      disabled={disabled}
-      onClick={onClick}
-      className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition enabled:active:scale-[0.99] disabled:opacity-45"
-    >
-      {children}
-    </button>
-  );
-}
-
-function ErrorText({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-danger)_12%,transparent)] px-3 py-2.5 text-sm leading-relaxed text-[var(--numa-danger)]"
-      role="alert"
-    >
-      {children}
-    </p>
+      <div className="mt-auto space-y-4 pt-10">
+        <PrimaryButton type="button" onClick={onLogin}>
+          Till inloggningen
+        </PrimaryButton>
+      </div>
+    </div>
   );
 }
