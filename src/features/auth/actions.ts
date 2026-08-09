@@ -57,7 +57,7 @@ export async function signUpAction(raw: {
       return {
         ok: false,
         error:
-          "Kontot skapades. Om e-postbekräftelse är på måste du bekräfta mailet innan inloggning — eller stäng av bekräftelse i Supabase Auth för personligt bruk.",
+          "Kontot skapades, men e-postbekräftelse är fortfarande på. Bekräfta mailet, eller stäng av “Confirm email” under Authentication → Providers → Email i Supabase. Därefter kan du logga in.",
       };
     }
     return { ok: true };
