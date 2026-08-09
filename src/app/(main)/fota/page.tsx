@@ -41,6 +41,11 @@ export default async function FotaPage() {
 
       <ReceiptCaptureFlow
         accountId={snap.primaryAccount.id}
+        accounts={snap.accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          accountType: a.accountType,
+        }))}
         safeToSpendTodayMinor={snap.safeToSpendTodayMinor}
         currency={snap.currency}
       />

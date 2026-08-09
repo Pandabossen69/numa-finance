@@ -22,17 +22,26 @@ type Preview = {
   previewUrl: string;
 };
 
+export type ReceiptAccount = {
+  id: string;
+  name: string;
+  accountType: string;
+};
+
 export function ReceiptCaptureFlow({
   accountId,
+  accounts,
   safeToSpendTodayMinor,
   currency,
 }: {
   accountId: string;
+  accounts: ReceiptAccount[];
   safeToSpendTodayMinor: number;
   currency: CurrencyCode;
 }) {
   const router = useRouter();
   const [preview, setPreview] = useState<Preview | null>(null);
+  const [targetId, setTargetId] = useState(accountId);
   const [category, setCategory] = useState<string>("Mat");
   const [error, setError] = useState<string | null>(null);
   const [doneStatus, setDoneStatus] = useState<"plus" | "even" | "minus" | null>(
@@ -89,7 +98,7 @@ export function ReceiptCaptureFlow({
     setError(null);
     startTransition(async () => {
       const result = await confirmReceiptExpenseAction({
-        accountId,
+        accountId: targetId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         amount: preview.amount,
@@ -217,6 +226,26 @@ export function ReceiptCaptureFlow({
           Just nu tryggt: {formatMoney(money(safeToSpendTodayMinor, currency))}
         </p>
       </div>
+
+      {accounts.length > 1 ? (
+        <label className="block">
+          <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+            Från konto
+          </span>
+          <select
+            value={targetId}
+            onChange={(e) => setTargetId(e.target.value)}
+            className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-white/70 px-4 text-[15px] outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          >
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+                {a.accountType === "cash" ? " · Kontanter" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         {CATEGORIES.map((c) => (

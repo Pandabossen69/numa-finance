@@ -99,6 +99,7 @@ export function QuickAddForms({
       {mode === "expense" ? (
         <ExpenseForm
           accountId={primaryAccountId}
+          accounts={accounts}
           onSuccess={() =>
             handleSuccess("Utgift sparad — Idag och månaden uppdateras.")
           }
@@ -131,16 +132,29 @@ export function QuickAddForms({
   );
 }
 
+const LAST_EXPENSE_ACCOUNT_KEY = "numa.lastExpenseAccountId";
+
 function ExpenseForm({
   accountId,
+  accounts,
   onSuccess,
 }: {
   accountId: string;
+  accounts: ShellAccount[];
   onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  const [targetId, setTargetId] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LAST_EXPENSE_ACCOUNT_KEY);
+      if (saved && accounts.some((a) => a.id === saved)) return saved;
+    } catch {
+      // ignore
+    }
+    return accountId;
+  });
   const [when, setWhen] = useState<When>("today");
   const [category, setCategory] = useState<string>(() => {
     try {
@@ -168,7 +182,7 @@ function ExpenseForm({
         }
         startTransition(async () => {
           const result = await createExpenseAction({
-            accountId,
+            accountId: targetId,
             amount,
             category,
             description: name.trim(),
@@ -180,6 +194,7 @@ function ExpenseForm({
           }
           try {
             localStorage.setItem(LAST_CATEGORY_KEY, category);
+            localStorage.setItem(LAST_EXPENSE_ACCOUNT_KEY, targetId);
           } catch {
             // ignore
           }
@@ -197,6 +212,14 @@ function ExpenseForm({
         placeholder="t.ex. Lunch, Grab, 7-Eleven"
         autoFocus
       />
+      {accounts.length > 1 ? (
+        <AccountSelect
+          label="Från konto"
+          value={targetId}
+          onChange={setTargetId}
+          accounts={accounts}
+        />
+      ) : null}
       <AmountField value={amount} onChange={setAmount} />
       <WhenPicker value={when} onChange={setWhen} />
       <ChipRow
