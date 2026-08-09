@@ -8,6 +8,9 @@ export type ExtractionProviderName = "none" | "manual_stub" | "vision_api";
 export type ExtractionRequest = {
   observationId: string;
   storagePath: string;
+  /** Server-side image bytes for vision providers (never sent to the ledger). */
+  imageBase64?: string;
+  mimeType?: string;
   institutionHint?: string | null;
 };
 

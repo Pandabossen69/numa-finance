@@ -2,36 +2,44 @@
 
 Phases are planning structure, not a contract.
 
-## Phase 0 — Foundation (this release)
+## Phase 0 — Foundation (shipped)
 
 - Repository + Next.js app
 - Domain money/finance engines
 - Swedish mobile shell + PWA foundation
 - Accounts, checkpoints, manual expenses
-- Observation model + import entry point (OCR not connected)
+- Observation model + import entry point
 - Supabase schema + RLS
 - Tests for critical money/balance behavior
+
+## Accelerated (multi-user + daily capture)
+
+- Multi-user hardening: storage path isolation, defense-in-depth `user_id` filters, prod requires Supabase
+- Receipt camera flow (`/fota`): upload → vision/manual → confirm vs tryggt idag → ledger
+- OpenAI Vision provider behind `ExtractionProvider` (candidates only)
+- Live Plan/Analys from snapshot; thin streak/rank via `user_progress`
+- Still deferred: full recurring plan engine, Bangkok Bank screenshot OCR end-to-end, world leaderboard UI
 
 ## Phase 1 — Core daily finance + personal game loop
 
 - Better manual transactions (income, transfers, cash withdrawal)
 - Recurring expenses
 - Monthly plans + reservations
-- Richer Idag screen with live day pulse
-- Persist streak / on-track days / personal level
+- Richer Idag screen with live day pulse *(partially live)*
+- Persist streak / on-track days / personal level *(thin touch wired)*
 - Default account / recent categories polish
 
 ## Phase 2 — Screenshot intelligence
 
-- Private media upload
-- OCR/vision provider
+- Private media upload *(receipt path live)*
+- OCR/vision provider *(OpenAI wired for receipts)*
 - Bangkok Bank parser against extracted text
 - Candidates, duplicates, reconciliation, checkpoints
 
 ## Phase 3 — Camera intelligence
 
-- Receipt / checkout / price capture
-- Confirm “Vi hittade ฿X”
+- Receipt / checkout / price capture *(receipt confirm live)*
+- Confirm “Vi hittade ฿X” *(live)*
 - Merchant/category suggestions
 
 ## Phase 4 — Forecasting

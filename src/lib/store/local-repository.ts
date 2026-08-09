@@ -11,13 +11,26 @@ import {
   type Account,
   type BalanceCheckpoint,
   type CanonicalTransaction,
+  type ExtractedTransactionCandidate,
+  type ExtractionRun,
   type Profile,
   type SourceObservation,
+  type TransactionSource,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
+import { createExtractionProvider } from "@/domain/imports";
+import { rankForOnTrackDays } from "@/domain/gamification";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 import { readStore, updateStore } from "./local-store";
+import {
+  assertUserOwnsStoragePath,
+  buildUserStoragePath,
+} from "./isolation";
+import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
+import { emptyUserProgress, type UserProgress } from "./types-progress";
 import type { TodaySnapshot } from "./types-snapshot";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 export type { TodaySnapshot };
 
@@ -111,6 +124,9 @@ export async function createManualExpense(input: {
   description?: string;
   category?: string | null;
   occurredAt?: string;
+  source?: TransactionSource;
+  sourceObservationId?: string | null;
+  merchant?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -119,6 +135,15 @@ export async function createManualExpense(input: {
   const store = await readStore();
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  if (
+    input.sourceObservationId &&
+    !store.observations.some(
+      (o) =>
+        o.id === input.sourceObservationId && o.userId === LOCAL_DEMO_USER_ID,
+    )
+  ) {
+    throw new Error("Importen hittades inte");
+  }
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
@@ -133,13 +158,13 @@ export async function createManualExpense(input: {
       currency: account.currency,
       occurredAt: input.occurredAt ?? ts,
       description: input.description?.trim() || "Utgift",
-      merchant: null,
+      merchant: input.merchant ?? null,
       category: input.category ?? null,
-      source: "manual",
+      source: input.source ?? "manual",
       status: "confirmed",
       balanceAfterMinor: null,
       fingerprint: null,
-      sourceObservationId: null,
+      sourceObservationId: input.sourceObservationId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -300,6 +325,218 @@ export async function listObservations(): Promise<SourceObservation[]> {
   );
 }
 
+export async function getObservation(
+  observationId: string,
+): Promise<SourceObservation | null> {
+  const store = await readStore();
+  return store.observations.find((o) => o.id === observationId) ?? null;
+}
+
+/** Dev-only in-memory progress (single tenant). */
+const localProgress = new Map<string, UserProgress>();
+const localProgressDays = new Set<string>();
+
+export async function getUserProgress(): Promise<UserProgress | null> {
+  return (
+    localProgress.get(LOCAL_DEMO_USER_ID) ??
+    emptyUserProgress(LOCAL_DEMO_USER_ID)
+  );
+}
+
+export async function recordOnTrackDayIfNeeded(
+  isOnTrack: boolean,
+): Promise<UserProgress | null> {
+  if (!isOnTrack) return getUserProgress();
+  const store = await readStore();
+  const dayKey = startOfZonedDay(new Date(), store.profile.timezone)
+    .toISOString()
+    .slice(0, 10);
+  const key = `${LOCAL_DEMO_USER_ID}:${dayKey}`;
+  if (localProgressDays.has(key)) return getUserProgress();
+  localProgressDays.add(key);
+
+  const current =
+    localProgress.get(LOCAL_DEMO_USER_ID) ??
+    emptyUserProgress(LOCAL_DEMO_USER_ID);
+  const onTrackDays = current.onTrackDays + 1;
+  const currentStreak = current.currentStreak + 1;
+  const rank = rankForOnTrackDays(onTrackDays);
+  const next: UserProgress = {
+    ...current,
+    onTrackDays,
+    currentStreak,
+    bestStreak: Math.max(current.bestStreak, currentStreak),
+    disciplineScore: current.disciplineScore + 10,
+    level: rank.minLevel,
+    rankId: rank.id,
+    updatedAt: nowIso(),
+  };
+  localProgress.set(LOCAL_DEMO_USER_ID, next);
+  return next;
+}
+
+export async function uploadReceiptAndExtract(input: {
+  fileName: string;
+  mimeType: string;
+  bytes: Uint8Array;
+}): Promise<ReceiptUploadResult> {
+  const storagePath = buildUserStoragePath(LOCAL_DEMO_USER_ID, input.fileName);
+  assertUserOwnsStoragePath(LOCAL_DEMO_USER_ID, storagePath);
+
+  try {
+    const dir = path.join(process.cwd(), ".data", "media", LOCAL_DEMO_USER_ID);
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      path.join(process.cwd(), ".data", "media", storagePath),
+      input.bytes,
+    );
+  } catch {
+    // Vercel/read-only: keep metadata-only path.
+  }
+
+  const observationId = newId();
+  const runId = newId();
+  const provider = createExtractionProvider();
+  const imageBase64 = Buffer.from(input.bytes).toString("base64");
+  const extraction = await provider.extract({
+    observationId,
+    storagePath,
+    imageBase64,
+    mimeType: input.mimeType,
+  });
+
+  const first = extraction.candidates[0];
+  let candidate: ExtractedTransactionCandidate | null = null;
+  const ts = nowIso();
+
+  await updateStore((s) => {
+    const observation: SourceObservation = {
+      id: observationId,
+      userId: LOCAL_DEMO_USER_ID,
+      kind: "receipt",
+      storagePath,
+      institutionHint: null,
+      accountHint: null,
+      status: first?.amountMinor ? "needs_review" : "uploaded",
+      capturedAt: ts,
+      notes:
+        extraction.provider === "none"
+          ? "Bild sparad. Autoläsning är av — ange belopp själv."
+          : first?.amountMinor
+            ? "Vi hittade ett belopp — bekräfta innan det sparas."
+            : "Kunde inte läsa beloppet automatiskt — ange själv.",
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    s.observations.push(observation);
+
+    const run: ExtractionRun = {
+      id: runId,
+      observationId,
+      userId: LOCAL_DEMO_USER_ID,
+      provider: extraction.provider,
+      status: extraction.provider === "none" ? "failed" : "succeeded",
+      rawMetadata: extraction.rawMetadata,
+      startedAt: ts,
+      finishedAt: ts,
+    };
+    s.extractionRuns.push(run);
+
+    if (first) {
+      candidate = {
+        id: newId(),
+        extractionRunId: runId,
+        observationId,
+        userId: LOCAL_DEMO_USER_ID,
+        direction: first.direction,
+        amountMinor: first.amountMinor,
+        currency: first.currency,
+        balanceAfterMinor: first.balanceAfterMinor,
+        occurredAt: first.occurredAt,
+        description: first.description,
+        confidence: first.confidence,
+        fingerprint: null,
+        status: "needs_review",
+        canonicalTransactionId: null,
+        rawPayload: first.rawPayload,
+        createdAt: ts,
+        updatedAt: ts,
+      };
+      s.candidates.push(candidate);
+    }
+  });
+
+  const observation = (await getObservation(observationId))!;
+  const profile = (await readStore()).profile;
+  let ocrStatus: ReceiptUploadResult["ocrStatus"] = "ok";
+  if (extraction.provider === "none") ocrStatus = "unavailable";
+  else if (!first?.amountMinor) ocrStatus = "failed";
+
+  return {
+    observation,
+    candidate,
+    suggestedAmountMinor: first?.amountMinor ?? null,
+    suggestedDescription: first?.description ?? null,
+    currency: first?.currency ?? profile.primaryCurrency,
+    ocrStatus,
+    message:
+      ocrStatus === "unavailable"
+        ? "Autoläsning är av. Ange beloppet från kvittot."
+        : ocrStatus === "failed"
+          ? "Vi kunde inte läsa beloppet säkert. Kontrollera och fyll i själv."
+          : null,
+  };
+}
+
+export async function confirmReceiptExpense(
+  input: ConfirmReceiptInput,
+): Promise<CanonicalTransaction> {
+  const store = await readStore();
+  const observation = store.observations.find(
+    (o) => o.id === input.observationId && o.userId === LOCAL_DEMO_USER_ID,
+  );
+  if (!observation) throw new Error("Importen hittades inte");
+
+  if (input.candidateId) {
+    const cand = store.candidates.find(
+      (c) =>
+        c.id === input.candidateId &&
+        c.userId === LOCAL_DEMO_USER_ID &&
+        c.observationId === input.observationId,
+    );
+    if (!cand) throw new Error("Kandidaten hittades inte");
+  }
+
+  const tx = await createManualExpense({
+    accountId: input.accountId,
+    amountMinor: input.amountMinor,
+    description: input.description,
+    category: input.category,
+    source: "receipt_camera",
+    sourceObservationId: input.observationId,
+  });
+
+  await updateStore((s) => {
+    const obs = s.observations.find((o) => o.id === input.observationId);
+    if (obs) {
+      obs.status = "processed";
+      obs.notes = "Bekräftad och sparad som utgift";
+      obs.updatedAt = nowIso();
+    }
+    if (input.candidateId) {
+      const cand = s.candidates.find((c) => c.id === input.candidateId);
+      if (cand) {
+        cand.status = "confirmed";
+        cand.canonicalTransactionId = tx.id;
+        cand.amountMinor = input.amountMinor;
+        cand.updatedAt = nowIso();
+      }
+    }
+  });
+
+  return tx;
+}
+
 export function latestCheckpointForAccount(
   store: NumaStoreData,
   accountId: string,
@@ -336,6 +573,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       daysUntilIncome: 17,
       recentTransactions: [],
       currency: profile.primaryCurrency,
+      progress: await getUserProgress(),
     };
   }
 
@@ -405,6 +643,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
       .slice(0, 8),
     currency,
+    progress: await getUserProgress(),
   };
 }
 

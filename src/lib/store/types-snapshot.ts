@@ -5,6 +5,7 @@ import type {
   Profile,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import type { UserProgress } from "./types-progress";
 
 export type TodaySnapshot = {
   profile: Profile;
@@ -24,4 +25,6 @@ export type TodaySnapshot = {
   daysUntilIncome: number;
   recentTransactions: CanonicalTransaction[];
   currency: CurrencyCode;
+  /** Personal game progress — never includes balances. */
+  progress: UserProgress | null;
 };

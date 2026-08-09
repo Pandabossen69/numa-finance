@@ -6,11 +6,20 @@ import { useState } from "react";
 import { AddActionSheet } from "@/components/add/AddActionSheet";
 
 const tabs = [
-  { href: "/idag", label: "Idag" },
-  { href: "/plan", label: "Plan" },
-  { href: "/analys", label: "Analys" },
-  { href: "/mer", label: "Mer" },
+  { href: "/idag", label: "Idag", icon: "●" },
+  { href: "/plan", label: "Plan", icon: "▣" },
+  { href: "/analys", label: "Analys", icon: "◔" },
+  { href: "/mer", label: "Mer", icon: "☰" },
 ] as const;
+
+const MER_PREFIXES = [
+  "/mer",
+  "/konton",
+  "/transaktioner",
+  "/importera",
+  "/installningar",
+  "/fota",
+];
 
 export function BottomNav({
   accountId,
@@ -21,6 +30,15 @@ export function BottomNav({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  function isActive(href: string): boolean {
+    if (href === "/mer") {
+      return MER_PREFIXES.some(
+        (p) => pathname === p || pathname.startsWith(`${p}/`),
+      );
+    }
+    return pathname.startsWith(href);
+  }
 
   return (
     <>
@@ -33,12 +51,14 @@ export function BottomNav({
           <NavLink
             href={tabs[0].href}
             label={tabs[0].label}
-            active={pathname.startsWith(tabs[0].href)}
+            icon={tabs[0].icon}
+            active={isActive(tabs[0].href)}
           />
           <NavLink
             href={tabs[1].href}
             label={tabs[1].label}
-            active={pathname.startsWith(tabs[1].href)}
+            icon={tabs[1].icon}
+            active={isActive(tabs[1].href)}
           />
 
           <div className="flex justify-center">
@@ -55,12 +75,14 @@ export function BottomNav({
           <NavLink
             href={tabs[2].href}
             label={tabs[2].label}
-            active={pathname.startsWith(tabs[2].href)}
+            icon={tabs[2].icon}
+            active={isActive(tabs[2].href)}
           />
           <NavLink
             href={tabs[3].href}
             label={tabs[3].label}
-            active={pathname.startsWith(tabs[3].href)}
+            icon={tabs[3].icon}
+            active={isActive(tabs[3].href)}
           />
         </div>
       </nav>
@@ -78,23 +100,24 @@ export function BottomNav({
 function NavLink({
   href,
   label,
+  icon,
   active,
 }: {
   href: string;
   label: string;
+  icon: string;
   active: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium tracking-wide transition ${
+      className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tracking-wide transition ${
         active ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
       }`}
     >
-      <span
-        className={`h-1 w-1 rounded-full ${active ? "bg-[var(--numa-accent)]" : "bg-transparent"}`}
-        aria-hidden
-      />
+      <span className="text-[13px] leading-none" aria-hidden>
+        {icon}
+      </span>
       {label}
     </Link>
   );

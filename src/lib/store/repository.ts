@@ -1,12 +1,17 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { assertMultiUserSafeBackend } from "./isolation";
 import * as local from "./local-repository";
 import * as remote from "./supabase-repository";
 import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
+export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
+export type { UserProgress } from "./types-progress";
 
 function api() {
-  return isSupabaseConfigured() ? remote : local;
+  const supabase = isSupabaseConfigured();
+  assertMultiUserSafeBackend(supabase);
+  return supabase ? remote : local;
 }
 
 export async function getProfile() {
@@ -53,6 +58,10 @@ export async function listObservations() {
   return api().listObservations();
 }
 
+export async function getObservation(observationId: string) {
+  return api().getObservation(observationId);
+}
+
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   return api().getTodaySnapshot();
 }
@@ -63,6 +72,26 @@ export async function getLatestCheckpoint(accountId: string) {
   }
   const store = await import("./local-store").then((m) => m.readStore());
   return local.latestCheckpointForAccount(store, accountId);
+}
+
+export async function uploadReceiptAndExtract(
+  input: Parameters<typeof local.uploadReceiptAndExtract>[0],
+) {
+  return api().uploadReceiptAndExtract(input);
+}
+
+export async function confirmReceiptExpense(
+  input: Parameters<typeof local.confirmReceiptExpense>[0],
+) {
+  return api().confirmReceiptExpense(input);
+}
+
+export async function getUserProgress() {
+  return api().getUserProgress();
+}
+
+export async function recordOnTrackDayIfNeeded(isOnTrack: boolean) {
+  return api().recordOnTrackDayIfNeeded(isOnTrack);
 }
 
 export { hoursSince } from "./local-repository";

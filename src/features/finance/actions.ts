@@ -7,8 +7,11 @@ import {
   createCheckpoint,
   createManualExpense,
   createScreenshotObservation,
+  getTodaySnapshot,
+  recordOnTrackDayIfNeeded,
 } from "@/lib/store/repository";
-import { parseUiAmountToMinor } from "@/domain/money";
+import { calculateDayPulse } from "@/domain/gamification";
+import { money, parseUiAmountToMinor } from "@/domain/money";
 
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -94,9 +97,21 @@ export async function createExpenseAction(
       category: input.category,
     });
 
+    try {
+      const snap = await getTodaySnapshot();
+      const pulse = calculateDayPulse({
+        safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
+        spentToday: money(snap.todaySpendingMinor, snap.currency),
+      });
+      await recordOnTrackDayIfNeeded(pulse.status !== "minus");
+    } catch {
+      // Progress is best-effort; finance write already succeeded.
+    }
+
     revalidatePath("/idag");
     revalidatePath("/transaktioner");
     revalidatePath("/analys");
+    revalidatePath("/plan");
     return { ok: true };
   } catch (error) {
     return {
@@ -139,9 +154,9 @@ export async function createCheckpointAction(raw: {
 export async function registerScreenshotImportAction(): Promise<ActionResult> {
   try {
     await createScreenshotObservation({
-      institutionHint: "Bangkok Bank",
+      institutionHint: null,
       notes:
-        "Importpunkt registrerad. OCR/vision är inte inkopplad i fas 0 — observationen väntar på framtida extraktion.",
+        "Skärmbild markerad. För kvitton — använd Fota kvitto så systemet kan läsa beloppet.",
     });
     revalidatePath("/importera");
     revalidatePath("/mer");

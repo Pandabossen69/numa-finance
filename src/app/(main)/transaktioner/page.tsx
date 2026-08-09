@@ -15,12 +15,19 @@ export default async function TransaktionerPage() {
           Utgifter & rörelser
         </h1>
         <p className="mt-2 text-sm text-[var(--numa-muted)]">
-          Kanoniska poster. Överföringar räknas inte som konsumtion.
+          Allt du bekräftat. Överföringar räknas inte som konsumtion.
         </p>
       </header>
 
       {transactions.length === 0 ? (
-        <p className="text-sm text-[var(--numa-muted)]">Inga poster ännu.</p>
+        <div className="space-y-2">
+          <p className="text-sm text-[var(--numa-muted)]">
+            Inga utgifter ännu. Fota ett kvitto eller lägg till via +.
+          </p>
+          <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
+            Fota kvitto →
+          </Link>
+        </div>
       ) : (
         <ul className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
           {transactions.map((tx) => (

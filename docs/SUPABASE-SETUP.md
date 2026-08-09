@@ -31,13 +31,16 @@ Do **not** put NUMA tables in `public`.
 
 Without this step, the JS client cannot query `numa.*`.
 
-## Local env
+## Local / Vercel env
 
-`.env.local` (gitignored) should contain:
+`.env.local` (gitignored) and Vercel project env should contain:
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server only)
+- `SUPABASE_SERVICE_ROLE_KEY` (server only — never expose to the browser)
+- `OPENAI_API_KEY` (server only — enables receipt vision OCR; without it, `/fota` still works with manual amount entry)
+
+Production **requires** Supabase. The local JSON store (`.data/`) is single-tenant/dev-only.
 
 ## Auth (required for RLS)
 

@@ -3,9 +3,10 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { listObservations } from "@/lib/store/repository";
 
 const links = [
-  { href: "/konton", label: "Konton" },
+  { href: "/konton", label: "Mina saldon" },
   { href: "/transaktioner", label: "Utgifter & rörelser" },
-  { href: "/importera", label: "Importera skärmbild" },
+  { href: "/fota", label: "Fota kvitto" },
+  { href: "/importera", label: "Importer" },
   { href: "/installningar", label: "Inställningar" },
 ] as const;
 
@@ -18,7 +19,7 @@ export default async function MerPage() {
       <header>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Mer</h1>
         <p className="mt-2 text-sm text-[var(--numa-muted)]">
-          Konton, historik och import.
+          Saldon, historik och snabb import.
         </p>
       </header>
 
@@ -38,12 +39,14 @@ export default async function MerPage() {
       </nav>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium text-[var(--numa-muted)]">Status</h2>
+        <h2 className="text-sm font-medium text-[var(--numa-muted)]">Läge</h2>
         <p className="text-sm text-[var(--numa-muted)]">
-          Dataläge: {supabaseReady ? "Supabase · schema numa" : "Lokal lagring (.data)"}
+          {supabaseReady
+            ? "Molnkonto aktivt — din data är privat per inloggning."
+            : "Lokalt läge (en användare) — koppla Supabase för flera konton."}
         </p>
         <p className="text-sm text-[var(--numa-muted)]">
-          Observationer sparade: {observations.length}
+          Sparade bilder: {observations.length}
         </p>
       </section>
     </div>

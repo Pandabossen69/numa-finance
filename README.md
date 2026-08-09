@@ -12,7 +12,7 @@ Detta repo innehåller **fas 0**: projektfundament, domänmodell, svensk mobil U
 
 - Next.js (App Router) + TypeScript (strict)
 - Tailwind CSS
-- Supabase (PostgreSQL, Auth, RLS, Storage) — schema redo; lokal JSON-lagring som default tills nycklar finns
+- Supabase (PostgreSQL, Auth, RLS, Storage) — schema `numa`; lokal JSON-lagring är **dev-only / en användare**
 - Zod + React Hook Form
 - Vitest
 - PWA (manifest + service worker)
@@ -40,17 +40,20 @@ npm run build
 
 Kopiera `.env.example` till `.env.local`.
 
-Utan Supabase-nycklar kör appen i **lokalt läge** och sparar data i `.data/numa-store.json`.
+Utan Supabase-nycklar kör appen i **lokalt läge** (en användare) och sparar data i `.data/numa-store.json`.  
+**Produktion / flera användare kräver Supabase.**
 
 När `NEXT_PUBLIC_SUPABASE_URL` och `NEXT_PUBLIC_SUPABASE_ANON_KEY` är satta aktiveras Supabase-klienterna.
+
+Valfritt: `OPENAI_API_KEY` (server-only) för autoläsning av kvitton. Utan nyckel funkar `/fota` med manuell beloppsinmatning.
 
 Delat projekt: NUMA bor i schema `numa` + bucket `numa-source-media`. Se `docs/SUPABASE-SETUP.md`.
 
 ### Vertical slice
 
-1. Skapa konto + verifierat/ingående saldo
-2. Lägg till manuell utgift via **+**
-3. Se uppdaterat beräknat saldo och dagens/månadens spending på **Idag**
+1. Ange saldo på **Idag**
+2. **+ → Fota kvitto** (eller skriv belopp) och bekräfta mot tryggt idag
+3. Se uppdaterat saldo, pulse och spending på **Idag**
 4. `tryggt att spendera` beräknas i domänlagret (inte hårdkodat i UI)
 
 ### Documentation

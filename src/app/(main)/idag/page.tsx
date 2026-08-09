@@ -53,8 +53,9 @@ export default async function IdagPage() {
     spentToday: money(snap.todaySpendingMinor, snap.currency),
   });
 
-  const onTrackHint = pulse.status === "minus" ? 0 : 1;
-  const rank = rankForOnTrackDays(onTrackHint);
+  const onTrackDays = snap.progress?.onTrackDays ?? 0;
+  const rank = rankForOnTrackDays(onTrackDays);
+  const streak = snap.progress?.currentStreak ?? 0;
 
   const balanceLabel =
     snap.balanceKind === "calculated"
@@ -65,7 +66,10 @@ export default async function IdagPage() {
 
   return (
     <div className="space-y-8 pt-2">
-      <BrandHeader rankTitle={rank.titleSv} />
+      <BrandHeader
+        rankTitle={rank.titleSv}
+        streakLabel={streak > 0 ? `Streak ${streak}` : undefined}
+      />
 
       <DayPulseHero pulse={pulse} currency={snap.currency} />
 
@@ -134,9 +138,14 @@ export default async function IdagPage() {
           </Link>
         </div>
         {snap.recentTransactions.length === 0 ? (
-          <p className="text-sm text-[var(--numa-muted)]">
-            Tryck + och registrera första utgiften — pulsen uppdateras direkt.
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-[var(--numa-muted)]">
+              Inga utgifter ännu idag. Fota ett kvitto eller skriv beloppet via +.
+            </p>
+            <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
+              Fota kvitto →
+            </Link>
+          </div>
         ) : (
           <ul className="divide-y divide-[var(--numa-border)]">
             {snap.recentTransactions.map((tx) => (
@@ -188,7 +197,13 @@ export default async function IdagPage() {
   );
 }
 
-function BrandHeader({ rankTitle }: { rankTitle?: string }) {
+function BrandHeader({
+  rankTitle,
+  streakLabel,
+}: {
+  rankTitle?: string;
+  streakLabel?: string;
+}) {
   return (
     <header className="flex items-end justify-between">
       <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
@@ -196,7 +211,9 @@ function BrandHeader({ rankTitle }: { rankTitle?: string }) {
         {rankTitle ? (
           <p className="text-xs font-medium text-[var(--numa-accent)]">{rankTitle}</p>
         ) : null}
-        <p className="text-xs text-[var(--numa-faint)]">Idag</p>
+        <p className="text-xs text-[var(--numa-faint)]">
+          {streakLabel ? `${streakLabel} · ` : ""}Idag
+        </p>
       </div>
     </header>
   );

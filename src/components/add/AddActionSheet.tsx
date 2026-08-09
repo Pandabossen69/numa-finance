@@ -47,7 +47,7 @@ export function AddActionSheet({
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--numa-border)]" />
         <h2 className="mb-1 text-lg font-semibold tracking-tight">Lägg till</h2>
         <p className="mb-5 text-sm text-[var(--numa-muted)]">
-          Registrera snabbt, eller importera senare.
+          Fota ett kvitto eller skriv beloppet själv.
         </p>
 
         {!hasAccount || !accountId ? (
@@ -65,39 +65,30 @@ export function AddActionSheet({
             </Link>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-5">
+            <Link
+              href="/fota"
+              onClick={onClose}
+              className="flex min-h-14 flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-white transition active:scale-[0.99]"
+            >
+              <span className="text-[15px] font-semibold">Fota kvitto</span>
+              <span className="text-xs text-white/80">
+                Kameran öppnas — bekräfta belopp mot dagens plan
+              </span>
+            </Link>
+
             <ManualExpenseForm accountId={accountId} onSuccess={onClose} />
 
-            <div className="grid gap-2">
-              <SheetLink href="/importera" onClick={onClose} label="Importera skärmbild" hint="Sparar observation — OCR kommer senare" />
-              <SheetLink href="/importera" onClick={onClose} label="Fota kvitto eller pris" hint="Kameraflöde förbereds i nästa fas" />
-            </div>
+            <Link
+              href="/importera"
+              onClick={onClose}
+              className="flex min-h-12 items-center justify-center text-sm text-[var(--numa-muted)]"
+            >
+              Tidigare importer
+            </Link>
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function SheetLink({
-  href,
-  label,
-  hint,
-  onClick,
-}: {
-  href: string;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="flex min-h-14 flex-col justify-center rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 transition active:scale-[0.99]"
-    >
-      <span className="text-sm font-medium">{label}</span>
-      <span className="text-xs text-[var(--numa-faint)]">{hint}</span>
-    </Link>
   );
 }

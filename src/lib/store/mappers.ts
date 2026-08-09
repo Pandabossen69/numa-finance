@@ -2,10 +2,13 @@ import type {
   Account,
   BalanceCheckpoint,
   CanonicalTransaction,
+  ExtractedTransactionCandidate,
+  ExtractionRun,
   Profile,
   SourceObservation,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import type { UserProgress } from "./types-progress";
 
 type DbProfile = {
   id: string;
@@ -163,5 +166,100 @@ export function mapObservation(row: DbObservation): SourceObservation {
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+type DbExtractionRun = {
+  id: string;
+  observation_id: string;
+  user_id: string;
+  provider: string;
+  status: ExtractionRun["status"];
+  raw_metadata: Record<string, unknown> | null;
+  started_at: string;
+  finished_at: string | null;
+};
+
+type DbCandidate = {
+  id: string;
+  extraction_run_id: string;
+  observation_id: string;
+  user_id: string;
+  direction: ExtractedTransactionCandidate["direction"];
+  amount_minor: number | null;
+  currency: CurrencyCode | null;
+  balance_after_minor: number | null;
+  occurred_at: string | null;
+  description: string | null;
+  confidence: number | null;
+  fingerprint: string | null;
+  status: ExtractedTransactionCandidate["status"];
+  canonical_transaction_id: string | null;
+  raw_payload: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type DbUserProgress = {
+  user_id: string;
+  level: number;
+  rank_id: string;
+  on_track_days: number;
+  current_streak: number;
+  best_streak: number;
+  discipline_score: number;
+  leaderboard_visible: boolean;
+  updated_at: string;
+  created_at: string;
+};
+
+export function mapExtractionRun(row: DbExtractionRun): ExtractionRun {
+  return {
+    id: row.id,
+    observationId: row.observation_id,
+    userId: row.user_id,
+    provider: row.provider,
+    status: row.status,
+    rawMetadata: row.raw_metadata,
+    startedAt: row.started_at,
+    finishedAt: row.finished_at,
+  };
+}
+
+export function mapCandidate(row: DbCandidate): ExtractedTransactionCandidate {
+  return {
+    id: row.id,
+    extractionRunId: row.extraction_run_id,
+    observationId: row.observation_id,
+    userId: row.user_id,
+    direction: row.direction,
+    amountMinor: row.amount_minor == null ? null : Number(row.amount_minor),
+    currency: row.currency,
+    balanceAfterMinor:
+      row.balance_after_minor == null ? null : Number(row.balance_after_minor),
+    occurredAt: row.occurred_at,
+    description: row.description,
+    confidence: row.confidence == null ? null : Number(row.confidence),
+    fingerprint: row.fingerprint,
+    status: row.status,
+    canonicalTransactionId: row.canonical_transaction_id,
+    rawPayload: row.raw_payload,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+export function mapUserProgress(row: DbUserProgress): UserProgress {
+  return {
+    userId: row.user_id,
+    level: row.level,
+    rankId: row.rank_id,
+    onTrackDays: row.on_track_days,
+    currentStreak: row.current_streak,
+    bestStreak: row.best_streak,
+    disciplineScore: row.discipline_score,
+    leaderboardVisible: row.leaderboard_visible,
+    updatedAt: row.updated_at,
+    createdAt: row.created_at,
   };
 }
