@@ -1,6 +1,5 @@
 import { BottomNav } from "@/components/layout/BottomNav";
-import { getTodaySnapshot } from "@/lib/store/repository";
-import type { TodaySnapshot } from "@/lib/store/repository";
+import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
 
 async function loadShellSnapshot(): Promise<
   Pick<TodaySnapshot, "primaryAccount">

@@ -5,16 +5,14 @@ import {
   calculateAccountBalance,
   filterTransactionsAfterCheckpoint,
 } from "@/domain/finance";
-import { readStore } from "@/lib/store/local-store";
 import {
-  latestCheckpointForAccount,
+  getLatestCheckpoint,
   listAccounts,
   listTransactions,
 } from "@/lib/store/repository";
 
 export default async function KontonPage() {
   const accounts = await listAccounts();
-  const store = await readStore();
 
   return (
     <div className="animate-rise space-y-6 pt-2">
@@ -44,8 +42,8 @@ export default async function KontonPage() {
         <ul className="space-y-8">
           {await Promise.all(
             accounts.map(async (account) => {
-              const checkpoint = latestCheckpointForAccount(store, account.id);
-              const txs = (await listTransactions(account.id)).reverse();
+              const checkpoint = await getLatestCheckpoint(account.id);
+              const txs = await listTransactions(account.id);
               const after = filterTransactionsAfterCheckpoint(txs, checkpoint);
               const calculated = calculateAccountBalance({
                 checkpoint,

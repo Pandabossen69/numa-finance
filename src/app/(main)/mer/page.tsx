@@ -40,7 +40,7 @@ export default async function MerPage() {
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-[var(--numa-muted)]">Status</h2>
         <p className="text-sm text-[var(--numa-muted)]">
-          Dataläge: {supabaseReady ? "Supabase konfigurerad" : "Lokal lagring (.data)"}
+          Dataläge: {supabaseReady ? "Supabase · schema numa" : "Lokal lagring (.data)"}
         </p>
         <p className="text-sm text-[var(--numa-muted)]">
           Observationer sparade: {observations.length}

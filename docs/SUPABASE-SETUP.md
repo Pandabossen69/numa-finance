@@ -37,6 +37,16 @@ Without this step, the JS client cannot query `numa.*`.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server only)
 
+## Auth (required for RLS)
+
+NUMA uses Supabase Auth. For solo use, disable email confirmation:
+
+1. Authentication → Providers → Email
+2. Turn **off** “Confirm email”
+3. Save
+
+Then open `/logga-in`, create an account, and use the app.
+
 ## Security
 
 If a `service_role` key was pasted into chat or a screenshot, **rotate it** in  

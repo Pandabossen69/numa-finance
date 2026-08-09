@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isSupabaseConfigured } from "./config";
+import { supabaseClientOptions } from "./options";
 
 export async function createSupabaseServerClient() {
   if (!isSupabaseConfigured()) {
@@ -13,6 +14,7 @@ export async function createSupabaseServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...supabaseClientOptions,
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -23,8 +25,7 @@ export async function createSupabaseServerClient() {
               cookieStore.set(name, value, options);
             }
           } catch {
-            // Called from a Server Component — safe to ignore when middleware
-            // will refresh sessions.
+            // Called from a Server Component — session refresh happens in proxy.
           }
         },
       },

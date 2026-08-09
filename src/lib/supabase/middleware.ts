@@ -1,5 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { supabaseClientOptions } from "./options";
+
+const PUBLIC_PATHS = ["/logga-in"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -11,6 +14,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
+    ...supabaseClientOptions,
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -27,7 +31,28 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Refresh session if configured; Phase 0 local mode skips auth gates.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+
+  if (!user && !isPublic) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/logga-in";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (user && pathname === "/logga-in") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/idag";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
   return supabaseResponse;
 }

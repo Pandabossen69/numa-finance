@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -22,14 +23,12 @@ export default async function InstallningarPage() {
         <Row label="Primär valuta" value={profile.primaryCurrency} />
         <Row label="Referensvaluta" value={profile.referenceCurrency} />
         <Row
-          label="Autentisering"
-          value={
-            supabaseReady
-              ? "Supabase Auth redo (koppla nycklar)"
-              : "Lokalt fas 0-läge (ingen inloggning)"
-          }
+          label="Dataläge"
+          value={supabaseReady ? "Supabase (schema numa)" : "Lokal lagring"}
         />
       </dl>
+
+      {supabaseReady ? <SignOutButton /> : null}
 
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
         Teman följer systemets ljus/mörkt. PWA kan installeras från webbläsarens
