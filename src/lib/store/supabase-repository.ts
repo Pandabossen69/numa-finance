@@ -234,6 +234,188 @@ export async function createManualExpense(input: {
   return mapTransaction(data);
 }
 
+export async function createManualIncome(input: {
+  accountId: string;
+  amountMinor: number;
+  description?: string;
+  occurredAt?: string;
+}): Promise<CanonicalTransaction> {
+  if (input.amountMinor <= 0) {
+    throw new Error("Beloppet måste vara större än noll");
+  }
+  const userId = await requireUserId();
+  const account = await getAccount(input.accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+
+  const supabase = await createSupabaseServerClient();
+  const ts = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: userId,
+      account_id: input.accountId,
+      direction: "credit",
+      transaction_type: "income",
+      amount_minor: input.amountMinor,
+      currency: account.currency,
+      occurred_at: input.occurredAt ?? ts,
+      description: input.description?.trim() || "Inkomst",
+      source: "manual",
+      status: "confirmed",
+      sync_status: "synced",
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapTransaction(data);
+}
+
+export async function createTransfer(input: {
+  fromAccountId: string;
+  toAccountId: string;
+  amountMinor: number;
+  description?: string;
+  occurredAt?: string;
+}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
+  if (input.amountMinor <= 0) {
+    throw new Error("Beloppet måste vara större än noll");
+  }
+  if (input.fromAccountId === input.toAccountId) {
+    throw new Error("Välj två olika konton");
+  }
+
+  const userId = await requireUserId();
+  const from = await getAccount(input.fromAccountId);
+  const to = await getAccount(input.toAccountId);
+  if (!from || !to) throw new Error("Kontot hittades inte");
+  if (from.currency !== to.currency) {
+    throw new Error("Överföring mellan olika valutor stöds inte ännu");
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const ts = new Date().toISOString();
+  const occurredAt = input.occurredAt ?? ts;
+  const description = input.description?.trim() || "Överföring";
+
+  const { data: outRow, error: outError } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: userId,
+      account_id: from.id,
+      counter_account_id: to.id,
+      direction: "debit",
+      transaction_type: "transfer",
+      amount_minor: input.amountMinor,
+      currency: from.currency,
+      occurred_at: occurredAt,
+      description,
+      source: "manual",
+      status: "confirmed",
+      sync_status: "synced",
+    })
+    .select("*")
+    .single();
+  if (outError) throw new Error(outError.message);
+
+  const { data: inRow, error: inError } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: userId,
+      account_id: to.id,
+      counter_account_id: from.id,
+      direction: "credit",
+      transaction_type: "transfer",
+      amount_minor: input.amountMinor,
+      currency: to.currency,
+      occurred_at: occurredAt,
+      description,
+      source: "manual",
+      status: "confirmed",
+      sync_status: "synced",
+    })
+    .select("*")
+    .single();
+  if (inError) throw new Error(inError.message);
+
+  return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
+}
+
+export async function createCashWithdrawal(input: {
+  fromAccountId: string;
+  toAccountId?: string | null;
+  amountMinor: number;
+  description?: string;
+  occurredAt?: string;
+}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction | null }> {
+  if (input.amountMinor <= 0) {
+    throw new Error("Beloppet måste vara större än noll");
+  }
+
+  const userId = await requireUserId();
+  const from = await getAccount(input.fromAccountId);
+  if (!from) throw new Error("Kontot hittades inte");
+
+  let to = null as Awaited<ReturnType<typeof getAccount>>;
+  if (input.toAccountId) {
+    to = await getAccount(input.toAccountId);
+    if (!to) throw new Error("Kontantkontot hittades inte");
+    if (from.currency !== to.currency) {
+      throw new Error("Olika valutor stöds inte ännu");
+    }
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const ts = new Date().toISOString();
+  const occurredAt = input.occurredAt ?? ts;
+  const description = input.description?.trim() || "Kontantuttag";
+
+  const { data: outRow, error: outError } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: userId,
+      account_id: from.id,
+      counter_account_id: to?.id ?? null,
+      direction: "debit",
+      transaction_type: "cash_withdrawal",
+      amount_minor: input.amountMinor,
+      currency: from.currency,
+      occurred_at: occurredAt,
+      description,
+      source: "manual",
+      status: "confirmed",
+      sync_status: "synced",
+    })
+    .select("*")
+    .single();
+  if (outError) throw new Error(outError.message);
+
+  if (!to) {
+    return { out: mapTransaction(outRow), inn: null };
+  }
+
+  const { data: inRow, error: inError } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: userId,
+      account_id: to.id,
+      counter_account_id: from.id,
+      direction: "credit",
+      transaction_type: "cash_withdrawal",
+      amount_minor: input.amountMinor,
+      currency: to.currency,
+      occurred_at: occurredAt,
+      description,
+      source: "manual",
+      status: "confirmed",
+      sync_status: "synced",
+    })
+    .select("*")
+    .single();
+  if (inError) throw new Error(inError.message);
+
+  return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
+}
+
 export async function listTransactions(
   accountId?: string,
 ): Promise<CanonicalTransaction[]> {

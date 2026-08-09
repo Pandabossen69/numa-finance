@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   createAccount,
+  createCashWithdrawal,
   createCheckpoint,
   createManualExpense,
+  createManualIncome,
   createScreenshotObservation,
+  createTransfer,
   getTodaySnapshot,
   recordOnTrackDayIfNeeded,
 } from "@/lib/store/repository";
@@ -117,6 +120,110 @@ export async function createExpenseAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte spara utgift",
+    };
+  }
+}
+
+const incomeSchema = z.object({
+  accountId: z.string().uuid(),
+  amount: z.string().trim().min(1),
+  description: z.string().trim().max(120).optional(),
+});
+
+const transferSchema = z.object({
+  fromAccountId: z.string().uuid(),
+  toAccountId: z.string().uuid(),
+  amount: z.string().trim().min(1),
+  description: z.string().trim().max(120).optional(),
+});
+
+const cashSchema = z.object({
+  fromAccountId: z.string().uuid(),
+  toAccountId: z.string().uuid().optional().nullable(),
+  amount: z.string().trim().min(1),
+  description: z.string().trim().max(120).optional(),
+});
+
+function revalidateMoneyPaths() {
+  revalidatePath("/idag");
+  revalidatePath("/transaktioner");
+  revalidatePath("/analys");
+  revalidatePath("/plan");
+  revalidatePath("/konton");
+}
+
+export async function createIncomeAction(
+  raw: z.infer<typeof incomeSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = incomeSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
+    if (amountMinor <= 0) {
+      return { ok: false, error: "Ange ett belopp större än noll" };
+    }
+    await createManualIncome({
+      accountId: input.accountId,
+      amountMinor,
+      description: input.description,
+    });
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte spara inkomst",
+    };
+  }
+}
+
+export async function createTransferAction(
+  raw: z.infer<typeof transferSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = transferSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
+    if (amountMinor <= 0) {
+      return { ok: false, error: "Ange ett belopp större än noll" };
+    }
+    await createTransfer({
+      fromAccountId: input.fromAccountId,
+      toAccountId: input.toAccountId,
+      amountMinor,
+      description: input.description,
+    });
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte spara överföring",
+    };
+  }
+}
+
+export async function createCashWithdrawalAction(
+  raw: z.infer<typeof cashSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = cashSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
+    if (amountMinor <= 0) {
+      return { ok: false, error: "Ange ett belopp större än noll" };
+    }
+    await createCashWithdrawal({
+      fromAccountId: input.fromAccountId,
+      toAccountId: input.toAccountId,
+      amountMinor,
+      description: input.description,
+    });
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte spara kontantuttag",
     };
   }
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AddActionSheet } from "@/components/add/AddActionSheet";
+import type { ShellAccount } from "@/components/add/QuickAddForms";
 
 const tabs = [
   { href: "/idag", label: "Idag", icon: "●" },
@@ -24,9 +25,11 @@ const MER_PREFIXES = [
 export function BottomNav({
   accountId,
   hasAccount,
+  accounts,
 }: {
   accountId?: string | null;
   hasAccount: boolean;
+  accounts: ShellAccount[];
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -92,6 +95,7 @@ export function BottomNav({
         onClose={() => setOpen(false)}
         accountId={accountId}
         hasAccount={hasAccount}
+        accounts={accounts}
       />
     </>
   );

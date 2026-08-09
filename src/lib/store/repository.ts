@@ -44,6 +44,24 @@ export async function createManualExpense(
   return api().createManualExpense(input);
 }
 
+export async function createManualIncome(
+  input: Parameters<typeof local.createManualIncome>[0],
+) {
+  return api().createManualIncome(input);
+}
+
+export async function createTransfer(
+  input: Parameters<typeof local.createTransfer>[0],
+) {
+  return api().createTransfer(input);
+}
+
+export async function createCashWithdrawal(
+  input: Parameters<typeof local.createCashWithdrawal>[0],
+) {
+  return api().createCashWithdrawal(input);
+}
+
 export async function listTransactions(accountId?: string) {
   return api().listTransactions(accountId);
 }

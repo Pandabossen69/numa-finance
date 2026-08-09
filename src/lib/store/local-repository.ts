@@ -284,6 +284,78 @@ export async function createTransfer(input: {
   };
 }
 
+export async function createCashWithdrawal(input: {
+  fromAccountId: string;
+  toAccountId?: string | null;
+  amountMinor: number;
+  description?: string;
+  occurredAt?: string;
+}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction | null }> {
+  if (input.amountMinor <= 0) {
+    throw new Error("Beloppet måste vara större än noll");
+  }
+
+  const store = await readStore();
+  const from = store.accounts.find((a) => a.id === input.fromAccountId);
+  if (!from) throw new Error("Kontot hittades inte");
+  const to = input.toAccountId
+    ? store.accounts.find((a) => a.id === input.toAccountId)
+    : null;
+  if (input.toAccountId && !to) throw new Error("Kontantkontot hittades inte");
+  if (to && from.currency !== to.currency) {
+    throw new Error("Olika valutor stöds inte ännu");
+  }
+
+  let outId = "";
+  let inId: string | null = null;
+  await updateStore((s) => {
+    const ts = nowIso();
+    const occurredAt = input.occurredAt ?? ts;
+    const description = input.description?.trim() || "Kontantuttag";
+    const out: CanonicalTransaction = {
+      id: newId(),
+      userId: LOCAL_DEMO_USER_ID,
+      accountId: from.id,
+      counterAccountId: to?.id ?? null,
+      direction: "debit",
+      transactionType: "cash_withdrawal",
+      amountMinor: input.amountMinor,
+      currency: from.currency,
+      occurredAt,
+      description,
+      merchant: null,
+      category: null,
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      syncStatus: "saved",
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    outId = out.id;
+    s.transactions.push(out);
+    if (to) {
+      const inn: CanonicalTransaction = {
+        ...out,
+        id: newId(),
+        accountId: to.id,
+        counterAccountId: from.id,
+        direction: "credit",
+      };
+      inId = inn.id;
+      s.transactions.push(inn);
+    }
+  });
+
+  const after = await readStore();
+  return {
+    out: after.transactions.find((t) => t.id === outId)!,
+    inn: inId ? after.transactions.find((t) => t.id === inId)! : null,
+  };
+}
+
 export async function listTransactions(accountId?: string): Promise<CanonicalTransaction[]> {
   const store = await readStore();
   return store.transactions

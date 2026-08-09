@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { ManualExpenseForm } from "@/components/add/ManualExpenseForm";
+import {
+  QuickAddForms,
+  type ShellAccount,
+} from "@/components/add/QuickAddForms";
 
 export function AddActionSheet({
   open,
   onClose,
   accountId,
   hasAccount,
+  accounts,
 }: {
   open: boolean;
   onClose: () => void;
   accountId?: string | null;
   hasAccount: boolean;
+  accounts: ShellAccount[];
 }) {
   useEffect(() => {
     if (!open) return;
@@ -42,12 +47,12 @@ export function AddActionSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Lägg till"
-        className="relative w-full max-w-md rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
+        className="relative max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--numa-border)]" />
         <h2 className="mb-1 text-lg font-semibold tracking-tight">Lägg till</h2>
         <p className="mb-5 text-sm text-[var(--numa-muted)]">
-          Fota ett kvitto eller skriv beloppet själv.
+          Fota kvitto, eller registrera utgift, inkomst, flytt och kontanter.
         </p>
 
         {!hasAccount || !accountId ? (
@@ -77,7 +82,11 @@ export function AddActionSheet({
               </span>
             </Link>
 
-            <ManualExpenseForm accountId={accountId} onSuccess={onClose} />
+            <QuickAddForms
+              primaryAccountId={accountId}
+              accounts={accounts}
+              onSuccess={onClose}
+            />
 
             <Link
               href="/importera"

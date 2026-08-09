@@ -2,18 +2,23 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
 
 async function loadShellSnapshot(): Promise<
-  Pick<TodaySnapshot, "primaryAccount">
+  Pick<TodaySnapshot, "primaryAccount" | "accounts">
 > {
   try {
     return await getTodaySnapshot();
   } catch (error) {
     console.error("[numa] failed to load shell snapshot", error);
-    return { primaryAccount: null };
+    return { primaryAccount: null, accounts: [] };
   }
 }
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const snapshot = await loadShellSnapshot();
+  const accounts = snapshot.accounts.map((a) => ({
+    id: a.id,
+    name: a.name,
+    accountType: a.accountType,
+  }));
 
   return (
     <div className="numa-shell relative text-[var(--numa-ink)]">
@@ -23,6 +28,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <BottomNav
         accountId={snapshot.primaryAccount?.id}
         hasAccount={Boolean(snapshot.primaryAccount)}
+        accounts={accounts}
       />
     </div>
   );
