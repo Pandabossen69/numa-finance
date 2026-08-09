@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
+import { VerifyBalanceForm } from "@/components/accounts/VerifyBalanceForm";
 import {
   QuickAddForms,
   type ShellAccount,
@@ -20,8 +22,16 @@ export function AddActionSheet({
   hasAccount: boolean;
   accounts: ShellAccount[];
 }) {
+  const router = useRouter();
+  const [setupSaldo, setSetupSaldo] = useState(false);
+  const [updateSaldo, setUpdateSaldo] = useState(false);
+
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSetupSaldo(false);
+      setUpdateSaldo(false);
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -35,11 +45,19 @@ export function AddActionSheet({
 
   if (!open) return null;
 
+  function go(href: string) {
+    // Navigate first so unmounting the sheet cannot cancel the route change.
+    router.push(href);
+    onClose();
+  }
+
+  const needsSetup = !hasAccount || !accountId;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(19,32,25,0.55)]"
+        className="absolute inset-0 z-0 bg-[rgba(19,32,25,0.55)]"
         aria-label="Stäng"
         onClick={onClose}
       />
@@ -47,54 +65,112 @@ export function AddActionSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Lägg till"
-        className="relative max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
+        className="relative z-10 max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--numa-border)]" />
-        <h2 className="mb-1 text-lg font-semibold tracking-tight">Lägg till</h2>
+        <h2 className="mb-1 text-lg font-semibold tracking-tight">
+          {needsSetup
+            ? setupSaldo
+              ? "Lägg till saldo"
+              : "Kom igång"
+            : updateSaldo
+              ? "Uppdatera saldo"
+              : "Lägg till"}
+        </h2>
         <p className="mb-5 text-sm text-[var(--numa-muted)]">
-          Fota kvitto, eller registrera utgift, inkomst, flytt och kontanter.
+          {needsSetup
+            ? "NUMA behöver först veta hur mycket du har just nu. Ingen bankkoppling — du anger saldot själv."
+            : updateSaldo
+              ? "Titta i bankappen eller senaste SMS och skriv in beloppet."
+              : "Fota kvitto, eller registrera utgift, inkomst, flytt och kontanter."}
         </p>
 
-        {!hasAccount || !accountId ? (
-          <div className="space-y-3">
-            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-              NUMA behöver först veta hur mycket du har just nu. Ingen
-              bankkoppling — du anger saldot själv.
-            </p>
-            <Link
-              href="/konton/ny"
-              onClick={onClose}
-              className="flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-[15px] font-semibold text-white"
-            >
-              Ange mitt saldo
-            </Link>
-          </div>
+        {needsSetup ? (
+          setupSaldo ? (
+            <CreateAccountForm
+              onSuccess={() => {
+                onClose();
+                router.refresh();
+              }}
+            />
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => setSetupSaldo(true)}
+                className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-[15px] font-semibold text-white transition active:scale-[0.99]"
+              >
+                Lägg till saldo
+              </button>
+              <button
+                type="button"
+                onClick={() => go("/konton/ny")}
+                className="flex min-h-12 w-full items-center justify-center text-sm text-[var(--numa-muted)]"
+              >
+                Öppna på egen sida
+              </button>
+            </div>
+          )
         ) : (
           <div className="space-y-5">
-            <Link
-              href="/fota"
-              onClick={onClose}
-              className="flex min-h-14 flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-white transition active:scale-[0.99]"
-            >
-              <span className="text-[15px] font-semibold">Fota kvitto</span>
-              <span className="text-xs text-white/80">
-                Kameran öppnas — bekräfta belopp mot dagens plan
-              </span>
-            </Link>
+            {updateSaldo ? (
+              <div className="space-y-3">
+                <VerifyBalanceForm
+                  accountId={accountId}
+                  onSuccess={() => {
+                    onClose();
+                    router.refresh();
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setUpdateSaldo(false)}
+                  className="flex min-h-12 w-full items-center justify-center text-sm text-[var(--numa-muted)]"
+                >
+                  Tillbaka
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => go("/fota")}
+                  className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-left text-white transition active:scale-[0.99]"
+                >
+                  <span className="text-[15px] font-semibold">Fota kvitto</span>
+                  <span className="text-xs text-white/80">
+                    Kameran öppnas — bekräfta belopp mot dagens plan
+                  </span>
+                </button>
 
-            <QuickAddForms
-              primaryAccountId={accountId}
-              accounts={accounts}
-              onSuccess={onClose}
-            />
+                <button
+                  type="button"
+                  onClick={() => setUpdateSaldo(true)}
+                  className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-left transition active:scale-[0.99]"
+                >
+                  <span className="text-[15px] font-semibold">
+                    Uppdatera saldo
+                  </span>
+                  <span className="text-xs text-[var(--numa-faint)]">
+                    Håll NUMA i fas med banken
+                  </span>
+                </button>
 
-            <Link
-              href="/importera"
-              onClick={onClose}
-              className="flex min-h-12 items-center justify-center text-sm text-[var(--numa-muted)]"
-            >
-              Tidigare importer
-            </Link>
+                <QuickAddForms
+                  primaryAccountId={accountId}
+                  accounts={accounts}
+                  onSuccess={onClose}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => go("/importera")}
+                  className="flex min-h-12 w-full items-center justify-center text-sm text-[var(--numa-muted)]"
+                >
+                  Tidigare importer
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

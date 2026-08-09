@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCheckpointAction } from "@/features/finance/actions";
 
-export function VerifyBalanceForm({ accountId }: { accountId: string }) {
+export function VerifyBalanceForm({
+  accountId,
+  onSuccess,
+}: {
+  accountId: string;
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +30,10 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
         return;
       }
       setBalance("");
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
       router.refresh();
     });
   }

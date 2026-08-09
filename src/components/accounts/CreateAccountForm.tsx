@@ -4,7 +4,11 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createAccountAction } from "@/features/finance/actions";
 
-export function CreateAccountForm() {
+export function CreateAccountForm({
+  onSuccess,
+}: {
+  onSuccess?: () => void;
+} = {}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +37,11 @@ export function CreateAccountForm() {
       });
       if (!result.ok) {
         setError(result.error);
+        return;
+      }
+      if (onSuccess) {
+        onSuccess();
+        router.refresh();
         return;
       }
       router.push("/idag");

@@ -30,7 +30,7 @@ export default async function IdagPage() {
 
   if (!snap.primaryAccount) {
     return (
-      <div className="space-y-6 pt-4 pb-4">
+      <div className="space-y-6 pt-4 pb-4 text-[var(--numa-ink)]">
         <BrandHeader />
         <section className="space-y-3">
           <p className="text-sm font-medium text-[var(--numa-accent)]">
@@ -43,6 +43,11 @@ export default async function IdagPage() {
             NUMA kopplas inte till någon bank. Du anger ditt saldo själv — sedan
             kan systemet räkna vad som är ledigt och om dagen ligger plus eller
             minus.
+          </p>
+          <p className="text-sm text-[var(--numa-muted)]">
+            Du kan också trycka{" "}
+            <span className="font-semibold text-[var(--numa-accent)]">+</span>{" "}
+            och välja <span className="font-medium">Lägg till saldo</span>.
           </p>
         </section>
         <CreateAccountForm />
