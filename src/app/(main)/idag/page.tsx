@@ -1,6 +1,7 @@
 import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DayPulseHero } from "@/components/idag/DayPulseHero";
+import { DayCloseAction } from "@/components/idag/DayCloseAction";
 import { IdagQuickActions } from "@/components/idag/IdagQuickActions";
 import { calculateDayPulse, rankForOnTrackDays } from "@/domain/gamification";
 import { hoursSince } from "@/domain/finance";
@@ -118,6 +119,8 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
       />
 
       <DayPulseHero pulse={pulse} currency={currency} />
+
+      <DayCloseAction alreadyClosedToday={snap.dayClosedToday} />
 
       <IdagQuickActions
         accountId={account.id}

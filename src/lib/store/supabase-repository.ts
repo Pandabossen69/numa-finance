@@ -41,7 +41,11 @@ import {
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import type { TodaySnapshot } from "./types-snapshot";
-import { emptyUserProgress, type UserProgress } from "./types-progress";
+import {
+  emptyUserProgress,
+  type RecordOnTrackDayResult,
+  type UserProgress,
+} from "./types-progress";
 
 async function requireUserId(): Promise<string> {
   const supabase = await createSupabaseServerClient();
@@ -786,7 +790,8 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
 
   if (!primary) {
     const progress = await getUserProgress();
-    return emptySnapshot(profile, accounts, progress, planItems);
+    const dayClosedToday = await hasClosedDayToday();
+    return emptySnapshot(profile, accounts, progress, planItems, dayClosedToday);
   }
 
   const checkpoint = await latestCheckpointForAccount(primary.id);
@@ -854,6 +859,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   else if (checkpoint) balanceKind = "calculated";
 
   const progress = await getUserProgress();
+  const dayClosedToday = await hasClosedDayToday();
 
   return {
     profile,
@@ -884,6 +890,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     planItemRemaining: totals.itemRemaining,
     currency,
     progress,
+    dayClosedToday,
   };
 }
 
@@ -892,6 +899,7 @@ function emptySnapshot(
   accounts: Account[],
   progress: UserProgress | null,
   planItems: PlanItem[] = [],
+  dayClosedToday = false,
 ): TodaySnapshot {
   return {
     profile,
@@ -918,6 +926,7 @@ function emptySnapshot(
     planItemRemaining: [],
     currency: profile.primaryCurrency,
     progress: progress ?? emptyUserProgress(profile.id),
+    dayClosedToday,
   };
 }
 
@@ -951,15 +960,40 @@ export async function getUserProgress(): Promise<UserProgress | null> {
   return mapUserProgress(created);
 }
 
+/** Read-only check — does not mark the day closed (unlike recordOnTrackDayIfNeeded). */
+export async function hasClosedDayToday(): Promise<boolean> {
+  const userId = await requireUserId();
+  const profile = await getProfile();
+  const dayStart = startOfZonedDay(new Date(), profile.timezone);
+  const dayKey = dayStart.toISOString().slice(0, 10);
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("progress_events")
+    .select("id, payload")
+    .eq("user_id", userId)
+    .in("event_type", ["day_on_track", "day_closed"])
+    .gte("created_at", dayStart.toISOString())
+    .limit(10);
+
+  if (error) {
+    console.warn("[numa] progress_events read failed", error.message);
+    return false;
+  }
+  return (data ?? []).some((row) => {
+    const payload = row.payload as { dayKey?: string } | null;
+    return payload?.dayKey === dayKey;
+  });
+}
+
 /**
  * Persist an on-track day (streak). Call only from day-close flows —
  * never from mid-day expense/receipt writes (those can lock a wrong status).
  */
 export async function recordOnTrackDayIfNeeded(
   isOnTrack: boolean,
-): Promise<UserProgress | null> {
+): Promise<RecordOnTrackDayResult> {
   const userId = await requireUserId();
-  if (!isOnTrack) return getUserProgress();
 
   const profile = await getProfile();
   const dayStart = startOfZonedDay(new Date(), profile.timezone);
@@ -970,20 +1004,30 @@ export async function recordOnTrackDayIfNeeded(
     .from("progress_events")
     .select("id, payload")
     .eq("user_id", userId)
-    .eq("event_type", "day_on_track")
+    .in("event_type", ["day_on_track", "day_closed"])
     .gte("created_at", dayStart.toISOString())
     .limit(10);
 
   if (evError) {
     console.warn("[numa] progress_events read failed", evError.message);
-    return getUserProgress();
+    return { progress: await getUserProgress(), alreadyRecordedToday: false };
   }
   const already = (existingEvents ?? []).some((row) => {
     const payload = row.payload as { dayKey?: string } | null;
     return payload?.dayKey === dayKey;
   });
   if (already) {
-    return getUserProgress();
+    return { progress: await getUserProgress(), alreadyRecordedToday: true };
+  }
+
+  if (!isOnTrack) {
+    await supabase.from("progress_events").insert({
+      user_id: userId,
+      event_type: "day_closed",
+      delta_score: 0,
+      payload: { dayKey, onTrack: false },
+    });
+    return { progress: await getUserProgress(), alreadyRecordedToday: false };
   }
 
   const current = (await getUserProgress()) ?? emptyUserProgress(userId);
@@ -1011,7 +1055,7 @@ export async function recordOnTrackDayIfNeeded(
 
   if (upError) {
     console.warn("[numa] user_progress update failed", upError.message);
-    return current;
+    return { progress: current, alreadyRecordedToday: false };
   }
 
   await supabase.from("progress_events").insert({
@@ -1021,7 +1065,7 @@ export async function recordOnTrackDayIfNeeded(
     payload: { dayKey },
   });
 
-  return mapUserProgress(updated);
+  return { progress: mapUserProgress(updated), alreadyRecordedToday: false };
 }
 
 export async function uploadReceiptAndExtract(input: {

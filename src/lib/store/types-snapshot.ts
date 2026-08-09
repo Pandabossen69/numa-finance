@@ -47,4 +47,6 @@ export type TodaySnapshot = {
   currency: CurrencyCode;
   /** Personal game progress — never includes balances. */
   progress: UserProgress | null;
+  /** Whether today has already been closed out for streak purposes. */
+  dayClosedToday: boolean;
 };

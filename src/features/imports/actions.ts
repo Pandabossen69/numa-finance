@@ -93,7 +93,7 @@ export async function confirmReceiptExpenseAction(
       plannedToday: money(snap.dayPlanMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
-    // Streak is awarded at day close — not when confirming a receipt mid-day.
+    // Mid-day pulse is feedback only — streak is awarded via closeDayAction.
 
     revalidatePath("/idag");
     revalidatePath("/transaktioner");

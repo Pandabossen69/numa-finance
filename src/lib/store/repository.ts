@@ -6,7 +6,7 @@ import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
-export type { UserProgress } from "./types-progress";
+export type { UserProgress, RecordOnTrackDayResult } from "./types-progress";
 
 function api() {
   const supabase = isSupabaseConfigured();
@@ -124,6 +124,10 @@ export async function getUserProgress() {
 
 export async function recordOnTrackDayIfNeeded(isOnTrack: boolean) {
   return api().recordOnTrackDayIfNeeded(isOnTrack);
+}
+
+export async function hasClosedDayToday() {
+  return api().hasClosedDayToday();
 }
 
 export async function listPlanItems() {

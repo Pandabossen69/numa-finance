@@ -32,7 +32,11 @@ import {
   buildUserStoragePath,
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
-import { emptyUserProgress, type UserProgress } from "./types-progress";
+import {
+  emptyUserProgress,
+  type RecordOnTrackDayResult,
+  type UserProgress,
+} from "./types-progress";
 import type { TodaySnapshot } from "./types-snapshot";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -551,21 +555,36 @@ export async function getUserProgress(): Promise<UserProgress | null> {
   );
 }
 
+/** Read-only check — does not mark the day closed (unlike recordOnTrackDayIfNeeded). */
+export async function hasClosedDayToday(): Promise<boolean> {
+  const store = await readStore();
+  const dayKey = startOfZonedDay(new Date(), store.profile.timezone)
+    .toISOString()
+    .slice(0, 10);
+  return localProgressDays.has(`${LOCAL_DEMO_USER_ID}:${dayKey}`);
+}
+
 /**
  * Persist an on-track day (streak). Call only from day-close flows —
  * never from mid-day expense/receipt writes (those can lock a wrong status).
  */
 export async function recordOnTrackDayIfNeeded(
   isOnTrack: boolean,
-): Promise<UserProgress | null> {
-  if (!isOnTrack) return getUserProgress();
+): Promise<RecordOnTrackDayResult> {
   const store = await readStore();
   const dayKey = startOfZonedDay(new Date(), store.profile.timezone)
     .toISOString()
     .slice(0, 10);
   const key = `${LOCAL_DEMO_USER_ID}:${dayKey}`;
-  if (localProgressDays.has(key)) return getUserProgress();
+
+  if (localProgressDays.has(key)) {
+    return { progress: await getUserProgress(), alreadyRecordedToday: true };
+  }
   localProgressDays.add(key);
+
+  if (!isOnTrack) {
+    return { progress: await getUserProgress(), alreadyRecordedToday: false };
+  }
 
   const current =
     localProgress.get(LOCAL_DEMO_USER_ID) ??
@@ -584,7 +603,7 @@ export async function recordOnTrackDayIfNeeded(
     updatedAt: nowIso(),
   };
   localProgress.set(LOCAL_DEMO_USER_ID, next);
-  return next;
+  return { progress: next, alreadyRecordedToday: false };
 }
 
 export async function uploadReceiptAndExtract(input: {
@@ -906,6 +925,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       planItemRemaining: [],
       currency: profile.primaryCurrency,
       progress: await getUserProgress(),
+      dayClosedToday: await hasClosedDayToday(),
     };
   }
 
@@ -1003,6 +1023,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     planItemRemaining: totals.itemRemaining,
     currency,
     progress: await getUserProgress(),
+    dayClosedToday: await hasClosedDayToday(),
   };
 }
 

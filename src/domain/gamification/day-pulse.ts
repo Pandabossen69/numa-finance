@@ -54,6 +54,57 @@ export function calculateDayPulse(input: DayPulseInput): DayPulse {
   };
 }
 
+/**
+ * Whether a day counts as "on track" for streak purposes.
+ * Plus and even both count — only minus breaks the streak.
+ */
+export function isDayOnTrack(status: DayPulse["status"]): boolean {
+  return status !== "minus";
+}
+
+export type DayCloseFeedback = {
+  headlineSv: string;
+  bodySv: string;
+};
+
+/**
+ * Calm, Swedish end-of-day copy for the close-day action.
+ * Pure so the UI/server action can stay thin and testable.
+ */
+export function describeDayClose(input: {
+  status: DayPulse["status"];
+  alreadyClosedToday: boolean;
+  currentStreak: number;
+}): DayCloseFeedback {
+  const days = input.currentStreak === 1 ? "dag" : "dagar";
+
+  if (input.alreadyClosedToday) {
+    return {
+      headlineSv: "Redan avslutad",
+      bodySv:
+        input.currentStreak > 0
+          ? `Du har redan sparat dagens läge. Streak: ${input.currentStreak} ${days}.`
+          : "Du har redan sparat dagens läge. Imorgon är nästa chans.",
+    };
+  }
+
+  if (input.status === "minus") {
+    return {
+      headlineSv: "Dagens läge sparat",
+      bodySv:
+        "Det blev minus idag, men det är ingen katastrof — imorgon är en ny dag.",
+    };
+  }
+
+  return {
+    headlineSv: "Dagens läge sparat",
+    bodySv:
+      input.currentStreak > 0
+        ? `Snyggt — du höll planen idag. Streak: ${input.currentStreak} ${days}.`
+        : "Snyggt — du höll planen idag.",
+  };
+}
+
 export type StreakHint = {
   /** Conceptual streak counter — Phase later persists this. */
   onTrackDays: number;
