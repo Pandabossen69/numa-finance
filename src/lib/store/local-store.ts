@@ -1,20 +1,70 @@
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { createEmptyStore, type NumaStoreData } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const STORE_PATH = path.join(DATA_DIR, "numa-store.json");
+/**
+ * Persistence strategy:
+ * - Local/dev: `.data/numa-store.json` under the project
+ * - Serverless (Vercel): prefer `/tmp`, else in-memory (ephemeral)
+ *
+ * Until the Supabase repository is wired, this keeps pages from crashing
+ * on read-only deployment filesystems.
+ */
+const PROJECT_DATA_DIR = path.join(process.cwd(), ".data");
+const TMP_DATA_DIR = path.join(os.tmpdir(), "numa-finance");
 
+type Backend = "project" | "tmp" | "memory";
+
+let backend: Backend | null = null;
+let storePath: string | null = null;
+let memoryStore: NumaStoreData | null = null;
 let writeQueue: Promise<void> = Promise.resolve();
 
-async function ensureDir(): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+async function canUseDir(dir: string): Promise<boolean> {
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    const probe = path.join(dir, ".write-probe");
+    await fs.writeFile(probe, "ok", "utf8");
+    await fs.unlink(probe);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveBackend(): Promise<{ backend: Backend; path: string | null }> {
+  if (backend) {
+    return { backend, path: storePath };
+  }
+
+  if (await canUseDir(PROJECT_DATA_DIR)) {
+    backend = "project";
+    storePath = path.join(PROJECT_DATA_DIR, "numa-store.json");
+    return { backend, path: storePath };
+  }
+
+  if (await canUseDir(TMP_DATA_DIR)) {
+    backend = "tmp";
+    storePath = path.join(TMP_DATA_DIR, "numa-store.json");
+    return { backend, path: storePath };
+  }
+
+  backend = "memory";
+  storePath = null;
+  memoryStore = createEmptyStore();
+  return { backend, path: null };
 }
 
 export async function readStore(): Promise<NumaStoreData> {
-  await ensureDir();
+  const resolved = await resolveBackend();
+
+  if (resolved.backend === "memory") {
+    return structuredClone(memoryStore ?? createEmptyStore());
+  }
+
   try {
-    const raw = await fs.readFile(STORE_PATH, "utf8");
+    const raw = await fs.readFile(resolved.path!, "utf8");
     const parsed = JSON.parse(raw) as NumaStoreData;
     if (parsed.version !== 1) {
       return createEmptyStore();
@@ -26,16 +76,27 @@ export async function readStore(): Promise<NumaStoreData> {
       await writeStore(empty);
       return empty;
     }
-    throw error;
+    // Corrupt/unreadable → start empty rather than crash the whole app.
+    console.error("[numa] store read failed, using empty store", error);
+    return createEmptyStore();
   }
 }
 
 export async function writeStore(data: NumaStoreData): Promise<void> {
+  const resolved = await resolveBackend();
+
+  if (resolved.backend === "memory") {
+    memoryStore = structuredClone(data);
+    return;
+  }
+
   writeQueue = writeQueue.then(async () => {
-    await ensureDir();
-    const tmp = `${STORE_PATH}.tmp`;
+    const target = resolved.path!;
+    const dir = path.dirname(target);
+    await fs.mkdir(dir, { recursive: true });
+    const tmp = `${target}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(data, null, 2), "utf8");
-    await fs.rename(tmp, STORE_PATH);
+    await fs.rename(tmp, target);
   });
   await writeQueue;
 }
@@ -52,5 +113,5 @@ export async function updateStore(
 }
 
 export function getStorePath(): string {
-  return STORE_PATH;
+  return storePath ?? "(memory)";
 }

@@ -42,7 +42,9 @@ Kopiera `.env.example` till `.env.local`.
 
 Utan Supabase-nycklar kör appen i **lokalt läge** och sparar data i `.data/numa-store.json`.
 
-När `NEXT_PUBLIC_SUPABASE_URL` och `NEXT_PUBLIC_SUPABASE_ANON_KEY` är satta aktiveras Supabase-klienterna. Kör migrationen i `supabase/migrations/` mot ditt projekt.
+När `NEXT_PUBLIC_SUPABASE_URL` och `NEXT_PUBLIC_SUPABASE_ANON_KEY` är satta aktiveras Supabase-klienterna.
+
+Delat projekt: NUMA bor i schema `numa` + bucket `numa-source-media`. Se `docs/SUPABASE-SETUP.md`.
 
 ### Vertical slice
 
@@ -58,6 +60,7 @@ När `NEXT_PUBLIC_SUPABASE_URL` och `NEXT_PUBLIC_SUPABASE_ANON_KEY` är satta ak
 - `docs/FINANCIAL-INVARIANTS.md`
 - `docs/DATA-MODEL.md`
 - `docs/ROADMAP.md`
+- `docs/SUPABASE-SETUP.md`
 
 ### Language
 

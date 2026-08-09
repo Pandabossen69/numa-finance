@@ -1,8 +1,20 @@
 import { BottomNav } from "@/components/layout/BottomNav";
 import { getTodaySnapshot } from "@/lib/store/repository";
+import type { TodaySnapshot } from "@/lib/store/repository";
+
+async function loadShellSnapshot(): Promise<
+  Pick<TodaySnapshot, "primaryAccount">
+> {
+  try {
+    return await getTodaySnapshot();
+  } catch (error) {
+    console.error("[numa] failed to load shell snapshot", error);
+    return { primaryAccount: null };
+  }
+}
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const snapshot = await getTodaySnapshot();
+  const snapshot = await loadShellSnapshot();
 
   return (
     <div className="numa-shell relative">
