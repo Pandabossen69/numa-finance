@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createCashWithdrawalAction,
@@ -325,8 +326,10 @@ function TransferForm({
   if (accounts.length < 2) {
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Lägg till ett till saldo under Mer → Mina saldon för att kunna flytta
-        pengar mellan konton.
+        Du behöver minst två saldon för att flytta.{" "}
+        <Link href="/konton/ny" className="font-medium text-[var(--numa-accent)]">
+          Lägg till saldo →
+        </Link>
       </p>
     );
   }

@@ -121,6 +121,8 @@ export function AddActionSheet({
               <div className="space-y-3">
                 <VerifyBalanceForm
                   accountId={accountId}
+                  autoFocus
+                  afterSave="idag"
                   onSuccess={() => {
                     close();
                   }}

@@ -11,7 +11,9 @@ import {
   createScreenshotObservation,
   createTransfer,
   getTodaySnapshot,
+  listAccounts,
   recordOnTrackDayIfNeeded,
+  setDefaultAccount,
   updateManualTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
@@ -64,13 +66,17 @@ export async function createAccountAction(
       return { ok: false, error: "Ingående saldo kan inte vara negativt" };
     }
 
+    const existing = await listAccounts();
+    const makeDefault =
+      existing.length === 0 ? true : Boolean(input.makeDefault);
+
     const account = await createAccount({
       name: input.name,
       institution: input.institution,
       accountType: input.accountType,
       currency: input.currency,
       maskedIdentifier: input.maskedIdentifier,
-      makeDefault: input.makeDefault ?? true,
+      makeDefault,
     });
 
     await createCheckpoint({
@@ -84,11 +90,37 @@ export async function createAccountAction(
     revalidatePath("/konton");
     revalidatePath("/transaktioner");
     revalidatePath("/mer");
+    revalidatePath("/analys");
+    revalidatePath("/plan");
     return { ok: true };
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte skapa konto",
+    };
+  }
+}
+
+export async function setDefaultAccountAction(
+  accountId: string,
+): Promise<ActionResult> {
+  try {
+    await setDefaultAccount(z.string().uuid().parse(accountId));
+    revalidatePath("/idag");
+    revalidatePath("/konton");
+    revalidatePath("/analys");
+    revalidatePath("/plan");
+    revalidatePath("/fota");
+    revalidatePath("/transaktioner");
+    revalidatePath("/mer");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kunde inte byta standardkonto",
     };
   }
 }

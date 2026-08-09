@@ -71,7 +71,8 @@ export async function createAccount(input: {
 }): Promise<Account> {
   const created = await updateStore((store) => {
     const ts = nowIso();
-    if (input.makeDefault || store.accounts.length === 0) {
+    const makeDefault = input.makeDefault ?? store.accounts.length === 0;
+    if (makeDefault) {
       for (const a of store.accounts) a.isDefault = false;
     }
     const account: Account = {
@@ -83,13 +84,34 @@ export async function createAccount(input: {
       currency: input.currency,
       maskedIdentifier: input.maskedIdentifier?.trim() || null,
       isActive: true,
-      isDefault: input.makeDefault || store.accounts.length === 0,
+      isDefault: makeDefault,
       createdAt: ts,
       updatedAt: ts,
     };
     store.accounts.push(account);
   });
   return created.accounts[created.accounts.length - 1]!;
+}
+
+export async function setDefaultAccount(accountId: string): Promise<Account> {
+  const store = await readStore();
+  const target = store.accounts.find((a) => a.id === accountId && a.isActive);
+  if (!target) throw new Error("Kontot hittades inte");
+
+  const updated = await updateStore((s) => {
+    const ts = nowIso();
+    for (const a of s.accounts) {
+      const next = a.id === accountId;
+      if (a.isDefault !== next) {
+        a.isDefault = next;
+        a.updatedAt = ts;
+      }
+    }
+  });
+
+  const account = updated.accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+  return account;
 }
 
 export async function createCheckpoint(input: {

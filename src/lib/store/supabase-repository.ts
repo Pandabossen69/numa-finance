@@ -132,7 +132,7 @@ export async function createAccount(input: {
   if (makeDefault && existing.length > 0) {
     const { error: clearError } = await supabase
       .from("accounts")
-      .update({ is_default: false })
+      .update({ is_default: false, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("is_default", true);
     if (clearError) throw new Error(clearError.message);
@@ -153,6 +153,32 @@ export async function createAccount(input: {
     .select("*")
     .single();
 
+  if (error) throw new Error(error.message);
+  return mapAccount(data);
+}
+
+export async function setDefaultAccount(accountId: string): Promise<Account> {
+  const userId = await requireUserId();
+  const account = await getAccount(accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+
+  const supabase = await createSupabaseServerClient();
+  const ts = new Date().toISOString();
+
+  const { error: clearError } = await supabase
+    .from("accounts")
+    .update({ is_default: false, updated_at: ts })
+    .eq("user_id", userId)
+    .eq("is_default", true);
+  if (clearError) throw new Error(clearError.message);
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .update({ is_default: true, updated_at: ts })
+    .eq("user_id", userId)
+    .eq("id", accountId)
+    .select("*")
+    .single();
   if (error) throw new Error(error.message);
   return mapAccount(data);
 }

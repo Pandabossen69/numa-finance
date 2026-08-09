@@ -267,7 +267,7 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
             </p>
           </div>
           <Link href="/konton" className="text-sm text-[var(--numa-accent)]">
-            Mer
+            Byt konto
           </Link>
         </div>
       </section>

@@ -55,6 +55,8 @@ export function IdagQuickActions({
         <div className="rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4 animate-sheet">
           <VerifyBalanceForm
             accountId={accountId}
+            autoFocus
+            afterSave="idag"
             onSuccess={() => setOpen(false)}
           />
         </div>

@@ -6,15 +6,19 @@ import { createAccountAction } from "@/features/finance/actions";
 
 export function CreateAccountForm({
   onSuccess,
+  hasExistingAccounts = false,
 }: {
   onSuccess?: () => void;
+  /** When true, new saldo does not steal Idag's primary unless user opts in. */
+  hasExistingAccounts?: boolean;
 } = {}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [makeDefault, setMakeDefault] = useState(!hasExistingAccounts);
   const [form, setForm] = useState({
-    name: "Bangkok Bank",
-    institution: "Bangkok Bank",
+    name: hasExistingAccounts ? "" : "Bangkok Bank",
+    institution: hasExistingAccounts ? "" : "Bangkok Bank",
     accountType: "checking" as
       | "checking"
       | "savings"
@@ -23,17 +27,24 @@ export function CreateAccountForm({
       | "investment"
       | "other",
     currency: "THB" as "THB" | "SEK",
-    maskedIdentifier: "6591",
+    maskedIdentifier: hasExistingAccounts ? "" : "",
     openingBalance: "",
   });
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!form.name.trim()) {
+      setError("Ge saldot ett namn, t.ex. Bangkok Bank eller Kontanter");
+      return;
+    }
     startTransition(async () => {
       const result = await createAccountAction({
         ...form,
-        makeDefault: true,
+        name: form.name.trim(),
+        institution: form.institution.trim() || null,
+        maskedIdentifier: form.maskedIdentifier.trim() || null,
+        makeDefault: hasExistingAccounts ? makeDefault : true,
       });
       if (!result.ok) {
         setError(result.error);
@@ -44,7 +55,7 @@ export function CreateAccountForm({
         router.refresh();
         return;
       }
-      router.push("/idag");
+      router.push(makeDefault || !hasExistingAccounts ? "/idag" : "/konton");
       router.refresh();
     });
   }
@@ -55,14 +66,16 @@ export function CreateAccountForm({
       className="space-y-4 rounded-[1.5rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] p-4"
     >
       <Field
-        label="Namn (t.ex. Bangkok Bank eller Kontanter)"
+        label="Namn"
         value={form.name}
         onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+        placeholder="t.ex. Bangkok Bank, Spar, Kontanter"
       />
       <Field
-        label="Var pengarna finns"
+        label="Var pengarna finns (valfritt)"
         value={form.institution}
         onChange={(v) => setForm((f) => ({ ...f, institution: v }))}
+        placeholder="t.ex. Bangkok Bank"
       />
       <Field
         label="Kort etikett (valfritt)"
@@ -119,6 +132,29 @@ export function CreateAccountForm({
         inputMode="decimal"
       />
 
+      {hasExistingAccounts ? (
+        <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-[var(--numa-border)] px-3 py-3">
+          <input
+            type="checkbox"
+            checked={makeDefault}
+            onChange={(e) => setMakeDefault(e.target.checked)}
+            className="mt-1 h-4 w-4 accent-[var(--numa-accent)]"
+          />
+          <span className="text-sm leading-relaxed text-[var(--numa-ink)]">
+            Använd som standard på Idag
+            <span className="mt-0.5 block text-xs text-[var(--numa-muted)]">
+              Annars behåller du ditt nuvarande standardkonto. Du kan byta under
+              Mina saldon.
+            </span>
+          </span>
+        </label>
+      ) : (
+        <p className="text-xs leading-relaxed text-[var(--numa-muted)]">
+          Det här blir ditt standardkonto på Idag — det NUMA räknar tryggt
+          spendera ifrån.
+        </p>
+      )}
+
       {error ? (
         <p
           className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-danger)_14%,transparent)] px-3 py-2.5 text-sm text-[var(--numa-danger)]"
@@ -130,10 +166,10 @@ export function CreateAccountForm({
 
       <button
         type="submit"
-        disabled={pending || !form.openingBalance.trim()}
+        disabled={pending || !form.openingBalance.trim() || !form.name.trim()}
         className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white disabled:opacity-45"
       >
-        {pending ? "Sparar…" : "Spara saldo och fortsätt"}
+        {pending ? "Sparar…" : "Spara saldo"}
       </button>
       <p className="text-center text-xs leading-relaxed text-[var(--numa-faint)]">
         Tips: använd saldot du ser i bankappen eller senaste SMS just nu.

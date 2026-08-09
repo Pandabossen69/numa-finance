@@ -32,6 +32,10 @@ export async function createAccount(
   return api().createAccount(input);
 }
 
+export async function setDefaultAccount(accountId: string) {
+  return api().setDefaultAccount(accountId);
+}
+
 export async function createCheckpoint(
   input: Parameters<typeof local.createCheckpoint>[0],
 ) {

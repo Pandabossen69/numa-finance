@@ -7,16 +7,20 @@ import { createCheckpointAction } from "@/features/finance/actions";
 export function VerifyBalanceForm({
   accountId,
   onSuccess,
-  autoFocus = true,
+  autoFocus = false,
+  afterSave = "stay",
 }: {
   accountId: string;
   onSuccess?: () => void;
   autoFocus?: boolean;
+  /** Where to go after save. Sheet/Idag use "idag"; Konton keeps you here. */
+  afterSave?: "idag" | "stay";
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -28,6 +32,7 @@ export function VerifyBalanceForm({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setDone(false);
 
     if (!balance.trim()) {
       setError("Skriv hur mycket du har just nu, t.ex. 10058,04");
@@ -46,13 +51,11 @@ export function VerifyBalanceForm({
         return;
       }
       setBalance("");
-      if (onSuccess) {
-        onSuccess();
+      setDone(true);
+      onSuccess?.();
+      if (afterSave === "idag") {
         router.push("/idag");
-        router.refresh();
-        return;
       }
-      router.push("/idag");
       router.refresh();
     });
   }
@@ -69,6 +72,7 @@ export function VerifyBalanceForm({
           onChange={(e) => {
             setBalance(e.target.value);
             if (error) setError(null);
+            if (done) setDone(false);
           }}
           inputMode="decimal"
           placeholder="t.ex. 10058,04"
@@ -77,18 +81,25 @@ export function VerifyBalanceForm({
         />
       </label>
       <p className="text-xs leading-relaxed text-[var(--numa-muted)]">
-        Skriv beloppet först — sedan sparar du. Titta i bankappen eller senaste
-        SMS.
+        Skriv beloppet först — sedan sparar du.
       </p>
       {error ? (
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
           {error}
         </p>
       ) : null}
+      {done ? (
+        <p
+          className="text-sm text-[var(--numa-positive)]"
+          role="status"
+        >
+          Saldo sparat.
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-60"
+        className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-60"
       >
         {pending ? "Sparar…" : "Spara saldo"}
       </button>
