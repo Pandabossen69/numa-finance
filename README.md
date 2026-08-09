@@ -61,6 +61,7 @@ Delat projekt: NUMA bor i schema `numa` + bucket `numa-source-media`. Se `docs/S
 - `docs/DATA-MODEL.md`
 - `docs/ROADMAP.md`
 - `docs/SUPABASE-SETUP.md`
+- `docs/GAMIFICATION.md`
 
 ### Language
 

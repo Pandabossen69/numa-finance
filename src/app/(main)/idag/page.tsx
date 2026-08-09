@@ -1,33 +1,64 @@
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { DayPulseHero } from "@/components/idag/DayPulseHero";
+import { calculateDayPulse, rankForOnTrackDays } from "@/domain/gamification";
 import { formatMoney, money } from "@/domain/money";
 import { getTodaySnapshot } from "@/lib/store/repository";
 
 export default async function IdagPage() {
-  const snap = await getTodaySnapshot();
-
-  if (!snap.primaryAccount) {
+  let snap;
+  try {
+    snap = await getTodaySnapshot();
+  } catch (error) {
+    console.error("[numa] idag snapshot failed", error);
     return (
-      <div className="animate-rise space-y-10 pt-6">
+      <div className="animate-rise space-y-4 pt-6">
         <BrandHeader />
-        <section className="space-y-4">
-          <h1 className="max-w-[14ch] text-3xl font-semibold tracking-tight">
-            Börja med ditt verkliga saldo
-          </h1>
-          <p className="max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-            Skapa ett konto och ange ett verifierat saldo. Sedan kan NUMA hålla
-            koll på vad som är ledigt att använda.
-          </p>
-          <Link
-            href="/konton/ny"
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-medium text-white"
-          >
-            Skapa konto
-          </Link>
-        </section>
+        <h1 className="text-2xl font-semibold tracking-tight">Kunde inte ladda idag</h1>
+        <p className="text-sm text-[var(--numa-muted)]">
+          Försök ladda om. Om felet kvarstår, logga ut och in igen.
+        </p>
+        <Link href="/logga-in" className="text-sm font-medium text-[var(--numa-accent)]">
+          Till inloggning
+        </Link>
       </div>
     );
   }
+
+  if (!snap.primaryAccount) {
+    return (
+      <div className="animate-rise flex min-h-[70dvh] flex-col pt-4">
+        <BrandHeader />
+        <div className="mt-10 flex flex-1 flex-col justify-center space-y-5 pb-8">
+          <p className="text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.045em]">
+            NUMA
+          </p>
+          <h1 className="max-w-[14ch] text-[1.65rem] font-semibold tracking-tight">
+            Börja med ditt verkliga saldo
+          </h1>
+          <p className="max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
+            Lägg in ett konto. Sedan ser du live om dagen ligger plus eller minus
+            mot planen — varje gång du registrerar en utgift.
+          </p>
+          <Link
+            href="/konton/ny"
+            className="inline-flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-5 text-[15px] font-semibold text-white"
+          >
+            Skapa konto
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const pulse = calculateDayPulse({
+    safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
+    spentToday: money(snap.todaySpendingMinor, snap.currency),
+  });
+
+  // Persisted streak comes later — Phase 0 shows rank ladder from a soft hint.
+  const onTrackHint = pulse.status === "minus" ? 0 : 1;
+  const rank = rankForOnTrackDays(onTrackHint);
 
   const balanceLabel =
     snap.balanceKind === "calculated"
@@ -38,7 +69,9 @@ export default async function IdagPage() {
 
   return (
     <div className="animate-rise space-y-8 pt-2">
-      <BrandHeader />
+      <BrandHeader rankTitle={rank.titleSv} />
+
+      <DayPulseHero pulse={pulse} currency={snap.currency} />
 
       <section className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
@@ -81,10 +114,6 @@ export default async function IdagPage() {
             <p className="mt-1 text-sm text-[var(--numa-muted)]">denna vecka</p>
           </div>
         </div>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Baserat på tillgängligt saldo över {snap.daysUntilIncome} dagar till
-          nästa inkomst. Reserver och buffert läggs till i nästa fas.
-        </p>
       </section>
 
       <section className="space-y-4 border-t border-[var(--numa-border)] pt-6">
@@ -97,11 +126,6 @@ export default async function IdagPage() {
           <Stat label="Reserverat" amount={snap.reservedMinor} currency={snap.currency} />
           <Stat label="Fritt" amount={snap.freeMinor} currency={snap.currency} />
         </div>
-        <p className="text-sm text-[var(--numa-positive)]">
-          {snap.todaySpendingMinor <= snap.safeToSpendTodayMinor
-            ? "På rätt spår"
-            : "Över dagens plan — framtida dagsbudget justeras"}
-        </p>
       </section>
 
       <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
@@ -115,7 +139,7 @@ export default async function IdagPage() {
         </div>
         {snap.recentTransactions.length === 0 ? (
           <p className="text-sm text-[var(--numa-muted)]">
-            Inga utgifter ännu. Tryck + för att lägga till.
+            Tryck + och registrera första utgiften — pulsen uppdateras direkt.
           </p>
         ) : (
           <ul className="divide-y divide-[var(--numa-border)]">
@@ -124,8 +148,7 @@ export default async function IdagPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{tx.description}</p>
                   <p className="text-xs text-[var(--numa-faint)]">
-                    {tx.category ?? typeLabel(tx.transactionType)} ·{" "}
-                    {syncLabel(tx.syncStatus)}
+                    {tx.category ?? typeLabel(tx.transactionType)}
                   </p>
                 </div>
                 <span
@@ -159,11 +182,6 @@ export default async function IdagPage() {
             <p className="mt-1 text-sm text-[var(--numa-muted)]">
               {snap.verificationLabel ?? "Ej verifierat ännu"}
             </p>
-            <p className="text-sm text-[var(--numa-muted)]">
-              {snap.balanceKind === "unknown"
-                ? "Behöver kontrolleras"
-                : "Saldo i synk med beräkning"}
-            </p>
           </div>
           <Link href="/konton" className="text-sm text-[var(--numa-accent)]">
             Hantera
@@ -174,11 +192,16 @@ export default async function IdagPage() {
   );
 }
 
-function BrandHeader() {
+function BrandHeader({ rankTitle }: { rankTitle?: string }) {
   return (
     <header className="flex items-end justify-between">
       <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
-      <span className="pb-1 text-xs text-[var(--numa-faint)]">Idag</span>
+      <div className="pb-1 text-right">
+        {rankTitle ? (
+          <p className="text-xs font-medium text-[var(--numa-accent)]">{rankTitle}</p>
+        ) : null}
+        <p className="text-xs text-[var(--numa-faint)]">Idag</p>
+      </div>
     </header>
   );
 }
@@ -212,18 +235,5 @@ function typeLabel(type: string): string {
       return "Överföring";
     default:
       return "Transaktion";
-  }
-}
-
-function syncLabel(status: string): string {
-  switch (status) {
-    case "pending_sync":
-      return "Väntar på synk";
-    case "saved":
-      return "Sparad";
-    case "synced":
-      return "Synkad";
-    default:
-      return status;
   }
 }
