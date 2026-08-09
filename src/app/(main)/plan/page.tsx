@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PlanEditor } from "@/components/plan/PlanEditor";
+import { formatMoney, moneyFromUnknown } from "@/domain/money";
 import { getTodaySnapshotCached } from "@/lib/store/today";
 
 export default async function PlanPage() {
@@ -8,28 +9,37 @@ export default async function PlanPage() {
 
   if (!snap.primaryAccount) {
     return (
-      <div className="space-y-5 pt-2">
+      <div className="space-y-5 pt-2 text-[var(--numa-ink)]">
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Plan</h1>
         <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          När du angett ditt saldo kan du lägga in hinkar — då blir tryggt idag
-          ärligt.
+          När du angett ditt saldo kan du lägga in det som redan är öronmärkt —
+          då blir tryggt idag ärligt.
         </p>
-        <Link href="/idag" className="text-sm font-medium text-[var(--numa-accent)]">
+        <Link
+          href="/idag"
+          className="text-sm font-medium text-[var(--numa-accent)]"
+        >
           Ange mitt saldo →
         </Link>
       </div>
     );
   }
 
+  const reservedPaidDown =
+    snap.reservedPlannedMinor > 0 &&
+    snap.reservedMinor < snap.reservedPlannedMinor;
+
   const summary = [
     {
       title: "Tryggt idag",
-      body: "Efter reserver och buffert, spritt till nästa inkomst.",
+      body: "Efter det som fortfarande är öronmärkt + buffert, spritt till nästa inkomst.",
       amount: snap.safeToSpendTodayMinor,
     },
     {
-      title: "Reserverat",
-      body: "Måste, vardag och mål som redan är planerade.",
+      title: reservedPaidDown ? "Kvar att reservera" : "Reserverat",
+      body: reservedPaidDown
+        ? `Av ${formatMoney(moneyFromUnknown(snap.reservedPlannedMinor, snap.currency))} i planen — det du redan betalat räknas bort.`
+        : "Måste, vardag och mål som fortfarande väntar.",
       amount: snap.reservedMinor,
     },
     {
@@ -45,21 +55,27 @@ export default async function PlanPage() {
   ];
 
   return (
-    <div className="space-y-8 pt-2 pb-4">
+    <div className="space-y-8 pt-2 pb-4 text-[var(--numa-ink)]">
       <header>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Plan</h1>
         <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Lägg in det som redan är öronmärkt. NUMA räknar om tryggt idag direkt.
+          Lägg in det som redan är öronmärkt. När du betalar det via + räknas det
+          bort automatiskt från tryggt idag.
         </p>
       </header>
 
       <ul className="space-y-4">
         {summary.map((item) => (
-          <li key={item.title} className="border-t border-[var(--numa-border)] pt-4">
+          <li
+            key={item.title}
+            className="border-t border-[var(--numa-border)] pt-4"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-medium">{item.title}</h2>
-                <p className="mt-1 text-sm text-[var(--numa-muted)]">{item.body}</p>
+                <p className="mt-1 text-sm text-[var(--numa-muted)]">
+                  {item.body}
+                </p>
               </div>
               <MoneyDisplay
                 amountMinor={item.amount}
@@ -80,6 +96,7 @@ export default async function PlanPage() {
         items={snap.planItems}
         currency={snap.currency}
         daysUntilIncome={snap.daysUntilIncome}
+        itemRemaining={snap.planItemRemaining}
       />
     </div>
   );

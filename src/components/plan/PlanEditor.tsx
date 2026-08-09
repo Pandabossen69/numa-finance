@@ -28,10 +28,17 @@ export function PlanEditor({
   items,
   currency,
   daysUntilIncome,
+  itemRemaining = [],
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
   daysUntilIncome: number;
+  itemRemaining?: Array<{
+    itemId: string;
+    plannedMinor: number;
+    remainingMinor: number;
+    spentMinor: number;
+  }>;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -86,51 +93,74 @@ export function PlanEditor({
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-medium">Dina hinkar</h2>
+        <h2 className="font-medium">Dina planposter</h2>
+        <p className="text-sm text-[var(--numa-muted)]">
+          När du betalar något som matchar en post minskar “kvar” — så tryggt
+          idag inte straffar dig två gånger.
+        </p>
         {visible.length === 0 ? (
           <p className="text-sm text-[var(--numa-muted)]">
-            Inga hinkar ännu. Lägg till det som redan är planerat — då krymper
-            “tryggt idag” till det som faktiskt är ledigt.
+            Inga poster ännu. Lägg till det som redan är öronmärkt — hyra, mat,
+            sparmål — så blir tryggt idag ärligt.
           </p>
         ) : (
           <ul className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
-            {visible.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-start justify-between gap-3 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{item.name}</p>
-                  <p className="text-xs text-[var(--numa-faint)]">
-                    {kindLabel(item.kind)} · månadsvis
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="money text-sm font-semibold">
-                    {formatMoney(money(item.amountMinor, item.currency))}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--numa-muted)]"
-                    disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        await deletePlanItemAction(item.id);
-                        router.refresh();
-                      });
-                    }}
-                  >
-                    Ta bort
-                  </button>
-                </div>
-              </li>
-            ))}
+            {visible.map((item) => {
+              const rem = itemRemaining.find((r) => r.itemId === item.id);
+              const remaining = rem?.remainingMinor ?? item.amountMinor;
+              const spent = rem?.spentMinor ?? 0;
+              return (
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{item.name}</p>
+                    <p className="text-xs text-[var(--numa-faint)]">
+                      {kindLabel(item.kind)} · månadsvis
+                      {spent > 0
+                        ? ` · betalt ${formatMoney(money(spent, item.currency))}`
+                        : ""}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <span className="money text-sm font-semibold">
+                      {remaining === item.amountMinor
+                        ? formatMoney(money(item.amountMinor, item.currency))
+                        : `Kvar ${formatMoney(money(remaining, item.currency))}`}
+                    </span>
+                    {remaining !== item.amountMinor ? (
+                      <span className="text-[11px] text-[var(--numa-faint)]">
+                        av {formatMoney(money(item.amountMinor, item.currency))}
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="text-xs text-[var(--numa-muted)]"
+                      disabled={pending}
+                      onClick={() => {
+                        startTransition(async () => {
+                          const result = await deletePlanItemAction(item.id);
+                          if (!result.ok) {
+                            setError(result.error);
+                            return;
+                          }
+                          router.refresh();
+                        });
+                      }}
+                    >
+                      Ta bort
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-medium">Lägg till hink</h2>
+        <h2 className="font-medium">Lägg till i planen</h2>
         <div className="flex flex-wrap gap-2">
           {KIND_OPTIONS.map((k) => (
             <button
@@ -161,7 +191,7 @@ export function PlanEditor({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder={`Belopp (${currency})`}
-          className="money min-h-14 w-full rounded-2xl border border-[var(--numa-border)] bg-white/70 px-4 text-2xl font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="money min-h-14 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-2xl font-semibold text-[var(--numa-ink)] outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         {error ? (
           <p className="text-sm text-[var(--numa-danger)]" role="alert">

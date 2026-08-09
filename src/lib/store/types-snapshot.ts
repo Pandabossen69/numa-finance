@@ -21,12 +21,24 @@ export type TodaySnapshot = {
   safeToSpendTodayMinor: number;
   safeToSpendWeekMinor: number;
   freeMinor: number;
+  /** Remaining reserved after matching this period's expenses. */
   reservedMinor: number;
+  /** Original reserved plan total before spending allocation. */
+  reservedPlannedMinor: number;
   bufferMinor: number;
+  /** Remaining flexible after matched spend. */
   flexibleMinor: number;
+  flexiblePlannedMinor: number;
   daysUntilIncome: number;
   recentTransactions: CanonicalTransaction[];
   planItems: PlanItem[];
+  /** Remaining vs planned per plan item (for Plan UI). */
+  planItemRemaining: Array<{
+    itemId: string;
+    plannedMinor: number;
+    remainingMinor: number;
+    spentMinor: number;
+  }>;
   currency: CurrencyCode;
   /** Personal game progress — never includes balances. */
   progress: UserProgress | null;

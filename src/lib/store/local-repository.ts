@@ -857,11 +857,14 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       safeToSpendWeekMinor: 0,
       freeMinor: 0,
       reservedMinor: 0,
+      reservedPlannedMinor: 0,
       bufferMinor: 0,
       flexibleMinor: 0,
+      flexiblePlannedMinor: 0,
       daysUntilIncome: 17,
       recentTransactions: [],
       planItems,
+      planItemRemaining: [],
       currency: profile.primaryCurrency,
       progress: await getUserProgress(),
     };
@@ -894,7 +897,15 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const currency = primary.currency;
   const todaySpending = sumSpending(todayTx, currency);
   const monthSpending = sumSpending(monthTx, currency);
-  const totals = calculatePlanTotals(planItems, currency, now, 17);
+  const periodSpend = monthTx.map((t) => ({
+    amountMinor: t.amountMinor,
+    description: t.description,
+    category: t.category,
+    currency: t.currency,
+    transactionType: t.transactionType,
+    status: t.status,
+  }));
+  const totals = calculatePlanTotals(planItems, currency, now, 17, periodSpend);
   const available = calculated ?? money(0, currency);
   const safe = calculateSafeToSpend({
     available,
@@ -927,14 +938,17 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
     reservedMinor: totals.reservedMinor,
+    reservedPlannedMinor: totals.reservedPlannedMinor,
     bufferMinor: totals.bufferMinor,
     flexibleMinor: totals.flexibleMinor,
+    flexiblePlannedMinor: totals.flexiblePlannedMinor,
     daysUntilIncome: totals.daysUntilNextIncome,
     recentTransactions: [...accountTx]
       .filter((t) => t.status !== "voided")
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
       .slice(0, 8),
     planItems,
+    planItemRemaining: totals.itemRemaining,
     currency,
     progress: await getUserProgress(),
   };

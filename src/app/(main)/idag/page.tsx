@@ -100,10 +100,16 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
 
   const reservedAndBuffer =
     coerceMinor(snap.reservedMinor) + coerceMinor(snap.bufferMinor);
+  const plannedReserved = coerceMinor(snap.reservedPlannedMinor);
+  const remainingReserved = coerceMinor(snap.reservedMinor);
   const planHint =
-    reservedAndBuffer > 0
-      ? `Efter ${formatMoney(moneyFromUnknown(reservedAndBuffer, currency))} i plan & buffert · ${snap.daysUntilIncome} dagar kvar`
-      : `Ingen plan lagd ännu · ${snap.daysUntilIncome} dagar till nästa inkomst`;
+    plannedReserved > 0
+      ? remainingReserved < plannedReserved
+        ? `Kvar att reservera ${formatMoney(moneyFromUnknown(reservedAndBuffer, currency))} (betalt räknas bort) · ${snap.daysUntilIncome} dagar kvar`
+        : `Efter ${formatMoney(moneyFromUnknown(reservedAndBuffer, currency))} i plan & buffert · ${snap.daysUntilIncome} dagar kvar`
+      : reservedAndBuffer > 0
+        ? `Efter ${formatMoney(moneyFromUnknown(reservedAndBuffer, currency))} i buffert · ${snap.daysUntilIncome} dagar kvar`
+        : `Ingen plan lagd ännu · ${snap.daysUntilIncome} dagar till nästa inkomst`;
 
   return (
     <div className="space-y-7 pt-2 text-[var(--numa-ink)]">
