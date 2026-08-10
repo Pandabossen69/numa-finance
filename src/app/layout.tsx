@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
-import { EmergencyBanner } from "@/components/layout/EmergencyBanner";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import "./globals.css";
 
@@ -35,10 +34,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#eef2ef",
+  themeColor: "#e6eee9",
   colorScheme: "light",
 };
-
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +48,6 @@ export default function RootLayout({
   return (
     <html lang="sv" className={`${sans.variable} ${mono.variable} h-full`}>
       <body className="min-h-full antialiased">
-        <EmergencyBanner />
         {children}
         <PwaRegister />
       </body>

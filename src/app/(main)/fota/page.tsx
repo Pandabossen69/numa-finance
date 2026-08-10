@@ -7,10 +7,6 @@ import {
   type HomeSnapshot,
 } from "@/features/finance/home-snapshot";
 
-const ink = "#132019";
-const muted = "#5a6b61";
-const accent = "#1f6f5b";
-
 export default function FotaPage() {
   const [snap, setSnap] = useState<HomeSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,63 +31,35 @@ export default function FotaPage() {
   }, []);
 
   return (
-    <div style={{ color: ink, fontFamily: "system-ui, sans-serif" }}>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: accent }}>
-        Snabbt · kvitto eller skärmbild
-      </p>
-      <h1 style={{ margin: "4px 0 0", fontSize: "1.65rem", fontWeight: 700 }}>
-        Fota och bekräfta
-      </h1>
-      <p
-        style={{
-          margin: "8px 0 20px",
-          maxWidth: "36ch",
-          fontSize: 15,
-          lineHeight: 1.5,
-          color: muted,
-        }}
-      >
-        NUMA läser beloppet när det går — du godkänner innan det sparas.
-      </p>
+    <div className="space-y-5">
+      <header className="animate-rise">
+        <p className="text-sm font-medium text-[var(--numa-accent)]">
+          Bank-SMS · start
+        </p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
+          Fota och bekräfta
+        </h1>
+        <p className="mt-2 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          {snap && !snap.hasBankTruth
+            ? "Första SMS:et sätter hur mycket du har (available balance) och sparar beloppet som drogs. Allt är noll tills dess."
+            : "Läser alla SMS i bilden, sparar bara den senaste nya — saldo efter uppdateras från banken."}
+        </p>
+      </header>
 
       {loading ? (
-        <p style={{ fontSize: 14, color: muted }}>Förbereder…</p>
+        <p className="text-sm text-[var(--numa-muted)]">Förbereder…</p>
       ) : null}
       {error ? (
-        <p style={{ fontSize: 14, color: "#a61f1f" }}>{error}</p>
+        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
       ) : null}
 
-      {snap && !snap.primaryAccountId ? (
-        <div>
-          <p style={{ fontSize: 14, color: muted }}>
-            Ange först hur mycket du har just nu.
-          </p>
-          <a
-            href="/idag"
-            style={{
-              display: "flex",
-              minHeight: 56,
-              marginTop: 16,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 20,
-              background: accent,
-              color: "#fff",
-              fontWeight: 700,
-              textDecoration: "none",
-            }}
-          >
-            Ange mitt saldo
-          </a>
-        </div>
-      ) : null}
-
-      {snap?.primaryAccountId ? (
+      {snap ? (
         <ReceiptCaptureFlow
           accountId={snap.primaryAccountId}
           safeToSpendTodayMinor={snap.safeToSpendTodayMinor}
           todaySpendingMinor={snap.todaySpendingMinor}
           currency={snap.currency}
+          bootstrapping={!snap.hasBankTruth}
         />
       ) : null}
     </div>

@@ -7,6 +7,8 @@ import { getTodaySnapshot } from "@/lib/store/repository";
 export type HomeSnapshot = {
   primaryAccountId: string | null;
   currency: CurrencyCode;
+  /** True once first bank-SMS balance has been confirmed. */
+  hasBankTruth: boolean;
   calculatedBalanceMinor: number | null;
   verificationLabel: string | null;
   checkpointVerifiedAt: string | null;
@@ -68,6 +70,7 @@ export async function getHomeSnapshotAction(): Promise<HomeSnapshotResult> {
       data: {
         primaryAccountId: snap.primaryAccount?.id ?? null,
         currency: snap.currency,
+        hasBankTruth: snap.checkpoint != null,
         calculatedBalanceMinor: snap.calculatedBalanceMinor,
         verificationLabel: snap.verificationLabel,
         checkpointVerifiedAt: snap.checkpoint?.verifiedAt ?? null,

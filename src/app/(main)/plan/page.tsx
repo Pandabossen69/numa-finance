@@ -1,113 +1,84 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PlanEditor } from "@/components/plan/PlanEditor";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import type { PlanItem } from "@/domain/finance";
 import {
   getHomeSnapshotAction,
   type HomeSnapshot,
 } from "@/features/finance/home-snapshot";
 
-const ink = "#132019";
-const muted = "#5a6b61";
-const accent = "#1f6f5b";
-
 export default function PlanPage() {
   const [snap, setSnap] = useState<HomeSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const result = await getHomeSnapshotAction();
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-      setSnap(result.data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    void getHomeSnapshotAction().then((r) => {
+      if (r.ok) setSnap(r.data);
+    });
   }, []);
 
-  const editorItems: PlanItem[] = (snap?.goals ?? []).map((g) => ({
-    id: g.id,
-    userId: "local",
-    name: g.name,
-    kind: "goal",
-    amountMinor: g.amountMinor,
-    currency: g.currency,
-    cadence: null,
-    nextDueAt: null,
-    isActive: true,
-    createdAt: new Date(0).toISOString(),
-    updatedAt: new Date(0).toISOString(),
-  }));
+  const currency = snap?.currency ?? "THB";
 
   return (
-    <div style={{ color: ink, fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 700 }}>Plan</h1>
-      <p
-        style={{
-          margin: "8px 0 20px",
-          maxWidth: "36ch",
-          fontSize: 14,
-          lineHeight: 1.5,
-          color: muted,
-        }}
-      >
-        Mål och hinkar som räknas in i vad som är tryggt att spendera.
-      </p>
+    <div className="space-y-6">
+      <header className="animate-rise">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
+          Plan
+        </h1>
+        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
+          Reserverat och buffert styr tryggt att spendera. Allt är noll tills
+          första bank-SMS och du lägger till planrader.
+        </p>
+      </header>
 
-      {loading ? (
-        <p style={{ fontSize: 14, color: muted }}>Hämtar plan…</p>
-      ) : null}
-      {error ? (
-        <p style={{ fontSize: 14, color: "#a61f1f" }}>{error}</p>
-      ) : null}
-
-      {snap && !snap.primaryAccountId ? (
+      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-2">
         <div>
-          <p style={{ fontSize: 14, color: muted }}>
-            Ange saldo på Hem innan du lägger in mål.
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+            Reserverat
           </p>
-          <a href="/idag" style={{ color: accent, fontWeight: 700 }}>
-            Till Hem →
-          </a>
-        </div>
-      ) : null}
-
-      {snap?.primaryAccountId ? (
-        <div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "12px 0",
-              borderBottom: "1px solid rgba(19,32,25,0.12)",
-              marginBottom: 16,
-            }}
-          >
-            <span style={{ fontSize: 14, color: muted }}>Tryggt idag</span>
+          <div className="mt-2">
             <MoneyDisplay
-              amountMinor={snap.safeToSpendTodayMinor}
-              currency={snap.currency}
-              size="md"
+              amountMinor={snap?.reservedMinor ?? 0}
+              currency={currency}
+              size="lg"
             />
           </div>
-          <PlanEditor
-            items={editorItems}
-            currency={snap.currency}
-            daysUntilIncome={snap.daysUntilIncome}
-          />
         </div>
-      ) : null}
+        <div>
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+            Buffert
+          </p>
+          <div className="mt-2">
+            <MoneyDisplay
+              amountMinor={snap?.bufferMinor ?? 0}
+              currency={currency}
+              size="lg"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="numa-panel animate-rise-delay-2 p-5">
+        <h2 className="text-sm font-semibold">Aktiva mål</h2>
+        {(snap?.goals.length ?? 0) === 0 ? (
+          <p className="mt-4 text-sm text-[var(--numa-faint)]">Inga mål ännu</p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {snap!.goals.map((goal) => (
+              <li
+                key={goal.id}
+                className="flex items-center justify-between border-b border-[var(--numa-border)] pb-3 last:border-0"
+              >
+                <span className="text-sm text-[var(--numa-muted)]">{goal.name}</span>
+                <MoneyDisplay
+                  amountMinor={goal.amountMinor}
+                  currency={goal.currency}
+                  size="sm"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

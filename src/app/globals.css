@@ -1,29 +1,37 @@
 @import "tailwindcss";
 
 /*
- * NUMA uses a single light theme on purpose.
- * Following system dark mode made iPhone screens near-unreadable
- * (dark surfaces + weak contrast). Do not re-enable prefers-color-scheme
- * dark tokens until a full dark design pass exists.
+ * NUMA visual foundation — light theme only.
+ * Atmosphere via layered washes; money uses tabular mono.
  */
 :root {
-  --numa-bg: #eef2ef;
-  --numa-bg-accent: #e3ebe6;
-  --numa-ink: #132019;
-  --numa-muted: #5a6b61;
-  --numa-faint: #8a9a91;
-  --numa-surface: #fbfcfb;
-  --numa-surface-solid: #fbfcfb;
-  --numa-border: rgba(19, 32, 25, 0.12);
-  --numa-accent: #1f6f5b;
-  --numa-accent-soft: #d5ebe3;
-  --numa-accent-ink: #0d3f34;
-  --numa-danger: #a61f1f;
-  --numa-positive: #1b6b45;
-  --numa-shadow: 0 18px 40px rgba(19, 32, 25, 0.08);
-  --numa-nav: #fbfcfb;
+  --numa-bg: #e6eee9;
+  --numa-bg-deep: #d7e4dc;
+  --numa-ink: #0a1a14;
+  --numa-muted: #4d5f56;
+  --numa-faint: #7a8c83;
+  --numa-surface: rgba(251, 253, 252, 0.82);
+  --numa-surface-solid: #fbfdfc;
+  --numa-surface-strong: #ffffff;
+  --numa-border: rgba(10, 26, 20, 0.1);
+  --numa-border-strong: rgba(10, 26, 20, 0.16);
+  --numa-accent: #0d7a66;
+  --numa-accent-soft: #cfe8e0;
+  --numa-accent-ink: #064c40;
+  --numa-accent-glow: rgba(13, 122, 102, 0.22);
+  --numa-danger: #b42318;
+  --numa-danger-soft: #fde8e6;
+  --numa-positive: #176b45;
+  --numa-positive-soft: #d7f0e4;
+  --numa-warning: #9a6700;
+  --numa-warning-soft: #fef3c7;
+  --numa-shadow: 0 20px 48px rgba(10, 26, 20, 0.08);
+  --numa-shadow-sm: 0 8px 24px rgba(10, 26, 20, 0.06);
+  --numa-nav: rgba(251, 253, 252, 0.92);
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
+  --numa-shell-max: 72rem;
+  --numa-content-max: 42rem;
   --background: var(--numa-bg);
   --foreground: var(--numa-ink);
   color-scheme: light;
@@ -59,61 +67,99 @@ html {
 body {
   min-height: 100dvh;
   background:
-    radial-gradient(1200px 600px at 10% -10%, var(--numa-bg-accent), transparent 55%),
-    radial-gradient(900px 500px at 100% 0%, rgba(31, 111, 91, 0.08), transparent 45%),
-    var(--numa-bg);
+    radial-gradient(980px 520px at 8% -12%, #f4faf7 0%, transparent 58%),
+    radial-gradient(820px 480px at 100% 0%, rgba(13, 122, 102, 0.14) 0%, transparent 52%),
+    radial-gradient(700px 420px at 70% 110%, rgba(10, 26, 20, 0.05) 0%, transparent 48%),
+    linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
+  background-attachment: fixed;
   color: var(--numa-ink);
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
 }
 
 .money {
+  font-family: var(--font-numa-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
-.numa-shell {
-  width: min(100%, 28rem);
-  margin-inline: auto;
-  min-height: 100dvh;
-  color: var(--numa-ink);
-  background: transparent;
+.numa-panel {
+  background: var(--numa-surface);
+  border: 1px solid var(--numa-border);
+  border-radius: 1.35rem;
+  box-shadow: var(--numa-shadow-sm);
+  backdrop-filter: blur(12px);
 }
 
-.numa-bottom-pad {
-  padding-bottom: calc(5.75rem + var(--numa-safe-bottom));
+.numa-panel-strong {
+  background: var(--numa-surface-strong);
+  border: 1px solid var(--numa-border);
+  border-radius: 1.5rem;
+  box-shadow: var(--numa-shadow);
 }
 
-/* Motion: transform only. Never animate opacity on page content. */
 @keyframes numa-rise {
   from {
-    transform: translateY(8px);
+    transform: translateY(12px);
+    filter: blur(2px);
   }
   to {
     transform: translateY(0);
+    filter: blur(0);
   }
 }
 
-@keyframes numa-sheet-in {
+@keyframes numa-bar {
   from {
-    transform: translateY(28px);
+    transform: scaleX(0);
   }
   to {
-    transform: translateY(0);
+    transform: scaleX(1);
+  }
+}
+
+@keyframes numa-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.015);
   }
 }
 
 .animate-rise {
-  animation: numa-rise 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: numa-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.animate-sheet {
-  animation: numa-sheet-in 300ms cubic-bezier(0.22, 1, 0.36, 1);
+.animate-rise-delay-1 {
+  animation: numa-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+.animate-rise-delay-2 {
+  animation: numa-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+}
+
+.animate-rise-delay-3 {
+  animation: numa-rise 640ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+}
+
+.animate-bar {
+  transform-origin: left center;
+  animation: numa-bar 700ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
+}
+
+.animate-breathe {
+  animation: numa-breathe 4.5s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
-  .animate-sheet {
+  .animate-rise-delay-1,
+  .animate-rise-delay-2,
+  .animate-rise-delay-3,
+  .animate-bar,
+  .animate-breathe {
     animation: none !important;
   }
 }
@@ -129,7 +175,7 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(900px 520px at 50% -8%, rgba(31, 111, 91, 0.18), transparent 58%),
-    radial-gradient(700px 420px at 100% 85%, rgba(31, 111, 91, 0.08), transparent 50%),
-    radial-gradient(600px 380px at 0% 70%, rgba(19, 32, 25, 0.04), transparent 45%);
+    radial-gradient(900px 520px at 50% -8%, rgba(13, 122, 102, 0.18), transparent 58%),
+    radial-gradient(700px 420px at 100% 85%, rgba(13, 122, 102, 0.08), transparent 50%),
+    radial-gradient(600px 380px at 0% 70%, rgba(10, 26, 20, 0.04), transparent 45%);
 }

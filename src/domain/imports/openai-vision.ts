@@ -5,7 +5,20 @@ import {
   type ExtractionRequest,
 } from "./extraction";
 
+type VisionSmsMessage = {
+  rawText?: string | null;
+  amountMajor?: number | string | null;
+  balanceAfterMajor?: number | string | null;
+  accountHint?: string | null;
+  direction?: "debit" | "credit" | null;
+  visualOrder?: number | null;
+  isNewestVisual?: boolean | null;
+};
+
 type VisionJson = {
+  kind?: "bangkok_bank_sms" | "receipt" | "unknown" | string | null;
+  fullText?: string | null;
+  messages?: VisionSmsMessage[] | null;
   amountMajor?: number | string | null;
   currency?: string | null;
   description?: string | null;
@@ -13,8 +26,18 @@ type VisionJson = {
   confidence?: number | null;
 };
 
+function majorToMinor(value: number | string | null | undefined): number | null {
+  if (value == null) return null;
+  const major =
+    typeof value === "number" ? value : Number(String(value).replace(",", "."));
+  if (!Number.isFinite(major) || major <= 0) return null;
+  return Math.round(major * 100);
+}
+
 /**
- * OpenAI Vision extraction — candidates only, never ledger writes.
+ * OpenAI Vision — candidates only.
+ * Bangkok Bank SMS screenshots are first-class: extract EVERY bubble, then
+ * domain logic picks the newest unknown payment.
  */
 export class OpenAiVisionExtractionProvider implements ExtractionProvider {
   readonly name = "vision_api" as const;
@@ -38,17 +61,26 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         {
           role: "system",
           content:
-            "You extract purchase totals from receipt photos for a personal finance app. " +
-            "Return JSON only with keys: amountMajor (number), currency (THB or SEK), " +
-            "description (short Swedish or English), merchant (string|null), confidence (0-1). " +
-            "Use the final amount due / total, not line items. If unclear, set amountMajor null.",
+            "You read phone screenshots for a personal finance app (NUMA). " +
+            "Bangkok Bank payment SMS almost always looks like: " +
+            '"Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE; the available balance is Bt 10,693.04." ' +
+            "A screenshot may show SEVERAL such SMS. Extract EVERY distinct SMS, oldest→newest by visual conversation order when possible. " +
+            "Return JSON only with keys: " +
+            "kind ('bangkok_bank_sms'|'receipt'|'unknown'), " +
+            "fullText (all SMS concatenated with blank lines), " +
+            "messages (array of {rawText, amountMajor, balanceAfterMajor, accountHint, direction, visualOrder, isNewestVisual}), " +
+            "amountMajor, currency (THB|SEK), description, merchant, confidence (0-1). " +
+            "For bangkok_bank_sms: prefer exact rawText transcription; do not invent amounts. " +
+            "For receipts: use final total only. If unclear, null amounts.",
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: "Extract the receipt total.",
+              text:
+                "Extract bank SMS messages or receipt total from this image. " +
+                "If multiple Bangkok Bank SMS are visible, include all of them.",
             },
             {
               type: "image_url",
@@ -98,44 +130,73 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       };
     }
 
+    const kind = parsed.kind ?? "unknown";
+    const messages = Array.isArray(parsed.messages) ? parsed.messages : [];
+    const smsTexts = messages
+      .map((m) => (typeof m.rawText === "string" ? m.rawText.trim() : ""))
+      .filter(Boolean);
+    const fullText =
+      (typeof parsed.fullText === "string" && parsed.fullText.trim()) ||
+      smsTexts.join("\n\n");
+
     const currency =
       parsed.currency === "SEK" || parsed.currency === "THB"
         ? parsed.currency
-        : "THB";
-    const major =
-      typeof parsed.amountMajor === "number"
-        ? parsed.amountMajor
-        : typeof parsed.amountMajor === "string"
-          ? Number(parsed.amountMajor.replace(",", "."))
-          : NaN;
-    const amountMinor =
-      Number.isFinite(major) && major > 0 ? Math.round(major * 100) : null;
+        : ("THB" as const);
     const confidence =
       typeof parsed.confidence === "number"
         ? Math.min(1, Math.max(0, parsed.confidence))
         : null;
 
-    const description =
-      [parsed.merchant, parsed.description].filter(Boolean).join(" · ") ||
-      parsed.description ||
-      parsed.merchant ||
-      null;
+    const candidates: ExtractionProviderResult["candidates"] =
+      kind === "bangkok_bank_sms" && messages.length > 0
+        ? messages.map((m) => ({
+            direction:
+              m.direction === "credit" || m.direction === "debit"
+                ? m.direction
+                : ("debit" as const),
+            amountMinor: majorToMinor(m.amountMajor),
+            currency: "THB" as const,
+            balanceAfterMinor: majorToMinor(m.balanceAfterMajor),
+            occurredAt: null,
+            description: m.rawText?.slice(0, 160) ?? null,
+            confidence,
+            rawPayload: {
+              ...(m as Record<string, unknown>),
+              rawText: m.rawText ?? null,
+              fullText,
+            },
+          }))
+        : [
+            {
+              direction: "debit" as const,
+              amountMinor: majorToMinor(parsed.amountMajor),
+              currency,
+              balanceAfterMinor: null,
+              occurredAt: new Date().toISOString(),
+              description:
+                [parsed.merchant, parsed.description]
+                  .filter(Boolean)
+                  .join(" · ") ||
+                parsed.description ||
+                parsed.merchant ||
+                null,
+              confidence,
+              rawPayload: parsed as Record<string, unknown>,
+            },
+          ];
 
     return {
       provider: "vision_api",
-      candidates: [
-        {
-          direction: "debit",
-          amountMinor,
-          currency,
-          balanceAfterMinor: null,
-          occurredAt: new Date().toISOString(),
-          description,
-          confidence,
-          rawPayload: parsed as Record<string, unknown>,
-        },
-      ],
-      rawMetadata: { model: "gpt-4o-mini", observationId: request.observationId },
+      candidates,
+      rawMetadata: {
+        model: "gpt-4o-mini",
+        observationId: request.observationId,
+        detectedKind: kind,
+        fullText,
+        smsTexts,
+        messageCount: messages.length || (fullText ? 1 : 0),
+      },
     };
   }
 }

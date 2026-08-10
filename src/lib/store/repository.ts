@@ -35,6 +35,12 @@ export async function createAccount(
   return api().createAccount(input);
 }
 
+export async function ensureDefaultBankAccount(
+  input?: Parameters<typeof local.ensureDefaultBankAccount>[0],
+) {
+  return api().ensureDefaultBankAccount(input);
+}
+
 export async function createCheckpoint(
   input: Parameters<typeof local.createCheckpoint>[0],
 ) {
