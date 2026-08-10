@@ -9,7 +9,7 @@ export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
 export type { UserProgress } from "./types-progress";
 
-const SNAPSHOT_TIMEOUT_MS = 8_000;
+const SNAPSHOT_TIMEOUT_MS = 5_000;
 
 function api() {
   const supabase = isSupabaseConfigured();

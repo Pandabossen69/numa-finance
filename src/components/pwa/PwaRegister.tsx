@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 
-const KILL_FLAG = "numa.swKill.v7";
+const KILL_FLAG = "numa.swKill.v8";
 
 /**
- * Always strip service workers. Re-registering even an inert SW let some
- * browsers keep a controller that served empty <main> while BottomNav hydrated.
+ * Unregister service workers only. Never re-register.
+ * Reload at most once when an active controller was present.
  */
 export function PwaRegister() {
   useEffect(() => {
@@ -14,7 +14,17 @@ export function PwaRegister() {
 
     async function detox() {
       try {
-        const already = localStorage.getItem(KILL_FLAG) === "done";
+        if (localStorage.getItem(KILL_FLAG) === "done") {
+          // Still clear any lingering registrations without reload.
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            if (regs.length > 0) {
+              await Promise.all(regs.map((reg) => reg.unregister()));
+            }
+          }
+          return;
+        }
+
         const hadController =
           "serviceWorker" in navigator &&
           Boolean(navigator.serviceWorker.controller);
@@ -33,8 +43,7 @@ export function PwaRegister() {
 
         localStorage.setItem(KILL_FLAG, "done");
 
-        // Reload once when a controller was present OR first time on v7.
-        if (hadController || !already) {
+        if (hadController) {
           const url = new URL(window.location.href);
           url.searchParams.set("recovered", String(Date.now()));
           window.location.replace(`${url.pathname}${url.search}`);

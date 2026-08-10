@@ -3,12 +3,16 @@ import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DayPulseHero } from "@/components/idag/DayPulseHero";
 import { IdagQuickActions } from "@/components/idag/IdagQuickActions";
+import { HardReloadLink } from "@/components/ui/HardReloadLink";
 import { hoursSince, NEXT_INCOME_NAME } from "@/domain/finance";
 import { calculateDayPulse } from "@/domain/gamification";
 import { formatMoney, money } from "@/domain/money";
 import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
-import Link from "next/link";
-import { HardReloadLink } from "@/components/ui/HardReloadLink";
+
+const ink = "#132019";
+const muted = "#5a6b61";
+const faint = "#8a9a91";
+const accent = "#1f6f5b";
 
 function coerceMinor(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -16,10 +20,30 @@ function coerceMinor(value: unknown): number {
   return Math.round(n);
 }
 
-/** Streams immediately — never leave <main> empty while data loads. */
+/**
+ * Static chrome first — never wait on Supabase before painting something.
+ * Blank /idag was caused by hung RSC with no visible fallback.
+ */
 export default function IdagPage() {
   return (
-    <div className="space-y-5 pt-1 text-[var(--numa-ink)]">
+    <div style={{ color: ink, paddingTop: 4 }}>
+      <header style={{ marginBottom: 20 }}>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "1.65rem",
+            fontWeight: 600,
+            letterSpacing: "-0.04em",
+            color: ink,
+          }}
+        >
+          NUMA
+        </h1>
+        <p style={{ margin: "4px 0 0", fontSize: 14, color: muted }}>
+          Koll på budget, mål och varje köp
+        </p>
+      </header>
+
       <Suspense fallback={<IdagFallback />}>
         <IdagBody />
       </Suspense>
@@ -29,33 +53,40 @@ export default function IdagPage() {
 
 function IdagFallback() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-[1.65rem] font-semibold tracking-tight">NUMA</h1>
-      <h2 className="text-xl font-semibold tracking-tight">Hämtar din ekonomi…</h2>
-      <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Om detta stannar mer än några sekunder: öppna Mer → Laga appen.
+    <div style={{ color: ink }}>
+      <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
+        Hämtar din ekonomi…
       </p>
-      <div className="h-28 rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface)]" />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="h-14 rounded-[1.25rem] bg-[var(--numa-accent)]/80" />
-        <div className="h-14 rounded-[1.25rem] border border-[var(--numa-border)]" />
-      </div>
+      <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: muted }}>
+        Tar det mer än några sekunder: tryck Mer-meny eller Laga appen i listen
+        högst upp.
+      </p>
+      <div
+        style={{
+          marginTop: 16,
+          height: 112,
+          borderRadius: 28,
+          border: "1px solid rgba(19,32,25,0.12)",
+          background: "#fbfcfb",
+        }}
+      />
     </div>
   );
 }
 
 function LoadFailed({ detail }: { detail?: string }) {
   return (
-    <div className="space-y-4">
-      <h1 className="text-[1.65rem] font-semibold tracking-tight">NUMA</h1>
-      <h2 className="text-xl font-semibold tracking-tight">Kunde inte ladda</h2>
-      <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+    <div style={{ color: ink }}>
+      <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Kunde inte ladda</p>
+      <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.5, color: muted }}>
         Något störde hämtningen. Ladda om eller laga appen.
       </p>
       {detail ? (
-        <p className="break-words text-xs text-[var(--numa-faint)]">{detail}</p>
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: faint, wordBreak: "break-word" }}>
+          {detail}
+        </p>
       ) : null}
-      <div className="flex flex-col gap-3">
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
         <HardReloadLink
           href="/idag"
           className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-semibold text-white"
@@ -64,9 +95,23 @@ function LoadFailed({ detail }: { detail?: string }) {
         </HardReloadLink>
         <a
           href="/laga"
-          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
+          style={{
+            display: "flex",
+            minHeight: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            border: "1px solid rgba(19,32,25,0.12)",
+            color: ink,
+            fontSize: 14,
+            fontWeight: 500,
+            textDecoration: "none",
+          }}
         >
           Laga appen
+        </a>
+        <a href="/mer" style={{ color: accent, fontSize: 14, fontWeight: 500 }}>
+          Gå till Mer-menyn →
         </a>
       </div>
     </div>
@@ -97,20 +142,30 @@ async function IdagBody() {
 function renderIdag(snap: TodaySnapshot) {
   if (!snap.primaryAccount) {
     return (
-      <div className="space-y-6 pb-4">
-        <header>
-          <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
-          <p className="mt-1 text-sm text-[var(--numa-muted)]">Din ekonomi · steg 1</p>
-        </header>
-        <section className="space-y-3">
-          <h2 className="text-[1.7rem] font-semibold tracking-tight">
-            Vad har du just nu?
-          </h2>
-          <p className="max-w-[36ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-            Ange ditt saldo. Sedan kan du sätta mål, fota kvitton och se om du har
-            råd — hela tiden.
-          </p>
-        </section>
+      <div style={{ color: ink }}>
+        <p style={{ margin: 0, fontSize: 14, color: muted }}>Din ekonomi · steg 1</p>
+        <h2
+          style={{
+            margin: "12px 0 0",
+            fontSize: "1.7rem",
+            fontWeight: 600,
+            color: ink,
+          }}
+        >
+          Vad har du just nu?
+        </h2>
+        <p
+          style={{
+            margin: "8px 0 16px",
+            maxWidth: "36ch",
+            fontSize: 15,
+            lineHeight: 1.5,
+            color: muted,
+          }}
+        >
+          Ange ditt saldo. Sedan kan du sätta mål, fota kvitton och se om du har
+          råd — hela tiden.
+        </p>
         <CreateAccountForm />
       </div>
     );
@@ -160,71 +215,103 @@ function renderIdag(snap: TodaySnapshot) {
     : [];
 
   return (
-    <div className="space-y-7 pb-2">
-      <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
-        <p className="mt-1 text-sm text-[var(--numa-muted)]">
-          Koll på budget, mål och varje köp
-        </p>
-      </header>
-
+    <div style={{ color: ink }}>
       <DayPulseHero pulse={pulse} currency={currency} />
 
-      <section className="space-y-2 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+      <section
+        style={{
+          marginTop: 20,
+          borderRadius: 22,
+          border: "1px solid rgba(19,32,25,0.12)",
+          background: "#fbfcfb",
+          padding: 16,
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: faint,
+          }}
+        >
           Har du råd?
         </p>
-        <p className="text-[15px] leading-relaxed text-[var(--numa-ink)]">
+        <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.5, color: ink }}>
           {affordLine}
         </p>
-        <p className="text-sm text-[var(--numa-muted)]">{savingLine}</p>
-        <p className="text-sm text-[var(--numa-muted)]">
+        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>{savingLine}</p>
+        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
           Baserat på saldo, plan och {snap.daysUntilIncome} dagar till nästa
           inkomst.
         </p>
       </section>
 
-      <IdagQuickActions
-        accountId={snap.primaryAccount.id}
-        verificationLabel={snap.verificationLabel}
-        stale={stale}
-      />
+      <div style={{ marginTop: 20 }}>
+        <IdagQuickActions
+          accountId={snap.primaryAccount.id}
+          verificationLabel={snap.verificationLabel}
+          stale={stale}
+        />
+      </div>
 
-      <section className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+      <section style={{ marginTop: 28 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: "0.16em",
+            textTransform: "uppercase",
+            color: faint,
+          }}
+        >
           Saldo
         </p>
-        <div>
+        <div style={{ marginTop: 8 }}>
           {calculated != null ? (
-            <MoneyDisplay
-              amountMinor={calculated}
-              currency={currency}
-              size="xl"
-            />
+            <MoneyDisplay amountMinor={calculated} currency={currency} size="xl" />
           ) : (
-            <span className="text-3xl font-semibold">—</span>
+            <span style={{ fontSize: 30, fontWeight: 600 }}>—</span>
           )}
         </div>
-        <p className="text-sm text-[var(--numa-muted)]">
+        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
           {snap.verificationLabel
             ? `Uppdaterat ${snap.verificationLabel.toLowerCase()}`
             : "Uppdatera saldot så siffrorna stämmer"}
         </p>
       </section>
 
-      <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
-        <div className="flex items-end justify-between gap-4">
+      <section
+        style={{
+          marginTop: 28,
+          paddingTop: 24,
+          borderTop: "1px solid rgba(19,32,25,0.12)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+            <p
+              style={{
+                margin: 0,
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: faint,
+              }}
+            >
               Tryggt idag
             </p>
-            <div className="mt-2">
+            <div style={{ marginTop: 8 }}>
               <MoneyDisplay amountMinor={safeToday} currency={currency} size="lg" />
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-[var(--numa-faint)]">denna vecka</p>
-            <div className="mt-1">
+          <div style={{ textAlign: "right" }}>
+            <p style={{ margin: 0, fontSize: 12, color: faint }}>denna vecka</p>
+            <div style={{ marginTop: 4 }}>
               <MoneyDisplay
                 amountMinor={week}
                 currency={currency}
@@ -235,41 +322,88 @@ function renderIdag(snap: TodaySnapshot) {
           </div>
         </div>
         {reserved > 0 || buffer > 0 ? (
-          <p className="text-sm text-[var(--numa-muted)]">
+          <p style={{ margin: "12px 0 0", fontSize: 14, color: muted }}>
             {formatMoney(money(reserved + buffer, currency))} är redan
             reserverat i planen.
           </p>
         ) : null}
       </section>
 
-      <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+      <section
+        style={{
+          marginTop: 28,
+          paddingTop: 24,
+          borderTop: "1px solid rgba(19,32,25,0.12)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: faint,
+            }}
+          >
             Dina mål
           </p>
-          <Link href="/plan" className="text-sm text-[var(--numa-accent)]">
+          <a href="/plan" style={{ fontSize: 14, color: accent }}>
             Hantera
-          </Link>
+          </a>
         </div>
         {goals.length === 0 ? (
-          <div className="space-y-2">
-            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+          <div style={{ marginTop: 8 }}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: muted }}>
               Sätt ett sparmål eller planerat köp — då syns det här och räknas
               in i vad som är ledigt.
             </p>
-            <Link href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
+            <a
+              href="/plan"
+              style={{
+                display: "inline-block",
+                marginTop: 8,
+                fontSize: 14,
+                fontWeight: 500,
+                color: accent,
+              }}
+            >
               Lägg till mål →
-            </Link>
+            </a>
           </div>
         ) : (
-          <ul className="divide-y divide-[var(--numa-border)]">
+          <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none" }}>
             {goals.map((g) => (
               <li
                 key={g.id}
-                className="flex items-center justify-between gap-3 py-3"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "12px 0",
+                  borderBottom: "1px solid rgba(19,32,25,0.12)",
+                }}
               >
-                <p className="truncate text-sm font-medium">{g.name}</p>
-                <span className="money shrink-0 text-sm font-semibold">
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 14,
+                    fontWeight: 500,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {g.name}
+                </p>
+                <span style={{ fontSize: 14, fontWeight: 600, flexShrink: 0 }}>
                   {formatMoney(money(coerceMinor(g.amountMinor), g.currency))}
                 </span>
               </li>
@@ -278,49 +412,95 @@ function renderIdag(snap: TodaySnapshot) {
         )}
       </section>
 
-      <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+      <section
+        style={{
+          marginTop: 28,
+          paddingTop: 24,
+          borderTop: "1px solid rgba(19,32,25,0.12)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: faint,
+            }}
+          >
             Senaste köp
           </p>
-          <Link href="/transaktioner" className="text-sm text-[var(--numa-accent)]">
+          <a href="/transaktioner" style={{ fontSize: 14, color: accent }}>
             Alla
-          </Link>
+          </a>
         </div>
         {recent.length === 0 ? (
-          <div className="space-y-2">
-            <p className="text-sm text-[var(--numa-muted)]">
-              Inga köp ännu. Fota ett kvitto eller skärmbild när du betalar —
-              beloppet läggs in efter att du bekräftat.
+          <div style={{ marginTop: 8 }}>
+            <p style={{ margin: 0, fontSize: 14, color: muted }}>
+              Inga köp ännu. Fota ett kvitto eller skärmbild när du betalar.
             </p>
-            <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
+            <a
+              href="/fota"
+              style={{
+                display: "inline-block",
+                marginTop: 8,
+                fontSize: 14,
+                fontWeight: 500,
+                color: accent,
+              }}
+            >
               Fota kvitto →
-            </Link>
+            </a>
           </div>
         ) : (
-          <ul className="divide-y divide-[var(--numa-border)]">
+          <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none" }}>
             {recent.map((tx) => (
               <li
                 key={tx.id}
-                className="flex items-center justify-between gap-3 py-3"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "12px 0",
+                  borderBottom: "1px solid rgba(19,32,25,0.12)",
+                }}
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{tx.description}</p>
-                  <p className="text-xs text-[var(--numa-faint)]">
+                <div style={{ minWidth: 0 }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {tx.description}
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: faint }}>
                     {tx.category ?? typeLabel(tx.transactionType)}
                   </p>
                 </div>
                 <span
-                  className={`money shrink-0 text-sm font-semibold ${
-                    tx.direction === "debit"
-                      ? "text-[var(--numa-ink)]"
-                      : "text-[var(--numa-positive)]"
-                  }`}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                    color:
+                      tx.direction === "debit" ? ink : "var(--numa-positive)",
+                  }}
                 >
                   {tx.direction === "debit" ? "−" : "+"}
-                  {formatMoney(
-                    money(coerceMinor(tx.amountMinor), tx.currency),
-                  )}
+                  {formatMoney(money(coerceMinor(tx.amountMinor), tx.currency))}
                 </span>
               </li>
             ))}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-const KILL_FLAG = "numa.swKill.v7";
+const KILL_FLAG = "numa.swKill.v8";
 
 async function hardRepair(): Promise<void> {
   try {
