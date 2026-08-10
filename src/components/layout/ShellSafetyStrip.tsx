@@ -1,23 +1,45 @@
 "use client";
 
 /**
- * Always painted above page content. If Idag is blank from a bad cache,
- * this strip still gives a way out.
+ * Always painted above page content with hardcoded colors.
+ * CSS-variable failures / poisoned shells must not hide the escape hatch.
  */
 export function ShellSafetyStrip() {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3 border-b border-[var(--numa-border)] pb-3">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottom: "1px solid rgba(19,32,25,0.12)",
+        color: "#132019",
+      }}
+    >
       <a
         href="/idag"
-        className="text-[1.35rem] font-semibold tracking-[-0.04em] text-[var(--numa-ink)]"
+        style={{
+          fontSize: "1.35rem",
+          fontWeight: 600,
+          letterSpacing: "-0.04em",
+          color: "#132019",
+          textDecoration: "none",
+        }}
       >
         NUMA
       </a>
       <a
-        href="/installningar?laga=1"
-        className="text-xs font-medium text-[var(--numa-accent)]"
+        href="/laga"
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#1f6f5b",
+          textDecoration: "none",
+        }}
       >
-        Tom skärm? Laga →
+        Tom skärm? Tryck här
       </a>
     </div>
   );

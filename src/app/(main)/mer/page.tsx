@@ -12,49 +12,99 @@ const links = [
   { href: "/laga", label: "Laga appen (rensa cache)" },
 ] as const;
 
-/** Never block Mer on data — blank main was often a hung listObservations. */
+const ink = "#132019";
+const muted = "#5a6b61";
+const faint = "#8a9a91";
+const accent = "#1f6f5b";
+const border = "rgba(19,32,25,0.12)";
+
+/** Static-first Mer — must paint even if CSS/RSC data fails. */
 export default function MerPage() {
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
-      <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Mer</h1>
-        <p className="mt-2 text-sm text-[var(--numa-muted)]">
+    <div style={{ color: ink }}>
+      <header style={{ marginBottom: 24 }}>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "1.65rem",
+            fontWeight: 600,
+            letterSpacing: "-0.04em",
+            color: ink,
+          }}
+        >
+          Mer
+        </h1>
+        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
           Saldon, historik och snabb import.
         </p>
       </header>
 
       <a
         href="/laga"
-        className="flex min-h-14 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-semibold text-white"
+        style={{
+          display: "flex",
+          minHeight: 56,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 16,
+          background: accent,
+          color: "#fff",
+          fontSize: 14,
+          fontWeight: 600,
+          textDecoration: "none",
+          marginBottom: 24,
+        }}
       >
         Laga appen nu
       </a>
 
-      <nav className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+      <nav
+        style={{
+          borderTop: `1px solid ${border}`,
+          borderBottom: `1px solid ${border}`,
+          marginBottom: 24,
+        }}
+      >
         {links.map((link) => (
           <a
             key={link.href}
             href={link.href}
-            className="flex min-h-14 items-center justify-between text-sm font-medium"
+            style={{
+              display: "flex",
+              minHeight: 56,
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontSize: 14,
+              fontWeight: 500,
+              color: ink,
+              textDecoration: "none",
+              borderBottom: `1px solid ${border}`,
+            }}
           >
             {link.label}
-            <span className="text-[var(--numa-faint)]" aria-hidden>
+            <span style={{ color: faint }} aria-hidden>
               →
             </span>
           </a>
         ))}
       </nav>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-[var(--numa-muted)]">Läge</h2>
-        <p className="text-sm text-[var(--numa-muted)]">
+      <section>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 500, color: muted }}>
+          Läge
+        </h2>
+        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
           {supabaseReady
             ? "Molnkonto aktivt — din data är privat per inloggning."
             : "Lokalt läge (en användare) — koppla Supabase för flera konton."}
         </p>
-        <Suspense fallback={<p className="text-sm text-[var(--numa-faint)]">…</p>}>
+        <Suspense
+          fallback={
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: faint }}>…</p>
+          }
+        >
           <ObservationCount />
         </Suspense>
       </section>
@@ -74,14 +124,14 @@ async function ObservationCount() {
   } catch (error) {
     console.error("[numa] mer observations failed", error);
     return (
-      <p className="text-sm text-[var(--numa-muted)]">
+      <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
         Sparade bilder: kunde inte hämtas just nu.
       </p>
     );
   }
 
   return (
-    <p className="text-sm text-[var(--numa-muted)]">
+    <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
       Sparade bilder: {observationCount}
     </p>
   );
