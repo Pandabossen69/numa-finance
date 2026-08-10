@@ -1,13 +1,17 @@
-import Link from "next/link";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { BankSmsImportFlow } from "@/components/imports/BankSmsImportFlow";
-import { getTodaySnapshotCached } from "@/lib/store/today";
+import { safeLoadTodaySnapshot } from "@/lib/store/load-snapshot";
 
 export default async function BankSmsPage() {
-  const snap = await getTodaySnapshotCached();
+  const loaded = await safeLoadTodaySnapshot();
+  if (!loaded.ok) {
+    return <PageLoadError title="Kunde inte öppna bank-SMS" />;
+  }
+  const snap = loaded.snap;
 
   if (!snap.primaryAccount) {
     return (
-      <div className="space-y-5 pt-4">
+      <div className="space-y-5 pt-4 text-[var(--numa-ink)]">
         <h1 className="text-[1.65rem] font-semibold tracking-tight">
           Bank-SMS
         </h1>
@@ -15,22 +19,22 @@ export default async function BankSmsPage() {
           Ange först hur mycket du har just nu — sedan kan du importera
           Bangkok Bank-SMS.
         </p>
-        <Link
+        <a
           href="/idag"
           className="flex min-h-14 items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white"
         >
           Ange mitt saldo
-        </Link>
+        </a>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 pt-2 pb-4">
+    <div className="space-y-5 pt-2 pb-4 text-[var(--numa-ink)]">
       <header>
-        <Link href="/importera" className="text-sm text-[var(--numa-muted)]">
+        <a href="/importera" className="text-sm text-[var(--numa-muted)]">
           ← Importer
-        </Link>
+        </a>
         <p className="mt-3 text-sm font-medium text-[var(--numa-accent)]">
           Efter köpet
         </p>

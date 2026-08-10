@@ -8,7 +8,6 @@ import { hoursSince } from "@/domain/finance";
 import { coerceMinor, formatMoney, moneyFromUnknown } from "@/domain/money";
 import { getTodaySnapshotCached } from "@/lib/store/today";
 import type { TodaySnapshot } from "@/lib/store/types-snapshot";
-import Link from "next/link";
 
 export default async function IdagPage() {
   let snap: TodaySnapshot | null = null;
@@ -31,12 +30,12 @@ export default async function IdagPage() {
         <p className="text-sm text-[var(--numa-muted)]">
           Försök ladda om. Om felet kvarstår, logga ut och in igen.
         </p>
-        <Link
+        <a
           href="/logga-in"
           className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
         >
           Till inloggning
-        </Link>
+        </a>
       </div>
     );
   }
@@ -171,9 +170,9 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
         </div>
         <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
           {planHint}{" "}
-          <Link href="/plan" className="font-medium text-[var(--numa-accent)]">
+          <a href="/plan" className="font-medium text-[var(--numa-accent)]">
             Öppna plan
-          </Link>
+          </a>
         </p>
       </section>
 
@@ -210,24 +209,21 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
             Senaste
           </p>
-          <Link
-            href="/transaktioner"
-            className="text-sm text-[var(--numa-accent)]"
-          >
+          <a href="/transaktioner" className="text-sm text-[var(--numa-accent)]">
             Historik
-          </Link>
+          </a>
         </div>
         {snap.recentTransactions.length === 0 ? (
           <div className="space-y-2">
             <p className="text-sm text-[var(--numa-muted)]">
               Inga rörelser ännu. Börja med ett kvitto — det tar några sekunder.
             </p>
-            <Link
-              href="/fota"
+            <a
+              href="/lagg-till"
               className="text-sm font-medium text-[var(--numa-accent)]"
             >
-              Fota kvitto →
-            </Link>
+              Lägg till →
+            </a>
           </div>
         ) : (
           <ul className="divide-y divide-[var(--numa-border)]">
@@ -274,9 +270,9 @@ function IdagCockpit({ snap }: { snap: TodaySnapshot }) {
               {snap.verificationLabel ?? "Ej uppdaterat ännu"}
             </p>
           </div>
-          <Link href="/konton" className="text-sm text-[var(--numa-accent)]">
+          <a href="/konton" className="text-sm text-[var(--numa-accent)]">
             Byt konto
-          </Link>
+          </a>
         </div>
       </section>
     </div>

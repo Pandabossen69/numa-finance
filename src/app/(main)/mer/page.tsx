@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { listObservations } from "@/lib/store/repository";
 
@@ -32,7 +31,7 @@ export default async function MerPage() {
 
       <nav className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
         {links.map((link) => (
-          <Link
+          <a
             key={link.href}
             href={link.href}
             className="flex min-h-14 items-center justify-between text-sm font-medium"
@@ -41,7 +40,7 @@ export default async function MerPage() {
             <span className="text-[var(--numa-faint)]" aria-hidden>
               →
             </span>
-          </Link>
+          </a>
         ))}
       </nav>
 

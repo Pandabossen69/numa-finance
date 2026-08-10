@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   confirmReceiptExpenseAction,
   uploadReceiptAction,
@@ -39,7 +38,6 @@ export function ReceiptCaptureFlow({
   safeToSpendTodayMinor: number;
   currency: CurrencyCode;
 }) {
-  const router = useRouter();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [targetId, setTargetId] = useState(accountId);
   const [category, setCategory] = useState<string>("Mat");
@@ -111,9 +109,8 @@ export function ReceiptCaptureFlow({
       }
       setDoneStatus(result.data.pulseStatus);
       URL.revokeObjectURL(preview.previewUrl);
-      setTimeout(() => {
-        router.push("/idag");
-        router.refresh();
+      window.setTimeout(() => {
+        window.location.assign("/idag");
       }, 900);
     });
   }

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MonthNav } from "@/components/transactions/MonthNav";
 import {
@@ -17,22 +17,7 @@ export default async function AnalysPage({
   const params = await searchParams;
   const loaded = await safeLoadTodaySnapshot();
   if (!loaded.ok) {
-    return (
-      <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Kunde inte ladda analys
-        </h1>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Ladda om sidan. Om det kvarstår, logga ut och in igen.
-        </p>
-        <a
-          href="/idag"
-          className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
-        >
-          Till Idag
-        </a>
-      </div>
-    );
+    return <PageLoadError title="Kunde inte ladda analys" />;
   }
   const snap = loaded.snap;
 
@@ -46,17 +31,23 @@ export default async function AnalysPage({
           Här följer du hur månaderna går — plus eller minus — när saldot är på
           plats.
         </p>
-        <Link
+        <a
           href="/idag"
           className="text-sm font-medium text-[var(--numa-accent)]"
         >
           Ange mitt saldo →
-        </Link>
+        </a>
       </div>
     );
   }
 
-  const transactions = await listTransactions(snap.primaryAccount.id);
+  let transactions: Awaited<ReturnType<typeof listTransactions>> = [];
+  try {
+    transactions = await listTransactions(snap.primaryAccount.id);
+  } catch (error) {
+    console.error("[numa] analys transactions failed", error);
+    return <PageLoadError title="Kunde inte ladda analys" />;
+  }
   const monthKey = parseMonthKey(params.m, snap.profile.timezone);
   const summary = buildMonthSummary({
     transactions,
@@ -100,12 +91,12 @@ export default async function AnalysPage({
           <Mini label="In" amount={summary.income.amountMinor} currency={snap.currency} />
           <Mini label="Netto" amount={summary.net.amountMinor} currency={snap.currency} />
         </div>
-        <Link
+        <a
           href={`/transaktioner?m=${summary.monthKey}`}
           className="inline-flex text-sm font-medium text-[var(--numa-accent)]"
         >
           Öppna månadens rörelser →
-        </Link>
+        </a>
       </section>
 
       <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] px-4 py-4">

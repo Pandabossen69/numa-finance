@@ -55,8 +55,9 @@ export function CreateAccountForm({
         router.refresh();
         return;
       }
-      router.push(makeDefault || !hasExistingAccounts ? "/idag" : "/konton");
-      router.refresh();
+      window.location.assign(
+        makeDefault || !hasExistingAccounts ? "/idag" : "/konton",
+      );
     });
   }
 

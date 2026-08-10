@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import { getProfile } from "@/lib/store/repository";
@@ -16,9 +15,9 @@ export default async function InstallningarPage() {
   return (
     <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
       <header>
-        <Link href="/mer" className="text-sm text-[var(--numa-muted)]">
+        <a href="/mer" className="text-sm text-[var(--numa-muted)]">
           ← Mer
-        </Link>
+        </a>
         <h1 className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em]">
           Inställningar
         </h1>

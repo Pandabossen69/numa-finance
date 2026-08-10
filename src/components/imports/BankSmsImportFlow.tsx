@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   confirmBankSmsImportAction,
   parseBankSmsTextAction,
@@ -37,7 +36,6 @@ export function BankSmsImportFlow({
   accounts: BankSmsAccount[];
   currency: CurrencyCode;
 }) {
-  const router = useRouter();
   const [mode, setMode] = useState<"shot" | "paste">("shot");
   const [pasteText, setPasteText] = useState("");
   const [review, setReview] = useState<ReviewState | null>(null);
@@ -147,9 +145,8 @@ export function BankSmsImportFlow({
         `Sparade ${result.data.createdCount} · hoppade ${result.data.skippedDuplicateCount}` +
           (bal ? ` · saldo ${bal}` : ""),
       );
-      setTimeout(() => {
-        router.push("/idag");
-        router.refresh();
+      window.setTimeout(() => {
+        window.location.assign("/idag");
       }, 900);
     });
   }

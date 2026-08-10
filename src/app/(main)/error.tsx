@@ -19,13 +19,28 @@ export default function MainError({
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
         Sidan kunde inte visas. Prova igen — dina data är kvar.
       </p>
-      <button
-        type="button"
-        onClick={reset}
-        className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
-      >
-        Försök igen
-      </button>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={reset}
+          className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
+        >
+          Försök igen
+        </button>
+        <a
+          href="/idag"
+          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] px-5 text-sm font-medium"
+        >
+          Till Idag
+        </a>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="flex min-h-12 items-center justify-center text-sm text-[var(--numa-muted)]"
+        >
+          Ladda om sidan
+        </button>
+      </div>
     </div>
   );
 }

@@ -54,7 +54,8 @@ export function VerifyBalanceForm({
       setDone(true);
       onSuccess?.();
       if (afterSave === "idag") {
-        router.push("/idag");
+        window.location.assign("/idag");
+        return;
       }
       router.refresh();
     });

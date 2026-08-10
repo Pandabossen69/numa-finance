@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   createCashWithdrawalAction,
@@ -350,9 +349,9 @@ function TransferForm({
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
         Du behöver minst två saldon för att flytta.{" "}
-        <Link href="/konton/ny" className="font-medium text-[var(--numa-accent)]">
+        <a href="/konton/ny" className="font-medium text-[var(--numa-accent)]">
           Lägg till saldo →
-        </Link>
+        </a>
       </p>
     );
   }
@@ -492,19 +491,29 @@ function CashForm({
           accounts={cashAccounts}
         />
       ) : (
-        <p className="text-sm text-[var(--numa-muted)]">
-          Skapa ett saldo av typen Kontanter under Mina saldon innan du sparar
-          uttag — annars försvinner pengarna i modellen.
-        </p>
+        <div className="space-y-2 rounded-2xl border border-[var(--numa-border)] px-4 py-3">
+          <p className="text-sm text-[var(--numa-muted)]">
+            Skapa först ett saldo av typen Kontanter — annars försvinner pengarna
+            i modellen.
+          </p>
+          <a
+            href="/konton/ny"
+            className="text-sm font-medium text-[var(--numa-accent)]"
+          >
+            Skapa kontantsaldo →
+          </a>
+        </div>
       )}
       <AmountField value={amount} onChange={setAmount} />
       <WhenPicker value={when} onChange={setWhen} />
       <ErrorText error={error} />
-      <Submit
-        pending={pending}
-        disabled={!amount.trim() || !toId}
-        label="Spara uttag"
-      />
+      {cashAccounts.length === 0 ? null : (
+        <Submit
+          pending={pending}
+          disabled={!amount.trim() || !toId}
+          label="Spara uttag"
+        />
+      )}
     </form>
   );
 }

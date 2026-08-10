@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PlanEditor } from "@/components/plan/PlanEditor";
 import { formatMoney, moneyFromUnknown } from "@/domain/money";
@@ -7,22 +7,7 @@ import { safeLoadTodaySnapshot } from "@/lib/store/load-snapshot";
 export default async function PlanPage() {
   const loaded = await safeLoadTodaySnapshot();
   if (!loaded.ok) {
-    return (
-      <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Kunde inte ladda plan
-        </h1>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Ladda om sidan. Om det kvarstår, logga ut och in igen.
-        </p>
-        <a
-          href="/idag"
-          className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
-        >
-          Till Idag
-        </a>
-      </div>
-    );
+    return <PageLoadError title="Kunde inte ladda plan" />;
   }
   const snap = loaded.snap;
 
@@ -34,12 +19,12 @@ export default async function PlanPage() {
           När du angett ditt saldo kan du lägga in det som redan är öronmärkt —
           då blir tryggt idag ärligt.
         </p>
-        <Link
+        <a
           href="/idag"
           className="text-sm font-medium text-[var(--numa-accent)]"
         >
           Ange mitt saldo →
-        </Link>
+        </a>
       </div>
     );
   }

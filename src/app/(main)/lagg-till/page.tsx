@@ -1,39 +1,24 @@
-import Link from "next/link";
 import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { QuickAddForms } from "@/components/add/QuickAddForms";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { safeLoadTodaySnapshot } from "@/lib/store/load-snapshot";
 
-/** Full-page add flow — works even when the + sheet / client JS is broken. */
+/** Full-page add flow — works even when client JS sheets are broken. */
 export default async function LaggTillPage() {
   const loaded = await safeLoadTodaySnapshot();
   const snap = loaded.ok ? loaded.snap : null;
 
   if (!snap) {
-    return (
-      <div className="space-y-4 pt-4 text-[var(--numa-ink)]">
-        <h1 className="text-[1.65rem] font-semibold tracking-tight">
-          Lägg till
-        </h1>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Kunde inte ladda kontot. Ladda om eller logga in igen.
-        </p>
-        <Link
-          href="/logga-in"
-          className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
-        >
-          Till inloggning
-        </Link>
-      </div>
-    );
+    return <PageLoadError title="Kunde inte öppna Lägg till" />;
   }
 
   if (!snap.primaryAccount) {
     return (
       <div className="space-y-5 pt-2 pb-4 text-[var(--numa-ink)]">
         <header>
-          <Link href="/idag" className="text-sm text-[var(--numa-muted)]">
+          <a href="/idag" className="text-sm text-[var(--numa-muted)]">
             ← Idag
-          </Link>
+          </a>
           <h1 className="mt-3 text-[1.65rem] font-semibold tracking-tight">
             Lägg till saldo
           </h1>
@@ -55,9 +40,9 @@ export default async function LaggTillPage() {
   return (
     <div className="space-y-5 pt-2 pb-4 text-[var(--numa-ink)]">
       <header>
-        <Link href="/idag" className="text-sm text-[var(--numa-muted)]">
+        <a href="/idag" className="text-sm text-[var(--numa-muted)]">
           ← Idag
-        </Link>
+        </a>
         <h1 className="mt-3 text-[1.65rem] font-semibold tracking-tight">
           Lägg till
         </h1>
@@ -67,7 +52,7 @@ export default async function LaggTillPage() {
       </header>
 
       <div className="space-y-3">
-        <Link
+        <a
           href="/fota"
           className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-left text-white"
         >
@@ -75,8 +60,8 @@ export default async function LaggTillPage() {
           <span className="text-xs text-white/80">
             Kameran öppnas — bekräfta belopp
           </span>
-        </Link>
-        <Link
+        </a>
+        <a
           href="/bank-sms"
           className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-left"
         >
@@ -84,8 +69,8 @@ export default async function LaggTillPage() {
           <span className="text-xs text-[var(--numa-faint)]">
             Skärmdump efter köp — belopp + saldo
           </span>
-        </Link>
-        <Link
+        </a>
+        <a
           href="/konton"
           className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-left"
         >
@@ -93,7 +78,7 @@ export default async function LaggTillPage() {
           <span className="text-xs text-[var(--numa-faint)]">
             Håll NUMA i fas med banken
           </span>
-        </Link>
+        </a>
       </div>
 
       <QuickAddForms

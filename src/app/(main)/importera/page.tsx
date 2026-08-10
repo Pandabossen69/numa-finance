@@ -1,15 +1,21 @@
-import Link from "next/link";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { listObservations } from "@/lib/store/repository";
 
 export default async function ImporteraPage() {
-  const observations = await listObservations();
+  let observations: Awaited<ReturnType<typeof listObservations>> = [];
+  try {
+    observations = await listObservations();
+  } catch (error) {
+    console.error("[numa] importera failed", error);
+    return <PageLoadError title="Kunde inte ladda importer" />;
+  }
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
       <header>
-        <Link href="/mer" className="text-sm text-[var(--numa-muted)]">
+        <a href="/mer" className="text-sm text-[var(--numa-muted)]">
           ← Mer
-        </Link>
+        </a>
         <h1 className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em]">
           Importer
         </h1>
@@ -19,7 +25,7 @@ export default async function ImporteraPage() {
         </p>
       </header>
 
-      <Link
+      <a
         href="/bank-sms"
         className="flex min-h-14 flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-white"
       >
@@ -27,9 +33,9 @@ export default async function ImporteraPage() {
         <span className="text-xs text-white/80">
           Skärmdump från Meddelanden — belopp + saldo
         </span>
-      </Link>
+      </a>
 
-      <Link
+      <a
         href="/fota"
         className="flex min-h-14 flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4"
       >
@@ -37,7 +43,7 @@ export default async function ImporteraPage() {
         <span className="text-xs text-[var(--numa-faint)]">
           Snabbaste vägen in i NUMA från kassan
         </span>
-      </Link>
+      </a>
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-[var(--numa-muted)]">

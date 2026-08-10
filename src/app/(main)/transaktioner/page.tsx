@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MonthNav } from "@/components/transactions/MonthNav";
 import {
@@ -18,8 +18,16 @@ export default async function TransaktionerPage({
   searchParams: Promise<{ m?: string }>;
 }) {
   const params = await searchParams;
-  const profile = await getProfile();
-  const transactions = await listTransactions();
+  let profile: Awaited<ReturnType<typeof getProfile>>;
+  let transactions: Awaited<ReturnType<typeof listTransactions>>;
+  try {
+    profile = await getProfile();
+    transactions = await listTransactions();
+  } catch (error) {
+    console.error("[numa] transaktioner failed", error);
+    return <PageLoadError title="Kunde inte ladda rörelser" />;
+  }
+
   const monthKey = parseMonthKey(params.m, profile.timezone);
   const currency = profile.primaryCurrency;
   const summary = buildMonthSummary({
@@ -32,9 +40,9 @@ export default async function TransaktionerPage({
   return (
     <div className="space-y-5 pt-2 pb-4 text-[var(--numa-ink)]">
       <header className="space-y-2">
-        <Link href="/mer" className="text-sm text-[var(--numa-muted)]">
+        <a href="/mer" className="text-sm text-[var(--numa-muted)]">
           ← Mer
-        </Link>
+        </a>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
           Rörelser
         </h1>
@@ -80,12 +88,12 @@ export default async function TransaktionerPage({
           <p className="text-sm text-[var(--numa-muted)]">
             Tom månad. Lägg till via + — utgift, inkomst, flytt eller kontant.
           </p>
-          <Link
-            href="/idag"
+          <a
+            href="/lagg-till"
             className="text-sm font-medium text-[var(--numa-accent)]"
           >
-            Tillbaka till Idag →
-          </Link>
+            Lägg till →
+          </a>
         </div>
       ) : (
         <div className="space-y-6">

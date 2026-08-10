@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageLoadError } from "@/components/ui/PageLoadError";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { SetDefaultAccountButton } from "@/components/accounts/SetDefaultAccountButton";
 import { VerifyBalanceForm } from "@/components/accounts/VerifyBalanceForm";
@@ -13,14 +13,20 @@ import {
 } from "@/lib/store/repository";
 
 export default async function KontonPage() {
-  const accounts = await listAccounts();
+  let accounts: Awaited<ReturnType<typeof listAccounts>> = [];
+  try {
+    accounts = await listAccounts();
+  } catch (error) {
+    console.error("[numa] konton failed", error);
+    return <PageLoadError title="Kunde inte ladda saldon" />;
+  }
 
   return (
     <div className="space-y-6 pt-2 pb-4 text-[var(--numa-ink)]">
       <header className="space-y-2">
-        <Link href="/mer" className="text-sm text-[var(--numa-muted)]">
+        <a href="/mer" className="text-sm text-[var(--numa-muted)]">
           ← Mer
-        </Link>
+        </a>
         <div className="flex items-end justify-between gap-3">
           <div>
             <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
@@ -31,28 +37,34 @@ export default async function KontonPage() {
               vill.
             </p>
           </div>
-          <Link
+          <a
             href="/konton/ny"
             className="shrink-0 text-sm font-medium text-[var(--numa-accent)]"
           >
             Nytt
-          </Link>
+          </a>
         </div>
       </header>
 
       {accounts.length === 0 ? (
         <p className="text-sm text-[var(--numa-muted)]">
           Inga saldon ännu.{" "}
-          <Link href="/konton/ny" className="text-[var(--numa-accent)]">
+          <a href="/konton/ny" className="text-[var(--numa-accent)]">
             Ange hur mycket du har
-          </Link>
+          </a>
         </p>
       ) : (
         <ul className="space-y-8">
           {await Promise.all(
             accounts.map(async (account) => {
-              const checkpoint = await getLatestCheckpoint(account.id);
-              const txs = await listTransactions(account.id);
+              let checkpoint = null;
+              let txs: Awaited<ReturnType<typeof listTransactions>> = [];
+              try {
+                checkpoint = await getLatestCheckpoint(account.id);
+                txs = await listTransactions(account.id);
+              } catch (error) {
+                console.error("[numa] konto detail failed", account.id, error);
+              }
               const after = filterTransactionsAfterCheckpoint(txs, checkpoint);
               const calculated = calculateAccountBalance({
                 checkpoint,
