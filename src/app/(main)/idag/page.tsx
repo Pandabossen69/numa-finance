@@ -5,29 +5,71 @@ import { IdagQuickActions } from "@/components/idag/IdagQuickActions";
 import { calculateDayPulse, rankForOnTrackDays } from "@/domain/gamification";
 import { hoursSince } from "@/domain/finance";
 import { formatMoney, money } from "@/domain/money";
-import { getTodaySnapshot } from "@/lib/store/repository";
+import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
 import Link from "next/link";
 
+function coerceMinor(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n);
+}
+
+function LoadFailed({ detail }: { detail?: string }) {
+  return (
+    <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
+      <BrandHeader />
+      <h1 className="text-2xl font-semibold tracking-tight">Kunde inte ladda idag</h1>
+      <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+        Något gjorde att sidan hängde eller kraschade. Ladda om, eller laga appen
+        om det händer igen.
+      </p>
+      {detail ? (
+        <p className="text-xs text-[var(--numa-faint)]">{detail}</p>
+      ) : null}
+      <div className="flex flex-col gap-3">
+        <a
+          href="/idag"
+          className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-medium text-white"
+        >
+          Ladda om Idag
+        </a>
+        <Link
+          href="/installningar"
+          className="text-center text-sm font-medium text-[var(--numa-accent)]"
+        >
+          Laga appen →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default async function IdagPage() {
-  let snap;
+  let snap: TodaySnapshot;
   try {
     snap = await getTodaySnapshot();
   } catch (error) {
     console.error("[numa] idag snapshot failed", error);
     return (
-      <div className="space-y-4 pt-6">
-        <BrandHeader />
-        <h1 className="text-2xl font-semibold tracking-tight">Kunde inte ladda idag</h1>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Försök ladda om. Om felet kvarstår, logga ut och in igen.
-        </p>
-        <Link href="/logga-in" className="text-sm font-medium text-[var(--numa-accent)]">
-          Till inloggning
-        </Link>
-      </div>
+      <LoadFailed
+        detail={error instanceof Error ? error.message : undefined}
+      />
     );
   }
 
+  try {
+    return renderIdag(snap);
+  } catch (error) {
+    console.error("[numa] idag render failed", error);
+    return (
+      <LoadFailed
+        detail={error instanceof Error ? error.message : undefined}
+      />
+    );
+  }
+}
+
+function renderIdag(snap: TodaySnapshot) {
   if (!snap.primaryAccount) {
     return (
       <div className="space-y-6 pt-4 pb-4">
@@ -50,9 +92,19 @@ export default async function IdagPage() {
     );
   }
 
+  const currency = snap.currency;
+  const safeToday = coerceMinor(snap.safeToSpendTodayMinor);
+  const spentToday = coerceMinor(snap.todaySpendingMinor);
+  const reserved = coerceMinor(snap.reservedMinor);
+  const buffer = coerceMinor(snap.bufferMinor);
+  const calculated =
+    snap.calculatedBalanceMinor == null
+      ? null
+      : coerceMinor(snap.calculatedBalanceMinor);
+
   const pulse = calculateDayPulse({
-    safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
-    spentToday: money(snap.todaySpendingMinor, snap.currency),
+    safeToSpendToday: money(safeToday, currency),
+    spentToday: money(spentToday, currency),
   });
 
   const onTrackDays = snap.progress?.onTrackDays ?? 0;
@@ -70,8 +122,8 @@ export default async function IdagPage() {
     !snap.checkpoint || hoursSince(snap.checkpoint.verifiedAt) > 48;
 
   const planHint =
-    snap.reservedMinor > 0 || snap.bufferMinor > 0
-      ? `Efter ${formatMoney(money(snap.reservedMinor + snap.bufferMinor, snap.currency))} i plan & buffert · ${snap.daysUntilIncome} dagar kvar`
+    reserved > 0 || buffer > 0
+      ? `Efter ${formatMoney(money(reserved + buffer, currency))} i plan & buffert · ${snap.daysUntilIncome} dagar kvar`
       : `Ingen plan lagd ännu · ${snap.daysUntilIncome} dagar till nästa inkomst`;
 
   return (
@@ -81,7 +133,7 @@ export default async function IdagPage() {
         streakLabel={streak > 0 ? `Streak ${streak}` : undefined}
       />
 
-      <DayPulseHero pulse={pulse} currency={snap.currency} />
+      <DayPulseHero pulse={pulse} currency={currency} />
 
       <IdagQuickActions
         accountId={snap.primaryAccount.id}
@@ -94,10 +146,10 @@ export default async function IdagPage() {
           Tillgängligt
         </p>
         <div>
-          {snap.calculatedBalanceMinor != null ? (
+          {calculated != null ? (
             <MoneyDisplay
-              amountMinor={snap.calculatedBalanceMinor}
-              currency={snap.currency}
+              amountMinor={calculated}
+              currency={currency}
               size="xl"
             />
           ) : (
@@ -114,16 +166,16 @@ export default async function IdagPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <MoneyDisplay
-              amountMinor={snap.safeToSpendTodayMinor}
-              currency={snap.currency}
+              amountMinor={safeToday}
+              currency={currency}
               size="lg"
             />
             <p className="mt-1 text-sm text-[var(--numa-muted)]">idag</p>
           </div>
           <div className="text-right">
             <MoneyDisplay
-              amountMinor={snap.safeToSpendWeekMinor}
-              currency={snap.currency}
+              amountMinor={coerceMinor(snap.safeToSpendWeekMinor)}
+              currency={currency}
               size="md"
               compact
             />
@@ -143,10 +195,18 @@ export default async function IdagPage() {
           Den här månaden
         </p>
         <div className="grid grid-cols-2 gap-y-5">
-          <Stat label="Använt" amount={snap.monthSpendingMinor} currency={snap.currency} />
-          <Stat label="Idag" amount={snap.todaySpendingMinor} currency={snap.currency} />
-          <Stat label="Reserverat" amount={snap.reservedMinor} currency={snap.currency} />
-          <Stat label="Fritt" amount={snap.freeMinor} currency={snap.currency} />
+          <Stat
+            label="Använt"
+            amount={coerceMinor(snap.monthSpendingMinor)}
+            currency={currency}
+          />
+          <Stat label="Idag" amount={spentToday} currency={currency} />
+          <Stat label="Reserverat" amount={reserved} currency={currency} />
+          <Stat
+            label="Fritt"
+            amount={coerceMinor(snap.freeMinor)}
+            currency={currency}
+          />
         </div>
       </section>
 
@@ -186,7 +246,9 @@ export default async function IdagPage() {
                   }`}
                 >
                   {tx.direction === "debit" ? "−" : "+"}
-                  {formatMoney(money(tx.amountMinor, tx.currency))}
+                  {formatMoney(
+                    money(coerceMinor(tx.amountMinor), tx.currency),
+                  )}
                 </span>
               </li>
             ))}

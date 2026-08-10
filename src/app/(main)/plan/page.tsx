@@ -4,7 +4,21 @@ import { PlanEditor } from "@/components/plan/PlanEditor";
 import { getTodaySnapshot } from "@/lib/store/repository";
 
 export default async function PlanPage() {
-  const snap = await getTodaySnapshot();
+  let snap;
+  try {
+    snap = await getTodaySnapshot();
+  } catch (error) {
+    console.error("[numa] plan snapshot failed", error);
+    return (
+      <div className="space-y-4 pt-6">
+        <h1 className="text-[1.65rem] font-semibold">Plan</h1>
+        <p className="text-sm text-[var(--numa-muted)]">Kunde inte ladda planen.</p>
+        <a href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
+          Försök igen
+        </a>
+      </div>
+    );
+  }
 
   if (!snap.primaryAccount) {
     return (

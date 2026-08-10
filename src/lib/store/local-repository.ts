@@ -756,12 +756,19 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   }
 
   const checkpoint = latestCheckpointForAccount(store, primary.id);
-  const accountTx = store.transactions.filter((t) => t.accountId === primary.id);
+  const accountTx = store.transactions
+    .filter((t) => t.accountId === primary.id)
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
-  const calculated = calculateAccountBalance({
-    checkpoint,
-    transactionsAfterCheckpoint: after,
-  });
+  let calculated = null;
+  try {
+    calculated = calculateAccountBalance({
+      checkpoint,
+      transactionsAfterCheckpoint: after,
+    });
+  } catch (error) {
+    console.error("[numa] balance calc failed", error);
+  }
 
   const timezone = profile.timezone;
   const now = new Date();
@@ -797,7 +804,8 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
   if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (checkpoint) balanceKind = "calculated";
+  else if (checkpoint && calculated) balanceKind = "calculated";
+  else if (checkpoint) balanceKind = "verified_checkpoint_only";
 
   return {
     profile,
