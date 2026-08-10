@@ -34,11 +34,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#eef2ef" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d1411" },
-  ],
+  themeColor: "#eef2ef",
+  colorScheme: "light",
 };
+
 
 export const dynamic = "force-dynamic";
 

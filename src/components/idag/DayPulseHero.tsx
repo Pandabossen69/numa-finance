@@ -26,16 +26,16 @@ export function DayPulseHero({
   const over = pulse.usedPercent > 100;
 
   return (
-    <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-5 py-5 shadow-[var(--numa-shadow)]">
+    <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 py-5 shadow-[var(--numa-shadow)]">
       <div
-        className="pointer-events-none absolute inset-0 opacity-80"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
             pulse.status === "plus"
-              ? "radial-gradient(600px 220px at 10% 0%, color-mix(in srgb, var(--numa-positive) 18%, transparent), transparent 60%)"
+              ? "radial-gradient(600px 220px at 10% 0%, color-mix(in srgb, var(--numa-positive) 14%, transparent), transparent 60%)"
               : pulse.status === "minus"
-                ? "radial-gradient(600px 220px at 10% 0%, color-mix(in srgb, var(--numa-danger) 16%, transparent), transparent 60%)"
-                : "radial-gradient(600px 220px at 10% 0%, color-mix(in srgb, var(--numa-accent) 14%, transparent), transparent 60%)",
+                ? "radial-gradient(600px 220px at 10% 0%, color-mix(in srgb, var(--numa-danger) 12%, transparent), transparent 60%)"
+                : "radial-gradient(600px 220px at 10% 0%, color-mix(in srgb, var(--numa-accent) 12%, transparent), transparent 60%)",
         }}
         aria-hidden
       />
