@@ -5,11 +5,14 @@ export function MoneyDisplay({
   currency,
   size = "md",
   compact = false,
+  tone = "neutral",
 }: {
   amountMinor: number;
   currency: CurrencyCode;
   size?: "sm" | "md" | "lg" | "xl";
   compact?: boolean;
+  /** Color negative amounts as danger when "signed". */
+  tone?: "neutral" | "signed";
 }) {
   const safeMinor = Number.isInteger(amountMinor)
     ? amountMinor
@@ -26,5 +29,12 @@ export function MoneyDisplay({
           ? "text-xl font-semibold"
           : "text-base font-medium";
 
-  return <span className={`money ${sizeClass}`}>{text}</span>;
+  const toneClass =
+    tone === "signed" && safeMinor < 0
+      ? "text-[var(--numa-danger)]"
+      : tone === "signed" && safeMinor > 0
+        ? "text-[var(--numa-positive)]"
+        : "";
+
+  return <span className={`money ${sizeClass} ${toneClass}`.trim()}>{text}</span>;
 }

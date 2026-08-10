@@ -82,7 +82,11 @@ export async function createScreenshotObservation(
 }
 
 export async function listObservations() {
-  return api().listObservations();
+  return withTimeout(
+    api().listObservations(),
+    SNAPSHOT_TIMEOUT_MS,
+    "listObservations",
+  );
 }
 
 export async function getObservation(observationId: string) {

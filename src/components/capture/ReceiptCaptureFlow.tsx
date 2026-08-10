@@ -25,10 +25,12 @@ type Preview = {
 export function ReceiptCaptureFlow({
   accountId,
   safeToSpendTodayMinor,
+  todaySpendingMinor,
   currency,
 }: {
   accountId: string;
   safeToSpendTodayMinor: number;
+  todaySpendingMinor: number;
   currency: CurrencyCode;
 }) {
   const router = useRouter();
@@ -40,16 +42,18 @@ export function ReceiptCaptureFlow({
   );
   const [pending, startTransition] = useTransition();
 
+  const roomBefore = safeToSpendTodayMinor - todaySpendingMinor;
+
   const impact = useMemo(() => {
     if (!preview) return null;
     try {
       const amountMinor = parseUiAmountToMinor(preview.amount || "0");
-      const remaining = safeToSpendTodayMinor - amountMinor;
-      return { amountMinor, remaining };
+      const remaining = roomBefore - amountMinor;
+      return { amountMinor, remaining, canAfford: remaining >= 0 };
     } catch {
       return null;
     }
-  }, [preview, safeToSpendTodayMinor]);
+  }, [preview, roomBefore]);
 
   function onFile(file: File | null) {
     if (!file) return;
@@ -130,8 +134,8 @@ export function ReceiptCaptureFlow({
         <label className="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-3 rounded-[1.5rem] border border-dashed border-[var(--numa-border)] bg-[var(--numa-surface)] px-6 text-center transition active:scale-[0.99]">
           <span className="text-base font-semibold">Ta bild eller välj kvitto</span>
           <span className="max-w-[28ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-            Öppna kameran, fotografera, och bekräfta beloppet mot vad du tryggt
-            kan spendera idag.
+            Fota kvitto eller välj en skärmbild från banken. Bekräfta beloppet
+            innan det räknas mot dagens budget.
           </span>
           <span className="mt-2 rounded-2xl bg-[var(--numa-accent)] px-5 py-3 text-sm font-semibold text-white">
             {pending ? "Läser…" : "Öppna kamera"}
@@ -146,7 +150,7 @@ export function ReceiptCaptureFlow({
           />
         </label>
         <label className="flex min-h-14 cursor-pointer items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium">
-          Välj från galleri
+          Skärmbild eller galleri
           <input
             type="file"
             accept="image/*"
@@ -206,15 +210,28 @@ export function ReceiptCaptureFlow({
 
       <div className="rounded-2xl border border-[var(--numa-border)] px-4 py-3">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-          Efter köpet · tryggt idag
+          Kan jag köpa?
         </p>
-        <p className={`mt-1 money text-xl font-semibold ${remainingTone}`}>
+        <p className={`mt-1 text-base font-semibold ${remainingTone}`}>
+          {impact
+            ? impact.canAfford
+              ? "Ja — inom dagens trygga nivå"
+              : "Nej — över dagens trygga nivå"
+            : "—"}
+        </p>
+        <p className={`mt-2 money text-xl font-semibold ${remainingTone}`}>
           {impact
             ? formatMoney(money(impact.remaining, currency))
             : "—"}
+          <span className="ml-2 text-xs font-medium text-[var(--numa-muted)]">
+            kvar efter köpet
+          </span>
         </p>
         <p className="mt-1 text-xs text-[var(--numa-muted)]">
-          Just nu tryggt: {formatMoney(money(safeToSpendTodayMinor, currency))}
+          Kvar innan köp: {formatMoney(money(roomBefore, currency))}
+          {todaySpendingMinor > 0
+            ? ` · redan använt idag ${formatMoney(money(todaySpendingMinor, currency))}`
+            : null}
         </p>
       </div>
 

@@ -8,7 +8,6 @@ import { money } from "@/domain/money";
 import {
   confirmReceiptExpense,
   getTodaySnapshot,
-  recordOnTrackDayIfNeeded,
   uploadReceiptAndExtract,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
@@ -94,7 +93,6 @@ export async function confirmReceiptExpenseAction(
       safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
-    await recordOnTrackDayIfNeeded(pulse.status !== "minus");
 
     revalidatePath("/idag");
     revalidatePath("/transaktioner");

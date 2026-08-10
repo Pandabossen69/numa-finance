@@ -10,11 +10,8 @@ import {
   createManualIncome,
   createScreenshotObservation,
   createTransfer,
-  getTodaySnapshot,
-  recordOnTrackDayIfNeeded,
 } from "@/lib/store/repository";
-import { calculateDayPulse } from "@/domain/gamification";
-import { money, parseUiAmountToMinor } from "@/domain/money";
+import { parseUiAmountToMinor } from "@/domain/money";
 
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -99,17 +96,6 @@ export async function createExpenseAction(
       description: input.description,
       category: input.category,
     });
-
-    try {
-      const snap = await getTodaySnapshot();
-      const pulse = calculateDayPulse({
-        safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
-        spentToday: money(snap.todaySpendingMinor, snap.currency),
-      });
-      await recordOnTrackDayIfNeeded(pulse.status !== "minus");
-    } catch {
-      // Progress is best-effort; finance write already succeeded.
-    }
 
     revalidatePath("/idag");
     revalidatePath("/transaktioner");

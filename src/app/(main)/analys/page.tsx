@@ -34,6 +34,7 @@ export default async function AnalysPage() {
   }
 
   const room = snap.safeToSpendTodayMinor - snap.todaySpendingMinor;
+  const free = snap.freeMinor;
   const hasPlan = snap.reservedMinor > 0 || snap.bufferMinor > 0;
 
   const insight =
@@ -41,9 +42,18 @@ export default async function AnalysPage() {
       ? "Du har använt mer än dagens trygga nivå. Imorgon är en ny chans."
       : room === 0
         ? "Du ligger exakt på dagens nivå — fint balanserat."
-        : hasPlan
-          ? "Det finns fortfarande utrymme idag, även efter det du reserverat."
-          : "Det finns utrymme idag. Lägg in mål och hinkar under Plan så blir siffran ärligare.";
+        : free > 0 && hasPlan
+          ? "Du håller dig inom dagens nivå och har fortfarande ledigt efter det du reserverat till mål."
+          : hasPlan
+            ? "Det finns fortfarande utrymme idag, även efter det du reserverat."
+            : "Det finns utrymme idag. Lägg in mål under Plan så blir det tydligare om du sparar.";
+
+  const savingLine =
+    free > 0
+      ? "Efter mål och buffert finns ledigt utrymme — det är det du kan spara eller använda flexibelt."
+      : hasPlan
+        ? "Allt ledigt är just nu reserverat till mål och buffert. Bra disciplin — men lite tight."
+        : "Sätt mål under Plan så syns hur mycket som faktiskt är ledigt att spara.";
 
   return (
     <div className="space-y-6 pt-2 pb-4">
@@ -57,6 +67,9 @@ export default async function AnalysPage() {
       <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
         <p className="text-sm font-medium">Just nu</p>
         <p className="text-sm leading-relaxed text-[var(--numa-muted)]">{insight}</p>
+        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+          {savingLine}
+        </p>
         <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
           Cirka {snap.daysUntilIncome} dagar till nästa inkomst i beräkningen.
         </p>
@@ -95,7 +108,20 @@ export default async function AnalysPage() {
             />
           </Row>
           <Row label="Kvar av dagens nivå">
-            <MoneyDisplay amountMinor={room} currency={snap.currency} size="md" />
+            <MoneyDisplay
+              amountMinor={room}
+              currency={snap.currency}
+              size="md"
+              tone="signed"
+            />
+          </Row>
+          <Row label="Ledigt efter mål">
+            <MoneyDisplay
+              amountMinor={free}
+              currency={snap.currency}
+              size="md"
+              tone="signed"
+            />
           </Row>
           <Row label="Reserverat">
             <MoneyDisplay

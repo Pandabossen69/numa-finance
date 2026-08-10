@@ -8,6 +8,7 @@ import { calculateDayPulse } from "@/domain/gamification";
 import { formatMoney, money } from "@/domain/money";
 import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
 import Link from "next/link";
+import { HardReloadLink } from "@/components/ui/HardReloadLink";
 
 function coerceMinor(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -55,12 +56,12 @@ function LoadFailed({ detail }: { detail?: string }) {
         <p className="break-words text-xs text-[var(--numa-faint)]">{detail}</p>
       ) : null}
       <div className="flex flex-col gap-3">
-        <a
+        <HardReloadLink
           href="/idag"
           className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-semibold text-white"
         >
           Ladda om
-        </a>
+        </HardReloadLink>
         <a
           href="/laga"
           className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
@@ -139,12 +140,20 @@ function renderIdag(snap: TodaySnapshot) {
   );
 
   const roomToday = safeToday - spentToday;
+  const free = coerceMinor(snap.freeMinor);
   const affordLine =
     roomToday < 0
       ? "Du har använt mer än dagens trygga nivå."
       : roomToday === 0
         ? "Du ligger exakt på dagens trygga nivå."
         : `Du har ungefär ${formatMoney(money(roomToday, currency))} kvar att använda tryggt idag.`;
+
+  const savingLine =
+    free > 0
+      ? `${formatMoney(money(free, currency))} är ledigt efter mål och buffert.`
+      : goals.length > 0 || reserved > 0 || buffer > 0
+        ? "Allt ledigt är reserverat till mål och buffert just nu."
+        : "Lägg till mål under Plan så syns hur mycket du sparar.";
 
   const recent = Array.isArray(snap.recentTransactions)
     ? snap.recentTransactions.slice(0, 6)
@@ -168,9 +177,10 @@ function renderIdag(snap: TodaySnapshot) {
         <p className="text-[15px] leading-relaxed text-[var(--numa-ink)]">
           {affordLine}
         </p>
+        <p className="text-sm text-[var(--numa-muted)]">{savingLine}</p>
         <p className="text-sm text-[var(--numa-muted)]">
-          Baserat på ditt saldo, det du redan planerat och hur mycket som är
-          kvar till nästa inkomst ({snap.daysUntilIncome} dagar).
+          Baserat på saldo, plan och {snap.daysUntilIncome} dagar till nästa
+          inkomst.
         </p>
       </section>
 

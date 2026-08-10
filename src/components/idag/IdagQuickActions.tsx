@@ -53,12 +53,12 @@ export function IdagQuickActions({
         >
           Mål & plan
         </Link>
-        <Link
-          href="/importera"
+        <a
+          href="/fota"
           className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
         >
           Skärmbild
-        </Link>
+        </a>
       </div>
 
       {verificationLabel ? (

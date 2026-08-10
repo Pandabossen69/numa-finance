@@ -42,20 +42,21 @@ export default async function FotaPage() {
     <div className="space-y-5 pt-2 pb-4">
       <header>
         <p className="text-sm font-medium text-[var(--numa-accent)]">
-          Snabbt · kvitto
+          Snabbt · kvitto eller skärmbild
         </p>
         <h1 className="mt-1 text-[1.65rem] font-semibold tracking-tight">
           Fota och bekräfta
         </h1>
         <p className="mt-2 max-w-[36ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-          NUMA läser beloppet när det går — du godkänner alltid innan något
-          sparas mot din plan.
+          NUMA läser beloppet när det går — du godkänner alltid innan det
+          sparas mot budgeten.
         </p>
       </header>
 
       <ReceiptCaptureFlow
         accountId={snap.primaryAccount.id}
         safeToSpendTodayMinor={snap.safeToSpendTodayMinor}
+        todaySpendingMinor={snap.todaySpendingMinor}
         currency={snap.currency}
       />
     </div>

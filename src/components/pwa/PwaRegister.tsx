@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const KILL_FLAG = "numa.swKill.v5";
+const KILL_FLAG = "numa.swKill.v6";
 
 /**
  * Kill poisoned service workers that cached blank HTML/RSC.

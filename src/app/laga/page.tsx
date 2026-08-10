@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const KILL_FLAG = "numa.swKill.v5";
+const KILL_FLAG = "numa.swKill.v6";
 
 /**
  * Public repair page — works even when authenticated routes render blank

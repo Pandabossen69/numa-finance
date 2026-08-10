@@ -1,24 +1,20 @@
+import { Suspense } from "react";
+import { withTimeout } from "@/lib/async";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { listObservations } from "@/lib/store/repository";
 
 const links = [
   { href: "/konton", label: "Mina saldon" },
   { href: "/transaktioner", label: "Utgifter & rörelser" },
-  { href: "/fota", label: "Fota kvitto" },
+  { href: "/fota", label: "Fota kvitto / skärmbild" },
   { href: "/importera", label: "Importer" },
   { href: "/installningar", label: "Inställningar" },
   { href: "/laga", label: "Laga appen (rensa cache)" },
 ] as const;
 
-export default async function MerPage() {
+/** Never block Mer on data — blank main was often a hung listObservations. */
+export default function MerPage() {
   const supabaseReady = isSupabaseConfigured();
-  let observationCount = 0;
-  try {
-    const observations = await listObservations();
-    observationCount = observations.length;
-  } catch (error) {
-    console.error("[numa] mer observations failed", error);
-  }
 
   return (
     <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
@@ -58,10 +54,35 @@ export default async function MerPage() {
             ? "Molnkonto aktivt — din data är privat per inloggning."
             : "Lokalt läge (en användare) — koppla Supabase för flera konton."}
         </p>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Sparade bilder: {observationCount}
-        </p>
+        <Suspense fallback={<p className="text-sm text-[var(--numa-faint)]">…</p>}>
+          <ObservationCount />
+        </Suspense>
       </section>
     </div>
+  );
+}
+
+async function ObservationCount() {
+  let observationCount = 0;
+  try {
+    const observations = await withTimeout(
+      listObservations(),
+      4_000,
+      "listObservations",
+    );
+    observationCount = observations.length;
+  } catch (error) {
+    console.error("[numa] mer observations failed", error);
+    return (
+      <p className="text-sm text-[var(--numa-muted)]">
+        Sparade bilder: kunde inte hämtas just nu.
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-sm text-[var(--numa-muted)]">
+      Sparade bilder: {observationCount}
+    </p>
   );
 }
