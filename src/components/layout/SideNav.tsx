@@ -43,11 +43,11 @@ export function SideNav() {
         </nav>
 
         <Link
-          href="/fota"
+          href="/lagg-till"
           prefetch
           className="rounded-2xl bg-[var(--numa-accent)] px-4 py-3.5 text-center text-sm font-semibold text-white shadow-[var(--numa-shadow-sm)] transition hover:brightness-105 active:scale-[0.99]"
         >
-          + Fota eller lägg till
+          + Lägg till
         </Link>
       </div>
     </aside>

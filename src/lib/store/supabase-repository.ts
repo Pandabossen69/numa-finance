@@ -503,6 +503,57 @@ export async function listTransactions(
   return (data ?? []).map(mapTransaction);
 }
 
+export async function updateTransaction(input: {
+  id: string;
+  amountMinor?: number;
+  description?: string;
+  category?: string | null;
+}): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.amountMinor != null) {
+    if (input.amountMinor <= 0) {
+      throw new Error("Beloppet måste vara större än noll");
+    }
+    patch.amount_minor = input.amountMinor;
+  }
+  if (input.description != null) {
+    patch.description = input.description.trim() || "Utgift";
+  }
+  if (input.category !== undefined) patch.category = input.category;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(patch)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .neq("status", "voided")
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapTransaction(data);
+}
+
+export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .update({
+      status: "voided",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapTransaction(data);
+}
+
 export async function listKnownFingerprints(): Promise<string[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
@@ -1063,7 +1114,7 @@ export async function uploadReceiptAndExtract(input: {
           : "uploaded",
       notes:
         extraction.provider === "none"
-          ? "Bild sparad. Autoläsning är av — ange belopp själv."
+          ? "Bild sparad. Kunde inte autoläsa — skriv beloppet som drogs (inte saldot)."
           : resolved.messageSv,
       updated_at: new Date().toISOString(),
     })
@@ -1092,7 +1143,7 @@ export async function uploadReceiptAndExtract(input: {
     ocrStatus,
     message:
       ocrStatus === "unavailable"
-        ? "Autoläsning är av. Ange beloppet från bilden."
+        ? "Kunde inte autoläsa just nu. Skriv beloppet som drogs i SMS:et (t.ex. 65,00) — inte saldot."
         : resolved.messageSv,
     importKind:
       resolved.kind === "bank_sms"

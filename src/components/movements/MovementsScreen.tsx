@@ -1,8 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import {
+  updateTransactionAction,
+  voidTransactionAction,
+} from "@/features/finance/actions";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
 type Filter = "all" | "expense" | "income" | "other";
@@ -50,6 +55,10 @@ function inCurrentMonth(iso: string): boolean {
   );
 }
 
+function minorToUi(amountMinor: number): string {
+  return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
+}
+
 export function MovementsScreen({
   data,
   error,
@@ -57,8 +66,15 @@ export function MovementsScreen({
   data: MovementsSnapshot | null;
   error?: string | null;
 }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [period, setPeriod] = useState<Period>("month");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -224,13 +240,19 @@ export function MovementsScreen({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">{filtered.length} rörelser</h2>
           <Link
-            href="/fota"
+            href="/lagg-till"
             prefetch
             className="text-xs font-semibold text-[var(--numa-accent)]"
           >
-            + Fota / lägg till
+            + Lägg till
           </Link>
         </div>
+
+        {actionError ? (
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {actionError}
+          </p>
+        ) : null}
 
         {filtered.length === 0 ? (
           <div className="numa-panel space-y-3 p-5">
@@ -238,11 +260,11 @@ export function MovementsScreen({
               Inga rörelser här ännu.
             </p>
             <Link
-              href="/fota"
+              href="/lagg-till"
               prefetch
               className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
             >
-              Fota SMS
+              Lägg till
             </Link>
           </div>
         ) : (
@@ -250,6 +272,73 @@ export function MovementsScreen({
             {filtered.map((tx) => {
               const signed =
                 tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              const canEdit =
+                tx.transactionType === "expense" ||
+                tx.transactionType === "income";
+
+              if (editingId === tx.id) {
+                return (
+                  <li key={tx.id} className="space-y-3 px-4 py-3.5">
+                    <input
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="Beskrivning"
+                      className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
+                    />
+                    <input
+                      inputMode="decimal"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-white/70 px-3 text-lg font-semibold"
+                    />
+                    {tx.transactionType === "expense" ? (
+                      <input
+                        value={editCategory}
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        placeholder="Kategori"
+                        className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
+                      />
+                    ) : null}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={pending}
+                        className="min-h-10 flex-1 rounded-xl bg-[var(--numa-accent)] text-sm font-medium text-white disabled:opacity-45"
+                        onClick={() => {
+                          setActionError(null);
+                          startTransition(async () => {
+                            const result = await updateTransactionAction({
+                              id: tx.id,
+                              amount: editAmount,
+                              description: editDescription,
+                              category:
+                                tx.transactionType === "expense"
+                                  ? editCategory || null
+                                  : undefined,
+                            });
+                            if (!result.ok) {
+                              setActionError(result.error);
+                              return;
+                            }
+                            setEditingId(null);
+                            router.refresh();
+                          });
+                        }}
+                      >
+                        Spara
+                      </button>
+                      <button
+                        type="button"
+                        className="min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Avbryt
+                      </button>
+                    </div>
+                  </li>
+                );
+              }
+
               return (
                 <li
                   key={tx.id}
@@ -269,6 +358,49 @@ export function MovementsScreen({
                         minute: "2-digit",
                       })}
                     </p>
+                    {canEdit ? (
+                      <div className="mt-1.5 flex gap-3">
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-[var(--numa-accent)]"
+                          disabled={pending}
+                          onClick={() => {
+                            setEditingId(tx.id);
+                            setEditAmount(minorToUi(tx.amountMinor));
+                            setEditDescription(tx.description);
+                            setEditCategory(tx.category ?? "");
+                            setActionError(null);
+                          }}
+                        >
+                          Redigera
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs text-[var(--numa-muted)]"
+                          disabled={pending}
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                "Ta bort den här rörelsen? Saldo och summeringar uppdateras.",
+                              )
+                            ) {
+                              return;
+                            }
+                            setActionError(null);
+                            startTransition(async () => {
+                              const result = await voidTransactionAction(tx.id);
+                              if (!result.ok) {
+                                setActionError(result.error);
+                                return;
+                              }
+                              router.refresh();
+                            });
+                          }}
+                        >
+                          Ta bort
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                   <MoneyDisplay
                     amountMinor={signed}

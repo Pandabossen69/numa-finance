@@ -426,6 +426,47 @@ export async function listTransactions(accountId?: string): Promise<CanonicalTra
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
 }
 
+export async function updateTransaction(input: {
+  id: string;
+  amountMinor?: number;
+  description?: string;
+  category?: string | null;
+}): Promise<CanonicalTransaction> {
+  let found: CanonicalTransaction | null = null;
+  await updateStore((s) => {
+    const tx = s.transactions.find(
+      (t) => t.id === input.id && t.userId === LOCAL_DEMO_USER_ID,
+    );
+    if (!tx) throw new Error("Rörelsen hittades inte");
+    if (tx.status === "voided") throw new Error("Borttagen rörelse kan inte ändras");
+    if (input.amountMinor != null) {
+      if (input.amountMinor <= 0) throw new Error("Beloppet måste vara större än noll");
+      tx.amountMinor = input.amountMinor;
+    }
+    if (input.description != null) {
+      tx.description = input.description.trim() || tx.description;
+    }
+    if (input.category !== undefined) tx.category = input.category;
+    tx.updatedAt = nowIso();
+    found = tx;
+  });
+  return found!;
+}
+
+export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
+  let found: CanonicalTransaction | null = null;
+  await updateStore((s) => {
+    const tx = s.transactions.find(
+      (t) => t.id === id && t.userId === LOCAL_DEMO_USER_ID,
+    );
+    if (!tx) throw new Error("Rörelsen hittades inte");
+    tx.status = "voided";
+    tx.updatedAt = nowIso();
+    found = tx;
+  });
+  return found!;
+}
+
 export async function createScreenshotObservation(input: {
   notes?: string | null;
   institutionHint?: string | null;
@@ -637,7 +678,7 @@ export async function uploadReceiptAndExtract(input: {
     ocrStatus,
     message:
       ocrStatus === "unavailable"
-        ? "Autoläsning är av. Ange beloppet från bilden."
+        ? "Kunde inte autoläsa just nu. Skriv beloppet som drogs i SMS:et (t.ex. 65,00) — inte saldot."
         : resolved.messageSv,
     importKind:
       resolved.kind === "bank_sms"

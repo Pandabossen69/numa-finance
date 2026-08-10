@@ -26,7 +26,7 @@ export function BottomNav() {
         ))}
         <div className="flex justify-center">
           <Link
-            href="/fota"
+            href="/lagg-till"
             prefetch
             className="relative -mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
             aria-label="Lägg till eller fota"

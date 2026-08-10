@@ -10,6 +10,8 @@ import {
   createManualIncome,
   createScreenshotObservation,
   createTransfer,
+  updateTransaction,
+  voidTransaction,
 } from "@/lib/store/repository";
 import { parseUiAmountToMinor } from "@/domain/money";
 
@@ -97,10 +99,7 @@ export async function createExpenseAction(
       category: input.category,
     });
 
-    revalidatePath("/idag");
-    revalidatePath("/transaktioner");
-    revalidatePath("/analys");
-    revalidatePath("/plan");
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -136,6 +135,51 @@ function revalidateMoneyPaths() {
   revalidatePath("/analys");
   revalidatePath("/plan");
   revalidatePath("/konton");
+  revalidatePath("/lagg-till");
+  revalidatePath("/mer");
+}
+
+export async function updateTransactionAction(raw: {
+  id: string;
+  amount: string;
+  description?: string;
+  category?: string | null;
+}): Promise<ActionResult> {
+  try {
+    const id = z.string().uuid().parse(raw.id);
+    const amountMinor = parseUiAmountToMinor(raw.amount);
+    if (amountMinor <= 0) {
+      return { ok: false, error: "Ange ett belopp större än noll" };
+    }
+    await updateTransaction({
+      id,
+      amountMinor,
+      description: raw.description,
+      category: raw.category,
+    });
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte uppdatera rörelsen",
+    };
+  }
+}
+
+export async function voidTransactionAction(id: string): Promise<ActionResult> {
+  try {
+    await voidTransaction(z.string().uuid().parse(id));
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte ta bort rörelsen",
+    };
+  }
 }
 
 export async function createIncomeAction(

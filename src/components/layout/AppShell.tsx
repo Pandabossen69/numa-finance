@@ -23,11 +23,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </Link>
             <Link
-              href="/fota"
+              href="/lagg-till"
               prefetch
               className="rounded-full bg-[var(--numa-accent-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--numa-accent-ink)]"
             >
-              Fota
+              Lägg till
             </Link>
           </header>
 

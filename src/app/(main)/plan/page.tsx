@@ -1,11 +1,18 @@
-import Link from "next/link";
+import { PlanEditor } from "@/components/plan/PlanEditor";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { loadHomeSnapshot } from "@/features/finance/load-home";
+import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 
 export default async function PlanPage() {
-  const result = await loadHomeSnapshot();
-  const snap = result.ok ? result.data : null;
+  let error: string | null = null;
+  let snap = null;
+  try {
+    snap = await getCachedTodaySnapshot();
+  } catch (e) {
+    error = e instanceof Error ? e.message : "Kunde inte ladda planen";
+  }
+
   const currency = snap?.currency ?? "THB";
+  const timeZone = snap?.profile.timezone || "Asia/Bangkok";
 
   return (
     <div className="space-y-6">
@@ -14,67 +21,64 @@ export default async function PlanPage() {
           Plan
         </h1>
         <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
-          Reserverat och buffert styr tryggt att spendera. Allt är noll tills
-          första bank-SMS och du lägger till planrader.
+          Planera kommande månader. Fasta utgifter följer med automatiskt — du
+          kan alltid lägga till, ändra eller ta bort.
         </p>
       </header>
 
-      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-2">
-        <div>
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Reserverat
-          </p>
-          <div className="mt-2">
-            <MoneyDisplay
-              amountMinor={snap?.reservedMinor ?? 0}
-              currency={currency}
-              size="lg"
-            />
-          </div>
-        </div>
-        <div>
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Buffert
-          </p>
-          <div className="mt-2">
-            <MoneyDisplay
-              amountMinor={snap?.bufferMinor ?? 0}
-              currency={currency}
-              size="lg"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="numa-panel animate-rise-delay-2 p-5">
-        <h2 className="text-sm font-semibold">Aktiva mål</h2>
-        {(snap?.goals.length ?? 0) === 0 ? (
-          <p className="mt-4 text-sm text-[var(--numa-faint)]">Inga mål ännu</p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {snap!.goals.map((goal) => (
-              <li
-                key={goal.id}
-                className="flex items-center justify-between border-b border-[var(--numa-border)] pb-3 last:border-0"
-              >
-                <span className="text-sm text-[var(--numa-muted)]">{goal.name}</span>
+      {error ? (
+        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
+      ) : (
+        <>
+          <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-3">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Reserverat
+              </p>
+              <div className="mt-2">
                 <MoneyDisplay
-                  amountMinor={goal.amountMinor}
-                  currency={goal.currency}
-                  size="sm"
+                  amountMinor={snap?.reservedMinor ?? 0}
+                  currency={currency}
+                  size="lg"
                 />
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link
-          href="/fota"
-          prefetch
-          className="mt-5 inline-flex text-sm font-semibold text-[var(--numa-accent)]"
-        >
-          Importera SMS →
-        </Link>
-      </section>
+              </div>
+            </div>
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Buffert
+              </p>
+              <div className="mt-2">
+                <MoneyDisplay
+                  amountMinor={snap?.bufferMinor ?? 0}
+                  currency={currency}
+                  size="lg"
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Flex
+              </p>
+              <div className="mt-2">
+                <MoneyDisplay
+                  amountMinor={snap?.flexibleMinor ?? 0}
+                  currency={currency}
+                  size="lg"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="numa-panel animate-rise-delay-2 p-5">
+            <PlanEditor
+              items={snap?.planItems ?? []}
+              currency={currency}
+              daysUntilIncome={snap?.daysUntilIncome ?? 0}
+              timeZone={timeZone}
+            />
+          </section>
+        </>
+      )}
     </div>
   );
 }
