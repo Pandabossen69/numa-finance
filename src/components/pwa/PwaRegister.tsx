@@ -2,10 +2,12 @@
 
 import { useEffect } from "react";
 
+const KILL_FLAG = "numa.swKill.v5";
+
 /**
- * One-shot silent cleanup of leftover service workers/caches.
- * Never auto-reloads — that caused blank flashes and "segt" loops on iPhone.
- * Manual repair lives on /installningar → Laga appen.
+ * Kill poisoned service workers that cached blank HTML/RSC.
+ * Must reload ONCE after unregister — otherwise the old controller keeps
+ * serving empty <main> while the client BottomNav still hydrates.
  */
 export function PwaRegister() {
   useEffect(() => {
@@ -13,29 +15,47 @@ export function PwaRegister() {
 
     async function detox() {
       try {
-        const flag = "numa.swSilentDetox.v1";
-        if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(flag)) {
+        if (localStorage.getItem(KILL_FLAG) === "done") {
           return;
         }
 
+        const hadController =
+          "serviceWorker" in navigator &&
+          Boolean(navigator.serviceWorker.controller);
+
         if ("serviceWorker" in navigator) {
           const regs = await navigator.serviceWorker.getRegistrations();
-          if (regs.length > 0) {
-            await Promise.all(regs.map((reg) => reg.unregister()));
-          }
+          await Promise.all(regs.map((reg) => reg.unregister()));
         }
+
         if ("caches" in window) {
           const keys = await caches.keys();
-          if (keys.length > 0) {
-            await Promise.all(keys.map((key) => caches.delete(key)));
+          await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+
+        if ("serviceWorker" in navigator) {
+          try {
+            await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+          } catch {
+            // unregister-only is still fine
           }
         }
 
-        if (!cancelled && typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(flag, "1");
+        if (cancelled) return;
+
+        localStorage.setItem(KILL_FLAG, "done");
+
+        if (hadController) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("recovered", String(Date.now()));
+          window.location.replace(`${url.pathname}${url.search}`);
         }
       } catch {
-        // best-effort
+        try {
+          localStorage.setItem(KILL_FLAG, "done");
+        } catch {
+          // ignore
+        }
       }
     }
 

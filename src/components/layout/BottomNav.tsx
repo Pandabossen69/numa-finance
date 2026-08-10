@@ -16,6 +16,7 @@ const MER_PREFIXES = [
   "/importera",
   "/installningar",
   "/fota",
+  "/laga",
 ];
 
 /** Plain anchors only — soft RSC nav + poisoned SW = blank main. */
@@ -37,7 +38,15 @@ export function BottomNav() {
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
-      <div className="numa-shell grid grid-cols-5 items-end px-2 pt-2 pb-2">
+      <div className="mx-auto flex max-w-[28rem] items-center justify-end px-4 pt-1">
+        <a
+          href="/laga"
+          className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--numa-accent)]"
+        >
+          Laga
+        </a>
+      </div>
+      <div className="numa-shell grid grid-cols-5 items-end px-2 pt-1 pb-2">
         {tabs.slice(0, 2).map((tab) => (
           <NavLink
             key={tab.href}
