@@ -39,15 +39,20 @@ export class BangkokBankSmsParser implements BankMessageParser {
     return (
       input.institution.toLowerCase().includes("bangkok") ||
       t.includes("available balance is bt") ||
-      t.includes("from your account")
+      t.includes("from your account") ||
+      t.includes("to your account") ||
+      t.includes("promptpay") ||
+      t.includes("bangkokbank")
     );
   }
 
   parse(input: BankMessageParseInput): ParsedBankMessage[] {
     const results: ParsedBankMessage[] = [];
-    // Split on likely SMS boundaries; keep extensible.
+    // Split on SMS bubbles / known Bangkok Bank openings.
     const chunks = input.text
-      .split(/\n{2,}|(?=Withdrawal\/transfer\/payment)/i)
+      .split(
+        /\n{2,}|(?=Withdrawal\/transfer\/payment)|(?=PromptPay)|(?=Successful)|(?=Deposit)/i,
+      )
       .map((c) => c.trim())
       .filter(Boolean);
 
@@ -58,25 +63,31 @@ export class BangkokBankSmsParser implements BankMessageParser {
       const balanceMatch = chunk.match(
         /available balance is Bt\s*([\d,]+(?:\.\d{2})?)/i,
       );
-      const accountMatch = chunk.match(/account\s+[A-Z]?(\d{3,})/i);
+      const accountMatch = chunk.match(/account\s+([A-Z]?\d{3,})/i);
+
+      const isCredit =
+        /promptpay/i.test(chunk) ||
+        /transfer to your account/i.test(chunk) ||
+        /deposit|received|credited to/i.test(chunk);
       const isDebit =
-        /withdrawal|transfer|payment from/i.test(chunk) ||
-        /debit/i.test(chunk);
-      const isCredit = /deposit|received|credit/i.test(chunk);
+        !isCredit &&
+        (/withdrawal|payment from|transfer\/payment from|debit/i.test(chunk) ||
+          /from your account/i.test(chunk));
 
       if (!amountMatch && !balanceMatch) continue;
+      if (!isCredit && !isDebit) continue;
 
       results.push({
         institution: "Bangkok Bank",
         maskedAccount: accountMatch?.[1] ?? null,
-        direction: isCredit ? "credit" : isDebit ? "debit" : null,
-        amountMinor: amountMatch ? majorStringToMinor(amountMatch[1]) : null,
+        direction: isCredit ? "credit" : "debit",
+        amountMinor: amountMatch ? majorStringToMinor(amountMatch[1]!) : null,
         currency: "THB",
         balanceAfterMinor: balanceMatch
-          ? majorStringToMinor(balanceMatch[1])
+          ? majorStringToMinor(balanceMatch[1]!)
           : null,
         channel: /via\s+MOBILE/i.test(chunk) ? "mobile" : null,
-        confidence: amountMatch && balanceMatch ? 0.9 : 0.6,
+        confidence: amountMatch && balanceMatch ? 0.92 : 0.65,
         raw: chunk,
       });
     }

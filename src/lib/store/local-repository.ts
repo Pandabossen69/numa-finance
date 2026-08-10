@@ -23,7 +23,12 @@ import {
   type TransactionSource,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
-import { createExtractionProvider } from "@/domain/imports";
+import {
+  buildBankSmsCandidates,
+  createExtractionProvider,
+  extractBankSmsPlainText,
+  latestBalanceAfterMinor,
+} from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 import { readStore, updateStore } from "./local-store";
@@ -32,6 +37,12 @@ import {
   buildUserStoragePath,
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
+import type {
+  BankSmsUploadResult,
+  ConfirmBankSmsInput,
+  ConfirmBankSmsResult,
+} from "./bank-sms-types";
+
 import {
   emptyUserProgress,
   type RecordOnTrackDayResult,
@@ -158,6 +169,8 @@ export async function createManualExpense(input: {
   source?: TransactionSource;
   sourceObservationId?: string | null;
   merchant?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -174,6 +187,17 @@ export async function createManualExpense(input: {
     )
   ) {
     throw new Error("Importen hittades inte");
+  }
+
+  const fingerprint = input.fingerprint?.trim() || null;
+  if (fingerprint) {
+    const dup = store.transactions.find(
+      (t) =>
+        t.userId === LOCAL_DEMO_USER_ID &&
+        t.fingerprint === fingerprint &&
+        t.status !== "voided",
+    );
+    if (dup) return dup;
   }
 
   const updated = await updateStore((s) => {
@@ -193,8 +217,8 @@ export async function createManualExpense(input: {
       category: input.category ?? null,
       source: input.source ?? "manual",
       status: "confirmed",
-      balanceAfterMinor: null,
-      fingerprint: null,
+      balanceAfterMinor: input.balanceAfterMinor ?? null,
+      fingerprint,
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
       syncStatus: "saved",
@@ -211,6 +235,10 @@ export async function createManualIncome(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  source?: TransactionSource;
+  sourceObservationId?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -218,6 +246,26 @@ export async function createManualIncome(input: {
   const store = await readStore();
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  if (
+    input.sourceObservationId &&
+    !store.observations.some(
+      (o) =>
+        o.id === input.sourceObservationId && o.userId === LOCAL_DEMO_USER_ID,
+    )
+  ) {
+    throw new Error("Importen hittades inte");
+  }
+
+  const fingerprint = input.fingerprint?.trim() || null;
+  if (fingerprint) {
+    const dup = store.transactions.find(
+      (t) =>
+        t.userId === LOCAL_DEMO_USER_ID &&
+        t.fingerprint === fingerprint &&
+        t.status !== "voided",
+    );
+    if (dup) return dup;
+  }
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
@@ -234,11 +282,11 @@ export async function createManualIncome(input: {
       description: input.description?.trim() || "Inkomst",
       merchant: null,
       category: null,
-      source: "manual",
+      source: input.source ?? "manual",
       status: "confirmed",
-      balanceAfterMinor: null,
-      fingerprint: null,
-      sourceObservationId: null,
+      balanceAfterMinor: input.balanceAfterMinor ?? null,
+      fingerprint,
+      sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
       syncStatus: "saved",
       createdAt: ts,
@@ -780,6 +828,245 @@ export async function confirmReceiptExpense(
   });
 
   return tx;
+}
+
+export async function listTransactionFingerprints(): Promise<string[]> {
+  const store = await readStore();
+  return store.transactions
+    .filter(
+      (t) =>
+        t.userId === LOCAL_DEMO_USER_ID &&
+        t.status !== "voided" &&
+        t.fingerprint,
+    )
+    .map((t) => t.fingerprint!);
+}
+
+async function persistBankSmsObservation(input: {
+  text: string | null;
+  storagePath: string | null;
+  ocrStatus: BankSmsUploadResult["ocrStatus"];
+  ocrMessage: string | null;
+  rawMetadata?: Record<string, unknown>;
+}): Promise<BankSmsUploadResult> {
+  const fingerprints = await listTransactionFingerprints();
+  const candidates = buildBankSmsCandidates({
+    text: input.text ?? "",
+    institutionHint: "Bangkok Bank",
+    existingFingerprints: fingerprints,
+  });
+  const profile = (await readStore()).profile;
+  const bal = latestBalanceAfterMinor(candidates);
+
+  let observationId = "";
+  await updateStore((s) => {
+    const ts = nowIso();
+    observationId = newId();
+    const found = candidates.length;
+    const dupes = candidates.filter((c) => c.duplicate).length;
+    const observation: SourceObservation = {
+      id: observationId,
+      userId: LOCAL_DEMO_USER_ID,
+      kind: "sms",
+      storagePath: input.storagePath,
+      institutionHint: "Bangkok Bank",
+      accountHint: null,
+      status: found > 0 ? "needs_review" : "uploaded",
+      capturedAt: ts,
+      notes:
+        found > 0
+          ? `Hittade ${found} SMS (${dupes} redan sparade). Bekräfta innan sparning.`
+          : input.ocrMessage ??
+            "Inga bank-SMS kunde tolkas. Klistra in texten från Meddelanden.",
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    s.observations.push(observation);
+
+    if (input.rawMetadata || input.text) {
+      const run: ExtractionRun = {
+        id: newId(),
+        observationId,
+        userId: LOCAL_DEMO_USER_ID,
+        provider: input.ocrStatus === "pasted" ? "manual_stub" : "vision_api",
+        status: found > 0 ? "succeeded" : "failed",
+        rawMetadata: {
+          ...(input.rawMetadata ?? {}),
+          extractedTextPreview: input.text?.slice(0, 400) ?? null,
+        },
+        startedAt: ts,
+        finishedAt: ts,
+      };
+      s.extractionRuns.push(run);
+    }
+  });
+
+  const observation = (await getObservation(observationId))!;
+  return {
+    observation,
+    candidates,
+    latestBalanceAfterMinor: bal,
+    currency: profile.primaryCurrency,
+    ocrStatus: input.ocrStatus,
+    message:
+      candidates.length === 0
+        ? input.ocrMessage ??
+          "Kunde inte hitta belopp + saldo i texten. Kontrollera att hela SMS:et syns."
+        : dupesMessage(candidates),
+    extractedText: input.text,
+  };
+}
+
+function dupesMessage(
+  candidates: ReturnType<typeof buildBankSmsCandidates>,
+): string | null {
+  const dupes = candidates.filter((c) => c.duplicate).length;
+  if (dupes === 0) return null;
+  if (dupes === candidates.length) {
+    return "Alla SMS i bilden finns redan — inget dubbelsparas.";
+  }
+  return `${dupes} redan sparade (samma belopp + saldo) — de hoppas över.`;
+}
+
+export async function parseBankSmsText(input: {
+  text: string;
+}): Promise<BankSmsUploadResult> {
+  const text = input.text.trim();
+  if (!text) {
+    throw new Error("Klistra in SMS-texten först");
+  }
+  return persistBankSmsObservation({
+    text,
+    storagePath: null,
+    ocrStatus: "pasted",
+    ocrMessage: null,
+  });
+}
+
+export async function uploadBankSmsAndExtract(input: {
+  fileName: string;
+  mimeType: string;
+  bytes: Uint8Array;
+}): Promise<BankSmsUploadResult> {
+  const storagePath = buildUserStoragePath(
+    LOCAL_DEMO_USER_ID,
+    input.fileName || "bank-sms.jpg",
+  );
+  assertUserOwnsStoragePath(LOCAL_DEMO_USER_ID, storagePath);
+
+  const dir = path.join(process.cwd(), ".data", "media");
+  await mkdir(dir, { recursive: true });
+  const filePath = path.join(process.cwd(), ".data", "media", storagePath);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, input.bytes);
+
+  const imageBase64 = Buffer.from(input.bytes).toString("base64");
+  const ocr = await extractBankSmsPlainText({
+    imageBase64,
+    mimeType: input.mimeType,
+  });
+
+  let ocrStatus: BankSmsUploadResult["ocrStatus"] = "ok";
+  let ocrMessage: string | null = null;
+  if (ocr.provider === "none") {
+    ocrStatus = "unavailable";
+    ocrMessage =
+      "Autoläsning är av. Klistra in SMS-texten från Meddelanden istället.";
+  } else if (!ocr.text) {
+    ocrStatus = "failed";
+    ocrMessage =
+      "Kunde inte läsa SMS-texten från bilden. Klistra in texten manuellt.";
+  }
+
+  return persistBankSmsObservation({
+    text: ocr.text,
+    storagePath,
+    ocrStatus,
+    ocrMessage,
+    rawMetadata: ocr.rawMetadata,
+  });
+}
+
+export async function confirmBankSmsImport(
+  input: ConfirmBankSmsInput,
+): Promise<ConfirmBankSmsResult> {
+  const store = await readStore();
+  const observation = store.observations.find(
+    (o) => o.id === input.observationId && o.userId === LOCAL_DEMO_USER_ID,
+  );
+  if (!observation) throw new Error("Importen hittades inte");
+
+  const account = store.accounts.find((a) => a.id === input.accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+
+  let createdCount = 0;
+  let skippedDuplicateCount = 0;
+  const existing = new Set(await listTransactionFingerprints());
+
+  for (const item of input.items) {
+    if (item.skip) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    if (!item.fingerprint || existing.has(item.fingerprint)) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    if (item.amountMinor <= 0) continue;
+
+    if (item.direction === "credit") {
+      await createManualIncome({
+        accountId: input.accountId,
+        amountMinor: item.amountMinor,
+        description: item.description,
+        source: "sms",
+        sourceObservationId: input.observationId,
+        fingerprint: item.fingerprint,
+        balanceAfterMinor: item.balanceAfterMinor,
+      });
+    } else {
+      await createManualExpense({
+        accountId: input.accountId,
+        amountMinor: item.amountMinor,
+        description: item.description,
+        category: "Övrigt",
+        source: "sms",
+        sourceObservationId: input.observationId,
+        fingerprint: item.fingerprint,
+        balanceAfterMinor: item.balanceAfterMinor,
+      });
+    }
+    existing.add(item.fingerprint);
+    createdCount += 1;
+  }
+
+  let checkpointBalanceMinor: number | null = null;
+  const updateCheckpoint = input.updateCheckpoint !== false;
+  if (updateCheckpoint) {
+    const bal = latestBalanceAfterMinor(
+      input.items.map((i) => ({ balanceAfterMinor: i.balanceAfterMinor })),
+    );
+    if (bal != null) {
+      await createCheckpoint({
+        accountId: input.accountId,
+        balanceMinor: bal,
+        source: "bank_sms",
+        note: "Saldo från Bangkok Bank SMS",
+      });
+      checkpointBalanceMinor = bal;
+    }
+  }
+
+  await updateStore((s) => {
+    const obs = s.observations.find((o) => o.id === input.observationId);
+    if (obs) {
+      obs.status = "processed";
+      obs.notes = `Importerade ${createdCount} SMS (${skippedDuplicateCount} hoppades över).`;
+      obs.updatedAt = nowIso();
+    }
+  });
+
+  return { createdCount, skippedDuplicateCount, checkpointBalanceMinor };
 }
 
 export function latestCheckpointForAccount(

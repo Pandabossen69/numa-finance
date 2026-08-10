@@ -6,6 +6,12 @@ import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
+export type {
+  BankSmsUploadResult,
+  ConfirmBankSmsInput,
+  ConfirmBankSmsResult,
+  ConfirmBankSmsItem,
+} from "./bank-sms-types";
 export type { UserProgress, RecordOnTrackDayResult } from "./types-progress";
 
 function api() {
@@ -116,6 +122,28 @@ export async function confirmReceiptExpense(
   input: Parameters<typeof local.confirmReceiptExpense>[0],
 ) {
   return api().confirmReceiptExpense(input);
+}
+
+export async function listTransactionFingerprints() {
+  return api().listTransactionFingerprints();
+}
+
+export async function parseBankSmsText(
+  input: Parameters<typeof local.parseBankSmsText>[0],
+) {
+  return api().parseBankSmsText(input);
+}
+
+export async function uploadBankSmsAndExtract(
+  input: Parameters<typeof local.uploadBankSmsAndExtract>[0],
+) {
+  return api().uploadBankSmsAndExtract(input);
+}
+
+export async function confirmBankSmsImport(
+  input: Parameters<typeof local.confirmBankSmsImport>[0],
+) {
+  return api().confirmBankSmsImport(input);
 }
 
 export async function getUserProgress() {

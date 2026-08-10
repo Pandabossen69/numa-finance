@@ -150,6 +150,19 @@ export function AddActionSheet({
 
                 <button
                   type="button"
+                  onClick={() => go("/bank-sms")}
+                  className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-left transition active:scale-[0.99]"
+                >
+                  <span className="text-[15px] font-semibold">
+                    Importera bank-SMS
+                  </span>
+                  <span className="text-xs text-[var(--numa-faint)]">
+                    Skärmdump efter köp — belopp + saldo, utan dubbletter
+                  </span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setUpdateSaldo(true)}
                   className="flex min-h-14 w-full flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-left transition active:scale-[0.99]"
                 >

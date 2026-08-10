@@ -20,11 +20,23 @@ export default async function ImporteraPage() {
       </header>
 
       <Link
-        href="/fota"
+        href="/bank-sms"
         className="flex min-h-14 flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-white"
       >
+        <span className="text-[15px] font-semibold">Importera bank-SMS</span>
+        <span className="text-xs text-white/80">
+          Skärmdump från Meddelanden — belopp + saldo
+        </span>
+      </Link>
+
+      <Link
+        href="/fota"
+        className="flex min-h-14 flex-col justify-center rounded-[1.25rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4"
+      >
         <span className="text-[15px] font-semibold">Fota nytt kvitto</span>
-        <span className="text-xs text-white/80">Snabbaste vägen in i NUMA</span>
+        <span className="text-xs text-[var(--numa-faint)]">
+          Snabbaste vägen in i NUMA från kassan
+        </span>
       </Link>
 
       <section className="space-y-3">
@@ -63,6 +75,8 @@ function kindLabel(kind: string): string {
       return "Kvitto";
     case "screenshot":
       return "Skärmbild";
+    case "sms":
+      return "Bank-SMS";
     case "price":
       return "Pris";
     default:

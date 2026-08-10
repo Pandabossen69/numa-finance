@@ -21,7 +21,12 @@ import {
   type TransactionSource,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
-import { createExtractionProvider } from "@/domain/imports";
+import {
+  buildBankSmsCandidates,
+  createExtractionProvider,
+  extractBankSmsPlainText,
+  latestBalanceAfterMinor,
+} from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -40,6 +45,11 @@ import {
   buildUserStoragePath,
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
+import type {
+  BankSmsUploadResult,
+  ConfirmBankSmsInput,
+  ConfirmBankSmsResult,
+} from "./bank-sms-types";
 import type { TodaySnapshot } from "./types-snapshot";
 import {
   emptyUserProgress,
@@ -227,6 +237,8 @@ export async function createManualExpense(input: {
   source?: TransactionSource;
   sourceObservationId?: string | null;
   merchant?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -243,7 +255,20 @@ export async function createManualExpense(input: {
     }
   }
 
+  const fingerprint = input.fingerprint?.trim() || null;
   const supabase = await createSupabaseServerClient();
+
+  if (fingerprint) {
+    const { data: existing } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("fingerprint", fingerprint)
+      .neq("status", "voided")
+      .maybeSingle();
+    if (existing) return mapTransaction(existing);
+  }
+
   const ts = new Date().toISOString();
   const { data, error } = await supabase
     .from("transactions")
@@ -262,11 +287,25 @@ export async function createManualExpense(input: {
       status: "confirmed",
       sync_status: "synced",
       source_observation_id: input.sourceObservationId ?? null,
+      fingerprint,
+      balance_after_minor: input.balanceAfterMinor ?? null,
     })
     .select("*")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (fingerprint && isUniqueFingerprintError(error)) {
+      const { data: again } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("fingerprint", fingerprint)
+        .neq("status", "voided")
+        .maybeSingle();
+      if (again) return mapTransaction(again);
+    }
+    throw new Error(error.message);
+  }
   return mapTransaction(data);
 }
 
@@ -275,6 +314,10 @@ export async function createManualIncome(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  source?: TransactionSource;
+  sourceObservationId?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -283,7 +326,27 @@ export async function createManualIncome(input: {
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
 
+  if (input.sourceObservationId) {
+    const obs = await getObservation(input.sourceObservationId);
+    if (!obs || obs.userId !== userId) {
+      throw new Error("Importen hittades inte");
+    }
+  }
+
+  const fingerprint = input.fingerprint?.trim() || null;
   const supabase = await createSupabaseServerClient();
+
+  if (fingerprint) {
+    const { data: existing } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("fingerprint", fingerprint)
+      .neq("status", "voided")
+      .maybeSingle();
+    if (existing) return mapTransaction(existing);
+  }
+
   const ts = new Date().toISOString();
   const { data, error } = await supabase
     .from("transactions")
@@ -296,14 +359,36 @@ export async function createManualIncome(input: {
       currency: account.currency,
       occurred_at: input.occurredAt ?? ts,
       description: input.description?.trim() || "Inkomst",
-      source: "manual",
+      source: input.source ?? "manual",
       status: "confirmed",
       sync_status: "synced",
+      source_observation_id: input.sourceObservationId ?? null,
+      fingerprint,
+      balance_after_minor: input.balanceAfterMinor ?? null,
     })
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (fingerprint && isUniqueFingerprintError(error)) {
+      const { data: again } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("fingerprint", fingerprint)
+        .neq("status", "voided")
+        .maybeSingle();
+      if (again) return mapTransaction(again);
+    }
+    throw new Error(error.message);
+  }
   return mapTransaction(data);
+}
+
+function isUniqueFingerprintError(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === "23505" ||
+    (error.message?.toLowerCase().includes("fingerprint") ?? false)
+  );
 }
 
 export async function createTransfer(input: {
@@ -1271,4 +1356,291 @@ export async function confirmReceiptExpense(
     .eq("id", input.observationId);
 
   return tx;
+}
+
+export async function listTransactionFingerprints(): Promise<string[]> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("fingerprint")
+    .eq("user_id", userId)
+    .neq("status", "voided")
+    .not("fingerprint", "is", null);
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((r) => r.fingerprint as string | null)
+    .filter((fp): fp is string => Boolean(fp));
+}
+
+function bankSmsDupeMessage(
+  candidates: ReturnType<typeof buildBankSmsCandidates>,
+): string | null {
+  const dupes = candidates.filter((c) => c.duplicate).length;
+  if (dupes === 0) return null;
+  if (dupes === candidates.length) {
+    return "Alla SMS i bilden finns redan — inget dubbelsparas.";
+  }
+  return `${dupes} redan sparade (samma belopp + saldo) — de hoppas över.`;
+}
+
+async function finishBankSmsParse(input: {
+  userId: string;
+  observationId: string;
+  text: string | null;
+  ocrStatus: BankSmsUploadResult["ocrStatus"];
+  ocrMessage: string | null;
+  rawMetadata?: Record<string, unknown>;
+}): Promise<BankSmsUploadResult> {
+  const fingerprints = await listTransactionFingerprints();
+  const candidates = buildBankSmsCandidates({
+    text: input.text ?? "",
+    institutionHint: "Bangkok Bank",
+    existingFingerprints: fingerprints,
+  });
+  const bal = latestBalanceAfterMinor(candidates);
+  const profile = await getProfile();
+  const supabase = await createSupabaseServerClient();
+  const found = candidates.length;
+  const dupes = candidates.filter((c) => c.duplicate).length;
+
+  const runStatus =
+    input.ocrStatus === "unavailable"
+      ? "failed"
+      : found > 0
+        ? "succeeded"
+        : "failed";
+
+  await supabase.from("extraction_runs").insert({
+    observation_id: input.observationId,
+    user_id: input.userId,
+    provider: input.ocrStatus === "pasted" ? "manual_stub" : "vision_api",
+    status: runStatus,
+    raw_metadata: {
+      ...(input.rawMetadata ?? {}),
+      extractedTextPreview: input.text?.slice(0, 400) ?? null,
+    },
+    finished_at: new Date().toISOString(),
+  });
+
+  await supabase
+    .from("source_observations")
+    .update({
+      status: found > 0 ? "needs_review" : "uploaded",
+      notes:
+        found > 0
+          ? `Hittade ${found} SMS (${dupes} redan sparade). Bekräfta innan sparning.`
+          : input.ocrMessage ??
+            "Inga bank-SMS kunde tolkas. Klistra in texten från Meddelanden.",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", input.userId)
+    .eq("id", input.observationId);
+
+  const observation =
+    (await getObservation(input.observationId)) ??
+    ({
+      id: input.observationId,
+      userId: input.userId,
+      kind: "sms",
+      storagePath: null,
+      institutionHint: "Bangkok Bank",
+      accountHint: null,
+      status: found > 0 ? "needs_review" : "uploaded",
+      capturedAt: new Date().toISOString(),
+      notes: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } satisfies SourceObservation);
+
+  return {
+    observation,
+    candidates,
+    latestBalanceAfterMinor: bal,
+    currency: profile.primaryCurrency,
+    ocrStatus: input.ocrStatus,
+    message:
+      candidates.length === 0
+        ? input.ocrMessage ??
+          "Kunde inte hitta belopp + saldo i texten. Kontrollera att hela SMS:et syns."
+        : bankSmsDupeMessage(candidates),
+    extractedText: input.text,
+  };
+}
+
+export async function parseBankSmsText(input: {
+  text: string;
+}): Promise<BankSmsUploadResult> {
+  const text = input.text.trim();
+  if (!text) throw new Error("Klistra in SMS-texten först");
+
+  const userId = await requireUserId();
+  await ensureProfile(userId);
+  const supabase = await createSupabaseServerClient();
+
+  const { data: obsRow, error } = await supabase
+    .from("source_observations")
+    .insert({
+      user_id: userId,
+      kind: "sms",
+      storage_path: null,
+      institution_hint: "Bangkok Bank",
+      status: "extracting",
+      notes: "SMS-text inklistrad — tolkar…",
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  return finishBankSmsParse({
+    userId,
+    observationId: obsRow.id,
+    text,
+    ocrStatus: "pasted",
+    ocrMessage: null,
+  });
+}
+
+export async function uploadBankSmsAndExtract(input: {
+  fileName: string;
+  mimeType: string;
+  bytes: Uint8Array;
+}): Promise<BankSmsUploadResult> {
+  const userId = await requireUserId();
+  await ensureProfile(userId);
+  const supabase = await createSupabaseServerClient();
+  const storagePath = buildUserStoragePath(userId, input.fileName || "bank-sms.jpg");
+  assertUserOwnsStoragePath(userId, storagePath);
+
+  const { error: uploadError } = await supabase.storage
+    .from(MEDIA_BUCKET)
+    .upload(storagePath, input.bytes, {
+      contentType: input.mimeType,
+      upsert: false,
+    });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data: obsRow, error: obsError } = await supabase
+    .from("source_observations")
+    .insert({
+      user_id: userId,
+      kind: "sms",
+      storage_path: storagePath,
+      institution_hint: "Bangkok Bank",
+      status: "extracting",
+      notes: "Bank-SMS uppladdat — väntar på läsning",
+    })
+    .select("*")
+    .single();
+  if (obsError) throw new Error(obsError.message);
+
+  const imageBase64 = Buffer.from(input.bytes).toString("base64");
+  const ocr = await extractBankSmsPlainText({
+    imageBase64,
+    mimeType: input.mimeType,
+  });
+
+  let ocrStatus: BankSmsUploadResult["ocrStatus"] = "ok";
+  let ocrMessage: string | null = null;
+  if (ocr.provider === "none") {
+    ocrStatus = "unavailable";
+    ocrMessage =
+      "Autoläsning är av. Klistra in SMS-texten från Meddelanden istället.";
+  } else if (!ocr.text) {
+    ocrStatus = "failed";
+    ocrMessage =
+      "Kunde inte läsa SMS-texten från bilden. Klistra in texten manuellt.";
+  }
+
+  return finishBankSmsParse({
+    userId,
+    observationId: obsRow.id,
+    text: ocr.text,
+    ocrStatus,
+    ocrMessage,
+    rawMetadata: ocr.rawMetadata,
+  });
+}
+
+export async function confirmBankSmsImport(
+  input: ConfirmBankSmsInput,
+): Promise<ConfirmBankSmsResult> {
+  const userId = await requireUserId();
+  const observation = await getObservation(input.observationId);
+  if (!observation || observation.userId !== userId) {
+    throw new Error("Importen hittades inte");
+  }
+  const account = await getAccount(input.accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+
+  let createdCount = 0;
+  let skippedDuplicateCount = 0;
+  const existing = new Set(await listTransactionFingerprints());
+
+  for (const item of input.items) {
+    if (item.skip) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    if (!item.fingerprint || existing.has(item.fingerprint)) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    if (item.amountMinor <= 0) continue;
+
+    if (item.direction === "credit") {
+      await createManualIncome({
+        accountId: input.accountId,
+        amountMinor: item.amountMinor,
+        description: item.description,
+        source: "sms",
+        sourceObservationId: input.observationId,
+        fingerprint: item.fingerprint,
+        balanceAfterMinor: item.balanceAfterMinor,
+      });
+    } else {
+      await createManualExpense({
+        accountId: input.accountId,
+        amountMinor: item.amountMinor,
+        description: item.description,
+        category: "Övrigt",
+        source: "sms",
+        sourceObservationId: input.observationId,
+        fingerprint: item.fingerprint,
+        balanceAfterMinor: item.balanceAfterMinor,
+      });
+    }
+    existing.add(item.fingerprint);
+    createdCount += 1;
+  }
+
+  let checkpointBalanceMinor: number | null = null;
+  const updateCheckpoint = input.updateCheckpoint !== false;
+  if (updateCheckpoint) {
+    const bal = latestBalanceAfterMinor(
+      input.items.map((i) => ({ balanceAfterMinor: i.balanceAfterMinor })),
+    );
+    if (bal != null) {
+      await createCheckpoint({
+        accountId: input.accountId,
+        balanceMinor: bal,
+        source: "bank_sms",
+        note: "Saldo från Bangkok Bank SMS",
+      });
+      checkpointBalanceMinor = bal;
+    }
+  }
+
+  const supabase = await createSupabaseServerClient();
+  await supabase
+    .from("source_observations")
+    .update({
+      status: "processed",
+      notes: `Importerade ${createdCount} SMS (${skippedDuplicateCount} hoppades över).`,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("id", input.observationId);
+
+  return { createdCount, skippedDuplicateCount, checkpointBalanceMinor };
 }
