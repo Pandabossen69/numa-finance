@@ -2,10 +2,29 @@ import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PlanEditor } from "@/components/plan/PlanEditor";
 import { formatMoney, moneyFromUnknown } from "@/domain/money";
-import { getTodaySnapshotCached } from "@/lib/store/today";
+import { safeLoadTodaySnapshot } from "@/lib/store/load-snapshot";
 
 export default async function PlanPage() {
-  const snap = await getTodaySnapshotCached();
+  const loaded = await safeLoadTodaySnapshot();
+  if (!loaded.ok) {
+    return (
+      <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Kunde inte ladda plan
+        </h1>
+        <p className="text-sm text-[var(--numa-muted)]">
+          Ladda om sidan. Om det kvarstår, logga ut och in igen.
+        </p>
+        <a
+          href="/idag"
+          className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
+        >
+          Till Idag
+        </a>
+      </div>
+    );
+  }
+  const snap = loaded.snap;
 
   if (!snap.primaryAccount) {
     return (

@@ -7,7 +7,7 @@ import {
   parseMonthKey,
 } from "@/domain/finance";
 import { listTransactions } from "@/lib/store/repository";
-import { getTodaySnapshotCached } from "@/lib/store/today";
+import { safeLoadTodaySnapshot } from "@/lib/store/load-snapshot";
 
 export default async function AnalysPage({
   searchParams,
@@ -15,7 +15,26 @@ export default async function AnalysPage({
   searchParams: Promise<{ m?: string }>;
 }) {
   const params = await searchParams;
-  const snap = await getTodaySnapshotCached();
+  const loaded = await safeLoadTodaySnapshot();
+  if (!loaded.ok) {
+    return (
+      <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Kunde inte ladda analys
+        </h1>
+        <p className="text-sm text-[var(--numa-muted)]">
+          Ladda om sidan. Om det kvarstår, logga ut och in igen.
+        </p>
+        <a
+          href="/idag"
+          className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
+        >
+          Till Idag
+        </a>
+      </div>
+    );
+  }
+  const snap = loaded.snap;
 
   if (!snap.primaryAccount) {
     return (

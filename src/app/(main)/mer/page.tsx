@@ -5,17 +5,24 @@ import { listObservations } from "@/lib/store/repository";
 const links = [
   { href: "/konton", label: "Mina saldon" },
   { href: "/transaktioner", label: "Rörelser (månad för månad)" },
+  { href: "/lagg-till", label: "Lägg till (manuellt / import)" },
+  { href: "/bank-sms", label: "Importera bank-SMS" },
   { href: "/fota", label: "Fota kvitto" },
   { href: "/importera", label: "Importer" },
   { href: "/installningar", label: "Inställningar" },
 ] as const;
 
 export default async function MerPage() {
-  const observations = await listObservations();
+  let observations: Awaited<ReturnType<typeof listObservations>> = [];
+  try {
+    observations = await listObservations();
+  } catch (error) {
+    console.error("[numa] mer observations failed", error);
+  }
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
       <header>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Mer</h1>
         <p className="mt-2 text-sm text-[var(--numa-muted)]">

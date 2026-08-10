@@ -2,71 +2,47 @@
 
 import { useEffect } from "react";
 
-const STALE_CACHE_PREFIXES = ["numa-shell-", "numa-static-"];
-const CURRENT_CACHE = "numa-static-v3";
-
 /**
- * Registers a static-only service worker and purges older caches that used to
- * store authenticated HTML (which broke mobile navigations).
+ * NUMA previously shipped a service worker that cached HTML/RSC and broke
+ * App Router navigations (blank main, dead + button) on iPhone.
+ *
+ * Until the PWA cache strategy is proven safe in production, we aggressively
+ * unregister every worker and wipe Cache Storage so clients recover on load.
+ * Do not re-register a worker here.
  */
 export function PwaRegister() {
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
     let cancelled = false;
 
-    async function purgeStaleCaches() {
-      if (!("caches" in window)) return;
-      const keys = await caches.keys();
-      await Promise.all(
-        keys
-          .filter(
-            (key) =>
-              key !== CURRENT_CACHE &&
-              STALE_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)),
-          )
-          .map((key) => caches.delete(key)),
-      );
-    }
-
-    async function register() {
+    async function detox() {
       try {
-        await purgeStaleCaches();
-        const reg = await navigator.serviceWorker.register("/sw.js", {
-          updateViaCache: "none",
-        });
-        await reg.update().catch(() => {});
-        if (cancelled) return;
-
-        // If an older worker controlled the page, reload once after activation
-        // so navigations use the fixed fetch rules.
-        if (reg.waiting) {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((reg) => reg.unregister()));
         }
-        navigator.serviceWorker.addEventListener(
-          "controllerchange",
-          onControllerChange,
-        );
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+
+        const flag = "numa.swDetox.v1";
+        if (!cancelled && !sessionStorage.getItem(flag)) {
+          const hadController =
+            "serviceWorker" in navigator &&
+            Boolean(navigator.serviceWorker.controller);
+          sessionStorage.setItem(flag, "1");
+          if (hadController) {
+            window.location.reload();
+          }
+        }
       } catch {
-        // Ignore registration failures in unsupported environments.
+        // Best-effort recovery only.
       }
     }
 
-    let reloaded = false;
-    function onControllerChange() {
-      if (reloaded || cancelled) return;
-      reloaded = true;
-      window.location.reload();
-    }
-
-    void register();
-
+    void detox();
     return () => {
       cancelled = true;
-      navigator.serviceWorker.removeEventListener(
-        "controllerchange",
-        onControllerChange,
-      );
     };
   }, []);
 
