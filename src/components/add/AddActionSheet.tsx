@@ -51,14 +51,18 @@ export function AddActionSheet({
   if (!open) return null;
 
   function go(href: string) {
-    router.push(href);
     close();
+    // Full navigation avoids stuck soft-routes after stale service-worker HTML.
+    window.location.assign(href);
   }
 
   const needsSetup = !hasAccount || !accountId;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div
+      className="fixed inset-x-0 top-0 z-50 flex items-end justify-center"
+      style={{ bottom: "calc(5.75rem + var(--numa-safe-bottom))" }}
+    >
       <button
         type="button"
         className="absolute inset-0 z-0 bg-[rgba(19,32,25,0.55)]"
@@ -69,7 +73,7 @@ export function AddActionSheet({
         role="dialog"
         aria-modal="true"
         aria-label="Lägg till"
-        className="relative z-10 max-h-[88vh] w-full max-w-md overflow-y-auto rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-[calc(1.25rem+var(--numa-safe-bottom))] text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
+        className="relative z-10 max-h-full w-full max-w-md overflow-y-auto rounded-t-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-5 pt-4 pb-5 text-[var(--numa-ink)] shadow-[var(--numa-shadow)] animate-sheet"
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--numa-border)]" />
         <h2 className="mb-1 text-lg font-semibold tracking-tight">
@@ -119,14 +123,16 @@ export function AddActionSheet({
           <div className="space-y-5">
             {updateSaldo ? (
               <div className="space-y-3">
-                <VerifyBalanceForm
-                  accountId={accountId}
-                  autoFocus
-                  afterSave="idag"
-                  onSuccess={() => {
-                    close();
-                  }}
-                />
+                {accountId ? (
+                  <VerifyBalanceForm
+                    accountId={accountId}
+                    autoFocus
+                    afterSave="idag"
+                    onSuccess={() => {
+                      close();
+                    }}
+                  />
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setUpdateSaldo(false)}
@@ -174,11 +180,13 @@ export function AddActionSheet({
                   </span>
                 </button>
 
-                <QuickAddForms
-                  primaryAccountId={accountId}
-                  accounts={accounts}
-                  onSuccess={close}
-                />
+                {accountId ? (
+                  <QuickAddForms
+                    primaryAccountId={accountId}
+                    accounts={accounts}
+                    onSuccess={close}
+                  />
+                ) : null}
 
                 <button
                   type="button"

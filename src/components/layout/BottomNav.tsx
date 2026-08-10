@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AddActionSheet } from "@/components/add/AddActionSheet";
 import type { ShellAccount } from "@/components/add/QuickAddForms";
 
@@ -20,6 +19,7 @@ const MER_PREFIXES = [
   "/importera",
   "/installningar",
   "/fota",
+  "/bank-sms",
 ];
 
 export function BottomNav({
@@ -34,6 +34,10 @@ export function BottomNav({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   function isActive(href: string): boolean {
     if (href === "/mer") {
       return MER_PREFIXES.some(
@@ -46,7 +50,9 @@ export function BottomNav({
   return (
     <>
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] backdrop-blur-xl"
+        className={`fixed inset-x-0 bottom-0 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] backdrop-blur-xl ${
+          open ? "z-[60]" : "z-40"
+        }`}
         style={{ paddingBottom: "var(--numa-safe-bottom)" }}
         aria-label="Huvudnavigering"
       >
@@ -56,22 +62,25 @@ export function BottomNav({
             label={tabs[0].label}
             icon={tabs[0].icon}
             active={isActive(tabs[0].href)}
+            onNavigate={() => setOpen(false)}
           />
           <NavLink
             href={tabs[1].href}
             label={tabs[1].label}
             icon={tabs[1].icon}
             active={isActive(tabs[1].href)}
+            onNavigate={() => setOpen(false)}
           />
 
           <div className="flex justify-center">
             <button
               type="button"
-              onClick={() => setOpen(true)}
+              onClick={() => setOpen((value) => !value)}
               className="relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
-              aria-label="Lägg till"
+              aria-label={open ? "Stäng" : "Lägg till"}
+              aria-expanded={open}
             >
-              <span className="leading-none">+</span>
+              <span className="leading-none">{open ? "×" : "+"}</span>
             </button>
           </div>
 
@@ -80,12 +89,14 @@ export function BottomNav({
             label={tabs[2].label}
             icon={tabs[2].icon}
             active={isActive(tabs[2].href)}
+            onNavigate={() => setOpen(false)}
           />
           <NavLink
             href={tabs[3].href}
             label={tabs[3].label}
             icon={tabs[3].icon}
             active={isActive(tabs[3].href)}
+            onNavigate={() => setOpen(false)}
           />
         </div>
       </nav>
@@ -106,15 +117,36 @@ function NavLink({
   label,
   icon,
   active,
+  onNavigate,
 }: {
   href: string;
   label: string;
   icon: string;
   active: boolean;
+  onNavigate?: () => void;
 }) {
+  const router = useRouter();
+
   return (
-    <Link
+    <a
       href={href}
+      onClick={(event) => {
+        // Prefer soft navigation, but never let a stuck App Router leave the
+        // tab dead — hard-navigate if the route hasn't changed shortly after.
+        event.preventDefault();
+        onNavigate?.();
+        const before = window.location.pathname;
+        router.push(href);
+        window.setTimeout(() => {
+          if (
+            window.location.pathname === before &&
+            before !== href &&
+            !window.location.pathname.startsWith(href)
+          ) {
+            window.location.assign(href);
+          }
+        }, 400);
+      }}
       className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tracking-wide transition ${
         active ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
       }`}
@@ -123,6 +155,6 @@ function NavLink({
         {icon}
       </span>
       {label}
-    </Link>
+    </a>
   );
 }
