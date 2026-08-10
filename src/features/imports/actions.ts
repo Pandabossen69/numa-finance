@@ -48,30 +48,35 @@ export async function uploadReceiptAction(
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = await uploadReceiptAndExtract({
-      fileName: file.name || "kvitto.jpg",
+      fileName: file.name || "bank-sms.jpg",
       mimeType,
       bytes,
     });
 
     revalidatePath("/importera");
     revalidatePath("/mer");
+    revalidatePath("/fota");
     return { ok: true, data: result };
   } catch (error) {
     return {
       ok: false,
       error:
-        error instanceof Error ? error.message : "Kunde inte ladda upp kvittot",
+        error instanceof Error ? error.message : "Kunde inte ladda upp bilden",
     };
   }
 }
 
 const confirmSchema = z.object({
-  accountId: z.string().uuid(),
+  accountId: z.string().uuid().optional().nullable(),
   observationId: z.string().uuid(),
   candidateId: z.string().uuid().optional().nullable(),
   amount: z.string().trim().min(1),
-  description: z.string().trim().max(120).optional(),
+  description: z.string().trim().max(160).optional(),
   category: z.string().trim().max(40).optional().nullable(),
+  fingerprint: z.string().trim().max(240).optional().nullable(),
+  balanceAfterMinor: z.number().int().optional().nullable(),
+  source: z.enum(["receipt_camera", "screenshot"]).optional(),
+  maskedAccount: z.string().trim().max(32).optional().nullable(),
 });
 
 export async function confirmReceiptExpenseAction(
@@ -91,6 +96,10 @@ export async function confirmReceiptExpenseAction(
       amountMinor,
       description: input.description,
       category: input.category,
+      fingerprint: input.fingerprint,
+      balanceAfterMinor: input.balanceAfterMinor,
+      source: input.source,
+      maskedAccount: input.maskedAccount,
     });
 
     const snap = await getTodaySnapshot();
@@ -106,6 +115,8 @@ export async function confirmReceiptExpenseAction(
     revalidatePath("/plan");
     revalidatePath("/importera");
     revalidatePath("/mer");
+    revalidatePath("/konton");
+    revalidatePath("/fota");
 
     return { ok: true, data: { pulseStatus: pulse.status } };
   } catch (error) {
@@ -142,6 +153,7 @@ export async function uploadBankSmsAction(
 
     revalidatePath("/importera");
     revalidatePath("/bank-sms");
+    revalidatePath("/fota");
     return { ok: true, data: result };
   } catch (error) {
     return {
@@ -209,6 +221,8 @@ export async function confirmBankSmsImportAction(
     revalidatePath("/importera");
     revalidatePath("/bank-sms");
     revalidatePath("/mer");
+    revalidatePath("/konton");
+    revalidatePath("/fota");
 
     return { ok: true, data: result };
   } catch (error) {

@@ -13,9 +13,20 @@ const PUBLIC_PATHS = [
   PASSWORD_RESET_REQUEST_PATH,
   PASSWORD_UPDATE_PATH,
   "/auth",
+  "/laga",
 ];
 
-const AUTH_TIMEOUT_MS = 4_000;
+const AUTH_TIMEOUT_MS = 2_500;
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      (c) =>
+        c.name.includes("auth-token") ||
+        (c.name.startsWith("sb-") && c.value.length > 0),
+    );
+}
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -47,6 +58,22 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  const pathname = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+
+  // Fast path: no auth cookie → skip network round-trip to Supabase.
+  if (!hasSupabaseAuthCookie(request)) {
+    if (!isPublic) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = LOGIN_PATH;
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(url, key, {
     ...supabaseServerOptions,
     cookies: {
@@ -75,14 +102,8 @@ export async function updateSession(request: NextRequest) {
     user = result.data.user;
   } catch (error) {
     console.error("[numa] proxy auth failed", error);
-    // Fail open to the request; page-level auth still guards data.
     return supabaseResponse;
   }
-
-  const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
 
   if (!user && !isPublic) {
     const redirectUrl = request.nextUrl.clone();
@@ -92,6 +113,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && pathname === LOGIN_PATH) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = HOME_PATH;
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  if (user && (pathname === "/lista" || pathname === "/")) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = HOME_PATH;
     redirectUrl.search = "";

@@ -10,15 +10,24 @@ export type ReceiptUploadResult = {
   suggestedAmountMinor: number | null;
   suggestedDescription: string | null;
   currency: CurrencyCode;
-  ocrStatus: "ok" | "unavailable" | "failed";
+  ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
   message: string | null;
+  importKind: "bank_sms" | "receipt" | "unknown";
+  balanceAfterMinor: number | null;
+  fingerprint: string | null;
+  alreadyKnown: boolean;
+  skippedOlderCount: number;
 };
 
 export type ConfirmReceiptInput = {
-  accountId: string;
+  accountId?: string | null;
   observationId: string;
   candidateId?: string | null;
   amountMinor: number;
   description?: string;
   category?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
+  source?: "receipt_camera" | "screenshot";
+  maskedAccount?: string | null;
 };

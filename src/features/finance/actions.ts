@@ -14,6 +14,7 @@ import {
   listAccounts,
   setDefaultAccount,
   updateManualTransaction,
+  updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
 import { occurredAtForRelativeDay } from "@/domain/finance";
@@ -58,6 +59,16 @@ export type ActionResult =
   | { ok: true }
   | { ok: false; error: string };
 
+function revalidateMoneyPaths() {
+  revalidatePath("/idag");
+  revalidatePath("/transaktioner");
+  revalidatePath("/analys");
+  revalidatePath("/plan");
+  revalidatePath("/konton");
+  revalidatePath("/lagg-till");
+  revalidatePath("/mer");
+}
+
 export async function createAccountAction(
   raw: z.infer<typeof accountSchema>,
 ): Promise<ActionResult> {
@@ -88,12 +99,7 @@ export async function createAccountAction(
       note: "Ingående / verifierat saldo",
     });
 
-    revalidatePath("/idag");
-    revalidatePath("/konton");
-    revalidatePath("/transaktioner");
-    revalidatePath("/mer");
-    revalidatePath("/analys");
-    revalidatePath("/plan");
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -108,13 +114,8 @@ export async function setDefaultAccountAction(
 ): Promise<ActionResult> {
   try {
     await setDefaultAccount(z.string().uuid().parse(accountId));
-    revalidatePath("/idag");
-    revalidatePath("/konton");
-    revalidatePath("/analys");
-    revalidatePath("/plan");
+    revalidateMoneyPaths();
     revalidatePath("/fota");
-    revalidatePath("/transaktioner");
-    revalidatePath("/mer");
     return { ok: true };
   } catch (error) {
     return {
@@ -146,12 +147,7 @@ export async function createExpenseAction(
     });
 
     // Streak / on-track days are awarded at day close, not mid-day.
-    // Mid-day pulse uses morning dayPlan vs spent — see getTodaySnapshot.
-
-    revalidatePath("/idag");
-    revalidatePath("/transaktioner");
-    revalidatePath("/analys");
-    revalidatePath("/plan");
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -185,14 +181,6 @@ const cashSchema = z.object({
   description: z.string().trim().max(120).optional(),
   when: whenSchema,
 });
-
-function revalidateMoneyPaths() {
-  revalidatePath("/idag");
-  revalidatePath("/transaktioner");
-  revalidatePath("/analys");
-  revalidatePath("/plan");
-  revalidatePath("/konton");
-}
 
 export async function createIncomeAction(
   raw: z.infer<typeof incomeSchema>,
@@ -273,9 +261,56 @@ export async function createCashWithdrawalAction(
   }
 }
 
-export async function voidTransactionAction(
-  id: string,
-): Promise<ActionResult> {
+export async function updateTransactionAction(raw: {
+  id: string;
+  amount: string;
+  description?: string;
+  category?: string | null;
+}): Promise<ActionResult> {
+  try {
+    const id = z.string().uuid().parse(raw.id);
+    const amountMinor = parseUiAmountToMinor(raw.amount);
+    if (amountMinor <= 0) {
+      return { ok: false, error: "Ange ett belopp större än noll" };
+    }
+
+    const description =
+      raw.description == null
+        ? undefined
+        : z.string().trim().min(1).max(120).parse(raw.description);
+    const category =
+      raw.category === undefined
+        ? undefined
+        : z.string().trim().max(40).nullable().parse(raw.category);
+
+    // Prefer the broader updater from main; fall back to manual-only when needed.
+    if (description != null) {
+      await updateManualTransaction({
+        id,
+        description,
+        category,
+        amountMinor,
+      });
+    } else {
+      await updateTransaction({
+        id,
+        amountMinor,
+        description: raw.description,
+        category: raw.category,
+      });
+    }
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte uppdatera rörelsen",
+    };
+  }
+}
+
+export async function voidTransactionAction(id: string): Promise<ActionResult> {
   try {
     await voidTransaction(z.string().uuid().parse(id));
     revalidateMoneyPaths();
@@ -285,40 +320,6 @@ export async function voidTransactionAction(
       ok: false,
       error:
         error instanceof Error ? error.message : "Kunde inte ta bort rörelsen",
-    };
-  }
-}
-
-export async function updateTransactionAction(raw: {
-  id: string;
-  description: string;
-  category?: string | null;
-  amount: string;
-}): Promise<ActionResult> {
-  try {
-    const id = z.string().uuid().parse(raw.id);
-    const description = z.string().trim().min(1).max(120).parse(raw.description);
-    const category =
-      raw.category == null
-        ? undefined
-        : z.string().trim().max(40).nullable().parse(raw.category);
-    const amountMinor = parseUiAmountToMinor(raw.amount);
-    if (amountMinor <= 0) {
-      return { ok: false, error: "Ange ett belopp större än noll" };
-    }
-    await updateManualTransaction({
-      id,
-      description,
-      category,
-      amountMinor,
-    });
-    revalidateMoneyPaths();
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte uppdatera rörelsen",
     };
   }
 }

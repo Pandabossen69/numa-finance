@@ -1,107 +1,84 @@
-import { PageLoadError } from "@/components/ui/PageLoadError";
-import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PlanEditor } from "@/components/plan/PlanEditor";
-import { formatMoney, moneyFromUnknown } from "@/domain/money";
-import { safeLoadTodaySnapshot } from "@/lib/store/load-snapshot";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 
 export default async function PlanPage() {
-  const loaded = await safeLoadTodaySnapshot();
-  if (!loaded.ok) {
-    return <PageLoadError title="Kunde inte ladda plan" />;
-  }
-  const snap = loaded.snap;
-
-  if (!snap.primaryAccount) {
-    return (
-      <div className="space-y-5 pt-2 text-[var(--numa-ink)]">
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Plan</h1>
-        <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          När du angett ditt saldo kan du lägga in det som redan är öronmärkt —
-          då blir tryggt idag ärligt.
-        </p>
-        <a
-          href="/idag"
-          className="text-sm font-medium text-[var(--numa-accent)]"
-        >
-          Ange mitt saldo →
-        </a>
-      </div>
-    );
+  let error: string | null = null;
+  let snap = null;
+  try {
+    snap = await getCachedTodaySnapshot();
+  } catch (e) {
+    error = e instanceof Error ? e.message : "Kunde inte ladda planen";
   }
 
-  const reservedPaidDown =
-    snap.reservedPlannedMinor > 0 &&
-    snap.reservedMinor < snap.reservedPlannedMinor;
-
-  const summary = [
-    {
-      title: "Tryggt idag",
-      body: "Efter det som fortfarande är öronmärkt + buffert, spritt till nästa inkomst.",
-      amount: snap.safeToSpendTodayMinor,
-    },
-    {
-      title: reservedPaidDown ? "Kvar att reservera" : "Reserverat",
-      body: reservedPaidDown
-        ? `Av ${formatMoney(moneyFromUnknown(snap.reservedPlannedMinor, snap.currency))} i planen — det du redan betalat räknas bort.`
-        : "Måste, vardag och mål som fortfarande väntar.",
-      amount: snap.reservedMinor,
-    },
-    {
-      title: "Buffert",
-      body: "Säkerhetsmarginal som inte räknas som ledigt.",
-      amount: snap.bufferMinor,
-    },
-    {
-      title: "Flex kvar",
-      body: "Kan begränsa hur mycket som får användas per dag.",
-      amount: snap.flexibleMinor,
-    },
-  ];
+  const currency = snap?.currency ?? "THB";
+  const timeZone = snap?.profile.timezone || "Asia/Bangkok";
 
   return (
-    <div className="space-y-8 pt-2 pb-4 text-[var(--numa-ink)]">
-      <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Plan</h1>
-        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Lägg in det som redan är öronmärkt. När du betalar det via + räknas det
-          bort automatiskt från tryggt idag.
+    <div className="space-y-6">
+      <header className="animate-rise">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
+          Plan
+        </h1>
+        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
+          Planera kommande månader. Fasta utgifter följer med automatiskt — du
+          kan alltid lägga till, ändra eller ta bort.
         </p>
       </header>
 
-      <ul className="space-y-4">
-        {summary.map((item) => (
-          <li
-            key={item.title}
-            className="border-t border-[var(--numa-border)] pt-4"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="font-medium">{item.title}</h2>
-                <p className="mt-1 text-sm text-[var(--numa-muted)]">
-                  {item.body}
-                </p>
+      {error ? (
+        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
+      ) : (
+        <>
+          <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-3">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Reserverat
+              </p>
+              <div className="mt-2">
+                <MoneyDisplay
+                  amountMinor={snap?.reservedMinor ?? 0}
+                  currency={currency}
+                  size="lg"
+                />
               </div>
-              <MoneyDisplay
-                amountMinor={item.amount}
-                currency={snap.currency}
-                size="md"
-                compact
-              />
             </div>
-          </li>
-        ))}
-      </ul>
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Buffert
+              </p>
+              <div className="mt-2">
+                <MoneyDisplay
+                  amountMinor={snap?.bufferMinor ?? 0}
+                  currency={currency}
+                  size="lg"
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Flex
+              </p>
+              <div className="mt-2">
+                <MoneyDisplay
+                  amountMinor={snap?.flexibleMinor ?? 0}
+                  currency={currency}
+                  size="lg"
+                />
+              </div>
+            </div>
+          </section>
 
-      <p className="text-sm text-[var(--numa-muted)]">
-        {snap.daysUntilIncome} dagar till nästa inkomst i beräkningen.
-      </p>
-
-      <PlanEditor
-        items={snap.planItems}
-        currency={snap.currency}
-        daysUntilIncome={snap.daysUntilIncome}
-        itemRemaining={snap.planItemRemaining}
-      />
+          <section className="numa-panel animate-rise-delay-2 p-5">
+            <PlanEditor
+              items={snap?.planItems ?? []}
+              currency={currency}
+              daysUntilIncome={snap?.daysUntilIncome ?? 0}
+              timeZone={timeZone}
+            />
+          </section>
+        </>
+      )}
     </div>
   );
 }

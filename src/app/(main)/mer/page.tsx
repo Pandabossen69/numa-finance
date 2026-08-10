@@ -1,60 +1,65 @@
+import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { listObservations } from "@/lib/store/repository";
 
 const links = [
-  { href: "/konton", label: "Mina saldon" },
-  { href: "/transaktioner", label: "Rörelser (månad för månad)" },
-  { href: "/lagg-till", label: "Lägg till (manuellt / import)" },
-  { href: "/bank-sms", label: "Importera bank-SMS" },
-  { href: "/fota", label: "Fota kvitto" },
-  { href: "/importera", label: "Importer" },
-  { href: "/installningar", label: "Inställningar" },
+  {
+    href: "/transaktioner",
+    label: "Utgifter & intäkter",
+    hint: "Totalt in, ut och vad som blir över",
+  },
+  { href: "/konton", label: "Mina saldon", hint: "Konton & verifiering" },
+  { href: "/fota", label: "Fota kvitto / skärmbild", hint: "Bank-SMS och kvitton" },
+  { href: "/importera", label: "Importer", hint: "Bankobservationer" },
+  { href: "/installningar", label: "Inställningar", hint: "Valuta & tidszon" },
+  { href: "/laga", label: "Laga appen", hint: "Rensa cache / SW" },
 ] as const;
 
-export default async function MerPage() {
-  let observations: Awaited<ReturnType<typeof listObservations>> = [];
-  try {
-    observations = await listObservations();
-  } catch (error) {
-    console.error("[numa] mer observations failed", error);
-  }
+export default function MerPage() {
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
-      <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Mer</h1>
+    <div className="space-y-6">
+      <header className="animate-rise">
+        <h1 className="text-3xl font-semibold tracking-tight">Mer</h1>
         <p className="mt-2 text-sm text-[var(--numa-muted)]">
-          Saldon, historik och snabb import.
+          Saldon, historik och underhåll.
         </p>
       </header>
 
-      <nav className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+      <div
+        className={`animate-rise-delay-1 rounded-2xl px-4 py-3 text-sm font-medium ${
+          supabaseReady
+            ? "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]"
+            : "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]"
+        }`}
+      >
+        {supabaseReady
+          ? "Supabase konfigurerad · schema numa"
+          : "Supabase saknas lokalt — mock / lokal store"}
+      </div>
+
+      <nav className="animate-rise-delay-2 space-y-2" aria-label="Mer-meny">
         {links.map((link) => (
-          <a
+          <Link
             key={link.href}
             href={link.href}
-            className="flex min-h-14 items-center justify-between text-sm font-medium"
+            prefetch
+            className="numa-panel flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-white"
           >
-            {link.label}
+            <span>
+              <span className="block text-sm font-semibold text-[var(--numa-ink)]">
+                {link.label}
+              </span>
+              <span className="mt-0.5 block text-xs text-[var(--numa-faint)]">
+                {link.hint}
+              </span>
+            </span>
             <span className="text-[var(--numa-faint)]" aria-hidden>
               →
             </span>
-          </a>
+          </Link>
         ))}
       </nav>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium text-[var(--numa-muted)]">Läge</h2>
-        <p className="text-sm text-[var(--numa-muted)]">
-          {supabaseReady
-            ? "Molnkonto aktivt — din data är privat per inloggning."
-            : "Lokalt läge (en användare) — koppla Supabase för flera konton."}
-        </p>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Sparade bilder: {observations.length}
-        </p>
-      </section>
     </div>
   );
 }

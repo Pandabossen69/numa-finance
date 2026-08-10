@@ -1,22 +1,23 @@
-import {
-  formatMoney,
-  formatMoneyCompact,
-  moneyFromUnknown,
-  type CurrencyCode,
-} from "@/domain/money";
+import { formatMoney, formatMoneyCompact, money, type CurrencyCode } from "@/domain/money";
 
 export function MoneyDisplay({
   amountMinor,
   currency,
   size = "md",
   compact = false,
+  tone = "neutral",
 }: {
   amountMinor: number;
   currency: CurrencyCode;
   size?: "sm" | "md" | "lg" | "xl";
   compact?: boolean;
+  /** Color negative amounts as danger when "signed". */
+  tone?: "neutral" | "signed";
 }) {
-  const value = moneyFromUnknown(amountMinor, currency);
+  const safeMinor = Number.isInteger(amountMinor)
+    ? amountMinor
+    : Math.round(Number.isFinite(amountMinor) ? amountMinor : 0);
+  const value = money(safeMinor, currency);
   const text = compact ? formatMoneyCompact(value) : formatMoney(value);
 
   const sizeClass =
@@ -28,5 +29,12 @@ export function MoneyDisplay({
           ? "text-xl font-semibold"
           : "text-base font-medium";
 
-  return <span className={`money ${sizeClass}`}>{text}</span>;
+  const toneClass =
+    tone === "signed" && safeMinor < 0
+      ? "text-[var(--numa-danger)]"
+      : tone === "signed" && safeMinor > 0
+        ? "text-[var(--numa-positive)]"
+        : "";
+
+  return <span className={`money ${sizeClass} ${toneClass}`.trim()}>{text}</span>;
 }

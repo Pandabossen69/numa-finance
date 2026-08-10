@@ -51,6 +51,8 @@ export async function createPlanItemAction(
       amountMinor,
       currency: snap.currency,
       cadence: "monthly",
+      // Fixed/monthly buckets roll forward automatically into upcoming months.
+      nextDueAt: new Date().toISOString(),
     });
     revalidatePlanPaths();
     return { ok: true };
@@ -113,6 +115,39 @@ export async function updatePlanItemAmountAction(raw: {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
     await updatePlanItem({ id: input.id, amountMinor, name: input.name });
+    revalidatePlanPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte uppdatera",
+    };
+  }
+}
+
+const updateSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(80).optional(),
+  kind: kindSchema.optional(),
+  amount: z.string().trim().min(1).optional(),
+});
+
+export async function updatePlanItemAction(
+  raw: z.infer<typeof updateSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = updateSchema.parse(raw);
+    const amountMinor =
+      input.amount != null ? parseUiAmountToMinor(input.amount) : undefined;
+    if (amountMinor != null && amountMinor < 0) {
+      return { ok: false, error: "Belopp kan inte vara negativt" };
+    }
+    await updatePlanItem({
+      id: input.id,
+      name: input.name,
+      kind: input.kind,
+      amountMinor,
+    });
     revalidatePlanPaths();
     return { ok: true };
   } catch (error) {

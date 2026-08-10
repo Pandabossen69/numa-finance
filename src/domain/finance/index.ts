@@ -5,5 +5,6 @@ export * from "./fingerprint";
 export * from "./reconciliation";
 export * from "./datetime";
 export * from "./plan-totals";
+export * from "./plan-months";
 export * from "./month-ledger";
 export * from "./day-plan";

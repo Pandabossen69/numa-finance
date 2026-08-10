@@ -1,7 +1,9 @@
+import { withTimeout } from "@/lib/async";
+import { withRolledMonthlyDues } from "@/domain/finance";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { assertMultiUserSafeBackend } from "./isolation";
 import * as local from "./local-repository";
 import * as remote from "./supabase-repository";
+import { assertMultiUserSafeBackend } from "./isolation";
 import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
@@ -14,10 +16,28 @@ export type {
 } from "./bank-sms-types";
 export type { UserProgress, RecordOnTrackDayResult } from "./types-progress";
 
+const SNAPSHOT_TIMEOUT_MS = 3_500;
+
 function api() {
   const supabase = isSupabaseConfigured();
   assertMultiUserSafeBackend(supabase);
   return supabase ? remote : local;
+}
+
+/** Keep monthly due dates rolling into future months automatically. */
+async function ensurePlanDuesRolled(): Promise<void> {
+  try {
+    const items = await api().listPlanItems();
+    const { changed } = withRolledMonthlyDues(items, new Date());
+    if (changed.length === 0) return;
+    await Promise.all(
+      changed.map((item) =>
+        api().updatePlanItem({ id: item.id, nextDueAt: item.nextDueAt }),
+      ),
+    );
+  } catch (error) {
+    console.warn("[numa] plan due roll skipped", error);
+  }
 }
 
 export async function getProfile() {
@@ -40,6 +60,12 @@ export async function createAccount(
 
 export async function setDefaultAccount(accountId: string) {
   return api().setDefaultAccount(accountId);
+}
+
+export async function ensureDefaultBankAccount(
+  input?: Parameters<typeof local.ensureDefaultBankAccount>[0],
+) {
+  return api().ensureDefaultBankAccount(input);
 }
 
 export async function createCheckpoint(
@@ -72,8 +98,20 @@ export async function createCashWithdrawal(
   return api().createCashWithdrawal(input);
 }
 
-export async function listTransactions(accountId?: string) {
-  return api().listTransactions(accountId);
+export async function listTransactions(
+  accountId?: string,
+  options?: { sinceIso?: string; limit?: number },
+) {
+  if (isSupabaseConfigured()) {
+    return remote.listTransactions(accountId, options);
+  }
+  return local.listTransactions(accountId);
+}
+
+export async function updateTransaction(
+  input: Parameters<typeof local.updateTransaction>[0],
+) {
+  return api().updateTransaction(input);
 }
 
 export async function voidTransaction(id: string) {
@@ -93,7 +131,11 @@ export async function createScreenshotObservation(
 }
 
 export async function listObservations() {
-  return api().listObservations();
+  return withTimeout(
+    api().listObservations(),
+    SNAPSHOT_TIMEOUT_MS,
+    "listObservations",
+  );
 }
 
 export async function getObservation(observationId: string) {
@@ -101,7 +143,12 @@ export async function getObservation(observationId: string) {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  return api().getTodaySnapshot();
+  await ensurePlanDuesRolled();
+  return withTimeout(
+    api().getTodaySnapshot(),
+    SNAPSHOT_TIMEOUT_MS,
+    "getTodaySnapshot",
+  );
 }
 
 export async function getLatestCheckpoint(accountId: string) {

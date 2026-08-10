@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const NUMA_SCHEMA = "numa";
 
-/** Browser / SPA client — may persist + refresh session. */
 export const supabaseBrowserOptions = {
   db: { schema: NUMA_SCHEMA },
   auth: {
@@ -12,10 +11,7 @@ export const supabaseBrowserOptions = {
   },
 } as const;
 
-/**
- * Server / proxy client — never persist or auto-refresh in RSC.
- * Sharing browser auth flags here caused hung getUser() calls and blank pages.
- */
+/** Server must NOT auto-refresh — that hung getUser() and blanked pages. */
 export const supabaseServerOptions = {
   db: { schema: NUMA_SCHEMA },
   auth: {
@@ -25,7 +21,6 @@ export const supabaseServerOptions = {
   },
 } as const;
 
-/** @deprecated Use supabaseBrowserOptions or supabaseServerOptions. */
 export const supabaseClientOptions = supabaseBrowserOptions;
 
 export type NumaSupabaseClient = SupabaseClient;

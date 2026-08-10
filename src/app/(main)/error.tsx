@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-
 export default function MainError({
   error,
   reset,
@@ -9,37 +7,37 @@ export default function MainError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("[numa] route error", error);
-  }, [error]);
-
   return (
-    <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
-      <h1 className="text-2xl font-semibold tracking-tight">Något gick fel</h1>
+    <div className="space-y-4 pt-8 text-[var(--numa-ink)]">
+      <p className="text-[1.65rem] font-semibold">NUMA</p>
+      <h1 className="text-xl font-semibold tracking-tight">Något gick fel</h1>
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Sidan kunde inte visas. Prova igen — dina data är kvar.
+        Skärmen kunde inte laddas. Det är oftast en tillfällig störning — prova
+        igen, eller laga appen om det upprepas.
       </p>
-      <div className="flex flex-col gap-2">
+      {error?.digest ? (
+        <p className="text-xs text-[var(--numa-faint)]">Kod: {error.digest}</p>
+      ) : null}
+      <div className="flex flex-col gap-3 pt-2">
         <button
           type="button"
-          onClick={reset}
-          className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
+          onClick={() => reset()}
+          className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-medium text-white"
         >
           Försök igen
         </button>
         <a
           href="/idag"
-          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] px-5 text-sm font-medium"
+          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
         >
-          Till Idag
+          Ladda Idag
         </a>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="flex min-h-12 items-center justify-center text-sm text-[var(--numa-muted)]"
+        <a
+          href="/installningar"
+          className="text-center text-sm font-medium text-[var(--numa-accent)]"
         >
-          Ladda om sidan
-        </button>
+          Laga appen →
+        </a>
       </div>
     </div>
   );

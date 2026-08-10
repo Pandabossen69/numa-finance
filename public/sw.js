@@ -1,9 +1,5 @@
-/* Intentionally inert. NUMA disables service-worker registration in the app
- * (see PwaRegister) after a production incident where HTML/RSC caching blanked
- * pages and killed client interactions on iOS Safari / PWA.
- *
- * This file remains so old clients that still point at /sw.js get a no-op
- * worker that does not intercept fetches, then can be unregistered by the app.
+/* Intentionally inert. Old NUMA workers cached HTML/RSC and blanked the app.
+ * This file must stay public (not behind auth) so clients can replace the old worker.
  */
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -23,5 +19,3 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
-
-// No fetch handler — network only.

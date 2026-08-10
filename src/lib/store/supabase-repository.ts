@@ -26,6 +26,7 @@ import {
   createExtractionProvider,
   extractBankSmsPlainText,
   latestBalanceAfterMinor,
+  resolveScreenshotImport,
 } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -116,6 +117,42 @@ export async function getAccount(accountId: string): Promise<Account | null> {
 
   if (error) throw new Error(error.message);
   return data ? mapAccount(data) : null;
+}
+
+export async function ensureDefaultBankAccount(input?: {
+  maskedIdentifier?: string | null;
+  currency?: CurrencyCode;
+}): Promise<Account> {
+  const existing = await listAccounts();
+  const primary = existing.find((a) => a.isDefault) ?? existing[0] ?? null;
+  if (primary) {
+    if (
+      input?.maskedIdentifier &&
+      (!primary.maskedIdentifier || primary.maskedIdentifier === "")
+    ) {
+      const userId = await requireUserId();
+      const supabase = await createSupabaseServerClient();
+      await supabase
+        .from("accounts")
+        .update({
+          masked_identifier: input.maskedIdentifier.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("id", primary.id);
+      return (await getAccount(primary.id)) ?? primary;
+    }
+    return primary;
+  }
+
+  return createAccount({
+    name: "Bangkok Bank",
+    institution: "Bangkok Bank",
+    accountType: "checking",
+    currency: input?.currency ?? "THB",
+    maskedIdentifier: input?.maskedIdentifier ?? null,
+    makeDefault: true,
+  });
 }
 
 export async function createAccount(input: {
@@ -546,6 +583,7 @@ export async function createCashWithdrawal(input: {
 
 export async function listTransactions(
   accountId?: string,
+  options?: { sinceIso?: string; limit?: number },
 ): Promise<CanonicalTransaction[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
@@ -558,11 +596,109 @@ export async function listTransactions(
   if (accountId) {
     query = query.eq("account_id", accountId);
   }
+  if (options?.sinceIso) {
+    query = query.gte("occurred_at", options.sinceIso);
+  }
+  if (options?.limit != null) {
+    query = query.limit(options.limit);
+  }
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapTransaction);
 }
+
+export async function updateTransaction(input: {
+  id: string;
+  amountMinor?: number;
+  description?: string;
+  category?: string | null;
+}): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.amountMinor != null) {
+    if (input.amountMinor <= 0) {
+      throw new Error("Beloppet måste vara större än noll");
+    }
+    patch.amount_minor = input.amountMinor;
+  }
+  if (input.description != null) {
+    patch.description = input.description.trim() || "Utgift";
+  }
+  if (input.category !== undefined) patch.category = input.category;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(patch)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .neq("status", "voided")
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapTransaction(data);
+}
+
+
+export async function updateManualTransaction(input: {
+  id: string;
+  description?: string;
+  category?: string | null;
+  amountMinor?: number;
+}): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data: target, error: readError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!target) throw new Error("Rörelsen hittades inte");
+  if (target.status === "voided") {
+    throw new Error("Borttagen rörelse kan inte ändras");
+  }
+  if (target.source !== "manual" && target.source !== "receipt_camera") {
+    throw new Error("Den här rörelsen kan inte ändras här ännu");
+  }
+  if (
+    target.transaction_type === "transfer" ||
+    target.transaction_type === "cash_withdrawal"
+  ) {
+    throw new Error("Flytt/uttag ändras genom att ta bort och lägga till på nytt");
+  }
+
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.description !== undefined) {
+    patch.description = input.description.trim() || target.description;
+  }
+  if (input.category !== undefined) {
+    patch.category = input.category;
+  }
+  if (input.amountMinor != null) {
+    if (input.amountMinor <= 0) {
+      throw new Error("Beloppet måste vara större än noll");
+    }
+    patch.amount_minor = input.amountMinor;
+  }
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(patch)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return mapTransaction(data);
+}
+
 
 export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
   const userId = await requireUserId();
@@ -625,61 +761,31 @@ export async function voidTransaction(id: string): Promise<CanonicalTransaction>
   return mapTransaction(voided);
 }
 
-export async function updateManualTransaction(input: {
-  id: string;
-  description?: string;
-  category?: string | null;
-  amountMinor?: number;
-}): Promise<CanonicalTransaction> {
+
+export async function listKnownFingerprints(): Promise<string[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  const { data: target, error: readError } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("id", input.id)
-    .maybeSingle();
-  if (readError) throw new Error(readError.message);
-  if (!target) throw new Error("Rörelsen hittades inte");
-  if (target.status === "voided") {
-    throw new Error("Borttagen rörelse kan inte ändras");
-  }
-  if (target.source !== "manual" && target.source !== "receipt_camera") {
-    throw new Error("Den här rörelsen kan inte ändras här ännu");
-  }
-  if (
-    target.transaction_type === "transfer" ||
-    target.transaction_type === "cash_withdrawal"
-  ) {
-    throw new Error("Flytt/uttag ändras genom att ta bort och lägga till på nytt");
-  }
+  const [{ data: txs }, { data: cands }] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("fingerprint")
+      .eq("user_id", userId)
+      .not("fingerprint", "is", null),
+    supabase
+      .from("extracted_transaction_candidates")
+      .select("fingerprint, status")
+      .eq("user_id", userId)
+      .not("fingerprint", "is", null)
+      .in("status", ["confirmed", "duplicate"]),
+  ]);
 
-  const patch: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (input.description !== undefined) {
-    patch.description = input.description.trim() || target.description;
-  }
-  if (input.category !== undefined) {
-    patch.category = input.category;
-  }
-  if (input.amountMinor != null) {
-    if (input.amountMinor <= 0) {
-      throw new Error("Beloppet måste vara större än noll");
-    }
-    patch.amount_minor = input.amountMinor;
-  }
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .update(patch)
-    .eq("user_id", userId)
-    .eq("id", input.id)
-    .select("*")
-    .single();
-  if (error) throw new Error(error.message);
-  return mapTransaction(data);
+  const fps = [
+    ...(txs ?? []).map((r) => r.fingerprint as string),
+    ...(cands ?? []).map((r) => r.fingerprint as string),
+  ].filter(Boolean);
+  return [...new Set(fps)];
 }
+
 
 export async function createScreenshotObservation(input: {
   notes?: string | null;
@@ -857,30 +963,76 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  const profile = await getProfile();
-  const accounts = await listAccounts();
+  const [profile, accounts, planItems, progress] = await Promise.all([
+    getProfile(),
+    listAccounts(),
+    listPlanItems().catch(() => [] as PlanItem[]),
+    getUserProgress().catch(() => null),
+  ]);
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
-  const planItems = await listPlanItems().catch(() => [] as PlanItem[]);
 
   if (!primary) {
-    const progress = await getUserProgress();
     const dayClosedToday = await hasClosedDayToday();
     return emptySnapshot(profile, accounts, progress, planItems, dayClosedToday);
   }
 
-  const checkpoint = await latestCheckpointForAccount(primary.id);
-  const accountTx = await listTransactions(primary.id);
-  const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
-  const calculated = calculateAccountBalance({
-    checkpoint,
-    transactionsAfterCheckpoint: after,
-  });
-
   const timezone = profile.timezone;
   const now = new Date();
-  const dayStart = startOfZonedDay(now, timezone);
   const monthStart = startOfZonedMonth(now, timezone);
 
+  const checkpoint = await latestCheckpointForAccount(primary.id);
+
+  if (!checkpoint) {
+    const dayClosedToday = await hasClosedDayToday();
+    return {
+      profile,
+      accounts,
+      primaryAccount: primary,
+      checkpoint: null,
+      calculatedBalanceMinor: 0,
+      balanceKind: "unknown",
+      verificationLabel: null,
+      todaySpendingMinor: 0,
+      monthSpendingMinor: 0,
+      dayPlanMinor: 0,
+      safeToSpendTodayMinor: 0,
+      safeToSpendWeekMinor: 0,
+      freeMinor: 0,
+      reservedMinor: 0,
+      reservedPlannedMinor: 0,
+      bufferMinor: 0,
+      flexibleMinor: 0,
+      flexiblePlannedMinor: 0,
+      daysUntilIncome: 0,
+      recentTransactions: [],
+      planItems,
+      planItemRemaining: [],
+      currency: primary.currency,
+      progress: progress ?? emptyUserProgress(profile.id),
+      dayClosedToday,
+    };
+  }
+
+  const sinceCandidates = [monthStart.toISOString(), checkpoint.verifiedAt];
+  const sinceIso = sinceCandidates.sort()[0]!;
+
+  const accountTx = await listTransactions(primary.id, {
+    sinceIso,
+    limit: 120,
+  });
+
+  const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
+  let calculated = null;
+  try {
+    calculated = calculateAccountBalance({
+      checkpoint,
+      transactionsAfterCheckpoint: after,
+    });
+  } catch (error) {
+    console.error("[numa] balance calc failed", error);
+  }
+
+  const dayStart = startOfZonedDay(now, timezone);
   const todayTx = accountTx.filter(
     (t) =>
       t.status === "confirmed" &&
@@ -913,7 +1065,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     available,
     reserved: money(totals.reservedMinor, currency),
     safetyBuffer: money(totals.bufferMinor, currency),
-    daysUntilNextIncome: totals.daysUntilNextIncome,
+    daysUntilNextIncome: Math.max(1, totals.daysUntilNextIncome || 1),
     flexiblePlanRemaining:
       totals.flexibleMinor > 0
         ? money(totals.flexibleMinor, currency)
@@ -932,7 +1084,6 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
   else if (checkpoint) balanceKind = "calculated";
 
-  const progress = await getUserProgress();
   const dayClosedToday = await hasClosedDayToday();
 
   return {
@@ -942,9 +1093,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     checkpoint,
     calculatedBalanceMinor: calculated?.amountMinor ?? null,
     balanceKind,
-    verificationLabel: checkpoint
-      ? formatRelativeVerificationSv(checkpoint.verifiedAt, now)
-      : null,
+    verificationLabel: formatRelativeVerificationSv(checkpoint.verifiedAt, now),
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
     dayPlanMinor,
@@ -963,7 +1112,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     planItems,
     planItemRemaining: totals.itemRemaining,
     currency,
-    progress,
+    progress: progress ?? emptyUserProgress(profile.id),
     dayClosedToday,
   };
 }
@@ -1161,33 +1310,39 @@ export async function uploadReceiptAndExtract(input: {
     });
   if (uploadError) throw new Error(uploadError.message);
 
+  const provider = createExtractionProvider();
+  const imageBase64 = Buffer.from(input.bytes).toString("base64");
+  const extraction = await provider.extract({
+    observationId: "pending",
+    storagePath,
+    imageBase64,
+    mimeType: input.mimeType,
+  });
+
+  const known = await listKnownFingerprints();
+  const resolved = resolveScreenshotImport(extraction, known);
+
   const { data: obsRow, error: obsError } = await supabase
     .from("source_observations")
     .insert({
       user_id: userId,
-      kind: "receipt",
+      kind: resolved.observationKind,
       storage_path: storagePath,
+      institution_hint:
+        resolved.kind === "bank_sms" ? "Bangkok Bank" : null,
+      account_hint:
+        resolved.kind === "bank_sms"
+          ? (resolved.selected?.maskedAccount ?? null)
+          : null,
       status: "extracting",
-      notes: "Kvitto uppladdat — väntar på läsning",
+      notes: "Bild uppladdad — väntar på läsning",
     })
     .select("*")
     .single();
   if (obsError) throw new Error(obsError.message);
   const observation = mapObservation(obsRow);
 
-  const provider = createExtractionProvider();
-  const imageBase64 = Buffer.from(input.bytes).toString("base64");
-  const extraction = await provider.extract({
-    observationId: observation.id,
-    storagePath,
-    imageBase64,
-    mimeType: input.mimeType,
-  });
-
-  const succeeded =
-    extraction.provider !== "none" && extraction.candidates.length > 0;
   const runStatus = extraction.provider === "none" ? "failed" : "succeeded";
-
   const { data: runRow, error: runError } = await supabase
     .from("extraction_runs")
     .insert({
@@ -1195,7 +1350,11 @@ export async function uploadReceiptAndExtract(input: {
       user_id: userId,
       provider: extraction.provider,
       status: runStatus,
-      raw_metadata: extraction.rawMetadata,
+      raw_metadata: {
+        ...extraction.rawMetadata,
+        resolvedKind: resolved.kind,
+        alreadyKnown: resolved.alreadyKnown,
+      },
       finished_at: new Date().toISOString(),
     })
     .select("*")
@@ -1204,23 +1363,29 @@ export async function uploadReceiptAndExtract(input: {
   mapExtractionRun(runRow);
 
   let candidate: ExtractedTransactionCandidate | null = null;
-  const first = extraction.candidates[0];
-  if (first) {
+  if (resolved.suggestedAmountMinor != null && !resolved.alreadyKnown) {
     const { data: candRow, error: candError } = await supabase
       .from("extracted_transaction_candidates")
       .insert({
         extraction_run_id: runRow.id,
         observation_id: observation.id,
         user_id: userId,
-        direction: first.direction,
-        amount_minor: first.amountMinor,
-        currency: first.currency,
-        balance_after_minor: first.balanceAfterMinor,
-        occurred_at: first.occurredAt,
-        description: first.description,
-        confidence: first.confidence,
+        direction: resolved.direction,
+        amount_minor: resolved.suggestedAmountMinor,
+        currency: resolved.currency,
+        balance_after_minor: resolved.balanceAfterMinor,
+        occurred_at: null,
+        description: resolved.suggestedDescription,
+        confidence:
+          resolved.kind === "bank_sms"
+            ? (resolved.selected?.confidence ?? null)
+            : null,
+        fingerprint: resolved.fingerprint,
         status: "needs_review",
-        raw_payload: first.rawPayload,
+        raw_payload: {
+          importKind: resolved.kind,
+          labelSv: resolved.suggestedDescription,
+        },
       })
       .select("*")
       .single();
@@ -1231,13 +1396,15 @@ export async function uploadReceiptAndExtract(input: {
   await supabase
     .from("source_observations")
     .update({
-      status: succeeded ? "needs_review" : "uploaded",
+      status: resolved.alreadyKnown
+        ? "processed"
+        : resolved.suggestedAmountMinor
+          ? "needs_review"
+          : "uploaded",
       notes:
         extraction.provider === "none"
-          ? "Bild sparad. Autoläsning är av — ange belopp själv."
-          : succeeded
-            ? "Vi hittade ett belopp — bekräfta innan det sparas."
-            : "Kunde inte läsa beloppet automatiskt — ange själv.",
+          ? "Bild sparad. Kunde inte autoläsa — skriv beloppet som drogs (inte saldot)."
+          : resolved.messageSv,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId)
@@ -1248,21 +1415,35 @@ export async function uploadReceiptAndExtract(input: {
 
   let ocrStatus: ReceiptUploadResult["ocrStatus"] = "ok";
   if (extraction.provider === "none") ocrStatus = "unavailable";
-  else if (!first?.amountMinor) ocrStatus = "failed";
+  else if (resolved.alreadyKnown) ocrStatus = "all_known";
+  else if (resolved.suggestedAmountMinor == null) ocrStatus = "failed";
+
+  const skippedOlderCount =
+    resolved.kind === "bank_sms" && resolved.selection.status === "ready"
+      ? resolved.selection.skippedOlderCount
+      : 0;
 
   return {
     observation: refreshed,
     candidate,
-    suggestedAmountMinor: first?.amountMinor ?? null,
-    suggestedDescription: first?.description ?? null,
-    currency: first?.currency ?? profile.primaryCurrency,
+    suggestedAmountMinor: resolved.suggestedAmountMinor,
+    suggestedDescription: resolved.suggestedDescription,
+    currency: resolved.currency ?? profile.primaryCurrency,
     ocrStatus,
     message:
       ocrStatus === "unavailable"
-        ? "Autoläsning är av. Ange beloppet från kvittot."
-        : ocrStatus === "failed"
-          ? "Vi kunde inte läsa beloppet säkert. Kontrollera och fyll i själv."
-          : null,
+        ? "Kunde inte autoläsa just nu. Skriv beloppet som drogs i SMS:et (t.ex. 65,00) — inte saldot."
+        : resolved.messageSv,
+    importKind:
+      resolved.kind === "bank_sms"
+        ? "bank_sms"
+        : resolved.kind === "receipt_or_other"
+          ? "receipt"
+          : "unknown",
+    balanceAfterMinor: resolved.balanceAfterMinor,
+    fingerprint: resolved.fingerprint,
+    alreadyKnown: resolved.alreadyKnown,
+    skippedOlderCount,
   };
 }
 
@@ -1274,6 +1455,11 @@ export async function confirmReceiptExpense(
   if (!observation || observation.userId !== userId) {
     throw new Error("Importen hittades inte");
   }
+
+  let fingerprint = input.fingerprint ?? null;
+  let balanceAfterMinor = input.balanceAfterMinor ?? null;
+  let source: TransactionSource = input.source ?? "receipt_camera";
+  let maskedFromCandidate: string | null = input.maskedAccount ?? null;
 
   const supabase = await createSupabaseServerClient();
 
@@ -1298,6 +1484,10 @@ export async function confirmReceiptExpense(
         .maybeSingle();
       if (existing) return mapTransaction(existing);
     }
+    fingerprint = fingerprint ?? (cand.fingerprint as string | null);
+    balanceAfterMinor =
+      balanceAfterMinor ?? (cand.balance_after_minor as number | null);
+    if (observation.kind === "screenshot") source = "screenshot";
   }
 
   const { data: already } = await supabase
@@ -1312,14 +1502,50 @@ export async function confirmReceiptExpense(
     .maybeSingle();
   if (already) return mapTransaction(already);
 
+  maskedFromCandidate =
+    maskedFromCandidate ?? observation.accountHint ?? null;
+
+  const account =
+    (input.accountId ? await getAccount(input.accountId) : null) ??
+    (await ensureDefaultBankAccount({
+      maskedIdentifier: maskedFromCandidate,
+      currency: "THB",
+    }));
+
+  const existingCheckpoint = await latestCheckpointForAccount(account.id);
+  const hadCheckpoint = existingCheckpoint != null;
+  if (!hadCheckpoint && balanceAfterMinor == null) {
+    throw new Error(
+      "Första importen måste vara ett bank-SMS med saldo (available balance)",
+    );
+  }
+
+  const expenseAt = new Date(Date.now() - 2_000).toISOString();
+  const checkpointAt = new Date().toISOString();
+
   const tx = await createManualExpense({
-    accountId: input.accountId,
+    accountId: account.id,
     amountMinor: input.amountMinor,
     description: input.description,
     category: input.category,
-    source: "receipt_camera",
+    source,
     sourceObservationId: input.observationId,
+    fingerprint,
+    balanceAfterMinor,
+    occurredAt: expenseAt,
   });
+
+  if (balanceAfterMinor != null) {
+    await createCheckpoint({
+      accountId: account.id,
+      balanceMinor: balanceAfterMinor,
+      verifiedAt: checkpointAt,
+      source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
+      note: hadCheckpoint
+        ? "Saldo från Bangkok Bank SMS"
+        : "Första saldo från Bangkok Bank SMS",
+    });
+  }
 
   if (input.candidateId) {
     await supabase
@@ -1328,6 +1554,8 @@ export async function confirmReceiptExpense(
         status: "confirmed",
         canonical_transaction_id: tx.id,
         amount_minor: input.amountMinor,
+        fingerprint,
+        balance_after_minor: balanceAfterMinor,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
@@ -1338,7 +1566,9 @@ export async function confirmReceiptExpense(
     .from("source_observations")
     .update({
       status: "processed",
-      notes: "Bekräftad och sparad som utgift",
+      notes: hadCheckpoint
+        ? "Bekräftad och sparad"
+        : "Första SMS — saldo och utgift sparade",
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId)

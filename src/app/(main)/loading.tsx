@@ -1,28 +1,14 @@
 export default function MainLoading() {
   return (
-    <div className="space-y-6 pt-8 text-[var(--numa-ink)]">
-      <div className="space-y-2">
-        <p className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</p>
-        <p className="text-sm text-[var(--numa-muted)]">Laddar sidan…</p>
+    <div className="space-y-4 py-6" aria-busy="true" aria-label="Laddar">
+      <div className="h-8 w-40 rounded-lg bg-[var(--numa-bg-deep)]" />
+      <div className="h-4 w-64 max-w-full rounded-lg bg-[var(--numa-bg-deep)]" />
+      <div className="mt-6 h-40 rounded-[1.5rem] bg-[var(--numa-bg-deep)]" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="h-24 rounded-[1.35rem] bg-[var(--numa-bg-deep)]" />
+        <div className="h-24 rounded-[1.35rem] bg-[var(--numa-bg-deep)]" />
+        <div className="h-24 rounded-[1.35rem] bg-[var(--numa-bg-deep)]" />
       </div>
-      <div
-        className="h-2 w-full overflow-hidden rounded-full bg-[var(--numa-border)]"
-        aria-hidden
-      >
-        <div className="h-full w-1/3 animate-pulse rounded-full bg-[var(--numa-accent)]" />
-      </div>
-      <div className="h-36 rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface)]" />
-      <div className="space-y-2">
-        <div className="h-3 w-28 rounded bg-[var(--numa-border)]" />
-        <div className="h-10 w-52 rounded bg-[var(--numa-border)]" />
-        <div className="h-3 w-40 rounded bg-[var(--numa-border)]" />
-      </div>
-      <a
-        href="/installningar"
-        className="inline-flex text-sm font-medium text-[var(--numa-accent)]"
-      >
-        Fastnar det? Laga appen →
-      </a>
     </div>
   );
 }
