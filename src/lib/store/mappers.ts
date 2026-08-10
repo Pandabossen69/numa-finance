@@ -8,7 +8,7 @@ import type {
   Profile,
   SourceObservation,
 } from "@/domain/finance";
-import type { CurrencyCode } from "@/domain/money";
+import { coerceMinor, type CurrencyCode } from "@/domain/money";
 import type { UserProgress } from "./types-progress";
 
 type DbProfile = {
@@ -66,6 +66,7 @@ type DbTransaction = {
   balance_after_minor: number | null;
   fingerprint: string | null;
   source_observation_id: string | null;
+  transfer_group_id?: string | null;
   sync_status: CanonicalTransaction["syncStatus"];
   created_at: string;
   updated_at: string;
@@ -118,7 +119,7 @@ export function mapCheckpoint(row: DbCheckpoint): BalanceCheckpoint {
     id: row.id,
     userId: row.user_id,
     accountId: row.account_id,
-    balanceMinor: Number(row.balance_minor),
+    balanceMinor: coerceMinor(row.balance_minor),
     currency: row.currency,
     verifiedAt: row.verified_at,
     source: row.source,
@@ -136,7 +137,7 @@ export function mapTransaction(row: DbTransaction): CanonicalTransaction {
     counterAccountId: row.counter_account_id,
     direction: row.direction,
     transactionType: row.transaction_type,
-    amountMinor: Number(row.amount_minor),
+    amountMinor: coerceMinor(row.amount_minor),
     currency: row.currency,
     occurredAt: row.occurred_at,
     description: row.description,
@@ -145,9 +146,12 @@ export function mapTransaction(row: DbTransaction): CanonicalTransaction {
     source: row.source,
     status: row.status,
     balanceAfterMinor:
-      row.balance_after_minor == null ? null : Number(row.balance_after_minor),
+      row.balance_after_minor == null
+        ? null
+        : coerceMinor(row.balance_after_minor),
     fingerprint: row.fingerprint,
     sourceObservationId: row.source_observation_id,
+    transferGroupId: row.transfer_group_id ?? null,
     syncStatus: row.sync_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -285,7 +289,7 @@ export function mapPlanItem(row: DbPlanItem): PlanItem {
     userId: row.user_id,
     name: row.name,
     kind: row.kind,
-    amountMinor: Number(row.amount_minor),
+    amountMinor: coerceMinor(row.amount_minor),
     currency: row.currency,
     cadence: row.cadence,
     nextDueAt: row.next_due_at,

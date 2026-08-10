@@ -6,9 +6,14 @@ import { parseUiAmountToMinor } from "@/domain/money";
 import { calculateDayPulse } from "@/domain/gamification";
 import { money } from "@/domain/money";
 import {
+  confirmBankSmsImport,
   confirmReceiptExpense,
   getTodaySnapshot,
+  parseBankSmsText,
+  uploadBankSmsAndExtract,
   uploadReceiptAndExtract,
+  type BankSmsUploadResult,
+  type ConfirmBankSmsResult,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
 
@@ -99,9 +104,10 @@ export async function confirmReceiptExpenseAction(
 
     const snap = await getTodaySnapshot();
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
+      plannedToday: money(snap.dayPlanMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
+    // Mid-day pulse is feedback only — streak is awarded via closeDayAction.
 
     revalidatePath("/idag");
     revalidatePath("/transaktioner");
@@ -118,6 +124,114 @@ export async function confirmReceiptExpenseAction(
       ok: false,
       error:
         error instanceof Error ? error.message : "Kunde inte bekräfta köpet",
+    };
+  }
+}
+
+export async function uploadBankSmsAction(
+  formData: FormData,
+): Promise<ActionResult<BankSmsUploadResult>> {
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      return { ok: false, error: "Välj en skärmbild först" };
+    }
+    if (file.size <= 0 || file.size > MAX_BYTES) {
+      return { ok: false, error: "Bilden måste vara mellan 1 byte och 8 MB" };
+    }
+    const mimeType = file.type || "image/jpeg";
+    if (!ALLOWED.has(mimeType) && !mimeType.startsWith("image/")) {
+      return { ok: false, error: "Endast bildfiler stöds" };
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const result = await uploadBankSmsAndExtract({
+      fileName: file.name || "bank-sms.jpg",
+      mimeType,
+      bytes,
+    });
+
+    revalidatePath("/importera");
+    revalidatePath("/bank-sms");
+    revalidatePath("/fota");
+    return { ok: true, data: result };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kunde inte läsa bank-SMS-bilden",
+    };
+  }
+}
+
+const pasteSchema = z.object({
+  text: z.string().trim().min(10).max(20000),
+});
+
+export async function parseBankSmsTextAction(
+  raw: z.infer<typeof pasteSchema>,
+): Promise<ActionResult<BankSmsUploadResult>> {
+  try {
+    const input = pasteSchema.parse(raw);
+    const result = await parseBankSmsText({ text: input.text });
+    revalidatePath("/importera");
+    revalidatePath("/bank-sms");
+    return { ok: true, data: result };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte tolka SMS-texten",
+    };
+  }
+}
+
+const confirmBankSchema = z.object({
+  accountId: z.string().uuid(),
+  observationId: z.string().uuid(),
+  updateCheckpoint: z.boolean().optional(),
+  items: z
+    .array(
+      z.object({
+        fingerprint: z.string().min(8).max(400),
+        direction: z.enum(["debit", "credit"]),
+        amountMinor: z.number().int().positive(),
+        balanceAfterMinor: z.number().int().nullable(),
+        description: z.string().trim().min(1).max(120),
+        skip: z.boolean().optional(),
+      }),
+    )
+    .min(1)
+    .max(40),
+});
+
+export async function confirmBankSmsImportAction(
+  raw: z.infer<typeof confirmBankSchema>,
+): Promise<ActionResult<ConfirmBankSmsResult>> {
+  try {
+    const input = confirmBankSchema.parse(raw);
+    const result = await confirmBankSmsImport(input);
+
+    revalidatePath("/idag");
+    revalidatePath("/transaktioner");
+    revalidatePath("/analys");
+    revalidatePath("/plan");
+    revalidatePath("/importera");
+    revalidatePath("/bank-sms");
+    revalidatePath("/mer");
+    revalidatePath("/konton");
+    revalidatePath("/fota");
+
+    return { ok: true, data: result };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kunde inte spara bank-SMS-importen",
     };
   }
 }

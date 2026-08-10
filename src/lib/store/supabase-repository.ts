@@ -1,5 +1,6 @@
 import {
   calculateAccountBalance,
+  calculateDayPlanMinor,
   calculatePlanTotals,
   calculateSafeToSpend,
   filterTransactionsAfterCheckpoint,
@@ -20,7 +21,13 @@ import {
   type TransactionSource,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
-import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import {
+  buildBankSmsCandidates,
+  createExtractionProvider,
+  extractBankSmsPlainText,
+  latestBalanceAfterMinor,
+  resolveScreenshotImport,
+} from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
@@ -39,28 +46,18 @@ import {
   buildUserStoragePath,
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
+import type {
+  BankSmsUploadResult,
+  ConfirmBankSmsInput,
+  ConfirmBankSmsResult,
+} from "./bank-sms-types";
 import type { TodaySnapshot } from "./types-snapshot";
-import { emptyUserProgress, type UserProgress } from "./types-progress";
-
-import { cache } from "react";
-import { withTimeout } from "@/lib/async";
-
-/** One auth lookup per request — repeated getUser() made Idag feel stuck. */
-const requireUserId = cache(async (): Promise<string> => {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await withTimeout(
-    supabase.auth.getUser(),
-    4_000,
-    "requireUserId getUser",
-  );
-  if (error || !user) {
-    throw new Error("Du måste vara inloggad");
-  }
-  return user.id;
-});
+import {
+  emptyUserProgress,
+  type RecordOnTrackDayResult,
+  type UserProgress,
+} from "./types-progress";
+import { requireUserId } from "./require-user";
 
 async function ensureProfile(userId: string): Promise<Profile> {
   const supabase = await createSupabaseServerClient();
@@ -176,7 +173,7 @@ export async function createAccount(input: {
   if (makeDefault && existing.length > 0) {
     const { error: clearError } = await supabase
       .from("accounts")
-      .update({ is_default: false })
+      .update({ is_default: false, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
       .eq("is_default", true);
     if (clearError) throw new Error(clearError.message);
@@ -197,6 +194,32 @@ export async function createAccount(input: {
     .select("*")
     .single();
 
+  if (error) throw new Error(error.message);
+  return mapAccount(data);
+}
+
+export async function setDefaultAccount(accountId: string): Promise<Account> {
+  const userId = await requireUserId();
+  const account = await getAccount(accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+
+  const supabase = await createSupabaseServerClient();
+  const ts = new Date().toISOString();
+
+  const { error: clearError } = await supabase
+    .from("accounts")
+    .update({ is_default: false, updated_at: ts })
+    .eq("user_id", userId)
+    .eq("is_default", true);
+  if (clearError) throw new Error(clearError.message);
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .update({ is_default: true, updated_at: ts })
+    .eq("user_id", userId)
+    .eq("id", accountId)
+    .select("*")
+    .single();
   if (error) throw new Error(error.message);
   return mapAccount(data);
 }
@@ -258,14 +281,20 @@ export async function createManualExpense(input: {
     }
   }
 
-  if (input.fingerprint) {
-    const known = await listKnownFingerprints();
-    if (known.includes(input.fingerprint)) {
-      throw new Error("Den här bankbetalningen finns redan");
-    }
+  const fingerprint = input.fingerprint?.trim() || null;
+  const supabase = await createSupabaseServerClient();
+
+  if (fingerprint) {
+    const { data: existing } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("fingerprint", fingerprint)
+      .neq("status", "voided")
+      .maybeSingle();
+    if (existing) return mapTransaction(existing);
   }
 
-  const supabase = await createSupabaseServerClient();
   const ts = new Date().toISOString();
   const { data, error } = await supabase
     .from("transactions")
@@ -284,13 +313,25 @@ export async function createManualExpense(input: {
       status: "confirmed",
       sync_status: "synced",
       source_observation_id: input.sourceObservationId ?? null,
-      fingerprint: input.fingerprint ?? null,
+      fingerprint,
       balance_after_minor: input.balanceAfterMinor ?? null,
     })
     .select("*")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (fingerprint && isUniqueFingerprintError(error)) {
+      const { data: again } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("fingerprint", fingerprint)
+        .neq("status", "voided")
+        .maybeSingle();
+      if (again) return mapTransaction(again);
+    }
+    throw new Error(error.message);
+  }
   return mapTransaction(data);
 }
 
@@ -299,6 +340,10 @@ export async function createManualIncome(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  source?: TransactionSource;
+  sourceObservationId?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -307,7 +352,27 @@ export async function createManualIncome(input: {
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
 
+  if (input.sourceObservationId) {
+    const obs = await getObservation(input.sourceObservationId);
+    if (!obs || obs.userId !== userId) {
+      throw new Error("Importen hittades inte");
+    }
+  }
+
+  const fingerprint = input.fingerprint?.trim() || null;
   const supabase = await createSupabaseServerClient();
+
+  if (fingerprint) {
+    const { data: existing } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("fingerprint", fingerprint)
+      .neq("status", "voided")
+      .maybeSingle();
+    if (existing) return mapTransaction(existing);
+  }
+
   const ts = new Date().toISOString();
   const { data, error } = await supabase
     .from("transactions")
@@ -320,14 +385,36 @@ export async function createManualIncome(input: {
       currency: account.currency,
       occurred_at: input.occurredAt ?? ts,
       description: input.description?.trim() || "Inkomst",
-      source: "manual",
+      source: input.source ?? "manual",
       status: "confirmed",
       sync_status: "synced",
+      source_observation_id: input.sourceObservationId ?? null,
+      fingerprint,
+      balance_after_minor: input.balanceAfterMinor ?? null,
     })
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (fingerprint && isUniqueFingerprintError(error)) {
+      const { data: again } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("fingerprint", fingerprint)
+        .neq("status", "voided")
+        .maybeSingle();
+      if (again) return mapTransaction(again);
+    }
+    throw new Error(error.message);
+  }
   return mapTransaction(data);
+}
+
+function isUniqueFingerprintError(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === "23505" ||
+    (error.message?.toLowerCase().includes("fingerprint") ?? false)
+  );
 }
 
 export async function createTransfer(input: {
@@ -356,122 +443,140 @@ export async function createTransfer(input: {
   const ts = new Date().toISOString();
   const occurredAt = input.occurredAt ?? ts;
   const description = input.description?.trim() || "Överföring";
+  const transferGroupId = crypto.randomUUID();
+  const outId = crypto.randomUUID();
+  const inId = crypto.randomUUID();
 
-  const { data: outRow, error: outError } = await supabase
+  // Single multi-row insert — both legs commit together or neither does.
+  const { data: rows, error } = await supabase
     .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: from.id,
-      counter_account_id: to.id,
-      direction: "debit",
-      transaction_type: "transfer",
-      amount_minor: input.amountMinor,
-      currency: from.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (outError) throw new Error(outError.message);
+    .insert([
+      {
+        id: outId,
+        user_id: userId,
+        account_id: from.id,
+        counter_account_id: to.id,
+        direction: "debit",
+        transaction_type: "transfer",
+        amount_minor: input.amountMinor,
+        currency: from.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+      {
+        id: inId,
+        user_id: userId,
+        account_id: to.id,
+        counter_account_id: from.id,
+        direction: "credit",
+        transaction_type: "transfer",
+        amount_minor: input.amountMinor,
+        currency: to.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+    ])
+    .select("*");
+  if (error) throw new Error(error.message);
 
-  const { data: inRow, error: inError } = await supabase
-    .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: to.id,
-      counter_account_id: from.id,
-      direction: "credit",
-      transaction_type: "transfer",
-      amount_minor: input.amountMinor,
-      currency: to.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (inError) throw new Error(inError.message);
+  const outRow = (rows ?? []).find((r) => r.id === outId);
+  const inRow = (rows ?? []).find((r) => r.id === inId);
+  if (!outRow || !inRow) {
+    throw new Error("Överföringen sparades inte komplett");
+  }
 
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
 }
 
 export async function createCashWithdrawal(input: {
   fromAccountId: string;
-  toAccountId?: string | null;
+  toAccountId: string;
   amountMinor: number;
   description?: string;
   occurredAt?: string;
-}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction | null }> {
+}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
+  }
+  if (!input.toAccountId) {
+    throw new Error("Välj ett kontantkonto — annars försvinner pengarna i modellen");
+  }
+  if (input.fromAccountId === input.toAccountId) {
+    throw new Error("Välj två olika konton");
   }
 
   const userId = await requireUserId();
   const from = await getAccount(input.fromAccountId);
   if (!from) throw new Error("Kontot hittades inte");
-
-  let to = null as Awaited<ReturnType<typeof getAccount>>;
-  if (input.toAccountId) {
-    to = await getAccount(input.toAccountId);
-    if (!to) throw new Error("Kontantkontot hittades inte");
-    if (from.currency !== to.currency) {
-      throw new Error("Olika valutor stöds inte ännu");
-    }
+  const to = await getAccount(input.toAccountId);
+  if (!to) throw new Error("Kontantkontot hittades inte");
+  if (to.accountType !== "cash") {
+    throw new Error("Kontantuttag måste gå till ett konto av typen Kontanter");
+  }
+  if (from.currency !== to.currency) {
+    throw new Error("Olika valutor stöds inte ännu");
   }
 
   const supabase = await createSupabaseServerClient();
   const ts = new Date().toISOString();
   const occurredAt = input.occurredAt ?? ts;
   const description = input.description?.trim() || "Kontantuttag";
+  const transferGroupId = crypto.randomUUID();
+  const outId = crypto.randomUUID();
+  const inId = crypto.randomUUID();
 
-  const { data: outRow, error: outError } = await supabase
+  const { data: rows, error } = await supabase
     .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: from.id,
-      counter_account_id: to?.id ?? null,
-      direction: "debit",
-      transaction_type: "cash_withdrawal",
-      amount_minor: input.amountMinor,
-      currency: from.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (outError) throw new Error(outError.message);
+    .insert([
+      {
+        id: outId,
+        user_id: userId,
+        account_id: from.id,
+        counter_account_id: to.id,
+        direction: "debit",
+        transaction_type: "cash_withdrawal",
+        amount_minor: input.amountMinor,
+        currency: from.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+      {
+        id: inId,
+        user_id: userId,
+        account_id: to.id,
+        counter_account_id: from.id,
+        direction: "credit",
+        transaction_type: "cash_withdrawal",
+        amount_minor: input.amountMinor,
+        currency: to.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+    ])
+    .select("*");
+  if (error) throw new Error(error.message);
 
-  if (!to) {
-    return { out: mapTransaction(outRow), inn: null };
+  const outRow = (rows ?? []).find((r) => r.id === outId);
+  const inRow = (rows ?? []).find((r) => r.id === inId);
+  if (!outRow || !inRow) {
+    throw new Error("Kontantuttaget sparades inte komplett");
   }
-
-  const { data: inRow, error: inError } = await supabase
-    .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: to.id,
-      counter_account_id: from.id,
-      direction: "credit",
-      transaction_type: "cash_withdrawal",
-      amount_minor: input.amountMinor,
-      currency: to.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (inError) throw new Error(inError.message);
 
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
 }
@@ -537,22 +642,125 @@ export async function updateTransaction(input: {
   return mapTransaction(data);
 }
 
-export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
+
+export async function updateManualTransaction(input: {
+  id: string;
+  description?: string;
+  category?: string | null;
+  amountMinor?: number;
+}): Promise<CanonicalTransaction> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
+  const { data: target, error: readError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!target) throw new Error("Rörelsen hittades inte");
+  if (target.status === "voided") {
+    throw new Error("Borttagen rörelse kan inte ändras");
+  }
+  if (target.source !== "manual" && target.source !== "receipt_camera") {
+    throw new Error("Den här rörelsen kan inte ändras här ännu");
+  }
+  if (
+    target.transaction_type === "transfer" ||
+    target.transaction_type === "cash_withdrawal"
+  ) {
+    throw new Error("Flytt/uttag ändras genom att ta bort och lägga till på nytt");
+  }
+
+  const patch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (input.description !== undefined) {
+    patch.description = input.description.trim() || target.description;
+  }
+  if (input.category !== undefined) {
+    patch.category = input.category;
+  }
+  if (input.amountMinor != null) {
+    if (input.amountMinor <= 0) {
+      throw new Error("Beloppet måste vara större än noll");
+    }
+    patch.amount_minor = input.amountMinor;
+  }
+
   const { data, error } = await supabase
     .from("transactions")
-    .update({
-      status: "voided",
-      updated_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("user_id", userId)
-    .eq("id", id)
+    .eq("id", input.id)
     .select("*")
     .single();
   if (error) throw new Error(error.message);
   return mapTransaction(data);
 }
+
+
+export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data: target, error: readError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!target) throw new Error("Rörelsen hittades inte");
+
+  const ids = [id];
+  if (
+    target.transaction_type === "transfer" ||
+    target.transaction_type === "cash_withdrawal"
+  ) {
+    if (target.transfer_group_id) {
+      const { data: siblings } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("transfer_group_id", target.transfer_group_id)
+        .neq("status", "voided");
+      for (const row of siblings ?? []) {
+        if (row.id !== id) ids.push(row.id as string);
+      }
+    } else if (target.counter_account_id) {
+      // Legacy rows without transfer_group_id.
+      const { data: siblings } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("transaction_type", target.transaction_type)
+        .eq("amount_minor", target.amount_minor)
+        .eq("occurred_at", target.occurred_at)
+        .eq("account_id", target.counter_account_id)
+        .eq("counter_account_id", target.account_id)
+        .neq("status", "voided");
+      for (const row of siblings ?? []) {
+        ids.push(row.id as string);
+      }
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({ status: "voided", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .in("id", ids);
+  if (updateError) throw new Error(updateError.message);
+
+  const { data: voided, error: afterError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (afterError) throw new Error(afterError.message);
+  return mapTransaction(voided);
+}
+
 
 export async function listKnownFingerprints(): Promise<string[]> {
   const userId = await requireUserId();
@@ -577,6 +785,7 @@ export async function listKnownFingerprints(): Promise<string[]> {
   ].filter(Boolean);
   return [...new Set(fps)];
 }
+
 
 export async function createScreenshotObservation(input: {
   notes?: string | null;
@@ -763,7 +972,8 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
 
   if (!primary) {
-    return emptySnapshot(profile, accounts, progress, planItems);
+    const dayClosedToday = await hasClosedDayToday();
+    return emptySnapshot(profile, accounts, progress, planItems, dayClosedToday);
   }
 
   const timezone = profile.timezone;
@@ -773,6 +983,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const checkpoint = await latestCheckpointForAccount(primary.id);
 
   if (!checkpoint) {
+    const dayClosedToday = await hasClosedDayToday();
     return {
       profile,
       accounts,
@@ -783,17 +994,22 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       verificationLabel: null,
       todaySpendingMinor: 0,
       monthSpendingMinor: 0,
+      dayPlanMinor: 0,
       safeToSpendTodayMinor: 0,
       safeToSpendWeekMinor: 0,
       freeMinor: 0,
       reservedMinor: 0,
+      reservedPlannedMinor: 0,
       bufferMinor: 0,
       flexibleMinor: 0,
+      flexiblePlannedMinor: 0,
       daysUntilIncome: 0,
       recentTransactions: [],
       planItems,
+      planItemRemaining: [],
       currency: primary.currency,
       progress: progress ?? emptyUserProgress(profile.id),
+      dayClosedToday,
     };
   }
 
@@ -831,7 +1047,19 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const currency = primary.currency;
   const todaySpending = sumSpending(todayTx, currency);
   const monthSpending = sumSpending(monthTx, currency);
-  const totals = calculatePlanTotals(planItems, currency, now, 0);
+  const toSpendInput = (t: CanonicalTransaction) => ({
+    amountMinor: t.amountMinor,
+    description: t.description,
+    category: t.category,
+    currency: t.currency,
+    transactionType: t.transactionType,
+    status: t.status,
+  });
+  const periodSpend = monthTx.map(toSpendInput);
+  const periodSpendBeforeToday = monthTx
+    .filter((t) => !isSameZonedDay(t.occurredAt, now, timezone))
+    .map(toSpendInput);
+  const totals = calculatePlanTotals(planItems, currency, now, 17, periodSpend);
   const available = calculated ?? money(0, currency);
   const safe = calculateSafeToSpend({
     available,
@@ -843,11 +1071,20 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
         ? money(totals.flexibleMinor, currency)
         : undefined,
   });
+  const dayPlanMinor = calculateDayPlanMinor({
+    availableNowMinor: available.amountMinor,
+    currency,
+    todayTransactions: todayTx,
+    periodSpendBeforeToday,
+    planItems,
+    now,
+  });
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
-  if (after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (calculated) balanceKind = "calculated";
-  else balanceKind = "verified_checkpoint_only";
+  if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
+  else if (checkpoint) balanceKind = "calculated";
+
+  const dayClosedToday = await hasClosedDayToday();
 
   return {
     profile,
@@ -859,17 +1096,24 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     verificationLabel: formatRelativeVerificationSv(checkpoint.verifiedAt, now),
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
+    dayPlanMinor,
     safeToSpendTodayMinor: safe.today.amountMinor,
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
     reservedMinor: totals.reservedMinor,
+    reservedPlannedMinor: totals.reservedPlannedMinor,
     bufferMinor: totals.bufferMinor,
     flexibleMinor: totals.flexibleMinor,
+    flexiblePlannedMinor: totals.flexiblePlannedMinor,
     daysUntilIncome: totals.daysUntilNextIncome,
-    recentTransactions: accountTx.slice(0, 8),
+    recentTransactions: accountTx
+      .filter((t) => t.status !== "voided")
+      .slice(0, 8),
     planItems,
+    planItemRemaining: totals.itemRemaining,
     currency,
-    progress,
+    progress: progress ?? emptyUserProgress(profile.id),
+    dayClosedToday,
   };
 }
 
@@ -878,6 +1122,7 @@ function emptySnapshot(
   accounts: Account[],
   progress: UserProgress | null,
   planItems: PlanItem[] = [],
+  dayClosedToday = false,
 ): TodaySnapshot {
   return {
     profile,
@@ -889,17 +1134,22 @@ function emptySnapshot(
     verificationLabel: null,
     todaySpendingMinor: 0,
     monthSpendingMinor: 0,
+    dayPlanMinor: 0,
     safeToSpendTodayMinor: 0,
     safeToSpendWeekMinor: 0,
     freeMinor: 0,
     reservedMinor: 0,
+    reservedPlannedMinor: 0,
     bufferMinor: 0,
     flexibleMinor: 0,
-    daysUntilIncome: 0,
+    flexiblePlannedMinor: 0,
+    daysUntilIncome: 17,
     recentTransactions: [],
     planItems,
+    planItemRemaining: [],
     currency: profile.primaryCurrency,
     progress: progress ?? emptyUserProgress(profile.id),
+    dayClosedToday,
   };
 }
 
@@ -933,11 +1183,40 @@ export async function getUserProgress(): Promise<UserProgress | null> {
   return mapUserProgress(created);
 }
 
+/** Read-only check — does not mark the day closed (unlike recordOnTrackDayIfNeeded). */
+export async function hasClosedDayToday(): Promise<boolean> {
+  const userId = await requireUserId();
+  const profile = await getProfile();
+  const dayStart = startOfZonedDay(new Date(), profile.timezone);
+  const dayKey = dayStart.toISOString().slice(0, 10);
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("progress_events")
+    .select("id, payload")
+    .eq("user_id", userId)
+    .in("event_type", ["day_on_track", "day_closed"])
+    .gte("created_at", dayStart.toISOString())
+    .limit(10);
+
+  if (error) {
+    console.warn("[numa] progress_events read failed", error.message);
+    return false;
+  }
+  return (data ?? []).some((row) => {
+    const payload = row.payload as { dayKey?: string } | null;
+    return payload?.dayKey === dayKey;
+  });
+}
+
+/**
+ * Persist an on-track day (streak). Call only from day-close flows —
+ * never from mid-day expense/receipt writes (those can lock a wrong status).
+ */
 export async function recordOnTrackDayIfNeeded(
   isOnTrack: boolean,
-): Promise<UserProgress | null> {
+): Promise<RecordOnTrackDayResult> {
   const userId = await requireUserId();
-  if (!isOnTrack) return getUserProgress();
 
   const profile = await getProfile();
   const dayStart = startOfZonedDay(new Date(), profile.timezone);
@@ -948,20 +1227,30 @@ export async function recordOnTrackDayIfNeeded(
     .from("progress_events")
     .select("id, payload")
     .eq("user_id", userId)
-    .eq("event_type", "day_on_track")
+    .in("event_type", ["day_on_track", "day_closed"])
     .gte("created_at", dayStart.toISOString())
     .limit(10);
 
   if (evError) {
     console.warn("[numa] progress_events read failed", evError.message);
-    return getUserProgress();
+    return { progress: await getUserProgress(), alreadyRecordedToday: false };
   }
   const already = (existingEvents ?? []).some((row) => {
     const payload = row.payload as { dayKey?: string } | null;
     return payload?.dayKey === dayKey;
   });
   if (already) {
-    return getUserProgress();
+    return { progress: await getUserProgress(), alreadyRecordedToday: true };
+  }
+
+  if (!isOnTrack) {
+    await supabase.from("progress_events").insert({
+      user_id: userId,
+      event_type: "day_closed",
+      delta_score: 0,
+      payload: { dayKey, onTrack: false },
+    });
+    return { progress: await getUserProgress(), alreadyRecordedToday: false };
   }
 
   const current = (await getUserProgress()) ?? emptyUserProgress(userId);
@@ -989,7 +1278,7 @@ export async function recordOnTrackDayIfNeeded(
 
   if (upError) {
     console.warn("[numa] user_progress update failed", upError.message);
-    return current;
+    return { progress: current, alreadyRecordedToday: false };
   }
 
   await supabase.from("progress_events").insert({
@@ -999,7 +1288,7 @@ export async function recordOnTrackDayIfNeeded(
     payload: { dayKey },
   });
 
-  return mapUserProgress(updated);
+  return { progress: mapUserProgress(updated), alreadyRecordedToday: false };
 }
 
 export async function uploadReceiptAndExtract(input: {
@@ -1173,6 +1462,8 @@ export async function confirmReceiptExpense(
   let maskedFromCandidate: string | null = input.maskedAccount ?? null;
 
   const supabase = await createSupabaseServerClient();
+
+  // Idempotent: double-submit must not create a second expense.
   if (input.candidateId) {
     const { data: cand, error } = await supabase
       .from("extracted_transaction_candidates")
@@ -1183,11 +1474,33 @@ export async function confirmReceiptExpense(
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!cand) throw new Error("Kandidaten hittades inte");
+    if (cand.canonical_transaction_id) {
+      const { data: existing } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("id", cand.canonical_transaction_id)
+        .neq("status", "voided")
+        .maybeSingle();
+      if (existing) return mapTransaction(existing);
+    }
     fingerprint = fingerprint ?? (cand.fingerprint as string | null);
     balanceAfterMinor =
       balanceAfterMinor ?? (cand.balance_after_minor as number | null);
     if (observation.kind === "screenshot") source = "screenshot";
   }
+
+  const { data: already } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("source_observation_id", input.observationId)
+    .eq("source", "receipt_camera")
+    .neq("status", "voided")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (already) return mapTransaction(already);
 
   maskedFromCandidate =
     maskedFromCandidate ?? observation.accountHint ?? null;
@@ -1262,4 +1575,291 @@ export async function confirmReceiptExpense(
     .eq("id", input.observationId);
 
   return tx;
+}
+
+export async function listTransactionFingerprints(): Promise<string[]> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("fingerprint")
+    .eq("user_id", userId)
+    .neq("status", "voided")
+    .not("fingerprint", "is", null);
+  if (error) throw new Error(error.message);
+  return (data ?? [])
+    .map((r) => r.fingerprint as string | null)
+    .filter((fp): fp is string => Boolean(fp));
+}
+
+function bankSmsDupeMessage(
+  candidates: ReturnType<typeof buildBankSmsCandidates>,
+): string | null {
+  const dupes = candidates.filter((c) => c.duplicate).length;
+  if (dupes === 0) return null;
+  if (dupes === candidates.length) {
+    return "Alla SMS i bilden finns redan — inget dubbelsparas.";
+  }
+  return `${dupes} redan sparade (samma belopp + saldo) — de hoppas över.`;
+}
+
+async function finishBankSmsParse(input: {
+  userId: string;
+  observationId: string;
+  text: string | null;
+  ocrStatus: BankSmsUploadResult["ocrStatus"];
+  ocrMessage: string | null;
+  rawMetadata?: Record<string, unknown>;
+}): Promise<BankSmsUploadResult> {
+  const fingerprints = await listTransactionFingerprints();
+  const candidates = buildBankSmsCandidates({
+    text: input.text ?? "",
+    institutionHint: "Bangkok Bank",
+    existingFingerprints: fingerprints,
+  });
+  const bal = latestBalanceAfterMinor(candidates);
+  const profile = await getProfile();
+  const supabase = await createSupabaseServerClient();
+  const found = candidates.length;
+  const dupes = candidates.filter((c) => c.duplicate).length;
+
+  const runStatus =
+    input.ocrStatus === "unavailable"
+      ? "failed"
+      : found > 0
+        ? "succeeded"
+        : "failed";
+
+  await supabase.from("extraction_runs").insert({
+    observation_id: input.observationId,
+    user_id: input.userId,
+    provider: input.ocrStatus === "pasted" ? "manual_stub" : "vision_api",
+    status: runStatus,
+    raw_metadata: {
+      ...(input.rawMetadata ?? {}),
+      extractedTextPreview: input.text?.slice(0, 400) ?? null,
+    },
+    finished_at: new Date().toISOString(),
+  });
+
+  await supabase
+    .from("source_observations")
+    .update({
+      status: found > 0 ? "needs_review" : "uploaded",
+      notes:
+        found > 0
+          ? `Hittade ${found} SMS (${dupes} redan sparade). Bekräfta innan sparning.`
+          : input.ocrMessage ??
+            "Inga bank-SMS kunde tolkas. Klistra in texten från Meddelanden.",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", input.userId)
+    .eq("id", input.observationId);
+
+  const observation =
+    (await getObservation(input.observationId)) ??
+    ({
+      id: input.observationId,
+      userId: input.userId,
+      kind: "sms",
+      storagePath: null,
+      institutionHint: "Bangkok Bank",
+      accountHint: null,
+      status: found > 0 ? "needs_review" : "uploaded",
+      capturedAt: new Date().toISOString(),
+      notes: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } satisfies SourceObservation);
+
+  return {
+    observation,
+    candidates,
+    latestBalanceAfterMinor: bal,
+    currency: profile.primaryCurrency,
+    ocrStatus: input.ocrStatus,
+    message:
+      candidates.length === 0
+        ? input.ocrMessage ??
+          "Kunde inte hitta belopp + saldo i texten. Kontrollera att hela SMS:et syns."
+        : bankSmsDupeMessage(candidates),
+    extractedText: input.text,
+  };
+}
+
+export async function parseBankSmsText(input: {
+  text: string;
+}): Promise<BankSmsUploadResult> {
+  const text = input.text.trim();
+  if (!text) throw new Error("Klistra in SMS-texten först");
+
+  const userId = await requireUserId();
+  await ensureProfile(userId);
+  const supabase = await createSupabaseServerClient();
+
+  const { data: obsRow, error } = await supabase
+    .from("source_observations")
+    .insert({
+      user_id: userId,
+      kind: "sms",
+      storage_path: null,
+      institution_hint: "Bangkok Bank",
+      status: "extracting",
+      notes: "SMS-text inklistrad — tolkar…",
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  return finishBankSmsParse({
+    userId,
+    observationId: obsRow.id,
+    text,
+    ocrStatus: "pasted",
+    ocrMessage: null,
+  });
+}
+
+export async function uploadBankSmsAndExtract(input: {
+  fileName: string;
+  mimeType: string;
+  bytes: Uint8Array;
+}): Promise<BankSmsUploadResult> {
+  const userId = await requireUserId();
+  await ensureProfile(userId);
+  const supabase = await createSupabaseServerClient();
+  const storagePath = buildUserStoragePath(userId, input.fileName || "bank-sms.jpg");
+  assertUserOwnsStoragePath(userId, storagePath);
+
+  const { error: uploadError } = await supabase.storage
+    .from(MEDIA_BUCKET)
+    .upload(storagePath, input.bytes, {
+      contentType: input.mimeType,
+      upsert: false,
+    });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data: obsRow, error: obsError } = await supabase
+    .from("source_observations")
+    .insert({
+      user_id: userId,
+      kind: "sms",
+      storage_path: storagePath,
+      institution_hint: "Bangkok Bank",
+      status: "extracting",
+      notes: "Bank-SMS uppladdat — väntar på läsning",
+    })
+    .select("*")
+    .single();
+  if (obsError) throw new Error(obsError.message);
+
+  const imageBase64 = Buffer.from(input.bytes).toString("base64");
+  const ocr = await extractBankSmsPlainText({
+    imageBase64,
+    mimeType: input.mimeType,
+  });
+
+  let ocrStatus: BankSmsUploadResult["ocrStatus"] = "ok";
+  let ocrMessage: string | null = null;
+  if (ocr.provider === "none") {
+    ocrStatus = "unavailable";
+    ocrMessage =
+      "Autoläsning är av. Klistra in SMS-texten från Meddelanden istället.";
+  } else if (!ocr.text) {
+    ocrStatus = "failed";
+    ocrMessage =
+      "Kunde inte läsa SMS-texten från bilden. Klistra in texten manuellt.";
+  }
+
+  return finishBankSmsParse({
+    userId,
+    observationId: obsRow.id,
+    text: ocr.text,
+    ocrStatus,
+    ocrMessage,
+    rawMetadata: ocr.rawMetadata,
+  });
+}
+
+export async function confirmBankSmsImport(
+  input: ConfirmBankSmsInput,
+): Promise<ConfirmBankSmsResult> {
+  const userId = await requireUserId();
+  const observation = await getObservation(input.observationId);
+  if (!observation || observation.userId !== userId) {
+    throw new Error("Importen hittades inte");
+  }
+  const account = await getAccount(input.accountId);
+  if (!account) throw new Error("Kontot hittades inte");
+
+  let createdCount = 0;
+  let skippedDuplicateCount = 0;
+  const existing = new Set(await listTransactionFingerprints());
+
+  for (const item of input.items) {
+    if (item.skip) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    if (!item.fingerprint || existing.has(item.fingerprint)) {
+      skippedDuplicateCount += 1;
+      continue;
+    }
+    if (item.amountMinor <= 0) continue;
+
+    if (item.direction === "credit") {
+      await createManualIncome({
+        accountId: input.accountId,
+        amountMinor: item.amountMinor,
+        description: item.description,
+        source: "sms",
+        sourceObservationId: input.observationId,
+        fingerprint: item.fingerprint,
+        balanceAfterMinor: item.balanceAfterMinor,
+      });
+    } else {
+      await createManualExpense({
+        accountId: input.accountId,
+        amountMinor: item.amountMinor,
+        description: item.description,
+        category: "Övrigt",
+        source: "sms",
+        sourceObservationId: input.observationId,
+        fingerprint: item.fingerprint,
+        balanceAfterMinor: item.balanceAfterMinor,
+      });
+    }
+    existing.add(item.fingerprint);
+    createdCount += 1;
+  }
+
+  let checkpointBalanceMinor: number | null = null;
+  const updateCheckpoint = input.updateCheckpoint !== false;
+  if (updateCheckpoint) {
+    const bal = latestBalanceAfterMinor(
+      input.items.map((i) => ({ balanceAfterMinor: i.balanceAfterMinor })),
+    );
+    if (bal != null) {
+      await createCheckpoint({
+        accountId: input.accountId,
+        balanceMinor: bal,
+        source: "bank_sms",
+        note: "Saldo från Bangkok Bank SMS",
+      });
+      checkpointBalanceMinor = bal;
+    }
+  }
+
+  const supabase = await createSupabaseServerClient();
+  await supabase
+    .from("source_observations")
+    .update({
+      status: "processed",
+      notes: `Importerade ${createdCount} SMS (${skippedDuplicateCount} hoppades över).`,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("id", input.observationId);
+
+  return { createdCount, skippedDuplicateCount, checkpointBalanceMinor };
 }

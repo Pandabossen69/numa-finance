@@ -41,7 +41,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
   });
 
   const pulse = calculateDayPulse({
-    safeToSpendToday: safe.today,
+    plannedToday: safe.today,
     spentToday,
   });
 
@@ -66,6 +66,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
       12,
     ).toISOString(),
     todaySpendingMinor: spentToday.amountMinor,
+    dayPlanMinor: safe.today.amountMinor,
     safeToSpendTodayMinor: afterSpend.today.amountMinor,
     safeToSpendWeekMinor: afterSpend.week.amountMinor,
     freeMinor: afterSpend.free.amountMinor,

@@ -11,6 +11,16 @@ export type UserProgress = {
   createdAt: string;
 };
 
+/**
+ * Result of attempting to close out a day for streak purposes.
+ * `alreadyRecordedToday` lets the UI show calm "already closed" feedback
+ * instead of re-running the streak logic.
+ */
+export type RecordOnTrackDayResult = {
+  progress: UserProgress | null;
+  alreadyRecordedToday: boolean;
+};
+
 export function emptyUserProgress(userId: string): UserProgress {
   const now = new Date().toISOString();
   return {

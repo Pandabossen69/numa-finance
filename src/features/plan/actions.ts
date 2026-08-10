@@ -97,17 +97,24 @@ export async function setNextIncomeDateAction(
   }
 }
 
+const updateAmountSchema = z.object({
+  id: z.string().uuid(),
+  amount: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(80).optional(),
+});
+
 export async function updatePlanItemAmountAction(raw: {
   id: string;
   amount: string;
+  name?: string;
 }): Promise<ActionResult> {
   try {
-    const id = z.string().uuid().parse(raw.id);
-    const amountMinor = parseUiAmountToMinor(raw.amount);
+    const input = updateAmountSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    await updatePlanItem({ id, amountMinor });
+    await updatePlanItem({ id: input.id, amountMinor, name: input.name });
     revalidatePlanPaths();
     return { ok: true };
   } catch (error) {

@@ -62,7 +62,7 @@ export function HomeDashboard({
   const currency = snap.currency;
   const bootstrapped = snap.hasBankTruth;
   const pulse = calculateDayPulse({
-    safeToSpendToday: money(snap.safeToSpendTodayMinor, currency),
+    plannedToday: money(snap.dayPlanMinor, currency),
     spentToday: money(snap.todaySpendingMinor, currency),
   });
   const copy = pulseCopy(pulse.status, pulse.delta.amountMinor, bootstrapped);

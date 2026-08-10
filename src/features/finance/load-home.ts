@@ -12,6 +12,8 @@ export type HomeSnapshot = {
   verificationLabel: string | null;
   checkpointVerifiedAt: string | null;
   todaySpendingMinor: number;
+  /** Morning day-plan for plus/minus pulse (before today's activity). */
+  dayPlanMinor: number;
   safeToSpendTodayMinor: number;
   safeToSpendWeekMinor: number;
   freeMinor: number;
@@ -76,6 +78,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         verificationLabel: snap.verificationLabel,
         checkpointVerifiedAt: snap.checkpoint?.verifiedAt ?? null,
         todaySpendingMinor: snap.todaySpendingMinor,
+        dayPlanMinor: snap.dayPlanMinor,
         safeToSpendTodayMinor: snap.safeToSpendTodayMinor,
         safeToSpendWeekMinor: snap.safeToSpendWeekMinor,
         freeMinor: snap.freeMinor,

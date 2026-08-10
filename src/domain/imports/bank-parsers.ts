@@ -81,6 +81,9 @@ export class BangkokBankSmsParser implements BankMessageParser {
       input.institution.toLowerCase().includes("bangkok") ||
       t.includes("available balance is bt") ||
       t.includes("from your account") ||
+      t.includes("to your account") ||
+      t.includes("promptpay") ||
+      t.includes("bangkokbank") ||
       t.includes("withdrawal/transfer/payment")
     );
   }
@@ -99,13 +102,17 @@ export class BangkokBankSmsParser implements BankMessageParser {
       const accountMatch = chunk.match(
         /account\s+([A-Z]?\d{3,}|\*{2,}\d{3,}|\d{3,}X?\d*)/i,
       );
-      const isDebit =
-        /withdrawal|transfer\/payment from|payment from/i.test(chunk) ||
-        (/debit/i.test(chunk) && !/credit/i.test(chunk));
       const isCredit =
-        /deposit|received|credit to|transferred to your/i.test(chunk);
+        /promptpay/i.test(chunk) ||
+        /transfer to your account/i.test(chunk) ||
+        /deposit|received|credited to|credit to|transferred to your/i.test(chunk);
+      const isDebit =
+        !isCredit &&
+        (/withdrawal|payment from|transfer\/payment from|debit/i.test(chunk) ||
+          /from your account/i.test(chunk));
 
       if (!amountMatch && !balanceMatch) return;
+      if (!isCredit && !isDebit) return;
 
       const masked =
         accountMatch?.[1]?.replace(/[^\dA-Z]/gi, "").slice(-4) ??
@@ -115,7 +122,7 @@ export class BangkokBankSmsParser implements BankMessageParser {
       results.push({
         institution: "Bangkok Bank",
         maskedAccount: masked,
-        direction: isCredit ? "credit" : isDebit ? "debit" : "debit",
+        direction: isCredit ? "credit" : "debit",
         amountMinor: amountMatch ? majorStringToMinor(amountMatch[1]!) : null,
         currency: "THB",
         balanceAfterMinor: balanceMatch

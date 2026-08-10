@@ -4,9 +4,13 @@ import { money, clampNonNegative } from "@/domain/money";
 /**
  * Live day status — derived only from canonical finance inputs.
  * Gamification may *display* this; it must never invent a second budget.
+ *
+ * `plannedToday` is the morning day-plan (safe-to-spend before today's
+ * activity). Do not pass the live post-spend STS — that double-counts spend.
  */
 export type DayPulseInput = {
-  safeToSpendToday: Money;
+  /** Morning day-plan (not live post-spend safe-to-spend). */
+  plannedToday: Money;
   spentToday: Money;
 };
 
@@ -23,12 +27,12 @@ export type DayPulse = {
 };
 
 export function calculateDayPulse(input: DayPulseInput): DayPulse {
-  if (input.safeToSpendToday.currency !== input.spentToday.currency) {
+  if (input.plannedToday.currency !== input.spentToday.currency) {
     throw new Error("Day pulse currency mismatch");
   }
 
-  const currency = input.safeToSpendToday.currency;
-  const planned = Math.max(0, input.safeToSpendToday.amountMinor);
+  const currency = input.plannedToday.currency;
+  const planned = Math.max(0, input.plannedToday.amountMinor);
   const spent = Math.max(0, input.spentToday.amountMinor);
   const deltaMinor = planned - spent;
 
@@ -47,6 +51,57 @@ export function calculateDayPulse(input: DayPulseInput): DayPulse {
     status,
     usedPercent,
     remainingOfPlan: clampNonNegative(money(deltaMinor, currency)),
+  };
+}
+
+/**
+ * Whether a day counts as "on track" for streak purposes.
+ * Plus and even both count — only minus breaks the streak.
+ */
+export function isDayOnTrack(status: DayPulse["status"]): boolean {
+  return status !== "minus";
+}
+
+export type DayCloseFeedback = {
+  headlineSv: string;
+  bodySv: string;
+};
+
+/**
+ * Calm, Swedish end-of-day copy for the close-day action.
+ * Pure so the UI/server action can stay thin and testable.
+ */
+export function describeDayClose(input: {
+  status: DayPulse["status"];
+  alreadyClosedToday: boolean;
+  currentStreak: number;
+}): DayCloseFeedback {
+  const days = input.currentStreak === 1 ? "dag" : "dagar";
+
+  if (input.alreadyClosedToday) {
+    return {
+      headlineSv: "Redan avslutad",
+      bodySv:
+        input.currentStreak > 0
+          ? `Du har redan sparat dagens läge. Streak: ${input.currentStreak} ${days}.`
+          : "Du har redan sparat dagens läge. Imorgon är nästa chans.",
+    };
+  }
+
+  if (input.status === "minus") {
+    return {
+      headlineSv: "Dagens läge sparat",
+      bodySv:
+        "Det blev minus idag, men det är ingen katastrof — imorgon är en ny dag.",
+    };
+  }
+
+  return {
+    headlineSv: "Dagens läge sparat",
+    bodySv:
+      input.currentStreak > 0
+        ? `Snyggt — du höll planen idag. Streak: ${input.currentStreak} ${days}.`
+        : "Snyggt — du höll planen idag.",
   };
 }
 

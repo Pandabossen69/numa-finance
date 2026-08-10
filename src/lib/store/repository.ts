@@ -8,7 +8,13 @@ import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
-export type { UserProgress } from "./types-progress";
+export type {
+  BankSmsUploadResult,
+  ConfirmBankSmsInput,
+  ConfirmBankSmsResult,
+  ConfirmBankSmsItem,
+} from "./bank-sms-types";
+export type { UserProgress, RecordOnTrackDayResult } from "./types-progress";
 
 const SNAPSHOT_TIMEOUT_MS = 3_500;
 
@@ -50,6 +56,10 @@ export async function createAccount(
   input: Parameters<typeof local.createAccount>[0],
 ) {
   return api().createAccount(input);
+}
+
+export async function setDefaultAccount(accountId: string) {
+  return api().setDefaultAccount(accountId);
 }
 
 export async function ensureDefaultBankAccount(
@@ -108,6 +118,12 @@ export async function voidTransaction(id: string) {
   return api().voidTransaction(id);
 }
 
+export async function updateManualTransaction(
+  input: Parameters<typeof local.updateManualTransaction>[0],
+) {
+  return api().updateManualTransaction(input);
+}
+
 export async function createScreenshotObservation(
   input: Parameters<typeof local.createScreenshotObservation>[0],
 ) {
@@ -155,12 +171,38 @@ export async function confirmReceiptExpense(
   return api().confirmReceiptExpense(input);
 }
 
+export async function listTransactionFingerprints() {
+  return api().listTransactionFingerprints();
+}
+
+export async function parseBankSmsText(
+  input: Parameters<typeof local.parseBankSmsText>[0],
+) {
+  return api().parseBankSmsText(input);
+}
+
+export async function uploadBankSmsAndExtract(
+  input: Parameters<typeof local.uploadBankSmsAndExtract>[0],
+) {
+  return api().uploadBankSmsAndExtract(input);
+}
+
+export async function confirmBankSmsImport(
+  input: Parameters<typeof local.confirmBankSmsImport>[0],
+) {
+  return api().confirmBankSmsImport(input);
+}
+
 export async function getUserProgress() {
   return api().getUserProgress();
 }
 
 export async function recordOnTrackDayIfNeeded(isOnTrack: boolean) {
   return api().recordOnTrackDayIfNeeded(isOnTrack);
+}
+
+export async function hasClosedDayToday() {
+  return api().hasClosedDayToday();
 }
 
 export async function listPlanItems() {
