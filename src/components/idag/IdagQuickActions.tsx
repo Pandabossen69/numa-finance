@@ -29,7 +29,7 @@ export function IdagQuickActions({
           className="flex min-h-14 flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-white transition active:scale-[0.99]"
         >
           <span className="text-sm font-semibold">Fota kvitto</span>
-          <span className="text-[11px] text-white/80">Snabbaste vägen</span>
+          <span className="text-[11px] text-white/80">Läs belopp automatiskt</span>
         </Link>
         <button
           type="button"
@@ -41,7 +41,7 @@ export function IdagQuickActions({
         >
           <span className="text-sm font-semibold">Uppdatera saldo</span>
           <span className="text-[11px] text-[var(--numa-faint)]">
-            {stale ? "Dags att kolla" : "Håll NUMA i fas"}
+            {stale ? "Dags att kolla" : "Håll siffrorna sanna"}
           </span>
         </button>
       </div>
@@ -51,14 +51,21 @@ export function IdagQuickActions({
           href="/plan"
           className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
         >
-          Justera plan
+          Mål & plan
         </Link>
-        <p className="flex min-h-12 items-center justify-center px-2 text-center text-xs leading-snug text-[var(--numa-faint)]">
-          {verificationLabel
-            ? `Saldo ${verificationLabel.toLowerCase()}`
-            : "Saldo ej uppdaterat ännu"}
-        </p>
+        <Link
+          href="/importera"
+          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
+        >
+          Skärmbild
+        </Link>
       </div>
+
+      {verificationLabel ? (
+        <p className="text-center text-xs text-[var(--numa-faint)]">
+          Saldo {verificationLabel.toLowerCase()}
+        </p>
+      ) : null}
 
       {open ? (
         <form
@@ -86,7 +93,7 @@ export function IdagQuickActions({
         >
           <p className="text-sm font-medium">Hur mycket har du just nu?</p>
           <p className="text-xs leading-relaxed text-[var(--numa-muted)]">
-            Titta i bankappen eller senaste SMS — ingen bankkoppling behövs.
+            Titta i bankappen — ingen bankkoppling behövs.
           </p>
           <input
             value={balance}
@@ -117,13 +124,13 @@ export function IdagQuickActions({
           className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-positive)_14%,transparent)] px-4 py-3 text-sm text-[var(--numa-positive)]"
           role="status"
         >
-          Saldo uppdaterat — tryggt idag räknas om direkt.
+          Saldo uppdaterat — budgeten räknas om direkt.
         </p>
       ) : null}
 
       {stale && !open ? (
         <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Det är ett tag sedan du uppdaterade saldot. En snabb koll gör planen
+          Det är ett tag sedan du uppdaterade saldot. En snabb koll gör budgeten
           mer pålitlig.
         </p>
       ) : null}

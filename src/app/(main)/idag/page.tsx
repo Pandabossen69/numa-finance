@@ -3,8 +3,8 @@ import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DayPulseHero } from "@/components/idag/DayPulseHero";
 import { IdagQuickActions } from "@/components/idag/IdagQuickActions";
-import { calculateDayPulse, rankForOnTrackDays } from "@/domain/gamification";
-import { hoursSince } from "@/domain/finance";
+import { hoursSince, NEXT_INCOME_NAME } from "@/domain/finance";
+import { calculateDayPulse } from "@/domain/gamification";
 import { formatMoney, money } from "@/domain/money";
 import { getTodaySnapshot, type TodaySnapshot } from "@/lib/store/repository";
 import Link from "next/link";
@@ -19,7 +19,6 @@ function coerceMinor(value: unknown): number {
 export default function IdagPage() {
   return (
     <div className="space-y-5 pt-1 text-[var(--numa-ink)]">
-      <p className="text-sm text-[var(--numa-muted)]">Idag</p>
       <Suspense fallback={<IdagFallback />}>
         <IdagBody />
       </Suspense>
@@ -30,9 +29,10 @@ export default function IdagPage() {
 function IdagFallback() {
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold tracking-tight">Hämtar ditt läge…</h2>
+      <h1 className="text-[1.65rem] font-semibold tracking-tight">NUMA</h1>
+      <h2 className="text-xl font-semibold tracking-tight">Hämtar din ekonomi…</h2>
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Om detta stannar mer än några sekunder: tryck Laga uppe till höger.
+        Om detta stannar mer än några sekunder: öppna Mer → Laga appen.
       </p>
       <div className="h-28 rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface)]" />
       <div className="grid grid-cols-2 gap-2">
@@ -46,7 +46,8 @@ function IdagFallback() {
 function LoadFailed({ detail }: { detail?: string }) {
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold tracking-tight">Kunde inte ladda</h2>
+      <h1 className="text-[1.65rem] font-semibold tracking-tight">NUMA</h1>
+      <h2 className="text-xl font-semibold tracking-tight">Kunde inte ladda</h2>
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
         Något störde hämtningen. Ladda om eller laga appen.
       </p>
@@ -61,7 +62,7 @@ function LoadFailed({ detail }: { detail?: string }) {
           Ladda om
         </a>
         <a
-          href="/installningar?laga=1"
+          href="/laga"
           className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
         >
           Laga appen
@@ -96,17 +97,17 @@ function renderIdag(snap: TodaySnapshot) {
   if (!snap.primaryAccount) {
     return (
       <div className="space-y-6 pb-4">
+        <header>
+          <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
+          <p className="mt-1 text-sm text-[var(--numa-muted)]">Din ekonomi · steg 1</p>
+        </header>
         <section className="space-y-3">
-          <p className="text-sm font-medium text-[var(--numa-accent)]">
-            Steg 1 · Kom igång
-          </p>
           <h2 className="text-[1.7rem] font-semibold tracking-tight">
             Vad har du just nu?
           </h2>
           <p className="max-w-[36ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-            NUMA kopplas inte till någon bank. Du anger ditt saldo själv — sedan
-            kan systemet räkna vad som är ledigt och om dagen ligger plus eller
-            minus.
+            Ange ditt saldo. Sedan kan du sätta mål, fota kvitton och se om du har
+            råd — hela tiden.
           </p>
         </section>
         <CreateAccountForm />
@@ -123,48 +124,55 @@ function renderIdag(snap: TodaySnapshot) {
     snap.calculatedBalanceMinor == null
       ? null
       : coerceMinor(snap.calculatedBalanceMinor);
+  const week = coerceMinor(snap.safeToSpendWeekMinor);
 
   const pulse = calculateDayPulse({
     safeToSpendToday: money(safeToday, currency),
     spentToday: money(spentToday, currency),
   });
 
-  const onTrackDays = snap.progress?.onTrackDays ?? 0;
-  const rank = rankForOnTrackDays(onTrackDays);
-  const streak = snap.progress?.currentStreak ?? 0;
-
-  const balanceLabel =
-    snap.balanceKind === "calculated"
-      ? "Beräknat från senaste saldot du angav"
-      : snap.balanceKind === "verified_checkpoint_only"
-        ? "Senaste angivna saldo"
-        : "Saldo saknas";
-
   const stale =
     !snap.checkpoint || hoursSince(snap.checkpoint.verifiedAt) > 48;
 
-  const planHint =
-    reserved > 0 || buffer > 0
-      ? `Efter ${formatMoney(money(reserved + buffer, currency))} i plan & buffert · ${snap.daysUntilIncome} dagar kvar`
-      : `Ingen plan lagd ännu · ${snap.daysUntilIncome} dagar till nästa inkomst`;
+  const goals = (snap.planItems ?? []).filter(
+    (p) => p.isActive && p.kind === "goal" && p.name !== NEXT_INCOME_NAME,
+  );
+
+  const roomToday = safeToday - spentToday;
+  const affordLine =
+    roomToday < 0
+      ? "Du har använt mer än dagens trygga nivå."
+      : roomToday === 0
+        ? "Du ligger exakt på dagens trygga nivå."
+        : `Du har ungefär ${formatMoney(money(roomToday, currency))} kvar att använda tryggt idag.`;
+
+  const recent = Array.isArray(snap.recentTransactions)
+    ? snap.recentTransactions.slice(0, 6)
+    : [];
 
   return (
-    <div className="space-y-7">
-      <div className="flex items-end justify-between">
-        <div>
-          {rank.titleSv ? (
-            <p className="text-xs font-medium text-[var(--numa-accent)]">
-              {rank.titleSv}
-            </p>
-          ) : null}
-          <p className="text-xs text-[var(--numa-faint)]">
-            {streak > 0 ? `Streak ${streak} · ` : ""}
-            Dagens översikt
-          </p>
-        </div>
-      </div>
+    <div className="space-y-7 pb-2">
+      <header>
+        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
+        <p className="mt-1 text-sm text-[var(--numa-muted)]">
+          Koll på budget, mål och varje köp
+        </p>
+      </header>
 
       <DayPulseHero pulse={pulse} currency={currency} />
+
+      <section className="space-y-2 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+          Har du råd?
+        </p>
+        <p className="text-[15px] leading-relaxed text-[var(--numa-ink)]">
+          {affordLine}
+        </p>
+        <p className="text-sm text-[var(--numa-muted)]">
+          Baserat på ditt saldo, det du redan planerat och hur mycket som är
+          kvar till nästa inkomst ({snap.daysUntilIncome} dagar).
+        </p>
+      </section>
 
       <IdagQuickActions
         accountId={snap.primaryAccount.id}
@@ -174,7 +182,7 @@ function renderIdag(snap: TodaySnapshot) {
 
       <section className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-          Tillgängligt
+          Saldo
         </p>
         <div>
           {calculated != null ? (
@@ -187,69 +195,93 @@ function renderIdag(snap: TodaySnapshot) {
             <span className="text-3xl font-semibold">—</span>
           )}
         </div>
-        <p className="text-sm text-[var(--numa-muted)]">{balanceLabel}</p>
+        <p className="text-sm text-[var(--numa-muted)]">
+          {snap.verificationLabel
+            ? `Uppdaterat ${snap.verificationLabel.toLowerCase()}`
+            : "Uppdatera saldot så siffrorna stämmer"}
+        </p>
       </section>
 
       <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-          Tryggt att spendera
-        </p>
         <div className="flex items-end justify-between gap-4">
           <div>
-            <MoneyDisplay amountMinor={safeToday} currency={currency} size="lg" />
-            <p className="mt-1 text-sm text-[var(--numa-muted)]">idag</p>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+              Tryggt idag
+            </p>
+            <div className="mt-2">
+              <MoneyDisplay amountMinor={safeToday} currency={currency} size="lg" />
+            </div>
           </div>
           <div className="text-right">
-            <MoneyDisplay
-              amountMinor={coerceMinor(snap.safeToSpendWeekMinor)}
-              currency={currency}
-              size="md"
-              compact
-            />
-            <p className="mt-1 text-sm text-[var(--numa-muted)]">denna vecka</p>
+            <p className="text-xs text-[var(--numa-faint)]">denna vecka</p>
+            <div className="mt-1">
+              <MoneyDisplay
+                amountMinor={week}
+                currency={currency}
+                size="md"
+                compact
+              />
+            </div>
           </div>
         </div>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          {planHint}{" "}
-          <Link href="/plan" className="font-medium text-[var(--numa-accent)]">
-            Öppna plan
-          </Link>
-        </p>
-      </section>
-
-      <section className="space-y-4 border-t border-[var(--numa-border)] pt-6">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-          Den här månaden
-        </p>
-        <div className="grid grid-cols-2 gap-y-5">
-          <Stat
-            label="Använt"
-            amount={coerceMinor(snap.monthSpendingMinor)}
-            currency={currency}
-          />
-          <Stat label="Idag" amount={spentToday} currency={currency} />
-          <Stat label="Reserverat" amount={reserved} currency={currency} />
-          <Stat
-            label="Fritt"
-            amount={coerceMinor(snap.freeMinor)}
-            currency={currency}
-          />
-        </div>
+        {reserved > 0 || buffer > 0 ? (
+          <p className="text-sm text-[var(--numa-muted)]">
+            {formatMoney(money(reserved + buffer, currency))} är redan
+            reserverat i planen.
+          </p>
+        ) : null}
       </section>
 
       <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            Senaste
+            Dina mål
           </p>
-          <Link href="/transaktioner" className="text-sm text-[var(--numa-accent)]">
-            Visa alla
+          <Link href="/plan" className="text-sm text-[var(--numa-accent)]">
+            Hantera
           </Link>
         </div>
-        {snap.recentTransactions.length === 0 ? (
+        {goals.length === 0 ? (
+          <div className="space-y-2">
+            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+              Sätt ett sparmål eller planerat köp — då syns det här och räknas
+              in i vad som är ledigt.
+            </p>
+            <Link href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
+              Lägg till mål →
+            </Link>
+          </div>
+        ) : (
+          <ul className="divide-y divide-[var(--numa-border)]">
+            {goals.map((g) => (
+              <li
+                key={g.id}
+                className="flex items-center justify-between gap-3 py-3"
+              >
+                <p className="truncate text-sm font-medium">{g.name}</p>
+                <span className="money shrink-0 text-sm font-semibold">
+                  {formatMoney(money(coerceMinor(g.amountMinor), g.currency))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-3 border-t border-[var(--numa-border)] pt-6">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+            Senaste köp
+          </p>
+          <Link href="/transaktioner" className="text-sm text-[var(--numa-accent)]">
+            Alla
+          </Link>
+        </div>
+        {recent.length === 0 ? (
           <div className="space-y-2">
             <p className="text-sm text-[var(--numa-muted)]">
-              Inga rörelser ännu. Börja med ett kvitto — det tar några sekunder.
+              Inga köp ännu. Fota ett kvitto eller skärmbild när du betalar —
+              beloppet läggs in efter att du bekräftat.
             </p>
             <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
               Fota kvitto →
@@ -257,7 +289,7 @@ function renderIdag(snap: TodaySnapshot) {
           </div>
         ) : (
           <ul className="divide-y divide-[var(--numa-border)]">
-            {snap.recentTransactions.map((tx) => (
+            {recent.map((tx) => (
               <li
                 key={tx.id}
                 className="flex items-center justify-between gap-3 py-3"
@@ -276,54 +308,15 @@ function renderIdag(snap: TodaySnapshot) {
                   }`}
                 >
                   {tx.direction === "debit" ? "−" : "+"}
-                  {formatMoney(money(coerceMinor(tx.amountMinor), tx.currency))}
+                  {formatMoney(
+                    money(coerceMinor(tx.amountMinor), tx.currency),
+                  )}
                 </span>
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      <section className="space-y-2 border-t border-[var(--numa-border)] pt-6 pb-4">
-        <p className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-          Konto
-        </p>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-medium">
-              {snap.primaryAccount.name}
-              {snap.primaryAccount.maskedIdentifier
-                ? ` ·${snap.primaryAccount.maskedIdentifier}`
-                : ""}
-            </p>
-            <p className="mt-1 text-sm text-[var(--numa-muted)]">
-              {snap.verificationLabel ?? "Ej uppdaterat ännu"}
-            </p>
-          </div>
-          <Link href="/konton" className="text-sm text-[var(--numa-accent)]">
-            Mer
-          </Link>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  amount,
-  currency,
-}: {
-  label: string;
-  amount: number;
-  currency: "THB" | "SEK";
-}) {
-  return (
-    <div>
-      <p className="text-sm text-[var(--numa-muted)]">{label}</p>
-      <div className="mt-1">
-        <MoneyDisplay amountMinor={amount} currency={currency} size="md" compact />
-      </div>
     </div>
   );
 }
@@ -339,6 +332,6 @@ function typeLabel(type: string): string {
     case "cash_withdrawal":
       return "Kontant";
     default:
-      return "Rörelse";
+      return "Köp";
   }
 }

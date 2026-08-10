@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/idag", label: "Idag", icon: "●" },
+  { href: "/idag", label: "Hem", icon: "●" },
   { href: "/plan", label: "Plan", icon: "▣" },
   { href: "/analys", label: "Analys", icon: "◔" },
   { href: "/mer", label: "Mer", icon: "☰" },

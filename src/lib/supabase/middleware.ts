@@ -86,5 +86,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  if (user && (pathname === "/lista" || pathname === "/")) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/idag";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+
   return supabaseResponse;
 }

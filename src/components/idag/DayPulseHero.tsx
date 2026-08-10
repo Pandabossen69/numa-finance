@@ -10,17 +10,17 @@ export function DayPulseHero({
 }) {
   const headline =
     pulse.status === "plus"
-      ? "Plus idag"
+      ? "Inom budget idag"
       : pulse.status === "minus"
-        ? "Minus idag"
-        : "På planen";
+        ? "Över dagens nivå"
+        : "På dagens nivå";
 
   const sub =
     pulse.status === "plus"
-      ? `${formatMoney(money(Math.abs(pulse.delta.amountMinor), currency))} kvar av dagens plan`
+      ? `${formatMoney(money(Math.abs(pulse.delta.amountMinor), currency))} kvar att använda tryggt`
       : pulse.status === "minus"
-        ? `${formatMoney(money(Math.abs(pulse.delta.amountMinor), currency))} över dagens plan`
-        : "Du ligger exakt på dagens plan";
+        ? `${formatMoney(money(Math.abs(pulse.delta.amountMinor), currency))} över det trygga för idag`
+        : "Du ligger exakt på det trygga beloppet";
 
   const barWidth = Math.min(100, pulse.usedPercent);
   const over = pulse.usedPercent > 100;
@@ -44,7 +44,7 @@ export function DayPulseHero({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-              Dagens läge
+              Dagens budget
             </p>
             <p
               className={`mt-2 text-[1.85rem] font-semibold tracking-tight ${
@@ -63,7 +63,7 @@ export function DayPulseHero({
             <p className="money text-lg font-semibold">
               {formatMoney(money(pulse.spentToday.amountMinor, currency))}
             </p>
-            <p className="text-xs text-[var(--numa-faint)]">spenderat idag</p>
+            <p className="text-xs text-[var(--numa-faint)]">använt idag</p>
           </div>
         </div>
 
@@ -81,21 +81,22 @@ export function DayPulseHero({
             />
           </div>
           <div className="flex justify-between text-xs text-[var(--numa-faint)]">
-            <span>{pulse.usedPercent}% av dagens plan</span>
+            <span>{pulse.usedPercent}% av tryggt idag</span>
             <span className="money">
-              plan {formatMoney(money(pulse.plannedToday.amountMinor, currency))}
+              tryggt {formatMoney(money(pulse.plannedToday.amountMinor, currency))}
             </span>
           </div>
         </div>
 
         {pulse.status === "minus" ? (
           <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            Ingen katastrof — kommande dagar justeras automatiskt. Fota nästa
-            kvitto så håller du koll utan stress.
+            Ingen panik — kommande dagar justeras. Fota nästa kvitto så håller du
+            koll utan stress.
           </p>
         ) : (
           <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            Fota kvitto eller tryck + — läget uppdateras direkt.
+            Fota kvitto eller skärmbild när du betalar — bekräfta beloppet så
+            syns det här direkt.
           </p>
         )}
       </div>
