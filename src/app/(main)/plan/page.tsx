@@ -1,100 +1,113 @@
-import Link from "next/link";
-import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+"use client";
+
+import { useEffect, useState } from "react";
 import { PlanEditor } from "@/components/plan/PlanEditor";
-import { getTodaySnapshot } from "@/lib/store/repository";
+import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import type { PlanItem } from "@/domain/finance";
+import {
+  getHomeSnapshotAction,
+  type HomeSnapshot,
+} from "@/features/finance/home-snapshot";
 
-export default async function PlanPage() {
-  let snap;
-  try {
-    snap = await getTodaySnapshot();
-  } catch (error) {
-    console.error("[numa] plan snapshot failed", error);
-    return (
-      <div className="space-y-4 pt-6">
-        <h1 className="text-[1.65rem] font-semibold">Plan</h1>
-        <p className="text-sm text-[var(--numa-muted)]">Kunde inte ladda planen.</p>
-        <a href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
-          Försök igen
-        </a>
-      </div>
-    );
-  }
+const ink = "#132019";
+const muted = "#5a6b61";
+const accent = "#1f6f5b";
 
-  if (!snap.primaryAccount) {
-    return (
-      <div className="space-y-5 pt-2">
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Plan</h1>
-        <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          När du angett ditt saldo kan du lägga in hinkar — då blir tryggt idag
-          ärligt.
-        </p>
-        <Link href="/idag" className="text-sm font-medium text-[var(--numa-accent)]">
-          Ange mitt saldo →
-        </Link>
-      </div>
-    );
-  }
+export default function PlanPage() {
+  const [snap, setSnap] = useState<HomeSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const summary = [
-    {
-      title: "Tryggt idag",
-      body: "Efter reserver och buffert, spritt till nästa inkomst.",
-      amount: snap.safeToSpendTodayMinor,
-    },
-    {
-      title: "Reserverat",
-      body: "Måste, vardag och mål som redan är planerade.",
-      amount: snap.reservedMinor,
-    },
-    {
-      title: "Buffert",
-      body: "Säkerhetsmarginal som inte räknas som ledigt.",
-      amount: snap.bufferMinor,
-    },
-    {
-      title: "Flex kvar",
-      body: "Kan begränsa hur mycket som får användas per dag.",
-      amount: snap.flexibleMinor,
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await getHomeSnapshotAction();
+      if (cancelled) return;
+      if (!result.ok) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+      setSnap(result.data);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const editorItems: PlanItem[] = (snap?.goals ?? []).map((g) => ({
+    id: g.id,
+    userId: "local",
+    name: g.name,
+    kind: "goal",
+    amountMinor: g.amountMinor,
+    currency: g.currency,
+    cadence: null,
+    nextDueAt: null,
+    isActive: true,
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+  }));
 
   return (
-    <div className="space-y-8 pt-2 pb-4">
-      <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Plan</h1>
-        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Lägg in det som redan är öronmärkt. NUMA räknar om tryggt idag direkt.
-        </p>
-      </header>
-
-      <ul className="space-y-4">
-        {summary.map((item) => (
-          <li key={item.title} className="border-t border-[var(--numa-border)] pt-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="font-medium">{item.title}</h2>
-                <p className="mt-1 text-sm text-[var(--numa-muted)]">{item.body}</p>
-              </div>
-              <MoneyDisplay
-                amountMinor={item.amount}
-                currency={snap.currency}
-                size="md"
-                compact
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <p className="text-sm text-[var(--numa-muted)]">
-        {snap.daysUntilIncome} dagar till nästa inkomst i beräkningen.
+    <div style={{ color: ink, fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 700 }}>Plan</h1>
+      <p
+        style={{
+          margin: "8px 0 20px",
+          maxWidth: "36ch",
+          fontSize: 14,
+          lineHeight: 1.5,
+          color: muted,
+        }}
+      >
+        Mål och hinkar som räknas in i vad som är tryggt att spendera.
       </p>
 
-      <PlanEditor
-        items={snap.planItems}
-        currency={snap.currency}
-        daysUntilIncome={snap.daysUntilIncome}
-      />
+      {loading ? (
+        <p style={{ fontSize: 14, color: muted }}>Hämtar plan…</p>
+      ) : null}
+      {error ? (
+        <p style={{ fontSize: 14, color: "#a61f1f" }}>{error}</p>
+      ) : null}
+
+      {snap && !snap.primaryAccountId ? (
+        <div>
+          <p style={{ fontSize: 14, color: muted }}>
+            Ange saldo på Hem innan du lägger in mål.
+          </p>
+          <a href="/idag" style={{ color: accent, fontWeight: 700 }}>
+            Till Hem →
+          </a>
+        </div>
+      ) : null}
+
+      {snap?.primaryAccountId ? (
+        <div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "12px 0",
+              borderBottom: "1px solid rgba(19,32,25,0.12)",
+              marginBottom: 16,
+            }}
+          >
+            <span style={{ fontSize: 14, color: muted }}>Tryggt idag</span>
+            <MoneyDisplay
+              amountMinor={snap.safeToSpendTodayMinor}
+              currency={snap.currency}
+              size="md"
+            />
+          </div>
+          <PlanEditor
+            items={editorItems}
+            currency={snap.currency}
+            daysUntilIncome={snap.daysUntilIncome}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

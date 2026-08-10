@@ -1,96 +1,83 @@
-import Link from "next/link";
+"use client";
+
+import { useEffect, useState } from "react";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { getTodaySnapshot } from "@/lib/store/repository";
+import {
+  getHomeSnapshotAction,
+  type HomeSnapshot,
+} from "@/features/finance/home-snapshot";
 
-export default async function AnalysPage() {
-  let snap;
-  try {
-    snap = await getTodaySnapshot();
-  } catch (error) {
-    console.error("[numa] analys snapshot failed", error);
-    return (
-      <div className="space-y-4 pt-6">
-        <h1 className="text-[1.65rem] font-semibold">Analys</h1>
-        <p className="text-sm text-[var(--numa-muted)]">Kunde inte ladda analysen.</p>
-        <a href="/analys" className="text-sm font-medium text-[var(--numa-accent)]">
-          Försök igen
-        </a>
-      </div>
-    );
-  }
+const ink = "#132019";
+const muted = "#5a6b61";
+const accent = "#1f6f5b";
 
-  if (!snap.primaryAccount) {
-    return (
-      <div className="space-y-5 pt-2">
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Analys</h1>
-        <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Här ser du hur dagen och månaden rör sig när saldot är på plats.
-        </p>
-        <Link href="/idag" className="text-sm font-medium text-[var(--numa-accent)]">
-          Ange mitt saldo →
-        </Link>
-      </div>
-    );
-  }
+export default function AnalysPage() {
+  const [snap, setSnap] = useState<HomeSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const room = snap.safeToSpendTodayMinor - snap.todaySpendingMinor;
-  const free = snap.freeMinor;
-  const hasPlan = snap.reservedMinor > 0 || snap.bufferMinor > 0;
-
-  const insight =
-    room < 0
-      ? "Du har använt mer än dagens trygga nivå. Imorgon är en ny chans."
-      : room === 0
-        ? "Du ligger exakt på dagens nivå — fint balanserat."
-        : free > 0 && hasPlan
-          ? "Du håller dig inom dagens nivå och har fortfarande ledigt efter det du reserverat till mål."
-          : hasPlan
-            ? "Det finns fortfarande utrymme idag, även efter det du reserverat."
-            : "Det finns utrymme idag. Lägg in mål under Plan så blir det tydligare om du sparar.";
-
-  const savingLine =
-    free > 0
-      ? "Efter mål och buffert finns ledigt utrymme — det är det du kan spara eller använda flexibelt."
-      : hasPlan
-        ? "Allt ledigt är just nu reserverat till mål och buffert. Bra disciplin — men lite tight."
-        : "Sätt mål under Plan så syns hur mycket som faktiskt är ledigt att spara.";
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const result = await getHomeSnapshotAction();
+      if (cancelled) return;
+      if (!result.ok) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
+      setSnap(result.data);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
-    <div className="space-y-6 pt-2 pb-4">
-      <header>
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Analys</h1>
-        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Enkel överblick — sparar du eller spenderar du mer just nu?
-        </p>
-      </header>
+    <div style={{ color: ink, fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 700 }}>Analys</h1>
+      <p style={{ margin: "8px 0 0", fontSize: 14, color: muted, maxWidth: "36ch" }}>
+        Sparar du eller spenderar du mer just nu?
+      </p>
 
-      <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
-        <p className="text-sm font-medium">Just nu</p>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">{insight}</p>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          {savingLine}
-        </p>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Cirka {snap.daysUntilIncome} dagar till nästa inkomst i beräkningen.
-        </p>
-        <div className="flex flex-wrap gap-3 pt-1">
-          <Link href="/fota" className="text-sm font-medium text-[var(--numa-accent)]">
-            Fota kvitto →
-          </Link>
-          <Link href="/plan" className="text-sm font-medium text-[var(--numa-accent)]">
-            Mål & plan →
-          </Link>
+      {loading ? (
+        <p style={{ marginTop: 20, fontSize: 14, color: muted }}>Hämtar…</p>
+      ) : null}
+
+      {error ? (
+        <p style={{ marginTop: 20, fontSize: 14, color: "#a61f1f" }}>{error}</p>
+      ) : null}
+
+      {snap && !snap.primaryAccountId ? (
+        <div style={{ marginTop: 20 }}>
+          <p style={{ fontSize: 14, color: muted }}>
+            Ange saldo på Hem först.
+          </p>
+          <a href="/idag" style={{ color: accent, fontWeight: 600 }}>
+            Till Hem →
+          </a>
         </div>
-      </section>
+      ) : null}
 
-      <section className="space-y-4 border-t border-[var(--numa-border)] pt-5">
-        <h2 className="text-sm font-medium text-[var(--numa-muted)]">Siffror</h2>
-        <div className="space-y-3">
-          <Row label="Använt den här månaden">
+      {snap?.primaryAccountId ? (
+        <div style={{ marginTop: 24 }}>
+          <Row label="Kvar av dagens nivå">
             <MoneyDisplay
-              amountMinor={snap.monthSpendingMinor}
+              amountMinor={
+                snap.safeToSpendTodayMinor - snap.todaySpendingMinor
+              }
               currency={snap.currency}
               size="md"
+              tone="signed"
+            />
+          </Row>
+          <Row label="Ledigt efter mål">
+            <MoneyDisplay
+              amountMinor={snap.freeMinor}
+              currency={snap.currency}
+              size="md"
+              tone="signed"
             />
           </Row>
           <Row label="Använt idag">
@@ -107,46 +94,36 @@ export default async function AnalysPage() {
               size="md"
             />
           </Row>
-          <Row label="Kvar av dagens nivå">
-            <MoneyDisplay
-              amountMinor={room}
-              currency={snap.currency}
-              size="md"
-              tone="signed"
-            />
-          </Row>
-          <Row label="Ledigt efter mål">
-            <MoneyDisplay
-              amountMinor={free}
-              currency={snap.currency}
-              size="md"
-              tone="signed"
-            />
-          </Row>
-          <Row label="Reserverat">
-            <MoneyDisplay
-              amountMinor={snap.reservedMinor}
-              currency={snap.currency}
-              size="md"
-            />
-          </Row>
-          <Row label="Buffert">
-            <MoneyDisplay
-              amountMinor={snap.bufferMinor}
-              currency={snap.currency}
-              size="md"
-            />
-          </Row>
+          <a
+            href="/fota"
+            style={{
+              display: "inline-block",
+              marginTop: 16,
+              color: accent,
+              fontWeight: 600,
+            }}
+          >
+            Fota kvitto →
+          </a>
         </div>
-      </section>
+      ) : null}
     </div>
   );
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-sm text-[var(--numa-muted)]">{label}</span>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 12,
+        padding: "12px 0",
+        borderBottom: "1px solid rgba(19,32,25,0.12)",
+      }}
+    >
+      <span style={{ fontSize: 14, color: muted }}>{label}</span>
       {children}
     </div>
   );

@@ -1,14 +1,32 @@
+"use client";
+
 export default function MainLoading() {
   return (
-    <div className="space-y-4 pt-2 text-[var(--numa-ink)]">
-      <h2 className="text-2xl font-semibold tracking-tight">Laddar…</h2>
-      <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Hämtar ditt läge. Om det stannar här: laga appen.
+    <div
+      style={{
+        color: "#132019",
+        fontFamily: "system-ui, sans-serif",
+        paddingTop: 8,
+      }}
+    >
+      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Laddar…</h2>
+      <p style={{ margin: "8px 0 0", fontSize: 14, color: "#5a6b61" }}>
+        Om det stannar här: tryck Laga i den gröna listen.
       </p>
-      <div className="h-28 rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface)]" />
       <a
-        href="/installningar?laga=1"
-        className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
+        href="/laga"
+        style={{
+          display: "inline-flex",
+          marginTop: 16,
+          minHeight: 48,
+          alignItems: "center",
+          padding: "0 16px",
+          borderRadius: 16,
+          background: "#1f6f5b",
+          color: "#fff",
+          fontWeight: 700,
+          textDecoration: "none",
+        }}
       >
         Laga appen nu
       </a>

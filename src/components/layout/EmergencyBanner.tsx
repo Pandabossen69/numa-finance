@@ -1,7 +1,13 @@
 "use client";
 
-/** Fixed escape hatch — visible even when <main> RSC is empty. */
+/** Always-visible app chrome in root layout — works even if page RSC is empty. */
 export function EmergencyBanner() {
+  const link = {
+    color: "#fff",
+    textDecoration: "underline",
+    fontWeight: 700,
+  } as const;
+
   return (
     <div
       style={{
@@ -10,28 +16,56 @@ export function EmergencyBanner() {
         zIndex: 99999,
         background: "#1f6f5b",
         color: "#ffffff",
-        padding: "10px 14px",
+        padding: "12px 14px",
         fontFamily: "system-ui, sans-serif",
         fontSize: 13,
-        fontWeight: 600,
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 10,
-        alignItems: "center",
-        justifyContent: "center",
       }}
     >
-      <a href="/mer" style={{ color: "#fff", textDecoration: "underline" }}>
-        Mer-meny
-      </a>
-      <span style={{ opacity: 0.7 }}>·</span>
-      <a href="/idag" style={{ color: "#fff", textDecoration: "underline" }}>
-        Hem
-      </a>
-      <span style={{ opacity: 0.7 }}>·</span>
-      <a href="/laga" style={{ color: "#fff", textDecoration: "underline" }}>
-        Tom skärm? Laga appen
-      </a>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 10,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 8,
+        }}
+      >
+        <a href="/idag" style={link}>
+          Hem
+        </a>
+        <span style={{ opacity: 0.6 }}>·</span>
+        <a href="/plan" style={link}>
+          Plan
+        </a>
+        <span style={{ opacity: 0.6 }}>·</span>
+        <a href="/fota" style={link}>
+          Fota
+        </a>
+        <span style={{ opacity: 0.6 }}>·</span>
+        <a href="/analys" style={link}>
+          Analys
+        </a>
+        <span style={{ opacity: 0.6 }}>·</span>
+        <a href="/mer" style={link}>
+          Mer
+        </a>
+        <span style={{ opacity: 0.6 }}>·</span>
+        <a href="/laga" style={link}>
+          Laga
+        </a>
+      </div>
+      <p
+        style={{
+          margin: 0,
+          textAlign: "center",
+          fontSize: 11,
+          fontWeight: 500,
+          opacity: 0.9,
+        }}
+      >
+        Ser du bara denna list? Tryck Laga, sedan en menyknapp.
+      </p>
     </div>
   );
 }

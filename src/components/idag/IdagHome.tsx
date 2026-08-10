@@ -9,7 +9,7 @@ import {
   getHomeSnapshotAction,
   type HomeSnapshot,
 } from "@/features/finance/home-snapshot";
-import { hoursSince, NEXT_INCOME_NAME } from "@/domain/finance";
+import { hoursSince } from "@/domain/finance";
 import { calculateDayPulse } from "@/domain/gamification";
 import { formatMoney, money } from "@/domain/money";
 
