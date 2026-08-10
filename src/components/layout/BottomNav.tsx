@@ -15,8 +15,6 @@ const MER_PREFIXES = [
   "/transaktioner",
   "/importera",
   "/installningar",
-  "/fota",
-  "/laga",
 ];
 
 /** Plain anchors only — soft RSC nav + poisoned SW = blank main. */
@@ -29,7 +27,10 @@ export function BottomNav() {
         (p) => pathname === p || pathname.startsWith(`${p}/`),
       );
     }
-    return pathname.startsWith(href);
+    if (href === "/idag") {
+      return pathname === "/idag" || pathname.startsWith("/idag/");
+    }
+    return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
