@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseServerOptions } from "./options";
 
-const PUBLIC_PATHS = ["/logga-in", "/auth"];
+const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga"];
 
 const AUTH_TIMEOUT_MS = 4_000;
 

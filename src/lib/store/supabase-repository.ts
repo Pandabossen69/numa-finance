@@ -42,17 +42,25 @@ import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import type { TodaySnapshot } from "./types-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
-async function requireUserId(): Promise<string> {
+import { cache } from "react";
+import { withTimeout } from "@/lib/async";
+
+/** One auth lookup per request — repeated getUser() made Idag feel stuck. */
+const requireUserId = cache(async (): Promise<string> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser();
+  } = await withTimeout(
+    supabase.auth.getUser(),
+    4_000,
+    "requireUserId getUser",
+  );
   if (error || !user) {
     throw new Error("Du måste vara inloggad");
   }
   return user.id;
-}
+});
 
 async function ensureProfile(userId: string): Promise<Profile> {
   const supabase = await createSupabaseServerClient();

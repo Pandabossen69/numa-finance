@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DayPulseHero } from "@/components/idag/DayPulseHero";
@@ -14,46 +15,70 @@ function coerceMinor(value: unknown): number {
   return Math.round(n);
 }
 
-function LoadFailed({ detail }: { detail?: string }) {
+/** Streams immediately — never leave <main> empty while data loads. */
+export default function IdagPage() {
   return (
-    <div className="space-y-4 pt-6 text-[var(--numa-ink)]">
-      <BrandHeader />
-      <h1 className="text-2xl font-semibold tracking-tight">Kunde inte ladda idag</h1>
+    <div className="space-y-5 pt-1 text-[var(--numa-ink)]">
+      <p className="text-sm text-[var(--numa-muted)]">Idag</p>
+      <Suspense fallback={<IdagFallback />}>
+        <IdagBody />
+      </Suspense>
+    </div>
+  );
+}
+
+function IdagFallback() {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-semibold tracking-tight">Hämtar ditt läge…</h2>
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Något gjorde att sidan hängde eller kraschade. Ladda om, eller laga appen
-        om det händer igen.
+        Om detta stannar mer än några sekunder: tryck Laga uppe till höger.
       </p>
-      {detail ? (
-        <p className="text-xs text-[var(--numa-faint)]">{detail}</p>
-      ) : null}
-      <div className="flex flex-col gap-3">
-        <a
-          href="/idag"
-          className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-medium text-white"
-        >
-          Ladda om Idag
-        </a>
-        <Link
-          href="/installningar"
-          className="text-center text-sm font-medium text-[var(--numa-accent)]"
-        >
-          Laga appen →
-        </Link>
+      <div className="h-28 rounded-[1.75rem] border border-[var(--numa-border)] bg-[var(--numa-surface)]" />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="h-14 rounded-[1.25rem] bg-[var(--numa-accent)]/80" />
+        <div className="h-14 rounded-[1.25rem] border border-[var(--numa-border)]" />
       </div>
     </div>
   );
 }
 
-export default async function IdagPage() {
+function LoadFailed({ detail }: { detail?: string }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-2xl font-semibold tracking-tight">Kunde inte ladda</h2>
+      <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+        Något störde hämtningen. Ladda om eller laga appen.
+      </p>
+      {detail ? (
+        <p className="break-words text-xs text-[var(--numa-faint)]">{detail}</p>
+      ) : null}
+      <div className="flex flex-col gap-3">
+        <a
+          href="/idag"
+          className="flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-semibold text-white"
+        >
+          Ladda om
+        </a>
+        <a
+          href="/installningar?laga=1"
+          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
+        >
+          Laga appen
+        </a>
+      </div>
+    </div>
+  );
+}
+
+async function IdagBody() {
   let snap: TodaySnapshot;
   try {
     snap = await getTodaySnapshot();
   } catch (error) {
     console.error("[numa] idag snapshot failed", error);
     return (
-      <LoadFailed
-        detail={error instanceof Error ? error.message : undefined}
-      />
+      <LoadFailed detail={error instanceof Error ? error.message : undefined} />
     );
   }
 
@@ -62,9 +87,7 @@ export default async function IdagPage() {
   } catch (error) {
     console.error("[numa] idag render failed", error);
     return (
-      <LoadFailed
-        detail={error instanceof Error ? error.message : undefined}
-      />
+      <LoadFailed detail={error instanceof Error ? error.message : undefined} />
     );
   }
 }
@@ -72,15 +95,14 @@ export default async function IdagPage() {
 function renderIdag(snap: TodaySnapshot) {
   if (!snap.primaryAccount) {
     return (
-      <div className="space-y-6 pt-4 pb-4">
-        <BrandHeader />
+      <div className="space-y-6 pb-4">
         <section className="space-y-3">
           <p className="text-sm font-medium text-[var(--numa-accent)]">
             Steg 1 · Kom igång
           </p>
-          <h1 className="text-[1.7rem] font-semibold tracking-tight">
+          <h2 className="text-[1.7rem] font-semibold tracking-tight">
             Vad har du just nu?
-          </h1>
+          </h2>
           <p className="max-w-[36ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
             NUMA kopplas inte till någon bank. Du anger ditt saldo själv — sedan
             kan systemet räkna vad som är ledigt och om dagen ligger plus eller
@@ -127,11 +149,20 @@ function renderIdag(snap: TodaySnapshot) {
       : `Ingen plan lagd ännu · ${snap.daysUntilIncome} dagar till nästa inkomst`;
 
   return (
-    <div className="space-y-7 pt-2">
-      <BrandHeader
-        rankTitle={rank.titleSv}
-        streakLabel={streak > 0 ? `Streak ${streak}` : undefined}
-      />
+    <div className="space-y-7">
+      <div className="flex items-end justify-between">
+        <div>
+          {rank.titleSv ? (
+            <p className="text-xs font-medium text-[var(--numa-accent)]">
+              {rank.titleSv}
+            </p>
+          ) : null}
+          <p className="text-xs text-[var(--numa-faint)]">
+            {streak > 0 ? `Streak ${streak} · ` : ""}
+            Dagens översikt
+          </p>
+        </div>
+      </div>
 
       <DayPulseHero pulse={pulse} currency={currency} />
 
@@ -165,11 +196,7 @@ function renderIdag(snap: TodaySnapshot) {
         </p>
         <div className="flex items-end justify-between gap-4">
           <div>
-            <MoneyDisplay
-              amountMinor={safeToday}
-              currency={currency}
-              size="lg"
-            />
+            <MoneyDisplay amountMinor={safeToday} currency={currency} size="lg" />
             <p className="mt-1 text-sm text-[var(--numa-muted)]">idag</p>
           </div>
           <div className="text-right">
@@ -231,7 +258,10 @@ function renderIdag(snap: TodaySnapshot) {
         ) : (
           <ul className="divide-y divide-[var(--numa-border)]">
             {snap.recentTransactions.map((tx) => (
-              <li key={tx.id} className="flex items-center justify-between gap-3 py-3">
+              <li
+                key={tx.id}
+                className="flex items-center justify-between gap-3 py-3"
+              >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{tx.description}</p>
                   <p className="text-xs text-[var(--numa-faint)]">
@@ -246,9 +276,7 @@ function renderIdag(snap: TodaySnapshot) {
                   }`}
                 >
                   {tx.direction === "debit" ? "−" : "+"}
-                  {formatMoney(
-                    money(coerceMinor(tx.amountMinor), tx.currency),
-                  )}
+                  {formatMoney(money(coerceMinor(tx.amountMinor), tx.currency))}
                 </span>
               </li>
             ))}
@@ -278,28 +306,6 @@ function renderIdag(snap: TodaySnapshot) {
         </div>
       </section>
     </div>
-  );
-}
-
-function BrandHeader({
-  rankTitle,
-  streakLabel,
-}: {
-  rankTitle?: string;
-  streakLabel?: string;
-}) {
-  return (
-    <header className="flex items-end justify-between">
-      <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">NUMA</h1>
-      <div className="pb-1 text-right">
-        {rankTitle ? (
-          <p className="text-xs font-medium text-[var(--numa-accent)]">{rankTitle}</p>
-        ) : null}
-        <p className="text-xs text-[var(--numa-faint)]">
-          {streakLabel ? `${streakLabel} · ` : ""}Idag
-        </p>
-      </div>
-    </header>
   );
 }
 
