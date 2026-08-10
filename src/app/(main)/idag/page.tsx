@@ -1,6 +1,12 @@
 import { HomeDashboard } from "@/components/home/HomeDashboard";
+import { loadHomeSnapshot } from "@/features/finance/load-home";
 
-/** Hem — new visual foundation with domain-backed mock data. */
-export default function IdagPage() {
-  return <HomeDashboard />;
+export default async function IdagPage() {
+  const result = await loadHomeSnapshot();
+  return (
+    <HomeDashboard
+      snap={result.ok ? result.data : null}
+      error={result.ok ? null : result.error}
+    />
+  );
 }

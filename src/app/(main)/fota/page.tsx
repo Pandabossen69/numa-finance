@@ -1,34 +1,10 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
-import {
-  getHomeSnapshotAction,
-  type HomeSnapshot,
-} from "@/features/finance/home-snapshot";
+import { loadHomeSnapshot } from "@/features/finance/load-home";
 
-export default function FotaPage() {
-  const [snap, setSnap] = useState<HomeSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const result = await getHomeSnapshotAction();
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-      setSnap(result.data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export default async function FotaPage() {
+  const result = await loadHomeSnapshot();
+  const snap = result.ok ? result.data : null;
 
   return (
     <div className="space-y-5">
@@ -46,11 +22,8 @@ export default function FotaPage() {
         </p>
       </header>
 
-      {loading ? (
-        <p className="text-sm text-[var(--numa-muted)]">Förbereder…</p>
-      ) : null}
-      {error ? (
-        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
+      {result.ok === false ? (
+        <p className="text-sm text-[var(--numa-danger)]">{result.error}</p>
       ) : null}
 
       {snap ? (
@@ -61,7 +34,11 @@ export default function FotaPage() {
           currency={snap.currency}
           bootstrapping={!snap.hasBankTruth}
         />
-      ) : null}
+      ) : (
+        <Link href="/idag" className="text-sm font-semibold text-[var(--numa-accent)]">
+          Tillbaka till Hem →
+        </Link>
+      )}
     </div>
   );
 }

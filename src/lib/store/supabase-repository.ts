@@ -703,15 +703,15 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  const [profile, accounts, planItems] = await Promise.all([
+  const [profile, accounts, planItems, progress] = await Promise.all([
     getProfile(),
     listAccounts(),
     listPlanItems().catch(() => [] as PlanItem[]),
+    getUserProgress().catch(() => null),
   ]);
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
 
   if (!primary) {
-    const progress = await getUserProgress().catch(() => null);
     return emptySnapshot(profile, accounts, progress, planItems);
   }
 
@@ -722,7 +722,6 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const checkpoint = await latestCheckpointForAccount(primary.id);
 
   if (!checkpoint) {
-    const progress = await getUserProgress().catch(() => null);
     return {
       profile,
       accounts,
@@ -747,14 +746,13 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     };
   }
 
-  const sinceCandidates = [monthStart.toISOString()];
-  if (checkpoint.verifiedAt) sinceCandidates.push(checkpoint.verifiedAt);
-  const sinceIso = sinceCandidates.sort()[0];
+  const sinceCandidates = [monthStart.toISOString(), checkpoint.verifiedAt];
+  const sinceIso = sinceCandidates.sort()[0]!;
 
-  const [accountTx, progress] = await Promise.all([
-    listTransactions(primary.id, { sinceIso, limit: 400 }),
-    getUserProgress().catch(() => null),
-  ]);
+  const accountTx = await listTransactions(primary.id, {
+    sinceIso,
+    limit: 120,
+  });
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
   let calculated = null;
@@ -796,9 +794,9 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   });
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
-  if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (checkpoint && calculated) balanceKind = "calculated";
-  else if (checkpoint) balanceKind = "verified_checkpoint_only";
+  if (after.length === 0) balanceKind = "verified_checkpoint_only";
+  else if (calculated) balanceKind = "calculated";
+  else balanceKind = "verified_checkpoint_only";
 
   return {
     profile,

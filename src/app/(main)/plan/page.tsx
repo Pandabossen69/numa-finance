@@ -1,21 +1,10 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import {
-  getHomeSnapshotAction,
-  type HomeSnapshot,
-} from "@/features/finance/home-snapshot";
+import { loadHomeSnapshot } from "@/features/finance/load-home";
 
-export default function PlanPage() {
-  const [snap, setSnap] = useState<HomeSnapshot | null>(null);
-
-  useEffect(() => {
-    void getHomeSnapshotAction().then((r) => {
-      if (r.ok) setSnap(r.data);
-    });
-  }, []);
-
+export default async function PlanPage() {
+  const result = await loadHomeSnapshot();
+  const snap = result.ok ? result.data : null;
   const currency = snap?.currency ?? "THB";
 
   return (
@@ -78,6 +67,13 @@ export default function PlanPage() {
             ))}
           </ul>
         )}
+        <Link
+          href="/fota"
+          prefetch
+          className="mt-5 inline-flex text-sm font-semibold text-[var(--numa-accent)]"
+        >
+          Importera SMS →
+        </Link>
       </section>
     </div>
   );

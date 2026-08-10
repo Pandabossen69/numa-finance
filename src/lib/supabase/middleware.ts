@@ -4,7 +4,17 @@ import { supabaseServerOptions } from "./options";
 
 const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga"];
 
-const AUTH_TIMEOUT_MS = 4_000;
+const AUTH_TIMEOUT_MS = 2_500;
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some(
+      (c) =>
+        c.name.includes("auth-token") ||
+        (c.name.startsWith("sb-") && c.value.length > 0),
+    );
+}
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -33,6 +43,22 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
+    return supabaseResponse;
+  }
+
+  const pathname = request.nextUrl.pathname;
+  const isPublic = PUBLIC_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+
+  // Fast path: no auth cookie → skip network round-trip to Supabase.
+  if (!hasSupabaseAuthCookie(request)) {
+    if (!isPublic) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/logga-in";
+      redirectUrl.search = "";
+      return NextResponse.redirect(redirectUrl);
+    }
     return supabaseResponse;
   }
 
@@ -66,11 +92,6 @@ export async function updateSession(request: NextRequest) {
     console.error("[numa] proxy auth failed", error);
     return supabaseResponse;
   }
-
-  const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
 
   if (!user && !isPublic) {
     const redirectUrl = request.nextUrl.clone();

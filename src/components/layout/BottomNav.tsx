@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
@@ -10,13 +11,13 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-2 pt-1.5 pb-2">
         {left.map((tab) => (
-          <NavLink
+          <NavItem
             key={tab.href}
             href={tab.href}
             label={tab.label}
@@ -24,16 +25,17 @@ export function BottomNav() {
           />
         ))}
         <div className="flex justify-center">
-          <a
+          <Link
             href="/fota"
+            prefetch
             className="relative -mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
             aria-label="Lägg till eller fota"
           >
             <span className="leading-none">+</span>
-          </a>
+          </Link>
         </div>
         {right.map((tab) => (
-          <NavLink
+          <NavItem
             key={tab.href}
             href={tab.href}
             label={tab.label}
@@ -45,7 +47,7 @@ export function BottomNav() {
   );
 }
 
-function NavLink({
+function NavItem({
   href,
   label,
   active,
@@ -55,8 +57,9 @@ function NavLink({
   active: boolean;
 }) {
   return (
-    <a
+    <Link
       href={href}
+      prefetch
       className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold tracking-wide transition ${
         active ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
       }`}
@@ -68,6 +71,6 @@ function NavLink({
         aria-hidden
       />
       {label}
-    </a>
+    </Link>
   );
 }

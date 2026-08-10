@@ -7,12 +7,14 @@ const sans = Plus_Jakarta_Sans({
   variable: "--font-numa-sans",
   subsets: ["latin"],
   display: "swap",
+  preload: true,
 });
 
 const mono = JetBrains_Mono({
   variable: "--font-numa-mono",
   subsets: ["latin"],
   display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -37,8 +39,6 @@ export const viewport: Viewport = {
   themeColor: "#e6eee9",
   colorScheme: "light",
 };
-
-export const dynamic = "force-dynamic";
 
 export default function RootLayout({
   children,

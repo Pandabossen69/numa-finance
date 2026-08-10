@@ -1,7 +1,7 @@
 import { calculateSafeToSpend } from "@/domain/finance";
 import { calculateDayPulse } from "@/domain/gamification";
 import { money, type CurrencyCode } from "@/domain/money";
-import type { HomeSnapshot } from "@/features/finance/home-snapshot";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 
 /**
  * Realistic Hem mock for visual foundation.

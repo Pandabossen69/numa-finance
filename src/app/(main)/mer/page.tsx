@@ -1,7 +1,12 @@
+import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const links = [
-  { href: "/transaktioner", label: "Utgifter & intäkter", hint: "Totalt in, ut och vad som blir över" },
+  {
+    href: "/transaktioner",
+    label: "Utgifter & intäkter",
+    hint: "Totalt in, ut och vad som blir över",
+  },
   { href: "/konton", label: "Mina saldon", hint: "Konton & verifiering" },
   { href: "/fota", label: "Fota kvitto / skärmbild", hint: "Bank-SMS och kvitton" },
   { href: "/importera", label: "Importer", hint: "Bankobservationer" },
@@ -35,9 +40,10 @@ export default function MerPage() {
 
       <nav className="animate-rise-delay-2 space-y-2" aria-label="Mer-meny">
         {links.map((link) => (
-          <a
+          <Link
             key={link.href}
             href={link.href}
+            prefetch
             className="numa-panel flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-white"
           >
             <span>
@@ -51,7 +57,7 @@ export default function MerPage() {
             <span className="text-[var(--numa-faint)]" aria-hidden>
               →
             </span>
-          </a>
+          </Link>
         ))}
       </nav>
     </div>

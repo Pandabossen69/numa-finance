@@ -1,11 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import {
-  getMovementsSnapshotAction,
-  type MovementsSnapshot,
-} from "@/features/finance/movements-snapshot";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
 type Filter = "all" | "expense" | "income" | "other";
 type Period = "month" | "all";
@@ -41,9 +39,7 @@ function matchesFilter(
   if (filter === "all") return true;
   if (filter === "expense") return tx.transactionType === "expense";
   if (filter === "income") return tx.transactionType === "income";
-  return (
-    tx.transactionType !== "expense" && tx.transactionType !== "income"
-  );
+  return tx.transactionType !== "expense" && tx.transactionType !== "income";
 }
 
 function inCurrentMonth(iso: string): boolean {
@@ -54,30 +50,15 @@ function inCurrentMonth(iso: string): boolean {
   );
 }
 
-export function MovementsScreen() {
-  const [data, setData] = useState<MovementsSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+export function MovementsScreen({
+  data,
+  error,
+}: {
+  data: MovementsSnapshot | null;
+  error?: string | null;
+}) {
   const [filter, setFilter] = useState<Filter>("all");
   const [period, setPeriod] = useState<Period>("month");
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const result = await getMovementsSnapshotAction();
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-      setData(result.data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -87,12 +68,6 @@ export function MovementsScreen() {
       return true;
     });
   }, [data, filter, period]);
-
-  if (loading) {
-    return (
-      <p className="text-sm text-[var(--numa-muted)]">Hämtar rörelser…</p>
-    );
-  }
 
   if (error || !data) {
     return (
@@ -190,11 +165,7 @@ export function MovementsScreen() {
           </div>
           <p className="mt-2 text-xs text-[var(--numa-muted)]">
             Reserverat {(data.reservedMinor / 100).toLocaleString("sv-SE")} ·
-            buffert {(data.bufferMinor / 100).toLocaleString("sv-SE")} · tryggt
-            idag{" "}
-            {(data.safeToSpendTodayMinor / 100).toLocaleString("sv-SE", {
-              minimumFractionDigits: 2,
-            })}
+            buffert {(data.bufferMinor / 100).toLocaleString("sv-SE")}
           </p>
         </div>
       </section>
@@ -251,28 +222,28 @@ export function MovementsScreen() {
 
       <section className="animate-rise-delay-3 space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">
-            {filtered.length} rörelser
-          </h2>
-          <a
+          <h2 className="text-sm font-semibold">{filtered.length} rörelser</h2>
+          <Link
             href="/fota"
+            prefetch
             className="text-xs font-semibold text-[var(--numa-accent)]"
           >
             + Fota / lägg till
-          </a>
+          </Link>
         </div>
 
         {filtered.length === 0 ? (
           <div className="numa-panel space-y-3 p-5">
             <p className="text-sm text-[var(--numa-muted)]">
-              Inga rörelser här ännu. Fota ett bank-SMS eller lägg till manuellt.
+              Inga rörelser här ännu.
             </p>
-            <a
+            <Link
               href="/fota"
+              prefetch
               className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
             >
               Fota SMS
-            </a>
+            </Link>
           </div>
         ) : (
           <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">

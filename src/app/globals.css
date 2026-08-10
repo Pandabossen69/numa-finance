@@ -84,11 +84,10 @@ body {
 }
 
 .numa-panel {
-  background: var(--numa-surface);
+  background: var(--numa-surface-solid);
   border: 1px solid var(--numa-border);
   border-radius: 1.35rem;
   box-shadow: var(--numa-shadow-sm);
-  backdrop-filter: blur(12px);
 }
 
 .numa-panel-strong {
@@ -100,57 +99,32 @@ body {
 
 @keyframes numa-rise {
   from {
-    transform: translateY(12px);
-    filter: blur(2px);
+    transform: translateY(8px);
   }
   to {
     transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-@keyframes numa-bar {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-@keyframes numa-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.015);
   }
 }
 
 .animate-rise {
-  animation: numa-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-1 {
-  animation: numa-rise 560ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  animation: numa-rise 300ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
 }
 
 .animate-rise-delay-2 {
-  animation: numa-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both;
+  animation: numa-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) 70ms both;
 }
 
 .animate-rise-delay-3 {
-  animation: numa-rise 640ms cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
+  animation: numa-rise 340ms cubic-bezier(0.22, 1, 0.36, 1) 100ms both;
 }
 
 .animate-bar {
   transform-origin: left center;
-  animation: numa-bar 700ms cubic-bezier(0.22, 1, 0.36, 1) 220ms both;
-}
-
-.animate-breathe {
-  animation: numa-breathe 4.5s ease-in-out infinite;
+  animation: numa-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -158,8 +132,7 @@ body {
   .animate-rise-delay-1,
   .animate-rise-delay-2,
   .animate-rise-delay-3,
-  .animate-bar,
-  .animate-breathe {
+  .animate-bar {
     animation: none !important;
   }
 }

@@ -1,35 +1,14 @@
-"use client";
-
 export default function MainLoading() {
   return (
-    <div
-      style={{
-        color: "#132019",
-        fontFamily: "system-ui, sans-serif",
-        paddingTop: 8,
-      }}
-    >
-      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Laddar…</h2>
-      <p style={{ margin: "8px 0 0", fontSize: 14, color: "#5a6b61" }}>
-        Om det stannar här: tryck Laga i den gröna listen.
-      </p>
-      <a
-        href="/laga"
-        style={{
-          display: "inline-flex",
-          marginTop: 16,
-          minHeight: 48,
-          alignItems: "center",
-          padding: "0 16px",
-          borderRadius: 16,
-          background: "#1f6f5b",
-          color: "#fff",
-          fontWeight: 700,
-          textDecoration: "none",
-        }}
-      >
-        Laga appen nu
-      </a>
+    <div className="space-y-4 py-6" aria-busy="true" aria-label="Laddar">
+      <div className="h-8 w-40 rounded-lg bg-[var(--numa-bg-deep)]" />
+      <div className="h-4 w-64 max-w-full rounded-lg bg-[var(--numa-bg-deep)]" />
+      <div className="mt-6 h-40 rounded-[1.5rem] bg-[var(--numa-bg-deep)]" />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="h-24 rounded-[1.35rem] bg-[var(--numa-bg-deep)]" />
+        <div className="h-24 rounded-[1.35rem] bg-[var(--numa-bg-deep)]" />
+        <div className="h-24 rounded-[1.35rem] bg-[var(--numa-bg-deep)]" />
+      </div>
     </div>
   );
 }

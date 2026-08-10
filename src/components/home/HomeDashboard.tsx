@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { calculateDayPulse } from "@/domain/gamification";
 import { money, type CurrencyCode } from "@/domain/money";
-import {
-  getHomeSnapshotAction,
-  type HomeSnapshot,
-} from "@/features/finance/home-snapshot";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
+import Link from "next/link";
 
 function pulseCopy(
   status: "plus" | "even" | "minus",
@@ -43,40 +40,21 @@ function pulseCopy(
   };
 }
 
-export function HomeDashboard() {
-  const [snap, setSnap] = useState<HomeSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const result = await getHomeSnapshotAction();
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-      setSnap(result.data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (loading) {
-    return (
-      <p className="text-sm text-[var(--numa-muted)]">Hämtar din ekonomi…</p>
-    );
-  }
-
+export function HomeDashboard({
+  snap,
+  error,
+}: {
+  snap: HomeSnapshot | null;
+  error?: string | null;
+}) {
   if (error || !snap) {
     return (
       <div className="space-y-3">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
+        <Link href="/fota" className="text-sm font-semibold text-[var(--numa-accent)]">
+          Gå till Fota →
+        </Link>
       </div>
     );
   }
@@ -121,12 +99,13 @@ export function HomeDashboard() {
             NUMA läser hur mycket som drogs och saldot efteråt — det blir din
             startpunkt. Inga siffror innan dess.
           </p>
-          <a
+          <Link
             href="/fota"
+            prefetch
             className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
           >
             Fota första SMS
-          </a>
+          </Link>
         </section>
       ) : null}
 
@@ -223,9 +202,9 @@ export function HomeDashboard() {
         <div className="numa-panel p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">Mål</h2>
-            <a href="/plan" className="text-xs font-semibold text-[var(--numa-accent)]">
+            <Link href="/plan" prefetch className="text-xs font-semibold text-[var(--numa-accent)]">
               Plan
-            </a>
+            </Link>
           </div>
           {snap.goals.length === 0 ? (
             <p className="mt-4 text-sm text-[var(--numa-faint)]">Inga mål ännu</p>
@@ -251,12 +230,13 @@ export function HomeDashboard() {
         <div className="numa-panel p-5">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-semibold">Senaste rörelser</h2>
-            <a
+            <Link
               href="/transaktioner"
+              prefetch
               className="text-xs font-semibold text-[var(--numa-accent)]"
             >
               Se alla →
-            </a>
+            </Link>
           </div>
           {snap.recent.length === 0 ? (
             <p className="mt-4 text-sm text-[var(--numa-faint)]">
@@ -293,24 +273,27 @@ export function HomeDashboard() {
       </section>
 
       <section className="animate-rise-delay-3 flex flex-wrap gap-3">
-        <a
+        <Link
           href="/fota"
+          prefetch
           className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white sm:flex-none"
         >
           Fota bank-SMS
-        </a>
-        <a
+        </Link>
+        <Link
           href="/transaktioner"
+          prefetch
           className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl border border-[var(--numa-border-strong)] bg-white/70 px-5 text-sm font-semibold sm:flex-none"
         >
           Utgifter & intäkter
-        </a>
-        <a
+        </Link>
+        <Link
           href="/plan"
+          prefetch
           className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl border border-[var(--numa-border-strong)] bg-white/70 px-5 text-sm font-semibold sm:flex-none"
         >
           Justera plan
-        </a>
+        </Link>
       </section>
     </div>
   );
