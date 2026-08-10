@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { AddActionSheet } from "@/components/add/AddActionSheet";
-import type { ShellAccount } from "@/components/add/QuickAddForms";
 
 const tabs = [
   { href: "/idag", label: "Idag", icon: "●" },
@@ -22,17 +18,9 @@ const MER_PREFIXES = [
   "/fota",
 ];
 
-export function BottomNav({
-  accountId,
-  hasAccount,
-  accounts,
-}: {
-  accountId?: string | null;
-  hasAccount: boolean;
-  accounts: ShellAccount[];
-}) {
+/** Plain anchors only — soft RSC nav + poisoned SW = blank main. */
+export function BottomNav() {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
 
   function isActive(href: string): boolean {
     if (href === "/mer") {
@@ -44,60 +32,41 @@ export function BottomNav({
   }
 
   return (
-    <>
-      <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] backdrop-blur-xl"
-        style={{ paddingBottom: "var(--numa-safe-bottom)" }}
-        aria-label="Huvudnavigering"
-      >
-        <div className="numa-shell grid grid-cols-5 items-end px-2 pt-2 pb-2">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-[80] border-t border-[var(--numa-border)] bg-[var(--numa-nav)]"
+      style={{ paddingBottom: "var(--numa-safe-bottom)" }}
+      aria-label="Huvudnavigering"
+    >
+      <div className="numa-shell grid grid-cols-5 items-end px-2 pt-2 pb-2">
+        {tabs.slice(0, 2).map((tab) => (
           <NavLink
-            href={tabs[0].href}
-            label={tabs[0].label}
-            icon={tabs[0].icon}
-            active={isActive(tabs[0].href)}
+            key={tab.href}
+            href={tab.href}
+            label={tab.label}
+            icon={tab.icon}
+            active={isActive(tab.href)}
           />
-          <NavLink
-            href={tabs[1].href}
-            label={tabs[1].label}
-            icon={tabs[1].icon}
-            active={isActive(tabs[1].href)}
-          />
-
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
-              aria-label="Lägg till"
-            >
-              <span className="leading-none">+</span>
-            </button>
-          </div>
-
-          <NavLink
-            href={tabs[2].href}
-            label={tabs[2].label}
-            icon={tabs[2].icon}
-            active={isActive(tabs[2].href)}
-          />
-          <NavLink
-            href={tabs[3].href}
-            label={tabs[3].label}
-            icon={tabs[3].icon}
-            active={isActive(tabs[3].href)}
-          />
+        ))}
+        <div className="flex justify-center">
+          <a
+            href="/fota"
+            className="relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
+            aria-label="Lägg till"
+          >
+            <span className="leading-none">+</span>
+          </a>
         </div>
-      </nav>
-
-      <AddActionSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        accountId={accountId}
-        hasAccount={hasAccount}
-        accounts={accounts}
-      />
-    </>
+        {tabs.slice(2).map((tab) => (
+          <NavLink
+            key={tab.href}
+            href={tab.href}
+            label={tab.label}
+            icon={tab.icon}
+            active={isActive(tab.href)}
+          />
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -113,7 +82,7 @@ function NavLink({
   active: boolean;
 }) {
   return (
-    <Link
+    <a
       href={href}
       className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium tracking-wide transition ${
         active ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
@@ -123,6 +92,6 @@ function NavLink({
         {icon}
       </span>
       {label}
-    </Link>
+    </a>
   );
 }
