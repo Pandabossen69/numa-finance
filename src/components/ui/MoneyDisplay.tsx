@@ -11,7 +11,10 @@ export function MoneyDisplay({
   size?: "sm" | "md" | "lg" | "xl";
   compact?: boolean;
 }) {
-  const value = money(amountMinor, currency);
+  const safeMinor = Number.isInteger(amountMinor)
+    ? amountMinor
+    : Math.round(Number.isFinite(amountMinor) ? amountMinor : 0);
+  const value = money(safeMinor, currency);
   const text = compact ? formatMoneyCompact(value) : formatMoney(value);
 
   const sizeClass =

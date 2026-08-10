@@ -1,3 +1,4 @@
+import { withTimeout } from "@/lib/async";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { assertMultiUserSafeBackend } from "./isolation";
 import * as local from "./local-repository";
@@ -7,6 +8,8 @@ import type { TodaySnapshot } from "./types-snapshot";
 export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
 export type { UserProgress } from "./types-progress";
+
+const SNAPSHOT_TIMEOUT_MS = 8_000;
 
 function api() {
   const supabase = isSupabaseConfigured();
@@ -62,8 +65,14 @@ export async function createCashWithdrawal(
   return api().createCashWithdrawal(input);
 }
 
-export async function listTransactions(accountId?: string) {
-  return api().listTransactions(accountId);
+export async function listTransactions(
+  accountId?: string,
+  options?: { sinceIso?: string; limit?: number },
+) {
+  if (isSupabaseConfigured()) {
+    return remote.listTransactions(accountId, options);
+  }
+  return local.listTransactions(accountId);
 }
 
 export async function createScreenshotObservation(
@@ -81,7 +90,11 @@ export async function getObservation(observationId: string) {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  return api().getTodaySnapshot();
+  return withTimeout(
+    api().getTodaySnapshot(),
+    SNAPSHOT_TIMEOUT_MS,
+    "getTodaySnapshot",
+  );
 }
 
 export async function getLatestCheckpoint(accountId: string) {

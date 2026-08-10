@@ -423,6 +423,7 @@ export async function createCashWithdrawal(input: {
 
 export async function listTransactions(
   accountId?: string,
+  options?: { sinceIso?: string; limit?: number },
 ): Promise<CanonicalTransaction[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
@@ -434,6 +435,12 @@ export async function listTransactions(
 
   if (accountId) {
     query = query.eq("account_id", accountId);
+  }
+  if (options?.sinceIso) {
+    query = query.gte("occurred_at", options.sinceIso);
+  }
+  if (options?.limit != null) {
+    query = query.limit(options.limit);
   }
 
   const { data, error } = await query;
@@ -617,29 +624,44 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  const profile = await getProfile();
-  const accounts = await listAccounts();
+  const [profile, accounts, planItems] = await Promise.all([
+    getProfile(),
+    listAccounts(),
+    listPlanItems().catch(() => [] as PlanItem[]),
+  ]);
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
-  const planItems = await listPlanItems().catch(() => [] as PlanItem[]);
 
   if (!primary) {
-    const progress = await getUserProgress();
+    const progress = await getUserProgress().catch(() => null);
     return emptySnapshot(profile, accounts, progress, planItems);
   }
 
-  const checkpoint = await latestCheckpointForAccount(primary.id);
-  const accountTx = await listTransactions(primary.id);
-  const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
-  const calculated = calculateAccountBalance({
-    checkpoint,
-    transactionsAfterCheckpoint: after,
-  });
-
   const timezone = profile.timezone;
   const now = new Date();
-  const dayStart = startOfZonedDay(now, timezone);
   const monthStart = startOfZonedMonth(now, timezone);
 
+  const checkpoint = await latestCheckpointForAccount(primary.id);
+  const sinceCandidates = [monthStart.toISOString()];
+  if (checkpoint?.verifiedAt) sinceCandidates.push(checkpoint.verifiedAt);
+  const sinceIso = sinceCandidates.sort()[0];
+
+  const [accountTx, progress] = await Promise.all([
+    listTransactions(primary.id, { sinceIso, limit: 400 }),
+    getUserProgress().catch(() => null),
+  ]);
+
+  const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
+  let calculated = null;
+  try {
+    calculated = calculateAccountBalance({
+      checkpoint,
+      transactionsAfterCheckpoint: after,
+    });
+  } catch (error) {
+    console.error("[numa] balance calc failed", error);
+  }
+
+  const dayStart = startOfZonedDay(now, timezone);
   const todayTx = accountTx.filter(
     (t) =>
       t.status === "confirmed" &&
@@ -669,9 +691,8 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
   if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (checkpoint) balanceKind = "calculated";
-
-  const progress = await getUserProgress();
+  else if (checkpoint && calculated) balanceKind = "calculated";
+  else if (checkpoint) balanceKind = "verified_checkpoint_only";
 
   return {
     profile,

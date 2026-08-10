@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    // Offline-friendly navigation/action retry foundation (Next.js 16).
-    useOffline: true,
-  },
+  // Keep experimental offline retries OFF — they left soft-nav stuck on blank
+  // main content on iPhone when a fetch hung or returned stale RSC.
 };
 
 export default nextConfig;

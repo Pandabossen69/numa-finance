@@ -3,7 +3,21 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { getTodaySnapshot } from "@/lib/store/repository";
 
 export default async function AnalysPage() {
-  const snap = await getTodaySnapshot();
+  let snap;
+  try {
+    snap = await getTodaySnapshot();
+  } catch (error) {
+    console.error("[numa] analys snapshot failed", error);
+    return (
+      <div className="space-y-4 pt-6">
+        <h1 className="text-[1.65rem] font-semibold">Analys</h1>
+        <p className="text-sm text-[var(--numa-muted)]">Kunde inte ladda analysen.</p>
+        <a href="/analys" className="text-sm font-medium text-[var(--numa-accent)]">
+          Försök igen
+        </a>
+      </div>
+    );
+  }
 
   if (!snap.primaryAccount) {
     return (
