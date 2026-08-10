@@ -1,5 +1,6 @@
 export * from "./extraction";
 export * from "./bank-parsers";
+export * from "./resolve-screenshot-import";
 export {
   OpenAiVisionExtractionProvider,
   createExtractionProvider,

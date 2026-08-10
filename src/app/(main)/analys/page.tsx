@@ -1,130 +1,48 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import {
-  getHomeSnapshotAction,
-  type HomeSnapshot,
-} from "@/features/finance/home-snapshot";
+import { loadHomeSnapshot } from "@/features/finance/load-home";
 
-const ink = "#132019";
-const muted = "#5a6b61";
-const accent = "#1f6f5b";
-
-export default function AnalysPage() {
-  const [snap, setSnap] = useState<HomeSnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const result = await getHomeSnapshotAction();
-      if (cancelled) return;
-      if (!result.ok) {
-        setError(result.error);
-        setLoading(false);
-        return;
-      }
-      setSnap(result.data);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export default async function AnalysPage() {
+  const result = await loadHomeSnapshot();
+  const snap = result.ok ? result.data : null;
+  const currency = snap?.currency ?? "THB";
 
   return (
-    <div style={{ color: ink, fontFamily: "system-ui, sans-serif" }}>
-      <h1 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 700 }}>Analys</h1>
-      <p style={{ margin: "8px 0 0", fontSize: 14, color: muted, maxWidth: "36ch" }}>
-        Sparar du eller spenderar du mer just nu?
-      </p>
+    <div className="space-y-6">
+      <header className="animate-rise">
+        <h1 className="text-3xl font-semibold tracking-tight">Analys</h1>
+        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
+          Runway och frihet. Nollor tills första bank-SMS.
+        </p>
+      </header>
 
-      {loading ? (
-        <p style={{ marginTop: 20, fontSize: 14, color: muted }}>Hämtar…</p>
-      ) : null}
-
-      {error ? (
-        <p style={{ marginTop: 20, fontSize: 14, color: "#a61f1f" }}>{error}</p>
-      ) : null}
-
-      {snap && !snap.primaryAccountId ? (
-        <div style={{ marginTop: 20 }}>
-          <p style={{ fontSize: 14, color: muted }}>
-            Ange saldo på Hem först.
+      <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-6">
+        <div>
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+            Dagar till nästa inkomst
           </p>
-          <a href="/idag" style={{ color: accent, fontWeight: 600 }}>
-            Till Hem →
-          </a>
+          <p className="mt-2 text-4xl font-semibold tracking-tight">
+            {snap?.daysUntilIncome ?? 0}
+          </p>
         </div>
-      ) : null}
-
-      {snap?.primaryAccountId ? (
-        <div style={{ marginTop: 24 }}>
-          <Row label="Kvar av dagens nivå">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-[var(--numa-faint)]">Fritt efter buffert</p>
             <MoneyDisplay
-              amountMinor={
-                snap.safeToSpendTodayMinor - snap.todaySpendingMinor
-              }
-              currency={snap.currency}
-              size="md"
-              tone="signed"
-            />
-          </Row>
-          <Row label="Ledigt efter mål">
-            <MoneyDisplay
-              amountMinor={snap.freeMinor}
-              currency={snap.currency}
-              size="md"
-              tone="signed"
-            />
-          </Row>
-          <Row label="Använt idag">
-            <MoneyDisplay
-              amountMinor={snap.todaySpendingMinor}
-              currency={snap.currency}
+              amountMinor={snap?.freeMinor ?? 0}
+              currency={currency}
               size="md"
             />
-          </Row>
-          <Row label="Tryggt idag">
+          </div>
+          <div>
+            <p className="text-xs text-[var(--numa-faint)]">Tryggt denna vecka</p>
             <MoneyDisplay
-              amountMinor={snap.safeToSpendTodayMinor}
-              currency={snap.currency}
+              amountMinor={snap?.safeToSpendWeekMinor ?? 0}
+              currency={currency}
               size="md"
             />
-          </Row>
-          <a
-            href="/fota"
-            style={{
-              display: "inline-block",
-              marginTop: 16,
-              color: accent,
-              fontWeight: 600,
-            }}
-          >
-            Fota kvitto →
-          </a>
+          </div>
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 12,
-        padding: "12px 0",
-        borderBottom: "1px solid rgba(19,32,25,0.12)",
-      }}
-    >
-      <span style={{ fontSize: 14, color: muted }}>{label}</span>
-      {children}
+      </section>
     </div>
   );
 }

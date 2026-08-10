@@ -1,20 +1,37 @@
 import { withTimeout } from "@/lib/async";
+import { withRolledMonthlyDues } from "@/domain/finance";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { assertMultiUserSafeBackend } from "./isolation";
 import * as local from "./local-repository";
 import * as remote from "./supabase-repository";
+import { assertMultiUserSafeBackend } from "./isolation";
 import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
 export type { UserProgress } from "./types-progress";
 
-const SNAPSHOT_TIMEOUT_MS = 5_000;
+const SNAPSHOT_TIMEOUT_MS = 3_500;
 
 function api() {
   const supabase = isSupabaseConfigured();
   assertMultiUserSafeBackend(supabase);
   return supabase ? remote : local;
+}
+
+/** Keep monthly due dates rolling into future months automatically. */
+async function ensurePlanDuesRolled(): Promise<void> {
+  try {
+    const items = await api().listPlanItems();
+    const { changed } = withRolledMonthlyDues(items, new Date());
+    if (changed.length === 0) return;
+    await Promise.all(
+      changed.map((item) =>
+        api().updatePlanItem({ id: item.id, nextDueAt: item.nextDueAt }),
+      ),
+    );
+  } catch (error) {
+    console.warn("[numa] plan due roll skipped", error);
+  }
 }
 
 export async function getProfile() {
@@ -33,6 +50,12 @@ export async function createAccount(
   input: Parameters<typeof local.createAccount>[0],
 ) {
   return api().createAccount(input);
+}
+
+export async function ensureDefaultBankAccount(
+  input?: Parameters<typeof local.ensureDefaultBankAccount>[0],
+) {
+  return api().ensureDefaultBankAccount(input);
 }
 
 export async function createCheckpoint(
@@ -75,6 +98,16 @@ export async function listTransactions(
   return local.listTransactions(accountId);
 }
 
+export async function updateTransaction(
+  input: Parameters<typeof local.updateTransaction>[0],
+) {
+  return api().updateTransaction(input);
+}
+
+export async function voidTransaction(id: string) {
+  return api().voidTransaction(id);
+}
+
 export async function createScreenshotObservation(
   input: Parameters<typeof local.createScreenshotObservation>[0],
 ) {
@@ -94,6 +127,7 @@ export async function getObservation(observationId: string) {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
+  await ensurePlanDuesRolled();
   return withTimeout(
     api().getTodaySnapshot(),
     SNAPSHOT_TIMEOUT_MS,

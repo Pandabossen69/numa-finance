@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep experimental offline retries OFF — they left soft-nav stuck on blank
-  // main content on iPhone when a fetch hung or returned stale RSC.
+  // Instant soft navigations; avoid experimental offline retries that blanked iPhone.
+  experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
 };
 
 export default nextConfig;

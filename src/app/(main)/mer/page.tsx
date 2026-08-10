@@ -1,98 +1,65 @@
-"use client";
-
+import Link from "next/link";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-const ink = "#132019";
-const muted = "#5a6b61";
-const faint = "#8a9a91";
-const accent = "#1f6f5b";
-const border = "rgba(19,32,25,0.12)";
-
 const links = [
-  { href: "/konton", label: "Mina saldon" },
-  { href: "/transaktioner", label: "Utgifter & rörelser" },
-  { href: "/fota", label: "Fota kvitto / skärmbild" },
-  { href: "/importera", label: "Importer" },
-  { href: "/installningar", label: "Inställningar" },
-  { href: "/laga", label: "Laga appen (rensa cache)" },
+  {
+    href: "/transaktioner",
+    label: "Utgifter & intäkter",
+    hint: "Totalt in, ut och vad som blir över",
+  },
+  { href: "/konton", label: "Mina saldon", hint: "Konton & verifiering" },
+  { href: "/fota", label: "Fota kvitto / skärmbild", hint: "Bank-SMS och kvitton" },
+  { href: "/importera", label: "Importer", hint: "Bankobservationer" },
+  { href: "/installningar", label: "Inställningar", hint: "Valuta & tidszon" },
+  { href: "/laga", label: "Laga appen", hint: "Rensa cache / SW" },
 ] as const;
 
-/** Client Mer — no server RSC body. */
 export default function MerPage() {
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div style={{ color: ink, fontFamily: "system-ui, sans-serif" }}>
-      <header style={{ marginBottom: 24 }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "1.65rem",
-            fontWeight: 700,
-            color: ink,
-          }}
-        >
-          Mer
-        </h1>
-        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
-          Saldon, historik och snabb import.
+    <div className="space-y-6">
+      <header className="animate-rise">
+        <h1 className="text-3xl font-semibold tracking-tight">Mer</h1>
+        <p className="mt-2 text-sm text-[var(--numa-muted)]">
+          Saldon, historik och underhåll.
         </p>
       </header>
 
-      <a
-        href="/laga"
-        style={{
-          display: "flex",
-          minHeight: 56,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 16,
-          background: accent,
-          color: "#fff",
-          fontSize: 14,
-          fontWeight: 700,
-          textDecoration: "none",
-          marginBottom: 24,
-        }}
+      <div
+        className={`animate-rise-delay-1 rounded-2xl px-4 py-3 text-sm font-medium ${
+          supabaseReady
+            ? "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]"
+            : "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]"
+        }`}
       >
-        Laga appen nu
-      </a>
+        {supabaseReady
+          ? "Supabase konfigurerad · schema numa"
+          : "Supabase saknas lokalt — mock / lokal store"}
+      </div>
 
-      <nav style={{ borderTop: `1px solid ${border}`, marginBottom: 24 }}>
+      <nav className="animate-rise-delay-2 space-y-2" aria-label="Mer-meny">
         {links.map((link) => (
-          <a
+          <Link
             key={link.href}
             href={link.href}
-            style={{
-              display: "flex",
-              minHeight: 56,
-              alignItems: "center",
-              justifyContent: "space-between",
-              fontSize: 14,
-              fontWeight: 600,
-              color: ink,
-              textDecoration: "none",
-              borderBottom: `1px solid ${border}`,
-            }}
+            prefetch
+            className="numa-panel flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-white"
           >
-            {link.label}
-            <span style={{ color: faint }} aria-hidden>
+            <span>
+              <span className="block text-sm font-semibold text-[var(--numa-ink)]">
+                {link.label}
+              </span>
+              <span className="mt-0.5 block text-xs text-[var(--numa-faint)]">
+                {link.hint}
+              </span>
+            </span>
+            <span className="text-[var(--numa-faint)]" aria-hidden>
               →
             </span>
-          </a>
+          </Link>
         ))}
       </nav>
-
-      <section>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: muted }}>
-          Läge
-        </h2>
-        <p style={{ margin: "8px 0 0", fontSize: 14, color: muted }}>
-          {supabaseReady
-            ? "Molnkonto aktivt — din data är privat per inloggning."
-            : "Lokalt läge — koppla Supabase för flera konton."}
-        </p>
-      </section>
     </div>
   );
 }

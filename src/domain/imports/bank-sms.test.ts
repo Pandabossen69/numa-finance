@@ -1,0 +1,142 @@
+import { describe, expect, it } from "vitest";
+import {
+  BangkokBankSmsParser,
+  majorStringToMinor,
+  orderNewestFirst,
+  selectImportableBankEvent,
+  toBankEventCandidate,
+} from "./bank-parsers";
+import { resolveScreenshotImport } from "./resolve-screenshot-import";
+import { buildTransactionFingerprint } from "@/domain/finance/fingerprint";
+
+const SMS_A =
+  "Withdrawal/transfer/payment from your account X6591 of Bt 750.00 via MOBILE; the available balance is Bt 10,758.04.";
+const SMS_B =
+  "Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE; the available balance is Bt 10,693.04.";
+const SMS_C =
+  "Withdrawal/transfer/payment from your account X6591 of Bt 120.00 via MOBILE; the available balance is Bt 10,573.04.";
+
+describe("bangkok bank multi-SMS", () => {
+  it("parses western bank amount strings into minor units", () => {
+    expect(majorStringToMinor("10,058.04")).toBe(1005804);
+    expect(majorStringToMinor("750.00")).toBe(75000);
+  });
+
+  it("splits and parses several SMS in one screenshot text", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+    });
+    expect(parsed).toHaveLength(3);
+    expect(parsed.map((p) => p.amountMinor)).toEqual([75000, 6500, 12000]);
+    expect(parsed[1]?.balanceAfterMinor).toBe(1069304);
+    expect(parsed[0]?.maskedAccount).toBe("6591");
+  });
+
+  it("orders newest first using balance-after chain", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+    });
+    const ordered = orderNewestFirst(parsed.map(toBankEventCandidate));
+    // C happened after B after A (balances: 10758 → 10693 → 10573)
+    expect(ordered[0]?.amountMinor).toBe(12000);
+    expect(ordered[1]?.amountMinor).toBe(6500);
+    expect(ordered[2]?.amountMinor).toBe(75000);
+  });
+
+  it("imports only the newest unknown SMS", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+    });
+
+    const knownOlder = parsed
+      .filter((p) => p.amountMinor !== 12000)
+      .map((p) =>
+        buildTransactionFingerprint({
+          institution: p.institution,
+          maskedAccount: p.maskedAccount!,
+          direction: "debit",
+          amountMinor: p.amountMinor!,
+          balanceAfterMinor: p.balanceAfterMinor,
+          channel: p.channel,
+        }).fingerprint,
+      );
+
+    const result = selectImportableBankEvent(parsed, knownOlder);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selected.amountMinor).toBe(12000);
+    expect(result.skippedDuplicateCount).toBe(0);
+    expect(result.skippedOlderCount).toBe(2);
+    expect(result.messageSv).toMatch(/Senaste nya/i);
+  });
+
+  it("skips newer duplicates and picks the next unknown", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+    });
+    const newest = parsed.find((p) => p.amountMinor === 12000)!;
+    const knownNewest = [
+      buildTransactionFingerprint({
+        institution: newest.institution,
+        maskedAccount: newest.maskedAccount!,
+        direction: "debit",
+        amountMinor: newest.amountMinor!,
+        balanceAfterMinor: newest.balanceAfterMinor,
+        channel: newest.channel,
+      }).fingerprint,
+    ];
+    const result = selectImportableBankEvent(parsed, knownNewest);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selected.amountMinor).toBe(6500);
+    expect(result.skippedDuplicateCount).toBe(1);
+  });
+
+  it("reports all_known when every SMS fingerprint exists", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}`,
+    });
+    const fps = parsed.map(
+      (p) =>
+        buildTransactionFingerprint({
+          institution: p.institution,
+          maskedAccount: p.maskedAccount!,
+          direction: "debit",
+          amountMinor: p.amountMinor!,
+          balanceAfterMinor: p.balanceAfterMinor,
+          channel: p.channel,
+        }).fingerprint,
+    );
+    const result = selectImportableBankEvent(parsed, fps);
+    expect(result.status).toBe("all_known");
+  });
+
+  it("resolveScreenshotImport prefers latest unknown from vision metadata", () => {
+    const resolved = resolveScreenshotImport(
+      {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          detectedKind: "bangkok_bank_sms",
+          fullText: `${SMS_A}\n\n${SMS_B}`,
+          smsTexts: [SMS_A, SMS_B],
+        },
+      },
+      [],
+    );
+    expect(resolved.kind).toBe("bank_sms");
+    expect(resolved.alreadyKnown).toBe(false);
+    expect(resolved.suggestedAmountMinor).toBe(6500);
+    expect(resolved.fingerprint).toContain("balanceAfter=1069304");
+  });
+});
