@@ -6,7 +6,7 @@ import {
   PASSWORD_RESET_REQUEST_PATH,
   PASSWORD_UPDATE_PATH,
 } from "@/features/auth/routes";
-import { supabaseClientOptions } from "./options";
+import { supabaseServerOptions } from "./options";
 
 const PUBLIC_PATHS = [
   LOGIN_PATH,
@@ -14,6 +14,29 @@ const PUBLIC_PATHS = [
   PASSWORD_UPDATE_PATH,
   "/auth",
 ];
+
+const AUTH_TIMEOUT_MS = 4_000;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} timed out after ${ms}ms`)),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -25,7 +48,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
-    ...supabaseClientOptions,
+    ...supabaseServerOptions,
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -42,9 +65,19 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { id: string } | null = null;
+  try {
+    const result = await withTimeout(
+      supabase.auth.getUser(),
+      AUTH_TIMEOUT_MS,
+      "proxy auth.getUser",
+    );
+    user = result.data.user;
+  } catch (error) {
+    console.error("[numa] proxy auth failed", error);
+    // Fail open to the request; page-level auth still guards data.
+    return supabaseResponse;
+  }
 
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some(

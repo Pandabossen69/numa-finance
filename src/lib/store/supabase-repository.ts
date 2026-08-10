@@ -56,18 +56,7 @@ import {
   type RecordOnTrackDayResult,
   type UserProgress,
 } from "./types-progress";
-
-async function requireUserId(): Promise<string> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) {
-    throw new Error("Du måste vara inloggad");
-  }
-  return user.id;
-}
+import { requireUserId } from "./require-user";
 
 async function ensureProfile(userId: string): Promise<Profile> {
   const supabase = await createSupabaseServerClient();

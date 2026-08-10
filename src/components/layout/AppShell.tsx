@@ -1,36 +1,16 @@
 import { BottomNav } from "@/components/layout/BottomNav";
-import type { TodaySnapshot } from "@/lib/store/repository";
-import { getTodaySnapshotCached } from "@/lib/store/today";
 
-async function loadShellSnapshot(): Promise<
-  Pick<TodaySnapshot, "primaryAccount" | "accounts">
-> {
-  try {
-    return await getTodaySnapshotCached();
-  } catch (error) {
-    console.error("[numa] failed to load shell snapshot", error);
-    return { primaryAccount: null, accounts: [] };
-  }
-}
-
+/**
+ * Shell must NOT await finance data. A hung Supabase call here blanked the
+ * entire app (nav + page) with a stuck browser progress bar.
+ */
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const snapshot = await loadShellSnapshot();
-  const accounts = snapshot.accounts.map((a) => ({
-    id: a.id,
-    name: a.name,
-    accountType: a.accountType,
-  }));
-
   return (
     <div className="numa-shell relative text-[var(--numa-ink)]">
       <main className="numa-bottom-pad px-5 pt-[max(1.25rem,var(--numa-safe-top))]">
         {children}
       </main>
-      <BottomNav
-        accountId={snapshot.primaryAccount?.id}
-        hasAccount={Boolean(snapshot.primaryAccount)}
-        accounts={accounts}
-      />
+      <BottomNav />
     </div>
   );
 }

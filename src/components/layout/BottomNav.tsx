@@ -20,18 +20,7 @@ const MER_PREFIXES = [
   "/lagg-till",
 ];
 
-export function BottomNav({
-  accountId: _accountId,
-  hasAccount: _hasAccount,
-  accounts: _accounts,
-}: {
-  accountId?: string | null;
-  hasAccount: boolean;
-  accounts: Array<{ id: string; name: string; accountType: string }>;
-}) {
-  void _accountId;
-  void _hasAccount;
-  void _accounts;
+export function BottomNav() {
   const pathname = usePathname();
 
   function isActive(href: string): boolean {
