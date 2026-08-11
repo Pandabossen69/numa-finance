@@ -1367,7 +1367,9 @@ export async function confirmReceiptExpense(
       }
 
       const known = await listConfirmedFingerprints();
-      const checkpointAt = new Date().toISOString();
+      // Freeze one clock so slow Supabase inserts cannot push the tip
+      // credit after the tip checkpoint (10108 + 3400 = 13508 bug).
+      const baseMs = Date.now();
       let lastTx: CanonicalTransaction | null = null;
       const chronological = [...pending].reverse();
 
@@ -1377,8 +1379,9 @@ export async function confirmReceiptExpense(
           throw new Error("Den här bankrörelsen finns redan");
         }
         known.push(cand.fingerprint!);
+        // Oldest→newest, all strictly before checkpointAt (= baseMs).
         const movedAt = new Date(
-          Date.now() - (chronological.length - i + 1) * 2_000,
+          baseMs - (chronological.length - i) * 3_000,
         ).toISOString();
         const direction = cand.direction as "debit" | "credit";
         const amountMinor = cand.amountMinor!;
@@ -1425,7 +1428,7 @@ export async function confirmReceiptExpense(
         await createCheckpoint({
           accountId: account.id,
           balanceMinor: tipBalance,
-          verifiedAt: checkpointAt,
+          verifiedAt: new Date(baseMs).toISOString(),
           source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
           note: hadCheckpoint
             ? "Saldo från Bangkok Bank SMS"

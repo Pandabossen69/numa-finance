@@ -889,7 +889,8 @@ export async function confirmReceiptExpense(
       }
 
       const known = await listConfirmedFingerprints();
-      const checkpointAt = new Date().toISOString();
+      // Freeze one clock so tip credit cannot land after tip checkpoint.
+      const baseMs = Date.now();
       let lastTx: CanonicalTransaction | null = null;
 
       // Newest first in pending; write oldest→newest so history reads well.
@@ -901,7 +902,7 @@ export async function confirmReceiptExpense(
         }
         known.push(cand.fingerprint!);
         const movedAt = new Date(
-          Date.now() - (chronological.length - i + 1) * 2_000,
+          baseMs - (chronological.length - i) * 3_000,
         ).toISOString();
         const direction = cand.direction as "debit" | "credit";
         const amountMinor = cand.amountMinor!;
@@ -947,7 +948,7 @@ export async function confirmReceiptExpense(
         await createCheckpoint({
           accountId: account.id,
           balanceMinor: tipBalance,
-          verifiedAt: checkpointAt,
+          verifiedAt: new Date(baseMs).toISOString(),
           source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
           note: hadCheckpoint
             ? "Saldo från Bangkok Bank SMS"

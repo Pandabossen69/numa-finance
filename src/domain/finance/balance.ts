@@ -95,19 +95,41 @@ export function calculateAccountBalance(params: {
   return money(balance, checkpoint.currency);
 }
 
+/**
+ * Bank-SMS tip checkpoints already embed every bubble's effect
+ * (available balance after the newest SMS). Re-applying those
+ * screenshot/sms rows would double-count (e.g. 10108 + 3400 = 13508).
+ */
+function isSmsTipCheckpoint(checkpoint: BalanceCheckpoint): boolean {
+  return (
+    checkpoint.source === "sms_import" ||
+    checkpoint.source === "sms_bootstrap"
+  );
+}
+
+function isBankSmsLedgerRow(
+  tx: Pick<CanonicalTransaction, "source">,
+): boolean {
+  return tx.source === "screenshot" || tx.source === "sms";
+}
+
 export function filterTransactionsAfterCheckpoint(
   transactions: CanonicalTransaction[],
   checkpoint: BalanceCheckpoint | null,
 ): CanonicalTransaction[] {
   if (!checkpoint) return [];
   const checkpointTime = Date.parse(checkpoint.verifiedAt);
+  const smsTip = isSmsTipCheckpoint(checkpoint);
 
   return transactions
     .filter((tx) => {
       const t = Date.parse(tx.occurredAt);
-      // Include transactions at/after checkpoint time. Exact same-second edge cases
-      // should later be refined with sequence/balance-after data.
-      return t >= checkpointTime;
+      // Include transactions at/after checkpoint time.
+      if (!(t >= checkpointTime)) return false;
+      // Tip available-balance is absolute truth — bank-SMS rows stay in
+      // history/lists but must not move calculated saldo again.
+      if (smsTip && isBankSmsLedgerRow(tx)) return false;
+      return true;
     })
     .sort((a, b) => {
       const byOccurred = Date.parse(a.occurredAt) - Date.parse(b.occurredAt);
