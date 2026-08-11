@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { monthAnchorIso } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
 import {
   createPlanItem,
@@ -27,6 +28,12 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   kind: kindSchema,
   amount: z.string().trim().min(1),
+});
+
+const createIncomeSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  amount: z.string().trim().min(1),
+  monthKey: z.string().regex(/^\d{4}-\d{2}$/),
 });
 
 function revalidatePlanPaths() {
@@ -60,6 +67,36 @@ export async function createPlanItemAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte spara hinken",
+    };
+  }
+}
+
+/** Income is month-scoped and never carries into the next month. */
+export async function createPlanIncomeAction(
+  raw: z.infer<typeof createIncomeSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = createIncomeSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
+    if (amountMinor < 0) {
+      return { ok: false, error: "Belopp kan inte vara negativt" };
+    }
+    const snap = await getTodaySnapshot();
+    await createPlanItem({
+      name: input.name,
+      kind: "expected",
+      amountMinor,
+      currency: snap.currency,
+      cadence: "income",
+      nextDueAt: monthAnchorIso(input.monthKey),
+    });
+    revalidatePlanPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte spara intäkten",
     };
   }
 }

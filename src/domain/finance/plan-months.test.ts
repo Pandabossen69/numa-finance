@@ -49,14 +49,44 @@ describe("plan-months", () => {
         cadence: "once",
         nextDueAt: "2026-08-15T00:00:00.000Z",
       }),
+      item({
+        name: "Lön",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      item({
+        name: "Provision",
+        kind: "expected",
+        amountMinor: 5_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-15T12:00:00.000Z",
+      }),
     ];
 
     const aug = projectPlanForMonth(items, "2026-08", "UTC");
     const sep = projectPlanForMonth(items, "2026-09", "UTC");
 
     expect(aug.items.map((i) => i.name)).toEqual(["Hyra", "Engång"]);
+    expect(aug.incomes.map((i) => i.name)).toEqual(["Lön"]);
+    expect(aug.incomeMinor).toBe(40_000_00);
     expect(sep.items.map((i) => i.name)).toEqual(["Hyra"]);
+    expect(sep.incomes.map((i) => i.name)).toEqual(["Provision"]);
     expect(sep.reservedMinor).toBe(15_000_00);
+  });
+
+  it("does not treat planned income as recurring monthly", () => {
+    expect(
+      isRecurringMonthly(
+        item({
+          name: "Trukks",
+          kind: "expected",
+          amountMinor: 52_000_00,
+          cadence: "income",
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("rolls overdue monthly dues forward", () => {

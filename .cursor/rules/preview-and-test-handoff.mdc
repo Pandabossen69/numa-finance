@@ -1,0 +1,14 @@
+---
+description: After NUMA changes — preview deploy, test plan, next step
+alwaysApply: true
+---
+
+# NUMA delivery workflow
+
+After finishing a set of product changes:
+
+1. **Preview** — Ask once: "Ska jag pusha till preview?" If the user already said to push/deploy, commit and push the current branch so Vercel builds a preview. Do not deploy to production unless explicitly asked.
+2. **Test plan** — Before suggesting the next step, list concrete things Hugo should verify (screens, flows, edge cases).
+3. **Next step** — Briefly explain what the next recommended step is and why.
+
+Never skip the test plan + next step when wrapping up UI/product work.

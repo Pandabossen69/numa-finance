@@ -1,9 +1,21 @@
 import type { PlanItem } from "./types";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 
+/** Planned income for one month only (does not roll forward). */
+export function isPlanIncome(item: PlanItem): boolean {
+  if (item.name === NEXT_INCOME_NAME) return false;
+  return (item.cadence ?? "").toLowerCase() === "income";
+}
+
+/** Mid-month anchor used to attach one-off income to a calendar month. */
+export function monthAnchorIso(monthKey: string): string {
+  return `${monthKey}-15T12:00:00.000Z`;
+}
+
 /** True when the bucket repeats every month until deleted. */
 export function isRecurringMonthly(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
+  if (isPlanIncome(item)) return false;
   const cadence = (item.cadence ?? "monthly").toLowerCase();
   return cadence === "monthly" || item.kind === "mandatory";
 }
@@ -57,17 +69,21 @@ export function labelMonthSv(monthKey: string): string {
 export type MonthPlanProjection = {
   monthKey: string;
   labelSv: string;
+  /** Fixed / planned expenses for the month (recurring + one-offs). */
   items: PlanItem[];
+  /** Income rows that belong only to this month. */
+  incomes: PlanItem[];
   reservedMinor: number;
   bufferMinor: number;
   flexibleMinor: number;
+  incomeMinor: number;
   totalPlannedMinor: number;
 };
 
 /**
  * Project active plan buckets onto a calendar month.
- * Recurring monthly items always appear. One-off / dated items appear when
- * their nextDueAt falls in that month.
+ * Recurring monthly expenses always appear. One-off expenses and incomes
+ * appear only when their nextDueAt falls in that month.
  */
 export function projectPlanForMonth(
   items: PlanItem[],
@@ -79,7 +95,16 @@ export function projectPlanForMonth(
   );
 
   const projected: PlanItem[] = [];
+  const incomes: PlanItem[] = [];
+
   for (const item of active) {
+    if (isPlanIncome(item)) {
+      if (item.nextDueAt) {
+        const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
+        if (key === monthKey) incomes.push(item);
+      }
+      continue;
+    }
     if (isRecurringMonthly(item)) {
       projected.push(item);
       continue;
@@ -105,13 +130,17 @@ export function projectPlanForMonth(
     }
   }
 
+  const incomeMinor = incomes.reduce((sum, i) => sum + i.amountMinor, 0);
+
   return {
     monthKey,
     labelSv: labelMonthSv(monthKey),
     items: projected,
+    incomes,
     reservedMinor,
     bufferMinor,
     flexibleMinor,
+    incomeMinor,
     totalPlannedMinor: reservedMinor + bufferMinor + flexibleMinor,
   };
 }

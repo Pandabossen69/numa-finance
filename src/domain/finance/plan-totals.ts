@@ -39,8 +39,9 @@ export function calculatePlanTotals(
       }
     }
 
-    // Runway marker is not a cash reservation.
+    // Runway marker / planned income rows are not expense reservations.
     if (item.name === NEXT_INCOME_NAME) continue;
+    if ((item.cadence ?? "").toLowerCase() === "income") continue;
 
     if (RESERVED_KINDS.has(item.kind)) {
       reservedMinor += Math.max(0, item.amountMinor);
