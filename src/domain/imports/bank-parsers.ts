@@ -311,17 +311,17 @@ export function toBankEventCandidate(
 export function formatBankEventLabel(message: ParsedBankMessage): string {
   const amount =
     message.amountMinor != null
-      ? `฿${(message.amountMinor / 100).toLocaleString("sv-SE", {
+      ? `${(message.amountMinor / 100).toLocaleString("sv-SE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
-        })}`
+        })} THB`
       : "okänt belopp";
   const bal =
     message.balanceAfterMinor != null
-      ? ` · saldo ฿${(message.balanceAfterMinor / 100).toLocaleString("sv-SE", {
+      ? ` · saldo ${(message.balanceAfterMinor / 100).toLocaleString("sv-SE", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
-        })}`
+        })} THB`
       : "";
   const dir = message.direction === "credit" ? "+" : "−";
   const kind = message.direction === "credit" ? "Insättning" : "Utgift";

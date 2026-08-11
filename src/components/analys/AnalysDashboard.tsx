@@ -27,113 +27,174 @@ export function AnalysDashboard({
   }
 
   const { currency, cycle, month } = data;
+  const isBridge = cycle.livingMode === "bridge";
+  const isEmpty = cycle.livingMode === "empty";
+  const isCycle = cycle.livingMode === "cycle";
+  const hasSaldo = data.hasBankTruth && data.calculatedBalanceMinor != null;
+  const heroMinor = isBridge && !hasSaldo ? 0 : cycle.remainingFreeMinor;
+  const heroOk = hasSaldo || isCycle ? heroMinor >= 0 : false;
+  const cycleTitle =
+    isBridge && cycle.startLabelSv
+      ? `Nu → ${cycle.startLabelSv}`
+      : cycle.startLabelSv && cycle.endLabelSv
+        ? `${cycle.startLabelSv} → ${cycle.endLabelSv}${cycle.endInferred ? " (beräknad)" : ""}`
+        : "Ingen cykel ännu";
+  const cycleSupport = isBridge
+    ? hasSaldo
+      ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo`
+      : `${cycle.daysLeft} dagar kvar · ange saldo för kvar per dag`
+    : isEmpty
+      ? "Lägg in intäkter med datum i Plan för att starta cykeln."
+      : cycle.isActive
+        ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
+        : "Lägg in intäkter med datum i Plan för att starta cykeln.";
+  const modeEyebrow = isBridge
+    ? "Tills nästa intäkt"
+    : isEmpty
+      ? "Ingen cykel"
+      : "Aktiv inkomstcykel";
+  const heroCaption = isBridge
+    ? hasSaldo
+      ? "Saldo kvar"
+      : "Saldo saknas"
+    : isEmpty
+      ? "Ingen pool ännu"
+      : "Kvar totalt";
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-lg space-y-10">
       <header className="animate-rise">
-        <h1 className="text-3xl font-semibold tracking-tight">Analys</h1>
-        <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
+          Analys
+        </h1>
+        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Hur siffrorna räknas — cykel, månad och rörelser.
         </p>
       </header>
 
-      <section className="animate-rise-delay-1 space-y-5 border-b border-[var(--numa-border)] pb-8">
-        <div>
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            {cycle.livingMode === "bridge"
-              ? "Tills nästa intäkt"
-              : "Aktiv inkomstcykel"}
+      {/* Hero: one composition, no card */}
+      <section className="animate-rise-delay-1 space-y-3" aria-labelledby="analys-hero">
+        <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+          {modeEyebrow}
+        </p>
+        <h2
+          id="analys-hero"
+          className="text-xl font-semibold tracking-tight text-[var(--numa-ink)]"
+        >
+          {cycleTitle}
+        </h2>
+        {isBridge && !hasSaldo ? (
+          <p className="text-lg font-semibold text-[var(--numa-muted)]">
+            Ange saldo på Hem
           </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-            {cycle.livingMode === "bridge" && cycle.startLabelSv
-              ? `Nu → ${cycle.startLabelSv}`
-              : cycle.startLabelSv && cycle.endLabelSv
-                ? `${cycle.startLabelSv} → ${cycle.endLabelSv}${cycle.endInferred ? " (beräknad)" : ""}`
-                : "Ingen cykel ännu"}
-          </h2>
-          <p className="mt-1 text-sm text-[var(--numa-muted)]">
-            {cycle.livingMode === "bridge"
-              ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo`
-              : cycle.isActive
-                ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
-                : "Lägg in intäkter med datum i Plan för att starta cykeln."}
-          </p>
-        </div>
+        ) : (
+          <div
+            className={
+              heroOk
+                ? "money-hero text-[var(--numa-ink)]"
+                : "money-hero text-[var(--numa-muted)]"
+            }
+          >
+            <MoneyDisplay
+              amountMinor={heroMinor}
+              currency={currency}
+              size="xl"
+            />
+          </div>
+        )}
+        <p className="text-sm text-[var(--numa-muted)]">
+          {heroCaption} · {cycleSupport}
+        </p>
+      </section>
 
-        {cycle.livingMode === "bridge" ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Stat
-              label="Saldo"
+      {/* Cycle metrics — calm rows, not a dashboard grid */}
+      <section className="animate-rise-delay-2 space-y-0" aria-label="Cykelns siffror">
+        {isBridge ? (
+          <>
+            {hasSaldo ? (
+              <MetricRow
+                label="Saldo"
+                amountMinor={cycle.remainingFreeMinor}
+                currency={currency}
+                tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
+                hint={data.verificationLabel ?? undefined}
+              />
+            ) : (
+              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] py-3.5">
+                <div className="min-w-0">
+                  <p className="text-sm text-[var(--numa-muted)]">Saldo</p>
+                  <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                    Ange på Hem eller fota bank-SMS
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm text-[var(--numa-faint)]">—</span>
+              </div>
+            )}
+            <MetricRow
+              label="Kvar per dag"
+              amountMinor={hasSaldo ? cycle.perDayMinor : 0}
+              currency={currency}
+              tone={hasSaldo && cycle.perDayMinor > 0 ? "positive" : undefined}
+              hint={hasSaldo ? undefined : "Kräver saldo först"}
+            />
+          </>
+        ) : isCycle ? (
+          <>
+            <MetricRow
+              label="Intäkter i cykeln"
+              amountMinor={cycle.incomeMinor}
+              currency={currency}
+              tone="positive"
+            />
+            <MetricRow
+              label="Utgifter i cykeln"
+              amountMinor={cycle.expenseMinor}
+              currency={currency}
+            />
+            <MetricRow
+              label="Planerat fritt"
+              amountMinor={cycle.freeToSpendMinor}
+              currency={currency}
+              tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
+            />
+            <MetricRow
+              label="Kvar totalt"
               amountMinor={cycle.remainingFreeMinor}
               currency={currency}
               tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
             />
-            <Stat
+            <MetricRow
+              label="Sparande"
+              amountMinor={cycle.savingsMinor}
+              currency={currency}
+            />
+            <MetricRow
+              label="Spenderat i cykeln"
+              amountMinor={data.cycleSpendingMinor}
+              currency={currency}
+            />
+            <MetricRow
               label="Kvar per dag"
               amountMinor={cycle.perDayMinor}
               currency={currency}
               tone={cycle.perDayMinor > 0 ? "positive" : undefined}
             />
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat
-                label="Intäkter i cykeln"
-                amountMinor={cycle.incomeMinor}
-                currency={currency}
-                tone="positive"
-              />
-              <Stat
-                label="Utgifter i cykeln"
-                amountMinor={cycle.expenseMinor}
-                currency={currency}
-              />
-              <Stat
-                label="Planerat fritt"
-                amountMinor={cycle.freeToSpendMinor}
-                currency={currency}
-                tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
-              />
-              <Stat
-                label="Kvar totalt"
-                amountMinor={cycle.remainingFreeMinor}
-                currency={currency}
-                tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-              />
-            </div>
-
-            <div className="grid gap-3 border-t border-[var(--numa-border)] pt-4 sm:grid-cols-3">
-              <Stat
-                label="Sparande"
-                amountMinor={cycle.savingsMinor}
-                currency={currency}
-              />
-              <Stat
-                label="Spenderat i cykeln"
-                amountMinor={data.cycleSpendingMinor}
-                currency={currency}
-              />
-              <Stat
-                label="Kvar per dag"
-                amountMinor={cycle.perDayMinor}
-                currency={currency}
-                tone={cycle.perDayMinor > 0 ? "positive" : undefined}
-              />
-            </div>
           </>
-        )}
+        ) : null}
       </section>
 
-      <section className="animate-rise-delay-2 numa-panel space-y-3 p-5">
-        <h2 className="text-sm font-semibold tracking-tight">Så räknas det</h2>
-        <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-[var(--numa-muted)]">
+      {/* Formula — text only, no panel */}
+      <section className="animate-rise-delay-2 space-y-3 border-t border-[var(--numa-border)] pt-8">
+        <h2 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
+          Så räknas det
+        </h2>
+        <ol className="list-decimal space-y-2.5 pl-5 text-sm leading-relaxed text-[var(--numa-muted)]">
           {data.formula.steps.map((step) => (
             <li key={step}>{step}</li>
           ))}
         </ol>
-        {cycle.livingMode !== "bridge" ? (
-          <p className="text-sm text-[var(--numa-muted)]">
+        {isCycle ? (
+          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
             Exempel: planerat fritt{" "}
             <span className="font-semibold text-[var(--numa-ink)]">
               <MoneyDisplay
@@ -163,79 +224,92 @@ export function AnalysDashboard({
         ) : null}
       </section>
 
-      <section className="animate-rise-delay-2 grid gap-4 lg:grid-cols-2">
-        <LineCard
-          title={
-            cycle.livingMode === "bridge"
-              ? "Kommande intäkter (räknas när de landar)"
-              : "Intäkter i cykeln"
-          }
-          empty="Inga intäkter i cykeln."
-          lines={cycle.incomes}
-          currency={currency}
-          totalMinor={cycle.incomeMinor}
-        />
-        <LineCard
-          title={
-            cycle.livingMode === "bridge"
-              ? "Utgifter i kommande period"
-              : "Utgifter i cykeln"
-          }
-          empty="Inga utgifter förfaller i cykeln."
-          lines={cycle.expenses}
-          currency={currency}
-          totalMinor={cycle.expenseMinor}
-        />
-      </section>
+      {/* Cycle line items — lists are interaction containers */}
+      {!isEmpty ? (
+        <section className="animate-rise-delay-2 space-y-4">
+          <LineList
+            title={isBridge ? "Kommande intäkter" : "Intäkter i cykeln"}
+            subtitle={isBridge ? "Räknas när de landar" : undefined}
+            empty={
+              isBridge ? "Inga kommande intäkter." : "Inga intäkter i cykeln."
+            }
+            lines={cycle.incomes}
+            currency={currency}
+            totalMinor={cycle.incomeMinor}
+          />
+          <LineList
+            title={
+              isBridge ? "Utgifter i kommande period" : "Utgifter i cykeln"
+            }
+            empty={
+              isBridge
+                ? "Inga utgifter i kommande period."
+                : "Inga utgifter förfaller i cykeln."
+            }
+            lines={cycle.expenses}
+            currency={currency}
+            totalMinor={cycle.expenseMinor}
+          />
+        </section>
+      ) : null}
 
-      <section className="animate-rise-delay-2 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold tracking-tight">
-            Kalendermånad · {data.monthLabelSv}
-          </h2>
+      {/* Calendar month — one job */}
+      <section className="animate-rise-delay-3 space-y-5 border-t border-[var(--numa-border)] pt-8">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+              Kalendermånad
+            </p>
+            <h2 className="mt-1 text-lg font-semibold tracking-tight">
+              {data.monthLabelSv}
+            </h2>
+          </div>
           <Link
             href="/plan"
             prefetch
-            className="text-xs font-semibold text-[var(--numa-accent)]"
+            className="shrink-0 pb-0.5 text-xs font-semibold text-[var(--numa-accent)]"
           >
             Öppna Plan →
           </Link>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
+
+        <div className="space-y-0">
+          <MetricRow
             label="Intäkter"
             amountMinor={month.incomeMinor}
             currency={currency}
             tone="positive"
           />
-          <Stat
-            label="Fasta utgifter"
+          <MetricRow
+            label="Utgifter"
             amountMinor={month.expenseMinor}
             currency={currency}
+            hint="Fasta + engång"
           />
-          <Stat
+          <MetricRow
             label="Sparande"
             amountMinor={month.savingsMinor}
             currency={currency}
           />
-          <Stat
+          <MetricRow
             label="Månadssaldo"
             amountMinor={month.freeToSpendMinor}
             currency={currency}
             tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
           />
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <LineCard
+
+        <div className="space-y-4">
+          <LineList
             title="Intäkter denna månad"
             empty="Inga intäkter inlagda."
             lines={month.incomes}
             currency={currency}
             totalMinor={month.incomeMinor}
           />
-          <LineCard
-            title="Fasta utgifter"
-            empty="Inga fasta utgifter."
+          <LineList
+            title="Utgifter denna månad"
+            empty="Inga utgifter inlagda."
             lines={month.expenses}
             currency={currency}
             totalMinor={month.expenseMinor}
@@ -243,125 +317,140 @@ export function AnalysDashboard({
         </div>
       </section>
 
-      <section className="animate-rise-delay-3 space-y-3">
-        <h2 className="text-sm font-semibold tracking-tight">Konto & rörelser</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {data.calculatedBalanceMinor != null ? (
-            <Stat
+      {/* Account & movements */}
+      <section className="animate-rise-delay-3 space-y-5 border-t border-[var(--numa-border)] pt-8">
+        <h2 className="text-lg font-semibold tracking-tight">Konto & rörelser</h2>
+        <div className="space-y-0">
+          {hasSaldo ? (
+            <MetricRow
               label="Saldo"
-              amountMinor={data.calculatedBalanceMinor}
+              amountMinor={data.calculatedBalanceMinor!}
               currency={currency}
               hint={data.verificationLabel ?? "Beräknat"}
             />
           ) : (
-            <div className="numa-panel p-4">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-                Saldo
-              </p>
-              <p className="mt-2 text-sm text-[var(--numa-muted)]">
-                {data.hasBankTruth ? "Saknas" : "Ange på Hem eller fota bank-SMS"}
-              </p>
+            <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] py-3.5">
+              <div className="min-w-0">
+                <p className="text-sm text-[var(--numa-muted)]">Saldo</p>
+                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                  {data.hasBankTruth
+                    ? "Saknas"
+                    : "Ange på Hem eller fota bank-SMS"}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm text-[var(--numa-faint)]">—</span>
             </div>
           )}
-          <Stat
+          <MetricRow
             label="Spenderat denna månad"
             amountMinor={data.monthSpendingMinor}
             currency={currency}
-            hint="Från bankrörelser"
+            hint="Kalendermånad · bankrörelser"
           />
-          <Stat
+          <MetricRow
             label="Spenderat idag"
             amountMinor={data.todaySpendingMinor}
             currency={currency}
+            hint="Kalenderdag"
           />
         </div>
       </section>
 
-      <section className="animate-rise-delay-3 grid gap-4 md:grid-cols-2">
-        <div className="numa-panel p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">Mål</h2>
-            <Link href="/plan" prefetch className="text-xs font-semibold text-[var(--numa-accent)]">
-              Plan
+      {/* Goals — interactive list */}
+      <section className="animate-rise-delay-3 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold tracking-tight">Mål</h2>
+          <Link
+            href="/plan"
+            prefetch
+            className="text-xs font-semibold text-[var(--numa-accent)]"
+          >
+            Plan →
+          </Link>
+        </div>
+        {data.goals.length === 0 ? (
+          <p className="text-sm text-[var(--numa-muted)]">
+            Inga mål ännu.{" "}
+            <Link
+              href="/plan"
+              prefetch
+              className="font-semibold text-[var(--numa-accent)]"
+            >
+              Lägg till i Plan →
             </Link>
-          </div>
-          {data.goals.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--numa-muted)]">
-              Inga mål ännu.{" "}
-              <Link href="/plan" prefetch className="font-semibold text-[var(--numa-accent)]">
-                Lägg till i Plan →
-              </Link>
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {data.goals.map((goal) => (
+          </p>
+        ) : (
+          <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
+            {data.goals.map((goal) => (
+              <li
+                key={goal.id}
+                className="flex items-center justify-between gap-3 px-4 py-3.5"
+              >
+                <span className="truncate text-sm text-[var(--numa-muted)]">
+                  {goal.name}
+                </span>
+                <MoneyDisplay
+                  amountMinor={goal.amountMinor}
+                  currency={currency}
+                  size="sm"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Recent movements — interactive list */}
+      <section className="animate-rise-delay-3 space-y-3 pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold tracking-tight">
+            Senaste rörelser
+          </h2>
+          <Link
+            href="/transaktioner"
+            prefetch
+            className="text-xs font-semibold text-[var(--numa-accent)]"
+          >
+            Se alla →
+          </Link>
+        </div>
+        {data.recent.length === 0 ? (
+          <p className="text-sm text-[var(--numa-faint)]">Inga rörelser ännu</p>
+        ) : (
+          <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
+            {data.recent.map((tx) => {
+              const signed =
+                tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              return (
                 <li
-                  key={goal.id}
-                  className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)] pb-3 last:border-0"
+                  key={tx.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3.5"
                 >
-                  <span className="text-sm text-[var(--numa-muted)]">{goal.name}</span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
+                      {tx.description}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                      {tx.category ?? tx.transactionType}
+                    </p>
+                  </div>
                   <MoneyDisplay
-                    amountMinor={goal.amountMinor}
-                    currency={currency}
+                    amountMinor={signed}
+                    currency={tx.currency}
                     size="sm"
+                    tone="signed"
                   />
                 </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="numa-panel p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">Senaste rörelser</h2>
-            <Link
-              href="/transaktioner"
-              prefetch
-              className="text-xs font-semibold text-[var(--numa-accent)]"
-            >
-              Se alla →
-            </Link>
-          </div>
-          {data.recent.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--numa-faint)]">
-              Inga rörelser ännu
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {data.recent.map((tx) => {
-                const signed =
-                  tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
-                return (
-                  <li
-                    key={tx.id}
-                    className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)] pb-3 last:border-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {tx.description}
-                      </p>
-                      <p className="text-xs text-[var(--numa-faint)]">
-                        {tx.category ?? tx.transactionType}
-                      </p>
-                    </div>
-                    <MoneyDisplay
-                      amountMinor={signed}
-                      currency={tx.currency}
-                      size="sm"
-                      tone="signed"
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+              );
+            })}
+          </ul>
+        )}
       </section>
     </div>
   );
 }
 
-function Stat({
+function MetricRow({
   label,
   amountMinor,
   currency,
@@ -379,53 +468,69 @@ function Stat({
       ? "text-[var(--numa-positive)]"
       : tone === "danger"
         ? "text-[var(--numa-danger)]"
-        : "";
+        : "text-[var(--numa-ink)]";
+
   return (
-    <div className="border-b border-[var(--numa-border)] py-4">
-      <p className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-        {label}
-      </p>
-      <div className={`mt-2 ${amountClass}`}>
+    <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] py-3.5 last:border-b-0">
+      <div className="min-w-0">
+        <p className="text-sm text-[var(--numa-muted)]">{label}</p>
+        {hint ? (
+          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{hint}</p>
+        ) : null}
+      </div>
+      <div className={`shrink-0 ${amountClass}`}>
         <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
       </div>
-      {hint ? (
-        <p className="mt-1.5 text-xs leading-snug text-[var(--numa-muted)]">{hint}</p>
-      ) : null}
     </div>
   );
 }
 
-function LineCard({
+function LineList({
   title,
+  subtitle,
   empty,
   lines,
   currency,
   totalMinor,
 }: {
   title: string;
+  subtitle?: string;
   empty: string;
   lines: AnalysLine[];
   currency: CurrencyCode;
   totalMinor: number;
 }) {
   return (
-    <div className="numa-panel flex flex-col p-5">
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <MoneyDisplay amountMinor={totalMinor} currency={currency} size="sm" />
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3 px-0.5">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
+            {title}
+          </h3>
+          {subtitle ? (
+            <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{subtitle}</p>
+          ) : null}
+        </div>
+        <div className="shrink-0 text-[var(--numa-muted)]">
+          <MoneyDisplay amountMinor={totalMinor} currency={currency} size="sm" />
+        </div>
       </div>
       {lines.length === 0 ? (
-        <p className="mt-4 text-sm text-[var(--numa-faint)]">{empty}</p>
+        <p className="px-0.5 text-sm text-[var(--numa-faint)]">{empty}</p>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
           {lines.map((line) => (
             <li
               key={line.id}
-              className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)] pb-3 last:border-0"
+              className="flex items-center justify-between gap-3 px-4 py-3.5"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{line.name}</p>
-                <p className="text-xs text-[var(--numa-faint)]">{line.detail}</p>
+                <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
+                  {line.name}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                  {line.detail}
+                </p>
               </div>
               <MoneyDisplay
                 amountMinor={line.amountMinor}

@@ -76,5 +76,5 @@ function formatAbs(value: Money): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  return value.currency === "THB" ? `฿${major}` : `${major} kr`;
+  return value.currency === "THB" ? `${major} THB` : `${major} kr`;
 }

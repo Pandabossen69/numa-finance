@@ -13,6 +13,7 @@ export const MER_PREFIXES = [
   "/installningar",
   "/fota",
   "/lagg-till",
+  "/laga",
 ] as const;
 
 export function isNavActive(pathname: string, href: string): boolean {

@@ -7,7 +7,7 @@ export function SignOutButton() {
     <form action={signOutAction}>
       <button
         type="submit"
-        className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
+        className="flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-medium text-[var(--numa-danger)] transition hover:bg-[var(--numa-danger-soft)]/70"
       >
         Logga ut
       </button>

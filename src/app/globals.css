@@ -93,6 +93,13 @@ body {
   letter-spacing: -0.03em;
 }
 
+.money-currency {
+  font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .numa-panel {
   background: var(--numa-surface-solid);
   border: 1px solid var(--numa-border);

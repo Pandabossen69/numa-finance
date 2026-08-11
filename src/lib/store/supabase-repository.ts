@@ -806,7 +806,8 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       accounts,
       primaryAccount: primary,
       checkpoint: null,
-      calculatedBalanceMinor: 0,
+      // null (not 0): unknown saldo must not look like an empty wallet
+      calculatedBalanceMinor: null,
       balanceKind: "unknown",
       verificationLabel: null,
       todaySpendingMinor: 0,
@@ -829,9 +830,9 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const sinceCandidates = [monthStart.toISOString(), checkpoint.verifiedAt];
   const sinceIso = sinceCandidates.sort()[0]!;
 
+  // No low limit: Konton loads all account txs for saldo; Hem must match.
   const accountTx = await listTransactions(primary.id, {
     sinceIso,
-    limit: 120,
   });
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);

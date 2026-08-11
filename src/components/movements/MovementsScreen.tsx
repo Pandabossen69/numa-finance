@@ -154,7 +154,7 @@ export function MovementsScreen({
         />
       </section>
 
-      {data.balanceMinor != null ? (
+      {data.hasBankTruth && data.balanceMinor != null ? (
         <section className="animate-rise-delay-2 numa-panel p-4">
           <div className="flex items-baseline justify-between gap-3">
             <div>
@@ -162,9 +162,7 @@ export function MovementsScreen({
                 Saldo
               </p>
               <p className="mt-1 text-xs text-[var(--numa-muted)]">
-                {data.hasBankTruth
-                  ? "Från bank-SMS / beräkning"
-                  : "Manuellt angivet"}
+                Från bank-SMS / beräkning
               </p>
             </div>
             <MoneyDisplay

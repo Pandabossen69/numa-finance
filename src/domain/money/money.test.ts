@@ -34,8 +34,12 @@ describe("Money", () => {
   });
 
   it("formats THB and SEK for Swedish UI", () => {
-    expect(normalizeSpaces(formatMoney(money(1005804, "THB")))).toBe("฿10 058,04");
-    expect(normalizeSpaces(formatMoney(money(1245000, "SEK")))).toBe("12 450,00 kr");
+    expect(normalizeSpaces(formatMoney(money(1005804, "THB")))).toBe(
+      "10 058,04 THB",
+    );
+    expect(normalizeSpaces(formatMoney(money(1245000, "SEK")))).toBe(
+      "12 450,00 kr",
+    );
   });
 
   it("parses Swedish UI amounts without using bank source rules", () => {

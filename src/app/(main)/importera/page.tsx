@@ -1,58 +1,74 @@
-import Link from "next/link";
+import {
+  MerListGroup,
+  MerListLink,
+  MerListRow,
+  MerPageHeader,
+  MerSection,
+} from "@/components/mer/MerHub";
 import { listObservations } from "@/lib/store/repository";
 
 export default async function ImporteraPage() {
   const observations = await listObservations();
 
   return (
-    <div className="space-y-6 pt-2">
-      <header>
-        <Link href="/mer" className="text-sm text-[var(--numa-muted)]">
-          ← Mer
-        </Link>
-        <h1 className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em]">
-          Tidigare bilder
-        </h1>
-        <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Här sparas bilder du lagt in. Inget blir en utgift förrän du
-          bekräftar beloppet.
-        </p>
-      </header>
+    <div className="mx-auto max-w-lg space-y-7">
+      <MerPageHeader
+        back
+        title="Tidigare bilder"
+        description="Här sparas bilder du lagt in. Bank-SMS sparas direkt; kvitton blir utgift först när du bekräftar."
+      />
 
-      <Link
-        href="/fota"
-        className="flex min-h-14 flex-col justify-center rounded-[1.25rem] bg-[var(--numa-accent)] px-4 text-white"
-      >
-        <span className="text-[15px] font-semibold">Lägg till SMS eller kvitto</span>
-        <span className="text-xs text-white/80">Öppnar kamera / galleri</span>
-      </Link>
+      <div className="animate-rise-delay-1 space-y-6">
+        <MerSection>
+          <MerListGroup>
+            <MerListLink
+              href="/fota"
+              label="Lägg till SMS eller kvitto"
+              hint="Öppnar kamera / galleri"
+            />
+          </MerListGroup>
+        </MerSection>
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-medium text-[var(--numa-muted)]">
-          Senaste
-        </h2>
-        {observations.length === 0 ? (
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            Inga bilder ännu. Tryck på knappen ovan när du är i kassan.
-          </p>
-        ) : (
-          <ul className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
-            {observations.map((o) => (
-              <li key={o.id} className="py-3">
-                <p className="text-sm font-medium">
-                  {kindLabel(o.kind)} · {statusLabel(o.status)}
+        <MerSection title="Senaste">
+          {observations.length === 0 ? (
+            <MerListGroup>
+              <MerListRow>
+                <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+                  Inga bilder ännu. Tryck på raden ovan när du är i kassan.
                 </p>
-                <p className="mt-1 text-xs text-[var(--numa-faint)]">
-                  {new Date(o.createdAt).toLocaleString("sv-SE")}
-                </p>
-                {o.notes ? (
-                  <p className="mt-2 text-sm text-[var(--numa-muted)]">{o.notes}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              </MerListRow>
+            </MerListGroup>
+          ) : (
+            <MerListGroup>
+              {observations.map((o) => {
+                const status = statusMeta(o.status);
+                return (
+                  <MerListRow key={o.id} className="space-y-1.5 py-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
+                        {kindLabel(o.kind)}
+                      </p>
+                      <span
+                        className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium ${status.className}`}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[var(--numa-faint)]">
+                      {new Date(o.createdAt).toLocaleString("sv-SE")}
+                    </p>
+                    {o.notes ? (
+                      <p className="text-sm leading-snug text-[var(--numa-muted)]">
+                        {o.notes}
+                      </p>
+                    ) : null}
+                  </MerListRow>
+                );
+              })}
+            </MerListGroup>
+          )}
+        </MerSection>
+      </div>
     </div>
   );
 }
@@ -70,19 +86,37 @@ function kindLabel(kind: string): string {
   }
 }
 
-function statusLabel(status: string): string {
+function statusMeta(status: string): { label: string; className: string } {
   switch (status) {
     case "uploaded":
-      return "Mottagen";
+      return {
+        label: "Mottagen",
+        className: "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]",
+      };
     case "extracting":
-      return "Läser";
+      return {
+        label: "Läser",
+        className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
+      };
     case "needs_review":
-      return "Väntar på dig";
+      return {
+        label: "Väntar på dig",
+        className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
+      };
     case "processed":
-      return "Sparad";
+      return {
+        label: "Sparad",
+        className: "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]",
+      };
     case "failed":
-      return "Kunde inte läsas";
+      return {
+        label: "Kunde inte läsas",
+        className: "bg-[var(--numa-danger-soft)] text-[var(--numa-danger)]",
+      };
     default:
-      return status;
+      return {
+        label: status,
+        className: "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]",
+      };
   }
 }

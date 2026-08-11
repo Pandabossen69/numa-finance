@@ -1247,14 +1247,15 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
 
   const checkpoint = latestCheckpointForAccount(store, primary.id);
 
-  // No bank truth yet — keep every money figure at zero until first SMS import.
+  // No bank truth yet — spending stays 0; saldo must be null (not 0) so bridge
+  // mode asks for available amount instead of treating "unknown" as empty wallet.
   if (!checkpoint) {
     return {
       profile,
       accounts,
       primaryAccount: primary,
       checkpoint: null,
-      calculatedBalanceMinor: 0,
+      calculatedBalanceMinor: null,
       balanceKind: "unknown",
       verificationLabel: null,
       todaySpendingMinor: 0,

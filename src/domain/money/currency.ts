@@ -16,7 +16,8 @@ export const CURRENCY_META: Record<
   THB: {
     code: "THB",
     minorUnits: 2,
-    symbol: "฿",
+    /** ISO code — ฿ often looks like $ in UI monospace fonts. */
+    symbol: "THB",
     displayNameSv: "thailändska baht",
   },
   SEK: {

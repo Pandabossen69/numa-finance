@@ -2,6 +2,12 @@ import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { VerifyBalanceForm } from "@/components/accounts/VerifyBalanceForm";
 import {
+  MerListGroup,
+  MerListRow,
+  MerPageHeader,
+  MerSection,
+} from "@/components/mer/MerHub";
+import {
   calculateAccountBalance,
   filterTransactionsAfterCheckpoint,
 } from "@/domain/finance";
@@ -15,40 +21,44 @@ export default async function KontonPage() {
   const accounts = await listAccounts();
 
   return (
-    <div className="space-y-6 pt-2">
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Saldo</h1>
-          <p className="mt-2 text-sm text-[var(--numa-muted)]">
-            Uppdatera när du vill — Hem räknar kvar per dag därifrån.
-          </p>
-        </div>
-        <Link
-          href="/konton/ny"
-          className="text-sm font-medium text-[var(--numa-accent)]"
-        >
-          Nytt konto
-        </Link>
-      </header>
+    <div className="mx-auto max-w-lg space-y-7">
+      <MerPageHeader
+        back
+        title="Saldo"
+        description="Uppdatera när du vill — Hem räknar kvar per dag därifrån."
+        action={
+          <Link
+            href="/konton/ny"
+            className="text-[13px] font-semibold text-[var(--numa-accent)]"
+          >
+            Nytt konto
+          </Link>
+        }
+      />
 
       {accounts.length === 0 ? (
-        <div className="space-y-3 text-sm text-[var(--numa-muted)]">
-          <p>Inga saldon ännu. Snabbast är att fota bank-SMS.</p>
-          <p>
-            <Link
-              href="/fota?mode=sms"
-              className="font-semibold text-[var(--numa-accent)]"
-            >
-              Fota bank-SMS →
-            </Link>
-            {" · "}
-            <Link href="/konton/ny" className="font-semibold text-[var(--numa-accent)]">
-              Ange manuellt
-            </Link>
-          </p>
-        </div>
+        <MerSection className="animate-rise-delay-1">
+          <MerListGroup>
+            <MerListRow className="space-y-3 py-5">
+              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+                Inga saldon ännu. Snabbast är att fota bank-SMS.
+              </p>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold">
+                <Link
+                  href="/fota?mode=sms"
+                  className="text-[var(--numa-accent)]"
+                >
+                  Fota bank-SMS →
+                </Link>
+                <Link href="/konton/ny" className="text-[var(--numa-accent)]">
+                  Ange manuellt →
+                </Link>
+              </div>
+            </MerListRow>
+          </MerListGroup>
+        </MerSection>
       ) : (
-        <ul className="space-y-8">
+        <div className="animate-rise-delay-1 space-y-6">
           {await Promise.all(
             accounts.map(async (account) => {
               const checkpoint = await getLatestCheckpoint(account.id);
@@ -60,39 +70,45 @@ export default async function KontonPage() {
               });
 
               return (
-                <li
-                  key={account.id}
-                  className="space-y-4 border-t border-[var(--numa-border)] pt-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="font-medium">
-                        {account.name}
-                        {account.maskedIdentifier
-                          ? ` ·${account.maskedIdentifier}`
-                          : ""}
-                      </h2>
-                      <p className="text-sm text-[var(--numa-muted)]">
-                        {account.institution ?? "Eget konto"} · {account.currency}
-                        {account.isDefault ? " · Standard" : ""}
-                      </p>
-                    </div>
-                    {calculated ? (
-                      <MoneyDisplay
-                        amountMinor={calculated.amountMinor}
-                        currency={calculated.currency}
-                        size="md"
-                      />
-                    ) : (
-                      <span className="text-sm text-[var(--numa-faint)]">—</span>
-                    )}
-                  </div>
-                  <VerifyBalanceForm accountId={account.id} />
-                </li>
+                <MerSection key={account.id}>
+                  <MerListGroup>
+                    <MerListRow>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 className="text-[15px] font-semibold tracking-tight">
+                            {account.name}
+                            {account.maskedIdentifier
+                              ? ` ·${account.maskedIdentifier}`
+                              : ""}
+                          </h2>
+                          <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
+                            {account.institution ?? "Eget konto"} ·{" "}
+                            {account.currency}
+                            {account.isDefault ? " · Standard" : ""}
+                          </p>
+                        </div>
+                        {calculated ? (
+                          <MoneyDisplay
+                            amountMinor={calculated.amountMinor}
+                            currency={calculated.currency}
+                            size="md"
+                          />
+                        ) : (
+                          <span className="text-sm text-[var(--numa-faint)]">
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </MerListRow>
+                    <MerListRow className="bg-[var(--numa-bg)]/35">
+                      <VerifyBalanceForm accountId={account.id} />
+                    </MerListRow>
+                  </MerListGroup>
+                </MerSection>
               );
             }),
           )}
-        </ul>
+        </div>
       )}
     </div>
   );

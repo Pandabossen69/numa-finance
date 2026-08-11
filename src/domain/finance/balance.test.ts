@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  appliesToIncome,
+  appliesToSpending,
   calculateAccountBalance,
   filterTransactionsAfterCheckpoint,
 } from "./balance";
@@ -110,7 +112,7 @@ describe("SMS tip saldo must not double-count", () => {
     const verified = checkpoint({
       balanceMinor: 1_000_000,
       verifiedAt: "2026-08-11T14:00:00.000Z",
-      source: "manual_verify",
+      source: "manual_verification",
     });
     const credit = tx({
       direction: "credit",
@@ -127,5 +129,47 @@ describe("SMS tip saldo must not double-count", () => {
       transactionsAfterCheckpoint: after,
     });
     expect(balance?.amountMinor).toBe(1_050_000);
+  });
+
+  it("legacy checkpoint source sms also excludes screenshot rows", () => {
+    const tip = checkpoint({
+      balanceMinor: 1_010_804,
+      verifiedAt: "2026-08-11T14:00:00.000Z",
+      source: "sms",
+    });
+    const credit = tx({
+      direction: "credit",
+      transactionType: "income",
+      amountMinor: 340_000,
+      source: "screenshot",
+      occurredAt: "2026-08-11T14:00:01.000Z",
+    });
+    expect(filterTransactionsAfterCheckpoint([credit], tip)).toHaveLength(0);
+  });
+});
+
+describe("bank-SMS rows are not household income/spend", () => {
+  it("excludes screenshot sources from spending and income totals", () => {
+    expect(
+      appliesToSpending({
+        transactionType: "expense",
+        status: "confirmed",
+        source: "screenshot",
+      }),
+    ).toBe(false);
+    expect(
+      appliesToIncome({
+        transactionType: "income",
+        status: "confirmed",
+        source: "screenshot",
+      }),
+    ).toBe(false);
+    expect(
+      appliesToSpending({
+        transactionType: "expense",
+        status: "confirmed",
+        source: "manual",
+      }),
+    ).toBe(true);
   });
 });

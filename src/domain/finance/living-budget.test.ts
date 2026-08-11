@@ -96,6 +96,25 @@ describe("projectLivingBudget", () => {
     expect(living.perDayMinor).toBe(0);
   });
 
+  it("treats saldo 0 as a real balance (not missing truth)", () => {
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-11T03:00:00.000Z"),
+      tz,
+    );
+    const living = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-11T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 0,
+    });
+    expect(living.mode).toBe("bridge");
+    expect(living.needsAvailableInput).toBe(false);
+    expect(living.usesBankBalance).toBe(true);
+    expect(living.remainingFreeMinor).toBe(0);
+    expect(living.perDayMinor).toBe(0);
+  });
+
   it("switches to plan cycle after income lands", () => {
     const cycle = projectPayCycle(
       items,

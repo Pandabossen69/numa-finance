@@ -42,17 +42,30 @@ export function balanceEffectForTransaction(
   return tx.direction === "debit" ? "decrease" : "increase";
 }
 
+/** Bank-SMS rows stay in history lists but must not move saldo or spend totals. */
+export function isBankSmsLedgerRow(
+  tx: Partial<Pick<CanonicalTransaction, "source">>,
+): boolean {
+  return tx.source === "screenshot" || tx.source === "sms";
+}
+
 export function appliesToSpending(
-  tx: Pick<CanonicalTransaction, "transactionType" | "status">,
+  tx: Pick<CanonicalTransaction, "transactionType" | "status"> &
+    Partial<Pick<CanonicalTransaction, "source">>,
 ): boolean {
   if (tx.status !== "confirmed") return false;
+  // Bank-SMS ledger rows are history for the tip checkpoint — not household spend.
+  if (isBankSmsLedgerRow(tx)) return false;
   return tx.transactionType === "expense";
 }
 
 export function appliesToIncome(
-  tx: Pick<CanonicalTransaction, "transactionType" | "status">,
+  tx: Pick<CanonicalTransaction, "transactionType" | "status"> &
+    Partial<Pick<CanonicalTransaction, "source">>,
 ): boolean {
   if (tx.status !== "confirmed") return false;
+  // PromptPay/SMS credits are already embedded in tip saldo — not "intäkt".
+  if (isBankSmsLedgerRow(tx)) return false;
   return tx.transactionType === "income";
 }
 
@@ -103,14 +116,10 @@ export function calculateAccountBalance(params: {
 function isSmsTipCheckpoint(checkpoint: BalanceCheckpoint): boolean {
   return (
     checkpoint.source === "sms_import" ||
-    checkpoint.source === "sms_bootstrap"
+    checkpoint.source === "sms_bootstrap" ||
+    // Legacy checkpoints written before sms_import/sms_bootstrap naming.
+    checkpoint.source === "sms"
   );
-}
-
-function isBankSmsLedgerRow(
-  tx: Pick<CanonicalTransaction, "source">,
-): boolean {
-  return tx.source === "screenshot" || tx.source === "sms";
 }
 
 export function filterTransactionsAfterCheckpoint(

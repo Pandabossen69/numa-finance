@@ -1,4 +1,11 @@
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import {
+  MerListGroup,
+  MerListRow,
+  MerMetaRow,
+  MerPageHeader,
+  MerSection,
+} from "@/components/mer/MerHub";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -20,52 +27,64 @@ export default async function InstallningarPage({
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="space-y-6 pt-2 text-[var(--numa-ink)]">
-      <header>
-        <a href="/mer" className="text-sm text-[var(--numa-muted)]">
-          ← Mer
-        </a>
-        <h1 className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em]">
-          Inställningar
-        </h1>
-      </header>
+    <div className="mx-auto max-w-lg space-y-7 text-[var(--numa-ink)]">
+      <MerPageHeader
+        back
+        title="Inställningar"
+        description="Profil, underhåll och konto."
+      />
 
-      <section className="numa-panel space-y-3 p-4">
-        <h2 className="text-base font-semibold">Fungerar inte appen?</h2>
-        <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Om Hem är tom vit medan menyn syns beror det oftast på gammal cache i
-          telefonen. Tryck knappen — den rensar och laddar om.
-        </p>
-        <RepairAppButton autoStart={autoLaga} />
-      </section>
+      <div className="animate-rise-delay-1 space-y-6">
+        <MerSection title="Underhåll">
+          <MerListGroup>
+            <MerListRow className="space-y-3 py-4">
+              <div>
+                <p className="text-[15px] font-medium tracking-tight">
+                  Fungerar inte appen?
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--numa-faint)]">
+                  Om Hem är tom vit medan menyn syns beror det oftast på gammal
+                  cache i telefonen. Knappen rensar och laddar om.
+                </p>
+              </div>
+              <RepairAppButton autoStart={autoLaga} />
+            </MerListRow>
+          </MerListGroup>
+        </MerSection>
 
-      {profile ? (
-        <dl className="space-y-4 border-y border-[var(--numa-border)] py-4">
-          <Row label="Tidszon" value={profile.timezone} />
-          <Row label="Valuta" value={profile.primaryCurrency} />
-          <Row
-            label="Dataläge"
-            value={supabaseReady ? "Moln (Supabase)" : "Lokal lagring"}
-          />
-        </dl>
-      ) : (
-        <p className="text-sm text-[var(--numa-muted)]">
-          Kunde inte läsa profilen. Prova “Laga appen” ovan.
-        </p>
-      )}
+        <MerSection title="Profil">
+          {profile ? (
+            <MerListGroup>
+              <dl>
+                <MerMetaRow label="Tidszon" value={profile.timezone} />
+                <MerMetaRow label="Valuta" value={profile.primaryCurrency} />
+                <MerMetaRow
+                  label="Dataläge"
+                  value={supabaseReady ? "Moln (Supabase)" : "Lokal lagring"}
+                />
+              </dl>
+            </MerListGroup>
+          ) : (
+            <MerListGroup>
+              <MerListRow>
+                <p className="text-sm text-[var(--numa-muted)]">
+                  Kunde inte läsa profilen. Prova “Laga appen” ovan.
+                </p>
+              </MerListRow>
+            </MerListGroup>
+          )}
+        </MerSection>
 
-      {supabaseReady ? <SignOutButton /> : null}
-    </div>
-  );
-}
-
-function Row({ label: rowLabel, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-        {rowLabel}
-      </dt>
-      <dd className="mt-1 text-sm">{value}</dd>
+        {supabaseReady ? (
+          <MerSection title="Konto">
+            <MerListGroup>
+              <MerListRow className="py-3">
+                <SignOutButton />
+              </MerListRow>
+            </MerListGroup>
+          </MerSection>
+        ) : null}
+      </div>
     </div>
   );
 }

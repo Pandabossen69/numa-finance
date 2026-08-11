@@ -10,6 +10,9 @@ export type FormatMoneyOptions = {
 
 /**
  * Display formatting only. Never use this string for parsing or domain math.
+ *
+ * THB uses the ISO code as a suffix ("10 108,04 THB") — the ฿ glyph often
+ * renders like $ in monospace UI fonts and confuses readers.
  */
 export function formatMoney(
   value: Money,
@@ -24,10 +27,6 @@ export function formatMoney(
     maximumFractionDigits: showFraction ? 2 : 0,
     useGrouping: true,
   }).format(major);
-
-  if (value.currency === "THB") {
-    return `${meta.symbol}${formatted}`;
-  }
 
   return `${formatted} ${meta.symbol}`;
 }

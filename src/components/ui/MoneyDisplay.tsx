@@ -1,5 +1,10 @@
-import { formatMoney, formatMoneyCompact, money, type CurrencyCode } from "@/domain/money";
+import { toMajorUnits, money, type CurrencyCode } from "@/domain/money";
+import { CURRENCY_META } from "@/domain/money/currency";
 
+/**
+ * Money display: amount in tabular mono, currency code in soft sans.
+ * THB shows as "10 108,04 THB" — never the ฿ glyph (reads as $ in many fonts).
+ */
 export function MoneyDisplay({
   amountMinor,
   currency,
@@ -18,7 +23,13 @@ export function MoneyDisplay({
     ? amountMinor
     : Math.round(Number.isFinite(amountMinor) ? amountMinor : 0);
   const value = money(safeMinor, currency);
-  const text = compact ? formatMoneyCompact(value) : formatMoney(value);
+  const showFraction = compact ? Math.abs(safeMinor) % 100 !== 0 : true;
+  const amountText = new Intl.NumberFormat("sv-SE", {
+    minimumFractionDigits: showFraction ? 2 : 0,
+    maximumFractionDigits: showFraction ? 2 : 0,
+    useGrouping: true,
+  }).format(toMajorUnits(value));
+  const currencyText = CURRENCY_META[currency].symbol;
 
   const sizeClass =
     size === "xl"
@@ -29,6 +40,15 @@ export function MoneyDisplay({
           ? "text-xl font-semibold"
           : "text-base font-medium";
 
+  const codeSize =
+    size === "xl"
+      ? "text-[1.05rem] font-semibold tracking-[0.04em]"
+      : size === "lg"
+        ? "text-sm font-semibold tracking-[0.04em]"
+        : size === "md"
+          ? "text-xs font-semibold tracking-[0.06em]"
+          : "text-[0.65rem] font-semibold tracking-[0.06em]";
+
   const toneClass =
     tone === "signed" && safeMinor < 0
       ? "text-[var(--numa-danger)]"
@@ -36,5 +56,17 @@ export function MoneyDisplay({
         ? "text-[var(--numa-positive)]"
         : "";
 
-  return <span className={`money ${sizeClass} ${toneClass}`.trim()}>{text}</span>;
+  return (
+    <span
+      className={`inline-flex items-baseline gap-1.5 ${toneClass}`.trim()}
+      aria-label={`${amountText} ${currencyText}`}
+    >
+      <span className={`money ${sizeClass}`}>{amountText}</span>
+      <span
+        className={`money-currency ${codeSize} text-[var(--numa-muted)]`}
+      >
+        {currencyText}
+      </span>
+    </span>
+  );
 }
