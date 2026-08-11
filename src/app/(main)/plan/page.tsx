@@ -21,9 +21,8 @@ export default async function PlanPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
           Plan
         </h1>
-        <p className="mt-2 max-w-[42ch] text-sm text-[var(--numa-muted)]">
-          Intäkter och extra utgifter har datum. Fasta utgifter har en dag i
-          månaden. Hem räknar från intäkt till nästa intäkt.
+        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
+          Planera månad för månad. Hem visar hur mycket du har kvar per dag.
         </p>
       </header>
 

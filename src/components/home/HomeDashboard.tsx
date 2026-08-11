@@ -46,25 +46,25 @@ export function HomeDashboard({
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
           Hem
         </h1>
-        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
+        <p className="mt-2 max-w-[36ch] text-sm text-[var(--numa-muted)]">
           {hasCycle
-            ? "Alla intäkter ihop, minus utgifter — resten lever du på per dag."
-            : "Lägg in intäkter med datum i Plan (t.ex. 23:e och 25:e)."}
+            ? "Så mycket du får leva på varje dag just nu."
+            : "Lägg in intäkter med datum i Plan."}
         </p>
       </header>
 
       {!snap.hasBankTruth ? (
-        <section className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Fota bank-SMS först
+        <section className="numa-panel animate-rise-delay-1 space-y-3 p-5">
+          <h2 className="text-base font-semibold tracking-tight">
+            Fota bank-SMS för saldo
           </h2>
           <p className="text-sm text-[var(--numa-muted)]">
-            Då får du saldo. Plan-siffrorna fungerar redan.
+            Plan och dagsbudget fungerar redan utan det.
           </p>
           <Link
             href="/fota"
             prefetch
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
           >
             Fota SMS
           </Link>
@@ -72,12 +72,12 @@ export function HomeDashboard({
       ) : null}
 
       <section
-        className="animate-rise-delay-1 space-y-2"
+        className="animate-rise-delay-1 space-y-1.5"
         aria-labelledby="spend-heading"
       >
         <p
           id="spend-heading"
-          className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-faint)]"
+          className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]"
         >
           Kvar per dag
         </p>
@@ -94,20 +94,20 @@ export function HomeDashboard({
         </div>
         <p className="text-sm text-[var(--numa-muted)]">
           {!hasCycle
-            ? "Lägg in intäkt med datum i Plan."
-            : `${snap.spendDaysLeft} dagar till nästa månads sista intäkt${snap.cycleEndInferred ? " (beräknad)" : ""}.`}
+            ? "Öppna Plan och lägg till lön eller CSN."
+            : `${snap.spendDaysLeft} dagar kvar${snap.cycleEndInferred ? " · slutdatum beräknat" : ""}`}
         </p>
       </section>
 
-      <section className="animate-rise-delay-2 space-y-4">
+      <section className="animate-rise-delay-2 space-y-0">
         <OverviewRow
-          label="Kan spendera totalt"
+          label="Kvar totalt"
           amountMinor={snap.remainingFreeMinor}
           currency={currency}
           tone={remainingOk ? "positive" : "danger"}
         />
         <OverviewRow
-          label="Sparas undan"
+          label="Sparar"
           amountMinor={snap.planSavingsMinor}
           currency={currency}
         />
@@ -121,7 +121,7 @@ export function HomeDashboard({
         ) : null}
         {snap.cycleSpendingMinor > 0 ? (
           <OverviewRow
-            label="Spenderat i cykeln"
+            label="Spenderat"
             amountMinor={snap.cycleSpendingMinor}
             currency={currency}
           />
@@ -136,7 +136,7 @@ export function HomeDashboard({
 
       <p className="animate-rise-delay-3 text-center text-sm text-[var(--numa-muted)]">
         <Link href="/plan" prefetch className="font-semibold text-[var(--numa-accent)]">
-          Öppna Plan
+          Planera månader
         </Link>
         {" · "}
         <Link href="/transaktioner" prefetch className="font-semibold text-[var(--numa-accent)]">
@@ -197,19 +197,14 @@ function QuickExpense({
   const [pending, startTransition] = useTransition();
 
   return (
-    <section className="numa-panel-strong animate-rise-delay-2 space-y-3 p-5">
-      <div>
-        <h2 className="text-base font-semibold tracking-tight">
-          Lägg till utgift
-        </h2>
-        <p className="mt-1 text-sm text-[var(--numa-muted)]">
-          Uppdaterar saldo och hur mycket du har kvar.
-        </p>
-      </div>
+    <section className="numa-panel animate-rise-delay-2 space-y-3 p-4">
+      <h2 className="text-sm font-semibold tracking-tight text-[var(--numa-muted)]">
+        Snabb utgift
+      </h2>
 
       {disabled ? (
         <p className="text-sm text-[var(--numa-muted)]">
-          Behöver ett konto först —{" "}
+          Behöver ett konto —{" "}
           <Link href="/fota" className="font-semibold text-[var(--numa-accent)]">
             fota SMS
           </Link>
@@ -217,51 +212,51 @@ function QuickExpense({
         </p>
       ) : (
         <>
-          <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
+          <div className="grid gap-2 sm:grid-cols-[1fr_7.5rem_auto]">
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="t.ex. Lunch, Grab"
-              className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-white/80 px-4 text-sm outline-none focus:border-[var(--numa-accent)]"
+              className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-sm outline-none focus:border-[var(--numa-accent)]"
             />
             <input
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
-              className="money min-h-12 rounded-2xl border border-[var(--numa-border)] bg-white/80 px-4 text-sm font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-sm font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
+            <button
+              type="button"
+              disabled={pending || !amount.trim()}
+              className="min-h-11 rounded-xl bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white disabled:opacity-45"
+              onClick={() => {
+                if (!accountId) return;
+                startTransition(async () => {
+                  const result = await createExpenseAction({
+                    accountId,
+                    amount,
+                    description: note.trim() || "Utgift",
+                  });
+                  if (!result.ok) {
+                    setError(result.error);
+                    return;
+                  }
+                  setError(null);
+                  setAmount("");
+                  setNote("");
+                  router.refresh();
+                });
+              }}
+            >
+              {pending ? "…" : "Lägg till"}
+            </button>
           </div>
           {error ? (
             <p className="text-sm text-[var(--numa-danger)]" role="alert">
               {error}
             </p>
           ) : null}
-          <button
-            type="button"
-            disabled={pending || !amount.trim()}
-            className="min-h-12 w-full rounded-2xl bg-[var(--numa-ink)] text-sm font-semibold text-white disabled:opacity-45"
-            onClick={() => {
-              if (!accountId) return;
-              startTransition(async () => {
-                const result = await createExpenseAction({
-                  accountId,
-                  amount,
-                  description: note.trim() || "Utgift",
-                });
-                if (!result.ok) {
-                  setError(result.error);
-                  return;
-                }
-                setError(null);
-                setAmount("");
-                setNote("");
-                router.refresh();
-              });
-            }}
-          >
-            {pending ? "Sparar…" : "Lägg till"}
-          </button>
         </>
       )}
     </section>

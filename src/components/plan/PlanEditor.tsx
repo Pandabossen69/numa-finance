@@ -160,25 +160,25 @@ export function PlanEditor({
   }
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-3">
+    <div className="space-y-8">
+      <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => shiftYear(-1)}
-              className="min-h-10 rounded-full bg-white/70 px-3 text-sm font-semibold text-[var(--numa-muted)] transition hover:bg-white"
+              className="min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] transition hover:bg-white/70"
               aria-label="Föregående år"
             >
               ← {viewYear - 1}
             </button>
-            <p className="min-w-[4.5rem] text-center text-lg font-semibold tracking-tight">
+            <p className="min-w-[3.5rem] text-center text-base font-semibold tracking-tight">
               {viewYear}
             </p>
             <button
               type="button"
               onClick={() => shiftYear(1)}
-              className="min-h-10 rounded-full bg-white/70 px-3 text-sm font-semibold text-[var(--numa-muted)] transition hover:bg-white"
+              className="min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] transition hover:bg-white/70"
               aria-label="Nästa år"
             >
               {viewYear + 1} →
@@ -190,7 +190,7 @@ export function PlanEditor({
               onClick={() => selectMonth(currentMonthKey)}
               className="text-sm font-semibold text-[var(--numa-accent)]"
             >
-              Tillbaka till nu
+              Denna månad
             </button>
           ) : null}
         </div>
@@ -201,12 +201,12 @@ export function PlanEditor({
               key={key}
               type="button"
               onClick={() => selectMonth(key)}
-              className={`min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize transition ${
+              className={`min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize transition ${
                 monthKey === key
-                  ? "bg-[var(--numa-ink)] text-white shadow-sm"
+                  ? "bg-[var(--numa-ink)] text-white"
                   : key === currentMonthKey
                     ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
-                    : "bg-white/70 text-[var(--numa-muted)] hover:bg-white"
+                    : "bg-white/60 text-[var(--numa-muted)] hover:bg-white"
               }`}
             >
               {labelMonthNameSv(key)}
@@ -214,122 +214,75 @@ export function PlanEditor({
           ))}
         </div>
 
-        {cycle.startAt ? (
-          <section className="numa-panel-strong space-y-4 p-5">
-            <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-                Aktiv inkomstcykel · Hem
-              </p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight">
-                {cycle.startLabelSv} → {cycle.endLabelSv}
-                {cycle.endInferred ? " (beräknad)" : ""}
-              </h2>
-              <p className="mt-1 max-w-[48ch] text-sm text-[var(--numa-muted)]">
-                {cycle.isActive
-                  ? `Alla intäkter i perioden räknas ihop. Det som blir över efter utgifter är ditt att leva på · ${cycle.daysLeft} dagar kvar.`
-                  : `Nästa period börjar ${cycle.startLabelSv}. Lägg in månadens intäkter så poolen stämmer.`}
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <MonthStat
-                label="Intäkter i cykeln"
-                amountMinor={cycle.incomeMinor}
-                currency={currency}
-                tone="positive"
-              />
-              <MonthStat
-                label="Utgifter i cykeln"
-                amountMinor={cycle.expenseMinor}
-                currency={currency}
-              />
-              <MonthStat
-                label="Fritt att röra"
-                amountMinor={cycle.freeToSpendMinor}
-                currency={currency}
-                tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
-              />
-              <MonthStat
-                label="Per dag"
-                amountMinor={cycle.perDayMinor}
-                currency={currency}
-                tone={cycle.perDayMinor > 0 ? "positive" : undefined}
-              />
-            </div>
-          </section>
-        ) : (
-          <section className="numa-panel p-5">
-            <p className="text-sm text-[var(--numa-muted)]">
-              Lägg in en intäkt med datum — då räknar Hem hur mycket du får röra
-              dig med från den dagen till nästa lön.
+        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--numa-border)] pb-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+              {labelMonthNameSv(monthKey)}
             </p>
-          </section>
-        )}
-
-        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-5">
-          <MonthStat
-            label={`Intäkter · ${labelMonthNameSv(monthKey)}`}
-            amountMinor={projection.incomeMinor}
-            currency={currency}
-            tone="positive"
-          />
-          <MonthStat
-            label="Fasta"
-            amountMinor={projection.fixedMinor}
-            currency={currency}
-          />
-          <MonthStat
-            label="Extra"
-            amountMinor={projection.extraMinor}
-            currency={currency}
-          />
-          <MonthStat
-            label="Sparande"
-            amountMinor={projection.savingsMinor}
-            currency={currency}
-          />
-          <MonthStat
-            label="Månadssaldo"
-            amountMinor={projection.freeToSpendMinor}
-            currency={currency}
-            tone={projection.freeToSpendMinor >= 0 ? "positive" : "danger"}
-          />
+            <p
+              className={`mt-1 text-2xl font-semibold tracking-tight ${
+                projection.freeToSpendMinor >= 0
+                  ? "text-[var(--numa-positive)]"
+                  : "text-[var(--numa-danger)]"
+              }`}
+            >
+              {formatMoney(money(projection.freeToSpendMinor, currency))}
+            </p>
+            <p className="mt-1 text-sm text-[var(--numa-muted)]">
+              kvar efter fasta, extra och sparande
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--numa-muted)]">
+            <span>
+              In{" "}
+              <span className="font-semibold text-[var(--numa-ink)]">
+                {formatMoney(money(projection.incomeMinor, currency))}
+              </span>
+            </span>
+            <span>
+              Ut{" "}
+              <span className="font-semibold text-[var(--numa-ink)]">
+                {formatMoney(
+                  money(projection.fixedMinor + projection.extraMinor, currency),
+                )}
+              </span>
+            </span>
+            <span>
+              Sparar{" "}
+              <span className="font-semibold text-[var(--numa-ink)]">
+                {formatMoney(money(projection.savingsMinor, currency))}
+              </span>
+            </span>
+          </div>
         </div>
 
-        <section className="numa-panel-strong space-y-4 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-                Sparande · {labelMonthNameSv(monthKey)}
-              </p>
-              <h2 className="mt-1 text-lg font-semibold tracking-tight">
-                Vill du spara något den här månaden?
-              </h2>
-              <p className="mt-1 max-w-[42ch] text-sm text-[var(--numa-muted)]">
-                Räknas av från cykeln som börjar den månaden.
-              </p>
-            </div>
-            {projection.savingsMinor > 0 ? (
-              <p className="text-sm font-semibold text-[var(--numa-accent-ink)]">
-                Sparar{" "}
-                {formatMoney(money(projection.savingsMinor, currency))}
-              </p>
-            ) : null}
-          </div>
+        {cycle.startAt && monthKey === (cycle.fundingMonthKey ?? currentMonthKey) ? (
+          <p className="text-sm text-[var(--numa-muted)]">
+            Hem: {cycle.startLabelSv} → {cycle.endLabelSv}
+            {cycle.endInferred ? " · fyll i nästa månads intäkter för exakt slut" : ""}
+            {" · "}
+            <span className="font-semibold text-[var(--numa-ink)]">
+              {formatMoney(money(cycle.perDayMinor, currency))}
+            </span>
+            {" / dag"}
+          </p>
+        ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <label className="block flex-1">
-              <span className="text-xs font-medium text-[var(--numa-muted)]">
-                Belopp att spara ({currency})
-              </span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={savingsAmount}
-                onChange={(e) => setSavingsAmount(e.target.value)}
-                placeholder="0"
-                className="mt-1.5 w-full rounded-2xl border border-[var(--numa-border)] bg-white/80 px-4 py-3 text-sm outline-none focus:border-[var(--numa-accent)]"
-              />
-            </label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="shrink-0 text-sm text-[var(--numa-muted)]">
+              Spara denna månad
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={savingsAmount}
+              onChange={(e) => setSavingsAmount(e.target.value)}
+              placeholder="0"
+              className="money min-h-11 w-full max-w-[10rem] rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-sm font-semibold outline-none focus:border-[var(--numa-accent)]"
+            />
+          </label>
+          <div className="flex gap-2">
             <button
               type="button"
               disabled={pending}
@@ -343,9 +296,9 @@ export function PlanEditor({
                   );
                 });
               }}
-              className="min-h-12 rounded-2xl bg-[var(--numa-ink)] px-5 text-sm font-semibold text-white disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white disabled:opacity-50"
             >
-              Spara belopp
+              Spara
             </button>
             {projection.savingsMinor > 0 ? (
               <button
@@ -360,18 +313,13 @@ export function PlanEditor({
                     if (refreshAfter(result)) setSavingsAmount("");
                   });
                 }}
-                className="min-h-12 rounded-2xl border border-[var(--numa-border-strong)] bg-white/70 px-4 text-sm font-semibold disabled:opacity-50"
+                className="min-h-11 rounded-xl px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-white/70 disabled:opacity-50"
               >
                 Nollställ
               </button>
             ) : null}
           </div>
-        </section>
-
-        <p className="text-sm text-[var(--numa-muted)]">
-          Fasta utgifter har en dag och följer med varje månad. Extra utgifter
-          har ett datum och räknas bara den månaden / cykeln.
-        </p>
+        </div>
       </section>
 
       {error ? (
@@ -383,7 +331,7 @@ export function PlanEditor({
       <div className="grid gap-4">
         <PlanCard
           title="Intäkter"
-          hint={`Datum när pengarna kommer · ${projection.labelSv}`}
+          hint="När pengarna kommer in"
           totalLabel="Summa"
           totalMinor={projection.incomeMinor}
           currency={currency}
@@ -453,7 +401,7 @@ export function PlanEditor({
       <div className="grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Fasta utgifter"
-          hint="Välj dag i månaden — samma dag följer med nästa månad"
+          hint="Samma dag varje månad"
           totalLabel="Summa"
           totalMinor={projection.fixedMinor}
           currency={currency}
@@ -530,7 +478,7 @@ export function PlanEditor({
 
         <PlanCard
           title="Extra utgifter"
-          hint="Lån, resa, engång — välj datum. Räknas bara den månaden"
+          hint="Engång med datum · bara den månaden"
           totalLabel="Summa"
           totalMinor={projection.extraMinor}
           currency={currency}
@@ -618,22 +566,22 @@ function PlanCard({
   children: ReactNode;
 }) {
   return (
-    <section className="numa-panel-strong flex flex-col gap-4 p-5">
+    <section className="numa-panel flex flex-col gap-4 p-5">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-          <p className="mt-1 text-sm text-[var(--numa-muted)]">{hint}</p>
+          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          <p className="mt-0.5 text-sm text-[var(--numa-muted)]">{hint}</p>
         </div>
         <div className="text-right">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+          <p className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
             {totalLabel}
           </p>
-          <p className="money mt-1 text-base font-semibold">
+          <p className="money mt-0.5 text-base font-semibold">
             {formatMoney(money(totalMinor, currency))}
           </p>
         </div>
       </header>
-      <div className="flex min-h-[12rem] flex-1 flex-col gap-4">{children}</div>
+      <div className="flex flex-1 flex-col gap-4">{children}</div>
     </section>
   );
 }
@@ -675,17 +623,15 @@ function PlanRows({
 }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-2xl bg-[var(--numa-bg)]/70 px-4 py-6 text-sm text-[var(--numa-muted)]">
-        Inget här ännu.
-      </p>
+      <p className="py-4 text-sm text-[var(--numa-muted)]">Inget här ännu.</p>
     );
   }
 
   return (
-    <ul className="divide-y divide-[var(--numa-border)] overflow-hidden rounded-2xl border border-[var(--numa-border)] bg-white/50">
+    <ul className="divide-y divide-[var(--numa-border)]">
       {items.map((item) =>
         editingId === item.id ? (
-          <li key={item.id} className="space-y-3 bg-white p-3">
+          <li key={item.id} className="space-y-3 py-3 first:pt-0">
             <input
               value={editName}
               onChange={(e) => onEditName(e.target.value)}
@@ -696,14 +642,14 @@ function PlanRows({
                 inputMode="decimal"
                 value={editAmount}
                 onChange={(e) => onEditAmount(e.target.value)}
-                className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-lg font-semibold"
+                className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
               />
               {editExtraType === "date" ? (
                 <input
                   type="date"
                   value={editExtra}
                   onChange={(e) => onEditExtra(e.target.value)}
-                  className="min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+                  className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
                 />
               ) : (
                 <input
@@ -712,7 +658,7 @@ function PlanRows({
                   max={31}
                   value={editExtra}
                   onChange={(e) => onEditExtra(e.target.value)}
-                  className="min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+                  className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
                   aria-label="Dag i månaden"
                 />
               )}
@@ -738,7 +684,7 @@ function PlanRows({
         ) : (
           <li
             key={item.id}
-            className="flex items-center justify-between gap-3 px-3 py-3"
+            className="flex items-center justify-between gap-3 py-3 first:pt-0"
           >
             <div className="min-w-0">
               <p className="truncate font-medium">{item.name}</p>
@@ -855,31 +801,3 @@ function InlineAdd({
   );
 }
 
-function MonthStat({
-  label,
-  amountMinor,
-  currency,
-  tone,
-}: {
-  label: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  tone?: "positive" | "danger";
-}) {
-  const color =
-    tone === "positive"
-      ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
-        : "";
-  return (
-    <div>
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-        {label}
-      </p>
-      <p className={`money mt-1 text-lg font-semibold ${color}`}>
-        {formatMoney(money(amountMinor, currency))}
-      </p>
-    </div>
-  );
-}
