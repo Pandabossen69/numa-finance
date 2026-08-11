@@ -15,6 +15,13 @@ export function AnalysDashboard({
       <div className="space-y-3">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
+        <Link
+          href="/idag"
+          prefetch
+          className="text-sm font-semibold text-[var(--numa-accent)]"
+        >
+          Tillbaka till Hem →
+        </Link>
       </div>
     );
   }
@@ -24,11 +31,9 @@ export function AnalysDashboard({
   return (
     <div className="space-y-8">
       <header className="animate-rise">
-        <p className="text-sm font-medium text-[var(--numa-muted)]">Djupdyk</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Analys</h1>
-        <p className="mt-2 max-w-[48ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Här syns hur siffrorna räknas — cykel, månad, saldo och rörelser. Hem
-          visar bara det viktigaste.
+        <h1 className="text-3xl font-semibold tracking-tight">Analys</h1>
+        <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          Hur siffrorna räknas — cykel, månad och rörelser.
         </p>
       </header>
 
@@ -48,7 +53,7 @@ export function AnalysDashboard({
           </h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
             {cycle.livingMode === "bridge"
-              ? `${cycle.daysLeft} dagar kvar · Hem använder saldo från bank-SMS`
+              ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo`
               : cycle.isActive
                 ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
                 : "Lägg in intäkter med datum i Plan för att starta cykeln."}
@@ -281,7 +286,12 @@ export function AnalysDashboard({
             </Link>
           </div>
           {data.goals.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--numa-faint)]">Inga mål ännu</p>
+            <p className="mt-4 text-sm text-[var(--numa-muted)]">
+              Inga mål ännu.{" "}
+              <Link href="/plan" prefetch className="font-semibold text-[var(--numa-accent)]">
+                Lägg till i Plan →
+              </Link>
+            </p>
           ) : (
             <ul className="mt-4 space-y-3">
               {data.goals.map((goal) => (

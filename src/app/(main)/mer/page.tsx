@@ -8,7 +8,11 @@ const links = [
   },
   { href: "/konton", label: "Saldo", hint: "Bankens sanning · checkpoint" },
   { href: "/fota", label: "Lägg till", hint: "Fota bank-SMS eller kvitto" },
-  { href: "/importera", label: "Import", hint: "Tidigare observationer" },
+  {
+    href: "/importera",
+    label: "Tidigare bilder",
+    hint: "Uppladdade SMS och kvitton",
+  },
   {
     href: "/installningar",
     label: "Inställningar",

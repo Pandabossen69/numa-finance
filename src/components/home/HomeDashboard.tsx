@@ -63,7 +63,7 @@ export function HomeDashboard({
           {isEmpty
             ? "Lägg in intäkter med datum i Plan."
             : isBridge
-              ? "Saldo från banken — så mycket du får leva på per dag tills nästa intäkt."
+              ? "Så mycket du får leva på per dag tills nästa intäkt."
               : "Så mycket du får leva på varje dag just nu."}
         </p>
       </header>
@@ -124,7 +124,7 @@ export function HomeDashboard({
                 isBridge && snap.verificationLabel
                   ? snap.verificationLabel
                   : isBridge
-                    ? "Från bank-SMS"
+                    ? "Från banken"
                     : undefined
               }
             />
@@ -156,16 +156,7 @@ export function HomeDashboard({
 
           {isBridge ? (
             <div className="text-sm text-[var(--numa-muted)]">
-              När du fotar kvitto eller uppdaterar saldo räknas dagsbudgeten om
-              automatiskt.{" "}
-              <Link
-                href="/fota"
-                prefetch
-                className="font-semibold text-[var(--numa-accent)]"
-              >
-                Fota
-              </Link>
-              {" · "}
+              Uppdatera saldo manuellt om banken ändrats.{" "}
               <UpdateBalanceLink
                 accountId={snap.primaryAccountId}
                 currency={currency}
@@ -180,16 +171,6 @@ export function HomeDashboard({
           />
         </>
       ) : null}
-
-      <p className="animate-rise-delay-3 text-center text-sm text-[var(--numa-muted)]">
-        <Link href="/plan" prefetch className="font-semibold text-[var(--numa-accent)]">
-          Planera månader
-        </Link>
-        {" · "}
-        <Link href="/transaktioner" prefetch className="font-semibold text-[var(--numa-accent)]">
-          Alla rörelser
-        </Link>
-      </p>
     </div>
   );
 }

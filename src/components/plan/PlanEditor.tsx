@@ -251,13 +251,13 @@ export function PlanEditor({
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--numa-muted)]">
             <span>
-              In{" "}
+              Intäkter{" "}
               <span className="font-semibold text-[var(--numa-ink)]">
                 {formatMoney(money(projection.incomeMinor, currency))}
               </span>
             </span>
             <span>
-              Ut{" "}
+              Utgifter{" "}
               <span className="font-semibold text-[var(--numa-ink)]">
                 {formatMoney(
                   money(projection.fixedMinor + projection.extraMinor, currency),
@@ -265,7 +265,7 @@ export function PlanEditor({
               </span>
             </span>
             <span>
-              Sparar{" "}
+              Sparande{" "}
               <span className="font-semibold text-[var(--numa-ink)]">
                 {formatMoney(money(projection.savingsMinor, currency))}
               </span>
@@ -276,7 +276,7 @@ export function PlanEditor({
         {cycle.startAt && monthKey === (cycle.fundingMonthKey ?? currentMonthKey) ? (
           <p className="text-sm text-[var(--numa-muted)]">
             {living.mode === "bridge"
-              ? `Hem: tills ${cycle.startLabelSv} — lever på banksaldo från SMS`
+              ? `Hem: tills ${cycle.startLabelSv} · lever på kontosaldo`
               : `Hem: ${cycle.startLabelSv} → ${cycle.endLabelSv}${
                   cycle.endInferred
                     ? " · fyll i nästa månads intäkter för exakt slut"
@@ -315,7 +315,7 @@ export function PlanEditor({
               }}
               className="min-h-11 rounded-xl bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white disabled:opacity-50"
             >
-              Spara
+              Uppdatera sparande
             </button>
             {projection.savingsMinor > 0 ? (
               <button
@@ -362,6 +362,7 @@ export function PlanEditor({
             editExtra={editDate}
             editExtraType="date"
             pending={pending}
+            emptyHint="Lägg till lön eller CSN med datum — då kan Hem räkna per dag."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
@@ -432,6 +433,7 @@ export function PlanEditor({
             editExtra={editDay}
             editExtraType="day"
             pending={pending}
+            emptyHint="Hyra, el, Netflix — samma dag varje månad."
             subtitle={(item) =>
               item.nextDueAt
                 ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
@@ -509,6 +511,7 @@ export function PlanEditor({
             editExtra={editDate}
             editExtraType="date"
             pending={pending}
+            emptyHint="Engångskostnader med datum — syns bara den månaden."
             subtitle={(item) =>
               `Engång · ${labelIncomeDateSv(item.nextDueAt, timeZone)}`
             }
@@ -612,6 +615,7 @@ function PlanRows({
   editExtra,
   editExtraType,
   pending,
+  emptyHint = "Inget här ännu.",
   subtitle,
   onEditName,
   onEditAmount,
@@ -629,6 +633,7 @@ function PlanRows({
   editExtra: string;
   editExtraType: "date" | "day";
   pending: boolean;
+  emptyHint?: string;
   subtitle: (item: PlanItem) => string;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
@@ -640,7 +645,7 @@ function PlanRows({
 }) {
   if (items.length === 0) {
     return (
-      <p className="py-4 text-sm text-[var(--numa-muted)]">Inget här ännu.</p>
+      <p className="py-4 text-sm text-[var(--numa-muted)]">{emptyHint}</p>
     );
   }
 

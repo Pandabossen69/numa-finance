@@ -27,17 +27,26 @@ export default async function KontonPage() {
           href="/konton/ny"
           className="text-sm font-medium text-[var(--numa-accent)]"
         >
-          Nytt
+          Nytt konto
         </Link>
       </header>
 
       {accounts.length === 0 ? (
-        <p className="text-sm text-[var(--numa-muted)]">
-          Inga saldon ännu.{" "}
-          <Link href="/konton/ny" className="text-[var(--numa-accent)]">
-            Ange hur mycket du har
-          </Link>
-        </p>
+        <div className="space-y-3 text-sm text-[var(--numa-muted)]">
+          <p>Inga saldon ännu. Snabbast är att fota bank-SMS.</p>
+          <p>
+            <Link
+              href="/fota?mode=sms"
+              className="font-semibold text-[var(--numa-accent)]"
+            >
+              Fota bank-SMS →
+            </Link>
+            {" · "}
+            <Link href="/konton/ny" className="font-semibold text-[var(--numa-accent)]">
+              Ange manuellt
+            </Link>
+          </p>
+        </div>
       ) : (
         <ul className="space-y-8">
           {await Promise.all(

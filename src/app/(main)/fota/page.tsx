@@ -38,23 +38,15 @@ export default async function FotaPage({
   const bootstrapping = Boolean(data && !data.hasBankTruth);
 
   return (
-    <div className="mx-auto max-w-lg space-y-8">
-      <header className="animate-rise">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-          Lägg till
-        </h1>
-        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {bootstrapping
-            ? "Välj galleri eller kamera — bank-SMS läses in automatiskt."
-            : "Bank-SMS läses in automatiskt. Saldo och dagsbudget synkar direkt."}
-        </p>
-      </header>
-
-      {home.ok === false ? (
-        <p className="text-sm text-[var(--numa-danger)]">{home.error}</p>
-      ) : null}
-
-      {data ? (
+    <div className="mx-auto max-w-lg space-y-6">
+      {home.ok === false || !data ? (
+        <div className="space-y-3">
+          <h1 className="text-3xl font-semibold tracking-tight">Lägg till</h1>
+          <p className="text-sm text-[var(--numa-danger)]">
+            {home.ok === false ? home.error : "Kunde inte ladda."}
+          </p>
+        </div>
+      ) : (
         <ReceiptCaptureFlow
           accountId={data.primaryAccountId}
           accounts={accounts}
@@ -64,8 +56,6 @@ export default async function FotaPage({
           bootstrapping={bootstrapping}
           initialMode={bootstrapping ? "bank_sms" : initialMode}
         />
-      ) : (
-        <p className="text-sm text-[var(--numa-muted)]">Kunde inte ladda.</p>
       )}
     </div>
   );

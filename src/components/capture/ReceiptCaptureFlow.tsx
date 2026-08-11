@@ -226,11 +226,24 @@ export function ReceiptCaptureFlow({
       setTimeout(() => {
         router.push("/idag");
         router.refresh();
-      }, 450);
+      }, 1600);
     });
   }
 
   if (doneStatus) {
+    const pulseLabel =
+      doneStatus === "plus"
+        ? "Under dagens budget"
+        : doneStatus === "even"
+          ? "På gränsen idag"
+          : "Över dagens budget";
+    const pulseTone =
+      doneStatus === "plus"
+        ? "text-[var(--numa-positive)]"
+        : doneStatus === "even"
+          ? "text-[var(--numa-ink)]"
+          : "text-[var(--numa-danger)]";
+
     return (
       <div className="animate-rise space-y-4 py-14 text-center">
         <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[var(--numa-faint)]">
@@ -242,18 +255,31 @@ export function ReceiptCaptureFlow({
             <p className="money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
               {formatMoney(money(doneBalanceMinor, currency))}
             </p>
+            <p className={`text-sm font-semibold ${pulseTone}`}>{pulseLabel}</p>
             <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
-              Hem uppdateras — du lever på det här tills nästa intäkt.
+              Tar dig till Hem…
             </p>
           </>
         ) : (
           <>
-            <p className="text-3xl font-semibold tracking-tight">Klart</p>
+            <p className={`text-3xl font-semibold tracking-tight ${pulseTone}`}>
+              {pulseLabel}
+            </p>
             <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
-              Hem uppdateras med nya siffror.
+              Tar dig till Hem…
             </p>
           </>
         )}
+        <button
+          type="button"
+          className="text-sm font-semibold text-[var(--numa-accent)]"
+          onClick={() => {
+            router.push("/idag");
+            router.refresh();
+          }}
+        >
+          Visa Hem →
+        </button>
       </div>
     );
   }
@@ -355,8 +381,8 @@ export function ReceiptCaptureFlow({
             {bootstrapping
               ? "Fota senaste SMS"
               : isSms
-                ? "Importera SMS"
-                : "Fota priset"}
+                ? "Fota bank-SMS"
+                : "Fota kvitto"}
           </h2>
           <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {isSms
@@ -708,7 +734,7 @@ function ModePicker({
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           {bootstrapping
-            ? "Fota senaste bank-SMS. Available balance blir saldo på Hem."
+            ? "Fota senaste bank-SMS. Saldot i SMS:et blir ditt saldo på Hem."
             : "Ett steg. Vi läser bilden och du bekräftar."}
         </p>
       </header>

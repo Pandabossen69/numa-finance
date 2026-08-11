@@ -2,7 +2,7 @@ export const PRIMARY_NAV = [
   { href: "/idag", label: "Hem", hint: "Live dagsbudget" },
   { href: "/plan", label: "Plan", hint: "Månader framåt" },
   { href: "/analys", label: "Analys", hint: "Se mönster" },
-  { href: "/mer", label: "Mer", hint: "Saldo & import" },
+  { href: "/mer", label: "Mer", hint: "Saldo & underhåll" },
 ] as const;
 
 export const MER_PREFIXES = [

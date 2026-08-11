@@ -11,7 +11,7 @@ export default async function ImporteraPage() {
           ← Mer
         </Link>
         <h1 className="mt-3 text-[1.65rem] font-semibold tracking-[-0.04em]">
-          Import
+          Tidigare bilder
         </h1>
         <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Här sparas bilder du lagt in. Inget blir en utgift förrän du

@@ -16,19 +16,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <header className="flex items-center justify-between pt-[max(1rem,var(--numa-safe-top))] pb-2 md:hidden">
             <Link href="/idag" prefetch className="block min-w-0">
               <span className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-[var(--numa-faint)]">
-                NUMA
+                Personlig ekonomi
               </span>
               <span className="mt-0.5 block text-xl font-semibold tracking-tight text-[var(--numa-ink)]">
-                Din ekonomi
+                NUMA
               </span>
             </Link>
-            <Link
-              href="/lagg-till"
-              prefetch
-              className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[var(--numa-accent-soft)] px-4 text-sm font-semibold text-[var(--numa-accent-ink)]"
-            >
-              Lägg till
-            </Link>
+            {/* Mobile add lives in BottomNav FAB — avoid duplicate "Lägg till". */}
           </header>
 
           <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(8.5rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-12 md:pt-8">

@@ -246,16 +246,24 @@ export function MovementsScreen({
 
         {filtered.length === 0 ? (
           <div className="numa-panel space-y-3 p-5">
-            <p className="text-sm text-[var(--numa-muted)]">
-              Inga rörelser här ännu.
-            </p>
-            <Link
-              href="/lagg-till"
-              prefetch
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
-            >
-              Lägg till
-            </Link>
+            {(data?.items.length ?? 0) > 0 ? (
+              <p className="text-sm text-[var(--numa-muted)]">
+                Inga träffar för filtret — prova Alla eller All tid.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--numa-muted)]">
+                  Inga rörelser här ännu.
+                </p>
+                <Link
+                  href="/lagg-till"
+                  prefetch
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
+                >
+                  Lägg till
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
