@@ -6,7 +6,7 @@ import {
   labelDayOfMonthSv,
   labelMonthSv,
   monthKeyFromDate,
-  perDayBudgetMinor,
+  projectLivingBudget,
   projectPayCycle,
   projectPlanForMonth,
 } from "@/domain/finance";
@@ -39,6 +39,7 @@ export type AnalysSnapshot = {
     endLabelSv: string | null;
     endInferred: boolean;
     isActive: boolean;
+    livingMode: "bridge" | "cycle" | "empty";
     incomeMinor: number;
     expenseMinor: number;
     savingsMinor: number;
@@ -94,8 +95,15 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
     const month = projectPlanForMonth(snap.planItems ?? [], monthKey, timeZone);
     const cycleSpendingMinor = snap.cycleSpendingMinor ?? 0;
-    const remainingFreeMinor = cycle.freeToSpendMinor - cycleSpendingMinor;
-    const perDayMinor = perDayBudgetMinor(remainingFreeMinor, cycle.daysLeft);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone,
+      bankBalanceMinor: snap.calculatedBalanceMinor,
+      cycleSpendingMinor,
+    });
+    const remainingFreeMinor = living.remainingFreeMinor;
+    const perDayMinor = living.perDayMinor;
 
     const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) => ({
       id: i.id,
@@ -154,13 +162,21 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       currency: tx.currency,
     }));
 
-    const formulaSteps = [
-      "Alla intäkter samma kalendermånad räknas ihop (t.ex. Alltid ID + CSN + Trukks).",
-      "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
-      "Planerat fritt = intäkter − utgifter i perioden − sparande.",
-      "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
-      "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
-    ];
+    const formulaSteps =
+      living.mode === "bridge"
+        ? [
+            "Innan nästa intäkt lever du på det som finns kvar på kontot (från förra månaden).",
+            "Ange saldo manuellt eller fota bank-SMS / kvitto — då uppdateras saldot.",
+            "Kvar per dag = saldo ÷ dagar kvar till nästa intäkt.",
+            "När intäkterna landar växlar Hem till plan-poolen för den månaden.",
+          ]
+        : [
+            "Alla intäkter samma kalendermånad räknas ihop (t.ex. Alltid ID + CSN + Trukks).",
+            "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
+            "Planerat fritt = intäkter − utgifter i perioden − sparande.",
+            "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
+            "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
+          ];
 
     return {
       ok: true,
@@ -183,12 +199,13 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           endLabelSv: cycle.endLabelSv,
           endInferred: cycle.endInferred,
           isActive: cycle.isActive,
+          livingMode: living.mode,
           incomeMinor: cycle.incomeMinor,
           expenseMinor: cycle.expenseMinor,
           savingsMinor: cycle.savingsMinor,
           freeToSpendMinor: cycle.freeToSpendMinor,
           remainingFreeMinor,
-          daysLeft: cycle.daysLeft,
+          daysLeft: living.daysLeft,
           perDayMinor,
           incomes: cycleIncomes,
           expenses: cycleExpenses,

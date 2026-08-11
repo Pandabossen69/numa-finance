@@ -2,7 +2,7 @@ import { cache } from "react";
 import {
   labelMonthSv,
   monthKeyFromDate,
-  perDayBudgetMinor,
+  projectLivingBudget,
   projectPayCycle,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
@@ -24,17 +24,22 @@ export type HomeSnapshot = {
   cycleEndLabelSv: string | null;
   cycleEndInferred: boolean;
   cycleIsActive: boolean;
+  /** bridge = tills nästa intäkt (saldo), cycle = efter lön (plan), empty = saknar intäkter */
+  livingMode: "bridge" | "cycle" | "empty";
+  needsAvailableInput: boolean;
+  usesBankBalance: boolean;
   planIncomeMinor: number;
   planExpenseMinor: number;
   planSavingsMinor: number;
-  /** Plan free before actual cycle spending. */
+  /** Plan free before actual cycle spending (cycle mode reference). */
   freeToSpendMinor: number;
-  /** free − cycle spending. */
+  /** What you have left to live on right now. */
   remainingFreeMinor: number;
   spendDaysLeft: number;
   /** remainingFree ÷ days left. */
   perDayBudgetMinor: number;
   daysUntilIncome: number;
+  nextIncomeLabelSv: string | null;
 };
 
 export type HomeSnapshotResult =
@@ -51,8 +56,13 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     const monthKey = monthKeyFromDate(now, timeZone);
     const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
     const cycleSpendingMinor = snap.cycleSpendingMinor ?? 0;
-    const remainingFreeMinor = cycle.freeToSpendMinor - cycleSpendingMinor;
-    const dayBudget = perDayBudgetMinor(remainingFreeMinor, cycle.daysLeft);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone,
+      bankBalanceMinor: snap.calculatedBalanceMinor,
+      cycleSpendingMinor,
+    });
 
     return {
       ok: true,
@@ -69,17 +79,21 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         cycleSpendingMinor,
         safeToSpendTodayMinor: snap.safeToSpendTodayMinor,
         cycleStartLabelSv: cycle.startLabelSv,
-        cycleEndLabelSv: cycle.endLabelSv,
-        cycleEndInferred: cycle.endInferred,
+        cycleEndLabelSv: living.cycleEndLabelSv,
+        cycleEndInferred: living.cycleEndInferred,
         cycleIsActive: cycle.isActive,
+        livingMode: living.mode,
+        needsAvailableInput: living.needsAvailableInput,
+        usesBankBalance: living.usesBankBalance,
         planIncomeMinor: cycle.incomeMinor,
         planExpenseMinor: cycle.expenseMinor,
         planSavingsMinor: cycle.savingsMinor,
         freeToSpendMinor: cycle.freeToSpendMinor,
-        remainingFreeMinor,
-        spendDaysLeft: cycle.daysLeft,
-        perDayBudgetMinor: dayBudget,
+        remainingFreeMinor: living.remainingFreeMinor,
+        spendDaysLeft: living.daysLeft,
+        perDayBudgetMinor: living.perDayMinor,
         daysUntilIncome: snap.daysUntilIncome,
+        nextIncomeLabelSv: living.nextIncomeLabelSv,
       },
     };
   } catch (error) {

@@ -35,64 +35,89 @@ export function AnalysDashboard({
       <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-6">
         <div>
           <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            Aktiv inkomstcykel
+            {cycle.livingMode === "bridge"
+              ? "Tills nästa intäkt"
+              : "Aktiv inkomstcykel"}
           </p>
           <h2 className="mt-1 text-xl font-semibold tracking-tight">
-            {cycle.startLabelSv && cycle.endLabelSv
-              ? `${cycle.startLabelSv} → ${cycle.endLabelSv}${cycle.endInferred ? " (beräknad)" : ""}`
-              : "Ingen cykel ännu"}
+            {cycle.livingMode === "bridge" && cycle.startLabelSv
+              ? `Nu → ${cycle.startLabelSv}`
+              : cycle.startLabelSv && cycle.endLabelSv
+                ? `${cycle.startLabelSv} → ${cycle.endLabelSv}${cycle.endInferred ? " (beräknad)" : ""}`
+                : "Ingen cykel ännu"}
           </h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
-            {cycle.isActive
-              ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
-              : "Lägg in intäkter med datum i Plan för att starta cykeln."}
+            {cycle.livingMode === "bridge"
+              ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo, inte kommande augusti-intäkter`
+              : cycle.isActive
+                ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
+                : "Lägg in intäkter med datum i Plan för att starta cykeln."}
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat
-            label="Intäkter i cykeln"
-            amountMinor={cycle.incomeMinor}
-            currency={currency}
-            tone="positive"
-          />
-          <Stat
-            label="Utgifter i cykeln"
-            amountMinor={cycle.expenseMinor}
-            currency={currency}
-          />
-          <Stat
-            label="Planerat fritt"
-            amountMinor={cycle.freeToSpendMinor}
-            currency={currency}
-            tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
-          />
-          <Stat
-            label="Kvar efter spenderat"
-            amountMinor={cycle.remainingFreeMinor}
-            currency={currency}
-            tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-          />
-        </div>
+        {cycle.livingMode === "bridge" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Stat
+              label="Kvar på kontot"
+              amountMinor={cycle.remainingFreeMinor}
+              currency={currency}
+              tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
+            />
+            <Stat
+              label="Kvar per dag"
+              amountMinor={cycle.perDayMinor}
+              currency={currency}
+              tone={cycle.perDayMinor > 0 ? "positive" : undefined}
+            />
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Stat
+                label="Intäkter i cykeln"
+                amountMinor={cycle.incomeMinor}
+                currency={currency}
+                tone="positive"
+              />
+              <Stat
+                label="Utgifter i cykeln"
+                amountMinor={cycle.expenseMinor}
+                currency={currency}
+              />
+              <Stat
+                label="Planerat fritt"
+                amountMinor={cycle.freeToSpendMinor}
+                currency={currency}
+                tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
+              />
+              <Stat
+                label="Kvar efter spenderat"
+                amountMinor={cycle.remainingFreeMinor}
+                currency={currency}
+                tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
+              />
+            </div>
 
-        <div className="grid gap-3 border-t border-[var(--numa-border)] pt-4 sm:grid-cols-3">
-          <Stat
-            label="Sparande"
-            amountMinor={cycle.savingsMinor}
-            currency={currency}
-          />
-          <Stat
-            label="Spenderat i cykeln"
-            amountMinor={data.cycleSpendingMinor}
-            currency={currency}
-          />
-          <Stat
-            label="Kvar per dag"
-            amountMinor={cycle.perDayMinor}
-            currency={currency}
-            tone={cycle.perDayMinor > 0 ? "positive" : undefined}
-          />
-        </div>
+            <div className="grid gap-3 border-t border-[var(--numa-border)] pt-4 sm:grid-cols-3">
+              <Stat
+                label="Sparande"
+                amountMinor={cycle.savingsMinor}
+                currency={currency}
+              />
+              <Stat
+                label="Spenderat i cykeln"
+                amountMinor={data.cycleSpendingMinor}
+                currency={currency}
+              />
+              <Stat
+                label="Kvar per dag"
+                amountMinor={cycle.perDayMinor}
+                currency={currency}
+                tone={cycle.perDayMinor > 0 ? "positive" : undefined}
+              />
+            </div>
+          </>
+        )}
       </section>
 
       <section className="animate-rise-delay-2 numa-panel space-y-3 p-5">
@@ -102,21 +127,23 @@ export function AnalysDashboard({
             <li key={step}>{step}</li>
           ))}
         </ol>
-        <p className="text-sm text-[var(--numa-muted)]">
-          Exempel: planerat fritt{" "}
-          <span className="font-semibold text-[var(--numa-ink)]">
-            {(cycle.freeToSpendMinor / 100).toLocaleString("sv-SE")}
-          </span>{" "}
-          − spenderat{" "}
-          <span className="font-semibold text-[var(--numa-ink)]">
-            {(data.cycleSpendingMinor / 100).toLocaleString("sv-SE")}
-          </span>{" "}
-          = kvar{" "}
-          <span className="font-semibold text-[var(--numa-ink)]">
-            {(cycle.remainingFreeMinor / 100).toLocaleString("sv-SE")}
-          </span>
-          , delat på {cycle.daysLeft} dagar.
-        </p>
+        {cycle.livingMode !== "bridge" ? (
+          <p className="text-sm text-[var(--numa-muted)]">
+            Exempel: planerat fritt{" "}
+            <span className="font-semibold text-[var(--numa-ink)]">
+              {(cycle.freeToSpendMinor / 100).toLocaleString("sv-SE")}
+            </span>{" "}
+            − spenderat{" "}
+            <span className="font-semibold text-[var(--numa-ink)]">
+              {(data.cycleSpendingMinor / 100).toLocaleString("sv-SE")}
+            </span>{" "}
+            = kvar{" "}
+            <span className="font-semibold text-[var(--numa-ink)]">
+              {(cycle.remainingFreeMinor / 100).toLocaleString("sv-SE")}
+            </span>
+            , delat på {cycle.daysLeft} dagar.
+          </p>
+        ) : null}
       </section>
 
       <section className="animate-rise-delay-2 grid gap-4 lg:grid-cols-2">
