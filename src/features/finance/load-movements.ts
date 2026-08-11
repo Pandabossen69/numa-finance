@@ -1,6 +1,10 @@
 import { cache } from "react";
-import { appliesToIncome, appliesToSpending } from "@/domain/finance";
-import type { CurrencyCode } from "@/domain/money";
+import {
+  appliesToIncome,
+  appliesToSpending,
+  monthKeyFromDate,
+} from "@/domain/finance";
+import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { listTransactions } from "@/lib/store/repository";
 
@@ -25,11 +29,8 @@ export type CategoryTotal = {
 export type MovementsSnapshot = {
   currency: CurrencyCode;
   hasBankTruth: boolean;
-  balanceMinor: number;
-  freeMinor: number;
-  reservedMinor: number;
-  bufferMinor: number;
-  safeToSpendTodayMinor: number;
+  /** null when saldo is unknown — never show as ฿0 */
+  balanceMinor: number | null;
   monthIncomeMinor: number;
   monthExpenseMinor: number;
   monthNetMinor: number;
@@ -38,19 +39,13 @@ export type MovementsSnapshot = {
   allNetMinor: number;
   monthCategories: CategoryTotal[];
   items: MovementRow[];
+  timeZone: string;
+  monthKey: string;
 };
 
 export type MovementsSnapshotResult =
   | { ok: true; data: MovementsSnapshot }
   | { ok: false; error: string };
-
-function monthKey(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-  }).format(new Date(iso));
-}
 
 const listCachedTransactions = cache(async () =>
   listTransactions(undefined, { limit: 200 }),
@@ -64,7 +59,7 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
     ]);
 
     const timezone = snap.profile.timezone || "Asia/Bangkok";
-    const thisMonth = monthKey(new Date().toISOString(), timezone);
+    const thisMonth = monthKeyFromDate(new Date(), timezone);
     const currency = snap.currency;
 
     let monthIncomeMinor = 0;
@@ -76,7 +71,8 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
     const confirmed = transactions.filter((t) => t.status === "confirmed");
 
     for (const tx of confirmed) {
-      const inMonth = monthKey(tx.occurredAt, timezone) === thisMonth;
+      const inMonth =
+        monthKeyFromDate(new Date(tx.occurredAt), timezone) === thisMonth;
       const isExpense = appliesToSpending(tx);
       const isIncome = appliesToIncome(tx);
 
@@ -105,7 +101,7 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
       .map((tx) => ({
         id: tx.id,
-        description: tx.description,
+        description: sanitizeMoneyDescription(tx.description),
         category: tx.category,
         transactionType: tx.transactionType,
         direction: tx.direction,
@@ -124,11 +120,7 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
       data: {
         currency,
         hasBankTruth: snap.checkpoint != null,
-        balanceMinor: snap.calculatedBalanceMinor ?? 0,
-        freeMinor: snap.freeMinor,
-        reservedMinor: snap.reservedMinor,
-        bufferMinor: snap.bufferMinor,
-        safeToSpendTodayMinor: snap.safeToSpendTodayMinor,
+        balanceMinor: snap.calculatedBalanceMinor,
         monthIncomeMinor,
         monthExpenseMinor,
         monthNetMinor: monthIncomeMinor - monthExpenseMinor,
@@ -137,6 +129,8 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
         allNetMinor: allIncomeMinor - allExpenseMinor,
         monthCategories,
         items,
+        timeZone: timezone,
+        monthKey: thisMonth,
       },
     };
   } catch (error) {

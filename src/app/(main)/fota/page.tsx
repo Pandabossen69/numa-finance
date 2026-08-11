@@ -35,40 +35,27 @@ export default async function FotaPage({
         accountType: a.accountType,
       })) ?? [];
 
+  const bootstrapping = Boolean(data && !data.hasBankTruth);
+
   return (
-    <div className="space-y-6">
-      <header className="animate-rise">
-        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-accent)]">
-          Lägg till
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-          {data && !data.hasBankTruth ? "Kom igång" : "Ny rörelse"}
-        </h1>
-        <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {data && !data.hasBankTruth
-            ? "Börja med bank-SMS — sedan kan du fota kvitton eller skriva belopp manuellt."
-            : "Importera från SMS, fota ett pris, eller skriv in beloppet själv."}
-        </p>
-      </header>
-
-      {home.ok === false ? (
-        <p className="text-sm text-[var(--numa-danger)]">{home.error}</p>
-      ) : null}
-
-      {data ? (
+    <div className="mx-auto max-w-lg space-y-6">
+      {home.ok === false || !data ? (
+        <div className="space-y-3">
+          <h1 className="text-3xl font-semibold tracking-tight">Lägg till</h1>
+          <p className="text-sm text-[var(--numa-danger)]">
+            {home.ok === false ? home.error : "Kunde inte ladda."}
+          </p>
+        </div>
+      ) : (
         <ReceiptCaptureFlow
           accountId={data.primaryAccountId}
           accounts={accounts}
-          safeToSpendTodayMinor={data.safeToSpendTodayMinor}
+          perDayBudgetMinor={data.perDayBudgetMinor}
           todaySpendingMinor={data.todaySpendingMinor}
           currency={data.currency}
-          bootstrapping={!data.hasBankTruth}
-          initialMode={
-            data.hasBankTruth ? initialMode : "bank_sms"
-          }
+          bootstrapping={bootstrapping}
+          initialMode={bootstrapping ? "bank_sms" : initialMode}
         />
-      ) : (
-        <p className="text-sm text-[var(--numa-muted)]">Kunde inte ladda.</p>
       )}
     </div>
   );

@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Instant soft navigations; avoid experimental offline retries that blanked iPhone.
+  // Keep recently visited tabs in the client router cache so Hem↔Plan↔Analys
+  // feel instant instead of re-hitting the server every click.
   experimental: {
     staleTimes: {
-      dynamic: 30,
-      static: 180,
+      dynamic: 300,
+      static: 600,
     },
   },
 };

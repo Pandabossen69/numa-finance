@@ -1,4 +1,9 @@
 import type { CurrencyCode } from "@/domain/money";
+import {
+  calendarDaysBetween,
+  DEFAULT_TIMEZONE,
+  zonedDayAnchorMs,
+} from "./datetime";
 import type { PlanItem } from "./types";
 
 /** Special plan row used only for runway date (amount may be 0). */
@@ -13,34 +18,52 @@ export type PlanTotals = {
 
 const RESERVED_KINDS = new Set(["mandatory", "expected", "goal"]);
 
+function isIncomeBoundary(item: PlanItem): boolean {
+  if (item.name === NEXT_INCOME_NAME) return true;
+  return (item.cadence ?? "").toLowerCase() === "income";
+}
+
 /**
  * Sum active plan buckets for safe-to-spend inputs.
  * Buffer is separate. Flexible can cap the daily pool.
- * Runway days come from the soonest future nextDueAt, else defaultDays.
+ * Runway days come from the soonest future *income* date only.
  */
 export function calculatePlanTotals(
   items: PlanItem[],
   currency: CurrencyCode,
   now: Date = new Date(),
   defaultDays = 17,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): PlanTotals {
   let reservedMinor = 0;
   let bufferMinor = 0;
   let flexibleMinor = 0;
-  let soonestDue: number | null = null;
+  let soonestIncomeIso: string | null = null;
+  let soonestIncomeMs: number | null = null;
 
   for (const item of items) {
     if (!item.isActive || item.currency !== currency) continue;
 
-    if (item.nextDueAt) {
+    if (item.nextDueAt && isIncomeBoundary(item)) {
       const due = Date.parse(item.nextDueAt);
-      if (Number.isFinite(due) && due > now.getTime()) {
-        soonestDue = soonestDue == null ? due : Math.min(soonestDue, due);
+      const todayAnchor = zonedDayAnchorMs(now, timeZone);
+      // Count incomes due after today's calendar day in the user timezone.
+      if (
+        Number.isFinite(due) &&
+        zonedDayAnchorMs(item.nextDueAt, timeZone) > todayAnchor
+      ) {
+        if (soonestIncomeMs == null || due < soonestIncomeMs) {
+          soonestIncomeMs = due;
+          soonestIncomeIso = item.nextDueAt;
+        }
       }
     }
 
-    // Runway marker is not a cash reservation.
+    // Runway marker / planned income / savings rows are not expense reservations.
     if (item.name === NEXT_INCOME_NAME) continue;
+    if (item.name === "Spara denna månad") continue;
+    if ((item.cadence ?? "").toLowerCase() === "income") continue;
+    if ((item.cadence ?? "").toLowerCase() === "savings") continue;
 
     if (RESERVED_KINDS.has(item.kind)) {
       reservedMinor += Math.max(0, item.amountMinor);
@@ -52,9 +75,11 @@ export function calculatePlanTotals(
   }
 
   let daysUntilNextIncome = defaultDays;
-  if (soonestDue != null) {
-    const ms = soonestDue - now.getTime();
-    daysUntilNextIncome = Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+  if (soonestIncomeIso != null) {
+    daysUntilNextIncome = Math.max(
+      1,
+      calendarDaysBetween(now, soonestIncomeIso, timeZone),
+    );
   }
 
   return {

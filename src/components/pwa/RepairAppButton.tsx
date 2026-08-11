@@ -56,15 +56,15 @@ export function RepairAppButton({ autoStart = false }: { autoStart?: boolean }) 
         type="button"
         disabled={pending}
         onClick={runRepair}
-        className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-semibold text-white disabled:opacity-60"
+        className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] disabled:opacity-60"
       >
         {pending ? "Rensar cache…" : "Laga appen nu"}
       </button>
       {done ? (
-        <p className="text-sm text-[var(--numa-muted)]">Laddar om…</p>
+        <p className="text-[12px] text-[var(--numa-muted)]">Laddar om…</p>
       ) : (
-        <p className="text-xs leading-relaxed text-[var(--numa-faint)]">
-          Rensar gammal cache som kan göra Idag tom. Tar en sekund.
+        <p className="text-[12px] leading-relaxed text-[var(--numa-faint)]">
+          Rensar gammal cache som kan göra Hem tom. Tar en sekund.
         </p>
       )}
     </div>

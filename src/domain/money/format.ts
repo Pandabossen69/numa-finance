@@ -10,6 +10,9 @@ export type FormatMoneyOptions = {
 
 /**
  * Display formatting only. Never use this string for parsing or domain math.
+ *
+ * THB uses the ISO code as a suffix ("10 108,04 THB") — the ฿ glyph often
+ * renders like $ in monospace UI fonts and confuses readers.
  */
 export function formatMoney(
   value: Money,
@@ -24,10 +27,6 @@ export function formatMoney(
     maximumFractionDigits: showFraction ? 2 : 0,
     useGrouping: true,
   }).format(major);
-
-  if (value.currency === "THB") {
-    return `${meta.symbol}${formatted}`;
-  }
 
   return `${formatted} ${meta.symbol}`;
 }
@@ -104,4 +103,18 @@ export function formatReferenceApprox(
 
 export function currencyLabel(currency: CurrencyCode): string {
   return CURRENCY_META[currency].symbol;
+}
+
+/**
+ * Rewrite legacy baht glyphs in stored labels/descriptions so UI never shows ฿
+ * (often renders like $ in monospace). Prefer "… THB" suffix.
+ */
+export function sanitizeMoneyDescription(text: string): string {
+  if (!text.includes("฿")) return text;
+  return text
+    // End the amount on a digit so trailing spaces before "·" stay intact.
+    .replace(/฿\s*([\d\s.,]*\d)/g, "$1 THB")
+    .replace(/\s+THB(\s+THB)+/g, " THB")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }

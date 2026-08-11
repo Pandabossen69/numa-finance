@@ -1,63 +1,59 @@
-import Link from "next/link";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  MerListGroup,
+  MerListLink,
+  MerPageHeader,
+  MerSection,
+} from "@/components/mer/MerHub";
 
-const links = [
+type MerItem = {
+  href: string;
+  label: string;
+  hint?: string;
+};
+
+const sections: Array<{ title: string; items: MerItem[] }> = [
   {
-    href: "/transaktioner",
-    label: "Utgifter & intäkter",
-    hint: "Totalt in, ut och vad som blir över",
+    title: "Pengar",
+    items: [
+      { href: "/transaktioner", label: "Rörelser", hint: "Historik" },
+      { href: "/konton", label: "Saldo", hint: "Uppdatera belopp" },
+    ],
   },
-  { href: "/konton", label: "Mina saldon", hint: "Konton & verifiering" },
-  { href: "/fota", label: "Fota kvitto / skärmbild", hint: "Bank-SMS och kvitton" },
-  { href: "/importera", label: "Importer", hint: "Bankobservationer" },
-  { href: "/installningar", label: "Inställningar", hint: "Valuta & tidszon" },
-  { href: "/laga", label: "Laga appen", hint: "Rensa cache / SW" },
-] as const;
+  {
+    title: "Lägg till",
+    items: [
+      { href: "/fota", label: "Fota", hint: "SMS eller kvitto" },
+      { href: "/importera", label: "Tidigare bilder" },
+    ],
+  },
+  {
+    title: "App",
+    items: [
+      { href: "/installningar", label: "Inställningar" },
+      { href: "/laga", label: "Laga appen", hint: "Om något strular" },
+    ],
+  },
+];
 
 export default function MerPage() {
-  const supabaseReady = isSupabaseConfigured();
-
   return (
-    <div className="space-y-6">
-      <header className="animate-rise">
-        <h1 className="text-3xl font-semibold tracking-tight">Mer</h1>
-        <p className="mt-2 text-sm text-[var(--numa-muted)]">
-          Saldon, historik och underhåll.
-        </p>
-      </header>
+    <div className="mx-auto max-w-lg space-y-7">
+      <MerPageHeader title="Mer" />
 
-      <div
-        className={`animate-rise-delay-1 rounded-2xl px-4 py-3 text-sm font-medium ${
-          supabaseReady
-            ? "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]"
-            : "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]"
-        }`}
-      >
-        {supabaseReady
-          ? "Supabase konfigurerad · schema numa"
-          : "Supabase saknas lokalt — mock / lokal store"}
-      </div>
-
-      <nav className="animate-rise-delay-2 space-y-2" aria-label="Mer-meny">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            prefetch
-            className="numa-panel flex items-center justify-between gap-3 px-4 py-4 transition hover:bg-white"
-          >
-            <span>
-              <span className="block text-sm font-semibold text-[var(--numa-ink)]">
-                {link.label}
-              </span>
-              <span className="mt-0.5 block text-xs text-[var(--numa-faint)]">
-                {link.hint}
-              </span>
-            </span>
-            <span className="text-[var(--numa-faint)]" aria-hidden>
-              →
-            </span>
-          </Link>
+      <nav className="animate-rise-delay-1 space-y-6" aria-label="Mer-meny">
+        {sections.map((section) => (
+          <MerSection key={section.title} title={section.title}>
+            <MerListGroup>
+              {section.items.map((item) => (
+                <MerListLink
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  hint={item.hint}
+                />
+              ))}
+            </MerListGroup>
+          </MerSection>
         ))}
       </nav>
     </div>

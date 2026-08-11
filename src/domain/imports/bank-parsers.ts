@@ -1,14 +1,17 @@
 /**
- * Bangkok Bank SMS — stable English template used on every payment SMS.
+ * Import rules (Bangkok Bank SMS / Hugo) — never invent money.
  *
- * Example:
- * Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE;
- * the available balance is Bt 10,693.04.
+ * Typical screenshot: 3–6 bubbles, mix of Withdrawal (from) and PromptPay (to),
+ * currency Bt, account like X6591, every line ends with available balance.
+ * iMessage shows "idag" but the SMS body has NO payment date — so identity is:
  *
- * Screenshots often contain several older SMS. Domain rules:
- * 1. Parse every message
- * 2. Fingerprint each (never amount alone — include balance-after)
- * 3. Import only the newest message that is not already known
+ *   fingerprint = bank + konto + +/- + belopp + available balance
+ *
+ * 1. Parse every bubble (never invent debit/credit or ฿0).
+ * 2. Import ALL unknown SMS in the shot (credits and debits).
+ * 3. Saldo on Hem = newest bubble's available balance only.
+ * 4. Known fingerprint in Supabase → skip that bubble (overlap-safe).
+ * 5. Channel (MOBILE/ATM) ignored in fingerprint when balance exists.
  */
 
 import {
@@ -16,6 +19,7 @@ import {
   matchFingerprint,
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
+import { formatMoney, money } from "@/domain/money";
 
 export type BankMessageParseInput = {
   institution: string;
@@ -32,7 +36,6 @@ export type ParsedBankMessage = {
   channel: string | null;
   confidence: number;
   raw: string;
-  /** 0 = first chunk in source text (often older in conversation threads). */
   sourceIndex: number;
 };
 
@@ -45,10 +48,20 @@ export type BankEventCandidate = ParsedBankMessage & {
 export type SelectImportableResult =
   | {
       status: "ready";
+      /** Newest unknown — used for primary UI / saldo tip when it is the image tip. */
       selected: BankEventCandidate;
+      /** All unknown events, newest first. */
+      selectedBatch: BankEventCandidate[];
       all: BankEventCandidate[];
       skippedOlderCount: number;
       skippedDuplicateCount: number;
+      /**
+       * True only when the newest SMS in the image is newly imported.
+       * Older-unknown re-imports must not rewrite Hem tip / verifiedAt.
+       */
+      updatesBalance: boolean;
+      /** Available balance from the newest SMS in the image (informational). */
+      tipBalanceAfterMinor: number;
       messageSv: string;
     }
   | {
@@ -69,8 +82,102 @@ export interface BankMessageParser {
   parse(input: BankMessageParseInput): ParsedBankMessage[];
 }
 
-const SMS_START =
-  /(?=Withdrawal\/transfer\/payment\b)|(?=Deposit\/transfer\/payment\b)|(?=You have received\b)|(?=Successful transaction\b)/i;
+/** Bangkok Bank writes Bt, TH, or THB. */
+const CURRENCY_TOKEN = "(?:Bt|THB?|บาท)";
+
+const SMS_START = new RegExp(
+  [
+    "(?=Withdrawal\\/transfer\\/payment\\b)",
+    "(?=Withdrawal\\s+from\\s+(?:your\\s+)?account\\b)",
+    "(?=Deposit\\/transfer\\/payment\\b)",
+    "(?=Deposit\\s+to\\s+(?:your\\s+)?account\\b)",
+    "(?=PromptPay\\s+transfer(?:\\s+in)?\\s+to\\b)",
+    "(?=MoneyPlus\\s+transfer(?:\\s+in)?\\s+to\\b)",
+    "(?=You have received\\b)",
+    "(?=Successful transaction\\b)",
+  ].join("|"),
+  "i",
+);
+
+/** of Bt 65.00  |  amount THB 3,400.00 */
+const AMOUNT_PATTERNS = [
+  new RegExp(`of\\s+${CURRENCY_TOKEN}\\s*([\\d,]+(?:\\.\\d{1,2})?)`, "i"),
+  new RegExp(
+    `amount\\s+${CURRENCY_TOKEN}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+    "i",
+  ),
+];
+
+/** available balance is Bt …  |  Bal available is THB … */
+const BALANCE_PATTERNS = [
+  new RegExp(
+    `available balance is\\s+${CURRENCY_TOKEN}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+    "i",
+  ),
+  new RegExp(
+    `bal(?:ance)?\\s+available\\s+is\\s+${CURRENCY_TOKEN}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+    "i",
+  ),
+];
+
+const ACCOUNT_RE =
+  /(?:your\s+)?account\s+(X+\d*|\*{2,}\d+|\d{3,}|X{2,}\d+)/i;
+
+function firstMatch(
+  chunk: string,
+  patterns: RegExp[],
+): RegExpMatchArray | null {
+  for (const re of patterns) {
+    const m = chunk.match(re);
+    if (m) return m;
+  }
+  return null;
+}
+
+function detectDirection(chunk: string): "debit" | "credit" | null {
+  const t = chunk.toLowerCase();
+  if (
+    /promptpay\s+transfer(?:\s+in)?\s+to/.test(t) ||
+    /moneyplus\s+transfer(?:\s+in)?\s+to/.test(t) ||
+    /transfer(?:\s+in)?\s+to\s+(?:your\s+)?account/.test(t) ||
+    /deposit(?:\/transfer\/payment)?\s+to/.test(t) ||
+    /you have received/.test(t) ||
+    /credit\s+to/.test(t) ||
+    /transferred\s+to\s+your/.test(t)
+  ) {
+    return "credit";
+  }
+  if (
+    /withdrawal/.test(t) ||
+    /transfer\/payment\s+from/.test(t) ||
+    /payment\s+from\s+(?:your\s+)?account/.test(t)
+  ) {
+    return "debit";
+  }
+  return null;
+}
+
+function detectChannel(chunk: string): string | null {
+  if (/via\s+MOBILE/i.test(chunk)) return "mobile";
+  if (/via\s+ATM/i.test(chunk)) return "atm";
+  if (/via\s+PROMPTpay/i.test(chunk)) return "promptpay";
+  return null;
+}
+
+function normalizeMaskedAccount(raw: string | null): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 4) return digits.slice(-4);
+  if (digits.length >= 1) return digits.padStart(Math.min(4, digits.length), "0");
+  return raw.replace(/[^\dA-Z]/gi, "").slice(-4) || raw;
+}
+
+function looksLikeBankBalancePhrase(t: string): boolean {
+  return (
+    /available balance is\s+(?:bt|thb?)/.test(t) ||
+    /bal(?:ance)?\s+available\s+is\s+(?:bt|thb?)/.test(t)
+  );
+}
 
 export class BangkokBankSmsParser implements BankMessageParser {
   readonly institutionId = "bangkok_bank";
@@ -79,9 +186,15 @@ export class BangkokBankSmsParser implements BankMessageParser {
     const t = input.text.toLowerCase();
     return (
       input.institution.toLowerCase().includes("bangkok") ||
-      t.includes("available balance is bt") ||
+      looksLikeBankBalancePhrase(t) ||
       t.includes("from your account") ||
-      t.includes("withdrawal/transfer/payment")
+      t.includes("from account") ||
+      t.includes("to your account") ||
+      t.includes("withdrawal/transfer/payment") ||
+      t.includes("withdrawal from") ||
+      t.includes("promptpay transfer") ||
+      t.includes("moneyplus transfer") ||
+      /amount\s+(?:bt|thb?)/.test(t)
     );
   }
 
@@ -90,44 +203,24 @@ export class BangkokBankSmsParser implements BankMessageParser {
     const results: ParsedBankMessage[] = [];
 
     chunks.forEach((chunk, sourceIndex) => {
-      const amountMatch = chunk.match(
-        /(?:of\s+Bt|Bt)\s*([\d,]+(?:\.\d{2})?)/i,
-      );
-      const balanceMatch = chunk.match(
-        /available balance is Bt\s*([\d,]+(?:\.\d{2})?)/i,
-      );
-      const accountMatch = chunk.match(
-        /account\s+([A-Z]?\d{3,}|\*{2,}\d{3,}|\d{3,}X?\d*)/i,
-      );
-      const isDebit =
-        /withdrawal|transfer\/payment from|payment from/i.test(chunk) ||
-        (/debit/i.test(chunk) && !/credit/i.test(chunk));
-      const isCredit =
-        /deposit|received|credit to|transferred to your/i.test(chunk);
+      const amountMatch = firstMatch(chunk, AMOUNT_PATTERNS);
+      const balanceMatch = firstMatch(chunk, BALANCE_PATTERNS);
+      const accountMatch = chunk.match(ACCOUNT_RE);
+      if (!amountMatch || !balanceMatch) return;
 
-      if (!amountMatch && !balanceMatch) return;
-
-      const masked =
-        accountMatch?.[1]?.replace(/[^\dA-Z]/gi, "").slice(-4) ??
-        accountMatch?.[1] ??
-        null;
+      const direction = detectDirection(chunk);
+      if (!direction) return;
 
       results.push({
         institution: "Bangkok Bank",
-        maskedAccount: masked,
-        direction: isCredit ? "credit" : isDebit ? "debit" : "debit",
-        amountMinor: amountMatch ? majorStringToMinor(amountMatch[1]!) : null,
+        maskedAccount: normalizeMaskedAccount(accountMatch?.[1] ?? null),
+        direction,
+        amountMinor: majorStringToMinor(amountMatch[1]!),
         currency: "THB",
-        balanceAfterMinor: balanceMatch
-          ? majorStringToMinor(balanceMatch[1]!)
-          : null,
-        channel: /via\s+MOBILE/i.test(chunk)
-          ? "mobile"
-          : /via\s+ATM/i.test(chunk)
-            ? "atm"
-            : null,
-        confidence: amountMatch && balanceMatch ? 0.95 : 0.65,
-        raw: chunk,
+        balanceAfterMinor: majorStringToMinor(balanceMatch[1]!),
+        channel: detectChannel(chunk),
+        confidence: 0.95,
+        raw: chunk.trim(),
         sourceIndex,
       });
     });
@@ -158,11 +251,23 @@ export function splitBankSmsChunks(text: string): string[] {
 
   if (byBlank.length > 1) return byBlank;
 
+  const byBalance = normalized
+    .split(
+      new RegExp(
+        `(?<=(?:available balance is|bal(?:ance)?\\s+available\\s+is)\\s+${CURRENCY_TOKEN}\\s*[\\d,]+(?:\\.\\d{1,2})?\\.?)`,
+        "i",
+      ),
+    )
+    .map((c) => c.trim())
+    .filter((c) => new RegExp(`${CURRENCY_TOKEN}\\s*[\\d,]`, "i").test(c));
+
+  if (byBalance.length > 1) return byBalance;
+
   return [normalized];
 }
 
 export function majorStringToMinor(value: string): number {
-  const normalized = value.replace(/,/g, "");
+  const normalized = value.replace(/,/g, "").trim();
   const major = Number(normalized);
   if (!Number.isFinite(major)) {
     throw new Error(`Cannot parse bank amount: ${value}`);
@@ -174,7 +279,9 @@ export function toBankEventCandidate(
   message: ParsedBankMessage,
 ): BankEventCandidate {
   const priorBalanceMinor =
-    message.amountMinor != null && message.balanceAfterMinor != null
+    message.amountMinor != null &&
+    message.balanceAfterMinor != null &&
+    message.direction
       ? message.direction === "credit"
         ? message.balanceAfterMinor - message.amountMinor
         : message.balanceAfterMinor + message.amountMinor
@@ -183,6 +290,7 @@ export function toBankEventCandidate(
   let fingerprint: FingerprintResult | null = null;
   if (
     message.amountMinor != null &&
+    message.balanceAfterMinor != null &&
     message.direction &&
     message.maskedAccount
   ) {
@@ -192,7 +300,7 @@ export function toBankEventCandidate(
       direction: message.direction,
       amountMinor: message.amountMinor,
       balanceAfterMinor: message.balanceAfterMinor,
-      channel: message.channel,
+      channel: null,
     });
   }
 
@@ -205,29 +313,21 @@ export function toBankEventCandidate(
 }
 
 export function formatBankEventLabel(message: ParsedBankMessage): string {
+  const currency = message.currency === "SEK" ? "SEK" : "THB";
   const amount =
     message.amountMinor != null
-      ? `฿${(message.amountMinor / 100).toLocaleString("sv-SE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`
+      ? formatMoney(money(message.amountMinor, currency))
       : "okänt belopp";
   const bal =
     message.balanceAfterMinor != null
-      ? ` · saldo efter ฿${(message.balanceAfterMinor / 100).toLocaleString(
-          "sv-SE",
-          { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-        )}`
+      ? ` · saldo ${formatMoney(money(message.balanceAfterMinor, currency))}`
       : "";
-  const dir = message.direction === "credit" ? "Insättning" : "Betalning";
+  const dir = message.direction === "credit" ? "+" : "−";
+  const kind = message.direction === "credit" ? "Insättning" : "Utgift";
   const acct = message.maskedAccount ? ` · …${message.maskedAccount}` : "";
-  return `${dir} ${amount}${acct}${bal}`;
+  return `${dir} ${kind} ${amount}${acct}${bal}`;
 }
 
-/**
- * Newest-first ordering using balance-after chain when possible.
- * Falls back to reverse source order (conversation: last bubble = newest).
- */
 export function orderNewestFirst(
   events: BankEventCandidate[],
 ): BankEventCandidate[] {
@@ -238,11 +338,6 @@ export function orderNewestFirst(
   );
 
   if (withChain.length >= 2) {
-    const byBalanceAfter = new Map<number, BankEventCandidate>();
-    for (const e of withChain) {
-      byBalanceAfter.set(e.balanceAfterMinor!, e);
-    }
-
     const tips = withChain.filter((e) => {
       const usedAsPrior = withChain.some(
         (other) =>
@@ -274,12 +369,12 @@ export function orderNewestFirst(
     }
   }
 
-  // Conversation screenshots: later chunks are usually newer.
   return [...events].sort((a, b) => b.sourceIndex - a.sourceIndex);
 }
 
 /**
- * Pick the newest bank event that is not already fingerprinted in the ledger.
+ * Import every unknown SMS in the screenshot. Saldo = newest bubble's
+ * available balance. Credits (+) and debits (−) are both included.
  */
 export function selectImportableBankEvent(
   messages: ParsedBankMessage[],
@@ -288,50 +383,75 @@ export function selectImportableBankEvent(
   const known = new Set(
     [...existingFingerprints].map((f) => f.trim()).filter(Boolean),
   );
-  const all = orderNewestFirst(messages.map(toBankEventCandidate));
+  const all = orderNewestFirst(
+    messages
+      .map(toBankEventCandidate)
+      .filter((e) => e.fingerprint != null && e.amountMinor != null),
+  );
 
   if (all.length === 0) {
     return {
       status: "none",
       all,
-      messageSv: "Ingen bank-SMS kunde läsas i bilden.",
+      messageSv: "Ingen komplett bank-SMS kunde läsas (behöver belopp + saldo).",
     };
   }
 
-  let skippedDuplicateCount = 0;
-  for (let i = 0; i < all.length; i++) {
-    const event = all[i]!;
-    const fp = event.fingerprint?.fingerprint;
-    if (fp && matchFingerprint(fp, known).kind === "exact") {
-      skippedDuplicateCount += 1;
-      continue;
-    }
+  const selectedBatch = all.filter(
+    (e) => matchFingerprint(e.fingerprint!.fingerprint, known).kind !== "exact",
+  );
+  const skippedDuplicateCount = all.length - selectedBatch.length;
 
-    // Newest-first: index i means i newer SMS already known; rest are older.
-    const skippedOlderCount = Math.max(0, all.length - i - 1);
-    const parts = [`Senaste nya: ${event.labelSv}.`];
-    if (skippedDuplicateCount > 0) {
-      parts.push(`${skippedDuplicateCount} nyare fanns redan.`);
-    }
-    if (skippedOlderCount > 0) {
-      parts.push(`${skippedOlderCount} äldre i bilden hoppades över.`);
-    }
-
+  if (selectedBatch.length === 0) {
     return {
-      status: "ready",
-      selected: event,
+      status: "all_known",
       all,
-      skippedOlderCount,
       skippedDuplicateCount,
-      messageSv: parts.join(" "),
+      messageSv:
+        all.length > 1
+          ? `Alla ${all.length} SMS i bilden finns redan.`
+          : "Det här SMS:et finns redan — inget nytt att spara.",
     };
+  }
+
+  const tip = all[0]!;
+  const tipInBatch = selectedBatch[0] === tip || selectedBatch.includes(tip);
+  // Always use newest-in-image balance as Hem truth when confirming this shot.
+  if (tip.balanceAfterMinor == null) {
+    return {
+      status: "none",
+      all,
+      messageSv: "Senaste SMS saknar saldo — ta en tydligare bild.",
+    };
+  }
+
+  const credits = selectedBatch.filter((e) => e.direction === "credit").length;
+  const debits = selectedBatch.filter((e) => e.direction === "debit").length;
+  const parts: string[] = [];
+  if (selectedBatch.length === 1) {
+    parts.push(`Ny rörelse: ${selectedBatch[0]!.labelSv}.`);
+  } else {
+    parts.push(
+      `${selectedBatch.length} nya rörelser (${credits} in · ${debits} ut).`,
+    );
+  }
+  if (tipInBatch) {
+    parts.push("Saldo sätts från senaste SMS.");
+  }
+  if (skippedDuplicateCount > 0) {
+    parts.push(`${skippedDuplicateCount} redan sparade hoppades över.`);
   }
 
   return {
-    status: "all_known",
+    status: "ready",
+    selected: tipInBatch ? tip : selectedBatch[0]!,
+    selectedBatch,
     all,
+    skippedOlderCount: skippedDuplicateCount,
     skippedDuplicateCount,
-    messageSv: `Alla ${all.length} SMS i bilden finns redan — inget nytt att spara.`,
+    updatesBalance: tipInBatch,
+    tipBalanceAfterMinor: tip.balanceAfterMinor,
+    messageSv: parts.join(" "),
   };
 }
 

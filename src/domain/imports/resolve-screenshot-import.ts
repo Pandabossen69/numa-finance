@@ -2,6 +2,7 @@ import {
   defaultBankParserRegistry,
   selectImportableBankEvent,
   type BankEventCandidate,
+  type ParsedBankMessage,
   type SelectImportableResult,
 } from "./bank-parsers";
 import type { ExtractionProviderResult } from "./extraction";
@@ -11,6 +12,8 @@ export type ResolvedScreenshotImport =
       kind: "bank_sms";
       selection: SelectImportableResult;
       selected: BankEventCandidate | null;
+      /** Unknown events to import, newest first. */
+      selectedBatch: BankEventCandidate[];
       suggestedAmountMinor: number | null;
       suggestedDescription: string | null;
       balanceAfterMinor: number | null;
@@ -24,6 +27,7 @@ export type ResolvedScreenshotImport =
     }
   | {
       kind: "receipt_or_other";
+      selectedBatch: [];
       suggestedAmountMinor: number | null;
       suggestedDescription: string | null;
       balanceAfterMinor: number | null;
@@ -36,13 +40,91 @@ export type ResolvedScreenshotImport =
       alreadyKnown: boolean;
     };
 
+function looksLikeBankSmsText(text: string, detectedKind: string | null): boolean {
+  const t = text.toLowerCase();
+  return (
+    detectedKind === "bangkok_bank_sms" ||
+    /available balance is\s+(?:bt|thb?)/.test(t) ||
+    /bal(?:ance)?\s+available\s+is\s+(?:bt|thb?)/.test(t) ||
+    t.includes("withdrawal/transfer/payment") ||
+    t.includes("withdrawal from your account") ||
+    t.includes("withdrawal from account") ||
+    t.includes("promptpay transfer") ||
+    t.includes("moneyplus transfer") ||
+    t.includes("deposit/transfer/payment") ||
+    /amount\s+(?:bt|thb?)/.test(t) ||
+    (t.includes("from your account") && /(?:bt|thb?)\s*[\d,]/.test(t)) ||
+    (t.includes("to your account") && /(?:bt|thb?)\s*[\d,]/.test(t)) ||
+    (t.includes("from account") && /(?:bt|thb?)\s*[\d,]/.test(t))
+  );
+}
+
+function structuredMessagesToText(
+  messages: unknown,
+): { text: string; count: number } {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { text: "", count: 0 };
+  }
+  const lines: string[] = [];
+  for (const m of messages) {
+    if (!m || typeof m !== "object") continue;
+    const row = m as Record<string, unknown>;
+    const raw =
+      typeof row.rawText === "string" && row.rawText.trim()
+        ? row.rawText.trim()
+        : null;
+    if (raw) {
+      lines.push(raw);
+      continue;
+    }
+    if (row.amountMajor == null || row.balanceAfterMajor == null) continue;
+    if (typeof row.accountHint !== "string" || !row.accountHint.trim()) continue;
+    if (row.direction !== "credit" && row.direction !== "debit") continue;
+
+    const amountStr = String(row.amountMajor).replace(/,/g, "");
+    const balanceStr = String(row.balanceAfterMajor).replace(/,/g, "");
+    const account = row.accountHint.trim();
+    if (row.direction === "credit") {
+      lines.push(
+        `PromptPay transfer to your account ${account} of Bt ${amountStr} via MOBILE; the available balance is Bt ${balanceStr}.`,
+      );
+    } else {
+      lines.push(
+        `Withdrawal/transfer/payment from your account ${account} of Bt ${amountStr} via MOBILE; the available balance is Bt ${balanceStr}.`,
+      );
+    }
+  }
+  return { text: lines.join("\n\n"), count: lines.length };
+}
+
+function dedupeParsedMessages(
+  messages: ParsedBankMessage[],
+): ParsedBankMessage[] {
+  const seen = new Set<string>();
+  const out: ParsedBankMessage[] = [];
+  for (const m of messages) {
+    const key = [
+      m.direction,
+      m.amountMinor,
+      m.balanceAfterMinor,
+      m.maskedAccount,
+      m.channel,
+    ].join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(m);
+  }
+  return out;
+}
+
 /**
- * SCREENSHOT → observations → normalize → pick latest unknown bank event.
- * Never writes the ledger — only proposes a candidate.
+ * SCREENSHOT → observations → normalize → propose all unknown bank events.
+ * Never writes the ledger — only proposes candidates.
  */
 export function resolveScreenshotImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
+  options?: { preferBankSms?: boolean },
 ): ResolvedScreenshotImport {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
@@ -57,23 +139,54 @@ export function resolveScreenshotImport(
       if (typeof t === "string" && t.trim()) textParts.push(t);
     }
   }
+  const structured = structuredMessagesToText(meta.messages);
+  if (structured.text) textParts.push(structured.text);
+
   for (const c of extraction.candidates) {
     const raw = c.rawPayload;
     if (raw && typeof raw.rawText === "string") textParts.push(raw.rawText);
     if (raw && typeof raw.fullText === "string") textParts.push(raw.fullText);
   }
 
-  const combinedText = textParts.join("\n\n");
-  const looksLikeBankSms =
-    detectedKind === "bangkok_bank_sms" ||
-    /available balance is bt/i.test(combinedText) ||
-    /withdrawal\/transfer\/payment/i.test(combinedText);
+  // Fallback: rebuild SMS text from structured candidate fields when OCR
+  // returned amounts/balances but no raw transcription.
+  if (!textParts.some((t) => looksLikeBankSmsText(t, detectedKind))) {
+    const fromCandidates = structuredMessagesToText(
+      extraction.candidates.map((c, i) => ({
+        rawText:
+          typeof c.rawPayload?.rawText === "string"
+            ? c.rawPayload.rawText
+            : null,
+        amountMajor:
+          c.amountMinor != null ? c.amountMinor / 100 : null,
+        balanceAfterMajor:
+          c.balanceAfterMinor != null ? c.balanceAfterMinor / 100 : null,
+        accountHint:
+          typeof c.rawPayload?.accountHint === "string" &&
+          c.rawPayload.accountHint.trim()
+            ? c.rawPayload.accountHint
+            : "X0000",
+        direction: c.direction,
+        visualOrder: i,
+      })),
+    );
+    if (fromCandidates.text) textParts.push(fromCandidates.text);
+  }
 
-  if (looksLikeBankSms && combinedText.trim()) {
-    const parsed = defaultBankParserRegistry.parse({
-      institution: "Bangkok Bank",
-      text: combinedText,
-    });
+  const combinedText = textParts.join("\n\n");
+  const treatAsBank =
+    options?.preferBankSms === true ||
+    looksLikeBankSmsText(combinedText, detectedKind) ||
+    detectedKind === "bangkok_bank_sms" ||
+    structured.count > 0;
+
+  if (treatAsBank && combinedText.trim()) {
+    const parsed = dedupeParsedMessages(
+      defaultBankParserRegistry.parse({
+        institution: "Bangkok Bank",
+        text: combinedText,
+      }),
+    );
     const selection = selectImportableBankEvent(parsed, existingFingerprints);
 
     if (selection.status === "ready") {
@@ -82,9 +195,13 @@ export function resolveScreenshotImport(
         kind: "bank_sms",
         selection,
         selected: s,
+        selectedBatch: selection.selectedBatch,
         suggestedAmountMinor: s.amountMinor,
         suggestedDescription: s.labelSv,
-        balanceAfterMinor: s.balanceAfterMinor,
+        // Only tip-in-batch may rewrite Hem saldo; older re-imports keep null.
+        balanceAfterMinor: selection.updatesBalance
+          ? selection.tipBalanceAfterMinor
+          : null,
         fingerprint: s.fingerprint?.fingerprint ?? null,
         direction: s.direction,
         currency: s.currency ?? "THB",
@@ -100,6 +217,7 @@ export function resolveScreenshotImport(
         kind: "bank_sms",
         selection,
         selected: null,
+        selectedBatch: [],
         suggestedAmountMinor: null,
         suggestedDescription: null,
         balanceAfterMinor: null,
@@ -117,6 +235,7 @@ export function resolveScreenshotImport(
       kind: "bank_sms",
       selection,
       selected: null,
+      selectedBatch: [],
       suggestedAmountMinor: null,
       suggestedDescription: null,
       balanceAfterMinor: null,
@@ -138,6 +257,7 @@ export function resolveScreenshotImport(
 
   return {
     kind: "receipt_or_other",
+    selectedBatch: [],
     suggestedAmountMinor: first?.amountMinor ?? null,
     suggestedDescription: first?.description ?? null,
     balanceAfterMinor: first?.balanceAfterMinor ?? null,

@@ -4,10 +4,13 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { MetricRow } from "@/components/ui/MetricRow";
 import {
   updateTransactionAction,
   voidTransactionAction,
 } from "@/features/finance/actions";
+import { monthKeyFromDate } from "@/domain/finance";
+import { sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
 type Filter = "all" | "expense" | "income" | "other";
@@ -47,12 +50,8 @@ function matchesFilter(
   return tx.transactionType !== "expense" && tx.transactionType !== "income";
 }
 
-function inCurrentMonth(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-  );
+function inMonthKey(iso: string, monthKey: string, timeZone: string): boolean {
+  return monthKeyFromDate(new Date(iso), timeZone) === monthKey;
 }
 
 function minorToUi(amountMinor: number): string {
@@ -80,7 +79,12 @@ export function MovementsScreen({
     if (!data) return [];
     return data.items.filter((tx) => {
       if (!matchesFilter(tx, filter)) return false;
-      if (period === "month" && !inCurrentMonth(tx.occurredAt)) return false;
+      if (
+        period === "month" &&
+        !inMonthKey(tx.occurredAt, data.monthKey, data.timeZone)
+      ) {
+        return false;
+      }
       return true;
     });
   }, [data, filter, period]);
@@ -102,17 +106,9 @@ export function MovementsScreen({
   const maxCategory = data.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-lg space-y-7">
       <header className="animate-rise">
-        <p className="text-sm font-medium text-[var(--numa-accent)]">
-          Ekonomi · översikt
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          Utgifter & intäkter
-        </h1>
-        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
-          Totalt in, totalt ut och vad som blir över — plus varje rörelse.
-        </p>
+        <h1 className="numa-page-title">Rörelser</h1>
       </header>
 
       <div className="animate-rise-delay-1 flex gap-2">
@@ -128,7 +124,7 @@ export function MovementsScreen({
         />
       </div>
 
-      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-3">
+      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 pl-6 sm:grid-cols-3">
         <SummaryStat
           label="Intäkter"
           amountMinor={income}
@@ -142,7 +138,7 @@ export function MovementsScreen({
           tone="danger"
         />
         <SummaryStat
-          label="Blir över"
+          label="Netto"
           amountMinor={net}
           currency={data.currency}
           tone={net >= 0 ? "positive" : "danger"}
@@ -150,49 +146,23 @@ export function MovementsScreen({
         />
       </section>
 
-      <section className="animate-rise-delay-2 grid gap-3 sm:grid-cols-2">
-        <div className="numa-panel p-4">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Saldo nu
-          </p>
-          <div className="mt-2">
-            <MoneyDisplay
-              amountMinor={data.balanceMinor}
-              currency={data.currency}
-              size="md"
-            />
-          </div>
-          <p className="mt-2 text-xs text-[var(--numa-muted)]">
-            {data.hasBankTruth
-              ? "Från bank-SMS / beräkning"
-              : "Väntar på första bank-SMS"}
-          </p>
-        </div>
-        <div className="numa-panel p-4">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Fritt efter plan
-          </p>
-          <div className="mt-2">
-            <MoneyDisplay
-              amountMinor={data.freeMinor}
-              currency={data.currency}
-              size="md"
-            />
-          </div>
-          <p className="mt-2 text-xs text-[var(--numa-muted)]">
-            Reserverat {(data.reservedMinor / 100).toLocaleString("sv-SE")} ·
-            buffert {(data.bufferMinor / 100).toLocaleString("sv-SE")}
-          </p>
-        </div>
-      </section>
+      {data.hasBankTruth && data.balanceMinor != null ? (
+        <section className="animate-rise-delay-2 animate-scale-in">
+          <MetricRow
+            label="Saldo"
+            amountMinor={data.balanceMinor}
+            currency={data.currency}
+          />
+        </section>
+      ) : null}
 
       {period === "month" && data.monthCategories.length > 0 ? (
         <section className="numa-panel animate-rise-delay-2 p-5">
-          <h2 className="text-sm font-semibold">Utgifter per kategori</h2>
+          <h2 className="numa-section-title">Per kategori</h2>
           <ul className="mt-4 space-y-3">
             {data.monthCategories.map((cat) => (
               <li key={cat.name}>
-                <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
                   <span className="text-[var(--numa-muted)]">
                     {cat.name}
                     <span className="ml-2 text-xs text-[var(--numa-faint)]">
@@ -205,9 +175,8 @@ export function MovementsScreen({
                     size="sm"
                   />
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-[var(--numa-bg-deep)]">
-                  <div
-                    className="h-full rounded-full bg-[var(--numa-accent)]"
+                <div className="numa-progress animate-bar">
+                  <span
                     style={{
                       width: `${Math.max(6, (cat.amountMinor / maxCategory) * 100)}%`,
                     }}
@@ -256,19 +225,27 @@ export function MovementsScreen({
 
         {filtered.length === 0 ? (
           <div className="numa-panel space-y-3 p-5">
-            <p className="text-sm text-[var(--numa-muted)]">
-              Inga rörelser här ännu.
-            </p>
-            <Link
-              href="/lagg-till"
-              prefetch
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
-            >
-              Lägg till
-            </Link>
+            {(data?.items.length ?? 0) > 0 ? (
+              <p className="text-sm text-[var(--numa-muted)]">
+                Inga träffar för filtret — prova Alla eller All tid.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--numa-muted)]">
+                  Inga rörelser här ännu.
+                </p>
+                <Link
+                  href="/lagg-till"
+                  prefetch
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
+                >
+                  Lägg till
+                </Link>
+              </>
+            )}
           </div>
         ) : (
-          <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
+          <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {filtered.map((tx) => {
               const signed =
                 tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
@@ -346,17 +323,23 @@ export function MovementsScreen({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                      {tx.description}
+                      {sanitizeMoneyDescription(tx.description)}
                     </p>
                     <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                      {typeLabel(tx.transactionType)}
-                      {tx.category ? ` · ${tx.category}` : ""} ·{" "}
-                      {new Date(tx.occurredAt).toLocaleString("sv-SE", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {[
+                        filter === "all" ? typeLabel(tx.transactionType) : null,
+                        filter === "all" || filter === "expense"
+                          ? tx.category
+                          : null,
+                        new Date(tx.occurredAt).toLocaleString("sv-SE", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                     {canEdit ? (
                       <div className="mt-1.5 flex gap-3">
@@ -380,9 +363,7 @@ export function MovementsScreen({
                           disabled={pending}
                           onClick={() => {
                             if (
-                              !window.confirm(
-                                "Ta bort den här rörelsen? Saldo och summeringar uppdateras.",
-                              )
+                              !window.confirm("Ta bort rörelsen?")
                             ) {
                               return;
                             }
@@ -464,9 +445,7 @@ function SummaryStat({
 
   return (
     <div>
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-        {label}
-      </p>
+      <p className="numa-section-title">{label}</p>
       <div className={`mt-2 ${color}`}>
         <MoneyDisplay
           amountMinor={amountMinor}

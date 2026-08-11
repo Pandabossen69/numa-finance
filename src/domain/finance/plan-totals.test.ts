@@ -12,7 +12,7 @@ function item(
     kind: partial.kind,
     amountMinor: partial.amountMinor,
     currency: "THB",
-    cadence: "monthly",
+    cadence: partial.cadence ?? "monthly",
     nextDueAt: partial.nextDueAt ?? null,
     isActive: partial.isActive ?? true,
     createdAt: new Date().toISOString(),
@@ -36,20 +36,71 @@ describe("calculatePlanTotals", () => {
     expect(totals.flexibleMinor).toBe(3000_00);
   });
 
-  it("uses soonest nextDueAt for runway days", () => {
+  it("uses soonest income nextDueAt for runway days, not expenses", () => {
     const now = new Date("2026-08-10T00:00:00.000Z");
     const totals = calculatePlanTotals(
       [
         item({
+          kind: "mandatory",
+          amountMinor: 1000_00,
+          name: "Hyra",
+          nextDueAt: "2026-08-12T00:00:00.000Z",
+        }),
+        item({
           kind: "expected",
-          amountMinor: 0,
-          nextDueAt: "2026-08-20T00:00:00.000Z",
+          amountMinor: 40_000_00,
+          name: "Lön",
+          cadence: "income",
+          nextDueAt: "2026-08-25T00:00:00.000Z",
         }),
       ],
       "THB",
       now,
       17,
     );
-    expect(totals.daysUntilNextIncome).toBe(10);
+    expect(totals.daysUntilNextIncome).toBe(15);
+  });
+
+  it("counts runway in Asia/Bangkok calendar days, not raw UTC hours", () => {
+    // 10:00 Bangkok Aug 24 → income noon-UTC Aug 25 is one calendar day away.
+    const now = new Date("2026-08-24T03:00:00.000Z");
+    const totals = calculatePlanTotals(
+      [
+        item({
+          kind: "expected",
+          amountMinor: 40_000_00,
+          name: "Lön",
+          cadence: "income",
+          nextDueAt: "2026-08-25T12:00:00.000Z",
+        }),
+      ],
+      "THB",
+      now,
+      17,
+      "Asia/Bangkok",
+    );
+    expect(totals.daysUntilNextIncome).toBe(1);
+  });
+
+  it("excludes income and savings from reserved totals", () => {
+    const totals = calculatePlanTotals(
+      [
+        item({ kind: "mandatory", amountMinor: 10_000_00, name: "Hyra" }),
+        item({
+          kind: "expected",
+          amountMinor: 40_000_00,
+          name: "Lön",
+          cadence: "income",
+        }),
+        item({
+          kind: "goal",
+          amountMinor: 5_000_00,
+          name: "Spara denna månad",
+          cadence: "savings",
+        }),
+      ],
+      "THB",
+    );
+    expect(totals.reservedMinor).toBe(10_000_00);
   });
 });

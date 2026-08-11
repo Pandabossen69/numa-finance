@@ -10,6 +10,8 @@ import {
 
 export const DEFAULT_TIMEZONE = "Asia/Bangkok";
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export function zonedNow(timezone: string = DEFAULT_TIMEZONE, now = new Date()): Date {
   return toZonedTime(now, timezone);
 }
@@ -67,13 +69,51 @@ export function isSameZonedDay(
   b: Date | string,
   timezone: string = DEFAULT_TIMEZONE,
 ): boolean {
-  const da = toZonedTime(typeof a === "string" ? new Date(a) : a, timezone);
-  const db = toZonedTime(typeof b === "string" ? new Date(b) : b, timezone);
-  return (
-    da.getFullYear() === db.getFullYear() &&
-    da.getMonth() === db.getMonth() &&
-    da.getDate() === db.getDate()
-  );
+  return zonedDayKey(a, timezone) === zonedDayKey(b, timezone);
+}
+
+/**
+ * Calendar day key (`YYYY-MM-DD`) in the given IANA timezone.
+ * Never derive this from `Date#toISOString().slice(0, 10)` — for Asia/Bangkok
+ * that returns the previous UTC date for most of the local morning.
+ */
+export function zonedDayKey(
+  date: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+/**
+ * Stable noon-UTC anchor for the calendar day of `date` in `timeZone`.
+ * Used for whole-day arithmetic (pay-cycle / bridge days left).
+ */
+export function zonedDayAnchorMs(
+  date: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): number {
+  return Date.parse(`${zonedDayKey(date, timeZone)}T12:00:00.000Z`);
+}
+
+/** Whole calendar days from `from` to `to` in `timeZone` (can be negative). */
+export function calendarDaysBetween(
+  from: Date | string,
+  to: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): number {
+  const fromMs = zonedDayAnchorMs(from, timeZone);
+  const toMs = zonedDayAnchorMs(to, timeZone);
+  return Math.round((toMs - fromMs) / MS_PER_DAY);
+}
+
+function pluralSv(n: number, one: string, many: string): string {
+  return n === 1 ? one : many;
 }
 
 export function formatRelativeVerificationSv(
@@ -83,12 +123,18 @@ export function formatRelativeVerificationSv(
   const hours = (now.getTime() - Date.parse(verifiedAt)) / (1000 * 60 * 60);
   if (hours < 1) {
     const minutes = Math.max(1, Math.round(hours * 60));
-    return `Senast verifierat för ${minutes} min sedan`;
+    return `${minutes} ${pluralSv(minutes, "minut", "minuter")} sedan`;
   }
   if (hours < 24) {
     const h = Math.round(hours);
-    return `Senast verifierat för ${h} timmar sedan`;
+    return `${h} ${pluralSv(h, "timme", "timmar")} sedan`;
   }
   const days = Math.round(hours / 24);
-  return `Senast verifierat för ${days} dagar sedan`;
+  return `${days} ${pluralSv(days, "dag", "dagar")} sedan`;
+}
+
+/** Swedish count label, e.g. `1 dag` / `12 dagar`. */
+export function formatCountSv(n: number, one: string, many: string): string {
+  const count = Math.max(0, Math.floor(n));
+  return `${count} ${pluralSv(count, one, many)}`;
 }

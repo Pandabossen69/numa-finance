@@ -10,10 +10,11 @@ import {
   createManualIncome,
   createScreenshotObservation,
   createTransfer,
+  ensureDefaultBankAccount,
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
-import { parseUiAmountToMinor } from "@/domain/money";
+import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -277,13 +278,54 @@ export async function createCheckpointAction(raw: {
       note: "Manuellt verifierat saldo",
     });
 
-    revalidatePath("/idag");
-    revalidatePath("/konton");
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte spara saldo",
+    };
+  }
+}
+
+/** First-month / bridge: set how much is left on the account until next income. */
+export async function setAvailableNowAction(raw: {
+  balance: string;
+  accountId?: string | null;
+  currency?: CurrencyCode;
+}): Promise<ActionResult> {
+  try {
+    const balanceMinor = parseUiAmountToMinor(raw.balance);
+    if (balanceMinor < 0) {
+      return { ok: false, error: "Belopp kan inte vara negativt" };
+    }
+
+    let accountId = raw.accountId?.trim() || null;
+    if (accountId) {
+      z.string().uuid().parse(accountId);
+    } else {
+      const account = await ensureDefaultBankAccount({
+        currency: raw.currency ?? "THB",
+      });
+      accountId = account.id;
+    }
+
+    await createCheckpoint({
+      accountId,
+      balanceMinor,
+      source: "manual_available_now",
+      note: "Tillgängligt tills nästa intäkt",
+    });
+
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kunde inte spara tillgängligt belopp",
     };
   }
 }

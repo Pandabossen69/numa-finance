@@ -1,0 +1,28 @@
+---
+description: Always tell Hugo required keys, SQL, and setup steps up front
+alwaysApply: true
+---
+
+# Always surface setup — never omit
+
+Hugo must never discover missing setup after the fact. If a change depends on anything outside the code, say it **immediately and explicitly** in Swedish, with exact steps.
+
+## Always call out (when relevant)
+
+1. **Env / API-nycklar** — e.g. `OPENAI_API_KEY`, Supabase keys, Vercel vars. Say *where* (Preview / Production / `.env.local`) and *what name*.
+2. **Supabase SQL / migrations** — which file, whether it must be applied, and how (MCP / SQL editor / `supabase db push`). Never assume it was applied.
+3. **Redeploy / restart** — if env or schema changes need a new preview deploy or local restart.
+4. **Manual one-time actions** — dashboard clicks, RLS, storage buckets, auth redirects, billing on OpenAI, etc.
+
+## How to tell him
+
+- Put a short **“Du behöver göra detta”** block when anything is required — not buried in a long summary.
+- Prefer checklist steps: create key → paste in Vercel → apply this SQL → open this preview URL.
+- If something is optional vs blocking, say which. Blocking setup = say it **before** or **with** “pusha till preview”, not after he tries and fails.
+- Never imply the feature “just works” if a secret, migration, or dashboard step is still missing.
+
+## Examples that must not be skipped
+
+- Vision/OCR → `OPENAI_API_KEY` on Vercel Preview (and local if testing locally).
+- New fingerprint uniqueness / tables → apply the migration SQL to the linked Supabase project.
+- Auth / redirect URL changes → update Supabase Auth settings.

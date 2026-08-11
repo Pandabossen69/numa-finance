@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,10 +13,18 @@ import {
 } from "@/features/imports/actions";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
+import { compressImageForUpload } from "@/lib/media/compress-image";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 
 type CaptureMode = "pick" | "bank_sms" | "receipt" | "manual";
+
+type PreviewEvent = {
+  candidateId: string;
+  direction: "debit" | "credit";
+  amountMinor: number;
+  labelSv: string;
+};
 
 type Preview = {
   observationId: string;
@@ -33,6 +41,8 @@ type Preview = {
   alreadyKnown: boolean;
   skippedOlderCount: number;
   amountFromScan: boolean;
+  direction: "debit" | "credit" | null;
+  events: PreviewEvent[];
 };
 
 function minorToInput(minor: number): string {
@@ -42,7 +52,7 @@ function minorToInput(minor: number): string {
 export function ReceiptCaptureFlow({
   accountId,
   accounts,
-  safeToSpendTodayMinor,
+  perDayBudgetMinor,
   todaySpendingMinor,
   currency,
   bootstrapping = false,
@@ -50,7 +60,7 @@ export function ReceiptCaptureFlow({
 }: {
   accountId: string | null;
   accounts: ShellAccount[];
-  safeToSpendTodayMinor: number;
+  perDayBudgetMinor: number;
   todaySpendingMinor: number;
   currency: CurrencyCode;
   bootstrapping?: boolean;
@@ -67,9 +77,17 @@ export function ReceiptCaptureFlow({
   const [doneStatus, setDoneStatus] = useState<"plus" | "even" | "minus" | null>(
     null,
   );
+  const [doneBalanceMinor, setDoneBalanceMinor] = useState<number | null>(null);
+  const [doneDirection, setDoneDirection] = useState<
+    "debit" | "credit" | null
+  >(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanPreviewUrl, setScanPreviewUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const roomBefore = safeToSpendTodayMinor - todaySpendingMinor;
+  const roomBefore = Math.max(0, perDayBudgetMinor - todaySpendingMinor);
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;
@@ -85,52 +103,90 @@ export function ReceiptCaptureFlow({
 
   function resetToPick() {
     if (preview?.previewUrl) URL.revokeObjectURL(preview.previewUrl);
+    if (scanPreviewUrl) URL.revokeObjectURL(scanPreviewUrl);
     setPreview(null);
+    setScanPreviewUrl(null);
     setError(null);
     setAmountEditable(false);
+    setScanning(false);
     setMode(bootstrapping ? "bank_sms" : "pick");
   }
 
   function onFile(file: File | null) {
     if (!file) return;
     setError(null);
+    setScanning(true);
+    if (scanPreviewUrl) URL.revokeObjectURL(scanPreviewUrl);
     const previewUrl = URL.createObjectURL(file);
-    const fd = new FormData();
-    fd.set("file", file);
+    setScanPreviewUrl(previewUrl);
 
     startTransition(async () => {
+      const uploadFile = await compressImageForUpload(file, {
+        preserveText: mode === "bank_sms",
+      });
+      const fd = new FormData();
+      fd.set("file", uploadFile);
+      if (mode === "bank_sms") fd.set("mode", "bank_sms");
+
       const result = await uploadReceiptAction(fd);
+      setScanning(false);
+      setScanPreviewUrl(null);
       if (!result.ok) {
         URL.revokeObjectURL(previewUrl);
         setError(result.error);
         return;
       }
       const data = result.data;
-      const hasAmount = data.suggestedAmountMinor != null;
-      const major = hasAmount
-        ? minorToInput(data.suggestedAmountMinor!)
-        : "";
-      setAmountEditable(!hasAmount);
+      const events = (data.events ?? []).map((e) => ({
+        candidateId: e.candidateId,
+        direction: e.direction,
+        amountMinor: e.amountMinor,
+        labelSv: e.labelSv,
+      }));
+      const hasAmount =
+        data.suggestedAmountMinor != null || events.length > 0;
+      const major =
+        data.suggestedAmountMinor != null
+          ? minorToInput(data.suggestedAmountMinor)
+          : "";
+      const importKind: Preview["importKind"] =
+        data.importKind === "bank_sms"
+          ? "bank_sms"
+          : mode === "bank_sms"
+            ? "bank_sms"
+            : data.importKind === "receipt"
+              ? "receipt"
+              : "receipt";
+
+      // Bank-SMS never falls back to manual typing — retry with clearer photo.
+      if (mode === "bank_sms" && events.length === 0 && !data.alreadyKnown) {
+        URL.revokeObjectURL(previewUrl);
+        setError(
+          data.message ??
+            "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump.",
+        );
+        return;
+      }
+      // Keep the same object URL for the confirm view.
+
+      setAmountEditable(importKind !== "bank_sms" && !hasAmount);
       setPreview({
         observationId: data.observation.id,
-        candidateId: data.candidate?.id ?? null,
+        candidateId: data.candidate?.id ?? events[0]?.candidateId ?? null,
         amount: major,
         description: data.suggestedDescription ?? "",
         currency: data.currency,
         ocrStatus: data.ocrStatus,
         message: data.message,
         previewUrl,
-        importKind:
-          mode === "bank_sms"
-            ? "bank_sms"
-            : data.importKind === "bank_sms"
-              ? "bank_sms"
-              : "receipt",
+        importKind,
         balanceAfterMinor: data.balanceAfterMinor,
         fingerprint: data.fingerprint,
         alreadyKnown: data.alreadyKnown,
         skippedOlderCount: data.skippedOlderCount,
         amountFromScan: hasAmount,
+        direction: data.direction ?? events[0]?.direction ?? null,
+        events,
       });
     });
   }
@@ -138,49 +194,92 @@ export function ReceiptCaptureFlow({
   function onConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!preview || preview.alreadyKnown) return;
+    if (preview.importKind === "bank_sms" && preview.events.length === 0) {
+      setError("Bank-SMS måste läsas automatiskt — ta en tydligare bild.");
+      return;
+    }
     setError(null);
     startTransition(async () => {
+      const isSms = preview.importKind === "bank_sms";
       const result = await confirmReceiptExpenseAction({
         accountId: accountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
-        amount: preview.amount,
+        confirmAllPending: isSms,
+        amount: isSms ? "1" : preview.amount,
         description: preview.description || undefined,
-        category,
+        category:
+          isSms || preview.direction === "credit" ? null : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
-        source:
-          preview.importKind === "bank_sms" ? "screenshot" : "receipt_camera",
+        source: isSms ? "screenshot" : "receipt_camera",
+        direction: preview.direction,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       setDoneStatus(result.data.pulseStatus);
+      setDoneBalanceMinor(result.data.balanceAfterMinor);
+      setDoneDirection(result.data.direction);
       URL.revokeObjectURL(preview.previewUrl);
       setTimeout(() => {
         router.push("/idag");
         router.refresh();
-      }, 900);
+      }, 1600);
     });
   }
 
   if (doneStatus) {
-    const copy =
-      doneStatus === "minus"
-        ? "Sparat. Dagen ligger lite över planen — inget fel, bara bra att veta."
+    const pulseLabel =
+      doneStatus === "plus"
+        ? "Under dagens budget"
         : doneStatus === "even"
-          ? "Sparat. Du ligger jämnt med dagens plan."
-          : "Sparat. Bra läge.";
+          ? "På gränsen idag"
+          : "Över dagens budget";
+    const pulseTone =
+      doneStatus === "plus"
+        ? "text-[var(--numa-positive)]"
+        : doneStatus === "even"
+          ? "text-[var(--numa-ink)]"
+          : "text-[var(--numa-danger)]";
+
     return (
-      <div className="rounded-[1.75rem] bg-white/90 px-6 py-12 text-center shadow-[var(--numa-shadow-sm)] animate-rise">
-        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-accent)]">
-          Klart
+      <div className="animate-rise space-y-4 py-14 text-center">
+        <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[var(--numa-faint)]">
+          {doneDirection === "credit" ? "Insättning sparad" : "Sparat"}
         </p>
-        <p className="mt-3 text-2xl font-semibold tracking-tight">Sparat</p>
-        <p className="mx-auto mt-3 max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {copy}
-        </p>
+        {doneBalanceMinor != null ? (
+          <>
+            <p className="text-sm text-[var(--numa-muted)]">Ditt saldo nu</p>
+            <p className="money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
+              {formatMoney(money(doneBalanceMinor, currency))}
+            </p>
+            <p className={`text-sm font-semibold ${pulseTone}`}>{pulseLabel}</p>
+            <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
+              Tar dig till Hem…
+            </p>
+          </>
+        ) : (
+          <>
+            <p className={`text-3xl font-semibold tracking-tight ${pulseTone}`}>
+              {pulseLabel}
+            </p>
+            <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
+              Tar dig till Hem…
+            </p>
+          </>
+        )}
+        <button
+          type="button"
+          className="text-sm font-semibold text-[var(--numa-accent)]"
+          onClick={() => {
+            router.push("/idag");
+            router.refresh();
+          }}
+        >
+          Visa Hem →
+        </button>
       </div>
     );
   }
@@ -198,43 +297,72 @@ export function ReceiptCaptureFlow({
   if (mode === "manual") {
     if (!accountId) {
       return (
-        <div className="space-y-4">
+        <div className="animate-rise space-y-6">
           <BackLink onClick={resetToPick} />
-          <div className="rounded-[1.75rem] bg-white/90 p-6 shadow-[var(--numa-shadow-sm)]">
-            <p className="text-base font-semibold">Nästan klart</p>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--numa-muted)]">
-              Fota först ett bank-SMS så NUMA vet ditt saldo — sedan kan du
-              skriva in utgifter manuellt.
-            </p>
-            <button
-              type="button"
-              className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--numa-accent)] text-sm font-semibold text-white"
-              onClick={() => setMode("bank_sms")}
-            >
-              Fota bank-SMS
-            </button>
-          </div>
+          <p className="text-sm text-[var(--numa-muted)]">
+            Fota först ett bank-SMS så NUMA vet ditt saldo.
+          </p>
+          <button
+            type="button"
+            className="text-sm font-semibold text-[var(--numa-accent)]"
+            onClick={() => setMode("bank_sms")}
+          >
+            Fota bank-SMS →
+          </button>
         </div>
       );
     }
     return (
-      <div className="space-y-5 animate-rise">
+      <div className="animate-rise space-y-6">
         <BackLink onClick={resetToPick} />
         <header>
-          <h2 className="text-2xl font-semibold tracking-tight">Skriv belopp</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Manuellt</h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
-            Snabb utgift eller intäkt — utan kamera.
+            Skriv belopp utan kamera.
           </p>
         </header>
-        <div className="rounded-[1.75rem] bg-white/90 p-5 shadow-[var(--numa-shadow-sm)]">
-          <QuickAddForms
-            primaryAccountId={accountId}
-            accounts={accounts}
-            onSuccess={() => {
-              router.push("/idag");
-              router.refresh();
-            }}
-          />
+        <QuickAddForms
+          primaryAccountId={accountId}
+          accounts={accounts}
+          onSuccess={() => {
+            router.push("/idag");
+            router.refresh();
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (scanning || (pending && !preview)) {
+    return (
+      <div className="animate-rise space-y-6">
+        <div className="relative min-h-56 overflow-hidden rounded-2xl bg-white/50">
+          {scanPreviewUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={scanPreviewUrl}
+                alt=""
+                className="mx-auto max-h-72 min-h-56 w-full object-contain opacity-90"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/40" />
+              <div className="pointer-events-none absolute inset-x-4 top-0 h-16 numa-scan-line rounded-full bg-[linear-gradient(180deg,transparent,rgba(13,122,102,0.35),transparent)]" />
+            </>
+          ) : (
+            <div className="flex min-h-56 items-center justify-center">
+              <div className="h-10 w-10 rounded-full border-2 border-[var(--numa-accent)] border-t-transparent numa-pulse-soft" />
+            </div>
+          )}
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-semibold tracking-tight">
+            {mode === "receipt" ? "Läser kvitto…" : "Läser SMS…"}
+          </p>
+          <p className="mx-auto mt-2 max-w-[30ch] text-sm text-[var(--numa-muted)]">
+            {mode === "receipt"
+              ? "Hämtar beloppet — dubbelkolla innan du sparar."
+              : "Hämtar +/− och saldo automatiskt — du behöver inte skriva något."}
+          </p>
         </div>
       </div>
     );
@@ -243,61 +371,96 @@ export function ReceiptCaptureFlow({
   if (!preview) {
     const isSms = mode === "bank_sms";
     return (
-      <div className="space-y-5 animate-rise">
+      <div className="animate-rise space-y-8">
         {!bootstrapping ? <BackLink onClick={resetToPick} /> : null}
-        <header>
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-accent)]">
+        <header className="space-y-2">
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
             {isSms ? "Bank-SMS" : "Kvitto"}
           </p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+          <h2 className="text-2xl font-semibold tracking-tight">
             {bootstrapping
-              ? "Fota första SMS"
+              ? "Fota senaste SMS"
               : isSms
-                ? "Importera från SMS"
-                : "Fota priset"}
+                ? "Fota bank-SMS"
+                : "Fota kvitto"}
           </h2>
-          <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-            {bootstrapping
-              ? "Ta en skärmdump av senaste Bangkok Bank-SMS. NUMA läser beloppet som drogs och sätter ditt saldo."
-              : isSms
-                ? "Skärmdumpa SMS:et. Beloppet fylls i automatiskt — du behöver bara bekräfta."
-                : "Fota kvittot eller prislappen. Beloppet läses in — du kan alltid justera."}
+          <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+            {isSms
+              ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
+              : "Håll texten skarp. Beloppet fylls i automatiskt."}
           </p>
         </header>
 
-        <label className="group relative flex min-h-[13.5rem] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[1.75rem] bg-[var(--numa-ink)] px-6 text-center text-white shadow-[var(--numa-shadow)] transition active:scale-[0.985]">
-          <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(13,122,102,0.45),transparent_55%)]" />
-          <span className="relative text-[15px] font-semibold tracking-tight">
-            {pending ? "Läser bilden…" : "Öppna kamera"}
-          </span>
-          <span className="relative mt-2 max-w-[28ch] text-xs leading-relaxed text-white/70">
-            {isSms
-              ? "Helst senaste SMS högst upp i notisen"
-              : "Håll texten skarp och beloppet synligt"}
-          </span>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
             disabled={pending}
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
+            onClick={() => cameraInputRef.current?.click()}
+            className="group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] transition hover:bg-[var(--numa-accent)] active:scale-[0.98] disabled:opacity-50"
+          >
+            <span className="text-2xl font-light leading-none" aria-hidden>
+              ◉
+            </span>
+            <span className="text-sm font-semibold tracking-tight">Kamera</span>
+            <span className="text-center text-xs text-white/70">
+              Fota skärmen nu
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => galleryInputRef.current?.click()}
+            className="group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border)] bg-white/70 px-3 py-5 transition hover:bg-white active:scale-[0.98] disabled:opacity-50"
+          >
+            <span
+              className="text-2xl font-light leading-none text-[var(--numa-ink)]"
+              aria-hidden
+            >
+              ▤
+            </span>
+            <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
+              Galleri
+            </span>
+            <span className="text-center text-xs text-[var(--numa-muted)]">
+              Välj skärmdump
+            </span>
+          </button>
+        </div>
 
-        <label className="flex min-h-12 cursor-pointer items-center justify-center rounded-full bg-white/70 text-sm font-semibold text-[var(--numa-ink)] transition active:scale-[0.99]">
-          Välj från galleri
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            disabled={pending}
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        {/* Camera: capture forces camera app on phones */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          disabled={pending}
+          onChange={(e) => {
+            onFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+        {/* Gallery: no capture → photo library / file picker */}
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          disabled={pending}
+          onChange={(e) => {
+            onFile(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+
+        <p className="text-center text-xs text-[var(--numa-faint)]">
+          {isSms
+            ? "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över"
+            : "Beloppet synligt i bild"}
+        </p>
 
         {error ? (
-          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+          <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
             {error}
           </p>
         ) : null}
@@ -307,71 +470,120 @@ export function ReceiptCaptureFlow({
 
   if (preview.alreadyKnown || preview.ocrStatus === "all_known") {
     return (
-      <div className="space-y-5 animate-rise">
+      <div className="animate-rise space-y-8">
         <PreviewThumb src={preview.previewUrl} />
-        <div className="rounded-[1.75rem] bg-white/90 p-6 shadow-[var(--numa-shadow-sm)]">
-          <p className="text-lg font-semibold tracking-tight">Inget nytt</p>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--numa-muted)]">
+        <div className="space-y-2 text-center">
+          <p className="text-xl font-semibold tracking-tight">Inget nytt</p>
+          <p className="mx-auto max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {preview.message ??
-              "Det här SMS:et finns redan sparat. Vänta på nästa."}
+              "Det här SMS:et finns redan. Vänta på nästa notis från banken."}
           </p>
         </div>
         <button
           type="button"
-          className="flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--numa-accent)] text-sm font-semibold text-white"
+          className="mx-auto block text-sm font-semibold text-[var(--numa-accent)]"
           onClick={() => {
             URL.revokeObjectURL(preview.previewUrl);
             setPreview(null);
             setAmountEditable(false);
           }}
         >
-          Försök med ny bild
+          Ta ny bild
         </button>
       </div>
     );
   }
 
   const isSms = preview.importKind === "bank_sms";
-  const needsManualAmount = !preview.amountFromScan;
+  const isCredit = preview.direction === "credit";
+  const needsManualAmount = !isSms && !preview.amountFromScan;
   const remainingTone =
     impact && impact.remaining < 0
       ? "text-[var(--numa-danger)]"
       : "text-[var(--numa-positive)]";
+  const eventCount = preview.events.length;
+  const creditCount = preview.events.filter((e) => e.direction === "credit")
+    .length;
+  const debitCount = preview.events.filter((e) => e.direction === "debit")
+    .length;
 
   return (
-    <form onSubmit={onConfirm} className="space-y-5 animate-rise">
+    <form onSubmit={onConfirm} className="animate-rise space-y-7">
       <PreviewThumb src={preview.previewUrl} />
 
-      <div className="rounded-[1.75rem] bg-white/90 p-5 shadow-[var(--numa-shadow-sm)]">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-accent)]">
-              {isSms ? "Från bank-SMS" : "Från kvitto"}
+      {isSms ? (
+        <div className="animate-rise-delay-1 space-y-1 text-center">
+          {preview.balanceAfterMinor != null ? (
+            <>
+              <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+                Saldo på Hem
+              </p>
+              <p className="money-hero money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
+                {formatMoney(
+                  money(preview.balanceAfterMinor, preview.currency),
+                )}
+              </p>
+            </>
+          ) : (
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+              Bank-SMS
             </p>
-            <p className="mt-1 text-sm text-[var(--numa-muted)]">
-              {needsManualAmount
-                ? isSms
-                  ? "Kunde inte läsa automatiskt — skriv beloppet som drogs (inte saldot)."
-                  : "Kunde inte läsa automatiskt — skriv beloppet från bilden."
-                : isSms
-                  ? "Beloppet är inläst. Dubbelkolla och bekräfta."
-                  : "Beloppet är inläst. Justera om det behövs."}
-            </p>
-          </div>
-          {preview.amountFromScan && !amountEditable ? (
-            <button
-              type="button"
-              className="shrink-0 text-xs font-semibold text-[var(--numa-accent)]"
-              onClick={() => setAmountEditable(true)}
-            >
-              Ändra
-            </button>
+          )}
+          <p className="text-sm text-[var(--numa-muted)]">
+            {eventCount > 1
+              ? `${eventCount} rörelser lästa · +${creditCount} / −${debitCount}`
+              : isCredit
+                ? "Insättning läst automatiskt"
+                : "Utgift läst automatiskt"}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+            Kvitto
+          </p>
+          {preview.message ? (
+            <p className="text-sm text-[var(--numa-muted)]">{preview.message}</p>
           ) : null}
         </div>
+      )}
 
-        <div className="mt-5">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            {isSms ? "Belopp som drogs" : "Belopp"}
+      {isSms && eventCount > 0 ? (
+        <ul className="animate-rise-delay-2 divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+          {preview.events.map((event) => {
+            const plus = event.direction === "credit";
+            return (
+              <li
+                key={event.candidateId}
+                className="flex items-baseline justify-between gap-4 py-3.5"
+              >
+                <span
+                  className={`text-sm font-semibold ${
+                    plus
+                      ? "text-[var(--numa-positive)]"
+                      : "text-[var(--numa-ink)]"
+                  }`}
+                >
+                  {plus ? "Insättning" : "Utgift"}
+                </span>
+                <span
+                  className={`money shrink-0 text-lg font-semibold ${
+                    plus
+                      ? "text-[var(--numa-positive)]"
+                      : "text-[var(--numa-ink)]"
+                  }`}
+                >
+                  {plus ? "+" : "−"}
+                  {formatMoney(money(event.amountMinor, preview.currency))}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div>
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+            Belopp
           </p>
           {amountEditable || needsManualAmount ? (
             <input
@@ -381,13 +593,13 @@ export function ReceiptCaptureFlow({
               onChange={(e) =>
                 setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
               }
-              placeholder={isSms ? "t.ex. 65,00" : "0,00"}
-              className="money mt-2 w-full border-0 bg-transparent p-0 text-4xl font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
+              placeholder="0,00"
+              className="money mt-2 w-full border-0 bg-transparent p-0 text-[2rem] font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
               aria-label="Belopp"
               required
             />
           ) : (
-            <p className="money mt-2 text-4xl font-semibold tracking-tight text-[var(--numa-ink)]">
+            <p className="money mt-2 text-4xl font-semibold tracking-tight">
               {preview.amount || "—"}
               <span className="ml-2 text-base font-medium text-[var(--numa-faint)]">
                 {preview.currency}
@@ -395,68 +607,50 @@ export function ReceiptCaptureFlow({
             </p>
           )}
         </div>
+      )}
 
-        {preview.balanceAfterMinor != null ? (
-          <div className="mt-5 flex items-center justify-between rounded-2xl bg-[var(--numa-bg)] px-4 py-3">
-            <span className="text-sm text-[var(--numa-muted)]">
-              Nytt saldo i SMS
-            </span>
-            <span className="money text-sm font-semibold">
-              {formatMoney(money(preview.balanceAfterMinor, preview.currency))}
-            </span>
-          </div>
-        ) : null}
-
-        {preview.skippedOlderCount > 0 ? (
-          <p className="mt-3 text-xs text-[var(--numa-faint)]">
-            Hoppade över {preview.skippedOlderCount} äldre SMS i bilden.
-          </p>
-        ) : null}
-      </div>
-
-      {impact ? (
-        <div className="rounded-[1.5rem] bg-white/70 px-5 py-4">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Efter köpet
-          </p>
-          <p className={`mt-1 text-lg font-semibold ${remainingTone}`}>
-            {impact.canAfford ? "Inom dagens trygga nivå" : "Över dagens trygga nivå"}
-          </p>
-          <p className={`money mt-1 text-sm ${remainingTone}`}>
-            {formatMoney(money(impact.remaining, currency))} kvar
-          </p>
-        </div>
-      ) : isSms ? (
-        <p className="px-1 text-sm text-[var(--numa-muted)]">
-          Bekräfta så uppdateras utgiften och saldot från banken.
+      {isSms && preview.skippedOlderCount > 0 ? (
+        <p className="text-xs text-[var(--numa-faint)]">
+          {preview.skippedOlderCount} redan sparade SMS hoppades över.
         </p>
       ) : null}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCategory(c)}
-            className={`min-h-10 shrink-0 rounded-full px-4 text-sm font-semibold transition ${
-              category === c
-                ? "bg-[var(--numa-ink)] text-white"
-                : "bg-white/70 text-[var(--numa-muted)]"
-            }`}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
+      {impact ? (
+        <p className={`text-sm ${remainingTone}`}>
+          {impact.canAfford ? "Inom dagens budget" : "Över dagens budget"} ·{" "}
+          {formatMoney(money(impact.remaining, currency))} kvar
+        </p>
+      ) : null}
 
-      <input
-        value={preview.description}
-        onChange={(e) =>
-          setPreview((p) => (p ? { ...p, description: e.target.value } : p))
-        }
-        placeholder={isSms ? "Valfritt — t.ex. 7-Eleven" : "Butik eller notis"}
-        className="w-full rounded-2xl border-0 bg-white/70 px-4 py-3.5 text-sm outline-none ring-[var(--numa-accent)] focus:ring-2"
-      />
+      {!isSms ? (
+        <input
+          value={preview.description}
+          onChange={(e) =>
+            setPreview((p) => (p ? { ...p, description: e.target.value } : p))
+          }
+          placeholder="Butik eller notis"
+          className="w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
+        />
+      ) : null}
+
+      {isSms && debitCount > 0 && creditCount === 0 ? (
+        <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(c)}
+              className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
+                category === c
+                  ? "bg-[var(--numa-ink)] font-semibold text-white"
+                  : "text-[var(--numa-muted)] hover:bg-white/60"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {error ? (
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
@@ -464,28 +658,37 @@ export function ReceiptCaptureFlow({
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending || !preview.amount.trim()}
-        className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-accent)] text-[15px] font-semibold text-white shadow-[var(--numa-shadow-sm)] transition active:scale-[0.99] disabled:opacity-45"
-      >
-        {pending
-          ? "Sparar…"
-          : bootstrapping
-            ? "Spara och sätt saldo"
-            : "Bekräfta"}
-      </button>
-      <button
-        type="button"
-        className="w-full py-2 text-sm font-medium text-[var(--numa-muted)]"
-        onClick={() => {
-          URL.revokeObjectURL(preview.previewUrl);
-          setPreview(null);
-          setAmountEditable(false);
-        }}
-      >
-        Ta ny bild
-      </button>
+      <div className="space-y-3 pt-2">
+        <button
+          type="submit"
+          disabled={
+            pending ||
+            (isSms ? eventCount === 0 : !preview.amount.trim())
+          }
+          className="flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-sm font-semibold text-white disabled:opacity-45"
+        >
+          {pending
+            ? "Sparar…"
+            : bootstrapping
+              ? "Spara saldo på Hem"
+              : isSms && eventCount > 1
+                ? `Spara ${eventCount} rörelser`
+                : isSms && isCredit
+                  ? "Spara insättning"
+                  : "Bekräfta"}
+        </button>
+        <button
+          type="button"
+          className="flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
+          onClick={() => {
+            URL.revokeObjectURL(preview.previewUrl);
+            setPreview(null);
+            setAmountEditable(false);
+          }}
+        >
+          Ta ny bild
+        </button>
+      </div>
     </form>
   );
 }
@@ -499,83 +702,72 @@ function ModePicker({
   onChoose: (mode: CaptureMode) => void;
   hasAccount: boolean;
 }) {
+  const items: Array<{
+    id: CaptureMode;
+    title: string;
+    hint: string;
+  }> = [
+    {
+      id: "bank_sms",
+      title: "Bank-SMS",
+      hint: "Skärmdump → allt läses in",
+    },
+    {
+      id: "receipt",
+      title: "Kvitto",
+      hint: "Fota priset på kvitto eller skärm",
+    },
+    {
+      id: "manual",
+      title: "Manuellt",
+      hint: hasAccount
+        ? "Skriv belopp utan kamera"
+        : "Kräver saldo först via SMS",
+    },
+  ];
+
   return (
-    <div className="space-y-5 animate-rise">
-      <header>
-        <h2 className="text-2xl font-semibold tracking-tight">Vad vill du göra?</h2>
-        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Välj ett sätt — resten är ett steg.
+    <div className="animate-rise space-y-8">
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {bootstrapping ? "Kom igång" : "Vad vill du lägga till?"}
+        </h2>
+        <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          {bootstrapping
+            ? "Fota senaste bank-SMS. Saldot i SMS:et blir ditt saldo på Hem."
+            : "Ett steg. Vi läser bilden och du bekräftar."}
         </p>
       </header>
 
-      <div className="space-y-3">
-        <ModeCard
-          title="Bank-SMS"
-          subtitle="Importera uttag och uppdatera saldo automatiskt"
-          accent
-          onClick={() => onChoose("bank_sms")}
-        />
-        <ModeCard
-          title="Fota kvitto"
-          subtitle="Läs priset från kvitto eller prislapp"
-          onClick={() => onChoose("receipt")}
-        />
-        <ModeCard
-          title="Skriv manuellt"
-          subtitle={
-            hasAccount
-              ? "Utgift eller intäkt under dagen — utan kamera"
-              : "Kräver saldo först (fota bank-SMS en gång)"
-          }
-          onClick={() => onChoose("manual")}
-        />
-      </div>
+      <nav className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onChoose(item.id)}
+            className="flex w-full items-baseline justify-between gap-4 py-5 text-left transition hover:opacity-80 active:opacity-60"
+          >
+            <span>
+              <span className="block text-[15px] font-semibold tracking-tight">
+                {item.title}
+              </span>
+              <span className="mt-0.5 block text-sm text-[var(--numa-muted)]">
+                {item.hint}
+              </span>
+            </span>
+            <span className="text-[var(--numa-faint)]" aria-hidden>
+              →
+            </span>
+          </button>
+        ))}
+      </nav>
 
-      {bootstrapping ? (
-        <p className="px-1 text-xs leading-relaxed text-[var(--numa-faint)]">
-          Tips: börja med Bank-SMS så Hem får rätt saldo.
-        </p>
-      ) : (
-        <p className="px-1 text-center text-xs text-[var(--numa-faint)]">
-          <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
-            Se utgifter & intäkter
-          </Link>
-        </p>
-      )}
+      <p className="text-center text-xs text-[var(--numa-faint)]">
+        <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
+          Se rörelser
+        </Link>
+      </p>
     </div>
-  );
-}
-
-function ModeCard({
-  title,
-  subtitle,
-  onClick,
-  accent = false,
-}: {
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-  accent?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full flex-col items-start rounded-[1.5rem] px-5 py-4 text-left transition active:scale-[0.99] ${
-        accent
-          ? "bg-[var(--numa-ink)] text-white shadow-[var(--numa-shadow)]"
-          : "bg-white/90 text-[var(--numa-ink)] shadow-[var(--numa-shadow-sm)]"
-      }`}
-    >
-      <span className="text-[15px] font-semibold tracking-tight">{title}</span>
-      <span
-        className={`mt-1 text-sm leading-snug ${
-          accent ? "text-white/70" : "text-[var(--numa-muted)]"
-        }`}
-      >
-        {subtitle}
-      </span>
-    </button>
   );
 }
 
@@ -593,11 +785,13 @@ function BackLink({ onClick }: { onClick: () => void }) {
 
 function PreviewThumb({ src }: { src: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      className="h-36 w-full rounded-[1.5rem] object-cover shadow-[var(--numa-shadow-sm)]"
-    />
+    <div className="min-h-48 overflow-hidden rounded-2xl bg-white/60 shadow-[var(--numa-shadow-sm)]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="Förhandsvisning"
+        className="mx-auto max-h-56 min-h-48 w-full object-contain"
+      />
+    </div>
   );
 }

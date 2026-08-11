@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { parseUiAmountToMinor } from "@/domain/money";
+import { parseUiAmountToMinor, money } from "@/domain/money";
 import { calculateDayPulse } from "@/domain/gamification";
-import { money } from "@/domain/money";
+import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
   confirmReceiptExpense,
   getTodaySnapshot,
@@ -41,16 +41,21 @@ export async function uploadReceiptAction(
       return { ok: false, error: "Endast bildfiler stöds" };
     }
 
+    const preferBankSms =
+      formData.get("mode") === "bank_sms" || formData.get("mode") === "sms";
+
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = await uploadReceiptAndExtract({
       fileName: file.name || "bank-sms.jpg",
       mimeType,
       bytes,
+      preferBankSms,
     });
 
     revalidatePath("/importera");
     revalidatePath("/mer");
     revalidatePath("/fota");
+    revalidatePath("/idag");
     return { ok: true, data: result };
   } catch (error) {
     return {
@@ -65,41 +70,68 @@ const confirmSchema = z.object({
   accountId: z.string().uuid().optional().nullable(),
   observationId: z.string().uuid(),
   candidateId: z.string().uuid().optional().nullable(),
-  amount: z.string().trim().min(1),
+  confirmAllPending: z.boolean().optional(),
+  amount: z.string().trim().optional().default("0"),
   description: z.string().trim().max(160).optional(),
   category: z.string().trim().max(40).optional().nullable(),
   fingerprint: z.string().trim().max(240).optional().nullable(),
   balanceAfterMinor: z.number().int().optional().nullable(),
   source: z.enum(["receipt_camera", "screenshot"]).optional(),
   maskedAccount: z.string().trim().max(32).optional().nullable(),
+  direction: z.enum(["debit", "credit"]).optional().nullable(),
 });
 
 export async function confirmReceiptExpenseAction(
   raw: z.infer<typeof confirmSchema>,
-): Promise<ActionResult<{ pulseStatus: "plus" | "even" | "minus" }>> {
+): Promise<
+  ActionResult<{
+    pulseStatus: "plus" | "even" | "minus";
+    balanceAfterMinor: number | null;
+    direction: "debit" | "credit" | null;
+    amountMinor: number;
+  }>
+> {
   try {
     const input = confirmSchema.parse(raw);
-    const amountMinor = parseUiAmountToMinor(input.amount);
-    if (amountMinor <= 0) {
-      return { ok: false, error: "Ange ett belopp större än noll" };
+    const isSmsBatch =
+      input.confirmAllPending === true || input.source === "screenshot";
+
+    let amountMinor = 0;
+    if (!isSmsBatch) {
+      amountMinor = parseUiAmountToMinor(input.amount || "0");
+      if (amountMinor <= 0) {
+        return { ok: false, error: "Ange ett belopp större än noll" };
+      }
     }
 
-    await confirmReceiptExpense({
+    const tx = await confirmReceiptExpense({
       accountId: input.accountId,
       observationId: input.observationId,
       candidateId: input.candidateId,
-      amountMinor,
+      confirmAllPending: isSmsBatch,
+      amountMinor: amountMinor || 1,
       description: input.description,
       category: input.category,
       fingerprint: input.fingerprint,
       balanceAfterMinor: input.balanceAfterMinor,
       source: input.source,
       maskedAccount: input.maskedAccount,
+      direction: input.direction,
     });
 
     const snap = await getTodaySnapshot();
+    const timeZone = snap.profile.timezone || "Asia/Bangkok";
+    const now = new Date();
+    const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone,
+      bankBalanceMinor: snap.calculatedBalanceMinor,
+      cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
+    });
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
+      safeToSpendToday: money(living.perDayMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
 
@@ -112,7 +144,16 @@ export async function confirmReceiptExpenseAction(
     revalidatePath("/konton");
     revalidatePath("/fota");
 
-    return { ok: true, data: { pulseStatus: pulse.status } };
+    return {
+      ok: true,
+      data: {
+        pulseStatus: pulse.status,
+        balanceAfterMinor:
+          snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
+        direction: tx.direction,
+        amountMinor: tx.amountMinor,
+      },
+    };
   } catch (error) {
     return {
       ok: false,

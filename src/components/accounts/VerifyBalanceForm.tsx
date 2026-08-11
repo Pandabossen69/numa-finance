@@ -29,9 +29,9 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form onSubmit={onSubmit} className="space-y-2.5">
       <label className="block">
-        <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
           Hur mycket har du just nu?
         </span>
         <input
@@ -39,7 +39,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
           onChange={(e) => setBalance(e.target.value)}
           inputMode="decimal"
           placeholder="t.ex. 10058,04"
-          className="money min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 text-lg font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-3.5 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
       </label>
       {error ? (
@@ -50,7 +50,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
       <button
         type="submit"
         disabled={pending || !balance.trim()}
-        className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium disabled:opacity-50"
+        className="flex min-h-11 w-full items-center justify-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] text-sm font-medium transition hover:border-[var(--numa-border-strong)] disabled:opacity-50"
       >
         {pending ? "Sparar…" : "Spara saldo"}
       </button>

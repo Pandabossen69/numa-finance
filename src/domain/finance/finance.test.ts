@@ -82,7 +82,7 @@ describe("balance engine", () => {
     ).toBe(40000);
   });
 
-  it("builds balance from checkpoint + subsequent sequence", () => {
+  it("builds balance from checkpoint + subsequent manual sequence", () => {
     const checkpoint = {
       id: "c1",
       userId: "u1",
@@ -96,7 +96,12 @@ describe("balance engine", () => {
       createdAt: "2026-08-09T09:00:00.000Z",
     };
 
-    const mk = (id: string, amount: number, at: string) => ({
+    const mk = (
+      id: string,
+      amount: number,
+      at: string,
+      source: "manual" | "screenshot" = "manual",
+    ) => ({
       id,
       userId: "u1",
       accountId: "a1",
@@ -109,7 +114,7 @@ describe("balance engine", () => {
       description: id,
       merchant: null,
       category: null,
-      source: "screenshot" as const,
+      source,
       status: "confirmed" as const,
       balanceAfterMinor: null,
       fingerprint: null,
@@ -130,6 +135,15 @@ describe("balance engine", () => {
 
     // 1075804 - 6500 - 3500 - 60000 = 1005804
     expect(balance?.amountMinor).toBe(1005804);
+
+    // Bank-SMS history after tip must not move saldo again.
+    const withSms = calculateAccountBalance({
+      checkpoint,
+      transactionsAfterCheckpoint: [
+        mk("sms", 340_000, "2026-08-09T09:01:00.000Z", "screenshot"),
+      ],
+    });
+    expect(withSms?.amountMinor).toBe(1075804);
   });
 });
 

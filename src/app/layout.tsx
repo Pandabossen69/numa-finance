@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "NUMA",
-  description: "Personlig ekonomisk kontroll — saldo, plan och tryggt att spendera.",
+  description: "Personlig ekonomi i realtid — kvar per dag, plan och saldo.",
   applicationName: "NUMA",
   appleWebApp: {
     capable: true,
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // Allow pinch-zoom; inputs use 16px so iOS won't auto-zoom on focus.
   viewportFit: "cover",
   themeColor: "#e6eee9",
   colorScheme: "light",

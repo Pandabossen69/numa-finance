@@ -1,0 +1,96 @@
+import { describe, expect, it } from "vitest";
+import {
+  calendarDaysBetween,
+  formatCountSv,
+  formatRelativeVerificationSv,
+  isSameZonedDay,
+  startOfZonedDay,
+  zonedDayAnchorMs,
+  zonedDayKey,
+} from "./datetime";
+import { monthKeyFromDate, spendDaysForMonth } from "./plan-months";
+
+const tz = "Asia/Bangkok";
+
+describe("zoned calendar helpers (Asia/Bangkok)", () => {
+  it("zonedDayKey uses local calendar day, not UTC ISO slice", () => {
+    // 10:00 Bangkok = 03:00 UTC — UTC slice of local midnight would be Aug 10.
+    const midMorning = new Date("2026-08-11T03:00:00.000Z");
+    expect(zonedDayKey(midMorning, tz)).toBe("2026-08-11");
+    expect(
+      startOfZonedDay(midMorning, tz).toISOString().slice(0, 10),
+    ).toBe("2026-08-10");
+
+    // Just after Bangkok midnight.
+    const afterMidnight = new Date("2026-08-10T17:30:00.000Z");
+    expect(zonedDayKey(afterMidnight, tz)).toBe("2026-08-11");
+  });
+
+  it("monthKeyFromDate flips at Bangkok midnight, not UTC", () => {
+    // 00:30 Bangkok Sep 1 = Aug 31 17:30 UTC
+    const bangkokSep1 = new Date("2026-08-31T17:30:00.000Z");
+    expect(monthKeyFromDate(bangkokSep1, tz)).toBe("2026-09");
+    expect(monthKeyFromDate(bangkokSep1, "UTC")).toBe("2026-08");
+
+    // Still August in Bangkok (23:30 Aug 31).
+    const bangkokAug31 = new Date("2026-08-31T16:30:00.000Z");
+    expect(monthKeyFromDate(bangkokAug31, tz)).toBe("2026-08");
+  });
+
+  it("isSameZonedDay matches across the UTC date line for Bangkok", () => {
+    const now = new Date("2026-08-11T03:00:00.000Z");
+    // Previous UTC calendar day, same Bangkok day.
+    expect(isSameZonedDay("2026-08-10T20:00:00.000Z", now, tz)).toBe(true);
+    // Previous Bangkok day.
+    expect(isSameZonedDay("2026-08-10T16:00:00.000Z", now, tz)).toBe(false);
+  });
+
+  it("spendDaysForMonth uses Bangkok day-of-month", () => {
+    // 00:30 Bangkok Aug 12 → 20 days left in August (12..31).
+    const early = new Date("2026-08-11T17:30:00.000Z");
+    expect(spendDaysForMonth("2026-08", early, tz)).toBe(20);
+  });
+
+  it("calendar day anchors stay noon-UTC for stable day counts", () => {
+    expect(zonedDayAnchorMs(new Date("2026-08-11T03:00:00.000Z"), tz)).toBe(
+      Date.parse("2026-08-11T12:00:00.000Z"),
+    );
+    expect(
+      calendarDaysBetween(
+        new Date("2026-08-11T03:00:00.000Z"),
+        "2026-08-23T12:00:00.000Z",
+        tz,
+      ),
+    ).toBe(12);
+  });
+});
+
+describe("Swedish relative verification copy", () => {
+  const now = new Date("2026-08-11T12:00:00.000Z");
+
+  it("uses singular timme / dag / minut", () => {
+    expect(
+      formatRelativeVerificationSv("2026-08-11T11:00:00.000Z", now),
+    ).toBe("1 timme sedan");
+    expect(
+      formatRelativeVerificationSv("2026-08-10T12:00:00.000Z", now),
+    ).toBe("1 dag sedan");
+    expect(
+      formatRelativeVerificationSv("2026-08-11T11:30:00.000Z", now),
+    ).toBe("30 minuter sedan");
+    expect(
+      formatRelativeVerificationSv("2026-08-11T11:59:00.000Z", now),
+    ).toBe("1 minut sedan");
+  });
+
+  it("keeps plural forms for counts ≠ 1", () => {
+    expect(
+      formatRelativeVerificationSv("2026-08-11T09:00:00.000Z", now),
+    ).toBe("3 timmar sedan");
+    expect(
+      formatRelativeVerificationSv("2026-08-09T12:00:00.000Z", now),
+    ).toBe("2 dagar sedan");
+    expect(formatCountSv(1, "dag", "dagar")).toBe("1 dag");
+    expect(formatCountSv(12, "dag", "dagar")).toBe("12 dagar");
+  });
+});
