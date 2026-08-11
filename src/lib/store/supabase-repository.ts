@@ -5,7 +5,9 @@ import {
   filterTransactionsAfterCheckpoint,
   formatRelativeVerificationSv,
   isSameZonedDay,
+  monthKeyFromDate,
   NEXT_INCOME_NAME,
+  projectPlanForMonth,
   startOfZonedDay,
   startOfZonedMonth,
   sumSpending,
@@ -831,16 +833,22 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const currency = primary.currency;
   const todaySpending = sumSpending(todayTx, currency);
   const monthSpending = sumSpending(monthTx, currency);
+  const monthKey = monthKeyFromDate(now, timezone);
+  const projection = projectPlanForMonth(planItems, monthKey, timezone);
   const totals = calculatePlanTotals(planItems, currency, now, 0);
+  // reserved + savings only — buffer is passed separately (avoid double-count).
+  const reservedMinor =
+    projection.reservedMinor + projection.savingsMinor;
+  const bufferMinor = projection.bufferMinor;
   const available = calculated ?? money(0, currency);
   const safe = calculateSafeToSpend({
     available,
-    reserved: money(totals.reservedMinor, currency),
-    safetyBuffer: money(totals.bufferMinor, currency),
+    reserved: money(reservedMinor, currency),
+    safetyBuffer: money(bufferMinor, currency),
     daysUntilNextIncome: Math.max(1, totals.daysUntilNextIncome || 1),
     flexiblePlanRemaining:
-      totals.flexibleMinor > 0
-        ? money(totals.flexibleMinor, currency)
+      projection.flexibleMinor > 0
+        ? money(projection.flexibleMinor, currency)
         : undefined,
   });
 
@@ -862,9 +870,9 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     safeToSpendTodayMinor: safe.today.amountMinor,
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
-    reservedMinor: totals.reservedMinor,
-    bufferMinor: totals.bufferMinor,
-    flexibleMinor: totals.flexibleMinor,
+    reservedMinor: projection.totalPlannedMinor,
+    bufferMinor,
+    flexibleMinor: projection.flexibleMinor,
     daysUntilIncome: totals.daysUntilNextIncome,
     recentTransactions: accountTx.slice(0, 8),
     planItems,

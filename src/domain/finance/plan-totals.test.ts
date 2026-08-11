@@ -12,7 +12,7 @@ function item(
     kind: partial.kind,
     amountMinor: partial.amountMinor,
     currency: "THB",
-    cadence: "monthly",
+    cadence: partial.cadence ?? "monthly",
     nextDueAt: partial.nextDueAt ?? null,
     isActive: partial.isActive ?? true,
     createdAt: new Date().toISOString(),
@@ -51,5 +51,27 @@ describe("calculatePlanTotals", () => {
       17,
     );
     expect(totals.daysUntilNextIncome).toBe(10);
+  });
+
+  it("excludes income and savings from reserved totals", () => {
+    const totals = calculatePlanTotals(
+      [
+        item({ kind: "mandatory", amountMinor: 10_000_00, name: "Hyra" }),
+        item({
+          kind: "expected",
+          amountMinor: 40_000_00,
+          name: "Lön",
+          cadence: "income",
+        }),
+        item({
+          kind: "goal",
+          amountMinor: 5_000_00,
+          name: "Spara denna månad",
+          cadence: "savings",
+        }),
+      ],
+      "THB",
+    );
+    expect(totals.reservedMinor).toBe(10_000_00);
   });
 });

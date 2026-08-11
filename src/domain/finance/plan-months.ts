@@ -1,13 +1,24 @@
 import type { PlanItem } from "./types";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 
+export const MONTHLY_SAVE_NAME = "Spara denna månad";
+
 /** Planned income for one month only (does not roll forward). */
 export function isPlanIncome(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
   return (item.cadence ?? "").toLowerCase() === "income";
 }
 
-/** Mid-month anchor used to attach one-off income to a calendar month. */
+/** Planned savings target for one month only. */
+export function isPlanSavings(item: PlanItem): boolean {
+  if (item.name === NEXT_INCOME_NAME) return false;
+  return (
+    (item.cadence ?? "").toLowerCase() === "savings" ||
+    item.name === MONTHLY_SAVE_NAME
+  );
+}
+
+/** Mid-month anchor used to attach one-off income/savings to a calendar month. */
 export function monthAnchorIso(monthKey: string): string {
   return `${monthKey}-15T12:00:00.000Z`;
 }
@@ -15,7 +26,7 @@ export function monthAnchorIso(monthKey: string): string {
 /** True when the bucket repeats every month until deleted. */
 export function isRecurringMonthly(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
-  if (isPlanIncome(item)) return false;
+  if (isPlanIncome(item) || isPlanSavings(item)) return false;
   const cadence = (item.cadence ?? "monthly").toLowerCase();
   return cadence === "monthly" || item.kind === "mandatory";
 }
@@ -73,17 +84,22 @@ export type MonthPlanProjection = {
   items: PlanItem[];
   /** Income rows that belong only to this month. */
   incomes: PlanItem[];
+  /** Optional savings target for this month only. */
+  savings: PlanItem | null;
   reservedMinor: number;
   bufferMinor: number;
   flexibleMinor: number;
   incomeMinor: number;
+  savingsMinor: number;
+  /** Income − expenses − savings (can be negative). */
+  freeToSpendMinor: number;
   totalPlannedMinor: number;
 };
 
 /**
  * Project active plan buckets onto a calendar month.
- * Recurring monthly expenses always appear. One-off expenses and incomes
- * appear only when their nextDueAt falls in that month.
+ * Recurring monthly expenses always appear. One-off expenses, incomes and
+ * savings appear only when their nextDueAt falls in that month.
  */
 export function projectPlanForMonth(
   items: PlanItem[],
@@ -96,12 +112,25 @@ export function projectPlanForMonth(
 
   const projected: PlanItem[] = [];
   const incomes: PlanItem[] = [];
+  let savings: PlanItem | null = null;
 
   for (const item of active) {
     if (isPlanIncome(item)) {
       if (item.nextDueAt) {
         const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
         if (key === monthKey) incomes.push(item);
+      }
+      continue;
+    }
+    if (isPlanSavings(item)) {
+      if (item.nextDueAt) {
+        const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
+        if (key === monthKey) {
+          const prev = savings;
+          if (!prev || item.updatedAt >= prev.updatedAt) {
+            savings = item;
+          }
+        }
       }
       continue;
     }
@@ -131,18 +160,61 @@ export function projectPlanForMonth(
   }
 
   const incomeMinor = incomes.reduce((sum, i) => sum + i.amountMinor, 0);
+  const savingsMinor = savings?.amountMinor ?? 0;
+  const totalPlannedMinor = reservedMinor + bufferMinor + flexibleMinor;
+  const freeToSpendMinor = incomeMinor - totalPlannedMinor - savingsMinor;
 
   return {
     monthKey,
     labelSv: labelMonthSv(monthKey),
     items: projected,
     incomes,
+    savings,
     reservedMinor,
     bufferMinor,
     flexibleMinor,
     incomeMinor,
-    totalPlannedMinor: reservedMinor + bufferMinor + flexibleMinor,
+    savingsMinor,
+    freeToSpendMinor,
+    totalPlannedMinor,
   };
+}
+
+/** Calendar days in a month key (`2026-08` → 31). */
+export function daysInMonthKey(monthKey: string): number {
+  const [y, m] = monthKey.split("-").map(Number);
+  return new Date(Date.UTC(y!, m!, 0)).getUTCDate();
+}
+
+/**
+ * Days left to spend in a month (inclusive of today when current month).
+ * Future months: full month length. Past months: 1 (avoid div/0).
+ */
+export function spendDaysForMonth(
+  monthKey: string,
+  now: Date,
+  timeZone: string,
+): number {
+  const total = daysInMonthKey(monthKey);
+  const currentKey = monthKeyFromDate(now, timeZone);
+  if (monthKey > currentKey) return total;
+  if (monthKey < currentKey) return 1;
+
+  const day = Number(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      day: "2-digit",
+    }).format(now),
+  );
+  return Math.max(1, total - day + 1);
+}
+
+export function perDayBudgetMinor(
+  freeToSpendMinor: number,
+  days: number,
+): number {
+  if (freeToSpendMinor <= 0) return 0;
+  return Math.floor(freeToSpendMinor / Math.max(1, days));
 }
 
 export function upcomingMonthKeys(
@@ -154,11 +226,29 @@ export function upcomingMonthKeys(
   return Array.from({ length: count }, (_, i) => addMonthsKey(base, i));
 }
 
+/** App launch month — 2026 planning starts here (no Jan–Jul). */
+export const APP_PLAN_START_MONTH = "2026-08";
+
 /** All 12 month keys for a calendar year (`2026-01` … `2026-12`). */
 export function yearMonthKeys(year: number): string[] {
   return Array.from({ length: 12 }, (_, i) => {
     const mm = String(i + 1).padStart(2, "0");
     return `${year}-${mm}`;
+  });
+}
+
+/**
+ * Months shown in the Plan year strip.
+ * 2026 starts at August (app founding); other years are Jan–Dec.
+ */
+export function visibleMonthKeysForYear(year: number): string[] {
+  const all = yearMonthKeys(year);
+  const [startY, startM] = APP_PLAN_START_MONTH.split("-").map(Number);
+  if (year < startY!) return all;
+  if (year > startY!) return all;
+  return all.filter((key) => {
+    const m = Number(key.slice(5));
+    return m >= startM!;
   });
 }
 

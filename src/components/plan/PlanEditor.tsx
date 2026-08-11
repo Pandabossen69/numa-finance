@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
@@ -8,15 +8,18 @@ import {
   isRecurringMonthly,
   labelMonthNameSv,
   monthKeyFromDate,
+  perDayBudgetMinor,
   projectPlanForMonth,
+  spendDaysForMonth,
   yearFromMonthKey,
-  yearMonthKeys,
+  visibleMonthKeysForYear,
 } from "@/domain/finance";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import {
   createPlanIncomeAction,
   createPlanItemAction,
   deletePlanItemAction,
+  setMonthSavingsAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
 
@@ -43,12 +46,13 @@ export function PlanEditor({
   );
   const [monthKey, setMonthKey] = useState(currentMonthKey);
 
-  const monthKeys = useMemo(() => yearMonthKeys(viewYear), [viewYear]);
+  const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [incomeName, setIncomeName] = useState("");
   const [incomeAmount, setIncomeAmount] = useState("");
+  const [savingsAmount, setSavingsAmount] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -62,7 +66,21 @@ export function PlanEditor({
     [items, monthKey, timeZone],
   );
 
-  const balanceMinor = projection.incomeMinor - projection.totalPlannedMinor;
+  const spendDays = useMemo(
+    () => spendDaysForMonth(monthKey, new Date(), timeZone),
+    [monthKey, timeZone],
+  );
+  const perDayMinor = perDayBudgetMinor(
+    projection.freeToSpendMinor,
+    spendDays,
+  );
+  const freeMinor = projection.freeToSpendMinor;
+
+  useEffect(() => {
+    setSavingsAmount(
+      projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
+    );
+  }, [monthKey, projection.savingsMinor]);
 
   function selectMonth(key: string) {
     setMonthKey(key);
@@ -72,9 +90,11 @@ export function PlanEditor({
 
   function shiftYear(delta: number) {
     const nextYear = viewYear + delta;
-    const mm = monthKey.slice(5);
+    const keys = visibleMonthKeysForYear(nextYear);
+    const preferred = `${nextYear}-${monthKey.slice(5)}`;
+    const nextKey = keys.includes(preferred) ? preferred : keys[0]!;
     setViewYear(nextYear);
-    setMonthKey(`${nextYear}-${mm}`);
+    setMonthKey(nextKey);
     setEditingId(null);
   }
 
@@ -149,7 +169,7 @@ export function PlanEditor({
           ))}
         </div>
 
-        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-4">
+        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-5">
           <MonthStat
             label="Intäkter"
             amountMinor={projection.incomeMinor}
@@ -162,21 +182,117 @@ export function PlanEditor({
             currency={currency}
           />
           <MonthStat
-            label="Buffert"
-            amountMinor={projection.bufferMinor}
+            label="Sparande"
+            amountMinor={projection.savingsMinor}
             currency={currency}
           />
           <MonthStat
-            label="Kvar"
-            amountMinor={balanceMinor}
+            label="Fritt att röra"
+            amountMinor={freeMinor}
             currency={currency}
-            tone={balanceMinor >= 0 ? "positive" : "danger"}
+            tone={freeMinor >= 0 ? "positive" : "danger"}
+          />
+          <MonthStat
+            label="Per dag"
+            amountMinor={perDayMinor}
+            currency={currency}
+            tone={perDayMinor > 0 ? "positive" : undefined}
           />
         </div>
 
+        <section className="numa-panel-strong space-y-4 p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+                Sparande · {labelMonthNameSv(monthKey)}
+              </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight">
+                Vill du spara något den här månaden?
+              </h2>
+              <p className="mt-1 max-w-[42ch] text-sm text-[var(--numa-muted)]">
+                Beloppet låses undan från det du får röra dig med — Hem visar
+                samma siffror.
+              </p>
+            </div>
+            {projection.savingsMinor > 0 ? (
+              <p className="text-sm font-semibold text-[var(--numa-accent-ink)]">
+                Sparar{" "}
+                {formatMoney(money(projection.savingsMinor, currency))}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="block flex-1">
+              <span className="text-xs font-medium text-[var(--numa-muted)]">
+                Belopp att spara ({currency})
+              </span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={savingsAmount}
+                onChange={(e) => setSavingsAmount(e.target.value)}
+                placeholder="0"
+                className="mt-1.5 w-full rounded-2xl border border-[var(--numa-border)] bg-white/80 px-4 py-3 text-sm outline-none focus:border-[var(--numa-accent)]"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                startTransition(async () => {
+                  refreshAfter(
+                    await setMonthSavingsAction({
+                      monthKey,
+                      amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
+                    }),
+                  );
+                });
+              }}
+              className="min-h-12 rounded-2xl bg-[var(--numa-ink)] px-5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Spara belopp
+            </button>
+            {projection.savingsMinor > 0 ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  startTransition(async () => {
+                    const result = await setMonthSavingsAction({
+                      monthKey,
+                      amount: "0",
+                    });
+                    if (refreshAfter(result)) setSavingsAmount("");
+                  });
+                }}
+                className="min-h-12 rounded-2xl border border-[var(--numa-border-strong)] bg-white/70 px-4 text-sm font-semibold disabled:opacity-50"
+              >
+                Nollställ
+              </button>
+            ) : null}
+          </div>
+
+          <div className="grid gap-3 border-t border-[var(--numa-border)] pt-4 sm:grid-cols-2">
+            <p className="text-sm text-[var(--numa-muted)]">
+              Fritt denna månad{" "}
+              <span className="font-semibold text-[var(--numa-ink)]">
+                {formatMoney(money(Math.max(0, freeMinor), currency))}
+              </span>
+            </p>
+            <p className="text-sm text-[var(--numa-muted)] sm:text-right">
+              ≈{" "}
+              <span className="font-semibold text-[var(--numa-ink)]">
+                {formatMoney(money(perDayMinor, currency))}
+              </span>{" "}
+              / dag · {spendDays} dagar kvar
+            </p>
+          </div>
+        </section>
+
         <p className="text-sm text-[var(--numa-muted)]">
-          Fasta utgifter följer med till nästa månad. Intäkter fyller du i
-          manuellt för varje månad.
+          Fasta utgifter följer med till nästa månad. Intäkter och sparande fyller
+          du i manuellt för varje månad.
         </p>
       </section>
 

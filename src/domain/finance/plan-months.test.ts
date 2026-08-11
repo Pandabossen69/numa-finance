@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
   isRecurringMonthly,
+  perDayBudgetMinor,
   projectPlanForMonth,
   rollDueDateForward,
+  spendDaysForMonth,
   withRolledMonthlyDues,
   yearMonthKeys,
+  visibleMonthKeysForYear,
 } from "./plan-months";
 
 function item(
@@ -72,9 +75,97 @@ describe("plan-months", () => {
     expect(aug.items.map((i) => i.name)).toEqual(["Hyra", "Engång"]);
     expect(aug.incomes.map((i) => i.name)).toEqual(["Lön"]);
     expect(aug.incomeMinor).toBe(40_000_00);
+    expect(aug.savingsMinor).toBe(0);
+    expect(aug.freeToSpendMinor).toBe(40_000_00 - aug.totalPlannedMinor);
     expect(sep.items.map((i) => i.name)).toEqual(["Hyra"]);
     expect(sep.incomes.map((i) => i.name)).toEqual(["Provision"]);
     expect(sep.reservedMinor).toBe(15_000_00);
+  });
+
+  it("applies month savings only to that month", () => {
+    const items = [
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 10_000_00,
+      }),
+      item({
+        name: "Lön",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 5_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+    ];
+    const aug = projectPlanForMonth(items, "2026-08", "UTC");
+    const sep = projectPlanForMonth(items, "2026-09", "UTC");
+    expect(aug.savingsMinor).toBe(5_000_00);
+    expect(aug.freeToSpendMinor).toBe(25_000_00);
+    expect(sep.savingsMinor).toBe(0);
+    expect(perDayBudgetMinor(25_000_00, 10)).toBe(2_500_00);
+  });
+
+  it("keeps Hem/Plan card math identical for a live month", () => {
+    const items = [
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 12_000_00,
+      }),
+      item({
+        name: "Netflix",
+        kind: "mandatory",
+        amountMinor: 199_00,
+      }),
+      item({
+        name: "Buffert",
+        kind: "buffer",
+        amountMinor: 2_000_00,
+      }),
+      item({
+        name: "Lön",
+        kind: "expected",
+        amountMinor: 45_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 5_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+    ];
+    const tz = "Asia/Bangkok";
+    const monthKey = "2026-08";
+    const p = projectPlanForMonth(items, monthKey, tz);
+
+    // Cards: Intäkter / Utgifter / Sparande / Fritt / Per dag
+    expect(p.incomeMinor).toBe(45_000_00);
+    expect(p.totalPlannedMinor).toBe(12_000_00 + 199_00 + 2_000_00);
+    expect(p.savingsMinor).toBe(5_000_00);
+    expect(p.freeToSpendMinor).toBe(
+      p.incomeMinor - p.totalPlannedMinor - p.savingsMinor,
+    );
+    expect(p.freeToSpendMinor).toBe(25_801_00);
+
+    const days = spendDaysForMonth(
+      monthKey,
+      new Date("2026-08-11T10:00:00.000Z"),
+      tz,
+    );
+    expect(days).toBe(21); // 11..31 incl.
+    expect(perDayBudgetMinor(p.freeToSpendMinor, days)).toBe(
+      Math.floor(25_801_00 / 21),
+    );
   });
 
   it("does not treat planned income as recurring monthly", () => {
@@ -121,5 +212,18 @@ describe("plan-months", () => {
       "2027-11",
       "2027-12",
     ]);
+  });
+
+  it("starts 2026 at August (app founding)", () => {
+    expect(visibleMonthKeysForYear(2026)[0]).toBe("2026-08");
+    expect(visibleMonthKeysForYear(2026)).toEqual([
+      "2026-08",
+      "2026-09",
+      "2026-10",
+      "2026-11",
+      "2026-12",
+    ]);
+    expect(visibleMonthKeysForYear(2027)[0]).toBe("2027-01");
+    expect(visibleMonthKeysForYear(2027)).toHaveLength(12);
   });
 });

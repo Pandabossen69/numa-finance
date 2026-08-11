@@ -39,9 +39,11 @@ export function calculatePlanTotals(
       }
     }
 
-    // Runway marker / planned income rows are not expense reservations.
+    // Runway marker / planned income / savings rows are not expense reservations.
     if (item.name === NEXT_INCOME_NAME) continue;
+    if (item.name === "Spara denna månad") continue;
     if ((item.cadence ?? "").toLowerCase() === "income") continue;
+    if ((item.cadence ?? "").toLowerCase() === "savings") continue;
 
     if (RESERVED_KINDS.has(item.kind)) {
       reservedMinor += Math.max(0, item.amountMinor);

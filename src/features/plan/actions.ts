@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { monthAnchorIso } from "@/domain/finance";
+import { monthAnchorIso, isPlanSavings, monthKeyFromDate } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
 import {
   createPlanItem,
@@ -40,6 +40,7 @@ function revalidatePlanPaths() {
   revalidatePath("/plan");
   revalidatePath("/idag");
   revalidatePath("/analys");
+  revalidatePath("/", "layout");
 }
 
 export async function createPlanItemAction(
@@ -97,6 +98,59 @@ export async function createPlanIncomeAction(
       ok: false,
       error:
         error instanceof Error ? error.message : "Kunde inte spara intäkten",
+    };
+  }
+}
+
+const savingsSchema = z.object({
+  monthKey: z.string().regex(/^\d{4}-\d{2}$/),
+  amount: z.string().trim().min(1),
+});
+
+/** Upsert month-scoped savings target (0 clears it). */
+export async function setMonthSavingsAction(
+  raw: z.infer<typeof savingsSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = savingsSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
+    if (amountMinor < 0) {
+      return { ok: false, error: "Belopp kan inte vara negativt" };
+    }
+    const snap = await getTodaySnapshot();
+    const timeZone = snap.profile.timezone || "Asia/Bangkok";
+    const existing = (snap.planItems ?? []).find((p) => {
+      if (!p.isActive || !isPlanSavings(p) || !p.nextDueAt) return false;
+      return (
+        monthKeyFromDate(new Date(p.nextDueAt), timeZone) === input.monthKey
+      );
+    });
+
+    if (amountMinor === 0) {
+      if (existing) await deletePlanItem(existing.id);
+      revalidatePlanPaths();
+      return { ok: true };
+    }
+
+    if (existing) {
+      await updatePlanItem({ id: existing.id, amountMinor });
+    } else {
+      await createPlanItem({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor,
+        currency: snap.currency,
+        cadence: "savings",
+        nextDueAt: monthAnchorIso(input.monthKey),
+      });
+    }
+    revalidatePlanPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte spara sparmålet",
     };
   }
 }
