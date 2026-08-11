@@ -45,8 +45,8 @@ export default async function FotaPage({
         </h1>
         <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           {bootstrapping
-            ? "Börja med bank-SMS — sedan synkar Hem i realtid."
-            : "SMS, kvitto eller manuellt. Allt landar på Hem."}
+            ? "Fota bank-SMS först — available balance blir ditt saldo på Hem."
+            : "SMS, kvitto eller manuellt. Saldo och dagsbudget synkar direkt."}
         </p>
       </header>
 

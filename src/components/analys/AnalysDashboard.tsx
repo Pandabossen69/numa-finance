@@ -32,14 +32,14 @@ export function AnalysDashboard({
         </p>
       </header>
 
-      <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-6">
+      <section className="animate-rise-delay-1 space-y-5 border-b border-[var(--numa-border)] pb-8">
         <div>
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
             {cycle.livingMode === "bridge"
               ? "Tills nästa intäkt"
               : "Aktiv inkomstcykel"}
           </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight">
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight">
             {cycle.livingMode === "bridge" && cycle.startLabelSv
               ? `Nu → ${cycle.startLabelSv}`
               : cycle.startLabelSv && cycle.endLabelSv
@@ -48,7 +48,7 @@ export function AnalysDashboard({
           </h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
             {cycle.livingMode === "bridge"
-              ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo, inte kommande planerade intäkter`
+              ? `${cycle.daysLeft} dagar kvar · Hem använder saldo från bank-SMS`
               : cycle.isActive
                 ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
                 : "Lägg in intäkter med datum i Plan för att starta cykeln."}
@@ -58,7 +58,7 @@ export function AnalysDashboard({
         {cycle.livingMode === "bridge" ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <Stat
-              label="Kvar på kontot"
+              label="Saldo"
               amountMinor={cycle.remainingFreeMinor}
               currency={currency}
               tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
@@ -371,15 +371,15 @@ function Stat({
         ? "text-[var(--numa-danger)]"
         : "";
   return (
-    <div className="numa-panel p-4">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+    <div className="border-b border-[var(--numa-border)] py-4">
+      <p className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
         {label}
       </p>
       <div className={`mt-2 ${amountClass}`}>
         <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
       </div>
       {hint ? (
-        <p className="mt-2 text-xs leading-snug text-[var(--numa-muted)]">{hint}</p>
+        <p className="mt-1.5 text-xs leading-snug text-[var(--numa-muted)]">{hint}</p>
       ) : null}
     </div>
   );

@@ -1,8 +1,8 @@
 export const PRIMARY_NAV = [
-  { href: "/idag", label: "Hem", hint: "Kvar per dag" },
-  { href: "/plan", label: "Plan", hint: "Intäkter & utgifter" },
-  { href: "/analys", label: "Analys", hint: "Djupdyk & siffror" },
-  { href: "/mer", label: "Mer", hint: "Konto & import" },
+  { href: "/idag", label: "Hem", hint: "Live dagsbudget" },
+  { href: "/plan", label: "Plan", hint: "Månader framåt" },
+  { href: "/analys", label: "Analys", hint: "Se mönster" },
+  { href: "/mer", label: "Mer", hint: "Saldo & import" },
 ] as const;
 
 export const MER_PREFIXES = [

@@ -68,6 +68,10 @@ export function ReceiptCaptureFlow({
   const [doneStatus, setDoneStatus] = useState<"plus" | "even" | "minus" | null>(
     null,
   );
+  const [doneBalanceMinor, setDoneBalanceMinor] = useState<number | null>(null);
+  const [doneDirection, setDoneDirection] = useState<
+    "debit" | "credit" | null
+  >(null);
   const [scanning, setScanning] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -170,26 +174,40 @@ export function ReceiptCaptureFlow({
         return;
       }
       setDoneStatus(result.data.pulseStatus);
+      setDoneBalanceMinor(result.data.balanceAfterMinor);
+      setDoneDirection(result.data.direction);
       URL.revokeObjectURL(preview.previewUrl);
       setTimeout(() => {
         router.push("/idag");
         router.refresh();
-      }, 900);
+      }, 1400);
     });
   }
 
   if (doneStatus) {
     return (
-      <div className="animate-rise py-16 text-center">
+      <div className="animate-rise space-y-4 py-14 text-center">
         <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[var(--numa-faint)]">
-          Sparat
+          {doneDirection === "credit" ? "Insättning sparad" : "Sparat"}
         </p>
-        <p className="mt-3 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-          Klart
-        </p>
-        <p className="mx-auto mt-3 max-w-[28ch] text-sm text-[var(--numa-muted)]">
-          Hem uppdateras med nya siffror.
-        </p>
+        {doneBalanceMinor != null ? (
+          <>
+            <p className="text-sm text-[var(--numa-muted)]">Ditt saldo nu</p>
+            <p className="money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
+              {formatMoney(money(doneBalanceMinor, currency))}
+            </p>
+            <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
+              Hem uppdateras — du lever på det här tills nästa intäkt.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-3xl font-semibold tracking-tight">Klart</p>
+            <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
+              Hem uppdateras med nya siffror.
+            </p>
+          </>
+        )}
       </div>
     );
   }
@@ -408,11 +426,18 @@ export function ReceiptCaptureFlow({
       </div>
 
       {preview.balanceAfterMinor != null ? (
-        <div className="flex items-baseline justify-between border-t border-[var(--numa-border)] pt-4">
-          <span className="text-sm text-[var(--numa-muted)]">Nytt saldo</span>
-          <span className="money text-base font-semibold">
-            {formatMoney(money(preview.balanceAfterMinor, preview.currency))}
-          </span>
+        <div className="space-y-1 border-t border-[var(--numa-border)] pt-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm text-[var(--numa-muted)]">
+              Saldo på Hem
+            </span>
+            <span className="money text-xl font-semibold text-[var(--numa-positive)]">
+              {formatMoney(money(preview.balanceAfterMinor, preview.currency))}
+            </span>
+          </div>
+          <p className="text-xs text-[var(--numa-faint)]">
+            Available balance från SMS — det här blir ditt saldo.
+          </p>
         </div>
       ) : null}
 
@@ -478,8 +503,10 @@ export function ReceiptCaptureFlow({
           {pending
             ? "Sparar…"
             : bootstrapping
-              ? "Spara saldo"
-              : "Bekräfta"}
+              ? "Spara saldo på Hem"
+              : isCredit
+                ? "Spara insättning"
+                : "Bekräfta"}
         </button>
         <button
           type="button"
@@ -514,7 +541,7 @@ function ModePicker({
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: "Senaste notisen · belopp + saldo",
+      hint: "Senaste notisen · belopp + available balance",
     },
     {
       id: "receipt",
@@ -538,7 +565,7 @@ function ModePicker({
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           {bootstrapping
-            ? "Börja med bank-SMS så Hem får rätt saldo."
+            ? "Fota senaste bank-SMS. Available balance blir saldo på Hem."
             : "Ett steg. Vi läser bilden och du bekräftar."}
         </p>
       </header>

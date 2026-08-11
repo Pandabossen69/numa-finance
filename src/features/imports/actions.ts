@@ -51,6 +51,7 @@ export async function uploadReceiptAction(
     revalidatePath("/importera");
     revalidatePath("/mer");
     revalidatePath("/fota");
+    revalidatePath("/idag");
     return { ok: true, data: result };
   } catch (error) {
     return {
@@ -77,7 +78,14 @@ const confirmSchema = z.object({
 
 export async function confirmReceiptExpenseAction(
   raw: z.infer<typeof confirmSchema>,
-): Promise<ActionResult<{ pulseStatus: "plus" | "even" | "minus" }>> {
+): Promise<
+  ActionResult<{
+    pulseStatus: "plus" | "even" | "minus";
+    balanceAfterMinor: number | null;
+    direction: "debit" | "credit" | null;
+    amountMinor: number;
+  }>
+> {
   try {
     const input = confirmSchema.parse(raw);
     const amountMinor = parseUiAmountToMinor(input.amount);
@@ -85,7 +93,7 @@ export async function confirmReceiptExpenseAction(
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
 
-    await confirmReceiptExpense({
+    const tx = await confirmReceiptExpense({
       accountId: input.accountId,
       observationId: input.observationId,
       candidateId: input.candidateId,
@@ -124,7 +132,16 @@ export async function confirmReceiptExpenseAction(
     revalidatePath("/konton");
     revalidatePath("/fota");
 
-    return { ok: true, data: { pulseStatus: pulse.status } };
+    return {
+      ok: true,
+      data: {
+        pulseStatus: pulse.status,
+        balanceAfterMinor:
+          snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
+        direction: tx.direction,
+        amountMinor: tx.amountMinor,
+      },
+    };
   } catch (error) {
     return {
       ok: false,

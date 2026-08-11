@@ -8,10 +8,10 @@ export function SideNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-60 shrink-0 md:block">
-      <div className="sticky top-0 flex h-dvh flex-col gap-8 py-8 pr-4">
-        <Link href="/idag" prefetch className="group block px-2">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-[var(--numa-faint)]">
+    <aside className="hidden w-56 shrink-0 md:block">
+      <div className="sticky top-0 flex h-dvh flex-col gap-10 py-10 pr-2">
+        <Link href="/idag" prefetch className="group block px-1">
+          <p className="text-[0.65rem] font-medium uppercase tracking-[0.22em] text-[var(--numa-faint)]">
             Personlig ekonomi
           </p>
           <p className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
@@ -19,7 +19,7 @@ export function SideNav() {
           </p>
         </Link>
 
-        <nav className="flex flex-1 flex-col gap-1" aria-label="Sido­navigering">
+        <nav className="flex flex-1 flex-col gap-0.5" aria-label="Sido­navigering">
           {PRIMARY_NAV.map((item) => {
             const active = isNavActive(pathname, item.href);
             return (
@@ -27,14 +27,22 @@ export function SideNav() {
                 key={item.href}
                 href={item.href}
                 prefetch
-                className={`rounded-2xl px-3 py-3 transition ${
+                className={`relative px-1 py-3 transition ${
                   active
-                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
-                    : "text-[var(--numa-muted)] hover:bg-white/50 hover:text-[var(--numa-ink)]"
+                    ? "text-[var(--numa-ink)]"
+                    : "text-[var(--numa-muted)] hover:text-[var(--numa-ink)]"
                 }`}
               >
-                <span className="block text-sm font-semibold">{item.label}</span>
-                <span className="mt-0.5 block text-xs text-[var(--numa-faint)]">
+                {active ? (
+                  <span
+                    className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[var(--numa-accent)]"
+                    aria-hidden
+                  />
+                ) : null}
+                <span className="block pl-3 text-sm font-semibold tracking-tight">
+                  {item.label}
+                </span>
+                <span className="mt-0.5 block pl-3 text-xs text-[var(--numa-faint)]">
                   {item.hint}
                 </span>
               </Link>
@@ -45,7 +53,7 @@ export function SideNav() {
         <Link
           href="/lagg-till"
           prefetch
-          className="rounded-2xl bg-[var(--numa-accent)] px-4 py-3.5 text-center text-sm font-semibold text-white shadow-[var(--numa-shadow-sm)] transition hover:brightness-105 active:scale-[0.99]"
+          className="rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
         >
           + Lägg till
         </Link>

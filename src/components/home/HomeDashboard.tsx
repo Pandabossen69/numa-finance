@@ -59,7 +59,7 @@ export function HomeDashboard({
           {isEmpty
             ? "Lägg in intäkter med datum i Plan."
             : isBridge
-              ? "Du lever på det som finns kvar på kontot tills nästa intäkt."
+              ? "Saldo från banken — så mycket du får leva på per dag tills nästa intäkt."
               : "Så mycket du får leva på varje dag just nu."}
         </p>
       </header>
@@ -86,7 +86,9 @@ export function HomeDashboard({
             </p>
             <div
               className={
-                dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
+                dayOk
+                  ? "money-hero text-[var(--numa-ink)]"
+                  : "money-hero text-[var(--numa-muted)]"
               }
             >
               <MoneyDisplay
@@ -110,10 +112,17 @@ export function HomeDashboard({
 
           <section className="animate-rise-delay-2 space-y-0">
             <OverviewRow
-              label={isBridge ? "Kvar på kontot" : "Kvar totalt"}
+              label={isBridge ? "Saldo" : "Kvar totalt"}
               amountMinor={snap.remainingFreeMinor}
               currency={currency}
               tone={remainingOk ? "positive" : "danger"}
+              hint={
+                isBridge && snap.verificationLabel
+                  ? snap.verificationLabel
+                  : isBridge
+                    ? "Från bank-SMS"
+                    : undefined
+              }
             />
             {!isBridge ? (
               <OverviewRow
@@ -124,7 +133,7 @@ export function HomeDashboard({
             ) : null}
             {snap.hasBankTruth &&
             snap.calculatedBalanceMinor != null &&
-            !(isBridge && snap.usesBankBalance) ? (
+            !isBridge ? (
               <OverviewRow
                 label="Saldo"
                 amountMinor={snap.calculatedBalanceMinor}

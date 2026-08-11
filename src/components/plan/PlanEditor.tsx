@@ -276,7 +276,7 @@ export function PlanEditor({
         {cycle.startAt && monthKey === (cycle.fundingMonthKey ?? currentMonthKey) ? (
           <p className="text-sm text-[var(--numa-muted)]">
             {living.mode === "bridge"
-              ? `Hem: tills nästa intäkt ${cycle.startLabelSv} — ange saldo på Hem om du lever på pengar från förra månaden`
+              ? `Hem: tills ${cycle.startLabelSv} — lever på banksaldo från SMS`
               : `Hem: ${cycle.startLabelSv} → ${cycle.endLabelSv}${
                   cycle.endInferred
                     ? " · fyll i nästa månads intäkter för exakt slut"

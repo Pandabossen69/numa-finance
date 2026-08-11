@@ -1242,6 +1242,9 @@ export async function confirmReceiptExpense(
     balanceAfterMinor =
       (cand.balance_after_minor as number | null) ?? balanceAfterMinor;
     amountMinor = cand.amount_minor as number;
+    if (amountMinor == null || amountMinor <= 0) {
+      throw new Error("Kandidaten saknar giltigt belopp");
+    }
     if (cand.direction === "credit" || cand.direction === "debit") {
       direction = cand.direction;
     }
