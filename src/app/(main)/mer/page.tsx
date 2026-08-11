@@ -1,44 +1,29 @@
 import Link from "next/link";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const links = [
   {
     href: "/transaktioner",
-    label: "Utgifter & intäkter",
-    hint: "Totalt in, ut och vad som blir över",
+    label: "Rörelser",
+    hint: "Kvitton, SMS och manuella belopp",
   },
-  { href: "/konton", label: "Mina saldon", hint: "Konton & verifiering" },
-  { href: "/fota", label: "Fota kvitto / skärmbild", hint: "Bank-SMS och kvitton" },
-  { href: "/importera", label: "Importer", hint: "Bankobservationer" },
-  { href: "/installningar", label: "Inställningar", hint: "Valuta & tidszon" },
-  { href: "/laga", label: "Laga appen", hint: "Rensa cache / SW" },
+  { href: "/konton", label: "Saldo", hint: "Verifiera hur mycket du har" },
+  { href: "/fota", label: "Fota", hint: "Bank-SMS eller kvitto" },
+  { href: "/importera", label: "Importer", hint: "Tidigare observationer" },
+  { href: "/installningar", label: "Inställningar", hint: "Tidszon & underhåll" },
+  { href: "/laga", label: "Laga appen", hint: "Rensa cache om något strular" },
 ] as const;
 
 export default function MerPage() {
-  const supabaseReady = isSupabaseConfigured();
-
   return (
     <div className="space-y-6">
       <header className="animate-rise">
         <h1 className="text-3xl font-semibold tracking-tight">Mer</h1>
         <p className="mt-2 text-sm text-[var(--numa-muted)]">
-          Saldon, historik och underhåll.
+          Saldo, historik och underhåll.
         </p>
       </header>
 
-      <div
-        className={`animate-rise-delay-1 rounded-2xl px-4 py-3 text-sm font-medium ${
-          supabaseReady
-            ? "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]"
-            : "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]"
-        }`}
-      >
-        {supabaseReady
-          ? "Supabase konfigurerad · schema numa"
-          : "Supabase saknas lokalt — mock / lokal store"}
-      </div>
-
-      <nav className="animate-rise-delay-2 space-y-2" aria-label="Mer-meny">
+      <nav className="animate-rise-delay-1 space-y-2" aria-label="Mer-meny">
         {links.map((link) => (
           <Link
             key={link.href}

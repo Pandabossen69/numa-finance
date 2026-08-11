@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { parseUiAmountToMinor } from "@/domain/money";
+import { parseUiAmountToMinor, money } from "@/domain/money";
 import { calculateDayPulse } from "@/domain/gamification";
-import { money } from "@/domain/money";
+import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
   confirmReceiptExpense,
   getTodaySnapshot,
@@ -98,8 +98,18 @@ export async function confirmReceiptExpenseAction(
     });
 
     const snap = await getTodaySnapshot();
+    const timeZone = snap.profile.timezone || "Asia/Bangkok";
+    const now = new Date();
+    const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone,
+      bankBalanceMinor: snap.calculatedBalanceMinor,
+      cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
+    });
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(snap.safeToSpendTodayMinor, snap.currency),
+      safeToSpendToday: money(living.perDayMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
 

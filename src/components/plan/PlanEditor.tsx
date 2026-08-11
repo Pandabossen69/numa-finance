@@ -9,6 +9,7 @@ import {
   labelDayOfMonthSv,
   labelMonthNameSv,
   monthKeyFromDate,
+  projectLivingBudget,
   projectPayCycle,
   projectPlanForMonth,
   yearFromMonthKey,
@@ -46,10 +47,14 @@ export function PlanEditor({
   items,
   currency,
   timeZone,
+  bankBalanceMinor = null,
+  cycleSpendingMinor = 0,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
   timeZone: string;
+  bankBalanceMinor?: number | null;
+  cycleSpendingMinor?: number;
 }) {
   const router = useRouter();
   const currentMonthKey = useMemo(
@@ -91,6 +96,18 @@ export function PlanEditor({
   const cycle = useMemo(
     () => projectPayCycle(items, new Date(), timeZone),
     [items, timeZone],
+  );
+
+  const living = useMemo(
+    () =>
+      projectLivingBudget({
+        cycle,
+        now: new Date(),
+        timeZone,
+        bankBalanceMinor,
+        cycleSpendingMinor,
+      }),
+    [cycle, timeZone, bankBalanceMinor, cycleSpendingMinor],
   );
 
   useEffect(() => {
@@ -229,8 +246,8 @@ export function PlanEditor({
               {formatMoney(money(projection.freeToSpendMinor, currency))}
             </p>
             <p className="mt-1 text-sm text-[var(--numa-muted)]">
-              kvar efter fasta, extra och sparande
-            </p>
+            kvar efter fasta, extra och sparande · kalendermånad
+          </p>
           </div>
           <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--numa-muted)]">
             <span>
@@ -258,13 +275,13 @@ export function PlanEditor({
 
         {cycle.startAt && monthKey === (cycle.fundingMonthKey ?? currentMonthKey) ? (
           <p className="text-sm text-[var(--numa-muted)]">
-            {!cycle.isActive
+            {living.mode === "bridge"
               ? `Hem: tills nästa intäkt ${cycle.startLabelSv} — ange saldo på Hem om du lever på pengar från förra månaden`
               : `Hem: ${cycle.startLabelSv} → ${cycle.endLabelSv}${
                   cycle.endInferred
                     ? " · fyll i nästa månads intäkter för exakt slut"
                     : ""
-                } · ${formatMoney(money(cycle.perDayMinor, currency))} / dag`}
+                } · ${formatMoney(money(living.perDayMinor, currency))} / dag`}
           </p>
         ) : null}
 

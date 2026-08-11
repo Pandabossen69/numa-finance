@@ -59,7 +59,7 @@ export default async function FotaPage({
         <ReceiptCaptureFlow
           accountId={data.primaryAccountId}
           accounts={accounts}
-          safeToSpendTodayMinor={data.safeToSpendTodayMinor}
+          perDayBudgetMinor={data.perDayBudgetMinor}
           todaySpendingMinor={data.todaySpendingMinor}
           currency={data.currency}
           bootstrapping={!data.hasBankTruth}

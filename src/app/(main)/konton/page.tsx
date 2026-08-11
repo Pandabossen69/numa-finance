@@ -18,9 +18,9 @@ export default async function KontonPage() {
     <div className="space-y-6 pt-2">
       <header className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Konton</h1>
+          <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">Saldo</h1>
           <p className="mt-2 text-sm text-[var(--numa-muted)]">
-            Uppdatera saldot när du vill — NUMA räknar vidare därifrån.
+            Uppdatera när du vill — Hem räknar kvar per dag därifrån.
           </p>
         </div>
         <Link

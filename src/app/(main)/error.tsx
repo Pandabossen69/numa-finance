@@ -30,7 +30,7 @@ export default function MainError({
           href="/idag"
           className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--numa-border)] text-sm font-medium"
         >
-          Ladda Idag
+          Till Hem
         </a>
         <a
           href="/installningar"

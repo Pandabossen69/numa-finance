@@ -47,11 +47,13 @@ function matchesFilter(
   return tx.transactionType !== "expense" && tx.transactionType !== "income";
 }
 
-function inCurrentMonth(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
+function inMonthKey(iso: string, monthKey: string, timeZone: string): boolean {
   return (
-    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+    }).format(new Date(iso)) === monthKey
   );
 }
 
@@ -80,7 +82,12 @@ export function MovementsScreen({
     if (!data) return [];
     return data.items.filter((tx) => {
       if (!matchesFilter(tx, filter)) return false;
-      if (period === "month" && !inCurrentMonth(tx.occurredAt)) return false;
+      if (
+        period === "month" &&
+        !inMonthKey(tx.occurredAt, data.monthKey, data.timeZone)
+      ) {
+        return false;
+      }
       return true;
     });
   }, [data, filter, period]);
@@ -104,14 +111,11 @@ export function MovementsScreen({
   return (
     <div className="space-y-6">
       <header className="animate-rise">
-        <p className="text-sm font-medium text-[var(--numa-accent)]">
-          Ekonomi · översikt
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          Utgifter & intäkter
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Rörelser
         </h1>
         <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
-          Totalt in, totalt ut och vad som blir över — plus varje rörelse.
+          Alla belopp från SMS, kvitton och manuella tillägg.
         </p>
       </header>
 
@@ -142,7 +146,7 @@ export function MovementsScreen({
           tone="danger"
         />
         <SummaryStat
-          label="Blir över"
+          label="Netto"
           amountMinor={net}
           currency={data.currency}
           tone={net >= 0 ? "positive" : "danger"}
@@ -150,41 +154,27 @@ export function MovementsScreen({
         />
       </section>
 
-      <section className="animate-rise-delay-2 grid gap-3 sm:grid-cols-2">
-        <div className="numa-panel p-4">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Saldo nu
-          </p>
-          <div className="mt-2">
+      {data.balanceMinor != null ? (
+        <section className="animate-rise-delay-2 numa-panel p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <div>
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Saldo
+              </p>
+              <p className="mt-1 text-xs text-[var(--numa-muted)]">
+                {data.hasBankTruth
+                  ? "Från bank-SMS / beräkning"
+                  : "Manuellt angivet"}
+              </p>
+            </div>
             <MoneyDisplay
               amountMinor={data.balanceMinor}
               currency={data.currency}
               size="md"
             />
           </div>
-          <p className="mt-2 text-xs text-[var(--numa-muted)]">
-            {data.hasBankTruth
-              ? "Från bank-SMS / beräkning"
-              : "Väntar på första bank-SMS"}
-          </p>
-        </div>
-        <div className="numa-panel p-4">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            Fritt efter plan
-          </p>
-          <div className="mt-2">
-            <MoneyDisplay
-              amountMinor={data.freeMinor}
-              currency={data.currency}
-              size="md"
-            />
-          </div>
-          <p className="mt-2 text-xs text-[var(--numa-muted)]">
-            Reserverat {(data.reservedMinor / 100).toLocaleString("sv-SE")} ·
-            buffert {(data.bufferMinor / 100).toLocaleString("sv-SE")}
-          </p>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {period === "month" && data.monthCategories.length > 0 ? (
         <section className="numa-panel animate-rise-delay-2 p-5">

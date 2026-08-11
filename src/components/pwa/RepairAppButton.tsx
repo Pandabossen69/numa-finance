@@ -64,7 +64,7 @@ export function RepairAppButton({ autoStart = false }: { autoStart?: boolean }) 
         <p className="text-sm text-[var(--numa-muted)]">Laddar om…</p>
       ) : (
         <p className="text-xs leading-relaxed text-[var(--numa-faint)]">
-          Rensar gammal cache som kan göra Idag tom. Tar en sekund.
+          Rensar gammal cache som kan göra Hem tom. Tar en sekund.
         </p>
       )}
     </div>

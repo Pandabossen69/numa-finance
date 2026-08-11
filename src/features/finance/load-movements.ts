@@ -25,11 +25,8 @@ export type CategoryTotal = {
 export type MovementsSnapshot = {
   currency: CurrencyCode;
   hasBankTruth: boolean;
-  balanceMinor: number;
-  freeMinor: number;
-  reservedMinor: number;
-  bufferMinor: number;
-  safeToSpendTodayMinor: number;
+  /** null when saldo is unknown — never show as ฿0 */
+  balanceMinor: number | null;
   monthIncomeMinor: number;
   monthExpenseMinor: number;
   monthNetMinor: number;
@@ -38,6 +35,8 @@ export type MovementsSnapshot = {
   allNetMinor: number;
   monthCategories: CategoryTotal[];
   items: MovementRow[];
+  timeZone: string;
+  monthKey: string;
 };
 
 export type MovementsSnapshotResult =
@@ -124,11 +123,7 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
       data: {
         currency,
         hasBankTruth: snap.checkpoint != null,
-        balanceMinor: snap.calculatedBalanceMinor ?? 0,
-        freeMinor: snap.freeMinor,
-        reservedMinor: snap.reservedMinor,
-        bufferMinor: snap.bufferMinor,
-        safeToSpendTodayMinor: snap.safeToSpendTodayMinor,
+        balanceMinor: snap.calculatedBalanceMinor,
         monthIncomeMinor,
         monthExpenseMinor,
         monthNetMinor: monthIncomeMinor - monthExpenseMinor,
@@ -137,6 +132,8 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
         allNetMinor: allIncomeMinor - allExpenseMinor,
         monthCategories,
         items,
+        timeZone: timezone,
+        monthKey: thisMonth,
       },
     };
   } catch (error) {

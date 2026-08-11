@@ -1,5 +1,5 @@
 export const PRIMARY_NAV = [
-  { href: "/idag", label: "Hem", hint: "Snabb överblick" },
+  { href: "/idag", label: "Hem", hint: "Kvar per dag" },
   { href: "/plan", label: "Plan", hint: "Intäkter & utgifter" },
   { href: "/analys", label: "Analys", hint: "Djupdyk & siffror" },
   { href: "/mer", label: "Mer", hint: "Konto & import" },
@@ -11,6 +11,8 @@ export const MER_PREFIXES = [
   "/transaktioner",
   "/importera",
   "/installningar",
+  "/fota",
+  "/lagg-till",
 ] as const;
 
 export function isNavActive(pathname: string, href: string): boolean {

@@ -125,7 +125,7 @@ function WelcomeScreen({
           NUMA
         </p>
         <p className="mt-5 max-w-[18ch] text-[1.35rem] font-medium leading-snug tracking-tight text-[var(--numa-ink)]">
-          Håll koll på pengarna — tryggt och enkelt.
+          Håll koll på pengarna — enkelt varje dag.
         </p>
         <p className="mt-3 max-w-[32ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
           Se vad som är ledigt, vad som är reserverat och hur mycket du kan

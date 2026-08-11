@@ -7,7 +7,7 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
  * What you can live on right now on Hem.
  *
  * - bridge: before next income wave arrives — use kontosaldo (manual or from
- *   fotade SMS/kvitton). Planens augusti-intäkter räknas inte förrän de kommit.
+ *   fotade SMS/kvitton). Upcoming planned incomes are not counted until they land.
  * - cycle: after income landed — plan pool minus utgifter minus spenderat.
  * - empty: no planned incomes yet.
  */

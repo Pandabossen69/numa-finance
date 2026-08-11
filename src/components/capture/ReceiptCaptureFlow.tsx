@@ -42,7 +42,7 @@ function minorToInput(minor: number): string {
 export function ReceiptCaptureFlow({
   accountId,
   accounts,
-  safeToSpendTodayMinor,
+  perDayBudgetMinor,
   todaySpendingMinor,
   currency,
   bootstrapping = false,
@@ -50,7 +50,7 @@ export function ReceiptCaptureFlow({
 }: {
   accountId: string | null;
   accounts: ShellAccount[];
-  safeToSpendTodayMinor: number;
+  perDayBudgetMinor: number;
   todaySpendingMinor: number;
   currency: CurrencyCode;
   bootstrapping?: boolean;
@@ -69,7 +69,7 @@ export function ReceiptCaptureFlow({
   );
   const [pending, startTransition] = useTransition();
 
-  const roomBefore = safeToSpendTodayMinor - todaySpendingMinor;
+  const roomBefore = Math.max(0, perDayBudgetMinor - todaySpendingMinor);
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;
@@ -168,10 +168,10 @@ export function ReceiptCaptureFlow({
   if (doneStatus) {
     const copy =
       doneStatus === "minus"
-        ? "Sparat. Dagen ligger lite över planen — inget fel, bara bra att veta."
+        ? "Sparat. Lite över dagens budget — kolla Hem."
         : doneStatus === "even"
-          ? "Sparat. Du ligger jämnt med dagens plan."
-          : "Sparat. Bra läge.";
+          ? "Sparat. Du ligger jämnt med dagens budget."
+          : "Sparat. Inom dagens budget.";
     return (
       <div className="rounded-[1.75rem] bg-white/90 px-6 py-12 text-center shadow-[var(--numa-shadow-sm)] animate-rise">
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-accent)]">
@@ -420,7 +420,7 @@ export function ReceiptCaptureFlow({
             Efter köpet
           </p>
           <p className={`mt-1 text-lg font-semibold ${remainingTone}`}>
-            {impact.canAfford ? "Inom dagens trygga nivå" : "Över dagens trygga nivå"}
+            {impact.canAfford ? "Inom dagens budget" : "Över dagens budget"}
           </p>
           <p className={`money mt-1 text-sm ${remainingTone}`}>
             {formatMoney(money(impact.remaining, currency))} kvar

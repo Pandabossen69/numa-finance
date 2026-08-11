@@ -48,7 +48,7 @@ export function AnalysDashboard({
           </h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
             {cycle.livingMode === "bridge"
-              ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo, inte kommande augusti-intäkter`
+              ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo, inte kommande planerade intäkter`
               : cycle.isActive
                 ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
                 : "Lägg in intäkter med datum i Plan för att starta cykeln."}
@@ -91,7 +91,7 @@ export function AnalysDashboard({
                 tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
               />
               <Stat
-                label="Kvar efter spenderat"
+                label="Kvar totalt"
                 amountMinor={cycle.remainingFreeMinor}
                 currency={currency}
                 tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
@@ -131,15 +131,27 @@ export function AnalysDashboard({
           <p className="text-sm text-[var(--numa-muted)]">
             Exempel: planerat fritt{" "}
             <span className="font-semibold text-[var(--numa-ink)]">
-              {(cycle.freeToSpendMinor / 100).toLocaleString("sv-SE")}
+              <MoneyDisplay
+                amountMinor={cycle.freeToSpendMinor}
+                currency={currency}
+                size="sm"
+              />
             </span>{" "}
             − spenderat{" "}
             <span className="font-semibold text-[var(--numa-ink)]">
-              {(data.cycleSpendingMinor / 100).toLocaleString("sv-SE")}
+              <MoneyDisplay
+                amountMinor={data.cycleSpendingMinor}
+                currency={currency}
+                size="sm"
+              />
             </span>{" "}
             = kvar{" "}
             <span className="font-semibold text-[var(--numa-ink)]">
-              {(cycle.remainingFreeMinor / 100).toLocaleString("sv-SE")}
+              <MoneyDisplay
+                amountMinor={cycle.remainingFreeMinor}
+                currency={currency}
+                size="sm"
+              />
             </span>
             , delat på {cycle.daysLeft} dagar.
           </p>
@@ -148,14 +160,22 @@ export function AnalysDashboard({
 
       <section className="animate-rise-delay-2 grid gap-4 lg:grid-cols-2">
         <LineCard
-          title="Intäkter i cykeln"
+          title={
+            cycle.livingMode === "bridge"
+              ? "Kommande intäkter (räknas när de landar)"
+              : "Intäkter i cykeln"
+          }
           empty="Inga intäkter i cykeln."
           lines={cycle.incomes}
           currency={currency}
           totalMinor={cycle.incomeMinor}
         />
         <LineCard
-          title="Utgifter i cykeln"
+          title={
+            cycle.livingMode === "bridge"
+              ? "Utgifter i kommande period"
+              : "Utgifter i cykeln"
+          }
           empty="Inga utgifter förfaller i cykeln."
           lines={cycle.expenses}
           currency={currency}
@@ -219,18 +239,25 @@ export function AnalysDashboard({
       </section>
 
       <section className="animate-rise-delay-3 space-y-3">
-        <h2 className="text-sm font-semibold tracking-tight">Konto & bank</h2>
+        <h2 className="text-sm font-semibold tracking-tight">Konto & rörelser</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Stat
-            label="Saldo"
-            amountMinor={data.calculatedBalanceMinor ?? 0}
-            currency={currency}
-            hint={
-              data.hasBankTruth
-                ? (data.verificationLabel ?? "Beräknat")
-                : "Väntar på SMS"
-            }
-          />
+          {data.calculatedBalanceMinor != null ? (
+            <Stat
+              label="Saldo"
+              amountMinor={data.calculatedBalanceMinor}
+              currency={currency}
+              hint={data.verificationLabel ?? "Beräknat"}
+            />
+          ) : (
+            <div className="numa-panel p-4">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+                Saldo
+              </p>
+              <p className="mt-2 text-sm text-[var(--numa-muted)]">
+                {data.hasBankTruth ? "Saknas" : "Ange på Hem eller fota bank-SMS"}
+              </p>
+            </div>
+          )}
           <Stat
             label="Spenderat denna månad"
             amountMinor={data.monthSpendingMinor}
@@ -240,22 +267,6 @@ export function AnalysDashboard({
           <Stat
             label="Spenderat idag"
             amountMinor={data.todaySpendingMinor}
-            currency={currency}
-          />
-          <Stat
-            label="Saldo-baserat idag"
-            amountMinor={data.safeToSpendTodayMinor}
-            currency={currency}
-            hint="Efter reserverat i kontot"
-          />
-          <Stat
-            label="Tryggt denna vecka"
-            amountMinor={data.safeToSpendWeekMinor}
-            currency={currency}
-          />
-          <Stat
-            label="Fritt efter buffert"
-            amountMinor={data.freeMinor}
             currency={currency}
           />
         </div>

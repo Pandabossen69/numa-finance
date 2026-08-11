@@ -30,10 +30,10 @@ export default async function InstallningarPage({
         </h1>
       </header>
 
-      <section className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 py-4">
+      <section className="numa-panel space-y-3 p-4">
         <h2 className="text-base font-semibold">Fungerar inte appen?</h2>
         <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Om Idag är tom vit medan menyn syns beror det oftast på gammal cache i
+          Om Hem är tom vit medan menyn syns beror det oftast på gammal cache i
           telefonen. Tryck knappen — den rensar och laddar om.
         </p>
         <RepairAppButton autoStart={autoLaga} />
@@ -42,11 +42,10 @@ export default async function InstallningarPage({
       {profile ? (
         <dl className="space-y-4 border-y border-[var(--numa-border)] py-4">
           <Row label="Tidszon" value={profile.timezone} />
-          <Row label="Primär valuta" value={profile.primaryCurrency} />
-          <Row label="Referensvaluta" value={profile.referenceCurrency} />
+          <Row label="Valuta" value={profile.primaryCurrency} />
           <Row
             label="Dataläge"
-            value={supabaseReady ? "Supabase (schema numa)" : "Lokal lagring"}
+            value={supabaseReady ? "Moln (Supabase)" : "Lokal lagring"}
           />
         </dl>
       ) : (
