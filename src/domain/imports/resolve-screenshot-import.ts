@@ -148,6 +148,31 @@ export function resolveScreenshotImport(
     if (raw && typeof raw.fullText === "string") textParts.push(raw.fullText);
   }
 
+  // Fallback: rebuild SMS text from structured candidate fields when OCR
+  // returned amounts/balances but no raw transcription.
+  if (!textParts.some((t) => looksLikeBankSmsText(t, detectedKind))) {
+    const fromCandidates = structuredMessagesToText(
+      extraction.candidates.map((c, i) => ({
+        rawText:
+          typeof c.rawPayload?.rawText === "string"
+            ? c.rawPayload.rawText
+            : null,
+        amountMajor:
+          c.amountMinor != null ? c.amountMinor / 100 : null,
+        balanceAfterMajor:
+          c.balanceAfterMinor != null ? c.balanceAfterMinor / 100 : null,
+        accountHint:
+          typeof c.rawPayload?.accountHint === "string" &&
+          c.rawPayload.accountHint.trim()
+            ? c.rawPayload.accountHint
+            : "X0000",
+        direction: c.direction,
+        visualOrder: i,
+      })),
+    );
+    if (fromCandidates.text) textParts.push(fromCandidates.text);
+  }
+
   const combinedText = textParts.join("\n\n");
   const treatAsBank =
     options?.preferBankSms === true ||

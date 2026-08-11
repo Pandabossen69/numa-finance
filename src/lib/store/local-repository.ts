@@ -623,6 +623,7 @@ export async function uploadReceiptAndExtract(input: {
     storagePath,
     imageBase64,
     mimeType: input.mimeType,
+    institutionHint: input.preferBankSms ? "Bangkok Bank" : null,
   });
 
   const known = await listKnownFingerprints({ includePendingCandidates: true });
@@ -789,6 +790,11 @@ export async function uploadReceiptAndExtract(input: {
           : (c.description ?? ""),
     }));
 
+  const visionMessage =
+    typeof extraction.rawMetadata?.message === "string"
+      ? extraction.rawMetadata.message
+      : null;
+
   return {
     observation,
     candidate,
@@ -799,8 +805,12 @@ export async function uploadReceiptAndExtract(input: {
     ocrStatus,
     message:
       ocrStatus === "unavailable"
-        ? "Kunde inte autoläsa just nu — ta en tydligare bank-SMS-bild."
-        : resolved.messageSv,
+        ? "Autoläsning är inte konfigurerad (OPENAI_API_KEY saknas i miljön)."
+        : ocrStatus === "failed"
+          ? (visionMessage ??
+            resolved.messageSv ??
+            "Kunde inte läsa bank-SMS — ta en skarpare skärmdump av hela bubblorna.")
+          : resolved.messageSv,
     importKind:
       resolved.kind === "bank_sms"
         ? "bank_sms"

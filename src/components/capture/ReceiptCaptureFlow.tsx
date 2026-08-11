@@ -121,7 +121,9 @@ export function ReceiptCaptureFlow({
     setScanPreviewUrl(previewUrl);
 
     startTransition(async () => {
-      const uploadFile = await compressImageForUpload(file);
+      const uploadFile = await compressImageForUpload(file, {
+        preserveText: mode === "bank_sms",
+      });
       const fd = new FormData();
       fd.set("file", uploadFile);
       if (mode === "bank_sms") fd.set("mode", "bank_sms");

@@ -274,7 +274,7 @@ describe("bangkok bank multi-SMS", () => {
    * Hugo's real Bangkok Bank thread (IMG_3282): 3–6 bubbles, Bt, X6591,
    * no payment date in SMS body — identity = amount + available balance.
    */
-  const HUGO_THREAD = `Withdrawal/transfer/payment from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,028.04.
+  const HUGO_THREAD = `Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,028.04.
 
 Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04.
 
@@ -378,4 +378,63 @@ Withdrawal/transfer/payment from your account X6591 of Bt 99.00 via MOBILE; the 
     expect(resolved.balanceAfterMinor).toBe(1069304);
     expect(resolved.selectedBatch.length).toBe(2);
   });
+
+  it("resolveScreenshotImport rebuilds SMS from structured candidates without rawText", () => {
+    const resolved = resolveScreenshotImport(
+      {
+        provider: "vision_api",
+        candidates: [
+          {
+            direction: "debit",
+            amountMinor: 5000,
+            currency: "THB",
+            balanceAfterMinor: 1_202_804,
+            occurredAt: null,
+            description: null,
+            confidence: 0.9,
+            rawPayload: { accountHint: "X6591" },
+          },
+          {
+            direction: "debit",
+            amountMinor: 500_000,
+            currency: "THB",
+            balanceAfterMinor: 702_804,
+            occurredAt: null,
+            description: null,
+            confidence: 0.9,
+            rawPayload: { accountHint: "X6591" },
+          },
+          {
+            direction: "debit",
+            amountMinor: 32_000,
+            currency: "THB",
+            balanceAfterMinor: 670_804,
+            occurredAt: null,
+            description: null,
+            confidence: 0.9,
+            rawPayload: { accountHint: "X6591" },
+          },
+          {
+            direction: "credit",
+            amountMinor: 340_000,
+            currency: "THB",
+            balanceAfterMinor: 1_010_804,
+            occurredAt: null,
+            description: null,
+            confidence: 0.9,
+            rawPayload: { accountHint: "X6591" },
+          },
+        ],
+        rawMetadata: { detectedKind: "bangkok_bank_sms" },
+      },
+      [],
+      { preferBankSms: true },
+    );
+    expect(resolved.kind).toBe("bank_sms");
+    expect(resolved.selectedBatch).toHaveLength(4);
+    expect(resolved.suggestedAmountMinor).toBe(340_000);
+    expect(resolved.balanceAfterMinor).toBe(1_010_804);
+    expect(resolved.direction).toBe("credit");
+  });
 });
+
