@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
+  dayOfMonthFromIso,
   isRecurringMonthly,
+  labelDayOfMonthSv,
   labelMonthNameSv,
   monthKeyFromDate,
-  perDayBudgetMinor,
+  projectPayCycle,
   projectPlanForMonth,
-  spendDaysForMonth,
   yearFromMonthKey,
   visibleMonthKeysForYear,
 } from "@/domain/finance";
@@ -25,6 +26,20 @@ import {
 
 function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
+}
+
+function isoToDateInput(iso: string | null): string {
+  if (!iso) return "";
+  return iso.slice(0, 10);
+}
+
+function labelIncomeDateSv(iso: string | null, timeZone: string): string {
+  if (!iso) return "Datum saknas";
+  return new Date(iso).toLocaleDateString("sv-SE", {
+    timeZone,
+    day: "numeric",
+    month: "short",
+  });
 }
 
 export function PlanEditor({
@@ -50,13 +65,17 @@ export function PlanEditor({
 
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseDay, setExpenseDay] = useState("1");
   const [incomeName, setIncomeName] = useState("");
   const [incomeAmount, setIncomeAmount] = useState("");
+  const [incomeDate, setIncomeDate] = useState(`${currentMonthKey}-25`);
   const [savingsAmount, setSavingsAmount] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editDay, setEditDay] = useState("1");
 
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -66,21 +85,23 @@ export function PlanEditor({
     [items, monthKey, timeZone],
   );
 
-  const spendDays = useMemo(
-    () => spendDaysForMonth(monthKey, new Date(), timeZone),
-    [monthKey, timeZone],
+  const cycle = useMemo(
+    () => projectPayCycle(items, new Date(), timeZone),
+    [items, timeZone],
   );
-  const perDayMinor = perDayBudgetMinor(
-    projection.freeToSpendMinor,
-    spendDays,
-  );
-  const freeMinor = projection.freeToSpendMinor;
 
   useEffect(() => {
     setSavingsAmount(
       projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
     );
   }, [monthKey, projection.savingsMinor]);
+
+  useEffect(() => {
+    setIncomeDate((prev) => {
+      if (prev.startsWith(monthKey)) return prev;
+      return `${monthKey}-25`;
+    });
+  }, [monthKey]);
 
   function selectMonth(key: string) {
     setMonthKey(key);
@@ -108,10 +129,20 @@ export function PlanEditor({
     return true;
   }
 
-  function startEdit(item: PlanItem) {
+  function startEditIncome(item: PlanItem) {
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
+    setEditDate(isoToDateInput(item.nextDueAt));
+  }
+
+  function startEditExpense(item: PlanItem) {
+    setEditingId(item.id);
+    setEditName(item.name);
+    setEditAmount(minorToUi(item.amountMinor));
+    setEditDay(
+      item.nextDueAt ? String(dayOfMonthFromIso(item.nextDueAt)) : "1",
+    );
   }
 
   return (
@@ -169,15 +200,66 @@ export function PlanEditor({
           ))}
         </div>
 
-        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-5">
+        {cycle.startAt ? (
+          <section className="numa-panel-strong space-y-4 p-5">
+            <div>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+                Aktiv inkomstcykel · Hem
+              </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight">
+                {cycle.startLabelSv} → {cycle.endLabelSv}
+                {cycle.endInferred ? " (beräknad)" : ""}
+              </h2>
+              <p className="mt-1 max-w-[48ch] text-sm text-[var(--numa-muted)]">
+                {cycle.isActive
+                  ? `Du får röra dig med intäkten från ${cycle.startLabelSv} tills nästa kommer in · ${cycle.daysLeft} dagar kvar.`
+                  : `Nästa cykel börjar ${cycle.startLabelSv}. Lägg in intäktsdatum så Hem räknar rätt.`}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <MonthStat
+                label="Intäkter i cykeln"
+                amountMinor={cycle.incomeMinor}
+                currency={currency}
+                tone="positive"
+              />
+              <MonthStat
+                label="Utgifter i cykeln"
+                amountMinor={cycle.expenseMinor}
+                currency={currency}
+              />
+              <MonthStat
+                label="Fritt att röra"
+                amountMinor={cycle.freeToSpendMinor}
+                currency={currency}
+                tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
+              />
+              <MonthStat
+                label="Per dag"
+                amountMinor={cycle.perDayMinor}
+                currency={currency}
+                tone={cycle.perDayMinor > 0 ? "positive" : undefined}
+              />
+            </div>
+          </section>
+        ) : (
+          <section className="numa-panel p-5">
+            <p className="text-sm text-[var(--numa-muted)]">
+              Lägg in en intäkt med datum — då räknar Hem hur mycket du får röra
+              dig med från den dagen till nästa lön.
+            </p>
+          </section>
+        )}
+
+        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <MonthStat
-            label="Intäkter"
+            label={`Intäkter · ${labelMonthNameSv(monthKey)}`}
             amountMinor={projection.incomeMinor}
             currency={currency}
             tone="positive"
           />
           <MonthStat
-            label="Utgifter"
+            label="Fasta utgifter"
             amountMinor={projection.totalPlannedMinor}
             currency={currency}
           />
@@ -187,16 +269,10 @@ export function PlanEditor({
             currency={currency}
           />
           <MonthStat
-            label="Fritt att röra"
-            amountMinor={freeMinor}
+            label="Månadssaldo"
+            amountMinor={projection.freeToSpendMinor}
             currency={currency}
-            tone={freeMinor >= 0 ? "positive" : "danger"}
-          />
-          <MonthStat
-            label="Per dag"
-            amountMinor={perDayMinor}
-            currency={currency}
-            tone={perDayMinor > 0 ? "positive" : undefined}
+            tone={projection.freeToSpendMinor >= 0 ? "positive" : "danger"}
           />
         </div>
 
@@ -210,8 +286,7 @@ export function PlanEditor({
                 Vill du spara något den här månaden?
               </h2>
               <p className="mt-1 max-w-[42ch] text-sm text-[var(--numa-muted)]">
-                Beloppet låses undan från det du får röra dig med — Hem visar
-                samma siffror.
+                Räknas av från cykeln som börjar den månaden.
               </p>
             </div>
             {projection.savingsMinor > 0 ? (
@@ -272,27 +347,11 @@ export function PlanEditor({
               </button>
             ) : null}
           </div>
-
-          <div className="grid gap-3 border-t border-[var(--numa-border)] pt-4 sm:grid-cols-2">
-            <p className="text-sm text-[var(--numa-muted)]">
-              Fritt denna månad{" "}
-              <span className="font-semibold text-[var(--numa-ink)]">
-                {formatMoney(money(Math.max(0, freeMinor), currency))}
-              </span>
-            </p>
-            <p className="text-sm text-[var(--numa-muted)] sm:text-right">
-              ≈{" "}
-              <span className="font-semibold text-[var(--numa-ink)]">
-                {formatMoney(money(perDayMinor, currency))}
-              </span>{" "}
-              / dag · {spendDays} dagar kvar
-            </p>
-          </div>
         </section>
 
         <p className="text-sm text-[var(--numa-muted)]">
-          Fasta utgifter följer med till nästa månad. Intäkter och sparande fyller
-          du i manuellt för varje månad.
+          Fasta utgifter har en dag i månaden och följer med. Intäkter lägger du
+          in med det datum pengarna kommer in.
         </p>
       </section>
 
@@ -305,11 +364,10 @@ export function PlanEditor({
       <div className="grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Intäkter"
-          hint={`Fyll i för ${projection.labelSv} — följer inte med automatiskt`}
+          hint={`Datum när pengarna kommer · ${projection.labelSv}`}
           totalLabel="Summa"
           totalMinor={projection.incomeMinor}
           currency={currency}
-          empty="Inga intäkter den här månaden ännu."
         >
           <PlanRows
             items={projection.incomes}
@@ -317,11 +375,14 @@ export function PlanEditor({
             editingId={editingId}
             editName={editName}
             editAmount={editAmount}
+            editExtra={editDate}
+            editExtraType="date"
             pending={pending}
-            subtitle={() => "Denna månad"}
+            subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
-            onStartEdit={startEdit}
+            onEditExtra={setEditDate}
+            onStartEdit={startEditIncome}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
               startTransition(async () => {
@@ -329,6 +390,7 @@ export function PlanEditor({
                   id,
                   name: editName,
                   amount: editAmount,
+                  date: editDate || undefined,
                 });
                 if (refreshAfter(result)) setEditingId(null);
               });
@@ -343,18 +405,22 @@ export function PlanEditor({
           <InlineAdd
             name={incomeName}
             amount={incomeAmount}
+            extra={incomeDate}
+            extraType="date"
+            extraLabel="Datum"
             namePlaceholder="t.ex. Lön, Trukks, CSN"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till intäkt"
             pending={pending}
             onName={setIncomeName}
             onAmount={setIncomeAmount}
+            onExtra={setIncomeDate}
             onSubmit={() => {
               startTransition(async () => {
                 const result = await createPlanIncomeAction({
                   name: incomeName,
                   amount: incomeAmount,
-                  monthKey,
+                  date: incomeDate,
                 });
                 if (!refreshAfter(result)) return;
                 setIncomeName("");
@@ -366,11 +432,10 @@ export function PlanEditor({
 
         <PlanCard
           title="Fasta utgifter"
-          hint="Hyra, abonnemang, räkningar — syns i kommande månader"
+          hint="Välj dag i månaden — samma dag följer med nästa månad"
           totalLabel="Summa"
           totalMinor={projection.totalPlannedMinor}
           currency={currency}
-          empty="Inga fasta utgifter ännu. Lägg till så följer de med."
         >
           <PlanRows
             items={projection.items}
@@ -378,20 +443,28 @@ export function PlanEditor({
             editingId={editingId}
             editName={editName}
             editAmount={editAmount}
+            editExtra={editDay}
+            editExtraType="day"
             pending={pending}
             subtitle={(item) =>
-              isRecurringMonthly(item) ? "Varje månad" : "Denna period"
+              isRecurringMonthly(item) && item.nextDueAt
+                ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
+                : "Denna period"
             }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
-            onStartEdit={startEdit}
+            onEditExtra={setEditDay}
+            onStartEdit={startEditExpense}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
               startTransition(async () => {
+                const day = Number(editDay);
                 const result = await updatePlanItemAction({
                   id,
                   name: editName,
                   amount: editAmount,
+                  dayOfMonth: Number.isFinite(day) ? day : 1,
+                  monthKey,
                 });
                 if (refreshAfter(result)) setEditingId(null);
               });
@@ -406,18 +479,25 @@ export function PlanEditor({
           <InlineAdd
             name={expenseName}
             amount={expenseAmount}
+            extra={expenseDay}
+            extraType="day"
+            extraLabel="Dag"
             namePlaceholder="t.ex. Hyra, El, Cursor"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till utgift"
             pending={pending}
             onName={setExpenseName}
             onAmount={setExpenseAmount}
+            onExtra={setExpenseDay}
             onSubmit={() => {
               startTransition(async () => {
+                const day = Number(expenseDay);
                 const result = await createPlanItemAction({
                   name: expenseName,
                   kind: "mandatory",
                   amount: expenseAmount,
+                  dayOfMonth: Number.isFinite(day) ? day : 1,
+                  monthKey,
                 });
                 if (!refreshAfter(result)) return;
                 setExpenseName("");
@@ -437,7 +517,6 @@ function PlanCard({
   totalLabel,
   totalMinor,
   currency,
-  empty,
   children,
 }: {
   title: string;
@@ -445,7 +524,6 @@ function PlanCard({
   totalLabel: string;
   totalMinor: number;
   currency: CurrencyCode;
-  empty: string;
   children: ReactNode;
 }) {
   return (
@@ -464,10 +542,7 @@ function PlanCard({
           </p>
         </div>
       </header>
-      <div className="flex min-h-[12rem] flex-1 flex-col gap-4">
-        {children}
-      </div>
-      <span className="sr-only">{empty}</span>
+      <div className="flex min-h-[12rem] flex-1 flex-col gap-4">{children}</div>
     </section>
   );
 }
@@ -478,10 +553,13 @@ function PlanRows({
   editingId,
   editName,
   editAmount,
+  editExtra,
+  editExtraType,
   pending,
   subtitle,
   onEditName,
   onEditAmount,
+  onEditExtra,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
@@ -492,10 +570,13 @@ function PlanRows({
   editingId: string | null;
   editName: string;
   editAmount: string;
+  editExtra: string;
+  editExtraType: "date" | "day";
   pending: boolean;
   subtitle: (item: PlanItem) => string;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
+  onEditExtra: (v: string) => void;
   onStartEdit: (item: PlanItem) => void;
   onCancelEdit: () => void;
   onSaveEdit: (id: string) => void;
@@ -519,12 +600,32 @@ function PlanRows({
               onChange={(e) => onEditName(e.target.value)}
               className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
             />
-            <input
-              inputMode="decimal"
-              value={editAmount}
-              onChange={(e) => onEditAmount(e.target.value)}
-              className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-lg font-semibold"
-            />
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                inputMode="decimal"
+                value={editAmount}
+                onChange={(e) => onEditAmount(e.target.value)}
+                className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-lg font-semibold"
+              />
+              {editExtraType === "date" ? (
+                <input
+                  type="date"
+                  value={editExtra}
+                  onChange={(e) => onEditExtra(e.target.value)}
+                  className="min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+                />
+              ) : (
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={editExtra}
+                  onChange={(e) => onEditExtra(e.target.value)}
+                  className="min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+                  aria-label="Dag i månaden"
+                />
+              )}
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -586,28 +687,37 @@ function PlanRows({
 function InlineAdd({
   name,
   amount,
+  extra,
+  extraType,
+  extraLabel,
   namePlaceholder,
   amountPlaceholder,
   submitLabel,
   pending,
   onName,
   onAmount,
+  onExtra,
   onSubmit,
 }: {
   name: string;
   amount: string;
+  extra: string;
+  extraType: "date" | "day";
+  extraLabel: string;
   namePlaceholder: string;
   amountPlaceholder: string;
   submitLabel: string;
   pending: boolean;
   onName: (v: string) => void;
   onAmount: (v: string) => void;
+  onExtra: (v: string) => void;
   onSubmit: () => void;
 }) {
-  const disabled = pending || !name.trim() || !amount.trim();
+  const disabled =
+    pending || !name.trim() || !amount.trim() || !String(extra).trim();
   return (
     <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
-      <div className="grid gap-2 sm:grid-cols-[1fr_7rem]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_7rem_6.5rem]">
         <input
           value={name}
           onChange={(e) => onName(e.target.value)}
@@ -621,6 +731,26 @@ function InlineAdd({
           placeholder={amountPlaceholder}
           className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
+        {extraType === "date" ? (
+          <input
+            type="date"
+            value={extra}
+            onChange={(e) => onExtra(e.target.value)}
+            aria-label={extraLabel}
+            className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          />
+        ) : (
+          <input
+            type="number"
+            min={1}
+            max={31}
+            value={extra}
+            onChange={(e) => onExtra(e.target.value)}
+            aria-label={extraLabel}
+            placeholder="Dag"
+            className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          />
+        )}
       </div>
       <button
         type="button"

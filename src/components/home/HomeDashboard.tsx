@@ -30,23 +30,27 @@ export function HomeDashboard({
   const greeting = homeGreeting();
   const freeOk = snap.freeToSpendMinor >= 0;
   const dayOk = snap.perDayBudgetMinor > 0;
+  const hasCycle = Boolean(snap.cycleStartLabelSv && snap.cycleEndLabelSv);
 
   return (
     <div className="space-y-6 md:space-y-8">
       <header className="animate-rise">
         <p className="text-sm font-medium capitalize text-[var(--numa-muted)]">
-          {greeting} · {snap.monthLabelSv}
+          {greeting}
+          {hasCycle
+            ? ` · ${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
+            : ` · ${snap.monthLabelSv}`}
         </p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)] md:text-4xl">
           Hem
         </h1>
-        <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Speglar Plan för {snap.monthLabelSv} — intäkter, utgifter, sparande
-          och vad du får röra dig med per dag.
+        <p className="mt-2 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          {hasCycle
+            ? "Räknar från när intäkten kom in tills nästa — samma cykel som i Plan."
+            : "Lägg in en intäkt med datum i Plan så vi vet när pengarna kommer in."}
         </p>
       </header>
 
-      {/* Hero: daily budget */}
       <section
         className="numa-panel-strong animate-rise-delay-1 relative overflow-hidden p-6 md:p-8"
         aria-labelledby="day-budget-heading"
@@ -70,20 +74,26 @@ export function HomeDashboard({
             size="xl"
           />
         </div>
-        <p className="relative mt-3 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {dayOk
-            ? `Det här får du röra dig med varje dag · ${snap.spendDaysLeft} dagar kvar i månaden.`
-            : freeOk
-              ? "Lägg in intäkter i Plan för att få en dagbudget."
-              : "Planen täcker mer än intäkterna just nu — justera Plan."}
+        <p className="relative mt-3 max-w-[40ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          {!hasCycle
+            ? "Lägg in intäkt med datum i Plan för att få en dagbudget."
+            : dayOk
+              ? `Det här får du röra dig med varje dag · ${snap.spendDaysLeft} dagar till nästa intäkt${snap.cycleEndInferred ? " (beräknad)" : ""}.`
+              : freeOk
+                ? "Lägg in intäkter i Plan för att få en dagbudget."
+                : "Utgifter och sparande täcker mer än intäkterna i cykeln — justera Plan."}
         </p>
 
         <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
           <MiniFact
-            label="Fritt denna månad"
+            label="Fritt i cykeln"
             amountMinor={snap.freeToSpendMinor}
             currency={currency}
-            hint="Efter utgifter och sparande"
+            hint={
+              hasCycle
+                ? `${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
+                : "Efter utgifter och sparande"
+            }
             tone={freeOk ? "positive" : "danger"}
           />
           <MiniFact
@@ -92,18 +102,17 @@ export function HomeDashboard({
             currency={currency}
             hint={
               snap.planSavingsMinor > 0
-                ? "Samma belopp som i Plan"
+                ? "Från cykelns startmånad i Plan"
                 : "Inget sparmål satt i Plan"
             }
           />
         </div>
       </section>
 
-      {/* Month strip synced with Plan */}
       <section className="animate-rise-delay-2 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold tracking-tight">
-            Månaden · Plan
+            Inkomstcykel · Plan
           </h2>
           <Link
             href="/plan"
@@ -118,14 +127,14 @@ export function HomeDashboard({
             label="Intäkter"
             amountMinor={snap.planIncomeMinor}
             currency={currency}
-            hint="Planerad inkomst"
+            hint="I aktiv cykel"
             tone="positive"
           />
           <StatTile
             label="Utgifter"
             amountMinor={snap.planExpenseMinor}
             currency={currency}
-            hint="Fasta + planerade"
+            hint="Förfaller i cykeln"
           />
           <StatTile
             label="Totalt att spendera"

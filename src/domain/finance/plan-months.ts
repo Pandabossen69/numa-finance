@@ -33,7 +33,7 @@ export function isRecurringMonthly(item: PlanItem): boolean {
 
 /**
  * Advance a due date forward one calendar month at a time until it is
- * on/after `now` (or return null if input invalid).
+ * on/after `now`, preserving day-of-month (clamped for short months).
  */
 export function rollDueDateForward(
   iso: string,
@@ -42,10 +42,26 @@ export function rollDueDateForward(
   const due = new Date(iso);
   if (!Number.isFinite(due.getTime())) return iso;
 
-  const cursor = new Date(due);
+  const day = due.getUTCDate();
+  let year = due.getUTCFullYear();
+  let month = due.getUTCMonth();
   let guard = 0;
+
+  const atMonth = (y: number, m: number) => {
+    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+    const max = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const clamped = Math.min(day, max);
+    return new Date(Date.UTC(y, m, clamped, 12, 0, 0));
+  };
+
+  let cursor = atMonth(year, month);
   while (cursor.getTime() < now.getTime() && guard < 120) {
-    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    month += 1;
+    if (month > 11) {
+      month = 0;
+      year += 1;
+    }
+    cursor = atMonth(year, month);
     guard += 1;
   }
   return cursor.toISOString();

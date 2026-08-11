@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { monthAnchorIso, isPlanSavings, monthKeyFromDate } from "@/domain/finance";
+import {
+  dueDateInMonth,
+  isPlanSavings,
+  monthAnchorIso,
+  monthKeyFromDate,
+  rollDueDateForward,
+} from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
 import {
   createPlanItem,
@@ -28,12 +34,14 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   kind: kindSchema,
   amount: z.string().trim().min(1),
+  dayOfMonth: z.coerce.number().int().min(1).max(31),
+  monthKey: z.string().regex(/^\d{4}-\d{2}$/).optional(),
 });
 
 const createIncomeSchema = z.object({
   name: z.string().trim().min(1).max(80),
   amount: z.string().trim().min(1),
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
 function revalidatePlanPaths() {
@@ -53,14 +61,19 @@ export async function createPlanItemAction(
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
     const snap = await getTodaySnapshot();
+    const timeZone = snap.profile.timezone || "Asia/Bangkok";
+    const monthKey =
+      input.monthKey ?? monthKeyFromDate(new Date(), timeZone);
+    const due = dueDateInMonth(monthKey, input.dayOfMonth);
+    // Keep the chosen day-of-month; roll forward if that occurrence is already past.
+    const nextDueAt = rollDueDateForward(due, new Date());
     await createPlanItem({
       name: input.name,
       kind: input.kind,
       amountMinor,
       currency: snap.currency,
       cadence: "monthly",
-      // Fixed/monthly buckets roll forward automatically into upcoming months.
-      nextDueAt: new Date().toISOString(),
+      nextDueAt,
     });
     revalidatePlanPaths();
     return { ok: true };
@@ -72,7 +85,7 @@ export async function createPlanItemAction(
   }
 }
 
-/** Income is month-scoped and never carries into the next month. */
+/** Income is date-scoped and never carries into the next month automatically. */
 export async function createPlanIncomeAction(
   raw: z.infer<typeof createIncomeSchema>,
 ): Promise<ActionResult> {
@@ -89,7 +102,7 @@ export async function createPlanIncomeAction(
       amountMinor,
       currency: snap.currency,
       cadence: "income",
-      nextDueAt: monthAnchorIso(input.monthKey),
+      nextDueAt: `${input.date}T12:00:00.000Z`,
     });
     revalidatePlanPaths();
     return { ok: true };
@@ -214,6 +227,17 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   kind: kindSchema.optional(),
   amount: z.string().trim().min(1).optional(),
+  /** Full date for income rows (`YYYY-MM-DD`). */
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  /** Day of month for recurring expenses (1–31). */
+  dayOfMonth: z.coerce.number().int().min(1).max(31).optional(),
+  monthKey: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
 });
 
 export async function updatePlanItemAction(
@@ -226,11 +250,27 @@ export async function updatePlanItemAction(
     if (amountMinor != null && amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
+
+    let nextDueAt: string | undefined;
+    if (input.date) {
+      nextDueAt = `${input.date}T12:00:00.000Z`;
+    } else if (input.dayOfMonth != null) {
+      const snap = await getTodaySnapshot();
+      const timeZone = snap.profile.timezone || "Asia/Bangkok";
+      const monthKey =
+        input.monthKey ?? monthKeyFromDate(new Date(), timeZone);
+      nextDueAt = rollDueDateForward(
+        dueDateInMonth(monthKey, input.dayOfMonth),
+        new Date(),
+      );
+    }
+
     await updatePlanItem({
       id: input.id,
       name: input.name,
       kind: input.kind,
       amountMinor,
+      nextDueAt,
     });
     revalidatePlanPaths();
     return { ok: true };

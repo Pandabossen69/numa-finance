@@ -5,9 +5,8 @@ import {
   isPlanSavings,
   labelMonthSv,
   monthKeyFromDate,
-  perDayBudgetMinor,
+  projectPayCycle,
   projectPlanForMonth,
-  spendDaysForMonth,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { getTodaySnapshot } from "@/lib/store/repository";
@@ -15,7 +14,7 @@ import { getTodaySnapshot } from "@/lib/store/repository";
 export type HomeSnapshot = {
   primaryAccountId: string | null;
   currency: CurrencyCode;
-  /** Live calendar month Home mirrors (always "now"). */
+  /** Live calendar month (for labels / month spending). */
   monthKey: string;
   monthLabelSv: string;
   /** True once first bank-SMS balance has been confirmed. */
@@ -30,18 +29,18 @@ export type HomeSnapshot = {
   freeMinor: number;
   reservedMinor: number;
   bufferMinor: number;
-  /** Same figures as Plan for the live month. */
+  /** Pay-cycle figures (same as Plan active cycle). */
+  cycleStartLabelSv: string | null;
+  cycleEndLabelSv: string | null;
+  cycleEndInferred: boolean;
+  cycleIsActive: boolean;
   planIncomeMinor: number;
   planExpenseMinor: number;
-  /** Income − expenses (before savings). */
+  /** Income − expenses (before savings) in cycle. */
   planRemainingMinor: number;
-  /** Month savings target from Plan. */
   planSavingsMinor: number;
-  /** Income − expenses − savings. */
   freeToSpendMinor: number;
-  /** Remaining calendar days this month (incl. today). */
   spendDaysLeft: number;
-  /** freeToSpend ÷ days left. */
   perDayBudgetMinor: number;
   daysUntilIncome: number;
   goals: Array<{
@@ -74,15 +73,11 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     const timeZone = snap.profile.timezone || "Asia/Bangkok";
     const now = new Date();
     const monthKey = monthKeyFromDate(now, timeZone);
-    const projection = projectPlanForMonth(
+    const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
+    const monthProj = projectPlanForMonth(
       snap.planItems ?? [],
       monthKey,
       timeZone,
-    );
-    const spendDaysLeft = spendDaysForMonth(monthKey, now, timeZone);
-    const dayBudget = perDayBudgetMinor(
-      projection.freeToSpendMinor,
-      spendDaysLeft,
     );
 
     const goals = (snap.planItems ?? [])
@@ -127,15 +122,19 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         safeToSpendTodayMinor: snap.safeToSpendTodayMinor,
         safeToSpendWeekMinor: snap.safeToSpendWeekMinor,
         freeMinor: snap.freeMinor,
-        reservedMinor: projection.totalPlannedMinor,
-        bufferMinor: projection.bufferMinor,
-        planIncomeMinor: projection.incomeMinor,
-        planExpenseMinor: projection.totalPlannedMinor,
-        planRemainingMinor: projection.freeToSpendMinor + projection.savingsMinor,
-        planSavingsMinor: projection.savingsMinor,
-        freeToSpendMinor: projection.freeToSpendMinor,
-        spendDaysLeft,
-        perDayBudgetMinor: dayBudget,
+        reservedMinor: cycle.expenseMinor || monthProj.totalPlannedMinor,
+        bufferMinor: cycle.bufferMinor || monthProj.bufferMinor,
+        cycleStartLabelSv: cycle.startLabelSv,
+        cycleEndLabelSv: cycle.endLabelSv,
+        cycleEndInferred: cycle.endInferred,
+        cycleIsActive: cycle.isActive,
+        planIncomeMinor: cycle.incomeMinor,
+        planExpenseMinor: cycle.expenseMinor,
+        planRemainingMinor: cycle.freeToSpendMinor + cycle.savingsMinor,
+        planSavingsMinor: cycle.savingsMinor,
+        freeToSpendMinor: cycle.freeToSpendMinor,
+        spendDaysLeft: cycle.daysLeft,
+        perDayBudgetMinor: cycle.perDayMinor,
         daysUntilIncome: snap.daysUntilIncome,
         goals,
         recent,

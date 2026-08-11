@@ -83,6 +83,10 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     perDayBudgetMinor: Math.floor(
       (45_000_00 - reserved.amountMinor - 5_000_00) / 21,
     ),
+    cycleStartLabelSv: "25 aug.",
+    cycleEndLabelSv: "25 sep.",
+    cycleEndInferred: false,
+    cycleIsActive: true,
     daysUntilIncome,
     dayPulseStatus: pulse.status,
     dayPulseDeltaMinor: pulse.delta.amountMinor,

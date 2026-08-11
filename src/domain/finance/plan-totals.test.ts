@@ -36,21 +36,29 @@ describe("calculatePlanTotals", () => {
     expect(totals.flexibleMinor).toBe(3000_00);
   });
 
-  it("uses soonest nextDueAt for runway days", () => {
+  it("uses soonest income nextDueAt for runway days, not expenses", () => {
     const now = new Date("2026-08-10T00:00:00.000Z");
     const totals = calculatePlanTotals(
       [
         item({
+          kind: "mandatory",
+          amountMinor: 1000_00,
+          name: "Hyra",
+          nextDueAt: "2026-08-12T00:00:00.000Z",
+        }),
+        item({
           kind: "expected",
-          amountMinor: 0,
-          nextDueAt: "2026-08-20T00:00:00.000Z",
+          amountMinor: 40_000_00,
+          name: "Lön",
+          cadence: "income",
+          nextDueAt: "2026-08-25T00:00:00.000Z",
         }),
       ],
       "THB",
       now,
       17,
     );
-    expect(totals.daysUntilNextIncome).toBe(10);
+    expect(totals.daysUntilNextIncome).toBe(15);
   });
 
   it("excludes income and savings from reserved totals", () => {
