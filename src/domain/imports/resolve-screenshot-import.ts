@@ -12,6 +12,8 @@ export type ResolvedScreenshotImport =
       kind: "bank_sms";
       selection: SelectImportableResult;
       selected: BankEventCandidate | null;
+      /** Unknown events to import, newest first. */
+      selectedBatch: BankEventCandidate[];
       suggestedAmountMinor: number | null;
       suggestedDescription: string | null;
       balanceAfterMinor: number | null;
@@ -25,6 +27,7 @@ export type ResolvedScreenshotImport =
     }
   | {
       kind: "receipt_or_other";
+      selectedBatch: [];
       suggestedAmountMinor: number | null;
       suggestedDescription: string | null;
       balanceAfterMinor: number | null;
@@ -42,13 +45,17 @@ function looksLikeBankSmsText(text: string, detectedKind: string | null): boolea
   return (
     detectedKind === "bangkok_bank_sms" ||
     /available balance is\s+(?:bt|thb?)/.test(t) ||
+    /bal(?:ance)?\s+available\s+is\s+(?:bt|thb?)/.test(t) ||
     t.includes("withdrawal/transfer/payment") ||
     t.includes("withdrawal from your account") ||
+    t.includes("withdrawal from account") ||
     t.includes("promptpay transfer") ||
     t.includes("moneyplus transfer") ||
     t.includes("deposit/transfer/payment") ||
+    /amount\s+(?:bt|thb?)/.test(t) ||
     (t.includes("from your account") && /(?:bt|thb?)\s*[\d,]/.test(t)) ||
-    (t.includes("to your account") && /(?:bt|thb?)\s*[\d,]/.test(t))
+    (t.includes("to your account") && /(?:bt|thb?)\s*[\d,]/.test(t)) ||
+    (t.includes("from account") && /(?:bt|thb?)\s*[\d,]/.test(t))
   );
 }
 
@@ -70,7 +77,6 @@ function structuredMessagesToText(
       lines.push(raw);
       continue;
     }
-    // Never invent amounts, balances, or accounts — skip incomplete rows.
     if (row.amountMajor == null || row.balanceAfterMajor == null) continue;
     if (typeof row.accountHint !== "string" || !row.accountHint.trim()) continue;
     if (row.direction !== "credit" && row.direction !== "debit") continue;
@@ -112,12 +118,13 @@ function dedupeParsedMessages(
 }
 
 /**
- * SCREENSHOT → observations → normalize → pick latest unknown bank event.
- * Never writes the ledger — only proposes a candidate.
+ * SCREENSHOT → observations → normalize → propose all unknown bank events.
+ * Never writes the ledger — only proposes candidates.
  */
 export function resolveScreenshotImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
+  options?: { preferBankSms?: boolean },
 ): ResolvedScreenshotImport {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
@@ -143,6 +150,7 @@ export function resolveScreenshotImport(
 
   const combinedText = textParts.join("\n\n");
   const treatAsBank =
+    options?.preferBankSms === true ||
     looksLikeBankSmsText(combinedText, detectedKind) ||
     detectedKind === "bangkok_bank_sms" ||
     structured.count > 0;
@@ -162,9 +170,10 @@ export function resolveScreenshotImport(
         kind: "bank_sms",
         selection,
         selected: s,
+        selectedBatch: selection.selectedBatch,
         suggestedAmountMinor: s.amountMinor,
         suggestedDescription: s.labelSv,
-        balanceAfterMinor: s.balanceAfterMinor,
+        balanceAfterMinor: selection.tipBalanceAfterMinor,
         fingerprint: s.fingerprint?.fingerprint ?? null,
         direction: s.direction,
         currency: s.currency ?? "THB",
@@ -180,6 +189,7 @@ export function resolveScreenshotImport(
         kind: "bank_sms",
         selection,
         selected: null,
+        selectedBatch: [],
         suggestedAmountMinor: null,
         suggestedDescription: null,
         balanceAfterMinor: null,
@@ -197,6 +207,7 @@ export function resolveScreenshotImport(
       kind: "bank_sms",
       selection,
       selected: null,
+      selectedBatch: [],
       suggestedAmountMinor: null,
       suggestedDescription: null,
       balanceAfterMinor: null,
@@ -218,6 +229,7 @@ export function resolveScreenshotImport(
 
   return {
     kind: "receipt_or_other",
+    selectedBatch: [],
     suggestedAmountMinor: first?.amountMinor ?? null,
     suggestedDescription: first?.description ?? null,
     balanceAfterMinor: first?.balanceAfterMinor ?? null,

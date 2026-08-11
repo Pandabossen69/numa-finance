@@ -41,11 +41,15 @@ export async function uploadReceiptAction(
       return { ok: false, error: "Endast bildfiler stöds" };
     }
 
+    const preferBankSms =
+      formData.get("mode") === "bank_sms" || formData.get("mode") === "sms";
+
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = await uploadReceiptAndExtract({
       fileName: file.name || "bank-sms.jpg",
       mimeType,
       bytes,
+      preferBankSms,
     });
 
     revalidatePath("/importera");
@@ -66,7 +70,8 @@ const confirmSchema = z.object({
   accountId: z.string().uuid().optional().nullable(),
   observationId: z.string().uuid(),
   candidateId: z.string().uuid().optional().nullable(),
-  amount: z.string().trim().min(1),
+  confirmAllPending: z.boolean().optional(),
+  amount: z.string().trim().optional().default("0"),
   description: z.string().trim().max(160).optional(),
   category: z.string().trim().max(40).optional().nullable(),
   fingerprint: z.string().trim().max(240).optional().nullable(),
@@ -88,16 +93,23 @@ export async function confirmReceiptExpenseAction(
 > {
   try {
     const input = confirmSchema.parse(raw);
-    const amountMinor = parseUiAmountToMinor(input.amount);
-    if (amountMinor <= 0) {
-      return { ok: false, error: "Ange ett belopp större än noll" };
+    const isSmsBatch =
+      input.confirmAllPending === true || input.source === "screenshot";
+
+    let amountMinor = 0;
+    if (!isSmsBatch) {
+      amountMinor = parseUiAmountToMinor(input.amount || "0");
+      if (amountMinor <= 0) {
+        return { ok: false, error: "Ange ett belopp större än noll" };
+      }
     }
 
     const tx = await confirmReceiptExpense({
       accountId: input.accountId,
       observationId: input.observationId,
       candidateId: input.candidateId,
-      amountMinor,
+      confirmAllPending: isSmsBatch,
+      amountMinor: amountMinor || 1,
       description: input.description,
       category: input.category,
       fingerprint: input.fingerprint,

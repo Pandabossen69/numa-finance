@@ -23,12 +23,31 @@ const SMS_CREDIT_TH =
   "MoneyPlus transfer to your account 4181 of TH 3,400.00 via MOBILE; the available balance is TH 7,144.44.";
 const SMS_ATM =
   "Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04.";
+const SMS_ALT_THB =
+  "Withdrawal from account XXXXX7 at 08:02 on 2024-08-11 amount THB 3,400.00. Bal available is THB 187,707.04.";
 const SMS_USER_THREAD = `${SMS_ATM}
 
 ${SMS_CREDIT}`;
 const SMS_TH_THREAD = `Withdrawal/transfer/payment from your account 4181 of TH 220.00 via MOBILE; the available balance is TH 3,744.44.
 
 ${SMS_CREDIT_TH}`;
+
+function fpOf(p: {
+  institution: string;
+  maskedAccount: string;
+  direction: "debit" | "credit";
+  amountMinor: number;
+  balanceAfterMinor: number | null;
+}) {
+  return buildTransactionFingerprint({
+    institution: p.institution,
+    maskedAccount: p.maskedAccount,
+    direction: p.direction,
+    amountMinor: p.amountMinor,
+    balanceAfterMinor: p.balanceAfterMinor,
+    channel: null,
+  }).fingerprint;
+}
 
 describe("bangkok bank multi-SMS", () => {
   it("parses western bank amount strings into minor units", () => {
@@ -58,7 +77,19 @@ describe("bangkok bank multi-SMS", () => {
     expect(credit?.maskedAccount).toBe("6591");
   });
 
-  it("first import tip is PromptPay credit — saldo = available balance", () => {
+  it("parses amount THB + Bal available format", () => {
+    const parser = new BangkokBankSmsParser();
+    const debit = parser.parse({
+      institution: "Bangkok Bank",
+      text: SMS_ALT_THB,
+    })[0];
+    expect(debit?.direction).toBe("debit");
+    expect(debit?.amountMinor).toBe(340_000);
+    expect(debit?.balanceAfterMinor).toBe(18_770_704);
+    expect(debit?.maskedAccount).toBe("7");
+  });
+
+  it("first import tip is PromptPay credit — imports all unknowns, saldo = tip balance", () => {
     const parser = new BangkokBankSmsParser();
     const parsed = parser.parse({
       institution: "Bangkok Bank",
@@ -69,10 +100,9 @@ describe("bangkok bank multi-SMS", () => {
     if (result.status !== "ready") return;
     expect(result.selected.direction).toBe("credit");
     expect(result.selected.amountMinor).toBe(340_000);
-    // This is what becomes Hem saldo / checkpoint
-    expect(result.selected.balanceAfterMinor).toBe(1_010_804);
+    expect(result.tipBalanceAfterMinor).toBe(1_010_804);
+    expect(result.selectedBatch).toHaveLength(2);
     expect(result.updatesBalance).toBe(true);
-    expect(result.skippedOlderCount).toBe(1);
   });
 
   it("parses MoneyPlus credit with TH currency (not Bt)", () => {
@@ -99,7 +129,8 @@ describe("bangkok bank multi-SMS", () => {
     if (result.status !== "ready") return;
     expect(result.selected.direction).toBe("credit");
     expect(result.selected.amountMinor).toBe(340_000);
-    expect(result.selected.balanceAfterMinor).toBe(714_444);
+    expect(result.tipBalanceAfterMinor).toBe(714_444);
+    expect(result.selectedBatch.length).toBe(2);
   });
 
   it("picks newest credit after ATM debit in one screenshot", () => {
@@ -111,7 +142,7 @@ describe("bangkok bank multi-SMS", () => {
     if (result.status !== "ready") return;
     expect(result.selected.direction).toBe("credit");
     expect(result.selected.amountMinor).toBe(340000);
-    expect(result.selected.balanceAfterMinor).toBe(1010804);
+    expect(result.tipBalanceAfterMinor).toBe(1010804);
   });
 
   it("does not re-import the same SMS from a second screenshot", () => {
@@ -120,15 +151,15 @@ describe("bangkok bank multi-SMS", () => {
       institution: "Bangkok Bank",
       text: SMS_CREDIT,
     });
-    const fp = buildTransactionFingerprint({
-      institution: "Bangkok Bank",
-      maskedAccount: "6591",
-      direction: "credit",
-      amountMinor: 340000,
-      balanceAfterMinor: 1010804,
-      channel: "mobile",
-    }).fingerprint;
-    const again = selectImportableBankEvent(parsed, [fp]);
+    const again = selectImportableBankEvent(parsed, [
+      fpOf({
+        institution: "Bangkok Bank",
+        maskedAccount: "6591",
+        direction: "credit",
+        amountMinor: 340000,
+        balanceAfterMinor: 1010804,
+      }),
+    ]);
     expect(again.status).toBe("all_known");
   });
 
@@ -151,13 +182,26 @@ describe("bangkok bank multi-SMS", () => {
       text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
     });
     const ordered = orderNewestFirst(parsed.map(toBankEventCandidate));
-    // C happened after B after A (balances: 10758 → 10693 → 10573)
     expect(ordered[0]?.amountMinor).toBe(12000);
     expect(ordered[1]?.amountMinor).toBe(6500);
     expect(ordered[2]?.amountMinor).toBe(75000);
   });
 
-  it("imports only the newest unknown SMS", () => {
+  it("imports all unknown SMS in one screenshot", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+    });
+    const result = selectImportableBankEvent(parsed, []);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selectedBatch).toHaveLength(3);
+    expect(result.selected.amountMinor).toBe(12000);
+    expect(result.tipBalanceAfterMinor).toBe(1057304);
+  });
+
+  it("imports only unknown tip when older SMS already known", () => {
     const parser = new BangkokBankSmsParser();
     const parsed = parser.parse({
       institution: "Bangkok Bank",
@@ -167,26 +211,24 @@ describe("bangkok bank multi-SMS", () => {
     const knownOlder = parsed
       .filter((p) => p.amountMinor !== 12000)
       .map((p) =>
-        buildTransactionFingerprint({
+        fpOf({
           institution: p.institution,
           maskedAccount: p.maskedAccount!,
           direction: "debit",
           amountMinor: p.amountMinor!,
           balanceAfterMinor: p.balanceAfterMinor,
-          channel: p.channel,
-        }).fingerprint,
+        }),
       );
 
     const result = selectImportableBankEvent(parsed, knownOlder);
     expect(result.status).toBe("ready");
     if (result.status !== "ready") return;
+    expect(result.selectedBatch).toHaveLength(1);
     expect(result.selected.amountMinor).toBe(12000);
-    expect(result.skippedDuplicateCount).toBe(0);
-    expect(result.skippedOlderCount).toBe(2);
-    expect(result.messageSv).toMatch(/Senaste nya/i);
+    expect(result.skippedDuplicateCount).toBe(2);
   });
 
-  it("skips import entirely when newest SMS is already known", () => {
+  it("still imports older unknowns when tip is already known", () => {
     const parser = new BangkokBankSmsParser();
     const parsed = parser.parse({
       institution: "Bangkok Bank",
@@ -194,19 +236,19 @@ describe("bangkok bank multi-SMS", () => {
     });
     const newest = parsed.find((p) => p.amountMinor === 12000)!;
     const knownNewest = [
-      buildTransactionFingerprint({
+      fpOf({
         institution: newest.institution,
         maskedAccount: newest.maskedAccount!,
         direction: "debit",
         amountMinor: newest.amountMinor!,
         balanceAfterMinor: newest.balanceAfterMinor,
-        channel: null,
-      }).fingerprint,
+      }),
     ];
     const result = selectImportableBankEvent(parsed, knownNewest);
-    expect(result.status).toBe("all_known");
-    if (result.status !== "all_known") return;
-    expect(result.messageSv).toMatch(/Senaste SMS finns redan/i);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selectedBatch).toHaveLength(2);
+    expect(result.tipBalanceAfterMinor).toBe(newest.balanceAfterMinor);
   });
 
   it("reports all_known when every SMS fingerprint exists", () => {
@@ -215,16 +257,14 @@ describe("bangkok bank multi-SMS", () => {
       institution: "Bangkok Bank",
       text: `${SMS_A}\n\n${SMS_B}`,
     });
-    const fps = parsed.map(
-      (p) =>
-        buildTransactionFingerprint({
-          institution: p.institution,
-          maskedAccount: p.maskedAccount!,
-          direction: "debit",
-          amountMinor: p.amountMinor!,
-          balanceAfterMinor: p.balanceAfterMinor,
-          channel: p.channel,
-        }).fingerprint,
+    const fps = parsed.map((p) =>
+      fpOf({
+        institution: p.institution,
+        maskedAccount: p.maskedAccount!,
+        direction: "debit",
+        amountMinor: p.amountMinor!,
+        balanceAfterMinor: p.balanceAfterMinor,
+      }),
     );
     const result = selectImportableBankEvent(parsed, fps);
     expect(result.status).toBe("all_known");
@@ -246,6 +286,7 @@ describe("bangkok bank multi-SMS", () => {
     expect(resolved.kind).toBe("bank_sms");
     expect(resolved.alreadyKnown).toBe(false);
     expect(resolved.suggestedAmountMinor).toBe(6500);
-    expect(resolved.fingerprint).toContain("balanceAfter=1069304");
+    expect(resolved.balanceAfterMinor).toBe(1069304);
+    expect(resolved.selectedBatch.length).toBe(2);
   });
 });

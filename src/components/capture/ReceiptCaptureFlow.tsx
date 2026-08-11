@@ -18,6 +18,13 @@ const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as cons
 
 type CaptureMode = "pick" | "bank_sms" | "receipt" | "manual";
 
+type PreviewEvent = {
+  candidateId: string;
+  direction: "debit" | "credit";
+  amountMinor: number;
+  labelSv: string;
+};
+
 type Preview = {
   observationId: string;
   candidateId: string | null;
@@ -34,6 +41,7 @@ type Preview = {
   skippedOlderCount: number;
   amountFromScan: boolean;
   direction: "debit" | "credit" | null;
+  events: PreviewEvent[];
 };
 
 function minorToInput(minor: number): string {
@@ -105,6 +113,7 @@ export function ReceiptCaptureFlow({
     const previewUrl = URL.createObjectURL(file);
     const fd = new FormData();
     fd.set("file", file);
+    if (mode === "bank_sms") fd.set("mode", "bank_sms");
 
     startTransition(async () => {
       const result = await uploadReceiptAction(fd);
@@ -115,34 +124,55 @@ export function ReceiptCaptureFlow({
         return;
       }
       const data = result.data;
-      const hasAmount = data.suggestedAmountMinor != null;
-      const major = hasAmount
-        ? minorToInput(data.suggestedAmountMinor!)
-        : "";
-      setAmountEditable(!hasAmount);
+      const events = (data.events ?? []).map((e) => ({
+        candidateId: e.candidateId,
+        direction: e.direction,
+        amountMinor: e.amountMinor,
+        labelSv: e.labelSv,
+      }));
+      const hasAmount =
+        data.suggestedAmountMinor != null || events.length > 0;
+      const major =
+        data.suggestedAmountMinor != null
+          ? minorToInput(data.suggestedAmountMinor)
+          : "";
+      const importKind: Preview["importKind"] =
+        data.importKind === "bank_sms"
+          ? "bank_sms"
+          : mode === "bank_sms"
+            ? "bank_sms"
+            : data.importKind === "receipt"
+              ? "receipt"
+              : "receipt";
+
+      // Bank-SMS never falls back to manual typing — retry with clearer photo.
+      if (mode === "bank_sms" && events.length === 0 && !data.alreadyKnown) {
+        URL.revokeObjectURL(previewUrl);
+        setError(
+          data.message ??
+            "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump.",
+        );
+        return;
+      }
+
+      setAmountEditable(importKind !== "bank_sms" && !hasAmount);
       setPreview({
         observationId: data.observation.id,
-        candidateId: data.candidate?.id ?? null,
+        candidateId: data.candidate?.id ?? events[0]?.candidateId ?? null,
         amount: major,
         description: data.suggestedDescription ?? "",
         currency: data.currency,
         ocrStatus: data.ocrStatus,
         message: data.message,
         previewUrl,
-        importKind:
-          data.importKind === "bank_sms"
-            ? "bank_sms"
-            : data.importKind === "receipt"
-              ? "receipt"
-              : mode === "bank_sms"
-                ? "bank_sms"
-                : "receipt",
+        importKind,
         balanceAfterMinor: data.balanceAfterMinor,
         fingerprint: data.fingerprint,
         alreadyKnown: data.alreadyKnown,
         skippedOlderCount: data.skippedOlderCount,
         amountFromScan: hasAmount,
-        direction: data.direction ?? null,
+        direction: data.direction ?? events[0]?.direction ?? null,
+        events,
       });
     });
   }
@@ -150,23 +180,25 @@ export function ReceiptCaptureFlow({
   function onConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!preview || preview.alreadyKnown) return;
-    if (preview.importKind === "bank_sms" && !preview.amountFromScan) {
+    if (preview.importKind === "bank_sms" && preview.events.length === 0) {
       setError("Bank-SMS måste läsas automatiskt — ta en tydligare bild.");
       return;
     }
     setError(null);
     startTransition(async () => {
+      const isSms = preview.importKind === "bank_sms";
       const result = await confirmReceiptExpenseAction({
         accountId: accountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
-        amount: preview.amount,
+        confirmAllPending: isSms,
+        amount: isSms ? "1" : preview.amount,
         description: preview.description || undefined,
-        category: preview.direction === "credit" ? null : category,
+        category:
+          isSms || preview.direction === "credit" ? null : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
-        source:
-          preview.importKind === "bank_sms" ? "screenshot" : "receipt_camera",
+        source: isSms ? "screenshot" : "receipt_camera",
         direction: preview.direction,
       });
       if (!result.ok) {
@@ -295,7 +327,7 @@ export function ReceiptCaptureFlow({
           </h2>
           <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {isSms
-              ? "Skärmdumpa Bangkok Bank. Vi tar bara det senaste SMS:et — äldre hoppas över. Samma notis i en ny bild räknas inte två gånger."
+              ? "Skärmdumpa Bangkok Bank. Vi läser alla nya SMS i bilden — både + (insättning) och − (utgift). Saldo sätts från senaste notisen."
               : "Håll texten skarp. Beloppet fylls i automatiskt."}
           </p>
         </header>
@@ -309,7 +341,7 @@ export function ReceiptCaptureFlow({
           </span>
           <span className="max-w-[26ch] text-sm text-[var(--numa-muted)]">
             {isSms
-              ? "Senaste bubblan längst ner i konversationen"
+              ? "Flera bubblor i samma bild går bra"
               : "Beloppet synligt i bild"}
           </span>
           <input
@@ -359,12 +391,16 @@ export function ReceiptCaptureFlow({
 
   const isSms = preview.importKind === "bank_sms";
   const isCredit = preview.direction === "credit";
-  const needsManualAmount = !preview.amountFromScan;
+  const needsManualAmount = !isSms && !preview.amountFromScan;
   const remainingTone =
     impact && impact.remaining < 0
       ? "text-[var(--numa-danger)]"
       : "text-[var(--numa-positive)]";
-  const lockSmsAmount = isSms && preview.amountFromScan;
+  const eventCount = preview.events.length;
+  const creditCount = preview.events.filter((e) => e.direction === "credit")
+    .length;
+  const debitCount = preview.events.filter((e) => e.direction === "debit")
+    .length;
 
   return (
     <form onSubmit={onConfirm} className="animate-rise space-y-8">
@@ -373,57 +409,83 @@ export function ReceiptCaptureFlow({
       <div className="space-y-1">
         <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
           {isSms
-            ? isCredit
-              ? "Insättning"
-              : "Utgift"
+            ? eventCount > 1
+              ? "Bank-SMS"
+              : isCredit
+                ? "Insättning"
+                : "Utgift"
             : "Kvitto"}
         </p>
-        {preview.message && preview.amountFromScan ? (
+        {preview.message ? (
           <p className="text-sm text-[var(--numa-muted)]">{preview.message}</p>
-        ) : needsManualAmount ? (
-          <p className="text-sm text-[var(--numa-muted)]">
-            {isSms
-              ? "Kunde inte läsa SMS:et — ta en tydligare skärmdump."
-              : "Skriv beloppet från bilden."}
-          </p>
         ) : null}
       </div>
 
-      <div>
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-          {isSms
-            ? isCredit
-              ? "Belopp som kom in"
-              : "Belopp som drogs"
-            : "Belopp"}
-        </p>
-        {amountEditable || (needsManualAmount && !isSms) ? (
-          <input
-            inputMode="decimal"
-            autoFocus={needsManualAmount}
-            value={preview.amount}
-            onChange={(e) =>
-              setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
-            }
-            placeholder="0,00"
-            className="money mt-2 w-full border-0 bg-transparent p-0 text-4xl font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
-            aria-label="Belopp"
-            required
-          />
-        ) : (
-          <p className="money mt-2 text-4xl font-semibold tracking-tight">
-            {preview.amount || "—"}
-            <span className="ml-2 text-base font-medium text-[var(--numa-faint)]">
-              {preview.currency}
-            </span>
+      {isSms && eventCount > 0 ? (
+        <ul className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+          {preview.events.map((event) => {
+            const plus = event.direction === "credit";
+            return (
+              <li
+                key={event.candidateId}
+                className="flex items-baseline justify-between gap-4 py-3"
+              >
+                <span className="min-w-0">
+                  <span
+                    className={`text-[0.7rem] font-medium uppercase tracking-[0.14em] ${
+                      plus
+                        ? "text-[var(--numa-positive)]"
+                        : "text-[var(--numa-muted)]"
+                    }`}
+                  >
+                    {plus ? "+ Insättning" : "− Utgift"}
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-[var(--numa-faint)]">
+                    {event.labelSv}
+                  </span>
+                </span>
+                <span
+                  className={`money shrink-0 text-lg font-semibold ${
+                    plus
+                      ? "text-[var(--numa-positive)]"
+                      : "text-[var(--numa-ink)]"
+                  }`}
+                >
+                  {plus ? "+" : "−"}
+                  {formatMoney(money(event.amountMinor, preview.currency))}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div>
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+            Belopp
           </p>
-        )}
-        {lockSmsAmount ? (
-          <p className="mt-2 text-xs text-[var(--numa-faint)]">
-            Låst från SMS — för att undvika fel belopp.
-          </p>
-        ) : null}
-      </div>
+          {amountEditable || needsManualAmount ? (
+            <input
+              inputMode="decimal"
+              autoFocus={needsManualAmount}
+              value={preview.amount}
+              onChange={(e) =>
+                setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
+              }
+              placeholder="0,00"
+              className="money mt-2 w-full border-0 bg-transparent p-0 text-4xl font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
+              aria-label="Belopp"
+              required
+            />
+          ) : (
+            <p className="money mt-2 text-4xl font-semibold tracking-tight">
+              {preview.amount || "—"}
+              <span className="ml-2 text-base font-medium text-[var(--numa-faint)]">
+                {preview.currency}
+              </span>
+            </p>
+          )}
+        </div>
+      )}
 
       {preview.balanceAfterMinor != null ? (
         <div className="space-y-1 border-t border-[var(--numa-border)] pt-5">
@@ -436,14 +498,14 @@ export function ReceiptCaptureFlow({
             </span>
           </div>
           <p className="text-xs text-[var(--numa-faint)]">
-            Available balance från SMS — det här blir ditt saldo.
+            Från senaste SMS available balance — blir ditt saldo.
           </p>
         </div>
       ) : null}
 
       {preview.skippedOlderCount > 0 ? (
         <p className="text-xs text-[var(--numa-faint)]">
-          {preview.skippedOlderCount} äldre SMS i bilden hoppades över.
+          {preview.skippedOlderCount} redan sparade SMS hoppades över.
         </p>
       ) : null}
 
@@ -454,7 +516,18 @@ export function ReceiptCaptureFlow({
         </p>
       ) : null}
 
-      {isSms && !isCredit ? (
+      {!isSms ? (
+        <input
+          value={preview.description}
+          onChange={(e) =>
+            setPreview((p) => (p ? { ...p, description: e.target.value } : p))
+          }
+          placeholder="Butik eller notis"
+          className="w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
+        />
+      ) : null}
+
+      {isSms && debitCount > 0 && creditCount === 0 ? (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {CATEGORIES.map((c) => (
             <button
@@ -473,17 +546,6 @@ export function ReceiptCaptureFlow({
         </div>
       ) : null}
 
-      {!isSms ? (
-        <input
-          value={preview.description}
-          onChange={(e) =>
-            setPreview((p) => (p ? { ...p, description: e.target.value } : p))
-          }
-          placeholder="Butik eller notis"
-          className="w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
-        />
-      ) : null}
-
       {error ? (
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
           {error}
@@ -495,8 +557,7 @@ export function ReceiptCaptureFlow({
           type="submit"
           disabled={
             pending ||
-            !preview.amount.trim() ||
-            (isSms && needsManualAmount)
+            (isSms ? eventCount === 0 : !preview.amount.trim())
           }
           className="flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-sm font-semibold text-white disabled:opacity-45"
         >
@@ -504,9 +565,11 @@ export function ReceiptCaptureFlow({
             ? "Sparar…"
             : bootstrapping
               ? "Spara saldo på Hem"
-              : isCredit
-                ? "Spara insättning"
-                : "Bekräfta"}
+              : isSms && eventCount > 1
+                ? `Spara ${eventCount} rörelser`
+                : isSms && isCredit
+                  ? "Spara insättning"
+                  : "Bekräfta"}
         </button>
         <button
           type="button"
@@ -541,7 +604,7 @@ function ModePicker({
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: "Senaste notisen · belopp + available balance",
+      hint: "Alla nya SMS · + in och − ut",
     },
     {
       id: "receipt",

@@ -4,9 +4,21 @@ import type {
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 
+export type ReceiptUploadEvent = {
+  candidateId: string;
+  direction: "debit" | "credit";
+  amountMinor: number;
+  balanceAfterMinor: number | null;
+  fingerprint: string;
+  description: string;
+  labelSv: string;
+};
+
 export type ReceiptUploadResult = {
   observation: SourceObservation;
   candidate: ExtractedTransactionCandidate | null;
+  /** All unknown SMS events from this screenshot (bank_sms). */
+  events: ReceiptUploadEvent[];
   suggestedAmountMinor: number | null;
   suggestedDescription: string | null;
   currency: CurrencyCode;
@@ -24,6 +36,8 @@ export type ConfirmReceiptInput = {
   accountId?: string | null;
   observationId: string;
   candidateId?: string | null;
+  /** Confirm every pending candidate on this observation (multi-SMS). */
+  confirmAllPending?: boolean;
   amountMinor: number;
   description?: string;
   category?: string | null;
