@@ -786,6 +786,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       verificationLabel: null,
       todaySpendingMinor: 0,
       monthSpendingMinor: 0,
+      cycleSpendingMinor: 0,
       safeToSpendTodayMinor: 0,
       safeToSpendWeekMinor: 0,
       freeMinor: 0,
@@ -846,6 +847,16 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     1,
     cycle.startAt ? cycle.daysLeft : totals.daysUntilNextIncome || 1,
   );
+  const cycleStartMs = cycle.startAt ? Date.parse(cycle.startAt) : null;
+  const cycleTx =
+    cycleStartMs != null
+      ? accountTx.filter(
+          (t) =>
+            t.status === "confirmed" &&
+            Date.parse(t.occurredAt) >= cycleStartMs,
+        )
+      : [];
+  const cycleSpending = sumSpending(cycleTx, currency);
   const safe = calculateSafeToSpend({
     available,
     reserved: money(reservedMinor, currency),
@@ -872,6 +883,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     verificationLabel: formatRelativeVerificationSv(checkpoint.verifiedAt, now),
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
+    cycleSpendingMinor: cycleSpending.amountMinor,
     safeToSpendTodayMinor: safe.today.amountMinor,
     safeToSpendWeekMinor: safe.week.amountMinor,
     freeMinor: safe.free.amountMinor,
@@ -902,6 +914,7 @@ function emptySnapshot(
     verificationLabel: null,
     todaySpendingMinor: 0,
     monthSpendingMinor: 0,
+    cycleSpendingMinor: 0,
     safeToSpendTodayMinor: 0,
     safeToSpendWeekMinor: 0,
     freeMinor: 0,

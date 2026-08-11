@@ -1,7 +1,7 @@
 export const PRIMARY_NAV = [
-  { href: "/idag", label: "Hem", hint: "Tryggt idag" },
-  { href: "/plan", label: "Plan", hint: "Månad & mål" },
-  { href: "/analys", label: "Analys", hint: "Mönster" },
+  { href: "/idag", label: "Hem", hint: "Snabb överblick" },
+  { href: "/plan", label: "Plan", hint: "Intäkter & utgifter" },
+  { href: "/analys", label: "Analys", hint: "Djupdyk & siffror" },
   { href: "/mer", label: "Mer", hint: "Konto & import" },
 ] as const;
 

@@ -18,6 +18,8 @@ export type TodaySnapshot = {
   verificationLabel: string | null;
   todaySpendingMinor: number;
   monthSpendingMinor: number;
+  /** Confirmed spending since active pay-cycle start. */
+  cycleSpendingMinor: number;
   safeToSpendTodayMinor: number;
   safeToSpendWeekMinor: number;
   freeMinor: number;

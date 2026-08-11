@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import type { CurrencyCode } from "@/domain/money";
+import { createExpenseAction } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
-import Link from "next/link";
 
 export function HomeDashboard({
   snap,
@@ -26,336 +29,236 @@ export function HomeDashboard({
   }
 
   const currency = snap.currency;
-  const bootstrapped = snap.hasBankTruth;
   const greeting = homeGreeting();
-  const freeOk = snap.freeToSpendMinor >= 0;
-  const dayOk = snap.perDayBudgetMinor > 0;
   const hasCycle = Boolean(snap.cycleStartLabelSv && snap.cycleEndLabelSv);
+  const remainingOk = snap.remainingFreeMinor >= 0;
+  const dayOk = snap.perDayBudgetMinor > 0;
 
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="mx-auto max-w-lg space-y-8">
       <header className="animate-rise">
         <p className="text-sm font-medium capitalize text-[var(--numa-muted)]">
           {greeting}
           {hasCycle
             ? ` · ${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
-            : ` · ${snap.monthLabelSv}`}
+            : ""}
         </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)] md:text-4xl">
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
           Hem
         </h1>
-        <p className="mt-2 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {hasCycle
-            ? "Räknar från när intäkten kom in tills nästa — samma cykel som i Plan."
-            : "Lägg in en intäkt med datum i Plan så vi vet när pengarna kommer in."}
-        </p>
       </header>
 
-      <section
-        className="numa-panel-strong animate-rise-delay-1 relative overflow-hidden p-6 md:p-8"
-        aria-labelledby="day-budget-heading"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[var(--numa-accent-soft)] opacity-70 blur-2xl"
-        />
-        <p
-          id="day-budget-heading"
-          className="relative text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-faint)]"
-        >
-          Budget per dag
-        </p>
-        <div
-          className={`relative mt-3 ${dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}`}
-        >
-          <MoneyDisplay
-            amountMinor={snap.perDayBudgetMinor}
-            currency={currency}
-            size="xl"
-          />
-        </div>
-        <p className="relative mt-3 max-w-[40ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {!hasCycle
-            ? "Lägg in intäkt med datum i Plan för att få en dagbudget."
-            : dayOk
-              ? `Det här får du röra dig med varje dag · ${snap.spendDaysLeft} dagar till nästa intäkt${snap.cycleEndInferred ? " (beräknad)" : ""}.`
-              : freeOk
-                ? "Lägg in intäkter i Plan för att få en dagbudget."
-                : "Utgifter och sparande täcker mer än intäkterna i cykeln — justera Plan."}
-        </p>
-
-        <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
-          <MiniFact
-            label="Fritt i cykeln"
-            amountMinor={snap.freeToSpendMinor}
-            currency={currency}
-            hint={
-              hasCycle
-                ? `${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
-                : "Efter utgifter och sparande"
-            }
-            tone={freeOk ? "positive" : "danger"}
-          />
-          <MiniFact
-            label="Sparas undan"
-            amountMinor={snap.planSavingsMinor}
-            currency={currency}
-            hint={
-              snap.planSavingsMinor > 0
-                ? "Från cykelns startmånad i Plan"
-                : "Inget sparmål satt i Plan"
-            }
-          />
-        </div>
-      </section>
-
-      <section className="animate-rise-delay-2 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold tracking-tight">
-            Inkomstcykel · Plan
+      {!snap.hasBankTruth ? (
+        <section className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5">
+          <h2 className="text-lg font-semibold tracking-tight">
+            Fota bank-SMS först
           </h2>
-          <Link
-            href="/plan"
-            prefetch
-            className="text-xs font-semibold text-[var(--numa-accent)]"
-          >
-            Öppna Plan →
-          </Link>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatTile
-            label="Intäkter"
-            amountMinor={snap.planIncomeMinor}
-            currency={currency}
-            hint="I aktiv cykel"
-            tone="positive"
-          />
-          <StatTile
-            label="Utgifter"
-            amountMinor={snap.planExpenseMinor}
-            currency={currency}
-            hint="Förfaller i cykeln"
-          />
-          <StatTile
-            label="Totalt att spendera"
-            amountMinor={snap.freeToSpendMinor}
-            currency={currency}
-            hint={
-              snap.planSavingsMinor > 0
-                ? `Efter ${(snap.planSavingsMinor / 100).toLocaleString("sv-SE")} ${currency} sparande`
-                : "Intäkter minus utgifter"
-            }
-            tone={freeOk ? "positive" : "danger"}
-          />
-        </div>
-      </section>
-
-      {!bootstrapped ? (
-        <section className="numa-panel-strong animate-rise-delay-2 space-y-4 p-6">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-faint)]">
-            Starta här
-          </p>
-          <h2 className="text-xl font-semibold tracking-tight">
-            Fota senaste Bangkok Bank-SMS
-          </h2>
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            NUMA läser hur mycket som drogs och saldot efteråt — det blir din
-            startpunkt. Plan-siffrorna syns redan ovan.
+          <p className="text-sm text-[var(--numa-muted)]">
+            Då får du saldo. Plan-siffrorna fungerar redan.
           </p>
           <Link
             href="/fota"
             prefetch
             className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white"
           >
-            Fota första SMS
+            Fota SMS
           </Link>
         </section>
       ) : null}
 
-      {bootstrapped ? (
-        <section className="animate-rise-delay-2 grid gap-3 sm:grid-cols-3">
-          <StatTile
+      <section
+        className="animate-rise-delay-1 space-y-2"
+        aria-labelledby="spend-heading"
+      >
+        <p
+          id="spend-heading"
+          className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--numa-faint)]"
+        >
+          Kvar per dag
+        </p>
+        <div
+          className={
+            dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
+          }
+        >
+          <MoneyDisplay
+            amountMinor={Math.max(0, snap.perDayBudgetMinor)}
+            currency={currency}
+            size="xl"
+          />
+        </div>
+        <p className="text-sm text-[var(--numa-muted)]">
+          {!hasCycle
+            ? "Lägg in intäkt med datum i Plan."
+            : `${snap.spendDaysLeft} dagar till nästa intäkt${snap.cycleEndInferred ? " (beräknad)" : ""}.`}
+        </p>
+      </section>
+
+      <section className="animate-rise-delay-2 space-y-4">
+        <OverviewRow
+          label="Kan spendera totalt"
+          amountMinor={snap.remainingFreeMinor}
+          currency={currency}
+          tone={remainingOk ? "positive" : "danger"}
+        />
+        <OverviewRow
+          label="Sparas undan"
+          amountMinor={snap.planSavingsMinor}
+          currency={currency}
+        />
+        {snap.hasBankTruth && snap.calculatedBalanceMinor != null ? (
+          <OverviewRow
             label="Saldo"
-            amountMinor={snap.calculatedBalanceMinor ?? 0}
+            amountMinor={snap.calculatedBalanceMinor}
             currency={currency}
-            hint={snap.verificationLabel ?? "Beräknat"}
+            hint={snap.verificationLabel ?? undefined}
           />
-          <StatTile
-            label="Spenderat denna månad"
-            amountMinor={snap.monthSpendingMinor}
+        ) : null}
+        {snap.cycleSpendingMinor > 0 ? (
+          <OverviewRow
+            label="Spenderat i cykeln"
+            amountMinor={snap.cycleSpendingMinor}
             currency={currency}
-            hint="Från bankrörelser"
           />
-          <StatTile
-            label="Saldo-baserat idag"
-            amountMinor={snap.safeToSpendTodayMinor}
-            currency={currency}
-            hint="Efter reserverat i kontot"
-          />
-        </section>
-      ) : null}
+        ) : null}
+      </section>
 
-      <section className="animate-rise-delay-3 grid gap-4 md:grid-cols-2">
-        <div className="numa-panel p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">Mål</h2>
-            <Link href="/plan" prefetch className="text-xs font-semibold text-[var(--numa-accent)]">
-              Plan
-            </Link>
-          </div>
-          {snap.goals.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--numa-faint)]">Inga mål ännu</p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {snap.goals.map((goal) => (
-                <li
-                  key={goal.id}
-                  className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)] pb-3 last:border-0"
-                >
-                  <span className="text-sm text-[var(--numa-muted)]">{goal.name}</span>
-                  <MoneyDisplay
-                    amountMinor={goal.amountMinor}
-                    currency={goal.currency}
-                    size="sm"
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      <QuickExpense
+        accountId={snap.primaryAccountId}
+        currency={currency}
+        disabled={!snap.primaryAccountId}
+      />
 
-        <div className="numa-panel p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold">Senaste rörelser</h2>
-            <Link
-              href="/transaktioner"
-              prefetch
-              className="text-xs font-semibold text-[var(--numa-accent)]"
-            >
-              Se alla →
-            </Link>
+      <p className="animate-rise-delay-3 text-center text-sm text-[var(--numa-muted)]">
+        <Link href="/plan" prefetch className="font-semibold text-[var(--numa-accent)]">
+          Öppna Plan
+        </Link>
+        {" · "}
+        <Link href="/transaktioner" prefetch className="font-semibold text-[var(--numa-accent)]">
+          Alla rörelser
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function OverviewRow({
+  label,
+  amountMinor,
+  currency,
+  hint,
+  tone,
+}: {
+  label: string;
+  amountMinor: number;
+  currency: CurrencyCode;
+  hint?: string;
+  tone?: "positive" | "danger";
+}) {
+  const amountClass =
+    tone === "positive"
+      ? "text-[var(--numa-positive)]"
+      : tone === "danger"
+        ? "text-[var(--numa-danger)]"
+        : "text-[var(--numa-ink)]";
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] pb-3">
+      <div className="min-w-0">
+        <p className="text-sm text-[var(--numa-muted)]">{label}</p>
+        {hint ? (
+          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{hint}</p>
+        ) : null}
+      </div>
+      <div className={`shrink-0 ${amountClass}`}>
+        <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
+      </div>
+    </div>
+  );
+}
+
+function QuickExpense({
+  accountId,
+  currency,
+  disabled,
+}: {
+  accountId: string | null;
+  currency: CurrencyCode;
+  disabled: boolean;
+}) {
+  const router = useRouter();
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <section className="numa-panel-strong animate-rise-delay-2 space-y-3 p-5">
+      <div>
+        <h2 className="text-base font-semibold tracking-tight">
+          Lägg till utgift
+        </h2>
+        <p className="mt-1 text-sm text-[var(--numa-muted)]">
+          Uppdaterar saldo och hur mycket du har kvar.
+        </p>
+      </div>
+
+      {disabled ? (
+        <p className="text-sm text-[var(--numa-muted)]">
+          Behöver ett konto först —{" "}
+          <Link href="/fota" className="font-semibold text-[var(--numa-accent)]">
+            fota SMS
+          </Link>
+          .
+        </p>
+      ) : (
+        <>
+          <div className="grid gap-2 sm:grid-cols-[1fr_8rem]">
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="t.ex. Lunch, Grab"
+              className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-white/80 px-4 text-sm outline-none focus:border-[var(--numa-accent)]"
+            />
+            <input
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={currency}
+              className="money min-h-12 rounded-2xl border border-[var(--numa-border)] bg-white/80 px-4 text-sm font-semibold outline-none focus:border-[var(--numa-accent)]"
+            />
           </div>
-          {snap.recent.length === 0 ? (
-            <p className="mt-4 text-sm text-[var(--numa-faint)]">
-              Inga rörelser ännu
+          {error ? (
+            <p className="text-sm text-[var(--numa-danger)]" role="alert">
+              {error}
             </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {snap.recent.map((tx) => {
-                const signed =
-                  tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
-                return (
-                  <li
-                    key={tx.id}
-                    className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)] pb-3 last:border-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{tx.description}</p>
-                      <p className="text-xs text-[var(--numa-faint)]">
-                        {tx.category ?? tx.transactionType}
-                      </p>
-                    </div>
-                    <MoneyDisplay
-                      amountMinor={signed}
-                      currency={tx.currency}
-                      size="sm"
-                      tone="signed"
-                    />
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <section className="animate-rise-delay-3 flex flex-wrap gap-3">
-        <Link
-          href="/plan"
-          prefetch
-          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-5 text-sm font-semibold text-white sm:flex-none"
-        >
-          Justera plan
-        </Link>
-        <Link
-          href="/fota"
-          prefetch
-          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl border border-[var(--numa-border-strong)] bg-white/70 px-5 text-sm font-semibold sm:flex-none"
-        >
-          Fota bank-SMS
-        </Link>
-        <Link
-          href="/transaktioner"
-          prefetch
-          className="inline-flex min-h-12 flex-1 items-center justify-center rounded-2xl border border-[var(--numa-border-strong)] bg-white/70 px-5 text-sm font-semibold sm:flex-none"
-        >
-          Utgifter & intäkter
-        </Link>
-      </section>
-    </div>
-  );
-}
-
-function MiniFact({
-  label,
-  amountMinor,
-  currency,
-  hint,
-  tone,
-}: {
-  label: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  hint: string;
-  tone?: "positive" | "danger";
-}) {
-  const amountClass =
-    tone === "positive"
-      ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
-        : "";
-  return (
-    <div className="rounded-2xl bg-white/55 px-4 py-3 backdrop-blur-sm">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-        {label}
-      </p>
-      <div className={`mt-1.5 ${amountClass}`}>
-        <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
-      </div>
-      <p className="mt-1 text-xs text-[var(--numa-muted)]">{hint}</p>
-    </div>
-  );
-}
-
-function StatTile({
-  label,
-  amountMinor,
-  currency,
-  hint,
-  tone,
-}: {
-  label: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  hint: string;
-  tone?: "positive" | "danger";
-}) {
-  const amountClass =
-    tone === "positive"
-      ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
-        : "";
-  return (
-    <div className="numa-panel p-4">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-        {label}
-      </p>
-      <div className={`mt-2 ${amountClass}`}>
-        <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
-      </div>
-      <p className="mt-2 text-xs leading-snug text-[var(--numa-muted)]">{hint}</p>
-    </div>
+          ) : null}
+          <button
+            type="button"
+            disabled={pending || !amount.trim()}
+            className="min-h-12 w-full rounded-2xl bg-[var(--numa-ink)] text-sm font-semibold text-white disabled:opacity-45"
+            onClick={() => {
+              if (!accountId) return;
+              startTransition(async () => {
+                const result = await createExpenseAction({
+                  accountId,
+                  amount,
+                  description: note.trim() || "Utgift",
+                });
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                setError(null);
+                setAmount("");
+                setNote("");
+                router.refresh();
+              });
+            }}
+          >
+            {pending ? "Sparar…" : "Lägg till"}
+          </button>
+        </>
+      )}
+    </section>
   );
 }
