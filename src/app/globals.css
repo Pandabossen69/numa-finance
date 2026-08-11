@@ -122,6 +122,38 @@ body {
   animation: numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes numa-scan {
+  0% {
+    transform: translateY(-10%);
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(110%);
+    opacity: 0.35;
+  }
+}
+
+.numa-scan-line {
+  animation: numa-scan 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes numa-pulse-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.numa-pulse-soft {
+  animation: numa-pulse-soft 1.4s ease-in-out infinite;
+}
+
 .animate-rise {
   animation: numa-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -148,7 +180,9 @@ body {
   .animate-rise-delay-1,
   .animate-rise-delay-2,
   .animate-rise-delay-3,
-  .animate-bar {
+  .animate-bar,
+  .numa-scan-line,
+  .numa-pulse-soft {
     animation: none !important;
   }
 }
