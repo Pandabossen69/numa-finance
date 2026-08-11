@@ -13,6 +13,7 @@ import {
 } from "@/features/imports/actions";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
+import { compressImageForUpload } from "@/lib/media/compress-image";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 
@@ -118,11 +119,13 @@ export function ReceiptCaptureFlow({
     if (scanPreviewUrl) URL.revokeObjectURL(scanPreviewUrl);
     const previewUrl = URL.createObjectURL(file);
     setScanPreviewUrl(previewUrl);
-    const fd = new FormData();
-    fd.set("file", file);
-    if (mode === "bank_sms") fd.set("mode", "bank_sms");
 
     startTransition(async () => {
+      const uploadFile = await compressImageForUpload(file);
+      const fd = new FormData();
+      fd.set("file", uploadFile);
+      if (mode === "bank_sms") fd.set("mode", "bank_sms");
+
       const result = await uploadReceiptAction(fd);
       setScanning(false);
       setScanPreviewUrl(null);
@@ -221,7 +224,7 @@ export function ReceiptCaptureFlow({
       setTimeout(() => {
         router.push("/idag");
         router.refresh();
-      }, 1400);
+      }, 450);
     });
   }
 
@@ -305,28 +308,32 @@ export function ReceiptCaptureFlow({
   if (scanning || (pending && !preview)) {
     return (
       <div className="animate-rise space-y-6">
-        <div className="relative overflow-hidden rounded-2xl bg-white/50">
+        <div className="relative min-h-56 overflow-hidden rounded-2xl bg-white/50">
           {scanPreviewUrl ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={scanPreviewUrl}
                 alt=""
-                className="mx-auto max-h-72 w-full object-contain opacity-90"
+                className="mx-auto max-h-72 min-h-56 w-full object-contain opacity-90"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/40" />
               <div className="pointer-events-none absolute inset-x-4 top-0 h-16 numa-scan-line rounded-full bg-[linear-gradient(180deg,transparent,rgba(13,122,102,0.35),transparent)]" />
             </>
           ) : (
-            <div className="flex h-48 items-center justify-center">
+            <div className="flex min-h-56 items-center justify-center">
               <div className="h-10 w-10 rounded-full border-2 border-[var(--numa-accent)] border-t-transparent numa-pulse-soft" />
             </div>
           )}
         </div>
         <div className="text-center">
-          <p className="text-lg font-semibold tracking-tight">Läser SMS…</p>
+          <p className="text-lg font-semibold tracking-tight">
+            {mode === "receipt" ? "Läser kvitto…" : "Läser SMS…"}
+          </p>
           <p className="mx-auto mt-2 max-w-[30ch] text-sm text-[var(--numa-muted)]">
-            Hämtar +/− och saldo automatiskt — du behöver inte skriva något.
+            {mode === "receipt"
+              ? "Hämtar beloppet — dubbelkolla innan du sparar."
+              : "Hämtar +/− och saldo automatiskt — du behöver inte skriva något."}
           </p>
         </div>
       </div>
@@ -559,7 +566,7 @@ export function ReceiptCaptureFlow({
                 setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
               }
               placeholder="0,00"
-              className="money mt-2 w-full border-0 bg-transparent p-0 text-4xl font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
+              className="money mt-2 w-full border-0 bg-transparent p-0 text-[2rem] font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
               aria-label="Belopp"
               required
             />
@@ -599,13 +606,13 @@ export function ReceiptCaptureFlow({
       ) : null}
 
       {isSms && debitCount > 0 && creditCount === 0 ? (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
           {CATEGORIES.map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setCategory(c)}
-              className={`min-h-9 shrink-0 rounded-full px-3.5 text-sm transition ${
+              className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
                 category === c
                   ? "bg-[var(--numa-ink)] font-semibold text-white"
                   : "text-[var(--numa-muted)] hover:bg-white/60"
@@ -644,7 +651,7 @@ export function ReceiptCaptureFlow({
         </button>
         <button
           type="button"
-          className="w-full py-2 text-sm text-[var(--numa-muted)]"
+          className="flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
           onClick={() => {
             URL.revokeObjectURL(preview.previewUrl);
             setPreview(null);
@@ -750,12 +757,12 @@ function BackLink({ onClick }: { onClick: () => void }) {
 
 function PreviewThumb({ src }: { src: string }) {
   return (
-    <div className="overflow-hidden rounded-2xl bg-white/60 shadow-[var(--numa-shadow-sm)]">
+    <div className="min-h-48 overflow-hidden rounded-2xl bg-white/60 shadow-[var(--numa-shadow-sm)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt="Förhandsvisning"
-        className="mx-auto max-h-56 w-full object-contain"
+        className="mx-auto max-h-56 min-h-48 w-full object-contain"
       />
     </div>
   );

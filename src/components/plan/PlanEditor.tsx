@@ -212,13 +212,13 @@ export function PlanEditor({
           ) : null}
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
           {monthKeys.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => selectMonth(key)}
-              className={`min-h-10 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize transition ${
+              className={`min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize transition ${
                 monthKey === key
                   ? "bg-[var(--numa-ink)] text-white"
                   : key === currentMonthKey
@@ -296,7 +296,7 @@ export function PlanEditor({
               value={savingsAmount}
               onChange={(e) => setSavingsAmount(e.target.value)}
               placeholder="0"
-              className="money min-h-11 w-full max-w-[10rem] rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-sm font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-11 w-full max-w-[10rem] rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
           </label>
           <div className="flex gap-2">
@@ -701,21 +701,21 @@ function PlanRows({
         ) : (
           <li
             key={item.id}
-            className="flex items-center justify-between gap-3 py-3 first:pt-0"
+            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 first:pt-0"
           >
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{item.name}</p>
               <p className="text-xs text-[var(--numa-faint)]">
                 {subtitle(item)}
               </p>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="money text-sm font-semibold">
+            <div className="flex shrink-0 items-center gap-1">
+              <span className="money mr-1 text-sm font-semibold">
                 {formatMoney(money(item.amountMinor, item.currency || currency))}
               </span>
               <button
                 type="button"
-                className="text-xs font-semibold text-[var(--numa-accent)]"
+                className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)]"
                 disabled={pending}
                 onClick={() => onStartEdit(item)}
               >
@@ -723,7 +723,7 @@ function PlanRows({
               </button>
               <button
                 type="button"
-                className="text-xs text-[var(--numa-muted)]"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)]"
                 disabled={pending}
                 onClick={() => onDelete(item.id)}
                 aria-label={`Ta bort ${item.name}`}
@@ -776,14 +776,14 @@ function InlineAdd({
           value={name}
           onChange={(e) => onName(e.target.value)}
           placeholder={namePlaceholder}
-          className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         <input
           inputMode="decimal"
           value={amount}
           onChange={(e) => onAmount(e.target.value)}
           placeholder={amountPlaceholder}
-          className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         {extraType === "date" ? (
           <input

@@ -27,7 +27,7 @@
   --numa-warning-soft: #fef3c7;
   --numa-shadow: 0 20px 48px rgba(10, 26, 20, 0.08);
   --numa-shadow-sm: 0 8px 24px rgba(10, 26, 20, 0.06);
-  --numa-nav: rgba(251, 253, 252, 0.92);
+  --numa-nav: rgba(251, 253, 252, 0.88);
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   --numa-shell-max: 72rem;
@@ -69,12 +69,22 @@ body {
   background:
     radial-gradient(980px 520px at 8% -12%, #f4faf7 0%, transparent 58%),
     radial-gradient(820px 480px at 100% 0%, rgba(13, 122, 102, 0.14) 0%, transparent 52%),
-    radial-gradient(700px 420px at 70% 110%, rgba(10, 26, 20, 0.05) 0%, transparent 48%),
     linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
-  background-attachment: fixed;
+  background-attachment: scroll;
   color: var(--numa-ink);
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
+}
+
+@media (min-width: 768px) {
+  body {
+    background:
+      radial-gradient(980px 520px at 8% -12%, #f4faf7 0%, transparent 58%),
+      radial-gradient(820px 480px at 100% 0%, rgba(13, 122, 102, 0.14) 0%, transparent 52%),
+      radial-gradient(700px 420px at 70% 110%, rgba(10, 26, 20, 0.05) 0%, transparent 48%),
+      linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
+    background-attachment: fixed;
+  }
 }
 
 .money {
@@ -181,6 +191,7 @@ body {
   .animate-rise-delay-2,
   .animate-rise-delay-3,
   .animate-bar,
+  .money-hero,
   .numa-scan-line,
   .numa-pulse-soft {
     animation: none !important;

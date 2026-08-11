@@ -59,7 +59,7 @@ export function QuickAddForms({
             key={m.id}
             type="button"
             onClick={() => setMode(m.id)}
-            className={`min-h-9 shrink-0 rounded-xl px-3 text-sm transition ${
+            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm transition ${
               mode === m.id
                 ? "bg-[var(--numa-accent-soft)] font-medium text-[var(--numa-accent-ink)]"
                 : "text-[var(--numa-muted)]"
@@ -443,7 +443,7 @@ function TextField({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+      className="w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 py-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
     />
   );
 }
@@ -467,7 +467,7 @@ function AccountSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+        className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
       >
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>

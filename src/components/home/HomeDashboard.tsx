@@ -24,7 +24,11 @@ export function HomeDashboard({
       <div className="space-y-3">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
-        <Link href="/fota" className="text-sm font-semibold text-[var(--numa-accent)]">
+        <Link
+          href="/fota"
+          prefetch
+          className="text-sm font-semibold text-[var(--numa-accent)]"
+        >
           Gå till Fota →
         </Link>
       </div>
@@ -151,10 +155,14 @@ export function HomeDashboard({
           </section>
 
           {isBridge ? (
-            <p className="text-sm text-[var(--numa-muted)]">
+            <div className="text-sm text-[var(--numa-muted)]">
               När du fotar kvitto eller uppdaterar saldo räknas dagsbudgeten om
               automatiskt.{" "}
-              <Link href="/fota" className="font-semibold text-[var(--numa-accent)]">
+              <Link
+                href="/fota"
+                prefetch
+                className="font-semibold text-[var(--numa-accent)]"
+              >
                 Fota
               </Link>
               {" · "}
@@ -162,7 +170,7 @@ export function HomeDashboard({
                 accountId={snap.primaryAccountId}
                 currency={currency}
               />
-            </p>
+            </div>
           ) : null}
 
           <QuickExpense
@@ -286,12 +294,12 @@ function UpdateBalanceLink({
         value={balance}
         onChange={(e) => setBalance(e.target.value)}
         placeholder={currency}
-        className="money min-h-9 w-28 rounded-lg border border-[var(--numa-border)] bg-white/80 px-2 text-sm font-semibold"
+        className="money min-h-11 w-32 rounded-lg border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold"
       />
       <button
         type="button"
         disabled={pending || !balance.trim()}
-        className="text-sm font-semibold text-[var(--numa-accent)] disabled:opacity-45"
+        className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)] disabled:opacity-45"
         onClick={() => {
           startTransition(async () => {
             const result = await setAvailableNowAction({
@@ -311,7 +319,7 @@ function UpdateBalanceLink({
       </button>
       <button
         type="button"
-        className="text-sm text-[var(--numa-muted)]"
+        className="inline-flex min-h-11 items-center px-2 text-sm text-[var(--numa-muted)]"
         onClick={() => setOpen(false)}
       >
         Avbryt
@@ -378,7 +386,11 @@ function QuickExpense({
       {disabled ? (
         <p className="text-sm text-[var(--numa-muted)]">
           Behöver ett konto —{" "}
-          <Link href="/fota" className="font-semibold text-[var(--numa-accent)]">
+          <Link
+            href="/fota"
+            prefetch
+            className="font-semibold text-[var(--numa-accent)]"
+          >
             fota SMS
           </Link>
           .
@@ -390,14 +402,14 @@ function QuickExpense({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="t.ex. Lunch, Grab"
-              className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-sm outline-none focus:border-[var(--numa-accent)]"
+              className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
-              className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-sm font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
             <button
               type="button"
