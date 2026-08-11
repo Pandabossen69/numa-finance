@@ -19,11 +19,16 @@ const SMS_SHORT =
   "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,118.04.";
 const SMS_CREDIT =
   "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04";
+const SMS_CREDIT_TH =
+  "MoneyPlus transfer to your account 4181 of TH 3,400.00 via MOBILE; the available balance is TH 7,144.44.";
 const SMS_ATM =
   "Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04.";
 const SMS_USER_THREAD = `${SMS_ATM}
 
 ${SMS_CREDIT}`;
+const SMS_TH_THREAD = `Withdrawal/transfer/payment from your account 4181 of TH 220.00 via MOBILE; the available balance is TH 3,744.44.
+
+${SMS_CREDIT_TH}`;
 
 describe("bangkok bank multi-SMS", () => {
   it("parses western bank amount strings into minor units", () => {
@@ -68,6 +73,33 @@ describe("bangkok bank multi-SMS", () => {
     expect(result.selected.balanceAfterMinor).toBe(1_010_804);
     expect(result.updatesBalance).toBe(true);
     expect(result.skippedOlderCount).toBe(1);
+  });
+
+  it("parses MoneyPlus credit with TH currency (not Bt)", () => {
+    const parser = new BangkokBankSmsParser();
+    const credit = parser.parse({
+      institution: "Bangkok Bank",
+      text: SMS_CREDIT_TH,
+    })[0];
+    expect(credit?.direction).toBe("credit");
+    expect(credit?.amountMinor).toBe(340_000);
+    expect(credit?.balanceAfterMinor).toBe(714_444);
+    expect(credit?.maskedAccount).toBe("4181");
+  });
+
+  it("first import with TH thread — tip MoneyPlus 3400, saldo = available balance", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: SMS_TH_THREAD,
+    });
+    expect(parsed.length).toBeGreaterThanOrEqual(2);
+    const result = selectImportableBankEvent(parsed, []);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selected.direction).toBe("credit");
+    expect(result.selected.amountMinor).toBe(340_000);
+    expect(result.selected.balanceAfterMinor).toBe(714_444);
   });
 
   it("picks newest credit after ATM debit in one screenshot", () => {

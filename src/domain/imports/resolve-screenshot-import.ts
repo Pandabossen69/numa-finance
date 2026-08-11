@@ -41,12 +41,14 @@ function looksLikeBankSmsText(text: string, detectedKind: string | null): boolea
   const t = text.toLowerCase();
   return (
     detectedKind === "bangkok_bank_sms" ||
-    t.includes("available balance is bt") ||
+    /available balance is\s+(?:bt|thb?)/.test(t) ||
     t.includes("withdrawal/transfer/payment") ||
     t.includes("withdrawal from your account") ||
-    t.includes("promptpay transfer to") ||
+    t.includes("promptpay transfer") ||
+    t.includes("moneyplus transfer") ||
     t.includes("deposit/transfer/payment") ||
-    (t.includes("from your account") && t.includes("bt"))
+    (t.includes("from your account") && /(?:bt|thb?)\s*[\d,]/.test(t)) ||
+    (t.includes("to your account") && /(?:bt|thb?)\s*[\d,]/.test(t))
   );
 }
 

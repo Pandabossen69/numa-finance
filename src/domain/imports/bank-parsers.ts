@@ -70,19 +70,40 @@ export interface BankMessageParser {
   parse(input: BankMessageParseInput): ParsedBankMessage[];
 }
 
-const SMS_START =
-  /(?=Withdrawal\/transfer\/payment\b)|(?=Withdrawal\s+from\s+your\s+account\b)|(?=Deposit\/transfer\/payment\b)|(?=Deposit\s+to\s+your\s+account\b)|(?=PromptPay\s+transfer\s+to\b)|(?=You have received\b)|(?=Successful transaction\b)/i;
+/** Bangkok Bank writes Bt or TH (OCR/locale variant of THB). */
+const CURRENCY_TOKEN = "(?:Bt|THB?|บาท)";
 
-const AMOUNT_OF_BT = /of\s+Bt\s*([\d,]+(?:\.\d{1,2})?)/i;
-const BALANCE_BT = /available balance is Bt\s*([\d,]+(?:\.\d{1,2})?)/i;
+const SMS_START = new RegExp(
+  [
+    "(?=Withdrawal\\/transfer\\/payment\\b)",
+    "(?=Withdrawal\\s+from\\s+your\\s+account\\b)",
+    "(?=Deposit\\/transfer\\/payment\\b)",
+    "(?=Deposit\\s+to\\s+your\\s+account\\b)",
+    "(?=PromptPay\\s+transfer(?:\\s+in)?\\s+to\\b)",
+    "(?=MoneyPlus\\s+transfer(?:\\s+in)?\\s+to\\b)",
+    "(?=You have received\\b)",
+    "(?=Successful transaction\\b)",
+  ].join("|"),
+  "i",
+);
+
+const AMOUNT_OF_CURRENCY = new RegExp(
+  `of\\s+${CURRENCY_TOKEN}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+  "i",
+);
+const BALANCE_CURRENCY = new RegExp(
+  `available balance is\\s+${CURRENCY_TOKEN}\\s*([\\d,]+(?:\\.\\d{1,2})?)`,
+  "i",
+);
 const ACCOUNT_RE =
   /(?:your\s+)?account\s+(X\d{3,}|\*{2,}\d{3,}|\d{3,})/i;
 
 function detectDirection(chunk: string): "debit" | "credit" | null {
   const t = chunk.toLowerCase();
   if (
-    /promptpay\s+transfer\s+to/.test(t) ||
-    /transfer\s+to\s+your\s+account/.test(t) ||
+    /promptpay\s+transfer(?:\s+in)?\s+to/.test(t) ||
+    /moneyplus\s+transfer(?:\s+in)?\s+to/.test(t) ||
+    /transfer(?:\s+in)?\s+to\s+your\s+account/.test(t) ||
     /deposit(?:\/transfer\/payment)?\s+to/.test(t) ||
     /you have received/.test(t) ||
     /credit\s+to/.test(t) ||
@@ -121,12 +142,13 @@ export class BangkokBankSmsParser implements BankMessageParser {
     const t = input.text.toLowerCase();
     return (
       input.institution.toLowerCase().includes("bangkok") ||
-      t.includes("available balance is bt") ||
+      /available balance is\s+(?:bt|thb?)/.test(t) ||
       t.includes("from your account") ||
       t.includes("to your account") ||
       t.includes("withdrawal/transfer/payment") ||
       t.includes("withdrawal from") ||
-      t.includes("promptpay transfer")
+      t.includes("promptpay transfer") ||
+      t.includes("moneyplus transfer")
     );
   }
 
@@ -135,8 +157,8 @@ export class BangkokBankSmsParser implements BankMessageParser {
     const results: ParsedBankMessage[] = [];
 
     chunks.forEach((chunk, sourceIndex) => {
-      const amountMatch = chunk.match(AMOUNT_OF_BT);
-      const balanceMatch = chunk.match(BALANCE_BT);
+      const amountMatch = chunk.match(AMOUNT_OF_CURRENCY);
+      const balanceMatch = chunk.match(BALANCE_CURRENCY);
       const accountMatch = chunk.match(ACCOUNT_RE);
       if (!amountMatch || !balanceMatch) return;
 
@@ -184,9 +206,14 @@ export function splitBankSmsChunks(text: string): string[] {
   if (byBlank.length > 1) return byBlank;
 
   const byBalance = normalized
-    .split(/(?<=available balance is Bt\s*[\d,]+(?:\.\d{1,2})?\.?)/i)
+    .split(
+      new RegExp(
+        `(?<=available balance is\\s+${CURRENCY_TOKEN}\\s*[\\d,]+(?:\\.\\d{1,2})?\\.?)`,
+        "i",
+      ),
+    )
     .map((c) => c.trim())
-    .filter((c) => /Bt\s*[\d,]/i.test(c));
+    .filter((c) => new RegExp(`${CURRENCY_TOKEN}\\s*[\\d,]`, "i").test(c));
 
   if (byBalance.length > 1) return byBalance;
 

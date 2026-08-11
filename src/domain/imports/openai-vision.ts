@@ -62,16 +62,17 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           role: "system",
           content:
             "You read phone screenshots for a personal finance app (NUMA). " +
-            "Bangkok Bank SMS templates (English): " +
+            "Bangkok Bank SMS templates (English). Currency may be written as Bt OR TH OR THB: " +
             '(1) Debit: "Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE; the available balance is Bt 10,693.04." ' +
             '(2) Debit short: "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,118.04." ' +
-            '(3) Credit: "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04." ' +
+            '(3) Credit PromptPay: "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04." ' +
+            '(4) Credit MoneyPlus/TH: "MoneyPlus transfer to your account 4181 of TH 3,400.00 via MOBILE; the available balance is TH 7,144.44." ' +
             "A screenshot may show SEVERAL such SMS bubbles. Extract EVERY distinct SMS, oldest→newest by visual conversation order (bottom is usually newest). " +
-            "For each SMS: amountMajor = the Bt amount AFTER 'of Bt' (money moved), balanceAfterMajor = the Bt amount AFTER 'available balance is Bt' (new saldo). Never swap them. " +
-            "direction = debit for Withdrawal/from, credit for PromptPay transfer to / Deposit to. " +
+            "For each SMS: amountMajor = the amount AFTER 'of Bt/TH/THB' (money moved), balanceAfterMajor = the amount AFTER 'available balance is Bt/TH/THB' (new saldo). Never swap them. " +
+            "direction = debit for Withdrawal/from, credit for PromptPay/MoneyPlus transfer to / Deposit to / transfer in to. " +
             "Return JSON only with keys: " +
             "kind ('bangkok_bank_sms'|'receipt'|'unknown'), " +
-            "fullText (all SMS concatenated with blank lines), " +
+            "fullText (all SMS concatenated with blank lines — keep Bt/TH exactly as written), " +
             "messages (array of {rawText, amountMajor, balanceAfterMajor, accountHint, direction, visualOrder, isNewestVisual}), " +
             "amountMajor, currency (THB|SEK), description, merchant, confidence (0-1). " +
             "For bangkok_bank_sms: prefer exact rawText transcription; do not invent amounts. " +
@@ -84,8 +85,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               type: "text",
               text:
                 "Extract every Bangkok Bank SMS bubble or the receipt total. " +
-                "Include PromptPay credits (transfer to) and Withdrawals (from). " +
-                "amountMajor is the moved amount; balanceAfterMajor is the remaining balance.",
+                "Include PromptPay/MoneyPlus credits (transfer to / transfer in) and Withdrawals (from). " +
+                "Currency token may be Bt or TH. amountMajor is the moved amount; balanceAfterMajor is the remaining balance.",
             },
             {
               type: "image_url",
