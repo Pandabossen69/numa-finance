@@ -7,9 +7,9 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 /**
  * What you can live on right now on Hem.
  *
- * - bridge: before next income wave arrives — use kontosaldo (manual or from
- *   fotade SMS/kvitton). Upcoming planned incomes are not counted until they land.
- * - cycle: after income landed — plan pool minus utgifter minus spenderat.
+ * - bridge: before the last funding income arrives — use kontosaldo (manual or
+ *   from fotade SMS/kvitton). The cycle opens on the last income of the wave.
+ * - cycle: after last funding income landed — plan pool minus utgifter minus spenderat.
  * - empty: no planned incomes yet.
  */
 export type LivingBudget = {

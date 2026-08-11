@@ -109,14 +109,15 @@ describe("projectPayCycle", () => {
       }),
     ];
 
-    // Mid-cycle after first paycheck — must NOT open a 2-day cycle to CSN.
+    // Between early and late paychecks — cycle still last→last (not 23→25).
     const on24th = projectPayCycle(
       items,
       new Date("2026-08-24T03:00:00.000Z"),
       tz,
     );
-    expect(on24th.startAt).toBe("2026-08-23T12:00:00.000Z");
+    expect(on24th.startAt).toBe("2026-08-25T12:00:00.000Z");
     expect(on24th.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(on24th.isActive).toBe(false);
     expect(on24th.incomeMinor).toBe(7_000_00 + 58_000_00 + 52_000_00);
     expect(on24th.expenseMinor).toBe(12_000_00);
     expect(on24th.savingsMinor).toBe(5_000_00);
@@ -132,9 +133,54 @@ describe("projectPayCycle", () => {
       new Date("2026-08-26T03:00:00.000Z"),
       tz,
     );
+    expect(afterAll.startAt).toBe("2026-08-25T12:00:00.000Z");
+    expect(afterAll.isActive).toBe(true);
     expect(afterAll.incomeMinor).toBe(117_000_00);
     expect(afterAll.endAt).toBe("2026-09-25T12:00:00.000Z");
     expect(afterAll.expenses.map((e) => e.item.name)).toEqual(["Hyra"]);
+  });
+
+  it("always uses last income → last income, never the first in the month", () => {
+    const items = [
+      item({
+        name: "Tidig",
+        kind: "expected",
+        amountMinor: 10_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-10T12:00:00.000Z",
+      }),
+      item({
+        name: "Sen",
+        kind: "expected",
+        amountMinor: 30_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Tidig sep",
+        kind: "expected",
+        amountMinor: 10_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-10T12:00:00.000Z",
+      }),
+      item({
+        name: "Sen sep",
+        kind: "expected",
+        amountMinor: 30_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+    ];
+
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-26T03:00:00.000Z"),
+      tz,
+    );
+    expect(cycle.startAt).toBe("2026-08-25T12:00:00.000Z");
+    expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(cycle.startLabelSv).not.toMatch(/10/);
+    expect(cycle.incomeMinor).toBe(40_000_00);
   });
 
   it("builds cycle from income month to next month's last income", () => {

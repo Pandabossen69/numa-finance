@@ -45,7 +45,7 @@ export type CycleExpense = {
 };
 
 export type PayCycleProjection = {
-  /** Inclusive cycle start (first income in the funding month). */
+  /** Inclusive cycle start (last income in the funding month). */
   startAt: string | null;
   /** Exclusive cycle end (last income next month — when new pool arrives). */
   endAt: string | null;
@@ -236,8 +236,9 @@ function emptyCycle(): PayCycleProjection {
  * Living cycle funded by a calendar month's income wave.
  *
  * Example: Alltid ID 23rd + CSN/Trukks 25th in August are ONE pool.
- * That pool covers fixed/extra costs until the last income next month
- * (when the next pool arrives) — leftover ÷ days = personal daily budget.
+ * The living window always runs last→last: from the last funding income
+ * (25 Aug) until the last income next month (25 Sep). Earlier incomes in
+ * the same month still fund the pool, but do not open the cycle early.
  */
 export function projectPayCycle(
   items: PlanItem[],
@@ -259,9 +260,11 @@ export function projectPayCycle(
   const wave = byMonth.get(fundingMonthKey) ?? [];
   if (wave.length === 0) return emptyCycle();
 
-  const startIso = wave[0]!.iso;
-  const startAt = wave[0]!.at;
-  const lastFundingIso = wave[wave.length - 1]!.iso;
+  // Always last income → last income (never first income of the wave).
+  const lastFunding = wave[wave.length - 1]!;
+  const startIso = lastFunding.iso;
+  const startAt = lastFunding.at;
+  const lastFundingIso = lastFunding.iso;
 
   // Next month that has planned incomes → end at that month's LAST income.
   let endIso: string;

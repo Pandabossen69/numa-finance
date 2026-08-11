@@ -1,9 +1,24 @@
+import { Suspense } from "react";
 import { PlanEditor } from "@/components/plan/PlanEditor";
+import { TabSoftFallback } from "@/components/layout/TabSoftFallback";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlanPage() {
+export default function PlanPage() {
+  return (
+    <div className="space-y-6">
+      <header className="animate-rise">
+        <h1 className="numa-page-title">Plan</h1>
+      </header>
+      <Suspense fallback={<TabSoftFallback />}>
+        <PlanContent />
+      </Suspense>
+    </div>
+  );
+}
+
+async function PlanContent() {
   let error: string | null = null;
   let snap = null;
   try {
@@ -15,25 +30,19 @@ export default async function PlanPage() {
   const currency = snap?.currency ?? "THB";
   const timeZone = snap?.profile.timezone || "Asia/Bangkok";
 
-  return (
-    <div className="space-y-6">
-      <header className="animate-rise">
-        <h1 className="numa-page-title">Plan</h1>
-      </header>
+  if (error) {
+    return <p className="text-sm text-[var(--numa-danger)]">{error}</p>;
+  }
 
-      {error ? (
-        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
-      ) : (
-        <section className="animate-rise-delay-1">
-          <PlanEditor
-            items={snap?.planItems ?? []}
-            currency={currency}
-            timeZone={timeZone}
-            bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
-            cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
-          />
-        </section>
-      )}
-    </div>
+  return (
+    <section className="animate-rise-delay-1">
+      <PlanEditor
+        items={snap?.planItems ?? []}
+        currency={currency}
+        timeZone={timeZone}
+        bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
+        cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
+      />
+    </section>
   );
 }

@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
 export function SideNav() {
   const pathname = usePathname();
+  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    setOptimisticHref(null);
+  }, [pathname]);
 
   return (
     <aside className="hidden w-56 shrink-0 md:block">
@@ -19,13 +26,18 @@ export function SideNav() {
 
         <nav className="flex flex-1 flex-col gap-0.5" aria-label="Sido­navigering">
           {PRIMARY_NAV.map((item) => {
-            const active = isNavActive(pathname, item.href);
+            const active = optimisticHref
+              ? isNavActive(optimisticHref, item.href)
+              : isNavActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 prefetch
-                className={`relative rounded-xl px-1 py-3 transition ${
+                onClick={() => {
+                  startTransition(() => setOptimisticHref(item.href));
+                }}
+                className={`relative rounded-xl px-1 py-3 transition active:scale-[0.99] ${
                   active
                     ? "bg-[var(--numa-accent-soft)]/55 text-[var(--numa-ink)]"
                     : "text-[var(--numa-muted)] hover:bg-white/45 hover:text-[var(--numa-ink)]"
@@ -51,7 +63,7 @@ export function SideNav() {
         <Link
           href="/lagg-till"
           prefetch
-          className="numa-cta-glow rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
+          className="rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
         >
           + Lägg till
         </Link>
