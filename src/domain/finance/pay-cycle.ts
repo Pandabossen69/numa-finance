@@ -44,16 +44,29 @@ export type CycleExpense = {
   dueAt: string;
 };
 
+export type PayCyclePhase = "pre" | "partial" | "full";
+
 export type PayCycleProjection = {
-  /** Inclusive cycle start (last income in the funding month). */
+  /**
+   * Inclusive window start for the active phase:
+   * - pre: first income of the upcoming wave (bridge target)
+   * - partial: first income of the funding wave
+   * - full: last income of the funding wave
+   */
   startAt: string | null;
-  /** Exclusive cycle end (last income next month — when new pool arrives). */
+  /**
+   * Exclusive window end:
+   * - partial: last income of this funding month
+   * - full / pre labels: last income of the next month
+   */
   endAt: string | null;
   startLabelSv: string | null;
   endLabelSv: string | null;
   /** Funding calendar month for the income pool (`2026-08`). */
   fundingMonthKey: string | null;
-  /** True when start ≤ now < end. */
+  /** pre = before first income; partial = early incomes landed; full = last→next last. */
+  phase: PayCyclePhase | null;
+  /** True when the plan pool is driving Hem (partial or full). */
   isActive: boolean;
   /** True when cycle end was assumed (+1 month from last funding income). */
   endInferred: boolean;
@@ -216,6 +229,7 @@ function emptyCycle(): PayCycleProjection {
     startLabelSv: null,
     endLabelSv: null,
     fundingMonthKey: null,
+    phase: null,
     isActive: false,
     endInferred: false,
     incomes: [],
@@ -232,13 +246,57 @@ function emptyCycle(): PayCycleProjection {
   };
 }
 
+function resolveNextLastIso(
+  byMonth: Map<string, DatedIncome[]>,
+  fundingMonthKey: string,
+  lastFundingIso: string,
+): { endIso: string; endInferred: boolean } {
+  let cursor = addMonthsKey(fundingMonthKey, 1);
+  for (let i = 0; i < 24; i++) {
+    const nextWave = byMonth.get(cursor);
+    if (nextWave && nextWave.length > 0) {
+      return {
+        endIso: nextWave[nextWave.length - 1]!.iso,
+        endInferred: false,
+      };
+    }
+    cursor = addMonthsKey(cursor, 1);
+  }
+  return {
+    endIso: addMonthsPreservingDay(lastFundingIso, 1),
+    endInferred: true,
+  };
+}
+
+function sumExpenseParts(expenses: CycleExpense[]) {
+  let reservedMinor = 0;
+  let bufferMinor = 0;
+  let flexibleMinor = 0;
+  for (const { item } of expenses) {
+    const parts = expenseAmountParts(item);
+    reservedMinor += parts.reserved;
+    bufferMinor += parts.buffer;
+    flexibleMinor += parts.flexible;
+  }
+  return {
+    reservedMinor,
+    bufferMinor,
+    flexibleMinor,
+    expenseMinor: reservedMinor + bufferMinor + flexibleMinor,
+  };
+}
+
 /**
  * Living cycle funded by a calendar month's income wave.
  *
- * Example: Alltid ID 23rd + CSN/Trukks 25th in August are ONE pool.
- * The living window always runs last→last: from the last funding income
- * (25 Aug) until the last income next month (25 Sep). Earlier incomes in
- * the same month still fund the pool, but do not open the cycle early.
+ * Phases (example: Alltid ID 23rd + CSN/Trukks 25th → next last 25 Sep):
+ * - pre: before first income → Hem uses kontosaldo until 23rd
+ * - partial: early income landed → only landed amounts, days until THIS
+ *   month's last (25th) so kvar/dag is higher for the short stretch
+ * - full: last income landed → full month pool until NEXT month's last
+ *
+ * Funding month stays sticky until that wave's nextLast passes, so an early
+ * income next month does not steal the open full cycle.
  */
 export function projectPayCycle(
   items: PlanItem[],
@@ -250,79 +308,98 @@ export function projectPayCycle(
 
   const byMonth = groupByMonth(dated);
   const todayMs = zonedDayAnchorMs(now, timeZone);
-
   const pastOrToday = dated.filter((d) => d.at <= todayMs);
-  const fundingMonthKey =
-    pastOrToday.length > 0
-      ? pastOrToday[pastOrToday.length - 1]!.monthKey
-      : dated[0]!.monthKey;
 
+  const fundingMonthKey = pickFundingMonthKey(
+    byMonth,
+    dated,
+    pastOrToday,
+    todayMs,
+  );
   const wave = byMonth.get(fundingMonthKey) ?? [];
   if (wave.length === 0) return emptyCycle();
 
-  // Always last income → last income (never first income of the wave).
-  const lastFunding = wave[wave.length - 1]!;
-  const startIso = lastFunding.iso;
-  const startAt = lastFunding.at;
-  const lastFundingIso = lastFunding.iso;
+  const first = wave[0]!;
+  const last = wave[wave.length - 1]!;
+  const { endIso: nextLastIso, endInferred } = resolveNextLastIso(
+    byMonth,
+    fundingMonthKey,
+    last.iso,
+  );
 
-  // Next month that has planned incomes → end at that month's LAST income.
+  const phase: PayCyclePhase =
+    todayMs < first.at ? "pre" : todayMs < last.at ? "partial" : "full";
+
+  let startIso: string;
   let endIso: string;
-  let endInferred = false;
-  let cursor = addMonthsKey(fundingMonthKey, 1);
-  let foundNext = false;
-  for (let i = 0; i < 24; i++) {
-    const nextWave = byMonth.get(cursor);
-    if (nextWave && nextWave.length > 0) {
-      endIso = nextWave[nextWave.length - 1]!.iso;
-      foundNext = true;
-      break;
-    }
-    cursor = addMonthsKey(cursor, 1);
+  let incomeRows: DatedIncome[];
+  let expenseStartIso: string;
+  let expenseEndIso: string;
+  let savingsMinor = 0;
+  let isActive = false;
+
+  if (phase === "pre") {
+    // Bridge until first paycheck — pool not open yet.
+    startIso = first.iso;
+    endIso = nextLastIso;
+    incomeRows = wave;
+    expenseStartIso = first.iso;
+    expenseEndIso = nextLastIso;
+    isActive = false;
+  } else if (phase === "partial") {
+    // Early incomes count now; runway ends at this month's last payment.
+    startIso = first.iso;
+    endIso = last.iso;
+    incomeRows = wave.filter((d) => d.at <= todayMs);
+    expenseStartIso = first.iso;
+    expenseEndIso = last.iso;
+    // Don't pull full-month savings into a 1–2 day stretch.
+    savingsMinor = 0;
+    isActive = true;
+  } else {
+    // Last payment landed — full pool from first income until next month's last.
+    // Keep start at first so mid-wave spend/expenses stay in the same window.
+    startIso = first.iso;
+    endIso = nextLastIso;
+    incomeRows = wave;
+    expenseStartIso = first.iso;
+    expenseEndIso = nextLastIso;
+    savingsMinor = projectPlanForMonth(
+      items,
+      fundingMonthKey,
+      timeZone,
+    ).savingsMinor;
+    isActive = todayMs < Date.parse(nextLastIso);
   }
-  if (!foundNext) {
-    endIso = addMonthsPreservingDay(lastFundingIso, 1);
-    endInferred = true;
-  }
-  const endAt = Date.parse(endIso!);
 
   const incomeUnique = Array.from(
-    new Map(wave.map((d) => [d.item.id, d.item])).values(),
+    new Map(incomeRows.map((d) => [d.item.id, d.item])).values(),
   );
   const incomeMinor = incomeUnique.reduce((s, i) => s + i.amountMinor, 0);
 
-  const expenses = expensesInWindow(items, startIso, endIso!, timeZone);
-  let reservedMinor = 0;
-  let bufferMinor = 0;
-  let flexibleMinor = 0;
-  for (const { item } of expenses) {
-    const parts = expenseAmountParts(item);
-    reservedMinor += parts.reserved;
-    bufferMinor += parts.buffer;
-    flexibleMinor += parts.flexible;
-  }
-  const expenseMinor = reservedMinor + bufferMinor + flexibleMinor;
-
-  const monthProj = projectPlanForMonth(items, fundingMonthKey, timeZone);
-  const savingsMinor = monthProj.savingsMinor;
+  const expenses = expensesInWindow(
+    items,
+    expenseStartIso,
+    expenseEndIso,
+    timeZone,
+  );
+  const { reservedMinor, bufferMinor, flexibleMinor, expenseMinor } =
+    sumExpenseParts(expenses);
   const freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
 
-  const isActive = startAt <= todayMs && todayMs < endAt;
   const fromIso = isActive ? now.toISOString() : startIso;
-  const daysLeft = Math.max(
-    1,
-    calendarDaysBetween(fromIso, endIso!, timeZone),
-  );
+  const daysLeft = Math.max(1, calendarDaysBetween(fromIso, endIso, timeZone));
   const perDayMinor = perDayBudgetMinor(freeToSpendMinor, daysLeft);
 
   return {
     startAt: startIso,
-    endAt: endIso!,
+    endAt: endIso,
     startLabelSv: labelDateSv(startIso, timeZone),
-    endLabelSv: labelDateSv(endIso!, timeZone),
+    endLabelSv: labelDateSv(endIso, timeZone),
     fundingMonthKey,
+    phase,
     isActive,
-    endInferred,
+    endInferred: phase === "partial" ? false : endInferred,
     incomes: incomeUnique,
     expenses,
     incomeMinor,
@@ -335,6 +412,35 @@ export function projectPayCycle(
     daysLeft,
     perDayMinor,
   };
+}
+
+/**
+ * Prefer an open full wave (last landed, nextLast still ahead) so early income
+ * in the next calendar month cannot steal funding mid-cycle.
+ */
+function pickFundingMonthKey(
+  byMonth: Map<string, DatedIncome[]>,
+  dated: DatedIncome[],
+  pastOrToday: DatedIncome[],
+  todayMs: number,
+): string {
+  const monthKeys = Array.from(byMonth.keys()).sort();
+  for (let i = monthKeys.length - 1; i >= 0; i--) {
+    const key = monthKeys[i]!;
+    const wave = byMonth.get(key);
+    if (!wave || wave.length === 0) continue;
+    const last = wave[wave.length - 1]!;
+    if (last.at > todayMs) continue;
+    const { endIso } = resolveNextLastIso(byMonth, key, last.iso);
+    if (todayMs < Date.parse(endIso)) {
+      return key;
+    }
+  }
+
+  if (pastOrToday.length > 0) {
+    return pastOrToday[pastOrToday.length - 1]!.monthKey;
+  }
+  return dated[0]!.monthKey;
 }
 
 /** Swedish ordinal day label, e.g. `den 5:e`. */

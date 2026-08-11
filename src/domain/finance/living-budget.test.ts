@@ -115,21 +115,47 @@ describe("projectLivingBudget", () => {
     expect(living.perDayMinor).toBe(0);
   });
 
-  it("switches to plan cycle after income lands", () => {
+  it("switches to plan cycle after early income lands (partial until last)", () => {
     const cycle = projectPayCycle(
       items,
       new Date("2026-08-24T03:00:00.000Z"),
       tz,
     );
+    expect(cycle.phase).toBe("partial");
+    expect(cycle.incomeMinor).toBe(7_000_00);
+    expect(cycle.endAt).toBe("2026-08-25T12:00:00.000Z");
+
     const living = projectLivingBudget({
       cycle,
       now: new Date("2026-08-24T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 50_000_00,
+      cycleSpendingMinor: 0,
+    });
+    expect(living.mode).toBe("cycle");
+    expect(living.remainingFreeMinor).toBe(7_000_00);
+    expect(living.daysLeft).toBe(1);
+    expect(living.perDayMinor).toBe(7_000_00);
+    expect(living.usesBankBalance).toBe(false);
+  });
+
+  it("recalculates full pool after last income until next last", () => {
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-26T03:00:00.000Z"),
+      tz,
+    );
+    expect(cycle.phase).toBe("full");
+    expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
+
+    const living = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-26T03:00:00.000Z"),
       timeZone: tz,
       bankBalanceMinor: 50_000_00,
       cycleSpendingMinor: 1_000_00,
     });
     expect(living.mode).toBe("cycle");
     expect(living.remainingFreeMinor).toBe(cycle.freeToSpendMinor - 1_000_00);
-    expect(living.usesBankBalance).toBe(false);
   });
 });

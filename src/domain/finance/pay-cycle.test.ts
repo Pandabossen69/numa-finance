@@ -109,38 +109,38 @@ describe("projectPayCycle", () => {
       }),
     ];
 
-    // Between early and late paychecks — cycle still last→last (not 23→25).
+    // Between early and late paychecks — landed early income counts; runway
+    // ends at this month's last payment (higher kvar/dag for the short stretch).
     const on24th = projectPayCycle(
       items,
       new Date("2026-08-24T03:00:00.000Z"),
       tz,
     );
-    expect(on24th.startAt).toBe("2026-08-25T12:00:00.000Z");
-    expect(on24th.endAt).toBe("2026-09-25T12:00:00.000Z");
-    expect(on24th.isActive).toBe(false);
-    expect(on24th.incomeMinor).toBe(7_000_00 + 58_000_00 + 52_000_00);
-    expect(on24th.expenseMinor).toBe(12_000_00);
-    expect(on24th.savingsMinor).toBe(5_000_00);
-    expect(on24th.freeToSpendMinor).toBe(100_000_00);
-    expect(on24th.incomes.map((i) => i.name).sort()).toEqual([
-      "Alltid ID",
-      "CSN",
-      "Trukks",
-    ]);
+    expect(on24th.phase).toBe("partial");
+    expect(on24th.isActive).toBe(true);
+    expect(on24th.startAt).toBe("2026-08-23T12:00:00.000Z");
+    expect(on24th.endAt).toBe("2026-08-25T12:00:00.000Z");
+    expect(on24th.incomeMinor).toBe(7_000_00);
+    expect(on24th.savingsMinor).toBe(0);
+    expect(on24th.incomes.map((i) => i.name)).toEqual(["Alltid ID"]);
 
     const afterAll = projectPayCycle(
       items,
       new Date("2026-08-26T03:00:00.000Z"),
       tz,
     );
-    expect(afterAll.startAt).toBe("2026-08-25T12:00:00.000Z");
+    expect(afterAll.phase).toBe("full");
     expect(afterAll.isActive).toBe(true);
-    expect(afterAll.incomeMinor).toBe(117_000_00);
+    expect(afterAll.startAt).toBe("2026-08-23T12:00:00.000Z");
     expect(afterAll.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(afterAll.incomeMinor).toBe(117_000_00);
+    expect(afterAll.expenseMinor).toBe(12_000_00);
+    expect(afterAll.savingsMinor).toBe(5_000_00);
+    expect(afterAll.freeToSpendMinor).toBe(100_000_00);
     expect(afterAll.expenses.map((e) => e.item.name)).toEqual(["Hyra"]);
   });
 
-  it("always uses last income → last income, never the first in the month", () => {
+  it("always ends the full phase on next month's last income", () => {
     const items = [
       item({
         name: "Tidig",
@@ -177,10 +177,54 @@ describe("projectPayCycle", () => {
       new Date("2026-08-26T03:00:00.000Z"),
       tz,
     );
-    expect(cycle.startAt).toBe("2026-08-25T12:00:00.000Z");
+    expect(cycle.phase).toBe("full");
+    expect(cycle.startAt).toBe("2026-08-10T12:00:00.000Z");
     expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
-    expect(cycle.startLabelSv).not.toMatch(/10/);
     expect(cycle.incomeMinor).toBe(40_000_00);
+  });
+
+  it("keeps August full cycle sticky when early September income lands", () => {
+    const items = [
+      item({
+        name: "Alltid ID",
+        kind: "expected",
+        amountMinor: 7_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-23T12:00:00.000Z",
+      }),
+      item({
+        name: "CSN",
+        kind: "expected",
+        amountMinor: 58_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Alltid ID sep",
+        kind: "expected",
+        amountMinor: 7_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-10T12:00:00.000Z",
+      }),
+      item({
+        name: "CSN sep",
+        kind: "expected",
+        amountMinor: 58_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+    ];
+
+    const midSep = projectPayCycle(
+      items,
+      new Date("2026-09-12T03:00:00.000Z"),
+      tz,
+    );
+    expect(midSep.phase).toBe("full");
+    expect(midSep.fundingMonthKey).toBe("2026-08");
+    expect(midSep.startAt).toBe("2026-08-23T12:00:00.000Z");
+    expect(midSep.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(midSep.incomeMinor).toBe(65_000_00);
   });
 
   it("builds cycle from income month to next month's last income", () => {
