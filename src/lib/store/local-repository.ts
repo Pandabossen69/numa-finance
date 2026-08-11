@@ -159,11 +159,40 @@ export async function createCheckpoint(input: {
   return updated.checkpoints[updated.checkpoints.length - 1]!;
 }
 
-export async function listKnownFingerprints(): Promise<string[]> {
+export async function listKnownFingerprints(options?: {
+  includePendingCandidates?: boolean;
+}): Promise<string[]> {
   const store = await readStore();
   const fromTx = store.transactions
-    .filter((t) => t.userId === LOCAL_DEMO_USER_ID && t.fingerprint)
-    .map((t) => t.fingerprint!) ;
+    .filter(
+      (t) =>
+        t.userId === LOCAL_DEMO_USER_ID &&
+        t.fingerprint &&
+        t.status === "confirmed",
+    )
+    .map((t) => t.fingerprint!);
+  const pending = options?.includePendingCandidates !== false;
+  const fromCandidates = store.candidates
+    .filter((c) => {
+      if (c.userId !== LOCAL_DEMO_USER_ID || !c.fingerprint) return false;
+      if (c.status === "confirmed" || c.status === "duplicate") return true;
+      return pending && c.status === "needs_review";
+    })
+    .map((c) => c.fingerprint!);
+  return [...new Set([...fromTx, ...fromCandidates])];
+}
+
+/** Confirmed ledger only — used when writing a transaction. */
+export async function listConfirmedFingerprints(): Promise<string[]> {
+  const store = await readStore();
+  const fromTx = store.transactions
+    .filter(
+      (t) =>
+        t.userId === LOCAL_DEMO_USER_ID &&
+        t.fingerprint &&
+        t.status === "confirmed",
+    )
+    .map((t) => t.fingerprint!);
   const fromCandidates = store.candidates
     .filter(
       (c) =>
@@ -205,7 +234,7 @@ export async function createManualExpense(input: {
   }
 
   if (input.fingerprint) {
-    const known = await listKnownFingerprints();
+    const known = await listConfirmedFingerprints();
     if (known.includes(input.fingerprint)) {
       throw new Error("Den här bankbetalningen finns redan");
     }
@@ -258,7 +287,7 @@ export async function createManualIncome(input: {
   if (!account) throw new Error("Kontot hittades inte");
 
   if (input.fingerprint) {
-    const known = await listKnownFingerprints();
+    const known = await listConfirmedFingerprints();
     if (known.includes(input.fingerprint)) {
       throw new Error("Den här bankrörelsen finns redan");
     }
@@ -595,7 +624,7 @@ export async function uploadReceiptAndExtract(input: {
     mimeType: input.mimeType,
   });
 
-  const known = await listKnownFingerprints();
+  const known = await listKnownFingerprints({ includePendingCandidates: true });
   const resolved = resolveScreenshotImport(extraction, known);
   const ts = nowIso();
   let candidate: ExtractedTransactionCandidate | null = null;
@@ -722,6 +751,8 @@ export async function confirmReceiptExpense(
   let source: TransactionSource = input.source ?? "receipt_camera";
   let maskedFromCandidate: string | null = input.maskedAccount ?? null;
   let direction: "debit" | "credit" = "debit";
+  let amountMinor = input.amountMinor;
+  let description = input.description;
 
   if (input.candidateId) {
     const cand = store.candidates.find(
@@ -731,16 +762,27 @@ export async function confirmReceiptExpense(
         c.observationId === input.observationId,
     );
     if (!cand) throw new Error("Kandidaten hittades inte");
-    fingerprint = fingerprint ?? cand.fingerprint;
-    balanceAfterMinor = balanceAfterMinor ?? cand.balanceAfterMinor;
+    // Server-authoritative for scanned bank SMS — never trust client money.
+    fingerprint = cand.fingerprint ?? fingerprint;
+    balanceAfterMinor = cand.balanceAfterMinor ?? balanceAfterMinor;
+    if (cand.amountMinor == null || cand.amountMinor <= 0) {
+      throw new Error("Kandidaten saknar giltigt belopp");
+    }
+    amountMinor = cand.amountMinor;
     if (cand.direction === "credit" || cand.direction === "debit") {
       direction = cand.direction;
     }
+    if (cand.description) description = cand.description;
     if (observation.kind === "screenshot") source = "screenshot";
+  } else if (input.direction === "credit" || input.direction === "debit") {
+    direction = input.direction;
   }
 
-  if (input.direction === "credit" || input.direction === "debit") {
-    direction = input.direction;
+  if (fingerprint) {
+    const known = await listConfirmedFingerprints();
+    if (known.includes(fingerprint)) {
+      throw new Error("Den här bankrörelsen finns redan");
+    }
   }
 
   maskedFromCandidate =
@@ -765,7 +807,12 @@ export async function confirmReceiptExpense(
     );
   }
 
-  // Movement slightly before checkpoint so bank balance-after is authoritative.
+  if (source === "screenshot" && (!fingerprint || balanceAfterMinor == null)) {
+    throw new Error(
+      "Bank-SMS saknar komplett belopp/saldo — ta en tydligare bild.",
+    );
+  }
+
   const movedAt = new Date(Date.now() - 2_000).toISOString();
   const checkpointAt = new Date().toISOString();
 
@@ -773,8 +820,8 @@ export async function confirmReceiptExpense(
     direction === "credit"
       ? await createManualIncome({
           accountId: account.id,
-          amountMinor: input.amountMinor,
-          description: input.description || "Insättning (bank-SMS)",
+          amountMinor,
+          description: description || "Insättning (bank-SMS)",
           source,
           sourceObservationId: input.observationId,
           fingerprint,
@@ -783,8 +830,8 @@ export async function confirmReceiptExpense(
         })
       : await createManualExpense({
           accountId: account.id,
-          amountMinor: input.amountMinor,
-          description: input.description,
+          amountMinor,
+          description,
           category: input.category,
           source,
           sourceObservationId: input.observationId,
@@ -819,7 +866,7 @@ export async function confirmReceiptExpense(
       if (cand) {
         cand.status = "confirmed";
         cand.canonicalTransactionId = tx.id;
-        cand.amountMinor = input.amountMinor;
+        cand.amountMinor = amountMinor;
         cand.direction = direction;
         cand.fingerprint = fingerprint;
         cand.balanceAfterMinor = balanceAfterMinor;

@@ -134,7 +134,7 @@ describe("bangkok bank multi-SMS", () => {
     expect(result.messageSv).toMatch(/Senaste nya/i);
   });
 
-  it("skips newer duplicates and picks the next unknown", () => {
+  it("skips import entirely when newest SMS is already known", () => {
     const parser = new BangkokBankSmsParser();
     const parsed = parser.parse({
       institution: "Bangkok Bank",
@@ -148,14 +148,13 @@ describe("bangkok bank multi-SMS", () => {
         direction: "debit",
         amountMinor: newest.amountMinor!,
         balanceAfterMinor: newest.balanceAfterMinor,
-        channel: newest.channel,
+        channel: null,
       }).fingerprint,
     ];
     const result = selectImportableBankEvent(parsed, knownNewest);
-    expect(result.status).toBe("ready");
-    if (result.status !== "ready") return;
-    expect(result.selected.amountMinor).toBe(6500);
-    expect(result.skippedDuplicateCount).toBe(1);
+    expect(result.status).toBe("all_known");
+    if (result.status !== "all_known") return;
+    expect(result.messageSv).toMatch(/Senaste SMS finns redan/i);
   });
 
   it("reports all_known when every SMS fingerprint exists", () => {

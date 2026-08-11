@@ -68,26 +68,15 @@ function structuredMessagesToText(
       lines.push(raw);
       continue;
     }
-    // Rebuild a parseable line from structured vision fields when OCR text is thin.
-    const amount = row.amountMajor;
-    const balance = row.balanceAfterMajor;
-    const account =
-      typeof row.accountHint === "string" ? row.accountHint : "X0000";
-    const direction = row.direction === "credit" ? "credit" : "debit";
-    if (amount == null && balance == null) continue;
-    const amountStr =
-      amount == null
-        ? "0.00"
-        : String(amount).includes(".")
-          ? String(amount)
-          : `${amount}.00`;
-    const balanceStr =
-      balance == null
-        ? "0.00"
-        : String(balance).includes(".")
-          ? String(balance)
-          : `${balance}.00`;
-    if (direction === "credit") {
+    // Never invent amounts, balances, or accounts — skip incomplete rows.
+    if (row.amountMajor == null || row.balanceAfterMajor == null) continue;
+    if (typeof row.accountHint !== "string" || !row.accountHint.trim()) continue;
+    if (row.direction !== "credit" && row.direction !== "debit") continue;
+
+    const amountStr = String(row.amountMajor).replace(/,/g, "");
+    const balanceStr = String(row.balanceAfterMajor).replace(/,/g, "");
+    const account = row.accountHint.trim();
+    if (row.direction === "credit") {
       lines.push(
         `PromptPay transfer to your account ${account} of Bt ${amountStr} via MOBILE; the available balance is Bt ${balanceStr}.`,
       );

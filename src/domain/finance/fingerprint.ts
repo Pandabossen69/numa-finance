@@ -38,19 +38,19 @@ export function buildTransactionFingerprint(
   const channel = (parts.channel ?? "unknown").trim().toLowerCase();
 
   if (parts.balanceAfterMinor != null) {
+    // Channel omitted on purpose: MOBILE vs ATM OCR noise must not create dupes.
     const fingerprint = [
       institution,
       account,
       parts.direction,
       String(parts.amountMinor),
       `balanceAfter=${parts.balanceAfterMinor}`,
-      channel,
     ].join("|");
 
     return {
       fingerprint,
       confidence: "high",
-      strategy: "institution+account+direction+amount+balanceAfter+channel",
+      strategy: "institution+account+direction+amount+balanceAfter",
     };
   }
 

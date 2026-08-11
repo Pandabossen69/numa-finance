@@ -262,7 +262,7 @@ export async function createManualExpense(input: {
   }
 
   if (input.fingerprint) {
-    const known = await listKnownFingerprints();
+    const known = await listConfirmedFingerprints();
     if (known.includes(input.fingerprint)) {
       throw new Error("Den här bankbetalningen finns redan");
     }
@@ -315,7 +315,7 @@ export async function createManualIncome(input: {
   if (!account) throw new Error("Kontot hittades inte");
 
   if (input.fingerprint) {
-    const known = await listKnownFingerprints();
+    const known = await listConfirmedFingerprints();
     if (known.includes(input.fingerprint)) {
       throw new Error("Den här bankrörelsen finns redan");
     }
@@ -571,21 +571,28 @@ export async function voidTransaction(id: string): Promise<CanonicalTransaction>
   return mapTransaction(data);
 }
 
-export async function listKnownFingerprints(): Promise<string[]> {
+export async function listKnownFingerprints(options?: {
+  includePendingCandidates?: boolean;
+}): Promise<string[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
+  const pending = options?.includePendingCandidates !== false;
+  const candStatuses = pending
+    ? ["confirmed", "duplicate", "needs_review"]
+    : ["confirmed", "duplicate"];
   const [{ data: txs }, { data: cands }] = await Promise.all([
     supabase
       .from("transactions")
       .select("fingerprint")
       .eq("user_id", userId)
+      .eq("status", "confirmed")
       .not("fingerprint", "is", null),
     supabase
       .from("extracted_transaction_candidates")
       .select("fingerprint, status")
       .eq("user_id", userId)
       .not("fingerprint", "is", null)
-      .in("status", ["confirmed", "duplicate"]),
+      .in("status", candStatuses),
   ]);
 
   const fps = [
@@ -593,6 +600,10 @@ export async function listKnownFingerprints(): Promise<string[]> {
     ...(cands ?? []).map((r) => r.fingerprint as string),
   ].filter(Boolean);
   return [...new Set(fps)];
+}
+
+export async function listConfirmedFingerprints(): Promise<string[]> {
+  return listKnownFingerprints({ includePendingCandidates: false });
 }
 
 export async function createScreenshotObservation(input: {
@@ -1070,7 +1081,7 @@ export async function uploadReceiptAndExtract(input: {
     mimeType: input.mimeType,
   });
 
-  const known = await listKnownFingerprints();
+  const known = await listKnownFingerprints({ includePendingCandidates: true });
   const resolved = resolveScreenshotImport(extraction, known);
 
   const { data: obsRow, error: obsError } = await supabase
@@ -1213,6 +1224,8 @@ export async function confirmReceiptExpense(
   let source: TransactionSource = input.source ?? "receipt_camera";
   let maskedFromCandidate: string | null = input.maskedAccount ?? null;
   let direction: "debit" | "credit" = "debit";
+  let amountMinor = input.amountMinor;
+  let description = input.description;
 
   const supabase = await createSupabaseServerClient();
   if (input.candidateId) {
@@ -1225,17 +1238,26 @@ export async function confirmReceiptExpense(
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!cand) throw new Error("Kandidaten hittades inte");
-    fingerprint = fingerprint ?? (cand.fingerprint as string | null);
+    fingerprint = (cand.fingerprint as string | null) ?? fingerprint;
     balanceAfterMinor =
-      balanceAfterMinor ?? (cand.balance_after_minor as number | null);
+      (cand.balance_after_minor as number | null) ?? balanceAfterMinor;
+    amountMinor = cand.amount_minor as number;
     if (cand.direction === "credit" || cand.direction === "debit") {
       direction = cand.direction;
     }
+    if (typeof cand.description === "string" && cand.description) {
+      description = cand.description;
+    }
     if (observation.kind === "screenshot") source = "screenshot";
+  } else if (input.direction === "credit" || input.direction === "debit") {
+    direction = input.direction;
   }
 
-  if (input.direction === "credit" || input.direction === "debit") {
-    direction = input.direction;
+  if (fingerprint) {
+    const known = await listConfirmedFingerprints();
+    if (known.includes(fingerprint)) {
+      throw new Error("Den här bankrörelsen finns redan");
+    }
   }
 
   maskedFromCandidate =
@@ -1256,6 +1278,12 @@ export async function confirmReceiptExpense(
     );
   }
 
+  if (source === "screenshot" && (!fingerprint || balanceAfterMinor == null)) {
+    throw new Error(
+      "Bank-SMS saknar komplett belopp/saldo — ta en tydligare bild.",
+    );
+  }
+
   const movedAt = new Date(Date.now() - 2_000).toISOString();
   const checkpointAt = new Date().toISOString();
 
@@ -1263,8 +1291,8 @@ export async function confirmReceiptExpense(
     direction === "credit"
       ? await createManualIncome({
           accountId: account.id,
-          amountMinor: input.amountMinor,
-          description: input.description || "Insättning (bank-SMS)",
+          amountMinor,
+          description: description || "Insättning (bank-SMS)",
           source,
           sourceObservationId: input.observationId,
           fingerprint,
@@ -1273,8 +1301,8 @@ export async function confirmReceiptExpense(
         })
       : await createManualExpense({
           accountId: account.id,
-          amountMinor: input.amountMinor,
-          description: input.description,
+          amountMinor,
+          description,
           category: input.category,
           source,
           sourceObservationId: input.observationId,
@@ -1301,7 +1329,7 @@ export async function confirmReceiptExpense(
       .update({
         status: "confirmed",
         canonical_transaction_id: tx.id,
-        amount_minor: input.amountMinor,
+        amount_minor: amountMinor,
         direction,
         fingerprint,
         balance_after_minor: balanceAfterMinor,
