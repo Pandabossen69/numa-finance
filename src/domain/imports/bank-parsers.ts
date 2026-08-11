@@ -1,14 +1,20 @@
 /**
- * Bangkok Bank SMS — stable English template used on every payment SMS.
+ * Bangkok Bank SMS — English templates used on payment + PromptPay SMS.
  *
- * Example:
- * Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE;
- * the available balance is Bt 10,693.04.
+ * Debit examples:
+ *   Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE;
+ *   the available balance is Bt 10,693.04.
+ *   Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,118.04.
+ *
+ * Credit example:
+ *   PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE;
+ *   the available balance is Bt 10,108.04
  *
  * Screenshots often contain several older SMS. Domain rules:
  * 1. Parse every message
  * 2. Fingerprint each (never amount alone — include balance-after)
  * 3. Import only the newest message that is not already known
+ * 4. Same SMS in a later screenshot is skipped (exact fingerprint match)
  */
 
 import {
@@ -69,8 +75,53 @@ export interface BankMessageParser {
   parse(input: BankMessageParseInput): ParsedBankMessage[];
 }
 
+/** Start of a new Bangkok Bank bubble (lookbehind-safe split). */
 const SMS_START =
-  /(?=Withdrawal\/transfer\/payment\b)|(?=Deposit\/transfer\/payment\b)|(?=You have received\b)|(?=Successful transaction\b)/i;
+  /(?=Withdrawal\/transfer\/payment\b)|(?=Withdrawal\s+from\s+your\s+account\b)|(?=Deposit\/transfer\/payment\b)|(?=Deposit\s+to\s+your\s+account\b)|(?=PromptPay\s+transfer\s+to\b)|(?=You have received\b)|(?=Successful transaction\b)/i;
+
+const AMOUNT_OF_BT = /of\s+Bt\s*([\d,]+(?:\.\d{1,2})?)/i;
+const BALANCE_BT = /available balance is Bt\s*([\d,]+(?:\.\d{1,2})?)/i;
+const ACCOUNT_RE =
+  /(?:your\s+)?account\s+(X\d{3,}|\*{2,}\d{3,}|\d{3,})/i;
+
+function detectDirection(chunk: string): "debit" | "credit" {
+  const t = chunk.toLowerCase();
+  // Credits first — "transfer to" must win over generic "transfer".
+  if (
+    /promptpay\s+transfer\s+to/.test(t) ||
+    /transfer\s+to\s+your\s+account/.test(t) ||
+    /deposit(?:\/transfer\/payment)?\s+to/.test(t) ||
+    /you have received/.test(t) ||
+    /credit\s+to/.test(t) ||
+    /transferred\s+to\s+your/.test(t)
+  ) {
+    return "credit";
+  }
+  if (
+    /withdrawal/.test(t) ||
+    /transfer\/payment\s+from/.test(t) ||
+    /payment\s+from\s+your\s+account/.test(t) ||
+    (/debit/.test(t) && !/credit/.test(t))
+  ) {
+    return "debit";
+  }
+  // Default debit for unknown Bangkok "from your account" money moves.
+  return "debit";
+}
+
+function detectChannel(chunk: string): string | null {
+  if (/via\s+MOBILE/i.test(chunk)) return "mobile";
+  if (/via\s+ATM/i.test(chunk)) return "atm";
+  if (/via\s+PROMPTpay/i.test(chunk)) return "promptpay";
+  return null;
+}
+
+function normalizeMaskedAccount(raw: string | null): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length >= 4) return digits.slice(-4);
+  return raw.replace(/[^\dA-Z]/gi, "").slice(-4) || raw;
+}
 
 export class BangkokBankSmsParser implements BankMessageParser {
   readonly institutionId = "bangkok_bank";
@@ -81,7 +132,10 @@ export class BangkokBankSmsParser implements BankMessageParser {
       input.institution.toLowerCase().includes("bangkok") ||
       t.includes("available balance is bt") ||
       t.includes("from your account") ||
-      t.includes("withdrawal/transfer/payment")
+      t.includes("to your account") ||
+      t.includes("withdrawal/transfer/payment") ||
+      t.includes("withdrawal from") ||
+      t.includes("promptpay transfer")
     );
   }
 
@@ -90,44 +144,30 @@ export class BangkokBankSmsParser implements BankMessageParser {
     const results: ParsedBankMessage[] = [];
 
     chunks.forEach((chunk, sourceIndex) => {
-      const amountMatch = chunk.match(
-        /(?:of\s+Bt|Bt)\s*([\d,]+(?:\.\d{2})?)/i,
-      );
-      const balanceMatch = chunk.match(
-        /available balance is Bt\s*([\d,]+(?:\.\d{2})?)/i,
-      );
-      const accountMatch = chunk.match(
-        /account\s+([A-Z]?\d{3,}|\*{2,}\d{3,}|\d{3,}X?\d*)/i,
-      );
-      const isDebit =
-        /withdrawal|transfer\/payment from|payment from/i.test(chunk) ||
-        (/debit/i.test(chunk) && !/credit/i.test(chunk));
-      const isCredit =
-        /deposit|received|credit to|transferred to your/i.test(chunk);
+      const amountMatch = chunk.match(AMOUNT_OF_BT);
+      const balanceMatch = chunk.match(BALANCE_BT);
+      const accountMatch = chunk.match(ACCOUNT_RE);
 
       if (!amountMatch && !balanceMatch) return;
 
-      const masked =
-        accountMatch?.[1]?.replace(/[^\dA-Z]/gi, "").slice(-4) ??
-        accountMatch?.[1] ??
-        null;
+      const direction = detectDirection(chunk);
+      const amountMinor = amountMatch
+        ? majorStringToMinor(amountMatch[1]!)
+        : null;
+      const balanceAfterMinor = balanceMatch
+        ? majorStringToMinor(balanceMatch[1]!)
+        : null;
 
       results.push({
         institution: "Bangkok Bank",
-        maskedAccount: masked,
-        direction: isCredit ? "credit" : isDebit ? "debit" : "debit",
-        amountMinor: amountMatch ? majorStringToMinor(amountMatch[1]!) : null,
+        maskedAccount: normalizeMaskedAccount(accountMatch?.[1] ?? null),
+        direction,
+        amountMinor,
         currency: "THB",
-        balanceAfterMinor: balanceMatch
-          ? majorStringToMinor(balanceMatch[1]!)
-          : null,
-        channel: /via\s+MOBILE/i.test(chunk)
-          ? "mobile"
-          : /via\s+ATM/i.test(chunk)
-            ? "atm"
-            : null,
+        balanceAfterMinor,
+        channel: detectChannel(chunk),
         confidence: amountMatch && balanceMatch ? 0.95 : 0.65,
-        raw: chunk,
+        raw: chunk.trim(),
         sourceIndex,
       });
     });
@@ -158,11 +198,19 @@ export function splitBankSmsChunks(text: string): string[] {
 
   if (byBlank.length > 1) return byBlank;
 
+  // Last resort: split after each balance sentence if several appear.
+  const byBalance = normalized
+    .split(/(?<=available balance is Bt\s*[\d,]+(?:\.\d{1,2})?\.?)/i)
+    .map((c) => c.trim())
+    .filter((c) => /Bt\s*[\d,]/i.test(c));
+
+  if (byBalance.length > 1) return byBalance;
+
   return [normalized];
 }
 
 export function majorStringToMinor(value: string): number {
-  const normalized = value.replace(/,/g, "");
+  const normalized = value.replace(/,/g, "").trim();
   const major = Number(normalized);
   if (!Number.isFinite(major)) {
     throw new Error(`Cannot parse bank amount: ${value}`);
@@ -219,7 +267,7 @@ export function formatBankEventLabel(message: ParsedBankMessage): string {
           { minimumFractionDigits: 2, maximumFractionDigits: 2 },
         )}`
       : "";
-  const dir = message.direction === "credit" ? "Insättning" : "Betalning";
+  const dir = message.direction === "credit" ? "Insättning" : "Utgift";
   const acct = message.maskedAccount ? ` · …${message.maskedAccount}` : "";
   return `${dir} ${amount}${acct}${bal}`;
 }
@@ -238,11 +286,6 @@ export function orderNewestFirst(
   );
 
   if (withChain.length >= 2) {
-    const byBalanceAfter = new Map<number, BankEventCandidate>();
-    for (const e of withChain) {
-      byBalanceAfter.set(e.balanceAfterMinor!, e);
-    }
-
     const tips = withChain.filter((e) => {
       const usedAsPrior = withChain.some(
         (other) =>
@@ -311,7 +354,7 @@ export function selectImportableBankEvent(
     const skippedOlderCount = Math.max(0, all.length - i - 1);
     const parts = [`Senaste nya: ${event.labelSv}.`];
     if (skippedDuplicateCount > 0) {
-      parts.push(`${skippedDuplicateCount} nyare fanns redan.`);
+      parts.push(`${skippedDuplicateCount} fanns redan (samma SMS).`);
     }
     if (skippedOlderCount > 0) {
       parts.push(`${skippedOlderCount} äldre i bilden hoppades över.`);

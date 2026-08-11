@@ -33,6 +33,7 @@ type Preview = {
   alreadyKnown: boolean;
   skippedOlderCount: number;
   amountFromScan: boolean;
+  direction: "debit" | "credit" | null;
 };
 
 function minorToInput(minor: number): string {
@@ -131,6 +132,7 @@ export function ReceiptCaptureFlow({
         alreadyKnown: data.alreadyKnown,
         skippedOlderCount: data.skippedOlderCount,
         amountFromScan: hasAmount,
+        direction: data.direction ?? null,
       });
     });
   }
@@ -146,11 +148,12 @@ export function ReceiptCaptureFlow({
         candidateId: preview.candidateId,
         amount: preview.amount,
         description: preview.description || undefined,
-        category,
+        category: preview.direction === "credit" ? null : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
         source:
           preview.importKind === "bank_sms" ? "screenshot" : "receipt_camera",
+        direction: preview.direction,
       });
       if (!result.ok) {
         setError(result.error);
@@ -332,6 +335,7 @@ export function ReceiptCaptureFlow({
   }
 
   const isSms = preview.importKind === "bank_sms";
+  const isCredit = preview.direction === "credit";
   const needsManualAmount = !preview.amountFromScan;
   const remainingTone =
     impact && impact.remaining < 0
@@ -346,16 +350,24 @@ export function ReceiptCaptureFlow({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--numa-accent)]">
-              {isSms ? "Från bank-SMS" : "Från kvitto"}
+              {isSms
+                ? isCredit
+                  ? "Insättning från bank-SMS"
+                  : "Utgift från bank-SMS"
+                : "Från kvitto"}
             </p>
             <p className="mt-1 text-sm text-[var(--numa-muted)]">
-              {needsManualAmount
-                ? isSms
-                  ? "Kunde inte läsa automatiskt — skriv beloppet som drogs (inte saldot)."
-                  : "Kunde inte läsa automatiskt — skriv beloppet från bilden."
-                : isSms
-                  ? "Beloppet är inläst. Dubbelkolla och bekräfta."
-                  : "Beloppet är inläst. Justera om det behövs."}
+              {preview.message && preview.amountFromScan
+                ? preview.message
+                : needsManualAmount
+                  ? isSms
+                    ? isCredit
+                      ? "Kunde inte läsa automatiskt — skriv beloppet som kom in (inte saldot)."
+                      : "Kunde inte läsa automatiskt — skriv beloppet som drogs (inte saldot)."
+                    : "Kunde inte läsa automatiskt — skriv beloppet från bilden."
+                  : isSms
+                    ? "Belopp och nytt saldo är inlästa. Bekräfta."
+                    : "Beloppet är inläst. Justera om det behövs."}
             </p>
           </div>
           {preview.amountFromScan && !amountEditable ? (
@@ -371,7 +383,11 @@ export function ReceiptCaptureFlow({
 
         <div className="mt-5">
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-            {isSms ? "Belopp som drogs" : "Belopp"}
+            {isSms
+              ? isCredit
+                ? "Belopp som kom in"
+                : "Belopp som drogs"
+              : "Belopp"}
           </p>
           {amountEditable || needsManualAmount ? (
             <input
@@ -428,10 +444,13 @@ export function ReceiptCaptureFlow({
         </div>
       ) : isSms ? (
         <p className="px-1 text-sm text-[var(--numa-muted)]">
-          Bekräfta så uppdateras utgiften och saldot från banken.
+          {isCredit
+            ? "Bekräfta så sparas insättningen och det nya saldot."
+            : "Bekräfta så sparas utgiften och det nya saldot från banken."}
         </p>
       ) : null}
 
+      {isSms && !isCredit ? (
       <div className="flex gap-2 overflow-x-auto pb-1">
         {CATEGORIES.map((c) => (
           <button
@@ -448,6 +467,7 @@ export function ReceiptCaptureFlow({
           </button>
         ))}
       </div>
+      ) : null}
 
       <input
         value={preview.description}
@@ -593,11 +613,13 @@ function BackLink({ onClick }: { onClick: () => void }) {
 
 function PreviewThumb({ src }: { src: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      className="h-36 w-full rounded-[1.5rem] object-cover shadow-[var(--numa-shadow-sm)]"
-    />
+    <div className="overflow-hidden rounded-[1.5rem] bg-white/90 p-3 shadow-[var(--numa-shadow-sm)]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt="Förhandsvisning av skärmbild"
+        className="mx-auto max-h-80 w-full object-contain"
+      />
+    </div>
   );
 }

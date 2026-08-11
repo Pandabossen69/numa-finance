@@ -72,6 +72,7 @@ const confirmSchema = z.object({
   balanceAfterMinor: z.number().int().optional().nullable(),
   source: z.enum(["receipt_camera", "screenshot"]).optional(),
   maskedAccount: z.string().trim().max(32).optional().nullable(),
+  direction: z.enum(["debit", "credit"]).optional().nullable(),
 });
 
 export async function confirmReceiptExpenseAction(
@@ -95,6 +96,7 @@ export async function confirmReceiptExpenseAction(
       balanceAfterMinor: input.balanceAfterMinor,
       source: input.source,
       maskedAccount: input.maskedAccount,
+      direction: input.direction,
     });
 
     const snap = await getTodaySnapshot();

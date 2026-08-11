@@ -15,11 +15,69 @@ const SMS_B =
   "Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE; the available balance is Bt 10,693.04.";
 const SMS_C =
   "Withdrawal/transfer/payment from your account X6591 of Bt 120.00 via MOBILE; the available balance is Bt 10,573.04.";
+const SMS_SHORT =
+  "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,118.04.";
+const SMS_CREDIT =
+  "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04";
+const SMS_ATM =
+  "Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04.";
 
 describe("bangkok bank multi-SMS", () => {
   it("parses western bank amount strings into minor units", () => {
     expect(majorStringToMinor("10,058.04")).toBe(1005804);
     expect(majorStringToMinor("750.00")).toBe(75000);
+    expect(majorStringToMinor("3,400.00")).toBe(340000);
+  });
+
+  it("parses short Withdrawal and PromptPay credit", () => {
+    const parser = new BangkokBankSmsParser();
+    const debit = parser.parse({
+      institution: "Bangkok Bank",
+      text: SMS_SHORT,
+    })[0];
+    expect(debit?.direction).toBe("debit");
+    expect(debit?.amountMinor).toBe(5000);
+    expect(debit?.balanceAfterMinor).toBe(1211804);
+    expect(debit?.channel).toBe("mobile");
+
+    const credit = parser.parse({
+      institution: "Bangkok Bank",
+      text: SMS_CREDIT,
+    })[0];
+    expect(credit?.direction).toBe("credit");
+    expect(credit?.amountMinor).toBe(340000);
+    expect(credit?.balanceAfterMinor).toBe(1010804);
+    expect(credit?.maskedAccount).toBe("6591");
+  });
+
+  it("picks newest credit after ATM debit in one screenshot", () => {
+    const parser = new BangkokBankSmsParser();
+    const text = `${SMS_ATM}\n\n${SMS_CREDIT}`;
+    const parsed = parser.parse({ institution: "Bangkok Bank", text });
+    const result = selectImportableBankEvent(parsed, []);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selected.direction).toBe("credit");
+    expect(result.selected.amountMinor).toBe(340000);
+    expect(result.selected.balanceAfterMinor).toBe(1010804);
+  });
+
+  it("does not re-import the same SMS from a second screenshot", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: SMS_CREDIT,
+    });
+    const fp = buildTransactionFingerprint({
+      institution: "Bangkok Bank",
+      maskedAccount: "6591",
+      direction: "credit",
+      amountMinor: 340000,
+      balanceAfterMinor: 1010804,
+      channel: "mobile",
+    }).fingerprint;
+    const again = selectImportableBankEvent(parsed, [fp]);
+    expect(again.status).toBe("all_known");
   });
 
   it("splits and parses several SMS in one screenshot text", () => {

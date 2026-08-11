@@ -17,6 +17,7 @@ export type ReceiptUploadResult = {
   fingerprint: string | null;
   alreadyKnown: boolean;
   skippedOlderCount: number;
+  direction: "debit" | "credit" | null;
 };
 
 export type ConfirmReceiptInput = {
@@ -30,4 +31,5 @@ export type ConfirmReceiptInput = {
   balanceAfterMinor?: number | null;
   source?: "receipt_camera" | "screenshot";
   maskedAccount?: string | null;
+  direction?: "debit" | "credit" | null;
 };

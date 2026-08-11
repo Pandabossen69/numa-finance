@@ -28,9 +28,9 @@ type VisionJson = {
 
 function majorToMinor(value: number | string | null | undefined): number | null {
   if (value == null) return null;
-  const major =
-    typeof value === "number" ? value : Number(String(value).replace(",", "."));
-  if (!Number.isFinite(major) || major <= 0) return null;
+  const raw = typeof value === "number" ? String(value) : String(value);
+  const major = Number(raw.replace(/,/g, "").replace(/\s/g, ""));
+  if (!Number.isFinite(major) || major < 0) return null;
   return Math.round(major * 100);
 }
 
@@ -62,9 +62,13 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           role: "system",
           content:
             "You read phone screenshots for a personal finance app (NUMA). " +
-            "Bangkok Bank payment SMS almost always looks like: " +
-            '"Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE; the available balance is Bt 10,693.04." ' +
-            "A screenshot may show SEVERAL such SMS. Extract EVERY distinct SMS, oldest→newest by visual conversation order when possible. " +
+            "Bangkok Bank SMS templates (English): " +
+            '(1) Debit: "Withdrawal/transfer/payment from your account X6591 of Bt 65.00 via MOBILE; the available balance is Bt 10,693.04." ' +
+            '(2) Debit short: "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,118.04." ' +
+            '(3) Credit: "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04." ' +
+            "A screenshot may show SEVERAL such SMS bubbles. Extract EVERY distinct SMS, oldest→newest by visual conversation order (bottom is usually newest). " +
+            "For each SMS: amountMajor = the Bt amount AFTER 'of Bt' (money moved), balanceAfterMajor = the Bt amount AFTER 'available balance is Bt' (new saldo). Never swap them. " +
+            "direction = debit for Withdrawal/from, credit for PromptPay transfer to / Deposit to. " +
             "Return JSON only with keys: " +
             "kind ('bangkok_bank_sms'|'receipt'|'unknown'), " +
             "fullText (all SMS concatenated with blank lines), " +
@@ -79,8 +83,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
             {
               type: "text",
               text:
-                "Extract bank SMS messages or receipt total from this image. " +
-                "If multiple Bangkok Bank SMS are visible, include all of them.",
+                "Extract every Bangkok Bank SMS bubble or the receipt total. " +
+                "Include PromptPay credits (transfer to) and Withdrawals (from). " +
+                "amountMajor is the moved amount; balanceAfterMajor is the remaining balance.",
             },
             {
               type: "image_url",
@@ -195,6 +200,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         detectedKind: kind,
         fullText,
         smsTexts,
+        messages,
         messageCount: messages.length || (fullText ? 1 : 0),
       },
     };

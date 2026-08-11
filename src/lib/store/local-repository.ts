@@ -245,6 +245,10 @@ export async function createManualIncome(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  source?: TransactionSource;
+  sourceObservationId?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -252,6 +256,13 @@ export async function createManualIncome(input: {
   const store = await readStore();
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+
+  if (input.fingerprint) {
+    const known = await listKnownFingerprints();
+    if (known.includes(input.fingerprint)) {
+      throw new Error("Den här bankrörelsen finns redan");
+    }
+  }
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
@@ -265,14 +276,14 @@ export async function createManualIncome(input: {
       amountMinor: input.amountMinor,
       currency: account.currency,
       occurredAt: input.occurredAt ?? ts,
-      description: input.description?.trim() || "Inkomst",
+      description: input.description?.trim() || "Insättning",
       merchant: null,
       category: null,
-      source: "manual",
+      source: input.source ?? "manual",
       status: "confirmed",
-      balanceAfterMinor: null,
-      fingerprint: null,
-      sourceObservationId: null,
+      balanceAfterMinor: input.balanceAfterMinor ?? null,
+      fingerprint: input.fingerprint ?? null,
+      sourceObservationId: input.sourceObservationId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -693,6 +704,7 @@ export async function uploadReceiptAndExtract(input: {
     fingerprint: resolved.fingerprint,
     alreadyKnown: resolved.alreadyKnown,
     skippedOlderCount,
+    direction: resolved.direction,
   };
 }
 
@@ -709,6 +721,7 @@ export async function confirmReceiptExpense(
   let balanceAfterMinor = input.balanceAfterMinor ?? null;
   let source: TransactionSource = input.source ?? "receipt_camera";
   let maskedFromCandidate: string | null = input.maskedAccount ?? null;
+  let direction: "debit" | "credit" = "debit";
 
   if (input.candidateId) {
     const cand = store.candidates.find(
@@ -720,7 +733,14 @@ export async function confirmReceiptExpense(
     if (!cand) throw new Error("Kandidaten hittades inte");
     fingerprint = fingerprint ?? cand.fingerprint;
     balanceAfterMinor = balanceAfterMinor ?? cand.balanceAfterMinor;
+    if (cand.direction === "credit" || cand.direction === "debit") {
+      direction = cand.direction;
+    }
     if (observation.kind === "screenshot") source = "screenshot";
+  }
+
+  if (input.direction === "credit" || input.direction === "debit") {
+    direction = input.direction;
   }
 
   maskedFromCandidate =
@@ -745,22 +765,33 @@ export async function confirmReceiptExpense(
     );
   }
 
-  // Expense slightly before checkpoint so bank balance-after is authoritative
-  // and the debit still counts as today's spending without double-subtracting.
-  const expenseAt = new Date(Date.now() - 2_000).toISOString();
+  // Movement slightly before checkpoint so bank balance-after is authoritative.
+  const movedAt = new Date(Date.now() - 2_000).toISOString();
   const checkpointAt = new Date().toISOString();
 
-  const tx = await createManualExpense({
-    accountId: account.id,
-    amountMinor: input.amountMinor,
-    description: input.description,
-    category: input.category,
-    source,
-    sourceObservationId: input.observationId,
-    fingerprint,
-    balanceAfterMinor,
-    occurredAt: expenseAt,
-  });
+  const tx =
+    direction === "credit"
+      ? await createManualIncome({
+          accountId: account.id,
+          amountMinor: input.amountMinor,
+          description: input.description || "Insättning (bank-SMS)",
+          source,
+          sourceObservationId: input.observationId,
+          fingerprint,
+          balanceAfterMinor,
+          occurredAt: movedAt,
+        })
+      : await createManualExpense({
+          accountId: account.id,
+          amountMinor: input.amountMinor,
+          description: input.description,
+          category: input.category,
+          source,
+          sourceObservationId: input.observationId,
+          fingerprint,
+          balanceAfterMinor,
+          occurredAt: movedAt,
+        });
 
   if (balanceAfterMinor != null) {
     await createCheckpoint({
@@ -780,7 +811,7 @@ export async function confirmReceiptExpense(
       obs.status = "processed";
       obs.notes = hadCheckpoint
         ? "Bekräftad och sparad"
-        : "Första SMS — saldo och utgift sparade";
+        : "Första SMS — saldo och rörelse sparade";
       obs.updatedAt = nowIso();
     }
     if (input.candidateId) {
@@ -789,6 +820,7 @@ export async function confirmReceiptExpense(
         cand.status = "confirmed";
         cand.canonicalTransactionId = tx.id;
         cand.amountMinor = input.amountMinor;
+        cand.direction = direction;
         cand.fingerprint = fingerprint;
         cand.balanceAfterMinor = balanceAfterMinor;
         cand.updatedAt = nowIso();
