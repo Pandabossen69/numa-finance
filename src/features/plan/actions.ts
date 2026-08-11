@@ -115,6 +115,47 @@ export async function createPlanIncomeAction(
   }
 }
 
+const createExtraSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  amount: z.string().trim().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+/**
+ * One-off planned expense (loan, trip, etc.) — only that date/month.
+ * Counts toward that month's budget and any pay-cycle covering the date.
+ */
+export async function createPlanExtraAction(
+  raw: z.infer<typeof createExtraSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = createExtraSchema.parse(raw);
+    const amountMinor = parseUiAmountToMinor(input.amount);
+    if (amountMinor < 0) {
+      return { ok: false, error: "Belopp kan inte vara negativt" };
+    }
+    const snap = await getTodaySnapshot();
+    await createPlanItem({
+      name: input.name,
+      kind: "expected",
+      amountMinor,
+      currency: snap.currency,
+      cadence: "once",
+      nextDueAt: `${input.date}T12:00:00.000Z`,
+    });
+    revalidatePlanPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Kunde inte spara extra utgiften",
+    };
+  }
+}
+
 const savingsSchema = z.object({
   monthKey: z.string().regex(/^\d{4}-\d{2}$/),
   amount: z.string().trim().min(1),

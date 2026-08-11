@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   dayOfMonthFromIso,
-  isRecurringMonthly,
   labelDayOfMonthSv,
   labelMonthNameSv,
   monthKeyFromDate,
@@ -17,6 +16,7 @@ import {
 } from "@/domain/finance";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import {
+  createPlanExtraAction,
   createPlanIncomeAction,
   createPlanItemAction,
   deletePlanItemAction,
@@ -66,6 +66,9 @@ export function PlanEditor({
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseDay, setExpenseDay] = useState("1");
+  const [extraName, setExtraName] = useState("");
+  const [extraAmount, setExtraAmount] = useState("");
+  const [extraDate, setExtraDate] = useState(`${currentMonthKey}-15`);
   const [incomeName, setIncomeName] = useState("");
   const [incomeAmount, setIncomeAmount] = useState("");
   const [incomeDate, setIncomeDate] = useState(`${currentMonthKey}-25`);
@@ -100,6 +103,10 @@ export function PlanEditor({
     setIncomeDate((prev) => {
       if (prev.startsWith(monthKey)) return prev;
       return `${monthKey}-25`;
+    });
+    setExtraDate((prev) => {
+      if (prev.startsWith(monthKey)) return prev;
+      return `${monthKey}-15`;
     });
   }, [monthKey]);
 
@@ -143,6 +150,13 @@ export function PlanEditor({
     setEditDay(
       item.nextDueAt ? String(dayOfMonthFromIso(item.nextDueAt)) : "1",
     );
+  }
+
+  function startEditExtra(item: PlanItem) {
+    setEditingId(item.id);
+    setEditName(item.name);
+    setEditAmount(minorToUi(item.amountMinor));
+    setEditDate(isoToDateInput(item.nextDueAt));
   }
 
   return (
@@ -251,7 +265,7 @@ export function PlanEditor({
           </section>
         )}
 
-        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="numa-panel grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-5">
           <MonthStat
             label={`Intäkter · ${labelMonthNameSv(monthKey)}`}
             amountMinor={projection.incomeMinor}
@@ -259,8 +273,13 @@ export function PlanEditor({
             tone="positive"
           />
           <MonthStat
-            label="Fasta utgifter"
-            amountMinor={projection.totalPlannedMinor}
+            label="Fasta"
+            amountMinor={projection.fixedMinor}
+            currency={currency}
+          />
+          <MonthStat
+            label="Extra"
+            amountMinor={projection.extraMinor}
             currency={currency}
           />
           <MonthStat
@@ -350,8 +369,8 @@ export function PlanEditor({
         </section>
 
         <p className="text-sm text-[var(--numa-muted)]">
-          Fasta utgifter har en dag i månaden och följer med. Intäkter lägger du
-          in med det datum pengarna kommer in.
+          Fasta utgifter har en dag och följer med varje månad. Extra utgifter
+          har ett datum och räknas bara den månaden / cykeln.
         </p>
       </section>
 
@@ -361,7 +380,7 @@ export function PlanEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <PlanCard
           title="Intäkter"
           hint={`Datum när pengarna kommer · ${projection.labelSv}`}
@@ -429,16 +448,18 @@ export function PlanEditor({
             }}
           />
         </PlanCard>
+      </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Fasta utgifter"
           hint="Välj dag i månaden — samma dag följer med nästa månad"
           totalLabel="Summa"
-          totalMinor={projection.totalPlannedMinor}
+          totalMinor={projection.fixedMinor}
           currency={currency}
         >
           <PlanRows
-            items={projection.items}
+            items={projection.fixedItems}
             currency={currency}
             editingId={editingId}
             editName={editName}
@@ -447,9 +468,9 @@ export function PlanEditor({
             editExtraType="day"
             pending={pending}
             subtitle={(item) =>
-              isRecurringMonthly(item) && item.nextDueAt
+              item.nextDueAt
                 ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
-                : "Denna period"
+                : "Varje månad"
             }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
@@ -482,9 +503,9 @@ export function PlanEditor({
             extra={expenseDay}
             extraType="day"
             extraLabel="Dag"
-            namePlaceholder="t.ex. Hyra, El, Cursor"
+            namePlaceholder="t.ex. Hyra, El, Netflix"
             amountPlaceholder={`Belopp (${currency})`}
-            submitLabel="Lägg till utgift"
+            submitLabel="Lägg till fast utgift"
             pending={pending}
             onName={setExpenseName}
             onAmount={setExpenseAmount}
@@ -502,6 +523,76 @@ export function PlanEditor({
                 if (!refreshAfter(result)) return;
                 setExpenseName("");
                 setExpenseAmount("");
+              });
+            }}
+          />
+        </PlanCard>
+
+        <PlanCard
+          title="Extra utgifter"
+          hint="Lån, resa, engång — välj datum. Räknas bara den månaden"
+          totalLabel="Summa"
+          totalMinor={projection.extraMinor}
+          currency={currency}
+        >
+          <PlanRows
+            items={projection.extraItems}
+            currency={currency}
+            editingId={editingId}
+            editName={editName}
+            editAmount={editAmount}
+            editExtra={editDate}
+            editExtraType="date"
+            pending={pending}
+            subtitle={(item) =>
+              `Engång · ${labelIncomeDateSv(item.nextDueAt, timeZone)}`
+            }
+            onEditName={setEditName}
+            onEditAmount={setEditAmount}
+            onEditExtra={setEditDate}
+            onStartEdit={startEditExtra}
+            onCancelEdit={() => setEditingId(null)}
+            onSaveEdit={(id) => {
+              startTransition(async () => {
+                const result = await updatePlanItemAction({
+                  id,
+                  name: editName,
+                  amount: editAmount,
+                  date: editDate || undefined,
+                });
+                if (refreshAfter(result)) setEditingId(null);
+              });
+            }}
+            onDelete={(id) => {
+              startTransition(async () => {
+                refreshAfter(await deletePlanItemAction(id));
+              });
+            }}
+          />
+
+          <InlineAdd
+            name={extraName}
+            amount={extraAmount}
+            extra={extraDate}
+            extraType="date"
+            extraLabel="Datum"
+            namePlaceholder="t.ex. Lån, Flygbiljett"
+            amountPlaceholder={`Belopp (${currency})`}
+            submitLabel="Lägg till extra"
+            pending={pending}
+            onName={setExtraName}
+            onAmount={setExtraAmount}
+            onExtra={setExtraDate}
+            onSubmit={() => {
+              startTransition(async () => {
+                const result = await createPlanExtraAction({
+                  name: extraName,
+                  amount: extraAmount,
+                  date: extraDate,
+                });
+                if (!refreshAfter(result)) return;
+                setExtraName("");
+                setExtraAmount("");
               });
             }}
           />

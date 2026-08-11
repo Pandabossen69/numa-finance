@@ -73,13 +73,31 @@ describe("plan-months", () => {
     const sep = projectPlanForMonth(items, "2026-09", "UTC");
 
     expect(aug.items.map((i) => i.name)).toEqual(["Hyra", "Engång"]);
+    expect(aug.fixedItems.map((i) => i.name)).toEqual(["Hyra"]);
+    expect(aug.extraItems.map((i) => i.name)).toEqual(["Engång"]);
+    expect(aug.extraMinor).toBe(500_00);
     expect(aug.incomes.map((i) => i.name)).toEqual(["Lön"]);
     expect(aug.incomeMinor).toBe(40_000_00);
     expect(aug.savingsMinor).toBe(0);
     expect(aug.freeToSpendMinor).toBe(40_000_00 - aug.totalPlannedMinor);
     expect(sep.items.map((i) => i.name)).toEqual(["Hyra"]);
+    expect(sep.extraItems).toEqual([]);
     expect(sep.incomes.map((i) => i.name)).toEqual(["Provision"]);
     expect(sep.reservedMinor).toBe(15_000_00);
+  });
+
+  it("does not treat once cadence as recurring monthly", () => {
+    expect(
+      isRecurringMonthly(
+        item({
+          name: "Lån",
+          kind: "expected",
+          amountMinor: 10_000_00,
+          cadence: "once",
+          nextDueAt: "2026-09-10T12:00:00.000Z",
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("applies month savings only to that month", () => {

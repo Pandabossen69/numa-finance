@@ -22,8 +22,8 @@ export default async function PlanPage() {
           Plan
         </h1>
         <p className="mt-2 max-w-[42ch] text-sm text-[var(--numa-muted)]">
-          En månad i taget för att lägga in poster. Hem räknar från intäktsdatum
-          till nästa — utgifter har en fast dag i månaden.
+          Intäkter och extra utgifter har datum. Fasta utgifter har en dag i
+          månaden. Hem räknar från intäkt till nästa intäkt.
         </p>
       </header>
 

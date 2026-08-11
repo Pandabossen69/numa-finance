@@ -125,7 +125,7 @@ describe("projectPayCycle", () => {
     expect(cycle.expenseMinor).toBe(1_000_00);
   });
 
-  it("excludes expenses that fall before the paycheck", () => {
+  it("includes one-off extra expenses only on their due date in the cycle", () => {
     const items = [
       item({
         name: "Lön",
@@ -135,19 +135,28 @@ describe("projectPayCycle", () => {
         nextDueAt: "2026-08-25T12:00:00.000Z",
       }),
       item({
-        name: "Netflix",
-        kind: "mandatory",
-        amountMinor: 199_00,
-        nextDueAt: "2026-08-20T12:00:00.000Z",
+        name: "Lån",
+        kind: "expected",
+        amountMinor: 8_000_00,
+        cadence: "once",
+        nextDueAt: "2026-09-05T12:00:00.000Z",
+      }),
+      item({
+        name: "Flyg okt",
+        kind: "expected",
+        amountMinor: 12_000_00,
+        cadence: "once",
+        nextDueAt: "2026-10-01T12:00:00.000Z",
       }),
     ];
-    const inWindow = expensesInWindow(
+    const cycle = projectPayCycle(
       items,
-      "2026-08-25T12:00:00.000Z",
-      "2026-09-25T12:00:00.000Z",
+      new Date("2026-08-26T03:00:00.000Z"),
       tz,
     );
-    // Aug 20 is before start; Sep 20 (rolled occurrence) is inside.
-    expect(inWindow.map((e) => e.dueAt)).toEqual(["2026-09-20T12:00:00.000Z"]);
+    expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(cycle.expenses.map((e) => e.item.name)).toEqual(["Lån"]);
+    expect(cycle.expenseMinor).toBe(8_000_00);
+    expect(cycle.freeToSpendMinor).toBe(32_000_00);
   });
 });

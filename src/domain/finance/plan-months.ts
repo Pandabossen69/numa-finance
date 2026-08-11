@@ -28,7 +28,21 @@ export function isRecurringMonthly(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
   if (isPlanIncome(item) || isPlanSavings(item)) return false;
   const cadence = (item.cadence ?? "monthly").toLowerCase();
+  if (
+    cadence === "once" ||
+    cadence === "one_off" ||
+    cadence === "extra"
+  ) {
+    return false;
+  }
   return cadence === "monthly" || item.kind === "mandatory";
+}
+
+/** One-off planned expense (loan payment, trip, etc.) — date-scoped only. */
+export function isPlanExtraExpense(item: PlanItem): boolean {
+  if (!item.isActive || item.name === NEXT_INCOME_NAME) return false;
+  if (isPlanIncome(item) || isPlanSavings(item)) return false;
+  return !isRecurringMonthly(item);
 }
 
 /**
@@ -96,8 +110,12 @@ export function labelMonthSv(monthKey: string): string {
 export type MonthPlanProjection = {
   monthKey: string;
   labelSv: string;
-  /** Fixed / planned expenses for the month (recurring + one-offs). */
+  /** All expenses for the month (fixed + extras). */
   items: PlanItem[];
+  /** Recurring fixed expenses (carry to next months). */
+  fixedItems: PlanItem[];
+  /** One-off extras due only in this month. */
+  extraItems: PlanItem[];
   /** Income rows that belong only to this month. */
   incomes: PlanItem[];
   /** Optional savings target for this month only. */
@@ -107,6 +125,8 @@ export type MonthPlanProjection = {
   flexibleMinor: number;
   incomeMinor: number;
   savingsMinor: number;
+  fixedMinor: number;
+  extraMinor: number;
   /** Income − expenses − savings (can be negative). */
   freeToSpendMinor: number;
   totalPlannedMinor: number;
@@ -114,7 +134,7 @@ export type MonthPlanProjection = {
 
 /**
  * Project active plan buckets onto a calendar month.
- * Recurring monthly expenses always appear. One-off expenses, incomes and
+ * Recurring monthly expenses always appear. One-off extras, incomes and
  * savings appear only when their nextDueAt falls in that month.
  */
 export function projectPlanForMonth(
@@ -126,7 +146,8 @@ export function projectPlanForMonth(
     (i) => i.isActive && i.name !== NEXT_INCOME_NAME,
   );
 
-  const projected: PlanItem[] = [];
+  const fixedItems: PlanItem[] = [];
+  const extraItems: PlanItem[] = [];
   const incomes: PlanItem[] = [];
   let savings: PlanItem | null = null;
 
@@ -151,14 +172,16 @@ export function projectPlanForMonth(
       continue;
     }
     if (isRecurringMonthly(item)) {
-      projected.push(item);
+      fixedItems.push(item);
       continue;
     }
     if (item.nextDueAt) {
       const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
-      if (key === monthKey) projected.push(item);
+      if (key === monthKey) extraItems.push(item);
     }
   }
+
+  const projected = [...fixedItems, ...extraItems];
 
   let reservedMinor = 0;
   let bufferMinor = 0;
@@ -177,6 +200,8 @@ export function projectPlanForMonth(
 
   const incomeMinor = incomes.reduce((sum, i) => sum + i.amountMinor, 0);
   const savingsMinor = savings?.amountMinor ?? 0;
+  const fixedMinor = fixedItems.reduce((sum, i) => sum + i.amountMinor, 0);
+  const extraMinor = extraItems.reduce((sum, i) => sum + i.amountMinor, 0);
   const totalPlannedMinor = reservedMinor + bufferMinor + flexibleMinor;
   const freeToSpendMinor = incomeMinor - totalPlannedMinor - savingsMinor;
 
@@ -184,6 +209,8 @@ export function projectPlanForMonth(
     monthKey,
     labelSv: labelMonthSv(monthKey),
     items: projected,
+    fixedItems,
+    extraItems,
     incomes,
     savings,
     reservedMinor,
@@ -191,6 +218,8 @@ export function projectPlanForMonth(
     flexibleMinor,
     incomeMinor,
     savingsMinor,
+    fixedMinor,
+    extraMinor,
     freeToSpendMinor,
     totalPlannedMinor,
   };
