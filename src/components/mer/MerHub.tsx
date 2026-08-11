@@ -36,9 +36,7 @@ export function MerPageHeader({
       {back ? <MerBackLink /> : null}
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[1.75rem] font-semibold tracking-[-0.04em] text-[var(--numa-ink)]">
-            {title}
-          </h1>
+          <h1 className="numa-page-title">{title}</h1>
           {description ? (
             <p className="mt-1.5 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
               {description}
@@ -63,9 +61,7 @@ export function MerSection({
   return (
     <section className={`space-y-2 ${className}`.trim()}>
       {title ? (
-        <h2 className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-          {title}
-        </h2>
+        <h2 className="numa-section-title px-1">{title}</h2>
       ) : null}
       {children}
     </section>
@@ -81,7 +77,7 @@ export function MerListGroup({
 }) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl bg-[var(--numa-surface-solid)]/88 ring-1 ring-[var(--numa-border)] ${className}`.trim()}
+      className={`numa-panel-list ${className}`.trim()}
     >
       {children}
     </div>

@@ -1,4 +1,5 @@
 import type { PlanItem } from "./types";
+import { calendarDaysBetween, zonedDayAnchorMs } from "./datetime";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 import {
   addMonthsKey,
@@ -78,20 +79,6 @@ function labelDateSv(iso: string, timeZone: string): string {
     day: "numeric",
     month: "short",
   });
-}
-
-function startOfZonedDayMs(now: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const y = parts.find((p) => p.type === "year")?.value;
-  const m = parts.find((p) => p.type === "month")?.value;
-  const d = parts.find((p) => p.type === "day")?.value;
-  if (!y || !m || !d) return now.getTime();
-  return Date.parse(`${y}-${m}-${d}T12:00:00.000Z`);
 }
 
 function isRealIncome(item: PlanItem): boolean {
@@ -261,7 +248,7 @@ export function projectPayCycle(
   if (dated.length === 0) return emptyCycle();
 
   const byMonth = groupByMonth(dated);
-  const todayMs = startOfZonedDayMs(now, timeZone);
+  const todayMs = zonedDayAnchorMs(now, timeZone);
 
   const pastOrToday = dated.filter((d) => d.at <= todayMs);
   const fundingMonthKey =
@@ -318,10 +305,10 @@ export function projectPayCycle(
   const freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
 
   const isActive = startAt <= todayMs && todayMs < endAt;
-  const fromMs = isActive ? todayMs : startAt;
+  const fromIso = isActive ? now.toISOString() : startIso;
   const daysLeft = Math.max(
     1,
-    Math.ceil((endAt - fromMs) / (24 * 60 * 60 * 1000)),
+    calendarDaysBetween(fromIso, endIso!, timeZone),
   );
   const perDayMinor = perDayBudgetMinor(freeToSpendMinor, daysLeft);
 

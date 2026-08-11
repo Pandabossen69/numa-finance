@@ -1,3 +1,4 @@
+import { zonedDayKey } from "./datetime";
 import type { PlanItem } from "./types";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 
@@ -82,11 +83,8 @@ export function rollDueDateForward(
 }
 
 export function monthKeyFromDate(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-  }).format(date);
+  // YYYY-MM from zoned calendar day (never UTC slice of toISOString).
+  return zonedDayKey(date, timeZone).slice(0, 7);
 }
 
 export function addMonthsKey(monthKey: string, delta: number): string {
@@ -245,12 +243,7 @@ export function spendDaysForMonth(
   if (monthKey > currentKey) return total;
   if (monthKey < currentKey) return 1;
 
-  const day = Number(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      day: "2-digit",
-    }).format(now),
-  );
+  const day = Number(zonedDayKey(now, timeZone).slice(8, 10));
   return Math.max(1, total - day + 1);
 }
 

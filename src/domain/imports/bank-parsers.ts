@@ -19,6 +19,7 @@ import {
   matchFingerprint,
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
+import { formatMoney, money } from "@/domain/money";
 
 export type BankMessageParseInput = {
   institution: string;
@@ -54,9 +55,12 @@ export type SelectImportableResult =
       all: BankEventCandidate[];
       skippedOlderCount: number;
       skippedDuplicateCount: number;
-      /** True when the newest SMS in the image is in the batch (sets Hem saldo). */
-      updatesBalance: true;
-      /** Available balance from the newest SMS in the image. */
+      /**
+       * True only when the newest SMS in the image is newly imported.
+       * Older-unknown re-imports must not rewrite Hem tip / verifiedAt.
+       */
+      updatesBalance: boolean;
+      /** Available balance from the newest SMS in the image (informational). */
       tipBalanceAfterMinor: number;
       messageSv: string;
     }
@@ -309,19 +313,14 @@ export function toBankEventCandidate(
 }
 
 export function formatBankEventLabel(message: ParsedBankMessage): string {
+  const currency = message.currency === "SEK" ? "SEK" : "THB";
   const amount =
     message.amountMinor != null
-      ? `${(message.amountMinor / 100).toLocaleString("sv-SE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} THB`
+      ? formatMoney(money(message.amountMinor, currency))
       : "okänt belopp";
   const bal =
     message.balanceAfterMinor != null
-      ? ` · saldo ${(message.balanceAfterMinor / 100).toLocaleString("sv-SE", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })} THB`
+      ? ` · saldo ${formatMoney(money(message.balanceAfterMinor, currency))}`
       : "";
   const dir = message.direction === "credit" ? "+" : "−";
   const kind = message.direction === "credit" ? "Insättning" : "Utgift";
@@ -450,7 +449,7 @@ export function selectImportableBankEvent(
     all,
     skippedOlderCount: skippedDuplicateCount,
     skippedDuplicateCount,
-    updatesBalance: true,
+    updatesBalance: tipInBatch,
     tipBalanceAfterMinor: tip.balanceAfterMinor,
     messageSv: parts.join(" "),
   };

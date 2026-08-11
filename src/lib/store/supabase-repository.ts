@@ -2,16 +2,18 @@ import {
   calculateAccountBalance,
   calculatePlanTotals,
   calculateSafeToSpend,
+  computeSpendingWindows,
   filterTransactionsAfterCheckpoint,
   formatRelativeVerificationSv,
-  isSameZonedDay,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
   projectPayCycle,
   projectPlanForMonth,
+  resolveSmsTipBalanceMinor,
+  shouldWriteSmsTipCheckpoint,
   startOfZonedDay,
   startOfZonedMonth,
-  sumSpending,
+  zonedDayKey,
   type Account,
   type BalanceCheckpoint,
   type CanonicalTransaction,
@@ -799,120 +801,88 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const monthStart = startOfZonedMonth(now, timezone);
 
   const checkpoint = await latestCheckpointForAccount(primary.id);
+  const monthKey = monthKeyFromDate(now, timezone);
+  const cycle = projectPayCycle(planItems, now, timezone);
 
-  if (!checkpoint) {
-    return {
-      profile,
-      accounts,
-      primaryAccount: primary,
-      checkpoint: null,
-      // null (not 0): unknown saldo must not look like an empty wallet
-      calculatedBalanceMinor: null,
-      balanceKind: "unknown",
-      verificationLabel: null,
-      todaySpendingMinor: 0,
-      monthSpendingMinor: 0,
-      cycleSpendingMinor: 0,
-      safeToSpendTodayMinor: 0,
-      safeToSpendWeekMinor: 0,
-      freeMinor: 0,
-      reservedMinor: 0,
-      bufferMinor: 0,
-      flexibleMinor: 0,
-      daysUntilIncome: 0,
-      recentTransactions: [],
-      planItems,
-      currency: primary.currency,
-      progress: progress ?? emptyUserProgress(profile.id),
-    };
-  }
-
-  const sinceCandidates = [monthStart.toISOString(), checkpoint.verifiedAt];
+  const sinceCandidates = [monthStart.toISOString()];
+  if (checkpoint) sinceCandidates.push(checkpoint.verifiedAt);
+  if (cycle.startAt) sinceCandidates.push(cycle.startAt);
   const sinceIso = sinceCandidates.sort()[0]!;
 
   // No low limit: Konton loads all account txs for saldo; Hem must match.
+  // Spending is computed even without a checkpoint (cycle mode needs it).
   const accountTx = await listTransactions(primary.id, {
     sinceIso,
   });
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
   let calculated = null;
-  try {
-    calculated = calculateAccountBalance({
-      checkpoint,
-      transactionsAfterCheckpoint: after,
-    });
-  } catch (error) {
-    console.error("[numa] balance calc failed", error);
+  if (checkpoint) {
+    try {
+      calculated = calculateAccountBalance({
+        checkpoint,
+        transactionsAfterCheckpoint: after,
+      });
+    } catch (error) {
+      console.error("[numa] balance calc failed", error);
+    }
   }
 
-  const dayStart = startOfZonedDay(now, timezone);
-  const todayTx = accountTx.filter(
-    (t) =>
-      t.status === "confirmed" &&
-      isSameZonedDay(t.occurredAt, now, timezone) &&
-      Date.parse(t.occurredAt) >= dayStart.getTime(),
-  );
-  const monthTx = accountTx.filter(
-    (t) =>
-      t.status === "confirmed" && Date.parse(t.occurredAt) >= monthStart.getTime(),
-  );
-
   const currency = primary.currency;
-  const todaySpending = sumSpending(todayTx, currency);
-  const monthSpending = sumSpending(monthTx, currency);
-  const monthKey = monthKeyFromDate(now, timezone);
   const projection = projectPlanForMonth(planItems, monthKey, timezone);
-  const cycle = projectPayCycle(planItems, now, timezone);
-  const totals = calculatePlanTotals(planItems, currency, now, 0);
+  const totals = calculatePlanTotals(planItems, currency, now, 0, timezone);
   // Cycle expenses + savings; buffer separate (avoid double-count).
   const reservedMinor = cycle.reservedMinor + cycle.savingsMinor;
   const bufferMinor = cycle.bufferMinor;
-  const available = calculated ?? money(0, currency);
   const daysUntilNextIncome = Math.max(
     1,
     cycle.startAt ? cycle.daysLeft : totals.daysUntilNextIncome || 1,
   );
-  const cycleStartMs = cycle.startAt ? Date.parse(cycle.startAt) : null;
-  const cycleTx =
-    cycleStartMs != null
-      ? accountTx.filter(
-          (t) =>
-            t.status === "confirmed" &&
-            Date.parse(t.occurredAt) >= cycleStartMs,
-        )
-      : [];
-  const cycleSpending = sumSpending(cycleTx, currency);
-  const safe = calculateSafeToSpend({
-    available,
-    reserved: money(reservedMinor, currency),
-    safetyBuffer: money(bufferMinor, currency),
-    daysUntilNextIncome,
-    flexiblePlanRemaining:
-      cycle.flexibleMinor > 0
-        ? money(cycle.flexibleMinor, currency)
-        : undefined,
-  });
+  const { today: todaySpending, month: monthSpending, cycle: cycleSpending } =
+    computeSpendingWindows({
+      transactions: accountTx,
+      currency,
+      now,
+      timeZone: timezone || "Asia/Bangkok",
+      cycleStartAt: cycle.startAt,
+    });
+  // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
+  const safe =
+    calculated != null
+      ? calculateSafeToSpend({
+          available: calculated,
+          reserved: money(reservedMinor, currency),
+          safetyBuffer: money(bufferMinor, currency),
+          daysUntilNextIncome,
+          flexiblePlanRemaining:
+            cycle.flexibleMinor > 0
+              ? money(cycle.flexibleMinor, currency)
+              : undefined,
+        })
+      : null;
 
   let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
-  if (after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (calculated) balanceKind = "calculated";
-  else balanceKind = "verified_checkpoint_only";
+  if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
+  else if (checkpoint && calculated) balanceKind = "calculated";
+  else if (checkpoint) balanceKind = "verified_checkpoint_only";
 
   return {
     profile,
     accounts,
     primaryAccount: primary,
     checkpoint,
+    // null (not 0): unknown saldo must not look like an empty wallet
     calculatedBalanceMinor: calculated?.amountMinor ?? null,
     balanceKind,
-    verificationLabel: formatRelativeVerificationSv(checkpoint.verifiedAt, now),
+    verificationLabel: checkpoint
+      ? formatRelativeVerificationSv(checkpoint.verifiedAt, now)
+      : null,
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
     cycleSpendingMinor: cycleSpending.amountMinor,
-    safeToSpendTodayMinor: safe.today.amountMinor,
-    safeToSpendWeekMinor: safe.week.amountMinor,
-    freeMinor: safe.free.amountMinor,
+    safeToSpendTodayMinor: safe?.today.amountMinor ?? 0,
+    safeToSpendWeekMinor: safe?.week.amountMinor ?? 0,
+    freeMinor: safe?.free.amountMinor ?? 0,
     reservedMinor: cycle.expenseMinor || projection.totalPlannedMinor,
     bufferMinor,
     flexibleMinor: cycle.flexibleMinor || projection.flexibleMinor,
@@ -993,7 +963,7 @@ export async function recordOnTrackDayIfNeeded(
 
   const profile = await getProfile();
   const dayStart = startOfZonedDay(new Date(), profile.timezone);
-  const dayKey = dayStart.toISOString().slice(0, 10);
+  const dayKey = zonedDayKey(new Date(), profile.timezone);
 
   const supabase = await createSupabaseServerClient();
   const { data: existingEvents, error: evError } = await supabase
@@ -1175,6 +1145,7 @@ export async function uploadReceiptAndExtract(input: {
             labelSv: event.labelSv,
             batchIndex,
             tipBalanceAfterMinor: resolved.balanceAfterMinor,
+            updatesBalance: resolved.balanceAfterMinor != null,
           },
         })
         .select("*")
@@ -1342,13 +1313,20 @@ export async function confirmReceiptExpense(
       });
 
     if (pending.length > 0) {
-      const tipBalance =
-        input.balanceAfterMinor ??
-        (typeof pending[0]?.rawPayload?.tipBalanceAfterMinor === "number"
-          ? pending[0].rawPayload.tipBalanceAfterMinor
-          : null) ??
-        pending[0]?.balanceAfterMinor ??
-        null;
+      const payloadTip = pending
+        .map((c) => c.rawPayload?.tipBalanceAfterMinor)
+        .find((v): v is number => typeof v === "number");
+      const updatesFlag = pending
+        .map((c) => c.rawPayload?.updatesBalance)
+        .find((v): v is boolean => typeof v === "boolean");
+      const tipInBatch =
+        updatesFlag === true ||
+        (updatesFlag == null && input.balanceAfterMinor != null);
+      const tipBalance = resolveSmsTipBalanceMinor({
+        inputBalanceAfterMinor: input.balanceAfterMinor,
+        payloadTipBalanceMinor: payloadTip ?? null,
+        updatesBalance: tipInBatch,
+      });
 
       const maskedFromCandidate =
         input.maskedAccount ?? observation.accountHint ?? null;
@@ -1425,10 +1403,15 @@ export async function confirmReceiptExpense(
           .eq("id", cand.id);
       }
 
-      if (tipBalance != null) {
+      if (
+        shouldWriteSmsTipCheckpoint({
+          tipBalanceMinor: tipBalance,
+          tipInBatch,
+        })
+      ) {
         await createCheckpoint({
           accountId: account.id,
-          balanceMinor: tipBalance,
+          balanceMinor: tipBalance!,
           verifiedAt: new Date(baseMs).toISOString(),
           source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
           note: hadCheckpoint
@@ -1527,8 +1510,10 @@ export async function confirmReceiptExpense(
     );
   }
 
-  const movedAt = new Date(Date.now() - 2_000).toISOString();
-  const checkpointAt = new Date().toISOString();
+  // Freeze one clock — same invariant as batch path (credit before tip).
+  const baseMs = Date.now();
+  const movedAt = new Date(baseMs - 2_000).toISOString();
+  const checkpointAt = new Date(baseMs).toISOString();
 
   const tx =
     direction === "credit"
@@ -1554,7 +1539,8 @@ export async function confirmReceiptExpense(
           occurredAt: movedAt,
         });
 
-  if (balanceAfterMinor != null) {
+  // Receipt OCR must not mint sms_* tip checkpoints — only bank-SMS.
+  if (source === "screenshot" && balanceAfterMinor != null) {
     await createCheckpoint({
       accountId: account.id,
       balanceMinor: balanceAfterMinor,

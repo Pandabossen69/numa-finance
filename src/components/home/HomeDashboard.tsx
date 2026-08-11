@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { MetricRow } from "@/components/ui/MetricRow";
+import { formatCountSv } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import {
   createExpenseAction,
@@ -49,23 +51,26 @@ export function HomeDashboard({
       ? `${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
       : null;
 
+  const poolBase =
+    snap.cycleSpendingMinor + Math.max(0, snap.remainingFreeMinor);
+  const spendProgress =
+    !isEmpty && poolBase > 0
+      ? Math.min(1, Math.max(0, snap.cycleSpendingMinor / poolBase))
+      : null;
+
   return (
-    <div className="mx-auto max-w-lg space-y-8">
-      <header className="animate-rise">
+    <div className="mx-auto max-w-lg space-y-9">
+      <header className="animate-rise space-y-1">
         <p className="text-sm font-medium capitalize text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? ` · ${rangeLabel}` : ""}
         </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-          Hem
-        </h1>
-        <p className="mt-2 max-w-[36ch] text-sm text-[var(--numa-muted)]">
-          {isEmpty
-            ? "Lägg in intäkter med datum i Plan."
-            : isBridge
-              ? "Så mycket du får leva på per dag tills nästa intäkt."
-              : "Så mycket du får leva på varje dag just nu."}
-        </p>
+        <h1 className="numa-page-title">Hem</h1>
+        {isEmpty ? (
+          <p className="max-w-[32ch] pt-1 text-sm text-[var(--numa-muted)]">
+            Lägg in intäkter i Plan.
+          </p>
+        ) : null}
       </header>
 
       {snap.needsAvailableInput ? (
@@ -79,13 +84,10 @@ export function HomeDashboard({
       {!snap.needsAvailableInput ? (
         <>
           <section
-            className="animate-rise-delay-1 space-y-1.5"
+            className="animate-rise-delay-1 space-y-3"
             aria-labelledby="spend-heading"
           >
-            <p
-              id="spend-heading"
-              className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]"
-            >
+            <p id="spend-heading" className="numa-section-title">
               Kvar per dag
             </p>
             <div
@@ -101,21 +103,27 @@ export function HomeDashboard({
                 size="xl"
               />
             </div>
-            <p className="text-sm text-[var(--numa-muted)]">
-              {isEmpty
-                ? "Öppna Plan och lägg till lön eller CSN."
-                : isBridge
-                  ? `${snap.spendDaysLeft} dagar till nästa intäkt${
-                      snap.nextIncomeLabelSv ? ` (${snap.nextIncomeLabelSv})` : ""
-                    }`
-                  : `${snap.spendDaysLeft} dagar kvar${
-                      snap.cycleEndInferred ? " · slutdatum beräknat" : ""
-                    }`}
-            </p>
+            {!isEmpty ? (
+              <p className="text-sm text-[var(--numa-muted)]">
+                {isBridge
+                  ? `${formatCountSv(snap.spendDaysLeft, "dag", "dagar")} till nästa intäkt`
+                  : `${formatCountSv(snap.spendDaysLeft, "dag", "dagar")} kvar`}
+              </p>
+            ) : null}
+            {spendProgress != null && snap.cycleSpendingMinor > 0 ? (
+              <div
+                className="numa-progress animate-bar max-w-xs"
+                aria-hidden
+              >
+                <span
+                  style={{ width: `${Math.max(8, spendProgress * 100)}%` }}
+                />
+              </div>
+            ) : null}
           </section>
 
-          <section className="animate-rise-delay-2 space-y-0">
-            <OverviewRow
+          <section className="animate-rise-delay-2 animate-scale-in space-y-0">
+            <MetricRow
               label={isBridge ? "Saldo" : "Kvar totalt"}
               amountMinor={snap.remainingFreeMinor}
               currency={currency}
@@ -123,13 +131,11 @@ export function HomeDashboard({
               hint={
                 isBridge && snap.verificationLabel
                   ? snap.verificationLabel
-                  : isBridge
-                    ? "Från banken"
-                    : undefined
+                  : undefined
               }
             />
             {!isBridge ? (
-              <OverviewRow
+              <MetricRow
                 label="Sparar"
                 amountMinor={snap.planSavingsMinor}
                 currency={currency}
@@ -138,7 +144,7 @@ export function HomeDashboard({
             {snap.hasBankTruth &&
             snap.calculatedBalanceMinor != null &&
             !isBridge ? (
-              <OverviewRow
+              <MetricRow
                 label="Saldo"
                 amountMinor={snap.calculatedBalanceMinor}
                 currency={currency}
@@ -146,7 +152,7 @@ export function HomeDashboard({
               />
             ) : null}
             {!isBridge && snap.cycleSpendingMinor > 0 ? (
-              <OverviewRow
+              <MetricRow
                 label="Spenderat"
                 amountMinor={snap.cycleSpendingMinor}
                 currency={currency}
@@ -156,7 +162,6 @@ export function HomeDashboard({
 
           {isBridge ? (
             <div className="text-sm text-[var(--numa-muted)]">
-              Uppdatera saldo manuellt om banken ändrats.{" "}
               <UpdateBalanceLink
                 accountId={snap.primaryAccountId}
                 currency={currency}
@@ -190,18 +195,16 @@ function AvailableNowCard({
   const [pending, startTransition] = useTransition();
 
   return (
-    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5">
+    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
       <div>
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
-          Kom igång
-        </p>
+        <p className="numa-section-title">Kom igång</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">
-          Hur mycket har du kvar på kontot?
+          Hur mycket har du kvar?
         </h2>
-        <p className="mt-1 max-w-[40ch] text-sm text-[var(--numa-muted)]">
-          Pengarna från förra månaden. Vi delar upp dem per dag
+        <p className="mt-1 max-w-[36ch] text-sm text-[var(--numa-muted)]">
+          Vi delar upp det per dag
           {nextIncomeLabel ? ` tills ${nextIncomeLabel}` : " tills nästa intäkt"}
-          . Utgifter som redan är betalda behöver du inte lägga in igen.
+          .
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -215,7 +218,7 @@ function AvailableNowCard({
         <button
           type="button"
           disabled={pending || !balance.trim()}
-          className="min-h-12 rounded-xl bg-[var(--numa-ink)] px-5 text-sm font-semibold text-white disabled:opacity-45"
+          className="numa-cta-glow min-h-12 rounded-xl bg-[var(--numa-ink)] px-5 text-sm font-semibold text-white disabled:opacity-45"
           onClick={() => {
             startTransition(async () => {
               const result = await setAvailableNowAction({
@@ -232,7 +235,7 @@ function AvailableNowCard({
             });
           }}
         >
-          {pending ? "Sparar…" : "Spara och visa budget"}
+          {pending ? "Sparar…" : "Visa budget"}
         </button>
       </div>
       {error ? (
@@ -329,40 +332,6 @@ function UpdateBalanceLink({
   );
 }
 
-function OverviewRow({
-  label,
-  amountMinor,
-  currency,
-  hint,
-  tone,
-}: {
-  label: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  hint?: string;
-  tone?: "positive" | "danger";
-}) {
-  const amountClass =
-    tone === "positive"
-      ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
-        : "text-[var(--numa-ink)]";
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] pb-3">
-      <div className="min-w-0">
-        <p className="text-sm text-[var(--numa-muted)]">{label}</p>
-        {hint ? (
-          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{hint}</p>
-        ) : null}
-      </div>
-      <div className={`shrink-0 ${amountClass}`}>
-        <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
-      </div>
-    </div>
-  );
-}
-
 function QuickExpense({
   accountId,
   currency,
@@ -379,10 +348,8 @@ function QuickExpense({
   const [pending, startTransition] = useTransition();
 
   return (
-    <section className="numa-panel animate-rise-delay-2 space-y-3 p-4">
-      <h2 className="text-sm font-semibold tracking-tight text-[var(--numa-muted)]">
-        Snabb utgift
-      </h2>
+    <section className="numa-panel animate-rise-delay-2 space-y-3 p-4 pl-5">
+      <h2 className="numa-section-title">Snabb utgift</h2>
 
       {disabled ? (
         <p className="text-sm text-[var(--numa-muted)]">

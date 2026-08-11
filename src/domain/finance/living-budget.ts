@@ -1,3 +1,4 @@
+import { calendarDaysBetween, zonedDayAnchorMs } from "./datetime";
 import type { PayCycleProjection } from "./pay-cycle";
 import { perDayBudgetMinor } from "./plan-months";
 
@@ -26,20 +27,6 @@ export type LivingBudget = {
   cycleEndLabelSv: string | null;
   cycleEndInferred: boolean;
 };
-
-function startOfZonedDayMs(now: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const y = parts.find((p) => p.type === "year")?.value;
-  const m = parts.find((p) => p.type === "month")?.value;
-  const d = parts.find((p) => p.type === "day")?.value;
-  if (!y || !m || !d) return now.getTime();
-  return Date.parse(`${y}-${m}-${d}T12:00:00.000Z`);
-}
 
 export function projectLivingBudget(input: {
   cycle: PayCycleProjection;
@@ -74,7 +61,7 @@ export function projectLivingBudget(input: {
     };
   }
 
-  const todayMs = startOfZonedDayMs(now, timeZone);
+  const todayMs = zonedDayAnchorMs(now, timeZone);
   const startMs = Date.parse(cycle.startAt);
   const endMs = Date.parse(cycle.endAt);
 
@@ -84,7 +71,7 @@ export function projectLivingBudget(input: {
     const availableMinor = hasBalance ? Math.max(0, bankBalanceMinor) : 0;
     const daysLeft = Math.max(
       1,
-      Math.ceil((startMs - todayMs) / (24 * 60 * 60 * 1000)),
+      calendarDaysBetween(now, cycle.startAt, timeZone),
     );
     return {
       mode: "bridge",
@@ -102,11 +89,11 @@ export function projectLivingBudget(input: {
   }
 
   const free = cycle.freeToSpendMinor - cycleSpendingMinor;
-  const fromMs =
-    Number.isFinite(endMs) && todayMs < endMs ? todayMs : startMs;
+  const from =
+    Number.isFinite(endMs) && todayMs < endMs ? now : cycle.startAt;
   const daysLeft = Math.max(
     1,
-    Math.ceil((endMs - fromMs) / (24 * 60 * 60 * 1000)),
+    calendarDaysBetween(from, cycle.endAt, timeZone),
   );
 
   return {

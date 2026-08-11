@@ -11,7 +11,7 @@ import {
   projectPayCycle,
   projectPlanForMonth,
 } from "@/domain/finance";
-import type { CurrencyCode } from "@/domain/money";
+import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 
 export type AnalysLine = {
@@ -161,7 +161,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
 
     const recent = (snap.recentTransactions ?? []).slice(0, 10).map((tx) => ({
       id: tx.id,
-      description: tx.description,
+      description: sanitizeMoneyDescription(tx.description),
       category: tx.category,
       transactionType: tx.transactionType,
       direction: tx.direction,

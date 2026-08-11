@@ -12,20 +12,12 @@ export default async function ImporteraPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-7">
-      <MerPageHeader
-        back
-        title="Tidigare bilder"
-        description="Här sparas bilder du lagt in. Bank-SMS sparas direkt; kvitton blir utgift först när du bekräftar."
-      />
+      <MerPageHeader back title="Tidigare bilder" />
 
       <div className="animate-rise-delay-1 space-y-6">
         <MerSection>
           <MerListGroup>
-            <MerListLink
-              href="/fota"
-              label="Lägg till SMS eller kvitto"
-              hint="Öppnar kamera / galleri"
-            />
+            <MerListLink href="/fota" label="Lägg till SMS eller kvitto" />
           </MerListGroup>
         </MerSection>
 
@@ -34,7 +26,7 @@ export default async function ImporteraPage() {
             <MerListGroup>
               <MerListRow>
                 <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                  Inga bilder ännu. Tryck på raden ovan när du är i kassan.
+                  Inga bilder ännu.
                 </p>
               </MerListRow>
             </MerListGroup>

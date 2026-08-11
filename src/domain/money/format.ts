@@ -104,3 +104,17 @@ export function formatReferenceApprox(
 export function currencyLabel(currency: CurrencyCode): string {
   return CURRENCY_META[currency].symbol;
 }
+
+/**
+ * Rewrite legacy baht glyphs in stored labels/descriptions so UI never shows ฿
+ * (often renders like $ in monospace). Prefer "… THB" suffix.
+ */
+export function sanitizeMoneyDescription(text: string): string {
+  if (!text.includes("฿")) return text;
+  return text
+    // End the amount on a digit so trailing spaces before "·" stay intact.
+    .replace(/฿\s*([\d\s.,]*\d)/g, "$1 THB")
+    .replace(/\s+THB(\s+THB)+/g, " THB")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}

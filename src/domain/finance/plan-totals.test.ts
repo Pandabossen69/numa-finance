@@ -61,6 +61,27 @@ describe("calculatePlanTotals", () => {
     expect(totals.daysUntilNextIncome).toBe(15);
   });
 
+  it("counts runway in Asia/Bangkok calendar days, not raw UTC hours", () => {
+    // 10:00 Bangkok Aug 24 → income noon-UTC Aug 25 is one calendar day away.
+    const now = new Date("2026-08-24T03:00:00.000Z");
+    const totals = calculatePlanTotals(
+      [
+        item({
+          kind: "expected",
+          amountMinor: 40_000_00,
+          name: "Lön",
+          cadence: "income",
+          nextDueAt: "2026-08-25T12:00:00.000Z",
+        }),
+      ],
+      "THB",
+      now,
+      17,
+      "Asia/Bangkok",
+    );
+    expect(totals.daysUntilNextIncome).toBe(1);
+  });
+
   it("excludes income and savings from reserved totals", () => {
     const totals = calculatePlanTotals(
       [

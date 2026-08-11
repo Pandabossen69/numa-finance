@@ -28,7 +28,7 @@ export function BottomNav() {
           <Link
             href="/lagg-till"
             prefetch
-            className="relative -mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
+            className="numa-cta-glow relative -mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-accent)] text-3xl font-light text-white shadow-[var(--numa-shadow)] transition active:scale-95"
             aria-label="Lägg till eller fota"
           >
             <span className="leading-none">+</span>
@@ -61,11 +61,13 @@ function NavItem({
       href={href}
       prefetch
       className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold tracking-wide transition ${
-        active ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
+        active
+          ? "text-[var(--numa-accent-ink)]"
+          : "text-[var(--numa-faint)]"
       }`}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${
+        className={`h-1 w-4 rounded-full transition ${
           active ? "bg-[var(--numa-accent)]" : "bg-transparent"
         }`}
         aria-hidden

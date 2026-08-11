@@ -56,7 +56,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     monthKey: "2026-08",
     monthLabelSv: "augusti 2026",
     calculatedBalanceMinor: available.amountMinor,
-    verificationLabel: "Verifierat i morse · Bangkok Bank",
+    verificationLabel: "I morse",
     todaySpendingMinor: spentToday.amountMinor,
     monthSpendingMinor: spentToday.amountMinor * 8,
     cycleSpendingMinor: cycleSpent,

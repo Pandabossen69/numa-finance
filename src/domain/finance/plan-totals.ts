@@ -1,4 +1,9 @@
 import type { CurrencyCode } from "@/domain/money";
+import {
+  calendarDaysBetween,
+  DEFAULT_TIMEZONE,
+  zonedDayAnchorMs,
+} from "./datetime";
 import type { PlanItem } from "./types";
 
 /** Special plan row used only for runway date (amount may be 0). */
@@ -28,20 +33,29 @@ export function calculatePlanTotals(
   currency: CurrencyCode,
   now: Date = new Date(),
   defaultDays = 17,
+  timeZone: string = DEFAULT_TIMEZONE,
 ): PlanTotals {
   let reservedMinor = 0;
   let bufferMinor = 0;
   let flexibleMinor = 0;
-  let soonestIncome: number | null = null;
+  let soonestIncomeIso: string | null = null;
+  let soonestIncomeMs: number | null = null;
 
   for (const item of items) {
     if (!item.isActive || item.currency !== currency) continue;
 
     if (item.nextDueAt && isIncomeBoundary(item)) {
       const due = Date.parse(item.nextDueAt);
-      if (Number.isFinite(due) && due > now.getTime()) {
-        soonestIncome =
-          soonestIncome == null ? due : Math.min(soonestIncome, due);
+      const todayAnchor = zonedDayAnchorMs(now, timeZone);
+      // Count incomes due after today's calendar day in the user timezone.
+      if (
+        Number.isFinite(due) &&
+        zonedDayAnchorMs(item.nextDueAt, timeZone) > todayAnchor
+      ) {
+        if (soonestIncomeMs == null || due < soonestIncomeMs) {
+          soonestIncomeMs = due;
+          soonestIncomeIso = item.nextDueAt;
+        }
       }
     }
 
@@ -61,9 +75,11 @@ export function calculatePlanTotals(
   }
 
   let daysUntilNextIncome = defaultDays;
-  if (soonestIncome != null) {
-    const ms = soonestIncome - now.getTime();
-    daysUntilNextIncome = Math.max(1, Math.ceil(ms / (24 * 60 * 60 * 1000)));
+  if (soonestIncomeIso != null) {
+    daysUntilNextIncome = Math.max(
+      1,
+      calendarDaysBetween(now, soonestIncomeIso, timeZone),
+    );
   }
 
   return {

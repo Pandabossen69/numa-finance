@@ -25,7 +25,6 @@ export default async function KontonPage() {
       <MerPageHeader
         back
         title="Saldo"
-        description="Uppdatera när du vill — Hem räknar kvar per dag därifrån."
         action={
           <Link
             href="/konton/ny"

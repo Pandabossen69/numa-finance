@@ -5,61 +5,40 @@ import {
   MerSection,
 } from "@/components/mer/MerHub";
 
-const sections = [
+type MerItem = {
+  href: string;
+  label: string;
+  hint?: string;
+};
+
+const sections: Array<{ title: string; items: MerItem[] }> = [
   {
     title: "Pengar",
     items: [
-      {
-        href: "/transaktioner",
-        label: "Rörelser",
-        hint: "SMS, kvitton och manuella belopp",
-      },
-      {
-        href: "/konton",
-        label: "Saldo",
-        hint: "Bankens sanning · checkpoint",
-      },
+      { href: "/transaktioner", label: "Rörelser", hint: "Historik" },
+      { href: "/konton", label: "Saldo", hint: "Uppdatera belopp" },
     ],
   },
   {
-    title: "Infångning",
+    title: "Lägg till",
     items: [
-      {
-        href: "/fota",
-        label: "Lägg till",
-        hint: "Fota bank-SMS eller kvitto",
-      },
-      {
-        href: "/importera",
-        label: "Tidigare bilder",
-        hint: "Uppladdade SMS och kvitton",
-      },
+      { href: "/fota", label: "Fota", hint: "SMS eller kvitto" },
+      { href: "/importera", label: "Tidigare bilder" },
     ],
   },
   {
-    title: "System",
+    title: "App",
     items: [
-      {
-        href: "/installningar",
-        label: "Inställningar",
-        hint: "Tidszon och underhåll",
-      },
-      {
-        href: "/laga",
-        label: "Laga appen",
-        hint: "Rensa cache om något strular",
-      },
+      { href: "/installningar", label: "Inställningar" },
+      { href: "/laga", label: "Laga appen", hint: "Om något strular" },
     ],
   },
-] as const;
+];
 
 export default function MerPage() {
   return (
     <div className="mx-auto max-w-lg space-y-7">
-      <MerPageHeader
-        title="Mer"
-        description="Saldo, historik och underhåll — allt som håller Hem skarp."
-      />
+      <MerPageHeader title="Mer" />
 
       <nav className="animate-rise-delay-1 space-y-6" aria-label="Mer-meny">
         {sections.map((section) => (

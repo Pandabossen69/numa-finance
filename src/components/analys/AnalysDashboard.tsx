@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import type { CurrencyCode } from "@/domain/money";
+import { MetricRow } from "@/components/ui/MetricRow";
+import { formatCountSv } from "@/domain/finance";
+import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
 
 export function AnalysDashboard({
@@ -37,54 +39,50 @@ export function AnalysDashboard({
     isBridge && cycle.startLabelSv
       ? `Nu → ${cycle.startLabelSv}`
       : cycle.startLabelSv && cycle.endLabelSv
-        ? `${cycle.startLabelSv} → ${cycle.endLabelSv}${cycle.endInferred ? " (beräknad)" : ""}`
+        ? `${cycle.startLabelSv} → ${cycle.endLabelSv}`
         : "Ingen cykel ännu";
-  const cycleSupport = isBridge
-    ? hasSaldo
-      ? `${cycle.daysLeft} dagar kvar · Hem använder kontosaldo`
-      : `${cycle.daysLeft} dagar kvar · ange saldo för kvar per dag`
-    : isEmpty
-      ? "Lägg in intäkter med datum i Plan för att starta cykeln."
-      : cycle.isActive
-        ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
-        : "Lägg in intäkter med datum i Plan för att starta cykeln.";
+  const daysLeftLabel = formatCountSv(cycle.daysLeft, "dag", "dagar");
   const modeEyebrow = isBridge
     ? "Tills nästa intäkt"
     : isEmpty
       ? "Ingen cykel"
-      : "Aktiv inkomstcykel";
-  const heroCaption = isBridge
+      : "Cykel";
+  const heroMeta = isBridge
     ? hasSaldo
-      ? "Saldo kvar"
-      : "Saldo saknas"
+      ? `${daysLeftLabel} kvar`
+      : "Ange saldo på Hem"
     : isEmpty
-      ? "Ingen pool ännu"
-      : "Kvar totalt";
+      ? "Lägg in intäkter i Plan"
+      : cycle.isActive
+        ? `${daysLeftLabel} kvar`
+        : "Lägg in intäkter i Plan";
+
+  const spendPool =
+    data.monthSpendingMinor + Math.max(0, cycle.remainingFreeMinor);
+  const monthSpendProgress =
+    data.monthSpendingMinor > 0 && spendPool > 0
+      ? Math.min(1, data.monthSpendingMinor / spendPool)
+      : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-10">
+    <div className="mx-auto max-w-lg space-y-9">
       <header className="animate-rise">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-          Analys
-        </h1>
-        <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Hur siffrorna räknas — cykel, månad och rörelser.
-        </p>
+        <h1 className="numa-page-title">Analys</h1>
       </header>
 
-      {/* Hero: one composition, no card */}
-      <section className="animate-rise-delay-1 space-y-3" aria-labelledby="analys-hero">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-          {modeEyebrow}
-        </p>
+      <section
+        className="animate-rise-delay-1 space-y-2.5"
+        aria-labelledby="analys-hero"
+      >
+        <p className="numa-section-title">{modeEyebrow}</p>
         <h2
           id="analys-hero"
-          className="text-xl font-semibold tracking-tight text-[var(--numa-ink)]"
+          className="text-lg font-semibold tracking-tight text-[var(--numa-ink)]"
         >
           {cycleTitle}
         </h2>
         {isBridge && !hasSaldo ? (
-          <p className="text-lg font-semibold text-[var(--numa-muted)]">
+          <p className="text-base font-medium text-[var(--numa-muted)]">
             Ange saldo på Hem
           </p>
         ) : (
@@ -102,13 +100,15 @@ export function AnalysDashboard({
             />
           </div>
         )}
-        <p className="text-sm text-[var(--numa-muted)]">
-          {heroCaption} · {cycleSupport}
-        </p>
+        {!(isBridge && !hasSaldo) ? (
+          <p className="text-sm text-[var(--numa-muted)]">{heroMeta}</p>
+        ) : null}
       </section>
 
-      {/* Cycle metrics — calm rows, not a dashboard grid */}
-      <section className="animate-rise-delay-2 space-y-0" aria-label="Cykelns siffror">
+      <section
+        className="animate-rise-delay-2 animate-scale-in space-y-0"
+        aria-label="Cykelns siffror"
+      >
         {isBridge ? (
           <>
             {hasSaldo ? (
@@ -120,42 +120,33 @@ export function AnalysDashboard({
                 hint={data.verificationLabel ?? undefined}
               />
             ) : (
-              <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] py-3.5">
-                <div className="min-w-0">
-                  <p className="text-sm text-[var(--numa-muted)]">Saldo</p>
-                  <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                    Ange på Hem eller fota bank-SMS
-                  </p>
-                </div>
-                <span className="shrink-0 text-sm text-[var(--numa-faint)]">—</span>
-              </div>
+              <MetricRow
+                label="Saldo"
+                value={
+                  <span className="text-sm text-[var(--numa-faint)]">—</span>
+                }
+                hint="Ange på Hem eller fota SMS"
+              />
             )}
             <MetricRow
               label="Kvar per dag"
               amountMinor={hasSaldo ? cycle.perDayMinor : 0}
               currency={currency}
               tone={hasSaldo && cycle.perDayMinor > 0 ? "positive" : undefined}
-              hint={hasSaldo ? undefined : "Kräver saldo först"}
             />
           </>
         ) : isCycle ? (
           <>
             <MetricRow
-              label="Intäkter i cykeln"
+              label="Intäkter"
               amountMinor={cycle.incomeMinor}
               currency={currency}
               tone="positive"
             />
             <MetricRow
-              label="Utgifter i cykeln"
+              label="Utgifter"
               amountMinor={cycle.expenseMinor}
               currency={currency}
-            />
-            <MetricRow
-              label="Planerat fritt"
-              amountMinor={cycle.freeToSpendMinor}
-              currency={currency}
-              tone={cycle.freeToSpendMinor >= 0 ? "positive" : "danger"}
             />
             <MetricRow
               label="Kvar totalt"
@@ -169,7 +160,7 @@ export function AnalysDashboard({
               currency={currency}
             />
             <MetricRow
-              label="Spenderat i cykeln"
+              label="Spenderat"
               amountMinor={data.cycleSpendingMinor}
               currency={currency}
             />
@@ -183,69 +174,19 @@ export function AnalysDashboard({
         ) : null}
       </section>
 
-      {/* Formula — text only, no panel */}
-      <section className="animate-rise-delay-2 space-y-3 border-t border-[var(--numa-border)] pt-8">
-        <h2 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
-          Så räknas det
-        </h2>
-        <ol className="list-decimal space-y-2.5 pl-5 text-sm leading-relaxed text-[var(--numa-muted)]">
-          {data.formula.steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-        {isCycle ? (
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            Exempel: planerat fritt{" "}
-            <span className="font-semibold text-[var(--numa-ink)]">
-              <MoneyDisplay
-                amountMinor={cycle.freeToSpendMinor}
-                currency={currency}
-                size="sm"
-              />
-            </span>{" "}
-            − spenderat{" "}
-            <span className="font-semibold text-[var(--numa-ink)]">
-              <MoneyDisplay
-                amountMinor={data.cycleSpendingMinor}
-                currency={currency}
-                size="sm"
-              />
-            </span>{" "}
-            = kvar{" "}
-            <span className="font-semibold text-[var(--numa-ink)]">
-              <MoneyDisplay
-                amountMinor={cycle.remainingFreeMinor}
-                currency={currency}
-                size="sm"
-              />
-            </span>
-            , delat på {cycle.daysLeft} dagar.
-          </p>
-        ) : null}
-      </section>
-
-      {/* Cycle line items — lists are interaction containers */}
       {!isEmpty ? (
         <section className="animate-rise-delay-2 space-y-4">
+          <hr className="numa-divider" />
           <LineList
-            title={isBridge ? "Kommande intäkter" : "Intäkter i cykeln"}
-            subtitle={isBridge ? "Räknas när de landar" : undefined}
-            empty={
-              isBridge ? "Inga kommande intäkter." : "Inga intäkter i cykeln."
-            }
+            title={isBridge ? "Kommande intäkter" : "Intäkter"}
+            empty={isBridge ? "Inga kommande." : "Inga i cykeln."}
             lines={cycle.incomes}
             currency={currency}
             totalMinor={cycle.incomeMinor}
           />
           <LineList
-            title={
-              isBridge ? "Utgifter i kommande period" : "Utgifter i cykeln"
-            }
-            empty={
-              isBridge
-                ? "Inga utgifter i kommande period."
-                : "Inga utgifter förfaller i cykeln."
-            }
+            title={isBridge ? "Kommande utgifter" : "Utgifter"}
+            empty={isBridge ? "Inga kommande." : "Inga i cykeln."}
             lines={cycle.expenses}
             currency={currency}
             totalMinor={cycle.expenseMinor}
@@ -253,13 +194,11 @@ export function AnalysDashboard({
         </section>
       ) : null}
 
-      {/* Calendar month — one job */}
-      <section className="animate-rise-delay-3 space-y-5 border-t border-[var(--numa-border)] pt-8">
+      <section className="animate-rise-delay-3 space-y-5">
+        <hr className="numa-divider" />
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-              Kalendermånad
-            </p>
+            <p className="numa-section-title">Denna månad</p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight">
               {data.monthLabelSv}
             </h2>
@@ -269,7 +208,7 @@ export function AnalysDashboard({
             prefetch
             className="shrink-0 pb-0.5 text-xs font-semibold text-[var(--numa-accent)]"
           >
-            Öppna Plan →
+            Plan →
           </Link>
         </div>
 
@@ -284,7 +223,6 @@ export function AnalysDashboard({
             label="Utgifter"
             amountMinor={month.expenseMinor}
             currency={currency}
-            hint="Fasta + engång"
           />
           <MetricRow
             label="Sparande"
@@ -301,14 +239,14 @@ export function AnalysDashboard({
 
         <div className="space-y-4">
           <LineList
-            title="Intäkter denna månad"
+            title="Intäkter"
             empty="Inga intäkter inlagda."
             lines={month.incomes}
             currency={currency}
             totalMinor={month.incomeMinor}
           />
           <LineList
-            title="Utgifter denna månad"
+            title="Utgifter"
             empty="Inga utgifter inlagda."
             lines={month.expenses}
             currency={currency}
@@ -317,46 +255,43 @@ export function AnalysDashboard({
         </div>
       </section>
 
-      {/* Account & movements */}
-      <section className="animate-rise-delay-3 space-y-5 border-t border-[var(--numa-border)] pt-8">
-        <h2 className="text-lg font-semibold tracking-tight">Konto & rörelser</h2>
+      <section className="animate-rise-delay-3 space-y-5">
+        <hr className="numa-divider" />
+        <h2 className="text-lg font-semibold tracking-tight">Konto</h2>
         <div className="space-y-0">
           {hasSaldo ? (
             <MetricRow
               label="Saldo"
               amountMinor={data.calculatedBalanceMinor!}
               currency={currency}
-              hint={data.verificationLabel ?? "Beräknat"}
+              hint={data.verificationLabel ?? undefined}
             />
           ) : (
-            <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] py-3.5">
-              <div className="min-w-0">
-                <p className="text-sm text-[var(--numa-muted)]">Saldo</p>
-                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                  {data.hasBankTruth
-                    ? "Saknas"
-                    : "Ange på Hem eller fota bank-SMS"}
-                </p>
-              </div>
-              <span className="shrink-0 text-sm text-[var(--numa-faint)]">—</span>
-            </div>
+            <MetricRow
+              label="Saldo"
+              hint="Ange på Hem eller fota SMS"
+            />
           )}
           <MetricRow
-            label="Spenderat denna månad"
+            label="Denna månad"
             amountMinor={data.monthSpendingMinor}
             currency={currency}
-            hint="Kalendermånad · bankrörelser"
           />
           <MetricRow
-            label="Spenderat idag"
+            label="Idag"
             amountMinor={data.todaySpendingMinor}
             currency={currency}
-            hint="Kalenderdag"
           />
         </div>
+        {monthSpendProgress != null ? (
+          <div className="numa-progress animate-bar" aria-hidden>
+            <span
+              style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }}
+            />
+          </div>
+        ) : null}
       </section>
 
-      {/* Goals — interactive list */}
       <section className="animate-rise-delay-3 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold tracking-tight">Mål</h2>
@@ -376,11 +311,11 @@ export function AnalysDashboard({
               prefetch
               className="font-semibold text-[var(--numa-accent)]"
             >
-              Lägg till i Plan →
+              Lägg till →
             </Link>
           </p>
         ) : (
-          <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
+          <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {data.goals.map((goal) => (
               <li
                 key={goal.id}
@@ -400,24 +335,21 @@ export function AnalysDashboard({
         )}
       </section>
 
-      {/* Recent movements — interactive list */}
       <section className="animate-rise-delay-3 space-y-3 pb-2">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold tracking-tight">
-            Senaste rörelser
-          </h2>
+          <h2 className="text-sm font-semibold tracking-tight">Senaste</h2>
           <Link
             href="/transaktioner"
             prefetch
             className="text-xs font-semibold text-[var(--numa-accent)]"
           >
-            Se alla →
+            Alla →
           </Link>
         </div>
         {data.recent.length === 0 ? (
           <p className="text-sm text-[var(--numa-faint)]">Inga rörelser ännu</p>
         ) : (
-          <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
+          <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {data.recent.map((tx) => {
               const signed =
                 tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
@@ -428,11 +360,13 @@ export function AnalysDashboard({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                      {tx.description}
+                      {sanitizeMoneyDescription(tx.description)}
                     </p>
-                    <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                      {tx.category ?? tx.transactionType}
-                    </p>
+                    {tx.category ? (
+                      <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                        {tx.category}
+                      </p>
+                    ) : null}
                   </div>
                   <MoneyDisplay
                     amountMinor={signed}
@@ -446,41 +380,6 @@ export function AnalysDashboard({
           </ul>
         )}
       </section>
-    </div>
-  );
-}
-
-function MetricRow({
-  label,
-  amountMinor,
-  currency,
-  hint,
-  tone,
-}: {
-  label: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  hint?: string;
-  tone?: "positive" | "danger";
-}) {
-  const amountClass =
-    tone === "positive"
-      ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
-        : "text-[var(--numa-ink)]";
-
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-[var(--numa-border)] py-3.5 last:border-b-0">
-      <div className="min-w-0">
-        <p className="text-sm text-[var(--numa-muted)]">{label}</p>
-        {hint ? (
-          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{hint}</p>
-        ) : null}
-      </div>
-      <div className={`shrink-0 ${amountClass}`}>
-        <MoneyDisplay amountMinor={amountMinor} currency={currency} size="md" />
-      </div>
     </div>
   );
 }
@@ -518,7 +417,7 @@ function LineList({
       {lines.length === 0 ? (
         <p className="px-0.5 text-sm text-[var(--numa-faint)]">{empty}</p>
       ) : (
-        <ul className="numa-panel divide-y divide-[var(--numa-border)] overflow-hidden">
+        <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
           {lines.map((line) => (
             <li
               key={line.id}
@@ -526,10 +425,10 @@ function LineList({
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                  {line.name}
+                  {sanitizeMoneyDescription(line.name)}
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                  {line.detail}
+                  {sanitizeMoneyDescription(line.detail)}
                 </p>
               </div>
               <MoneyDisplay

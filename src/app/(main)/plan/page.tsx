@@ -18,12 +18,7 @@ export default async function PlanPage() {
   return (
     <div className="space-y-6">
       <header className="animate-rise">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-          Plan
-        </h1>
-        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
-          Planera månad för månad. Hem visar hur mycket du har kvar per dag.
-        </p>
+        <h1 className="numa-page-title">Plan</h1>
       </header>
 
       {error ? (

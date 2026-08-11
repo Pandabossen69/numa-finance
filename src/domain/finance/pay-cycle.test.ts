@@ -263,4 +263,41 @@ describe("projectPayCycle", () => {
     );
     expect(inWindow.map((e) => e.dueAt)).toEqual(["2026-09-20T12:00:00.000Z"]);
   });
+
+  it("counts daysLeft on Bangkok calendar days (not raw UTC hours)", () => {
+    const items = [
+      item({
+        name: "Lön",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+    ];
+
+    // 00:30 Bangkok on Aug 26 — still one calendar day after paycheck.
+    const justAfterMidnight = projectPayCycle(
+      items,
+      new Date("2026-08-25T17:30:00.000Z"),
+      tz,
+    );
+    expect(justAfterMidnight.isActive).toBe(true);
+    // Aug 26 → Sep 25 exclusive end = 30 spend days.
+    expect(justAfterMidnight.daysLeft).toBe(30);
+
+    // Late evening Bangkok Aug 25 is still the paycheck day (0 days into cycle).
+    const paycheckEvening = projectPayCycle(
+      items,
+      new Date("2026-08-25T15:00:00.000Z"),
+      tz,
+    );
+    expect(paycheckEvening.daysLeft).toBe(31);
+  });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BangkokBankSmsParser,
+  formatBankEventLabel,
   majorStringToMinor,
   orderNewestFirst,
   selectImportableBankEvent,
@@ -54,6 +55,24 @@ describe("bangkok bank multi-SMS", () => {
     expect(majorStringToMinor("10,058.04")).toBe(1005804);
     expect(majorStringToMinor("750.00")).toBe(75000);
     expect(majorStringToMinor("3,400.00")).toBe(340000);
+  });
+
+  it("formats bank event labels with THB suffix, never ฿", () => {
+    const label = formatBankEventLabel({
+      institution: "Bangkok Bank",
+      maskedAccount: "6591",
+      direction: "debit",
+      amountMinor: 75_000,
+      currency: "THB",
+      balanceAfterMinor: 1_075_804,
+      channel: "mobile",
+      confidence: 0.9,
+      raw: SMS_A,
+      sourceIndex: 0,
+    });
+    expect(label).not.toContain("฿");
+    expect(label).toContain("THB");
+    expect(label).toMatch(/750,00 THB/);
   });
 
   it("parses short Withdrawal and PromptPay credit", () => {
@@ -228,7 +247,7 @@ describe("bangkok bank multi-SMS", () => {
     expect(result.skippedDuplicateCount).toBe(2);
   });
 
-  it("still imports older unknowns when tip is already known", () => {
+  it("still imports older unknowns when tip is already known — without rewriting tip", () => {
     const parser = new BangkokBankSmsParser();
     const parsed = parser.parse({
       institution: "Bangkok Bank",
@@ -248,7 +267,9 @@ describe("bangkok bank multi-SMS", () => {
     expect(result.status).toBe("ready");
     if (result.status !== "ready") return;
     expect(result.selectedBatch).toHaveLength(2);
+    // Informational image tip remains, but must not rewrite Hem verifiedAt.
     expect(result.tipBalanceAfterMinor).toBe(newest.balanceAfterMinor);
+    expect(result.updatesBalance).toBe(false);
   });
 
   it("reports all_known when every SMS fingerprint exists", () => {
@@ -337,6 +358,7 @@ Withdrawal/transfer/payment from your account X6591 of Bt 99.00 via MOBILE; the 
     expect(result.selectedBatch).toHaveLength(1);
     expect(result.selected.amountMinor).toBe(9900);
     expect(result.tipBalanceAfterMinor).toBe(1_000_904);
+    expect(result.updatesBalance).toBe(true);
     expect(result.skippedDuplicateCount).toBe(1);
   });
 
@@ -377,6 +399,41 @@ Withdrawal/transfer/payment from your account X6591 of Bt 99.00 via MOBILE; the 
     expect(resolved.suggestedAmountMinor).toBe(6500);
     expect(resolved.balanceAfterMinor).toBe(1069304);
     expect(resolved.selectedBatch.length).toBe(2);
+  });
+
+  it("resolveScreenshotImport nulls tip when only older unknowns remain", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+    });
+    const newest = parsed.find((p) => p.amountMinor === 12000)!;
+    const knownNewest = [
+      fpOf({
+        institution: newest.institution,
+        maskedAccount: newest.maskedAccount!,
+        direction: "debit",
+        amountMinor: newest.amountMinor!,
+        balanceAfterMinor: newest.balanceAfterMinor,
+      }),
+    ];
+    const resolved = resolveScreenshotImport(
+      {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          detectedKind: "bangkok_bank_sms",
+          fullText: `${SMS_A}\n\n${SMS_B}\n\n${SMS_C}`,
+          smsTexts: [SMS_A, SMS_B, SMS_C],
+        },
+      },
+      knownNewest,
+    );
+    expect(resolved.kind).toBe("bank_sms");
+    expect(resolved.alreadyKnown).toBe(false);
+    expect(resolved.selectedBatch.length).toBe(2);
+    // Must not rewrite Hem tip / wipe post-tip manuals.
+    expect(resolved.balanceAfterMinor).toBeNull();
   });
 
   it("resolveScreenshotImport rebuilds SMS from structured candidates without rawText", () => {

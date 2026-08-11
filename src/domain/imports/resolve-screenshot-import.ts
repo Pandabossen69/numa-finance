@@ -198,7 +198,10 @@ export function resolveScreenshotImport(
         selectedBatch: selection.selectedBatch,
         suggestedAmountMinor: s.amountMinor,
         suggestedDescription: s.labelSv,
-        balanceAfterMinor: selection.tipBalanceAfterMinor,
+        // Only tip-in-batch may rewrite Hem saldo; older re-imports keep null.
+        balanceAfterMinor: selection.updatesBalance
+          ? selection.tipBalanceAfterMinor
+          : null,
         fingerprint: s.fingerprint?.fingerprint ?? null,
         direction: s.direction,
         currency: s.currency ?? "THB",

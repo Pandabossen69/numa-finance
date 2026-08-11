@@ -28,11 +28,7 @@ export default async function InstallningarPage({
 
   return (
     <div className="mx-auto max-w-lg space-y-7 text-[var(--numa-ink)]">
-      <MerPageHeader
-        back
-        title="Inställningar"
-        description="Profil, underhåll och konto."
-      />
+      <MerPageHeader back title="Inställningar" />
 
       <div className="animate-rise-delay-1 space-y-6">
         <MerSection title="Underhåll">
@@ -43,8 +39,7 @@ export default async function InstallningarPage({
                   Fungerar inte appen?
                 </p>
                 <p className="mt-1 text-[12px] leading-relaxed text-[var(--numa-faint)]">
-                  Om Hem är tom vit medan menyn syns beror det oftast på gammal
-                  cache i telefonen. Knappen rensar och laddar om.
+                  Rensar cache och laddar om.
                 </p>
               </div>
               <RepairAppButton autoStart={autoLaga} />

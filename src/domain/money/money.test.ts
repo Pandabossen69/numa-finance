@@ -6,6 +6,7 @@ import {
   fromMajorUnits,
   money,
   parseUiAmountToMinor,
+  sanitizeMoneyDescription,
   subtractMoney,
 } from "@/domain/money";
 import { convertWithRate, type FxRate } from "@/domain/money/fx";
@@ -40,6 +41,13 @@ describe("Money", () => {
     expect(normalizeSpaces(formatMoney(money(1245000, "SEK")))).toBe(
       "12 450,00 kr",
     );
+  });
+
+  it("sanitizes legacy ฿ glyphs in stored movement labels", () => {
+    expect(
+      sanitizeMoneyDescription("− Utgift ฿750,00 · …X6591 · saldo ฿10 758,04"),
+    ).toBe("− Utgift 750,00 THB · …X6591 · saldo 10 758,04 THB");
+    expect(sanitizeMoneyDescription("Lunch 150 THB")).toBe("Lunch 150 THB");
   });
 
   it("parses Swedish UI amounts without using bank source rules", () => {
