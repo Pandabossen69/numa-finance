@@ -5,18 +5,18 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
-  NEXT_INCOME_NAME,
   isRecurringMonthly,
-  labelMonthSv,
+  labelMonthNameSv,
+  monthKeyFromDate,
   projectPlanForMonth,
-  upcomingMonthKeys,
+  yearFromMonthKey,
+  yearMonthKeys,
 } from "@/domain/finance";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import {
   createPlanIncomeAction,
   createPlanItemAction,
   deletePlanItemAction,
-  setNextIncomeDateAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
 
@@ -27,20 +27,23 @@ function minorToUi(amountMinor: number): string {
 export function PlanEditor({
   items,
   currency,
-  daysUntilIncome,
   timeZone,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
-  daysUntilIncome: number;
   timeZone: string;
 }) {
   const router = useRouter();
-  const monthKeys = useMemo(
-    () => upcomingMonthKeys(new Date(), timeZone, 4),
+  const currentMonthKey = useMemo(
+    () => monthKeyFromDate(new Date(), timeZone),
     [timeZone],
   );
-  const [monthKey, setMonthKey] = useState(monthKeys[0]!);
+  const [viewYear, setViewYear] = useState(() =>
+    yearFromMonthKey(currentMonthKey),
+  );
+  const [monthKey, setMonthKey] = useState(currentMonthKey);
+
+  const monthKeys = useMemo(() => yearMonthKeys(viewYear), [viewYear]);
 
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
@@ -51,10 +54,6 @@ export function PlanEditor({
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
 
-  const [incomeDate, setIncomeDate] = useState(() => {
-    const existing = items.find((i) => i.name === NEXT_INCOME_NAME)?.nextDueAt;
-    return existing ? existing.slice(0, 10) : "";
-  });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -64,6 +63,20 @@ export function PlanEditor({
   );
 
   const balanceMinor = projection.incomeMinor - projection.totalPlannedMinor;
+
+  function selectMonth(key: string) {
+    setMonthKey(key);
+    setViewYear(yearFromMonthKey(key));
+    setEditingId(null);
+  }
+
+  function shiftYear(delta: number) {
+    const nextYear = viewYear + delta;
+    const mm = monthKey.slice(5);
+    setViewYear(nextYear);
+    setMonthKey(`${nextYear}-${mm}`);
+    setEditingId(null);
+  }
 
   function refreshAfter(result: { ok: true } | { ok: false; error: string }) {
     if (!result.ok) {
@@ -84,22 +97,54 @@ export function PlanEditor({
   return (
     <div className="space-y-6">
       <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => shiftYear(-1)}
+              className="min-h-10 rounded-full bg-white/70 px-3 text-sm font-semibold text-[var(--numa-muted)] transition hover:bg-white"
+              aria-label="Föregående år"
+            >
+              ← {viewYear - 1}
+            </button>
+            <p className="min-w-[4.5rem] text-center text-lg font-semibold tracking-tight">
+              {viewYear}
+            </p>
+            <button
+              type="button"
+              onClick={() => shiftYear(1)}
+              className="min-h-10 rounded-full bg-white/70 px-3 text-sm font-semibold text-[var(--numa-muted)] transition hover:bg-white"
+              aria-label="Nästa år"
+            >
+              {viewYear + 1} →
+            </button>
+          </div>
+          {monthKey !== currentMonthKey ? (
+            <button
+              type="button"
+              onClick={() => selectMonth(currentMonthKey)}
+              className="text-sm font-semibold text-[var(--numa-accent)]"
+            >
+              Tillbaka till nu
+            </button>
+          ) : null}
+        </div>
+
         <div className="flex gap-2 overflow-x-auto pb-1">
           {monthKeys.map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => {
-                setMonthKey(key);
-                setEditingId(null);
-              }}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold capitalize transition ${
+              onClick={() => selectMonth(key)}
+              className={`min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize transition ${
                 monthKey === key
                   ? "bg-[var(--numa-ink)] text-white shadow-sm"
-                  : "bg-white/70 text-[var(--numa-muted)] hover:bg-white"
+                  : key === currentMonthKey
+                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
+                    : "bg-white/70 text-[var(--numa-muted)] hover:bg-white"
               }`}
             >
-              {labelMonthSv(key)}
+              {labelMonthNameSv(key)}
             </button>
           ))}
         </div>
@@ -266,36 +311,6 @@ export function PlanEditor({
           />
         </PlanCard>
       </div>
-
-      <section className="numa-panel space-y-3 p-4">
-        <div>
-          <h2 className="font-medium">Nästa inkomst (daglig spridning)</h2>
-          <p className="mt-1 text-sm text-[var(--numa-muted)]">
-            Används på Hem för att sprida det lediga beloppet. Nu:{" "}
-            {daysUntilIncome} dagar.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            type="date"
-            value={incomeDate}
-            onChange={(e) => setIncomeDate(e.target.value)}
-            className="min-h-12 flex-1 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
-          />
-          <button
-            type="button"
-            disabled={pending || !incomeDate}
-            className="min-h-12 rounded-2xl bg-[var(--numa-ink)] px-5 text-sm font-medium text-white disabled:opacity-45"
-            onClick={() => {
-              startTransition(async () => {
-                refreshAfter(await setNextIncomeDateAction(incomeDate));
-              });
-            }}
-          >
-            Spara datum
-          </button>
-        </div>
-      </section>
     </div>
   );
 }

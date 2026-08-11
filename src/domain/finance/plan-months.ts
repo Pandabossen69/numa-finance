@@ -154,6 +154,28 @@ export function upcomingMonthKeys(
   return Array.from({ length: count }, (_, i) => addMonthsKey(base, i));
 }
 
+/** All 12 month keys for a calendar year (`2026-01` … `2026-12`). */
+export function yearMonthKeys(year: number): string[] {
+  return Array.from({ length: 12 }, (_, i) => {
+    const mm = String(i + 1).padStart(2, "0");
+    return `${year}-${mm}`;
+  });
+}
+
+/** Short Swedish month name without year, e.g. `augusti`. */
+export function labelMonthNameSv(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, (m ?? 1) - 1, 1));
+  return d.toLocaleDateString("sv-SE", {
+    month: "long",
+    timeZone: "UTC",
+  });
+}
+
+export function yearFromMonthKey(monthKey: string): number {
+  return Number(monthKey.slice(0, 4));
+}
+
 /**
  * Returns plan items with overdue monthly nextDueAt rolled forward.
  * Does not mutate input.

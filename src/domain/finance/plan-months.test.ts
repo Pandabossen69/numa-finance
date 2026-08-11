@@ -5,6 +5,7 @@ import {
   projectPlanForMonth,
   rollDueDateForward,
   withRolledMonthlyDues,
+  yearMonthKeys,
 } from "./plan-months";
 
 function item(
@@ -103,5 +104,22 @@ describe("plan-months", () => {
     expect(new Date(items[0]!.nextDueAt!).getTime()).toBeGreaterThanOrEqual(
       now.getTime(),
     );
+  });
+
+  it("lists all twelve months for a year", () => {
+    expect(yearMonthKeys(2027)).toEqual([
+      "2027-01",
+      "2027-02",
+      "2027-03",
+      "2027-04",
+      "2027-05",
+      "2027-06",
+      "2027-07",
+      "2027-08",
+      "2027-09",
+      "2027-10",
+      "2027-11",
+      "2027-12",
+    ]);
   });
 });

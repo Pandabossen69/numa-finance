@@ -32,7 +32,6 @@ export default async function PlanPage() {
           <PlanEditor
             items={snap?.planItems ?? []}
             currency={currency}
-            daysUntilIncome={snap?.daysUntilIncome ?? 0}
             timeZone={timeZone}
           />
         </section>
