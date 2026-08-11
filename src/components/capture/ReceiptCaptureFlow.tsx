@@ -327,7 +327,7 @@ export function ReceiptCaptureFlow({
           </h2>
           <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {isSms
-              ? "Skärmdumpa Bangkok Bank. Vi läser alla nya SMS i bilden — både + (insättning) och − (utgift). Saldo sätts från senaste notisen."
+              ? "Skärmdumpa Bangkok Bank (ofta 3–6 bubblor). Vi läser + och − automatiskt. Samma SMS igen känns igen via belopp + saldo — datum behövs inte."
               : "Håll texten skarp. Beloppet fylls i automatiskt."}
           </p>
         </header>
@@ -503,6 +503,13 @@ export function ReceiptCaptureFlow({
         </div>
       ) : null}
 
+      {isSms ? (
+        <p className="text-xs leading-relaxed text-[var(--numa-faint)]">
+          Unikt ID per bubbla: belopp + saldo efter. Sparat i din historik —
+          samma skärmdump igen importeras inte två gånger.
+        </p>
+      ) : null}
+
       {preview.skippedOlderCount > 0 ? (
         <p className="text-xs text-[var(--numa-faint)]">
           {preview.skippedOlderCount} redan sparade SMS hoppades över.
@@ -604,7 +611,7 @@ function ModePicker({
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: "Alla nya SMS · + in och − ut",
+      hint: "3–6 bubblor · +/− · aldrig dubbelt",
     },
     {
       id: "receipt",

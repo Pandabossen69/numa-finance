@@ -1,8 +1,12 @@
 import type { TransactionDirection } from "./types";
 
 /**
- * Deterministic fingerprint for high-confidence bank observations.
- * Never use amount alone. Institution-specific strategies can extend this later.
+ * Deterministic fingerprint for Bangkok Bank SMS (no payment date in the bubble).
+ *
+ * Uniqueness = institution + account + direction + amount + available balance.
+ * Two screenshots of the same SMS always produce the same fingerprint, so we
+ * never import it twice — even when the thread also contains newer SMS.
+ * Never use amount alone (50 Bt can happen many times).
  */
 export type FingerprintParts = {
   institution: string;

@@ -1,12 +1,17 @@
 /**
- * Import rules (Bangkok Bank SMS) — never invent money.
+ * Import rules (Bangkok Bank SMS / Hugo) — never invent money.
  *
- * 1. Parse every bubble; fingerprint = institution+account+direction+amount+balanceAfter
- *    (channel excluded when balanceAfter exists — same SMS must never double-import).
- * 2. Import ALL unknown SMS in the screenshot (credits and debits).
- * 3. Saldo checkpoint = newest SMS's "available balance" only.
- * 4. Same SMS in another photo → fingerprint match → skip.
- * 5. Incomplete / unclear direction → do not invent debit or ฿0.
+ * Typical screenshot: 3–6 bubbles, mix of Withdrawal (from) and PromptPay (to),
+ * currency Bt, account like X6591, every line ends with available balance.
+ * iMessage shows "idag" but the SMS body has NO payment date — so identity is:
+ *
+ *   fingerprint = bank + konto + +/- + belopp + available balance
+ *
+ * 1. Parse every bubble (never invent debit/credit or ฿0).
+ * 2. Import ALL unknown SMS in the shot (credits and debits).
+ * 3. Saldo on Hem = newest bubble's available balance only.
+ * 4. Known fingerprint in Supabase → skip that bubble (overlap-safe).
+ * 5. Channel (MOBILE/ATM) ignored in fingerprint when balance exists.
  */
 
 import {

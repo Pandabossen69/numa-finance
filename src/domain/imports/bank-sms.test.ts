@@ -270,6 +270,95 @@ describe("bangkok bank multi-SMS", () => {
     expect(result.status).toBe("all_known");
   });
 
+  /**
+   * Hugo's real Bangkok Bank thread (IMG_3282): 3–6 bubbles, Bt, X6591,
+   * no payment date in SMS body — identity = amount + available balance.
+   */
+  const HUGO_THREAD = `Withdrawal/transfer/payment from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,028.04.
+
+Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04.
+
+Withdrawal/transfer/payment from your account X6591 of Bt 320.00 via MOBILE; the available balance is Bt 6,708.04.
+
+PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04`;
+
+  it("Hugo thread: parses 4 bubbles with +/− and tip saldo 10108.04", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: HUGO_THREAD,
+    });
+    expect(parsed).toHaveLength(4);
+    expect(parsed.map((p) => p.direction)).toEqual([
+      "debit",
+      "debit",
+      "debit",
+      "credit",
+    ]);
+    expect(parsed.map((p) => p.amountMinor)).toEqual([
+      5000, 500_000, 32_000, 340_000,
+    ]);
+    const result = selectImportableBankEvent(parsed, []);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selectedBatch).toHaveLength(4);
+    expect(result.selected.direction).toBe("credit");
+    expect(result.selected.amountMinor).toBe(340_000);
+    expect(result.tipBalanceAfterMinor).toBe(1_010_804);
+  });
+
+  it("Hugo thread: second overlapping screenshot imports only the new tip", () => {
+    const parser = new BangkokBankSmsParser();
+    const first = parser.parse({
+      institution: "Bangkok Bank",
+      text: HUGO_THREAD,
+    });
+    const known = first.map((p) =>
+      fpOf({
+        institution: p.institution,
+        maskedAccount: p.maskedAccount!,
+        direction: p.direction as "debit" | "credit",
+        amountMinor: p.amountMinor!,
+        balanceAfterMinor: p.balanceAfterMinor,
+      }),
+    );
+
+    const newer = `PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04
+
+Withdrawal/transfer/payment from your account X6591 of Bt 99.00 via MOBILE; the available balance is Bt 10,009.04.`;
+
+    const second = parser.parse({
+      institution: "Bangkok Bank",
+      text: newer,
+    });
+    const result = selectImportableBankEvent(second, known);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selectedBatch).toHaveLength(1);
+    expect(result.selected.amountMinor).toBe(9900);
+    expect(result.tipBalanceAfterMinor).toBe(1_000_904);
+    expect(result.skippedDuplicateCount).toBe(1);
+  });
+
+  it("Hugo thread: identical re-upload is all_known (never double-import)", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: HUGO_THREAD,
+    });
+    const known = parsed.map((p) =>
+      fpOf({
+        institution: p.institution,
+        maskedAccount: p.maskedAccount!,
+        direction: p.direction as "debit" | "credit",
+        amountMinor: p.amountMinor!,
+        balanceAfterMinor: p.balanceAfterMinor,
+      }),
+    );
+    const again = selectImportableBankEvent(parsed, known);
+    expect(again.status).toBe("all_known");
+  });
+
   it("resolveScreenshotImport prefers latest unknown from vision metadata", () => {
     const resolved = resolveScreenshotImport(
       {
