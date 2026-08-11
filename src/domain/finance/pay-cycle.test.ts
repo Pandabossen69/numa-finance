@@ -50,7 +50,94 @@ describe("pay-cycle helpers", () => {
 describe("projectPayCycle", () => {
   const tz = "Asia/Bangkok";
 
-  it("builds cycle from income to next income and includes mid-cycle rent", () => {
+  it("pools all incomes in a month until next month's last income", () => {
+    const items = [
+      item({
+        name: "Alltid ID",
+        kind: "expected",
+        amountMinor: 7_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-23T12:00:00.000Z",
+      }),
+      item({
+        name: "CSN",
+        kind: "expected",
+        amountMinor: 58_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Trukks",
+        kind: "expected",
+        amountMinor: 52_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Alltid ID sep",
+        kind: "expected",
+        amountMinor: 7_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-23T12:00:00.000Z",
+      }),
+      item({
+        name: "CSN sep",
+        kind: "expected",
+        amountMinor: 58_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Trukks sep",
+        kind: "expected",
+        amountMinor: 52_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 12_000_00,
+        nextDueAt: "2026-09-01T12:00:00.000Z",
+      }),
+      item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 5_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+    ];
+
+    // Mid-cycle after first paycheck — must NOT open a 2-day cycle to CSN.
+    const on24th = projectPayCycle(
+      items,
+      new Date("2026-08-24T03:00:00.000Z"),
+      tz,
+    );
+    expect(on24th.startAt).toBe("2026-08-23T12:00:00.000Z");
+    expect(on24th.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(on24th.incomeMinor).toBe(7_000_00 + 58_000_00 + 52_000_00);
+    expect(on24th.expenseMinor).toBe(12_000_00);
+    expect(on24th.savingsMinor).toBe(5_000_00);
+    expect(on24th.freeToSpendMinor).toBe(100_000_00);
+    expect(on24th.incomes.map((i) => i.name).sort()).toEqual([
+      "Alltid ID",
+      "CSN",
+      "Trukks",
+    ]);
+
+    const afterAll = projectPayCycle(
+      items,
+      new Date("2026-08-26T03:00:00.000Z"),
+      tz,
+    );
+    expect(afterAll.incomeMinor).toBe(117_000_00);
+    expect(afterAll.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(afterAll.expenses.map((e) => e.item.name)).toEqual(["Hyra"]);
+  });
+
+  it("builds cycle from income month to next month's last income", () => {
     const items = [
       item({
         name: "Lön",
@@ -158,5 +245,22 @@ describe("projectPayCycle", () => {
     expect(cycle.expenses.map((e) => e.item.name)).toEqual(["Lån"]);
     expect(cycle.expenseMinor).toBe(8_000_00);
     expect(cycle.freeToSpendMinor).toBe(32_000_00);
+  });
+
+  it("excludes expenses that fall before the paycheck wave", () => {
+    const inWindow = expensesInWindow(
+      [
+        item({
+          name: "Netflix",
+          kind: "mandatory",
+          amountMinor: 199_00,
+          nextDueAt: "2026-08-20T12:00:00.000Z",
+        }),
+      ],
+      "2026-08-25T12:00:00.000Z",
+      "2026-09-25T12:00:00.000Z",
+      tz,
+    );
+    expect(inWindow.map((e) => e.dueAt)).toEqual(["2026-09-20T12:00:00.000Z"]);
   });
 });

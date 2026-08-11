@@ -226,8 +226,8 @@ export function PlanEditor({
               </h2>
               <p className="mt-1 max-w-[48ch] text-sm text-[var(--numa-muted)]">
                 {cycle.isActive
-                  ? `Du får röra dig med intäkten från ${cycle.startLabelSv} tills nästa kommer in · ${cycle.daysLeft} dagar kvar.`
-                  : `Nästa cykel börjar ${cycle.startLabelSv}. Lägg in intäktsdatum så Hem räknar rätt.`}
+                  ? `Alla intäkter i perioden räknas ihop. Det som blir över efter utgifter är ditt att leva på · ${cycle.daysLeft} dagar kvar.`
+                  : `Nästa period börjar ${cycle.startLabelSv}. Lägg in månadens intäkter så poolen stämmer.`}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

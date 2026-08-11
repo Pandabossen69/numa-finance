@@ -44,7 +44,7 @@ export function AnalysDashboard({
           </h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
             {cycle.isActive
-              ? `${cycle.daysLeft} dagar kvar till nästa intäkt`
+              ? `${cycle.daysLeft} dagar kvar till nästa månads sista intäkt`
               : "Lägg in intäkter med datum i Plan för att starta cykeln."}
           </p>
         </div>

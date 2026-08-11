@@ -155,10 +155,11 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     }));
 
     const formulaSteps = [
-      "Cykel = senaste intäktsdatum → nästa intäktsdatum (eller samma dag nästa månad).",
-      "Planerat fritt = intäkter i cykeln − utgifter som förfaller i cykeln − sparande.",
-      "Kvar totalt = planerat fritt − faktiskt spenderat sedan cykelns start.",
-      "Kvar per dag = kvar totalt ÷ dagar kvar till nästa intäkt.",
+      "Alla intäkter samma kalendermånad räknas ihop (t.ex. Alltid ID + CSN + Trukks).",
+      "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
+      "Planerat fritt = intäkter − utgifter i perioden − sparande.",
+      "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
+      "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
     ];
 
     return {

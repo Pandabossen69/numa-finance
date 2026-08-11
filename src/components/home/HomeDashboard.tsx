@@ -46,6 +46,11 @@ export function HomeDashboard({
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
           Hem
         </h1>
+        <p className="mt-2 max-w-[40ch] text-sm text-[var(--numa-muted)]">
+          {hasCycle
+            ? "Alla intäkter ihop, minus utgifter — resten lever du på per dag."
+            : "Lägg in intäkter med datum i Plan (t.ex. 23:e och 25:e)."}
+        </p>
       </header>
 
       {!snap.hasBankTruth ? (
@@ -90,7 +95,7 @@ export function HomeDashboard({
         <p className="text-sm text-[var(--numa-muted)]">
           {!hasCycle
             ? "Lägg in intäkt med datum i Plan."
-            : `${snap.spendDaysLeft} dagar till nästa intäkt${snap.cycleEndInferred ? " (beräknad)" : ""}.`}
+            : `${snap.spendDaysLeft} dagar till nästa månads sista intäkt${snap.cycleEndInferred ? " (beräknad)" : ""}.`}
         </p>
       </section>
 

@@ -44,15 +44,17 @@ export type CycleExpense = {
 };
 
 export type PayCycleProjection = {
-  /** Inclusive cycle start (income arrival). */
+  /** Inclusive cycle start (first income in the funding month). */
   startAt: string | null;
-  /** Exclusive cycle end (next income). */
+  /** Exclusive cycle end (last income next month — when new pool arrives). */
   endAt: string | null;
   startLabelSv: string | null;
   endLabelSv: string | null;
+  /** Funding calendar month for the income pool (`2026-08`). */
+  fundingMonthKey: string | null;
   /** True when start ≤ now < end. */
   isActive: boolean;
-  /** True when cycle is inferred (no next income row — assumed +1 month). */
+  /** True when cycle end was assumed (+1 month from last funding income). */
   endInferred: boolean;
   incomes: PlanItem[];
   expenses: CycleExpense[];
@@ -67,6 +69,8 @@ export type PayCycleProjection = {
   daysLeft: number;
   perDayMinor: number;
 };
+
+type DatedIncome = { item: PlanItem; at: number; iso: string; monthKey: string };
 
 function labelDateSv(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleDateString("sv-SE", {
@@ -87,27 +91,48 @@ function startOfZonedDayMs(now: Date, timeZone: string): number {
   const m = parts.find((p) => p.type === "month")?.value;
   const d = parts.find((p) => p.type === "day")?.value;
   if (!y || !m || !d) return now.getTime();
-  // Compare using UTC noon anchors for date-only plan items.
   return Date.parse(`${y}-${m}-${d}T12:00:00.000Z`);
 }
 
-function incomeDates(items: PlanItem[]): Array<{ item: PlanItem; at: number; iso: string }> {
-  const out: Array<{ item: PlanItem; at: number; iso: string }> = [];
+function isRealIncome(item: PlanItem): boolean {
+  if (item.name === NEXT_INCOME_NAME) return false;
+  return (
+    isPlanIncome(item) || (item.cadence ?? "").toLowerCase() === "income"
+  );
+}
+
+/** Planned paycheck incomes only (amounts that fund the living pool). */
+function realIncomeDates(
+  items: PlanItem[],
+  timeZone: string,
+): DatedIncome[] {
+  const out: DatedIncome[] = [];
   for (const item of items) {
-    if (!item.isActive || !item.nextDueAt) continue;
-    const isIncome =
-      isPlanIncome(item) ||
-      item.name === NEXT_INCOME_NAME ||
-      (item.cadence ?? "").toLowerCase() === "income";
-    if (!isIncome) continue;
-    // Zero-amount NEXT_INCOME marker only counts as a boundary, not pool income —
-    // still include in date list.
+    if (!item.isActive || !item.nextDueAt || !isRealIncome(item)) continue;
     const at = Date.parse(item.nextDueAt);
     if (!Number.isFinite(at)) continue;
-    out.push({ item, at, iso: item.nextDueAt });
+    out.push({
+      item,
+      at,
+      iso: item.nextDueAt,
+      monthKey: monthKeyFromDate(new Date(item.nextDueAt), timeZone),
+    });
   }
-  out.sort((a, b) => a.at - b.at);
+  out.sort((a, b) => a.at - b.at || a.item.name.localeCompare(b.item.name));
   return out;
+}
+
+function groupByMonth(dated: DatedIncome[]): Map<string, DatedIncome[]> {
+  const map = new Map<string, DatedIncome[]>();
+  for (const row of dated) {
+    const list = map.get(row.monthKey) ?? [];
+    list.push(row);
+    map.set(row.monthKey, list);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => a.at - b.at);
+  }
+  return map;
 }
 
 function expenseAmountParts(item: PlanItem): {
@@ -156,7 +181,6 @@ export function expensesInWindow(
     cursor = addMonthsKey(cursor, 1);
     guard += 1;
   }
-  // Also one month before start (expense on day 1 when cycle starts mid-month previous).
   monthKeys.unshift(addMonthsKey(startKey, -1));
 
   const result: CycleExpense[] = [];
@@ -204,6 +228,7 @@ function emptyCycle(): PayCycleProjection {
     endAt: null,
     startLabelSv: null,
     endLabelSv: null,
+    fundingMonthKey: null,
     isActive: false,
     endInferred: false,
     incomes: [],
@@ -221,53 +246,62 @@ function emptyCycle(): PayCycleProjection {
 }
 
 /**
- * Active (or upcoming) pay cycle: last income → next income.
- * If next income is missing, assume same day-of-month next month.
+ * Living cycle funded by a calendar month's income wave.
+ *
+ * Example: Alltid ID 23rd + CSN/Trukks 25th in August are ONE pool.
+ * That pool covers fixed/extra costs until the last income next month
+ * (when the next pool arrives) — leftover ÷ days = personal daily budget.
  */
 export function projectPayCycle(
   items: PlanItem[],
   now: Date,
   timeZone: string,
 ): PayCycleProjection {
-  const dated = incomeDates(items);
+  const dated = realIncomeDates(items, timeZone);
   if (dated.length === 0) return emptyCycle();
 
+  const byMonth = groupByMonth(dated);
   const todayMs = startOfZonedDayMs(now, timeZone);
 
-  // Prefer latest income on/before today; else earliest future (upcoming cycle).
   const pastOrToday = dated.filter((d) => d.at <= todayMs);
-  const startEntry =
+  const fundingMonthKey =
     pastOrToday.length > 0
-      ? pastOrToday[pastOrToday.length - 1]!
-      : dated[0]!;
+      ? pastOrToday[pastOrToday.length - 1]!.monthKey
+      : dated[0]!.monthKey;
 
-  const startIso = startEntry.iso;
-  const startAt = startEntry.at;
+  const wave = byMonth.get(fundingMonthKey) ?? [];
+  if (wave.length === 0) return emptyCycle();
 
-  const later = dated.filter((d) => d.at > startAt);
+  const startIso = wave[0]!.iso;
+  const startAt = wave[0]!.at;
+  const lastFundingIso = wave[wave.length - 1]!.iso;
+
+  // Next month that has planned incomes → end at that month's LAST income.
   let endIso: string;
   let endInferred = false;
-  if (later.length > 0) {
-    endIso = later[0]!.iso;
-  } else {
-    endIso = addMonthsPreservingDay(startIso, 1);
+  let cursor = addMonthsKey(fundingMonthKey, 1);
+  let foundNext = false;
+  for (let i = 0; i < 24; i++) {
+    const nextWave = byMonth.get(cursor);
+    if (nextWave && nextWave.length > 0) {
+      endIso = nextWave[nextWave.length - 1]!.iso;
+      foundNext = true;
+      break;
+    }
+    cursor = addMonthsKey(cursor, 1);
+  }
+  if (!foundNext) {
+    endIso = addMonthsPreservingDay(lastFundingIso, 1);
     endInferred = true;
   }
-  const endAt = Date.parse(endIso);
+  const endAt = Date.parse(endIso!);
 
-  const incomes = dated
-    .filter((d) => d.at >= startAt && d.at < endAt)
-    .filter((d) => d.item.name !== NEXT_INCOME_NAME)
-    .filter((d) => isPlanIncome(d.item) || (d.item.cadence ?? "").toLowerCase() === "income")
-    .map((d) => d.item);
-
-  // Deduplicate by id
   const incomeUnique = Array.from(
-    new Map(incomes.map((i) => [i.id, i])).values(),
+    new Map(wave.map((d) => [d.item.id, d.item])).values(),
   );
   const incomeMinor = incomeUnique.reduce((s, i) => s + i.amountMinor, 0);
 
-  const expenses = expensesInWindow(items, startIso, endIso, timeZone);
+  const expenses = expensesInWindow(items, startIso, endIso!, timeZone);
   let reservedMinor = 0;
   let bufferMinor = 0;
   let flexibleMinor = 0;
@@ -279,10 +313,8 @@ export function projectPayCycle(
   }
   const expenseMinor = reservedMinor + bufferMinor + flexibleMinor;
 
-  const startMonth = monthKeyFromDate(new Date(startIso), timeZone);
-  const monthProj = projectPlanForMonth(items, startMonth, timeZone);
+  const monthProj = projectPlanForMonth(items, fundingMonthKey, timeZone);
   const savingsMinor = monthProj.savingsMinor;
-
   const freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
 
   const isActive = startAt <= todayMs && todayMs < endAt;
@@ -295,9 +327,10 @@ export function projectPayCycle(
 
   return {
     startAt: startIso,
-    endAt: endIso,
+    endAt: endIso!,
     startLabelSv: labelDateSv(startIso, timeZone),
-    endLabelSv: labelDateSv(endIso, timeZone),
+    endLabelSv: labelDateSv(endIso!, timeZone),
+    fundingMonthKey,
     isActive,
     endInferred,
     incomes: incomeUnique,
