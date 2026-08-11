@@ -7,10 +7,9 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 /**
  * What you can live on right now on Hem.
  *
- * - bridge: before the last funding income arrives — use kontosaldo (manual or
- *   from fotade SMS/kvitton). The cycle opens on the last income of the wave.
- * - cycle: after last funding income landed — plan pool minus utgifter minus spenderat.
- * - empty: no planned incomes yet.
+ * - bridge: before the first income of the wave — kontosaldo until then
+ * - cycle: after any funding income landed (partial or full phase from pay-cycle)
+ * - empty: no planned incomes yet
  */
 export type LivingBudget = {
   mode: LivingBudgetMode;
@@ -65,8 +64,11 @@ export function projectLivingBudget(input: {
   const startMs = Date.parse(cycle.startAt);
   const endMs = Date.parse(cycle.endAt);
 
-  // Waiting for the next paycheck wave — live on what's already on the account.
-  if (Number.isFinite(startMs) && todayMs < startMs) {
+  // Waiting for the first paycheck of the wave — live on kontosaldo.
+  if (
+    cycle.phase === "pre" ||
+    (!cycle.isActive && Number.isFinite(startMs) && todayMs < startMs)
+  ) {
     const hasBalance = bankBalanceMinor != null;
     const availableMinor = hasBalance ? Math.max(0, bankBalanceMinor) : 0;
     const daysLeft = Math.max(

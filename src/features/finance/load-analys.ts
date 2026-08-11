@@ -182,13 +182,19 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
               "Lägg in intäkter med datum i Plan — då startar en inkomstcykel.",
               "Fota bank-SMS eller ange saldo på Hem så att kvar per dag kan räknas.",
             ]
-          : [
-              "Alla intäkter samma kalendermånad räknas ihop (t.ex. Alltid ID + CSN + Trukks).",
-              "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
-              "Planerat fritt = intäkter − utgifter i perioden − sparande.",
-              "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
-              "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
-            ];
+          : cycle.phase === "partial"
+            ? [
+                "Tidiga intäkter i månaden ingår redan i budgeten.",
+                "Kvar per dag räknas fram till månadens sista intäkt (då blir det mer per dag).",
+                "När sista intäkten landar räknas hela poolen om till nästa månads sista intäkt.",
+              ]
+            : [
+                "Alla intäkter samma kalendermånad räknas ihop (t.ex. Alltid ID + CSN + Trukks).",
+                "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
+                "Planerat fritt = intäkter − utgifter i perioden − sparande.",
+                "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
+                "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
+              ];
 
     return {
       ok: true,
