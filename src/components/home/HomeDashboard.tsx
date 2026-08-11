@@ -273,6 +273,7 @@ function UpdateBalanceLink({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (!open) {
@@ -280,7 +281,10 @@ function UpdateBalanceLink({
       <button
         type="button"
         className="font-semibold text-[var(--numa-accent)]"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setError(null);
+          setOpen(true);
+        }}
       >
         Uppdatera belopp
       </button>
@@ -288,42 +292,58 @@ function UpdateBalanceLink({
   }
 
   return (
-    <span className="mt-2 flex flex-wrap items-center gap-2">
-      <input
-        inputMode="decimal"
-        value={balance}
-        onChange={(e) => setBalance(e.target.value)}
-        placeholder={currency}
-        className="money min-h-11 w-32 rounded-lg border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold"
-      />
-      <button
-        type="button"
-        disabled={pending || !balance.trim()}
-        className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)] disabled:opacity-45"
-        onClick={() => {
-          startTransition(async () => {
-            const result = await setAvailableNowAction({
-              balance,
-              accountId,
-              currency,
+    <span className="mt-2 flex flex-col gap-1">
+      <span className="flex flex-wrap items-center gap-2">
+        <input
+          inputMode="decimal"
+          value={balance}
+          onChange={(e) => {
+            setBalance(e.target.value);
+            setError(null);
+          }}
+          placeholder={currency}
+          className="money min-h-11 w-32 rounded-lg border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold"
+        />
+        <button
+          type="button"
+          disabled={pending || !balance.trim()}
+          className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)] disabled:opacity-45"
+          onClick={() => {
+            startTransition(async () => {
+              const result = await setAvailableNowAction({
+                balance,
+                accountId,
+                currency,
+              });
+              if (result.ok) {
+                setOpen(false);
+                setBalance("");
+                setError(null);
+                router.refresh();
+                return;
+              }
+              setError(result.error);
             });
-            if (result.ok) {
-              setOpen(false);
-              setBalance("");
-              router.refresh();
-            }
-          });
-        }}
-      >
-        Spara
-      </button>
-      <button
-        type="button"
-        className="inline-flex min-h-11 items-center px-2 text-sm text-[var(--numa-muted)]"
-        onClick={() => setOpen(false)}
-      >
-        Avbryt
-      </button>
+          }}
+        >
+          Spara
+        </button>
+        <button
+          type="button"
+          className="inline-flex min-h-11 items-center px-2 text-sm text-[var(--numa-muted)]"
+          onClick={() => {
+            setOpen(false);
+            setError(null);
+          }}
+        >
+          Avbryt
+        </button>
+      </span>
+      {error ? (
+        <span className="text-xs text-[var(--numa-danger)]" role="alert">
+          {error}
+        </span>
+      ) : null}
     </span>
   );
 }

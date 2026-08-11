@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** Legacy/wrong path — always land on the real home. */
+/** Legacy path — land on Rörelser (transaction list). */
 export default function ListaRedirectPage() {
-  redirect("/idag");
+  redirect("/transaktioner");
 }

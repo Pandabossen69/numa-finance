@@ -3,6 +3,7 @@ import {
   dayOfMonthFromIso,
   isPlanIncome,
   isPlanSavings,
+  isRecurringMonthly,
   labelDayOfMonthSv,
   labelMonthSv,
   monthKeyFromDate,
@@ -126,15 +127,21 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       detail: labelIncomeDate(i.nextDueAt, timeZone),
     }));
 
-    const monthExpenses: AnalysLine[] = month.items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      amountMinor: item.amountMinor,
-      detail:
-        item.nextDueAt != null
-          ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
-          : "Fast utgift",
-    }));
+    const monthExpenses: AnalysLine[] = month.items.map((item) => {
+      const recurring = isRecurringMonthly(item);
+      return {
+        id: item.id,
+        name: item.name,
+        amountMinor: item.amountMinor,
+        detail: recurring
+          ? item.nextDueAt != null
+            ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
+            : "Varje månad"
+          : item.nextDueAt != null
+            ? `Engång · ${labelIncomeDate(item.nextDueAt, timeZone)}`
+            : "Engång",
+      };
+    });
 
     const goals: AnalysLine[] = (snap.planItems ?? [])
       .filter(
