@@ -139,9 +139,13 @@ describe("bangkok sms OCR hardening", () => {
 });
 
 describe("bank app bunq-style", () => {
-  it("parses Swedish datetime", () => {
+  it("parses Swedish datetime as Bangkok wall time with offset", () => {
     expect(parseBankAppOccurredAt("23 juli 2026 16:46")).toBe(
-      "2026-07-23T16:46",
+      "2026-07-23T16:46:00+07:00",
+    );
+    // Evening must stay same Bangkok calendar day (not flip on UTC hosts).
+    expect(parseBankAppOccurredAt("2026-07-23T23:30")).toBe(
+      "2026-07-23T23:30:00+07:00",
     );
   });
 
