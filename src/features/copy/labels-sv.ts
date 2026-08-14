@@ -4,9 +4,9 @@
  * Vocabulary (sticky day envelope):
  * - Dagsbudget: morning allowance for today (does not fall mid-day)
  * - Kvar idag: dagsbudget − spenderat idag
- * - Spenderat idag: confirmed spending on this calendar day
+ * - Spenderat idag: confirmed expenses this calendar day (inkl. bank-SMS)
  * - Kvar i perioden: free money left for the whole pay cycle
- * - Spenderat i perioden: spending since cycle start
+ * - Spenderat i perioden: spending since cycle start (inkl. bank-SMS)
  */
 export const SV = {
   kvarIdag: "Kvar idag",
