@@ -495,3 +495,58 @@ Withdrawal/transfer/payment from your account X6591 of Bt 99.00 via MOBILE; the 
   });
 });
 
+describe("broken SMS chain (missing bubble) still tips newest", () => {
+  // Hugo Grab-day thread: 300→6503, 259→6244, gap (220), 750→5274, 350→4924.
+  // Without a unique chain tip, older code could tip on 750 and leave Hem stuck
+  // at 5,274 while parking the new 350 on "yesterday" (Spenderat idag = 0).
+  const SMS_300 =
+    "Withdrawal/transfer/payment from your account X6591 of Bt 300.00 via MOBILE; the available balance is Bt 6,503.04.";
+  const SMS_259 =
+    "Withdrawal/transfer/payment from your account X6591 of Bt 259.00 via MOBILE; the available balance is Bt 6,244.04.";
+  const SMS_BAL_ONLY =
+    "The available balance for account X6591 on 14/08 @ 21:21 is Bt 6,024.04.";
+  const SMS_750 =
+    "Withdrawal/transfer/payment from your account X6591 of Bt 750.00 via MOBILE; the available balance is Bt 5,274.04.";
+  const SMS_350 =
+    "Withdrawal/transfer/payment from your account X6591 of Bt 350.00 via MOBILE; the available balance is Bt 4,924.04.";
+
+  it("orders tip as 350 / 4,924 even when chain has a gap", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_300}\n\n${SMS_259}\n\n${SMS_BAL_ONLY}\n\n${SMS_750}\n\n${SMS_350}`,
+    });
+    expect(parsed).toHaveLength(4);
+    const ordered = orderNewestFirst(parsed.map(toBankEventCandidate));
+    expect(ordered[0]?.amountMinor).toBe(35_000);
+    expect(ordered[0]?.balanceAfterMinor).toBe(492_404);
+  });
+
+  it("updates saldo when only the newest 350 is unknown", () => {
+    const parser = new BangkokBankSmsParser();
+    const parsed = parser.parse({
+      institution: "Bangkok Bank",
+      text: `${SMS_300}\n\n${SMS_259}\n\n${SMS_750}\n\n${SMS_350}`,
+    });
+    const knownOlder = parsed
+      .filter((p) => p.amountMinor !== 35_000)
+      .map((p) =>
+        fpOf({
+          institution: p.institution,
+          maskedAccount: p.maskedAccount!,
+          direction: "debit",
+          amountMinor: p.amountMinor!,
+          balanceAfterMinor: p.balanceAfterMinor,
+        }),
+      );
+
+    const result = selectImportableBankEvent(parsed, knownOlder);
+    expect(result.status).toBe("ready");
+    if (result.status !== "ready") return;
+    expect(result.selectedBatch).toHaveLength(1);
+    expect(result.selected.amountMinor).toBe(35_000);
+    expect(result.tipBalanceAfterMinor).toBe(492_404);
+    expect(result.updatesBalance).toBe(true);
+  });
+});
+

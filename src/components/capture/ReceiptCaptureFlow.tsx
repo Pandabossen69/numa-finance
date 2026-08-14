@@ -266,10 +266,11 @@ export function ReceiptCaptureFlow({
       setDoneBalanceMinor(result.data.balanceAfterMinor);
       setDoneDirection(result.data.direction);
       URL.revokeObjectURL(preview.previewUrl);
+      // Hard navigate so Hem always reloads saldo + Spenderat idag (iPhone
+      // soft refresh can keep a stale RSC payload after SMS confirm).
       setTimeout(() => {
-        router.push("/idag");
-        router.refresh();
-      }, 1600);
+        window.location.assign("/idag");
+      }, 1200);
     });
   }
 
@@ -317,8 +318,7 @@ export function ReceiptCaptureFlow({
           type="button"
           className="text-sm font-semibold text-[var(--numa-accent)]"
           onClick={() => {
-            router.push("/idag");
-            router.refresh();
+            window.location.assign("/idag");
           }}
         >
           Visa Hem →
@@ -368,8 +368,7 @@ export function ReceiptCaptureFlow({
           primaryAccountId={accountId}
           accounts={accounts}
           onSuccess={() => {
-            router.push("/idag");
-            router.refresh();
+            window.location.assign("/idag");
           }}
         />
       </div>

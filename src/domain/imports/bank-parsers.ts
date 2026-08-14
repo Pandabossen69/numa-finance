@@ -352,6 +352,10 @@ export function orderNewestFirst(
 ): BankEventCandidate[] {
   if (events.length <= 1) return [...events];
 
+  const byIndexDesc = [...events].sort(
+    (a, b) => b.sourceIndex - a.sourceIndex,
+  );
+
   const withChain = events.filter(
     (e) => e.amountMinor != null && e.balanceAfterMinor != null && e.direction,
   );
@@ -367,28 +371,36 @@ export function orderNewestFirst(
       return !usedAsPrior;
     });
 
-    if (tips.length === 1) {
-      const ordered: BankEventCandidate[] = [];
-      let cursor: BankEventCandidate | undefined = tips[0];
-      const guard = new Set<string>();
-      while (cursor && !guard.has(cursor.raw)) {
-        ordered.push(cursor);
-        guard.add(cursor.raw);
-        const priorBal: number | null = cursor.priorBalanceMinor;
-        cursor =
-          priorBal != null
-            ? withChain.find((e) => e.balanceAfterMinor === priorBal)
-            : undefined;
-      }
-      if (ordered.length === withChain.length) return ordered;
-      if (ordered.length >= 1) {
-        const rest = events.filter((e) => !ordered.includes(e));
-        return [...ordered, ...rest];
-      }
+    // Unique chain tip when the SMS sequence is complete.
+    // When bubbles are missing (broken chain → multiple tips), iMessage is
+    // top→bottom so the highest sourceIndex is the newest bubble — never
+    // fall back to an older tip or tipInBatch goes false and Hem stays stale.
+    const start =
+      tips.length === 1
+        ? tips[0]!
+        : withChain.reduce((a, b) =>
+            b.sourceIndex > a.sourceIndex ? b : a,
+          );
+
+    const ordered: BankEventCandidate[] = [];
+    let cursor: BankEventCandidate | undefined = start;
+    const guard = new Set<string>();
+    while (cursor && !guard.has(cursor.raw)) {
+      ordered.push(cursor);
+      guard.add(cursor.raw);
+      const priorBal: number | null = cursor.priorBalanceMinor;
+      cursor =
+        priorBal != null
+          ? withChain.find((e) => e.balanceAfterMinor === priorBal)
+          : undefined;
+    }
+    if (ordered.length >= 1) {
+      const rest = byIndexDesc.filter((e) => !ordered.includes(e));
+      return [...ordered, ...rest];
     }
   }
 
-  return [...events].sort((a, b) => b.sourceIndex - a.sourceIndex);
+  return byIndexDesc;
 }
 
 /**
@@ -434,7 +446,12 @@ export function selectImportableBankEvent(
   }
 
   const tip = all[0]!;
-  const tipInBatch = selectedBatch[0] === tip || selectedBatch.includes(tip);
+  const tipFp = tip.fingerprint?.fingerprint ?? null;
+  const tipInBatch = selectedBatch.some(
+    (e) =>
+      e === tip ||
+      (tipFp != null && e.fingerprint?.fingerprint === tipFp),
+  );
   // Always use newest-in-image balance as Hem truth when confirming this shot.
   if (tip.balanceAfterMinor == null) {
     return {

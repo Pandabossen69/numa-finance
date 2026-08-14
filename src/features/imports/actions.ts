@@ -150,6 +150,7 @@ export async function confirmReceiptExpenseAction(
     revalidatePath("/mer");
     revalidatePath("/konton");
     revalidatePath("/fota");
+    revalidatePath("/", "layout");
 
     return {
       ok: true,
