@@ -204,10 +204,16 @@ export function ReceiptCaptureFlow({
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         confirmAllPending: isSms,
-        amount: isSms ? "1" : preview.amount,
+        amount: isSms ? "0" : preview.amount,
         description: preview.description || undefined,
         category:
-          isSms || preview.direction === "credit" ? null : category,
+          isSms && preview.direction === "credit"
+            ? null
+            : isSms
+              ? category
+              : preview.direction === "credit"
+                ? null
+                : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
         source: isSms ? "screenshot" : "receipt_camera",

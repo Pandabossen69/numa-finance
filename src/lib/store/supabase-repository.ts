@@ -17,6 +17,7 @@ import {
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
   collectPairedVoidIds,
+  hasCycleFundingEvidence,
   zonedDayKey,
   type Account,
   type BalanceCheckpoint,
@@ -136,8 +137,28 @@ export async function ensureDefaultBankAccount(input?: {
   currency?: CurrencyCode;
 }): Promise<Account> {
   const existing = await listAccounts();
+  const wantedCurrency = input?.currency ?? "THB";
   const primary = existing.find((a) => a.isDefault) ?? existing[0] ?? null;
   if (primary) {
+    if (primary.currency !== wantedCurrency) {
+      const matching =
+        existing.find(
+          (a) => a.currency === wantedCurrency && a.accountType !== "cash",
+        ) ??
+        existing.find((a) => a.currency === wantedCurrency) ??
+        null;
+      if (matching) {
+        return matching;
+      }
+      return createAccount({
+        name: wantedCurrency === "THB" ? "Bangkok Bank" : "Bankkonto",
+        institution: wantedCurrency === "THB" ? "Bangkok Bank" : null,
+        accountType: "checking",
+        currency: wantedCurrency,
+        maskedIdentifier: input?.maskedIdentifier ?? null,
+        makeDefault: existing.length === 0,
+      });
+    }
     if (
       input?.maskedIdentifier &&
       (!primary.maskedIdentifier || primary.maskedIdentifier === "")
@@ -161,7 +182,7 @@ export async function ensureDefaultBankAccount(input?: {
     name: "Bangkok Bank",
     institution: "Bangkok Bank",
     accountType: "checking",
-    currency: input?.currency ?? "THB",
+    currency: wantedCurrency,
     maskedIdentifier: input?.maskedIdentifier ?? null,
     makeDefault: true,
   });
@@ -943,7 +964,13 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       now,
       timeZone: timezone || "Asia/Bangkok",
       cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
     });
+  const fundingConfirmed = hasCycleFundingEvidence({
+    cycleStartAt: cycle.startAt,
+    cycleEndAt: cycle.endAt,
+    transactions: accountTx,
+  });
   // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
   const safe =
     calculated != null
@@ -978,6 +1005,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
     cycleSpendingMinor: cycleSpending.amountMinor,
+    fundingConfirmed,
     safeToSpendTodayMinor: safe?.today.amountMinor ?? 0,
     safeToSpendWeekMinor: safe?.week.amountMinor ?? 0,
     freeMinor: safe?.free.amountMinor ?? 0,
@@ -1009,6 +1037,7 @@ function emptySnapshot(
     todaySpendingMinor: 0,
     monthSpendingMinor: 0,
     cycleSpendingMinor: 0,
+    fundingConfirmed: false,
     safeToSpendTodayMinor: 0,
     safeToSpendWeekMinor: 0,
     freeMinor: 0,
@@ -1464,12 +1493,24 @@ export async function confirmReceiptExpense(
 
     const maskedFromCandidate =
       input.maskedAccount ?? observation.accountHint ?? null;
-    const account =
-      (input.accountId ? await getAccount(input.accountId) : null) ??
+    let account =
+      (input.accountId ? await getAccount(input.accountId) : null) ?? null;
+    if (account && account.currency !== "THB") {
+      throw new Error(
+        "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+      );
+    }
+    account =
+      account ??
       (await ensureDefaultBankAccount({
         maskedIdentifier: maskedFromCandidate,
         currency: "THB",
       }));
+    if (account.currency !== "THB") {
+      throw new Error(
+        "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+      );
+    }
 
     const existingCheckpoint = await latestCheckpointForAccount(account.id);
     const hadCheckpoint = existingCheckpoint != null;
@@ -1653,12 +1694,24 @@ export async function confirmReceiptExpense(
   maskedFromCandidate =
     maskedFromCandidate ?? observation.accountHint ?? null;
 
-  const account =
-    (input.accountId ? await getAccount(input.accountId) : null) ??
+  let account =
+    (input.accountId ? await getAccount(input.accountId) : null) ?? null;
+  if (source === "screenshot" && account && account.currency !== "THB") {
+    throw new Error(
+      "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+    );
+  }
+  account =
+    account ??
     (await ensureDefaultBankAccount({
       maskedIdentifier: maskedFromCandidate,
-      currency: "THB",
+      currency: source === "screenshot" ? "THB" : undefined,
     }));
+  if (source === "screenshot" && account.currency !== "THB") {
+    throw new Error(
+      "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+    );
+  }
 
   const existingCheckpoint = await latestCheckpointForAccount(account.id);
   const hadCheckpoint = existingCheckpoint != null;

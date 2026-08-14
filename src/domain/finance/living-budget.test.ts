@@ -221,4 +221,50 @@ describe("projectLivingBudget", () => {
     expect(living.dayBudgetMinor).toBe(Math.floor(morningSaldo / 12));
     expect(living.remainingTodayMinor).toBe(living.dayBudgetMinor - spentToday);
   });
+
+  it("stays on bank bridge when calendar phase flipped but funding is unconfirmed", () => {
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-24T03:00:00.000Z"),
+      tz,
+    );
+    expect(cycle.phase).toBe("partial");
+
+    const living = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-24T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 12_000_00,
+      fundingConfirmed: false,
+    });
+    expect(living.mode).toBe("bridge");
+    expect(living.usesBankBalance).toBe(true);
+    expect(living.remainingFreeMinor).toBe(12_000_00);
+  });
+
+  it("falls back to bridge after the cycle window ends", () => {
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-09-26T03:00:00.000Z"),
+      tz,
+    );
+    // September wave may be active; force closed projection by using August end.
+    const closed = {
+      ...cycle,
+      startAt: "2026-08-23T12:00:00.000Z",
+      endAt: "2026-09-25T12:00:00.000Z",
+      isActive: false,
+      phase: "full" as const,
+    };
+    const living = projectLivingBudget({
+      cycle: closed,
+      now: new Date("2026-09-26T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 9_000_00,
+      cycleSpendingMinor: 50_000_00,
+      fundingConfirmed: true,
+    });
+    expect(living.mode).toBe("bridge");
+    expect(living.remainingFreeMinor).toBe(9_000_00);
+  });
 });

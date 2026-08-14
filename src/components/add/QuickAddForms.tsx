@@ -13,6 +13,7 @@ export type ShellAccount = {
   id: string;
   name: string;
   accountType: string;
+  currency?: string;
 };
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;

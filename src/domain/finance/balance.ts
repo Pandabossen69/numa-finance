@@ -247,6 +247,8 @@ export function computeSpendingWindows(params: {
   now?: Date;
   timeZone?: string;
   cycleStartAt?: string | null;
+  /** Exclusive end of the pay-cycle spend window (preferred). */
+  cycleEndAt?: string | null;
 }): SpendingWindows {
   const now = params.now ?? new Date();
   const timeZone = params.timeZone || DEFAULT_TIMEZONE;
@@ -254,6 +256,8 @@ export function computeSpendingWindows(params: {
   const monthKey = monthKeyFromDate(now, timeZone);
   const cycleStartMs =
     params.cycleStartAt != null ? Date.parse(params.cycleStartAt) : NaN;
+  const cycleEndMs =
+    params.cycleEndAt != null ? Date.parse(params.cycleEndAt) : NaN;
 
   const todayTx: CanonicalTransaction[] = [];
   const monthTx: CanonicalTransaction[] = [];
@@ -265,11 +269,14 @@ export function computeSpendingWindows(params: {
 
     const dayKey = zonedDayKey(tx.occurredAt, timeZone);
     const txMonthKey = monthKeyFromDate(new Date(tx.occurredAt), timeZone);
+    const occurredMs = Date.parse(tx.occurredAt);
 
     if (dayKey === todayKey) todayTx.push(tx);
     if (txMonthKey === monthKey) monthTx.push(tx);
-    if (Number.isFinite(cycleStartMs) && Date.parse(tx.occurredAt) >= cycleStartMs) {
-      cycleTx.push(tx);
+    if (Number.isFinite(cycleStartMs) && occurredMs >= cycleStartMs) {
+      if (!Number.isFinite(cycleEndMs) || occurredMs < cycleEndMs) {
+        cycleTx.push(tx);
+      }
     }
   }
 

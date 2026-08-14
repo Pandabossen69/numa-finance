@@ -6,9 +6,8 @@ import { PRIMARY_NAV } from "@/components/layout/nav";
 
 const WARM_HREFS = [
   ...PRIMARY_NAV.map((item) => item.href),
-  "/lagg-till",
-  "/transaktioner",
   "/fota",
+  "/transaktioner",
 ] as const;
 
 /**

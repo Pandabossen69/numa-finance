@@ -18,8 +18,13 @@ export type TodaySnapshot = {
   verificationLabel: string | null;
   todaySpendingMinor: number;
   monthSpendingMinor: number;
-  /** Confirmed spending since active pay-cycle start. */
+  /** Confirmed spending since active pay-cycle start (bounded by end). */
   cycleSpendingMinor: number;
+  /**
+   * True when a confirmed credit in the cycle window proves funding landed.
+   * Hem stays on bank bridge until this is true.
+   */
+  fundingConfirmed: boolean;
   safeToSpendTodayMinor: number;
   safeToSpendWeekMinor: number;
   freeMinor: number;
