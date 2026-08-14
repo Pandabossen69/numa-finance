@@ -2,7 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/server";
 
 const authSchema = z.object({
   email: z.string().email("Ogiltig e-postadress"),
@@ -70,8 +73,14 @@ export async function signUpAction(raw: {
 }
 
 export async function signOutAction(): Promise<void> {
-  const supabase = await createSupabaseServerClient();
-  await supabase.auth.signOut();
+  if (isSupabaseConfigured()) {
+    try {
+      const supabase = await createSupabaseServerClient();
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("[numa] signOut failed", error);
+    }
+  }
   redirect("/logga-in");
 }
 

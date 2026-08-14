@@ -70,15 +70,13 @@ export default async function InstallningarPage({
           )}
         </MerSection>
 
-        {supabaseReady ? (
-          <MerSection title="Konto">
-            <MerListGroup>
-              <MerListRow className="py-3">
-                <SignOutButton />
-              </MerListRow>
-            </MerListGroup>
-          </MerSection>
-        ) : null}
+        <MerSection title="Konto">
+          <MerListGroup>
+            <MerListRow className="py-3">
+              <SignOutButton />
+            </MerListRow>
+          </MerListGroup>
+        </MerSection>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
 export function SideNav() {
@@ -60,13 +61,16 @@ export function SideNav() {
           })}
         </nav>
 
-        <Link
-          href="/lagg-till"
-          prefetch
-          className="rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
-        >
-          + Lägg till
-        </Link>
+        <div className="space-y-2">
+          <Link
+            href="/lagg-till"
+            prefetch
+            className="block rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
+          >
+            + Lägg till
+          </Link>
+          <SignOutButton variant="nav" />
+        </div>
       </div>
     </aside>
   );
