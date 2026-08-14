@@ -33,6 +33,7 @@ type Preview = {
   description: string;
   currency: CurrencyCode;
   ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
+  confidence: number | null;
   message: string | null;
   previewUrl: string;
   importKind: "bank_sms" | "receipt" | "unknown";
@@ -122,7 +123,8 @@ export function ReceiptCaptureFlow({
 
     startTransition(async () => {
       const uploadFile = await compressImageForUpload(file, {
-        preserveText: mode === "bank_sms",
+        // Keep digits sharp for both bank-SMS and receipt totals.
+        preserveText: true,
       });
       const fd = new FormData();
       fd.set("file", uploadFile);
@@ -169,7 +171,9 @@ export function ReceiptCaptureFlow({
       }
       // Keep the same object URL for the confirm view.
 
-      setAmountEditable(importKind !== "bank_sms" && !hasAmount);
+      // Receipts: always allow editing so the user can correct OCR.
+      // Bank SMS: amounts stay read-only (batch from candidates).
+      setAmountEditable(importKind !== "bank_sms");
       setPreview({
         observationId: data.observation.id,
         candidateId: data.candidate?.id ?? events[0]?.candidateId ?? null,
@@ -177,6 +181,7 @@ export function ReceiptCaptureFlow({
         description: data.suggestedDescription ?? "",
         currency: data.currency,
         ocrStatus: data.ocrStatus,
+        confidence: data.confidence ?? null,
         message: data.message,
         previewUrl,
         importKind,
@@ -497,6 +502,12 @@ export function ReceiptCaptureFlow({
   const isSms = preview.importKind === "bank_sms";
   const isCredit = preview.direction === "credit";
   const needsManualAmount = !isSms && !preview.amountFromScan;
+  const ocrWarn =
+    !isSms &&
+    (needsManualAmount ||
+      preview.ocrStatus === "failed" ||
+      preview.ocrStatus === "unavailable" ||
+      (preview.confidence != null && preview.confidence < 0.75));
   const remainingTone =
     impact && impact.remaining < 0
       ? "text-[var(--numa-danger)]"
@@ -536,14 +547,28 @@ export function ReceiptCaptureFlow({
                 ? "Insättning läst automatiskt"
                 : "Utgift läst automatiskt"}
           </p>
+          {preview.message ? (
+            <p className="mx-auto max-w-[34ch] pt-1 text-sm text-[var(--numa-muted)]">
+              {preview.message}
+            </p>
+          ) : null}
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            Kvitto
+            Kvitto · totalsumma
           </p>
           {preview.message ? (
-            <p className="text-sm text-[var(--numa-muted)]">{preview.message}</p>
+            <p
+              className={`rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
+                ocrWarn
+                  ? "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]"
+                  : "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
+              }`}
+              role={ocrWarn ? "status" : undefined}
+            >
+              {preview.message}
+            </p>
           ) : null}
         </div>
       )}
@@ -588,14 +613,14 @@ export function ReceiptCaptureFlow({
           {amountEditable || needsManualAmount ? (
             <input
               inputMode="decimal"
-              autoFocus={needsManualAmount}
+              autoFocus={needsManualAmount || ocrWarn}
               value={preview.amount}
               onChange={(e) =>
                 setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
               }
               placeholder="0,00"
               className="money mt-2 w-full border-0 bg-transparent p-0 text-[2rem] font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
-              aria-label="Belopp"
+              aria-label="Belopp från kvittot"
               required
             />
           ) : (
@@ -606,6 +631,11 @@ export function ReceiptCaptureFlow({
               </span>
             </p>
           )}
+          {!isSms && preview.amountFromScan ? (
+            <p className="mt-1 text-xs text-[var(--numa-faint)]">
+              Inläst från bilden — ändra om något siffror är fel.
+            </p>
+          ) : null}
         </div>
       )}
 

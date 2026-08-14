@@ -20,6 +20,7 @@ import {
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
 import { formatMoney, money } from "@/domain/money";
+import { majorToMinor } from "./amount-parse";
 
 export type BankMessageParseInput = {
   institution: string;
@@ -267,12 +268,11 @@ export function splitBankSmsChunks(text: string): string[] {
 }
 
 export function majorStringToMinor(value: string): number {
-  const normalized = value.replace(/,/g, "").trim();
-  const major = Number(normalized);
-  if (!Number.isFinite(major)) {
+  const minor = majorToMinor(value);
+  if (minor == null) {
     throw new Error(`Cannot parse bank amount: ${value}`);
   }
-  return Math.round(major * 100);
+  return minor;
 }
 
 export function toBankEventCandidate(

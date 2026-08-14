@@ -4,11 +4,15 @@ import {
   type ExtractionProviderResult,
   type ExtractionRequest,
 } from "./extraction";
+import { majorToMinor } from "./amount-parse";
 
 type VisionSmsMessage = {
   rawText?: string | null;
   amountMajor?: number | string | null;
+  /** Exact digit string as printed, e.g. "3400.00" or "3,400.00" */
+  amountText?: string | null;
   balanceAfterMajor?: number | string | null;
+  balanceText?: string | null;
   accountHint?: string | null;
   direction?: "debit" | "credit" | null;
   visualOrder?: number | null;
@@ -21,10 +25,14 @@ type VisionJson = {
   fullText?: string | null;
   messages?: VisionSmsMessage[] | null;
   amountMajor?: number | string | null;
+  /** Exact total as printed on the receipt (prefer over amountMajor). */
+  amountText?: string | null;
   currency?: string | null;
   description?: string | null;
   merchant?: string | null;
   confidence?: number | null;
+  /** True when digits were hard to read / blurry / cut off. */
+  unclear?: boolean | null;
 };
 
 type VisionCallOk = { ok: true; parsed: VisionJson; model: string };
@@ -35,12 +43,11 @@ type VisionCallFail = {
   model?: undefined;
 };
 
-function majorToMinor(value: number | string | null | undefined): number | null {
-  if (value == null) return null;
-  const raw = typeof value === "number" ? String(value) : String(value);
-  const major = Number(raw.replace(/,/g, "").replace(/\s/g, ""));
-  if (!Number.isFinite(major) || major < 0) return null;
-  return Math.round(major * 100);
+function amountFromVision(
+  text: string | null | undefined,
+  major: number | string | null | undefined,
+): number | null {
+  return majorToMinor(text) ?? majorToMinor(major);
 }
 
 function looksLikeBankText(text: string): boolean {
@@ -57,11 +64,16 @@ function looksLikeBankText(text: string): boolean {
 
 function synthesizeRawText(m: VisionSmsMessage): string | null {
   if (typeof m.rawText === "string" && m.rawText.trim()) return m.rawText.trim();
-  if (m.amountMajor == null || m.balanceAfterMajor == null) return null;
+  if (m.amountMajor == null && m.amountText == null) return null;
+  if (m.balanceAfterMajor == null && m.balanceText == null) return null;
   if (m.direction !== "credit" && m.direction !== "debit") return null;
   const account = (m.accountHint ?? "X0000").toString().trim() || "X0000";
-  const amount = String(m.amountMajor).replace(/,/g, "");
-  const balance = String(m.balanceAfterMajor).replace(/,/g, "");
+  const amount = String(m.amountText ?? m.amountMajor ?? "").replace(/,/g, "");
+  const balance = String(m.balanceText ?? m.balanceAfterMajor ?? "").replace(
+    /,/g,
+    "",
+  );
+  if (!amount || !balance) return null;
   const via = m.channel?.toLowerCase() === "atm" ? "ATM" : "MOBILE";
   if (m.direction === "credit") {
     return `PromptPay transfer to your account ${account} of Bt ${amount} via ${via}; the available balance is Bt ${balance}.`;
@@ -125,11 +137,11 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       };
     }
 
-    // Receipt / unknown: cheap first pass.
+    // Receipt: high detail — totals must be exact digits.
     apiCalls += 1;
     const first = await this.callVision(request, {
       bankForced: false,
-      detail: "low",
+      detail: "high",
     });
     if (first.ok && this.hasUsableSms(first.parsed)) {
       return this.toResult(request, first.parsed, first.model, {
@@ -201,7 +213,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       messages.map((m) => m.rawText).filter(Boolean).join("\n");
     if (
       messages.some(
-        (m) => m.amountMajor != null && m.balanceAfterMajor != null,
+        (m) =>
+          (m.amountMajor != null || m.amountText != null) &&
+          (m.balanceAfterMajor != null || m.balanceText != null),
       )
     ) {
       return true;
@@ -211,7 +225,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
 
   private hasUsableReceipt(parsed: VisionJson): boolean {
     if (parsed.kind === "bangkok_bank_sms") return false;
-    return majorToMinor(parsed.amountMajor) != null;
+    return (
+      amountFromVision(parsed.amountText, parsed.amountMajor) != null
+    );
   }
 
   private async callVision(
@@ -228,23 +244,27 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           'Debit: "Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04."',
           'Debit short: "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,028.04."',
           'Credit: "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04"',
-          "amountMajor = moved amount. balanceAfterMajor = available balance. NEVER swap.",
+          "amountText/balanceText = EXACT digit strings as printed (keep commas/dots). Never invent or round.",
+          "amountMajor/balanceAfterMajor = same values as numbers. NEVER swap amount and balance.",
           "direction=debit for Withdrawal; credit for PromptPay/MoneyPlus to account.",
-          "JSON: kind=bangkok_bank_sms, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], currency=THB, confidence.",
-          "Never invent numbers. Ignore UI chrome (idag, Textmeddelande).",
+          "Set confidence 0–1 and unclear=true if blurry/cut off.",
+          "JSON: kind=bangkok_bank_sms, fullText, messages[{rawText,amountText,amountMajor,balanceText,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], currency=THB, confidence, unclear.",
+          "Ignore UI chrome (idag, Textmeddelande).",
         ].join(" ")
       : [
-          "Read finance screenshots for NUMA.",
-          "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
-          "Else receipt total → kind=receipt.",
-          "JSON: kind, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], amountMajor, currency, confidence.",
+          "Expert receipt OCR for NUMA.",
+          "Find the FINAL TOTAL paid (not line items, not change, not tax alone).",
+          "amountText = EXACT digits as printed on the total (e.g. \"85.50\" or \"1,250.00\"). Never invent.",
+          "amountMajor = same total as a number. currency THB or SEK.",
+          "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms with every bubble instead.",
+          "Else kind=receipt. Set confidence 0–1; unclear=true if blurry, glare, or total hard to read.",
+          "JSON: kind, fullText, amountText, amountMajor, currency, merchant, description, confidence, unclear, messages[...].",
         ].join(" ");
 
     const body = {
       model,
       temperature: 0,
-      // 4–6 bubbles fit well under 1200; avoids paying for unused completion headroom.
-      max_tokens: bankForced ? 1400 : 700,
+      max_tokens: bankForced ? 1400 : 900,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
@@ -254,8 +274,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
             {
               type: "text",
               text: bankForced
-                ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
-                : "Extract bank SMS bubbles or receipt total. JSON only.",
+                ? "Transcribe every Bangkok Bank SMS bubble top→bottom with EXACT amounts. JSON only."
+                : "Read the receipt TOTAL exactly as printed digits. If bank SMS, extract bubbles. JSON only.",
             },
             {
               type: "image_url",
@@ -352,7 +372,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     const confidence =
       typeof parsed.confidence === "number"
         ? Math.min(1, Math.max(0, parsed.confidence))
-        : null;
+        : parsed.unclear === true
+          ? 0.45
+          : null;
 
     const candidates: ExtractionProviderResult["candidates"] =
       kind === "bangkok_bank_sms" && normalizedMessages.length > 0
@@ -361,9 +383,12 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               m.direction === "credit" || m.direction === "debit"
                 ? m.direction
                 : null,
-            amountMinor: majorToMinor(m.amountMajor),
+            amountMinor: amountFromVision(m.amountText, m.amountMajor),
             currency: "THB" as const,
-            balanceAfterMinor: majorToMinor(m.balanceAfterMajor),
+            balanceAfterMinor: amountFromVision(
+              m.balanceText,
+              m.balanceAfterMajor,
+            ),
             occurredAt: null,
             description: m.rawText?.slice(0, 160) ?? null,
             confidence,
@@ -376,7 +401,10 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         : [
             {
               direction: "debit" as const,
-              amountMinor: majorToMinor(parsed.amountMajor),
+              amountMinor: amountFromVision(
+                parsed.amountText,
+                parsed.amountMajor,
+              ),
               currency,
               balanceAfterMinor: null,
               occurredAt: new Date().toISOString(),
@@ -405,6 +433,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         messageCount: normalizedMessages.length || (fullText ? 1 : 0),
         apiCalls: meta.apiCalls,
         mode: meta.mode,
+        confidence,
+        unclear: parsed.unclear === true,
       },
     };
   }

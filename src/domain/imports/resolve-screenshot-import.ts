@@ -254,6 +254,18 @@ export function resolveScreenshotImport(
     first?.currency === "SEK" || first?.currency === "THB"
       ? first.currency
       : "THB";
+  const hasAmount = first?.amountMinor != null && first.amountMinor > 0;
+  const confidence =
+    typeof first?.confidence === "number" ? first.confidence : null;
+  const unclear = extraction.rawMetadata?.unclear === true;
+  const quality =
+    !hasAmount
+      ? "Kunde inte läsa beloppet säkert. Fyll i själv eller ta en skarpare bild av totalsumman."
+      : unclear || (confidence != null && confidence < 0.55)
+        ? "Bilden är otydlig — kontrollera att beloppet är exakt samma som på kvittot innan du sparar."
+        : confidence != null && confidence < 0.75
+          ? "Osäker läsning — dubbelkolla beloppet noga innan du sparar."
+          : "Vi läste totalsumman från bilden — dubbelkolla att den stämmer innan du sparar.";
 
   return {
     kind: "receipt_or_other",
@@ -266,9 +278,7 @@ export function resolveScreenshotImport(
     currency,
     observationKind: "receipt",
     source: "receipt_camera",
-    messageSv: first?.amountMinor
-      ? "Vi hittade ett belopp på kvittot — dubbelkolla innan du sparar."
-      : "Kunde inte läsa beloppet säkert. Fyll i själv.",
+    messageSv: quality,
     alreadyKnown: false,
   };
 }
