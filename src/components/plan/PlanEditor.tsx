@@ -295,7 +295,7 @@ export function PlanEditor({
               currency={currency}
               size="sm"
             />
-            <span>/ dag</span>
+            <span>dagsbudget / dag</span>
           </p>
         ) : null}
 

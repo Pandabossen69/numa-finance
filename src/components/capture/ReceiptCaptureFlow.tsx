@@ -233,10 +233,10 @@ export function ReceiptCaptureFlow({
   if (doneStatus) {
     const pulseLabel =
       doneStatus === "plus"
-        ? "Under dagens budget"
+        ? "Inom dagsbudgeten"
         : doneStatus === "even"
-          ? "På gränsen idag"
-          : "Över dagens budget";
+          ? "Exakt på dagsbudgeten"
+          : "Över dagsbudgeten";
     const pulseTone =
       doneStatus === "plus"
         ? "text-[var(--numa-positive)]"
@@ -617,8 +617,8 @@ export function ReceiptCaptureFlow({
 
       {impact ? (
         <p className={`text-sm ${remainingTone}`}>
-          {impact.canAfford ? "Inom dagens budget" : "Över dagens budget"} ·{" "}
-          {formatMoney(money(impact.remaining, currency))} kvar
+          {impact.canAfford ? "Inom dagsbudgeten" : "Över dagsbudgeten"} ·{" "}
+          {formatMoney(money(Math.max(0, impact.remaining), currency))} kvar idag
         </p>
       ) : null}
 

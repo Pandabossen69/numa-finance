@@ -3,6 +3,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
+import { SV } from "@/features/copy/labels-sv";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
 
 export function AnalysDashboard({
@@ -14,7 +15,7 @@ export function AnalysDashboard({
 }) {
   if (error || !data) {
     return (
-      <div className="space-y-3">
+      <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
         <Link
@@ -37,24 +38,25 @@ export function AnalysDashboard({
   const heroOk = hasSaldo || isCycle ? heroMinor >= 0 : false;
   const cycleTitle =
     isBridge && cycle.startLabelSv
-      ? `Nu → ${cycle.startLabelSv}`
+      ? `Fram till ${cycle.startLabelSv}`
       : cycle.startLabelSv && cycle.endLabelSv
-        ? `${cycle.startLabelSv} → ${cycle.endLabelSv}`
-        : "Ingen cykel ännu";
+        ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
+        : "Ingen period ännu";
   const daysLeftLabel = formatCountSv(cycle.daysLeft, "dag", "dagar");
   const modeEyebrow = isBridge
     ? "Tills nästa intäkt"
     : isEmpty
-      ? "Ingen cykel"
-      : "Cykel";
+      ? "Ingen period"
+      : SV.perioden;
+  const heroLabel = isBridge ? SV.saldo : SV.kvarIPerioden;
   const heroMeta = isBridge
     ? hasSaldo
-      ? `${daysLeftLabel} kvar`
+      ? daysLeftLabel
       : "Ange saldo på Hem"
     : isEmpty
       ? "Lägg in intäkter i Plan"
       : cycle.isActive
-        ? `${daysLeftLabel} kvar`
+        ? daysLeftLabel
         : "Lägg in intäkter i Plan";
 
   const spendPool =
@@ -65,34 +67,32 @@ export function AnalysDashboard({
       : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-9">
-      <header className="animate-rise">
+    <div className="mx-auto max-w-lg space-y-6">
+      <header className="animate-rise space-y-1">
         <h1 className="numa-page-title">Analys</h1>
+        <p className="max-w-[36ch] text-sm text-[var(--numa-muted)]">
+          Samma siffror som på Hem — här ser du hela perioden.
+        </p>
       </header>
 
       <section
-        className="animate-rise-delay-1 space-y-2.5"
+        className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
         aria-labelledby="analys-hero"
       >
         <p className="numa-section-title">{modeEyebrow}</p>
         <h2
           id="analys-hero"
-          className="text-lg font-semibold tracking-tight text-[var(--numa-ink)]"
+          className="text-base font-semibold tracking-tight text-[var(--numa-ink)]"
         >
           {cycleTitle}
         </h2>
+        <p className="text-xs font-medium text-[var(--numa-faint)]">{heroLabel}</p>
         {isBridge && !hasSaldo ? (
           <p className="text-base font-medium text-[var(--numa-muted)]">
             Ange saldo på Hem
           </p>
         ) : (
-          <div
-            className={
-              heroOk
-                ? "money-hero text-[var(--numa-ink)]"
-                : "money-hero text-[var(--numa-muted)]"
-            }
-          >
+          <div className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}>
             <MoneyDisplay
               amountMinor={heroMinor}
               currency={currency}
@@ -105,73 +105,94 @@ export function AnalysDashboard({
         ) : null}
       </section>
 
-      <section
-        className="animate-rise-delay-2 animate-scale-in space-y-0"
-        aria-label="Cykelns siffror"
-      >
-        {isBridge ? (
-          <>
-            {hasSaldo ? (
+      {!isEmpty ? (
+        <section className="animate-rise-delay-2 space-y-2">
+          <p className="numa-section-title px-1">{SV.idag}</p>
+          <div className="numa-panel-list px-4 py-1">
+            <MetricRow
+              label={SV.kvarIdag}
+              amountMinor={isBridge && !hasSaldo ? 0 : cycle.perDayMinor}
+              currency={currency}
+              tone={
+                (!isBridge || hasSaldo) && cycle.perDayMinor > 0
+                  ? "positive"
+                  : undefined
+              }
+              hint="Det du kan handla för just nu"
+            />
+            <MetricRow
+              label={SV.dagsbudget}
+              amountMinor={isBridge && !hasSaldo ? 0 : cycle.dayBudgetMinor}
+              currency={currency}
+              hint="Samma belopp hela dagen"
+            />
+            <MetricRow
+              label={SV.spenderatIdag}
+              amountMinor={data.todaySpendingMinor}
+              currency={currency}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      <section className="animate-rise-delay-2 space-y-2" aria-label="Periodens siffror">
+        {!isEmpty ? (
+          <p className="numa-section-title px-1">{SV.perioden}</p>
+        ) : null}
+        <div className="numa-panel-list px-4 py-1">
+          {isBridge ? (
+            <>
+              {hasSaldo ? (
+                <MetricRow
+                  label={SV.saldo}
+                  amountMinor={cycle.remainingFreeMinor}
+                  currency={currency}
+                  tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
+                  hint={data.verificationLabel ?? undefined}
+                />
+              ) : (
+                <MetricRow
+                  label={SV.saldo}
+                  value={
+                    <span className="text-sm text-[var(--numa-faint)]">—</span>
+                  }
+                  hint="Ange på Hem eller fota SMS"
+                />
+              )}
+            </>
+          ) : isCycle ? (
+            <>
               <MetricRow
-                label="Saldo"
+                label={SV.intakter}
+                amountMinor={cycle.incomeMinor}
+                currency={currency}
+                tone="positive"
+              />
+              <MetricRow
+                label={SV.utgifter}
+                amountMinor={cycle.expenseMinor}
+                currency={currency}
+                hint="Planerade i perioden"
+              />
+              <MetricRow
+                label={SV.kvarIPerioden}
                 amountMinor={cycle.remainingFreeMinor}
                 currency={currency}
                 tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-                hint={data.verificationLabel ?? undefined}
               />
-            ) : (
               <MetricRow
-                label="Saldo"
-                value={
-                  <span className="text-sm text-[var(--numa-faint)]">—</span>
-                }
-                hint="Ange på Hem eller fota SMS"
+                label={SV.sparande}
+                amountMinor={cycle.savingsMinor}
+                currency={currency}
               />
-            )}
-            <MetricRow
-              label="Kvar idag"
-              amountMinor={hasSaldo ? cycle.perDayMinor : 0}
-              currency={currency}
-              tone={hasSaldo && cycle.perDayMinor > 0 ? "positive" : undefined}
-            />
-          </>
-        ) : isCycle ? (
-          <>
-            <MetricRow
-              label="Intäkter"
-              amountMinor={cycle.incomeMinor}
-              currency={currency}
-              tone="positive"
-            />
-            <MetricRow
-              label="Utgifter"
-              amountMinor={cycle.expenseMinor}
-              currency={currency}
-            />
-            <MetricRow
-              label="Kvar totalt"
-              amountMinor={cycle.remainingFreeMinor}
-              currency={currency}
-              tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-            />
-            <MetricRow
-              label="Sparande"
-              amountMinor={cycle.savingsMinor}
-              currency={currency}
-            />
-            <MetricRow
-              label="Spenderat"
-              amountMinor={data.cycleSpendingMinor}
-              currency={currency}
-            />
-            <MetricRow
-              label="Kvar idag"
-              amountMinor={cycle.perDayMinor}
-              currency={currency}
-              tone={cycle.perDayMinor > 0 ? "positive" : undefined}
-            />
-          </>
-        ) : null}
+              <MetricRow
+                label={SV.spenderatIPerioden}
+                amountMinor={data.cycleSpendingMinor}
+                currency={currency}
+              />
+            </>
+          ) : null}
+        </div>
       </section>
 
       {!isEmpty ? (
@@ -179,14 +200,14 @@ export function AnalysDashboard({
           <hr className="numa-divider" />
           <LineList
             title={isBridge ? "Kommande intäkter" : "Intäkter"}
-            empty={isBridge ? "Inga kommande." : "Inga i cykeln."}
+            empty={isBridge ? "Inga kommande." : "Inga i perioden."}
             lines={cycle.incomes}
             currency={currency}
             totalMinor={cycle.incomeMinor}
           />
           <LineList
             title={isBridge ? "Kommande utgifter" : "Utgifter"}
-            empty={isBridge ? "Inga kommande." : "Inga i cykeln."}
+            empty={isBridge ? "Inga kommande." : "Inga i perioden."}
             lines={cycle.expenses}
             currency={currency}
             totalMinor={cycle.expenseMinor}
@@ -212,28 +233,29 @@ export function AnalysDashboard({
           </Link>
         </div>
 
-        <div className="space-y-0">
+        <div className="numa-panel-list px-4 py-1">
           <MetricRow
-            label="Intäkter"
+            label={SV.intakter}
             amountMinor={month.incomeMinor}
             currency={currency}
             tone="positive"
           />
           <MetricRow
-            label="Utgifter"
+            label={SV.utgifter}
             amountMinor={month.expenseMinor}
             currency={currency}
           />
           <MetricRow
-            label="Sparande"
+            label={SV.sparande}
             amountMinor={month.savingsMinor}
             currency={currency}
           />
           <MetricRow
-            label="Månadssaldo"
+            label="Kvar i månaden (plan)"
             amountMinor={month.freeToSpendMinor}
             currency={currency}
             tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
+            hint="Planerat, före faktiska köp"
           />
         </div>
 
@@ -261,24 +283,24 @@ export function AnalysDashboard({
         <div className="space-y-0">
           {hasSaldo ? (
             <MetricRow
-              label="Saldo"
+              label={SV.saldo}
               amountMinor={data.calculatedBalanceMinor!}
               currency={currency}
               hint={data.verificationLabel ?? undefined}
             />
           ) : (
             <MetricRow
-              label="Saldo"
+              label={SV.saldo}
               hint="Ange på Hem eller fota SMS"
             />
           )}
           <MetricRow
-            label="Denna månad"
+            label="Spenderat denna månad"
             amountMinor={data.monthSpendingMinor}
             currency={currency}
           />
           <MetricRow
-            label="Idag"
+            label={SV.spenderatIdag}
             amountMinor={data.todaySpendingMinor}
             currency={currency}
           />

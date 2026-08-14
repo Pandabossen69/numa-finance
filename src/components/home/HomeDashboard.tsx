@@ -7,6 +7,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
+import { SV } from "@/features/copy/labels-sv";
 import {
   createExpenseAction,
   setAvailableNowAction,
@@ -52,10 +53,10 @@ export function HomeDashboard({
     snap.todaySpendingMinor > snap.dayBudgetMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
-      ? `tills ${snap.nextIncomeLabelSv}`
+      ? `Till ${snap.nextIncomeLabelSv}`
       : null
     : snap.cycleStartLabelSv && snap.cycleEndLabelSv
-      ? `${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
+      ? `${snap.cycleStartLabelSv} – ${snap.cycleEndLabelSv}`
       : null;
 
   const dayUsedRatio =
@@ -63,6 +64,15 @@ export function HomeDashboard({
       ? Math.min(1.15, snap.todaySpendingMinor / snap.dayBudgetMinor)
       : 0;
   const dayBarWidth = Math.min(100, Math.max(0, dayUsedRatio * 100));
+  const daysWord = formatCountSv(snap.spendDaysLeft, "dag", "dagar");
+
+  const statusLine = overToday
+    ? SV.overDagsbudget
+    : snap.dayBudgetMinor > 0 && snap.todaySpendingMinor === 0
+      ? `Hela dagsbudgeten kvar · ${daysWord} i perioden`
+      : snap.dayBudgetMinor > 0
+        ? `${formatMoneyHint(snap.todaySpendingMinor, currency)} använda av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
+        : null;
 
   return (
     <div className="mx-auto max-w-lg space-y-5 pb-2">
@@ -76,7 +86,7 @@ export function HomeDashboard({
         <h1 className="numa-page-title">Hem</h1>
         {isEmpty ? (
           <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
-            Lägg in intäkter i Plan så räknas din dagsbudget.
+            Lägg in intäkter under Plan — då får du en dagsbudget här.
           </p>
         ) : null}
       </header>
@@ -101,9 +111,9 @@ export function HomeDashboard({
             />
             <div className="relative space-y-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p id="spend-heading" className="numa-section-title">
-                    Kvar idag
+                    {SV.kvarIdag}
                   </p>
                   <div
                     className={`mt-2 ${
@@ -120,16 +130,27 @@ export function HomeDashboard({
                       size="xl"
                     />
                   </div>
+                  {statusLine ? (
+                    <p
+                      className={`mt-2 text-sm leading-snug ${
+                        overToday
+                          ? "font-medium text-[var(--numa-danger)]"
+                          : "text-[var(--numa-muted)]"
+                      }`}
+                    >
+                      {statusLine}
+                    </p>
+                  ) : null}
                 </div>
                 {!isEmpty ? (
                   <span className="shrink-0 rounded-full bg-[var(--numa-accent-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--numa-accent-ink)]">
-                    {formatCountSv(snap.spendDaysLeft, "dag", "dagar")} kvar
+                    {daysWord}
                   </span>
                 ) : null}
               </div>
 
               {snap.dayBudgetMinor > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="numa-progress h-2" aria-hidden>
                     <span
                       className="animate-bar"
@@ -146,66 +167,74 @@ export function HomeDashboard({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <MiniStat
-                      label="Dagsbudget"
+                      label={SV.dagsbudget}
                       amountMinor={snap.dayBudgetMinor}
                       currency={currency}
+                      hint="Sätts på morgonen"
                     />
                     <MiniStat
-                      label="Spenderat idag"
+                      label={SV.spenderatIdag}
                       amountMinor={snap.todaySpendingMinor}
                       currency={currency}
                       tone={overToday ? "danger" : undefined}
+                      hint="Sänker bara idag"
                     />
                   </div>
                 </div>
               ) : !isEmpty ? (
                 <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
                   {isBridge
-                    ? "Ange saldo eller fota bank-SMS så räknas dagsbudgeten."
-                    : "När planen har fritt utrymme syns dagsbudgeten här."}
+                    ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                    : "När planen har pengar kvar syns dagsbudgeten här."}
                 </p>
               ) : null}
             </div>
           </section>
 
-          <section className="numa-panel-list animate-rise-delay-2 animate-scale-in px-4 py-1">
-            <MetricRow
-              label={isBridge ? "Saldo" : "Kvar totalt"}
-              amountMinor={snap.remainingFreeMinor}
-              currency={currency}
-              tone={remainingOk ? "positive" : "danger"}
-              hint={
-                isBridge && snap.verificationLabel
-                  ? snap.verificationLabel
-                  : !isBridge
-                    ? "Hela perioden"
-                    : undefined
-              }
-            />
-            {!isBridge ? (
+          <section className="space-y-2">
+            <p className="numa-section-title px-1">
+              {isBridge ? SV.saldo : SV.perioden}
+            </p>
+            <div className="numa-panel-list animate-rise-delay-2 animate-scale-in px-4 py-1">
               <MetricRow
-                label="Sparar"
-                amountMinor={snap.planSavingsMinor}
+                label={isBridge ? SV.saldo : SV.kvarIPerioden}
+                amountMinor={snap.remainingFreeMinor}
                 currency={currency}
+                tone={remainingOk ? "positive" : "danger"}
+                hint={
+                  isBridge && snap.verificationLabel
+                    ? snap.verificationLabel
+                    : !isBridge
+                      ? "Efter planerade utgifter och det du redan spenderat"
+                      : undefined
+                }
               />
-            ) : null}
-            {snap.hasBankTruth &&
-            snap.calculatedBalanceMinor != null &&
-            !isBridge ? (
-              <MetricRow
-                label="Saldo"
-                amountMinor={snap.calculatedBalanceMinor}
-                currency={currency}
-                hint={snap.verificationLabel ?? undefined}
-              />
-            ) : null}
-            {!isBridge && snap.cycleSpendingMinor > 0 ? (
-              <MetricRow
-                label="Spenderat i perioden"
-                amountMinor={snap.cycleSpendingMinor}
-                currency={currency}
-              />
-            ) : null}
+              {!isBridge ? (
+                <MetricRow
+                  label={SV.sparande}
+                  amountMinor={snap.planSavingsMinor}
+                  currency={currency}
+                  hint="Avsatt i planen"
+                />
+              ) : null}
+              {snap.hasBankTruth &&
+              snap.calculatedBalanceMinor != null &&
+              !isBridge ? (
+                <MetricRow
+                  label={SV.saldo}
+                  amountMinor={snap.calculatedBalanceMinor}
+                  currency={currency}
+                  hint={snap.verificationLabel ?? "På kontot"}
+                />
+              ) : null}
+              {!isBridge && snap.cycleSpendingMinor > 0 ? (
+                <MetricRow
+                  label={SV.spenderatIPerioden}
+                  amountMinor={snap.cycleSpendingMinor}
+                  currency={currency}
+                />
+              ) : null}
+            </div>
           </section>
 
           {isBridge ? (
@@ -220,10 +249,10 @@ export function HomeDashboard({
           <section className="animate-rise-delay-2 grid grid-cols-2 gap-3">
             <ActionCard
               href="/fota"
-              title="Fota"
-              subtitle="Kvitto eller SMS"
+              title={SV.fota}
+              subtitle={SV.fotaHint}
             />
-            <ActionCard href="/plan" title="Plan" subtitle="Intäkter & hinkar" />
+            <ActionCard href="/plan" title={SV.plan} subtitle={SV.planHint} />
           </section>
 
           <QuickExpense
@@ -243,11 +272,13 @@ function MiniStat({
   amountMinor,
   currency,
   tone,
+  hint,
 }: {
   label: string;
   amountMinor: number;
   currency: CurrencyCode;
   tone?: "danger";
+  hint?: string;
 }) {
   return (
     <div className="rounded-2xl bg-[rgba(10,26,20,0.035)] px-3 py-2.5">
@@ -266,6 +297,11 @@ function MiniStat({
           compact
         />
       </div>
+      {hint ? (
+        <p className="mt-1 text-[10px] leading-snug text-[var(--numa-faint)]">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -308,14 +344,14 @@ function AvailableNowCard({
   return (
     <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
       <div>
-        <p className="numa-section-title">Kom igång</p>
+        <p className="numa-section-title">{SV.komIgång}</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">
-          Hur mycket har du kvar?
+          {SV.hurMycketKvar}
         </h2>
         <p className="mt-1 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Vi sätter en dagsbudget
-          {nextIncomeLabel ? ` tills ${nextIncomeLabel}` : " tills nästa intäkt"}
-          .
+          Vi räknar ut en dagsbudget
+          {nextIncomeLabel ? ` fram till ${nextIncomeLabel}` : " fram till nästa intäkt"}
+          . När du handlar sjunker bara kvar idag.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -346,7 +382,7 @@ function AvailableNowCard({
             });
           }}
         >
-          {pending ? "Sparar…" : "Visa budget"}
+          {pending ? "Sparar…" : SV.visaDagsbudget}
         </button>
       </div>
       {error ? (
@@ -381,7 +417,7 @@ function UpdateBalanceLink({
           setOpen(true);
         }}
       >
-        Uppdatera belopp
+        {SV.uppdateraSaldo}
       </button>
     );
   }
@@ -464,14 +500,15 @@ function QuickExpense({
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h2 className="numa-section-title">Snabb utgift</h2>
+          <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
-            Dras från dagens budget
+            {SV.laggtillUtgiftHint}
           </p>
         </div>
         {!disabled ? (
           <p className="shrink-0 text-right text-[11px] text-[var(--numa-faint)]">
-            Kvar{" "}
+            {SV.kvarIdag}
+            <br />
             <span className="font-semibold text-[var(--numa-ink)]">
               {formatMoneyHint(remainingTodayMinor, currency)}
             </span>
@@ -487,7 +524,7 @@ function QuickExpense({
             prefetch
             className="font-semibold text-[var(--numa-accent)]"
           >
-            fota SMS
+            fota bank-SMS
           </Link>
           .
         </p>
@@ -497,7 +534,7 @@ function QuickExpense({
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="t.ex. Lunch, Grab"
+              placeholder="Vad? t.ex. Lunch"
               className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
@@ -530,7 +567,7 @@ function QuickExpense({
                 });
               }}
             >
-              {pending ? "…" : "Lägg till"}
+              {pending ? "…" : "Spara"}
             </button>
           </div>
           {error ? (
