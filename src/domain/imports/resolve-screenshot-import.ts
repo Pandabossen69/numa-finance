@@ -6,6 +6,7 @@ import {
   type SelectImportableResult,
 } from "./bank-parsers";
 import type { ExtractionProviderResult } from "./extraction";
+import { resolveReceiptPaidAmountMinor } from "./receipt-total";
 
 export type ResolvedScreenshotImport =
   | {
@@ -254,11 +255,19 @@ export function resolveScreenshotImport(
     first?.currency === "SEK" || first?.currency === "THB"
       ? first.currency
       : "THB";
+  const metaFullText =
+    typeof extraction.rawMetadata?.fullText === "string"
+      ? extraction.rawMetadata.fullText
+      : combinedText;
+  const suggestedAmountMinor = resolveReceiptPaidAmountMinor({
+    visionAmountMinor: first?.amountMinor ?? null,
+    fullText: metaFullText,
+  });
 
   return {
     kind: "receipt_or_other",
     selectedBatch: [],
-    suggestedAmountMinor: first?.amountMinor ?? null,
+    suggestedAmountMinor,
     suggestedDescription: first?.description ?? null,
     balanceAfterMinor: first?.balanceAfterMinor ?? null,
     fingerprint: null,
@@ -266,9 +275,9 @@ export function resolveScreenshotImport(
     currency,
     observationKind: "receipt",
     source: "receipt_camera",
-    messageSv: first?.amountMinor
-      ? "Vi hittade ett belopp på kvittot — dubbelkolla innan du sparar."
-      : "Kunde inte läsa beloppet säkert. Fyll i själv.",
+    messageSv: suggestedAmountMinor
+      ? "Vi läste totalsumman (det du faktiskt betalade) — dubbelkolla innan du sparar."
+      : "Kunde inte läsa beloppet säkert. Fyll i själv eller ta en skarpare bild av totalsumman.",
     alreadyKnown: false,
   };
 }
