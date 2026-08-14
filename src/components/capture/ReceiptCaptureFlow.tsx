@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   QuickAddForms,
   type ShellAccount,
@@ -65,7 +64,6 @@ export function ReceiptCaptureFlow({
   bootstrapping?: boolean;
   initialMode?: CaptureMode;
 }) {
-  const router = useRouter();
   const [mode, setMode] = useState<CaptureMode>(
     bootstrapping ? "bank_sms" : initialMode,
   );
