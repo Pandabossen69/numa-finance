@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { NavWarmup } from "@/components/layout/NavWarmup";
 import { SideNav } from "@/components/layout/SideNav";
@@ -15,10 +16,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex gap-8 md:gap-12">
         <SideNav />
         <div className="min-w-0 flex-1">
-          <header className="flex items-center justify-between pt-[max(0.85rem,var(--numa-safe-top))] pb-2 md:hidden">
+          <header className="flex items-center justify-between gap-3 pt-[max(0.85rem,var(--numa-safe-top))] pb-2 md:hidden">
             <Link href="/idag" prefetch className="block min-w-0">
               <span className="numa-brand-mark">NUMA</span>
             </Link>
+            <SignOutButton variant="header" />
           </header>
 
           <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(7.75rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-14 md:pt-8">

@@ -1,6 +1,8 @@
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   MerListGroup,
   MerListLink,
+  MerListRow,
   MerPageHeader,
   MerSection,
 } from "@/components/mer/MerHub";
@@ -55,6 +57,14 @@ export default function MerPage() {
             </MerListGroup>
           </MerSection>
         ))}
+
+        <MerSection title="Konto">
+          <MerListGroup>
+            <MerListRow className="py-3">
+              <SignOutButton />
+            </MerListRow>
+          </MerListGroup>
+        </MerSection>
       </nav>
     </div>
   );
