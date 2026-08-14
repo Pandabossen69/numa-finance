@@ -47,10 +47,9 @@ export function HomeDashboard({
   const isBridge = snap.livingMode === "bridge";
   const isEmpty = snap.livingMode === "empty";
   const remainingOk = snap.remainingFreeMinor >= 0;
-  const dayOk = snap.perDayBudgetMinor > 0;
+  const dayOk = snap.remainingTodayMinor > 0;
   const overToday =
-    snap.dayBudgetMinor > 0 &&
-    snap.todaySpendingMinor > snap.dayBudgetMinor;
+    snap.dayBudgetMinor > 0 && snap.todaySpendingMinor > snap.dayBudgetMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
       ? `Till ${snap.nextIncomeLabelSv}`
@@ -102,93 +101,87 @@ export function HomeDashboard({
       {!snap.needsAvailableInput ? (
         <>
           <section
-            className="numa-panel-strong animate-rise-delay-1 relative overflow-hidden p-5"
+            className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5"
             aria-labelledby="spend-heading"
           >
-            <div
-              className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(13,122,102,0.16)_0%,transparent_70%)]"
-              aria-hidden
-            />
-            <div className="relative space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p id="spend-heading" className="numa-section-title">
-                    {SV.kvarIdag}
-                  </p>
-                  <div
-                    className={`mt-2 ${
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p id="spend-heading" className="numa-section-title">
+                  {SV.kvarIdag}
+                </p>
+                <div
+                  className={`money-hero mt-2 ${
+                    overToday
+                      ? "text-[var(--numa-danger)]"
+                      : dayOk
+                        ? "text-[var(--numa-ink)]"
+                        : "text-[var(--numa-muted)]"
+                  }`}
+                >
+                  <MoneyDisplay
+                    amountMinor={Math.max(0, snap.remainingTodayMinor)}
+                    currency={currency}
+                    size="xl"
+                  />
+                </div>
+                {statusLine ? (
+                  <p
+                    className={`mt-2 text-sm leading-snug ${
                       overToday
-                        ? "text-[var(--numa-danger)]"
-                        : dayOk
-                          ? "text-[var(--numa-ink)]"
-                          : "text-[var(--numa-muted)]"
+                        ? "font-medium text-[var(--numa-danger)]"
+                        : "text-[var(--numa-muted)]"
                     }`}
                   >
-                    <MoneyDisplay
-                      amountMinor={Math.max(0, snap.perDayBudgetMinor)}
-                      currency={currency}
-                      size="xl"
-                    />
-                  </div>
-                  {statusLine ? (
-                    <p
-                      className={`mt-2 text-sm leading-snug ${
-                        overToday
-                          ? "font-medium text-[var(--numa-danger)]"
-                          : "text-[var(--numa-muted)]"
-                      }`}
-                    >
-                      {statusLine}
-                    </p>
-                  ) : null}
-                </div>
-                {!isEmpty ? (
-                  <span className="shrink-0 rounded-full bg-[var(--numa-accent-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--numa-accent-ink)]">
-                    {daysWord}
-                  </span>
+                    {statusLine}
+                  </p>
                 ) : null}
               </div>
-
-              {snap.dayBudgetMinor > 0 ? (
-                <div className="space-y-2.5">
-                  <div className="numa-progress h-2" aria-hidden>
-                    <span
-                      className="animate-bar"
-                      style={{
-                        width: `${Math.max(dayBarWidth > 0 ? 6 : 0, dayBarWidth)}%`,
-                        ...(overToday
-                          ? {
-                              background:
-                                "linear-gradient(90deg, var(--numa-danger) 0%, #d94a3d 100%)",
-                            }
-                          : undefined),
-                      }}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <MiniStat
-                      label={SV.dagsbudget}
-                      amountMinor={snap.dayBudgetMinor}
-                      currency={currency}
-                      hint="Sätts på morgonen"
-                    />
-                    <MiniStat
-                      label={SV.spenderatIdag}
-                      amountMinor={snap.todaySpendingMinor}
-                      currency={currency}
-                      tone={overToday ? "danger" : undefined}
-                      hint="Sänker bara idag"
-                    />
-                  </div>
-                </div>
-              ) : !isEmpty ? (
-                <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                  {isBridge
-                    ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
-                    : "När planen har pengar kvar syns dagsbudgeten här."}
+              {!isEmpty ? (
+                <p className="shrink-0 pt-0.5 text-right text-[12px] font-medium text-[var(--numa-muted)]">
+                  {daysWord}
                 </p>
               ) : null}
             </div>
+
+            {snap.dayBudgetMinor > 0 ? (
+              <div className="space-y-2.5">
+                <div className="numa-progress h-2" aria-hidden>
+                  <span
+                    className="animate-bar"
+                    style={{
+                      width: `${Math.max(dayBarWidth > 0 ? 6 : 0, dayBarWidth)}%`,
+                      ...(overToday
+                        ? {
+                            background:
+                              "linear-gradient(90deg, var(--numa-danger) 0%, #d94a3d 100%)",
+                          }
+                        : undefined),
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <MiniStat
+                    label={SV.dagsbudget}
+                    amountMinor={snap.dayBudgetMinor}
+                    currency={currency}
+                    hint="Sätts på morgonen"
+                  />
+                  <MiniStat
+                    label={SV.spenderatIdag}
+                    amountMinor={snap.todaySpendingMinor}
+                    currency={currency}
+                    tone={overToday ? "danger" : undefined}
+                    hint="Sänker bara idag"
+                  />
+                </div>
+              </div>
+            ) : !isEmpty ? (
+              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+                {isBridge
+                  ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                  : "När planen har pengar kvar syns dagsbudgeten här."}
+              </p>
+            ) : null}
           </section>
 
           <section className="space-y-2">
@@ -259,7 +252,7 @@ export function HomeDashboard({
             accountId={snap.primaryAccountId}
             currency={currency}
             disabled={!snap.primaryAccountId}
-            remainingTodayMinor={snap.perDayBudgetMinor}
+            remainingTodayMinor={snap.remainingTodayMinor}
           />
         </>
       ) : null}

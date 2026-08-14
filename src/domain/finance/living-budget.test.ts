@@ -75,7 +75,7 @@ describe("projectLivingBudget", () => {
     expect(living.usesBankBalance).toBe(true);
     expect(living.remainingFreeMinor).toBe(21_000_97);
     expect(living.daysLeft).toBe(12); // 11 → 23 Aug
-    expect(living.perDayMinor).toBe(Math.floor(21_000_97 / 12));
+    expect(living.remainingTodayMinor).toBe(Math.floor(21_000_97 / 12));
     expect(living.nextIncomeAt).toBe("2026-08-23T12:00:00.000Z");
   });
 
@@ -93,7 +93,7 @@ describe("projectLivingBudget", () => {
     });
     expect(living.mode).toBe("bridge");
     expect(living.needsAvailableInput).toBe(true);
-    expect(living.perDayMinor).toBe(0);
+    expect(living.remainingTodayMinor).toBe(0);
   });
 
   it("treats saldo 0 as a real balance (not missing truth)", () => {
@@ -112,7 +112,7 @@ describe("projectLivingBudget", () => {
     expect(living.needsAvailableInput).toBe(false);
     expect(living.usesBankBalance).toBe(true);
     expect(living.remainingFreeMinor).toBe(0);
-    expect(living.perDayMinor).toBe(0);
+    expect(living.remainingTodayMinor).toBe(0);
   });
 
   it("switches to plan cycle after early income lands (partial until last)", () => {
@@ -135,7 +135,7 @@ describe("projectLivingBudget", () => {
     expect(living.mode).toBe("cycle");
     expect(living.remainingFreeMinor).toBe(7_000_00);
     expect(living.daysLeft).toBe(1);
-    expect(living.perDayMinor).toBe(7_000_00);
+    expect(living.remainingTodayMinor).toBe(7_000_00);
     expect(living.usesBankBalance).toBe(false);
   });
 
@@ -176,7 +176,7 @@ describe("projectLivingBudget", () => {
       todaySpendingMinor: 0,
     });
     expect(morning.dayBudgetMinor).toBeGreaterThan(0);
-    expect(morning.perDayMinor).toBe(morning.dayBudgetMinor);
+    expect(morning.remainingTodayMinor).toBe(morning.dayBudgetMinor);
 
     const spentToday = 300_00;
     const after = projectLivingBudget({
@@ -191,12 +191,12 @@ describe("projectLivingBudget", () => {
     // Dagsbudget stays the morning rate — other days are not rewritten.
     expect(after.dayBudgetMinor).toBe(morning.dayBudgetMinor);
     // Hero remaining drops by exactly today's spend.
-    expect(after.perDayMinor).toBe(morning.dayBudgetMinor - spentToday);
+    expect(after.remainingTodayMinor).toBe(morning.dayBudgetMinor - spentToday);
     // Must NOT be the redistributed floor((free-spend)/days) model.
     const redistributed = Math.floor(
       (cycle.freeToSpendMinor - spentToday) / after.daysLeft,
     );
-    expect(after.perDayMinor).not.toBe(redistributed);
+    expect(after.remainingTodayMinor).not.toBe(redistributed);
   });
 
   it("bridge mode also depletes sticky day budget from today's spend", () => {
@@ -219,6 +219,6 @@ describe("projectLivingBudget", () => {
 
     expect(living.mode).toBe("bridge");
     expect(living.dayBudgetMinor).toBe(Math.floor(morningSaldo / 12));
-    expect(living.perDayMinor).toBe(living.dayBudgetMinor - spentToday);
+    expect(living.remainingTodayMinor).toBe(living.dayBudgetMinor - spentToday);
   });
 });

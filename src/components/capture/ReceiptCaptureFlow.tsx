@@ -52,16 +52,14 @@ function minorToInput(minor: number): string {
 export function ReceiptCaptureFlow({
   accountId,
   accounts,
-  perDayBudgetMinor,
-  todaySpendingMinor: _todaySpendingMinor,
+  remainingTodayMinor,
   currency,
   bootstrapping = false,
   initialMode = "pick",
 }: {
   accountId: string | null;
   accounts: ShellAccount[];
-  perDayBudgetMinor: number;
-  todaySpendingMinor: number;
+  remainingTodayMinor: number;
   currency: CurrencyCode;
   bootstrapping?: boolean;
   initialMode?: CaptureMode;
@@ -87,7 +85,7 @@ export function ReceiptCaptureFlow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const roomBefore = Math.max(0, perDayBudgetMinor);
+  const roomBefore = Math.max(0, remainingTodayMinor);
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;
