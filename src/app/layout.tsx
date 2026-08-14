@@ -19,7 +19,7 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "NUMA",
-  description: "Personlig ekonomi i realtid — kvar per dag, plan och saldo.",
+  description: "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
   applicationName: "NUMA",
   appleWebApp: {
     capable: true,

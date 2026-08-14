@@ -6,13 +6,18 @@ import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
-import type { CurrencyCode } from "@/domain/money";
+import { formatMoney, money, type CurrencyCode } from "@/domain/money";
+import { SV } from "@/features/copy/labels-sv";
 import {
   createExpenseAction,
   setAvailableNowAction,
 } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
+
+function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
+  return formatMoney(money(Math.max(0, amountMinor), currency));
+}
 
 export function HomeDashboard({
   snap,
@@ -23,13 +28,13 @@ export function HomeDashboard({
 }) {
   if (error || !snap) {
     return (
-      <div className="space-y-3">
+      <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
         <Link
           href="/fota"
           prefetch
-          className="text-sm font-semibold text-[var(--numa-accent)]"
+          className="inline-flex text-sm font-semibold text-[var(--numa-accent)]"
         >
           Gå till Fota →
         </Link>
@@ -43,32 +48,45 @@ export function HomeDashboard({
   const isEmpty = snap.livingMode === "empty";
   const remainingOk = snap.remainingFreeMinor >= 0;
   const dayOk = snap.perDayBudgetMinor > 0;
+  const overToday =
+    snap.dayBudgetMinor > 0 &&
+    snap.todaySpendingMinor > snap.dayBudgetMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
-      ? `tills ${snap.nextIncomeLabelSv}`
+      ? `Till ${snap.nextIncomeLabelSv}`
       : null
     : snap.cycleStartLabelSv && snap.cycleEndLabelSv
-      ? `${snap.cycleStartLabelSv} → ${snap.cycleEndLabelSv}`
+      ? `${snap.cycleStartLabelSv} – ${snap.cycleEndLabelSv}`
       : null;
 
-  const poolBase =
-    snap.cycleSpendingMinor + Math.max(0, snap.remainingFreeMinor);
-  const spendProgress =
-    !isEmpty && poolBase > 0
-      ? Math.min(1, Math.max(0, snap.cycleSpendingMinor / poolBase))
-      : null;
+  const dayUsedRatio =
+    snap.dayBudgetMinor > 0
+      ? Math.min(1.15, snap.todaySpendingMinor / snap.dayBudgetMinor)
+      : 0;
+  const dayBarWidth = Math.min(100, Math.max(0, dayUsedRatio * 100));
+  const daysWord = formatCountSv(snap.spendDaysLeft, "dag", "dagar");
+
+  const statusLine = overToday
+    ? SV.overDagsbudget
+    : snap.dayBudgetMinor > 0 && snap.todaySpendingMinor === 0
+      ? `Hela dagsbudgeten kvar · ${daysWord} i perioden`
+      : snap.dayBudgetMinor > 0
+        ? `${formatMoneyHint(snap.todaySpendingMinor, currency)} använda av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
+        : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-9">
-      <header className="animate-rise space-y-1">
-        <p className="text-sm font-medium capitalize text-[var(--numa-muted)]">
+    <div className="mx-auto max-w-lg space-y-5 pb-2">
+      <header className="animate-rise space-y-1 px-0.5">
+        <p className="text-[13px] font-medium capitalize text-[var(--numa-muted)]">
           {greeting}
-          {rangeLabel ? ` · ${rangeLabel}` : ""}
+          {rangeLabel ? (
+            <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
+          ) : null}
         </p>
         <h1 className="numa-page-title">Hem</h1>
         {isEmpty ? (
-          <p className="max-w-[32ch] pt-1 text-sm text-[var(--numa-muted)]">
-            Lägg in intäkter i Plan.
+          <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
+            Lägg in intäkter under Plan — då får du en dagsbudget här.
           </p>
         ) : null}
       </header>
@@ -84,84 +102,143 @@ export function HomeDashboard({
       {!snap.needsAvailableInput ? (
         <>
           <section
-            className="animate-rise-delay-1 space-y-3"
+            className="numa-panel-strong animate-rise-delay-1 relative overflow-hidden p-5"
             aria-labelledby="spend-heading"
           >
-            <p id="spend-heading" className="numa-section-title">
-              Kvar per dag
-            </p>
             <div
-              className={
-                dayOk
-                  ? "money-hero text-[var(--numa-ink)]"
-                  : "money-hero text-[var(--numa-muted)]"
-              }
-            >
-              <MoneyDisplay
-                amountMinor={Math.max(0, snap.perDayBudgetMinor)}
-                currency={currency}
-                size="xl"
-              />
-            </div>
-            {!isEmpty ? (
-              <p className="text-sm text-[var(--numa-muted)]">
-                {isBridge
-                  ? `${formatCountSv(snap.spendDaysLeft, "dag", "dagar")} till nästa intäkt`
-                  : `${formatCountSv(snap.spendDaysLeft, "dag", "dagar")} kvar`}
-              </p>
-            ) : null}
-            {spendProgress != null && snap.cycleSpendingMinor > 0 ? (
-              <div
-                className="numa-progress animate-bar max-w-xs"
-                aria-hidden
-              >
-                <span
-                  style={{ width: `${Math.max(8, spendProgress * 100)}%` }}
-                />
+              className="pointer-events-none absolute -right-10 -top-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(13,122,102,0.16)_0%,transparent_70%)]"
+              aria-hidden
+            />
+            <div className="relative space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p id="spend-heading" className="numa-section-title">
+                    {SV.kvarIdag}
+                  </p>
+                  <div
+                    className={`mt-2 ${
+                      overToday
+                        ? "text-[var(--numa-danger)]"
+                        : dayOk
+                          ? "text-[var(--numa-ink)]"
+                          : "text-[var(--numa-muted)]"
+                    }`}
+                  >
+                    <MoneyDisplay
+                      amountMinor={Math.max(0, snap.perDayBudgetMinor)}
+                      currency={currency}
+                      size="xl"
+                    />
+                  </div>
+                  {statusLine ? (
+                    <p
+                      className={`mt-2 text-sm leading-snug ${
+                        overToday
+                          ? "font-medium text-[var(--numa-danger)]"
+                          : "text-[var(--numa-muted)]"
+                      }`}
+                    >
+                      {statusLine}
+                    </p>
+                  ) : null}
+                </div>
+                {!isEmpty ? (
+                  <span className="shrink-0 rounded-full bg-[var(--numa-accent-soft)] px-3 py-1 text-[11px] font-semibold text-[var(--numa-accent-ink)]">
+                    {daysWord}
+                  </span>
+                ) : null}
               </div>
-            ) : null}
+
+              {snap.dayBudgetMinor > 0 ? (
+                <div className="space-y-2.5">
+                  <div className="numa-progress h-2" aria-hidden>
+                    <span
+                      className="animate-bar"
+                      style={{
+                        width: `${Math.max(dayBarWidth > 0 ? 6 : 0, dayBarWidth)}%`,
+                        ...(overToday
+                          ? {
+                              background:
+                                "linear-gradient(90deg, var(--numa-danger) 0%, #d94a3d 100%)",
+                            }
+                          : undefined),
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <MiniStat
+                      label={SV.dagsbudget}
+                      amountMinor={snap.dayBudgetMinor}
+                      currency={currency}
+                      hint="Sätts på morgonen"
+                    />
+                    <MiniStat
+                      label={SV.spenderatIdag}
+                      amountMinor={snap.todaySpendingMinor}
+                      currency={currency}
+                      tone={overToday ? "danger" : undefined}
+                      hint="Sänker bara idag"
+                    />
+                  </div>
+                </div>
+              ) : !isEmpty ? (
+                <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+                  {isBridge
+                    ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                    : "När planen har pengar kvar syns dagsbudgeten här."}
+                </p>
+              ) : null}
+            </div>
           </section>
 
-          <section className="animate-rise-delay-2 animate-scale-in space-y-0">
-            <MetricRow
-              label={isBridge ? "Saldo" : "Kvar totalt"}
-              amountMinor={snap.remainingFreeMinor}
-              currency={currency}
-              tone={remainingOk ? "positive" : "danger"}
-              hint={
-                isBridge && snap.verificationLabel
-                  ? snap.verificationLabel
-                  : undefined
-              }
-            />
-            {!isBridge ? (
+          <section className="space-y-2">
+            <p className="numa-section-title px-1">
+              {isBridge ? SV.saldo : SV.perioden}
+            </p>
+            <div className="numa-panel-list animate-rise-delay-2 animate-scale-in px-4 py-1">
               <MetricRow
-                label="Sparar"
-                amountMinor={snap.planSavingsMinor}
+                label={isBridge ? SV.saldo : SV.kvarIPerioden}
+                amountMinor={snap.remainingFreeMinor}
                 currency={currency}
+                tone={remainingOk ? "positive" : "danger"}
+                hint={
+                  isBridge && snap.verificationLabel
+                    ? snap.verificationLabel
+                    : !isBridge
+                      ? "Efter planerade utgifter och det du redan spenderat"
+                      : undefined
+                }
               />
-            ) : null}
-            {snap.hasBankTruth &&
-            snap.calculatedBalanceMinor != null &&
-            !isBridge ? (
-              <MetricRow
-                label="Saldo"
-                amountMinor={snap.calculatedBalanceMinor}
-                currency={currency}
-                hint={snap.verificationLabel ?? undefined}
-              />
-            ) : null}
-            {!isBridge && snap.cycleSpendingMinor > 0 ? (
-              <MetricRow
-                label="Spenderat"
-                amountMinor={snap.cycleSpendingMinor}
-                currency={currency}
-              />
-            ) : null}
+              {!isBridge ? (
+                <MetricRow
+                  label={SV.sparande}
+                  amountMinor={snap.planSavingsMinor}
+                  currency={currency}
+                  hint="Avsatt i planen"
+                />
+              ) : null}
+              {snap.hasBankTruth &&
+              snap.calculatedBalanceMinor != null &&
+              !isBridge ? (
+                <MetricRow
+                  label={SV.saldo}
+                  amountMinor={snap.calculatedBalanceMinor}
+                  currency={currency}
+                  hint={snap.verificationLabel ?? "På kontot"}
+                />
+              ) : null}
+              {!isBridge && snap.cycleSpendingMinor > 0 ? (
+                <MetricRow
+                  label={SV.spenderatIPerioden}
+                  amountMinor={snap.cycleSpendingMinor}
+                  currency={currency}
+                />
+              ) : null}
+            </div>
           </section>
 
           {isBridge ? (
-            <div className="text-sm text-[var(--numa-muted)]">
+            <div className="animate-rise-delay-2 px-0.5 text-sm">
               <UpdateBalanceLink
                 accountId={snap.primaryAccountId}
                 currency={currency}
@@ -169,14 +246,84 @@ export function HomeDashboard({
             </div>
           ) : null}
 
+          <section className="animate-rise-delay-2 grid grid-cols-2 gap-3">
+            <ActionCard
+              href="/fota"
+              title={SV.fota}
+              subtitle={SV.fotaHint}
+            />
+            <ActionCard href="/plan" title={SV.plan} subtitle={SV.planHint} />
+          </section>
+
           <QuickExpense
             accountId={snap.primaryAccountId}
             currency={currency}
             disabled={!snap.primaryAccountId}
+            remainingTodayMinor={snap.perDayBudgetMinor}
           />
         </>
       ) : null}
     </div>
+  );
+}
+
+function MiniStat({
+  label,
+  amountMinor,
+  currency,
+  tone,
+  hint,
+}: {
+  label: string;
+  amountMinor: number;
+  currency: CurrencyCode;
+  tone?: "danger";
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-[rgba(10,26,20,0.035)] px-3 py-2.5">
+      <p className="text-[11px] font-medium text-[var(--numa-faint)]">{label}</p>
+      <div
+        className={`mt-1 ${
+          tone === "danger"
+            ? "text-[var(--numa-danger)]"
+            : "text-[var(--numa-ink)]"
+        }`}
+      >
+        <MoneyDisplay
+          amountMinor={amountMinor}
+          currency={currency}
+          size="sm"
+          compact
+        />
+      </div>
+      {hint ? (
+        <p className="mt-1 text-[10px] leading-snug text-[var(--numa-faint)]">
+          {hint}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ActionCard({
+  href,
+  title,
+  subtitle,
+}: {
+  href: string;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <Link
+      href={href}
+      prefetch
+      className="numa-panel flex min-h-[4.75rem] flex-col justify-center px-4 py-3 transition active:scale-[0.98]"
+    >
+      <span className="text-sm font-semibold text-[var(--numa-ink)]">{title}</span>
+      <span className="mt-0.5 text-xs text-[var(--numa-muted)]">{subtitle}</span>
+    </Link>
   );
 }
 
@@ -197,14 +344,14 @@ function AvailableNowCard({
   return (
     <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
       <div>
-        <p className="numa-section-title">Kom igång</p>
+        <p className="numa-section-title">{SV.komIgång}</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">
-          Hur mycket har du kvar?
+          {SV.hurMycketKvar}
         </h2>
-        <p className="mt-1 max-w-[36ch] text-sm text-[var(--numa-muted)]">
-          Vi delar upp det per dag
-          {nextIncomeLabel ? ` tills ${nextIncomeLabel}` : " tills nästa intäkt"}
-          .
+        <p className="mt-1 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          Vi räknar ut en dagsbudget
+          {nextIncomeLabel ? ` fram till ${nextIncomeLabel}` : " fram till nästa intäkt"}
+          . När du handlar sjunker bara kvar idag.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -213,7 +360,7 @@ function AvailableNowCard({
           value={balance}
           onChange={(e) => setBalance(e.target.value)}
           placeholder={`Belopp (${currency})`}
-          className="money min-h-12 flex-1 rounded-xl border border-[var(--numa-border)] bg-white/80 px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+          className="money min-h-12 flex-1 rounded-xl border border-[var(--numa-border)] bg-white/90 px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
         />
         <button
           type="button"
@@ -235,7 +382,7 @@ function AvailableNowCard({
             });
           }}
         >
-          {pending ? "Sparar…" : "Visa budget"}
+          {pending ? "Sparar…" : SV.visaDagsbudget}
         </button>
       </div>
       {error ? (
@@ -270,13 +417,13 @@ function UpdateBalanceLink({
           setOpen(true);
         }}
       >
-        Uppdatera belopp
+        {SV.uppdateraSaldo}
       </button>
     );
   }
 
   return (
-    <span className="mt-2 flex flex-col gap-1">
+    <span className="mt-1 flex flex-col gap-1">
       <span className="flex flex-wrap items-center gap-2">
         <input
           inputMode="decimal"
@@ -286,7 +433,7 @@ function UpdateBalanceLink({
             setError(null);
           }}
           placeholder={currency}
-          className="money min-h-11 w-32 rounded-lg border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold"
+          className="money min-h-11 w-32 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3 text-base font-semibold"
         />
         <button
           type="button"
@@ -336,10 +483,12 @@ function QuickExpense({
   accountId,
   currency,
   disabled,
+  remainingTodayMinor,
 }: {
   accountId: string | null;
   currency: CurrencyCode;
   disabled: boolean;
+  remainingTodayMinor: number;
 }) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
@@ -348,8 +497,24 @@ function QuickExpense({
   const [pending, startTransition] = useTransition();
 
   return (
-    <section className="numa-panel animate-rise-delay-2 space-y-3 p-4 pl-5">
-      <h2 className="numa-section-title">Snabb utgift</h2>
+    <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
+          <p className="mt-1 text-sm text-[var(--numa-muted)]">
+            {SV.laggtillUtgiftHint}
+          </p>
+        </div>
+        {!disabled ? (
+          <p className="shrink-0 text-right text-[11px] text-[var(--numa-faint)]">
+            {SV.kvarIdag}
+            <br />
+            <span className="font-semibold text-[var(--numa-ink)]">
+              {formatMoneyHint(remainingTodayMinor, currency)}
+            </span>
+          </p>
+        ) : null}
+      </div>
 
       {disabled ? (
         <p className="text-sm text-[var(--numa-muted)]">
@@ -359,7 +524,7 @@ function QuickExpense({
             prefetch
             className="font-semibold text-[var(--numa-accent)]"
           >
-            fota SMS
+            fota bank-SMS
           </Link>
           .
         </p>
@@ -369,20 +534,20 @@ function QuickExpense({
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="t.ex. Lunch, Grab"
-              className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base outline-none focus:border-[var(--numa-accent)]"
+              placeholder="Vad? t.ex. Lunch"
+              className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
-              className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
             <button
               type="button"
               disabled={pending || !amount.trim()}
-              className="min-h-11 rounded-xl bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white disabled:opacity-45"
+              className="min-h-12 rounded-xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(13,122,102,0.25)] transition active:scale-[0.98] disabled:opacity-45"
               onClick={() => {
                 if (!accountId) return;
                 startTransition(async () => {
@@ -402,7 +567,7 @@ function QuickExpense({
                 });
               }}
             >
-              {pending ? "…" : "Lägg till"}
+              {pending ? "…" : "Spara"}
             </button>
           </div>
           {error ? (

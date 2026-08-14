@@ -50,12 +50,14 @@ export function PlanEditor({
   timeZone,
   bankBalanceMinor = null,
   cycleSpendingMinor = 0,
+  todaySpendingMinor = 0,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
   timeZone: string;
   bankBalanceMinor?: number | null;
   cycleSpendingMinor?: number;
+  todaySpendingMinor?: number;
 }) {
   const router = useRouter();
   const currentMonthKey = useMemo(
@@ -107,8 +109,9 @@ export function PlanEditor({
         timeZone,
         bankBalanceMinor,
         cycleSpendingMinor,
+        todaySpendingMinor,
       }),
-    [cycle, timeZone, bankBalanceMinor, cycleSpendingMinor],
+    [cycle, timeZone, bankBalanceMinor, cycleSpendingMinor, todaySpendingMinor],
   );
 
   useEffect(() => {
@@ -288,11 +291,11 @@ export function PlanEditor({
         living.mode !== "bridge" ? (
           <p className="inline-flex items-baseline gap-1.5 text-sm text-[var(--numa-muted)]">
             <MoneyDisplay
-              amountMinor={living.perDayMinor}
+              amountMinor={living.dayBudgetMinor}
               currency={currency}
               size="sm"
             />
-            <span>/ dag</span>
+            <span>dagsbudget / dag</span>
           </p>
         ) : null}
 

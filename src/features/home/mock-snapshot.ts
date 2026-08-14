@@ -43,8 +43,11 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     flexiblePlanRemaining: money(8_800_00 - spentToday.amountMinor, CURRENCY),
   });
 
+  const dayBudget = Math.floor(freePlan / 21);
+  const remainingToday = Math.max(0, dayBudget - spentToday.amountMinor);
+
   const pulse = calculateDayPulse({
-    safeToSpendToday: safe.today,
+    safeToSpendToday: money(dayBudget, CURRENCY),
     spentToday,
   });
 
@@ -67,7 +70,8 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     freeToSpendMinor: freePlan,
     remainingFreeMinor: remainingFree,
     spendDaysLeft: 21,
-    perDayBudgetMinor: Math.floor(remainingFree / 21),
+    perDayBudgetMinor: remainingToday,
+    dayBudgetMinor: dayBudget,
     cycleStartLabelSv: "25 aug.",
     cycleEndLabelSv: "25 sep.",
     cycleEndInferred: false,

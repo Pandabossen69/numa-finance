@@ -48,6 +48,7 @@ export type AnalysSnapshot = {
     remainingFreeMinor: number;
     daysLeft: number;
     perDayMinor: number;
+    dayBudgetMinor: number;
     incomes: AnalysLine[];
     expenses: AnalysLine[];
   };
@@ -102,9 +103,11 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       timeZone,
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor,
+      todaySpendingMinor: snap.todaySpendingMinor,
     });
     const remainingFreeMinor = living.remainingFreeMinor;
     const perDayMinor = living.perDayMinor;
+    const dayBudgetMinor = living.dayBudgetMinor;
 
     const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) => ({
       id: i.id,
@@ -172,28 +175,26 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const formulaSteps =
       living.mode === "bridge"
         ? [
-            "Innan nästa intäkt lever du på det som finns kvar på kontot (från förra månaden).",
-            "Ange saldo manuellt eller fota bank-SMS / kvitto — då uppdateras saldot.",
-            "Kvar per dag = saldo ÷ dagar kvar till nästa intäkt.",
-            "När intäkterna landar växlar Hem till plan-poolen för den månaden.",
+            "Innan nästa intäkt lever du på saldot på kontot.",
+            "Dagsbudget = saldo ÷ dagar kvar (samma belopp hela dagen).",
+            "Kvar idag = dagsbudget − det du spenderat idag.",
+            "När intäkterna kommer växlar Hem till periodens budget.",
           ]
         : living.mode === "empty"
           ? [
-              "Lägg in intäkter med datum i Plan — då startar en inkomstcykel.",
-              "Fota bank-SMS eller ange saldo på Hem så att kvar per dag kan räknas.",
+              "Lägg in intäkter med datum i Plan.",
+              "Då startar en period och du får en dagsbudget på Hem.",
             ]
           : cycle.phase === "partial"
             ? [
-                "Tidiga intäkter i månaden ingår redan i budgeten.",
-                "Kvar per dag räknas fram till månadens sista intäkt (då blir det mer per dag).",
-                "När sista intäkten landar räknas hela poolen om till nästa månads sista intäkt.",
+                "Tidiga intäkter ingår redan i budgeten.",
+                "Dagsbudget räknas fram till månadens sista intäkt.",
+                "När sista intäkten kommer räknas perioden om till nästa.",
               ]
             : [
-                "Alla intäkter samma kalendermånad räknas ihop (t.ex. Alltid ID + CSN + Trukks).",
-                "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
-                "Planerat fritt = intäkter − utgifter i perioden − sparande.",
-                "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
-                "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
+                "Intäkterna i perioden minus planerade utgifter och sparande = kvar i perioden.",
+                "Dagsbudget = kvar i perioden (på morgonen) ÷ dagar kvar.",
+                "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte.",
               ];
 
     return {
@@ -225,6 +226,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           remainingFreeMinor,
           daysLeft: living.daysLeft,
           perDayMinor,
+          dayBudgetMinor,
           incomes: cycleIncomes,
           expenses: cycleExpenses,
         },
