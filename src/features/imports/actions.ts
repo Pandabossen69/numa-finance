@@ -96,7 +96,7 @@ export async function confirmReceiptExpenseAction(
     const isSmsBatch =
       input.confirmAllPending === true || input.source === "screenshot";
 
-    let amountMinor = 0;
+    let amountMinor: number | undefined;
     if (!isSmsBatch) {
       amountMinor = parseUiAmountToMinor(input.amount || "0");
       if (amountMinor <= 0) {
@@ -109,7 +109,7 @@ export async function confirmReceiptExpenseAction(
       observationId: input.observationId,
       candidateId: input.candidateId,
       confirmAllPending: isSmsBatch,
-      amountMinor: amountMinor || 1,
+      amountMinor,
       description: input.description,
       category: input.category,
       fingerprint: input.fingerprint,

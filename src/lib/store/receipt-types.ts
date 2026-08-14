@@ -38,7 +38,8 @@ export type ConfirmReceiptInput = {
   candidateId?: string | null;
   /** Confirm every pending candidate on this observation (multi-SMS). */
   confirmAllPending?: boolean;
-  amountMinor: number;
+  /** Required for receipt_camera; ignored for SMS batch (amounts come from candidates). */
+  amountMinor?: number;
   description?: string;
   category?: string | null;
   fingerprint?: string | null;

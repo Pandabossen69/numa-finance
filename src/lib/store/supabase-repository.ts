@@ -13,6 +13,9 @@ import {
   shouldWriteSmsTipCheckpoint,
   startOfZonedDay,
   startOfZonedMonth,
+  decideSmsBatchConfirm,
+  isUniqueViolationMessage,
+  swedishFingerprintConflictError,
   zonedDayKey,
   type Account,
   type BalanceCheckpoint,
@@ -266,7 +269,7 @@ export async function createManualExpense(input: {
   if (input.fingerprint) {
     const known = await listConfirmedFingerprints();
     if (known.includes(input.fingerprint)) {
-      throw new Error("Den här bankbetalningen finns redan");
+      throw new Error(swedishFingerprintConflictError());
     }
   }
 
@@ -295,7 +298,12 @@ export async function createManualExpense(input: {
     .select("*")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isUniqueViolationMessage(error.message)) {
+      throw new Error(swedishFingerprintConflictError());
+    }
+    throw new Error(error.message);
+  }
   return mapTransaction(data);
 }
 
@@ -319,7 +327,7 @@ export async function createManualIncome(input: {
   if (input.fingerprint) {
     const known = await listConfirmedFingerprints();
     if (known.includes(input.fingerprint)) {
-      throw new Error("Den här bankrörelsen finns redan");
+      throw new Error(swedishFingerprintConflictError());
     }
   }
 
@@ -345,7 +353,12 @@ export async function createManualIncome(input: {
     })
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isUniqueViolationMessage(error.message)) {
+      throw new Error(swedishFingerprintConflictError());
+    }
+    throw new Error(error.message);
+  }
   return mapTransaction(data);
 }
 
@@ -1281,20 +1294,22 @@ export async function confirmReceiptExpense(
   }
 
   const supabase = await createSupabaseServerClient();
+  const batchMode =
+    input.confirmAllPending === true || observation.kind === "screenshot";
 
-  if (input.confirmAllPending || observation.kind === "screenshot") {
-    const { data: rows, error } = await supabase
+  if (batchMode) {
+    const { data: allRows, error: allError } = await supabase
       .from("extracted_transaction_candidates")
       .select("*")
       .eq("user_id", userId)
-      .eq("observation_id", input.observationId)
-      .eq("status", "needs_review");
-    if (error) throw new Error(error.message);
+      .eq("observation_id", input.observationId);
+    if (allError) throw new Error(allError.message);
 
-    const pending = (rows ?? [])
-      .map(mapCandidate)
+    const allCandidates = (allRows ?? []).map(mapCandidate);
+    const pending = allCandidates
       .filter(
         (c) =>
+          c.status === "needs_review" &&
           c.amountMinor != null &&
           c.amountMinor > 0 &&
           (c.direction === "credit" || c.direction === "debit") &&
@@ -1312,135 +1327,185 @@ export async function confirmReceiptExpense(
         return ai - bi;
       });
 
-    if (pending.length > 0) {
-      const payloadTip = pending
-        .map((c) => c.rawPayload?.tipBalanceAfterMinor)
-        .find((v): v is number => typeof v === "number");
-      const updatesFlag = pending
-        .map((c) => c.rawPayload?.updatesBalance)
-        .find((v): v is boolean => typeof v === "boolean");
-      const tipInBatch =
-        updatesFlag === true ||
-        (updatesFlag == null && input.balanceAfterMinor != null);
-      const tipBalance = resolveSmsTipBalanceMinor({
-        inputBalanceAfterMinor: input.balanceAfterMinor,
-        payloadTipBalanceMinor: payloadTip ?? null,
-        updatesBalance: tipInBatch,
-      });
+    const { data: linkedRows, error: linkedError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source_observation_id", input.observationId)
+      .neq("status", "voided")
+      .order("occurred_at", { ascending: true });
+    if (linkedError) throw new Error(linkedError.message);
 
-      const maskedFromCandidate =
-        input.maskedAccount ?? observation.accountHint ?? null;
-      const account =
-        (input.accountId ? await getAccount(input.accountId) : null) ??
-        (await ensureDefaultBankAccount({
-          maskedIdentifier: maskedFromCandidate,
-          currency: "THB",
-        }));
+    const decision = decideSmsBatchConfirm({
+      pendingCandidateIds: pending.map((c) => c.id),
+      confirmedCanonicalIds: allCandidates
+        .filter((c) => c.status === "confirmed")
+        .map((c) => c.canonicalTransactionId),
+      linkedTransactionIds: (linkedRows ?? []).map((r) => r.id as string),
+    });
 
-      const existingCheckpoint = await latestCheckpointForAccount(account.id);
-      const hadCheckpoint = existingCheckpoint != null;
-      if (!hadCheckpoint && tipBalance == null) {
-        throw new Error(
-          "Första importen måste vara ett bank-SMS med saldo (available balance)",
-        );
+    if (decision.action === "idempotent") {
+      const existing =
+        (linkedRows ?? []).find((r) => r.id === decision.existingTransactionId) ??
+        (
+          await supabase
+            .from("transactions")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("id", decision.existingTransactionId)
+            .maybeSingle()
+        ).data;
+      if (existing) return mapTransaction(existing);
+    }
+
+    if (decision.action === "empty") {
+      throw new Error("Inga SMS att spara från den här bilden");
+    }
+
+    const payloadTip = pending
+      .map((c) => c.rawPayload?.tipBalanceAfterMinor)
+      .find((v): v is number => typeof v === "number");
+    const updatesFlag = pending
+      .map((c) => c.rawPayload?.updatesBalance)
+      .find((v): v is boolean => typeof v === "boolean");
+    const tipInBatch =
+      updatesFlag === true ||
+      (updatesFlag == null && input.balanceAfterMinor != null);
+    const tipBalance = resolveSmsTipBalanceMinor({
+      inputBalanceAfterMinor: input.balanceAfterMinor,
+      payloadTipBalanceMinor: payloadTip ?? null,
+      updatesBalance: tipInBatch,
+    });
+
+    const maskedFromCandidate =
+      input.maskedAccount ?? observation.accountHint ?? null;
+    const account =
+      (input.accountId ? await getAccount(input.accountId) : null) ??
+      (await ensureDefaultBankAccount({
+        maskedIdentifier: maskedFromCandidate,
+        currency: "THB",
+      }));
+
+    const existingCheckpoint = await latestCheckpointForAccount(account.id);
+    const hadCheckpoint = existingCheckpoint != null;
+    if (!hadCheckpoint && tipBalance == null) {
+      throw new Error(
+        "Första importen måste vara ett bank-SMS med saldo (available balance)",
+      );
+    }
+
+    const known = await listConfirmedFingerprints();
+    const baseMs = Date.now();
+    const chronological = [...pending].reverse();
+    const fresh = chronological.filter((c) => !known.includes(c.fingerprint!));
+
+    if (fresh.length === 0) {
+      // Double-submit after fingerprints already landed — treat as idempotent.
+      const lastLinked = (linkedRows ?? [])[(linkedRows ?? []).length - 1];
+      if (lastLinked) {
+        return mapTransaction(lastLinked);
       }
+      throw new Error(swedishFingerprintConflictError());
+    }
 
-      const known = await listConfirmedFingerprints();
-      // Freeze one clock so slow Supabase inserts cannot push the tip
-      // credit after the tip checkpoint (10108 + 3400 = 13508 bug).
-      const baseMs = Date.now();
-      let lastTx: CanonicalTransaction | null = null;
-      const chronological = [...pending].reverse();
-
-      for (let i = 0; i < chronological.length; i++) {
-        const cand = chronological[i]!;
-        if (known.includes(cand.fingerprint!)) {
-          throw new Error("Den här bankrörelsen finns redan");
-        }
-        known.push(cand.fingerprint!);
-        // Oldest→newest, all strictly before checkpointAt (= baseMs).
-        const movedAt = new Date(
-          baseMs - (chronological.length - i) * 3_000,
-        ).toISOString();
-        const direction = cand.direction as "debit" | "credit";
-        const amountMinor = cand.amountMinor!;
-        const description =
+    const insertRows = fresh.map((cand, i) => {
+      const direction = cand.direction as "debit" | "credit";
+      const movedAt = new Date(
+        baseMs - (fresh.length - i) * 3_000,
+      ).toISOString();
+      return {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        account_id: account.id,
+        direction,
+        transaction_type: direction === "credit" ? "income" : "expense",
+        amount_minor: cand.amountMinor!,
+        currency: account.currency,
+        occurred_at: movedAt,
+        description:
           cand.description ||
-          (direction === "credit" ? "Insättning (bank-SMS)" : "Utgift (bank-SMS)");
+          (direction === "credit"
+            ? "Insättning (bank-SMS)"
+            : "Utgift (bank-SMS)"),
+        category: direction === "debit" ? (input.category ?? null) : null,
+        source: "screenshot",
+        status: "confirmed",
+        sync_status: "synced",
+        source_observation_id: input.observationId,
+        fingerprint: cand.fingerprint,
+        balance_after_minor: cand.balanceAfterMinor,
+      };
+    });
 
-        lastTx =
-          direction === "credit"
-            ? await createManualIncome({
-                accountId: account.id,
-                amountMinor,
-                description,
-                source: "screenshot",
-                sourceObservationId: input.observationId,
-                fingerprint: cand.fingerprint,
-                balanceAfterMinor: cand.balanceAfterMinor,
-                occurredAt: movedAt,
-              })
-            : await createManualExpense({
-                accountId: account.id,
-                amountMinor,
-                description,
-                category: input.category,
-                source: "screenshot",
-                sourceObservationId: input.observationId,
-                fingerprint: cand.fingerprint,
-                balanceAfterMinor: cand.balanceAfterMinor,
-                occurredAt: movedAt,
-              });
-
-        await supabase
-          .from("extracted_transaction_candidates")
-          .update({
-            status: "confirmed",
-            canonical_transaction_id: lastTx.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId)
-          .eq("id", cand.id);
+    const { data: inserted, error: insertError } = await supabase
+      .from("transactions")
+      .insert(insertRows)
+      .select("*");
+    if (insertError) {
+      if (isUniqueViolationMessage(insertError.message)) {
+        throw new Error(swedishFingerprintConflictError());
       }
+      throw new Error(insertError.message);
+    }
 
-      if (
-        shouldWriteSmsTipCheckpoint({
-          tipBalanceMinor: tipBalance,
-          tipInBatch,
-        })
-      ) {
-        await createCheckpoint({
-          accountId: account.id,
-          balanceMinor: tipBalance!,
-          verifiedAt: new Date(baseMs).toISOString(),
-          source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
-          note: hadCheckpoint
-            ? "Saldo från Bangkok Bank SMS"
-            : "Första saldo från Bangkok Bank SMS",
-        });
-      }
-
-      await supabase
-        .from("source_observations")
+    const byFingerprint = new Map(
+      (inserted ?? []).map((row) => [row.fingerprint as string, row]),
+    );
+    const nowIso = new Date().toISOString();
+    for (const cand of fresh) {
+      const row = byFingerprint.get(cand.fingerprint!);
+      if (!row) continue;
+      const { error: candError } = await supabase
+        .from("extracted_transaction_candidates")
         .update({
-          status: "processed",
-          notes:
-            pending.length > 1
-              ? `${pending.length} SMS sparade`
-              : hadCheckpoint
-                ? "Bekräftad och sparad"
-                : "Första SMS — saldo och rörelse sparade",
-          updated_at: new Date().toISOString(),
+          status: "confirmed",
+          canonical_transaction_id: row.id,
+          updated_at: nowIso,
         })
         .eq("user_id", userId)
-        .eq("id", input.observationId);
-
-      if (!lastTx) throw new Error("Kunde inte spara SMS");
-      return {
-        ...lastTx,
-        balanceAfterMinor: tipBalance ?? lastTx.balanceAfterMinor,
-      };
+        .eq("id", cand.id);
+      if (candError) throw new Error(candError.message);
     }
+
+    if (
+      shouldWriteSmsTipCheckpoint({
+        tipBalanceMinor: tipBalance,
+        tipInBatch,
+      })
+    ) {
+      await createCheckpoint({
+        accountId: account.id,
+        balanceMinor: tipBalance!,
+        verifiedAt: new Date(baseMs).toISOString(),
+        source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
+        note: hadCheckpoint
+          ? "Saldo från Bangkok Bank SMS"
+          : "Första saldo från Bangkok Bank SMS",
+      });
+    }
+
+    await supabase
+      .from("source_observations")
+      .update({
+        status: "processed",
+        notes:
+          fresh.length > 1
+            ? `${fresh.length} SMS sparade`
+            : hadCheckpoint
+              ? "Bekräftad och sparad"
+              : "Första SMS — saldo och rörelse sparade",
+        updated_at: nowIso,
+      })
+      .eq("user_id", userId)
+      .eq("id", input.observationId);
+
+    const lastRow = (inserted ?? [])[(inserted ?? []).length - 1];
+    if (!lastRow) throw new Error("Kunde inte spara SMS");
+    const lastTx = mapTransaction(lastRow);
+    return {
+      ...lastTx,
+      balanceAfterMinor: tipBalance ?? lastTx.balanceAfterMinor,
+    };
   }
 
   let fingerprint = input.fingerprint ?? null;
@@ -1461,6 +1526,16 @@ export async function confirmReceiptExpense(
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!cand) throw new Error("Kandidaten hittades inte");
+    if (cand.canonical_transaction_id) {
+      const { data: existing } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("id", cand.canonical_transaction_id)
+        .neq("status", "voided")
+        .maybeSingle();
+      if (existing) return mapTransaction(existing);
+    }
     fingerprint = (cand.fingerprint as string | null) ?? fingerprint;
     balanceAfterMinor =
       (cand.balance_after_minor as number | null) ?? balanceAfterMinor;
@@ -1479,10 +1554,14 @@ export async function confirmReceiptExpense(
     direction = input.direction;
   }
 
+  if (amountMinor == null || amountMinor <= 0) {
+    throw new Error("Ange ett belopp större än noll");
+  }
+
   if (fingerprint) {
     const known = await listConfirmedFingerprints();
     if (known.includes(fingerprint)) {
-      throw new Error("Den här bankrörelsen finns redan");
+      throw new Error(swedishFingerprintConflictError());
     }
   }
 
@@ -1498,7 +1577,7 @@ export async function confirmReceiptExpense(
 
   const existingCheckpoint = await latestCheckpointForAccount(account.id);
   const hadCheckpoint = existingCheckpoint != null;
-  if (!hadCheckpoint && balanceAfterMinor == null) {
+  if (!hadCheckpoint && balanceAfterMinor == null && source === "screenshot") {
     throw new Error(
       "Första importen måste vara ett bank-SMS med saldo (available balance)",
     );
@@ -1510,7 +1589,6 @@ export async function confirmReceiptExpense(
     );
   }
 
-  // Freeze one clock — same invariant as batch path (credit before tip).
   const baseMs = Date.now();
   const movedAt = new Date(baseMs - 2_000).toISOString();
   const checkpointAt = new Date(baseMs).toISOString();
@@ -1539,7 +1617,6 @@ export async function confirmReceiptExpense(
           occurredAt: movedAt,
         });
 
-  // Receipt OCR must not mint sms_* tip checkpoints — only bank-SMS.
   if (source === "screenshot" && balanceAfterMinor != null) {
     await createCheckpoint({
       accountId: account.id,
@@ -1572,9 +1649,12 @@ export async function confirmReceiptExpense(
     .from("source_observations")
     .update({
       status: "processed",
-      notes: hadCheckpoint
-        ? "Bekräftad och sparad"
-        : "Första SMS — saldo och rörelse sparade",
+      notes:
+        source === "receipt_camera"
+          ? "Bekräftad och sparad som utgift"
+          : hadCheckpoint
+            ? "Bekräftad och sparad"
+            : "Första SMS — saldo och rörelse sparade",
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId)
