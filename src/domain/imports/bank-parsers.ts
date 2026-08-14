@@ -20,6 +20,10 @@ import {
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
 import { formatMoney, money } from "@/domain/money";
+import {
+  sanitizeOcrDigitNoise,
+  westernAmountToMinor,
+} from "@/domain/imports/ocr-amounts";
 
 export type BankMessageParseInput = {
   institution: string;
@@ -229,11 +233,31 @@ export class BangkokBankSmsParser implements BankMessageParser {
   }
 }
 
-export function splitBankSmsChunks(text: string): string[] {
-  const normalized = text
+/** Soften OCR noise before chunking / matching (keep separators). */
+export function sanitizeBankSmsText(text: string): string {
+  return text
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+/g, " ")
+    .replace(/\bB[lI](?=\s*[\d,])/gi, "Bt")
+    .replace(/\bTH[lI]\b/gi, "TH")
+    .replace(/\bavai[lI]able\b/gi, "available")
+    .replace(/\bbalanee\b/gi, "balance")
+    .replace(/\bWi thdrawal\b/gi, "Withdrawal")
+    .replace(/\bWithdrawa[lI]\b/gi, "Withdrawal")
+    .replace(
+      // Only inside amount/balance number tokens after currency.
+      new RegExp(
+        `((?:Bt|THB?|บาท)\\s*)([\\d,OolI.]+(?:\\.[\\dOolI]{1,2})?)`,
+        "gi",
+      ),
+      (_full, prefix: string, num: string) =>
+        `${prefix}${sanitizeOcrDigitNoise(num)}`,
+    )
     .trim();
+}
+
+export function splitBankSmsChunks(text: string): string[] {
+  const normalized = sanitizeBankSmsText(text);
 
   if (!normalized) return [];
 
@@ -267,12 +291,7 @@ export function splitBankSmsChunks(text: string): string[] {
 }
 
 export function majorStringToMinor(value: string): number {
-  const normalized = value.replace(/,/g, "").trim();
-  const major = Number(normalized);
-  if (!Number.isFinite(major)) {
-    throw new Error(`Cannot parse bank amount: ${value}`);
-  }
-  return Math.round(major * 100);
+  return westernAmountToMinor(value);
 }
 
 export function toBankEventCandidate(
@@ -409,8 +428,8 @@ export function selectImportableBankEvent(
       skippedDuplicateCount,
       messageSv:
         all.length > 1
-          ? `Alla ${all.length} SMS i bilden finns redan.`
-          : "Det här SMS:et finns redan — inget nytt att spara.",
+          ? `Alla ${all.length} SMS i bilden finns redan sparade i NUMA.`
+          : "Det här SMS:et finns redan sparat i NUMA — inget nytt att lägga till.",
     };
   }
 

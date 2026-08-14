@@ -608,6 +608,32 @@ export async function listConfirmedFingerprints(): Promise<string[]> {
   return listKnownFingerprints({ includePendingCandidates: false });
 }
 
+/**
+ * Abandoned needs_review candidates must not block a re-scan of the same SMS
+ * (unique fingerprint index + false “finns redan”). Mark them rejected so a
+ * fresh observation can create new review rows.
+ */
+export async function supersedePendingCandidatesByFingerprints(
+  fingerprints: string[],
+): Promise<number> {
+  const fps = [...new Set(fingerprints.map((f) => f.trim()).filter(Boolean))];
+  if (fps.length === 0) return 0;
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("extracted_transaction_candidates")
+    .update({
+      status: "rejected",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .in("status", ["needs_review", "pending"])
+    .in("fingerprint", fps)
+    .select("id");
+  if (error) throw new Error(error.message);
+  return data?.length ?? 0;
+}
+
 export async function createScreenshotObservation(input: {
   notes?: string | null;
   institutionHint?: string | null;
@@ -1029,6 +1055,7 @@ export async function uploadReceiptAndExtract(input: {
   mimeType: string;
   bytes: Uint8Array;
   preferBankSms?: boolean;
+  preferBankApp?: boolean;
 }): Promise<ReceiptUploadResult> {
   const userId = await requireUserId();
   await ensureProfile(userId);
@@ -1044,6 +1071,12 @@ export async function uploadReceiptAndExtract(input: {
     });
   if (uploadError) throw new Error(uploadError.message);
 
+  const institutionHint = input.preferBankSms
+    ? "Bangkok Bank"
+    : input.preferBankApp
+      ? "bank_app"
+      : null;
+
   const provider = createExtractionProvider();
   const imageBase64 = Buffer.from(input.bytes).toString("base64");
   const extraction = await provider.extract({
@@ -1051,16 +1084,20 @@ export async function uploadReceiptAndExtract(input: {
     storagePath,
     imageBase64,
     mimeType: input.mimeType,
-    institutionHint: input.preferBankSms ? "Bangkok Bank" : null,
+    institutionHint,
   });
 
-  const known = await listKnownFingerprints({ includePendingCandidates: true });
+  // Only confirmed ledger fingerprints count as "already imported".
+  // Pending needs_review from abandoned scans must not block re-import.
+  const known = await listConfirmedFingerprints();
   const resolved = resolveScreenshotImport(extraction, known, {
     preferBankSms: input.preferBankSms,
+    preferBankApp: input.preferBankApp,
   });
 
   const batch =
-    resolved.kind === "bank_sms" && !resolved.alreadyKnown
+    (resolved.kind === "bank_sms" || resolved.kind === "bank_app") &&
+    !resolved.alreadyKnown
       ? resolved.selectedBatch
       : [];
   const hasBatch = batch.length > 0;
@@ -1069,18 +1106,38 @@ export async function uploadReceiptAndExtract(input: {
     resolved.suggestedAmountMinor != null &&
     !resolved.alreadyKnown;
 
+  if (hasBatch) {
+    await supersedePendingCandidatesByFingerprints(
+      batch
+        .map((e) => e.fingerprint?.fingerprint)
+        .filter((f): f is string => Boolean(f)),
+    );
+  } else if (hasSingle && resolved.fingerprint) {
+    await supersedePendingCandidatesByFingerprints([resolved.fingerprint]);
+  }
+
+  const institutionForObs =
+    resolved.kind === "bank_sms"
+      ? "Bangkok Bank"
+      : resolved.kind === "bank_app"
+        ? (resolved.selected?.institution ??
+          batch[0]?.institution ??
+          "bank_app")
+        : null;
+
   const { data: obsRow, error: obsError } = await supabase
     .from("source_observations")
     .insert({
       user_id: userId,
       kind: resolved.observationKind,
       storage_path: storagePath,
-      institution_hint:
-        resolved.kind === "bank_sms" ? "Bangkok Bank" : null,
+      institution_hint: institutionForObs,
       account_hint:
         resolved.kind === "bank_sms"
           ? (resolved.selected?.maskedAccount ??
-            batch[0]?.maskedAccount ??
+            (batch[0] && "maskedAccount" in batch[0]
+              ? batch[0].maskedAccount
+              : null) ??
             null)
           : null,
       status: "extracting",
@@ -1114,6 +1171,12 @@ export async function uploadReceiptAndExtract(input: {
   mapExtractionRun(runRow);
 
   const createdCandidates: ExtractedTransactionCandidate[] = [];
+  const importKindTag =
+    resolved.kind === "bank_sms"
+      ? "bank_sms"
+      : resolved.kind === "bank_app"
+        ? "bank_app"
+        : resolved.kind;
 
   if (hasBatch) {
     for (let batchIndex = 0; batchIndex < batch.length; batchIndex++) {
@@ -1134,18 +1197,29 @@ export async function uploadReceiptAndExtract(input: {
           direction: event.direction,
           amount_minor: event.amountMinor,
           currency: event.currency ?? "THB",
-          balance_after_minor: event.balanceAfterMinor,
-          occurred_at: null,
+          balance_after_minor:
+            "balanceAfterMinor" in event ? event.balanceAfterMinor : null,
+          occurred_at:
+            "occurredAt" in event && typeof event.occurredAt === "string"
+              ? event.occurredAt
+              : null,
           description: event.labelSv,
           confidence: event.confidence,
           fingerprint: event.fingerprint.fingerprint,
           status: "needs_review",
           raw_payload: {
-            importKind: "bank_sms",
+            importKind: importKindTag,
             labelSv: event.labelSv,
             batchIndex,
-            tipBalanceAfterMinor: resolved.balanceAfterMinor,
-            updatesBalance: resolved.balanceAfterMinor != null,
+            tipBalanceAfterMinor:
+              resolved.kind === "bank_sms" ? resolved.balanceAfterMinor : null,
+            updatesBalance:
+              resolved.kind === "bank_sms" &&
+              resolved.balanceAfterMinor != null,
+            merchant:
+              "merchant" in event && typeof event.merchant === "string"
+                ? event.merchant
+                : null,
           },
         })
         .select("*")
@@ -1167,13 +1241,13 @@ export async function uploadReceiptAndExtract(input: {
         occurred_at: null,
         description: resolved.suggestedDescription,
         confidence:
-          resolved.kind === "bank_sms"
+          resolved.kind === "bank_sms" || resolved.kind === "bank_app"
             ? (resolved.selected?.confidence ?? null)
             : null,
         fingerprint: resolved.fingerprint,
         status: "needs_review",
         raw_payload: {
-          importKind: resolved.kind,
+          importKind: importKindTag,
           labelSv: resolved.suggestedDescription,
           batchIndex: 0,
         },
@@ -1196,7 +1270,7 @@ export async function uploadReceiptAndExtract(input: {
           : "uploaded",
       notes:
         extraction.provider === "none"
-          ? "Bild sparad. Kunde inte autoläsa — ta en tydligare bank-SMS-bild."
+          ? "Bild sparad. Kunde inte autoläsa — ta en tydligare bild."
           : resolved.messageSv,
       updated_at: new Date().toISOString(),
     })
@@ -1212,7 +1286,8 @@ export async function uploadReceiptAndExtract(input: {
   else if (createdCandidates.length === 0) ocrStatus = "failed";
 
   const skippedOlderCount =
-    resolved.kind === "bank_sms" && resolved.selection.status === "ready"
+    (resolved.kind === "bank_sms" || resolved.kind === "bank_app") &&
+    resolved.selection.status === "ready"
       ? resolved.selection.skippedDuplicateCount
       : 0;
 
@@ -1255,14 +1330,16 @@ export async function uploadReceiptAndExtract(input: {
         : ocrStatus === "failed"
           ? (visionMessage ??
             resolved.messageSv ??
-            "Kunde inte läsa bank-SMS — ta en skarpare skärmdump av hela bubblorna.")
+            "Kunde inte läsa bilden — ta en skarpare skärmdump.")
           : resolved.messageSv,
     importKind:
       resolved.kind === "bank_sms"
         ? "bank_sms"
-        : resolved.kind === "receipt_or_other"
-          ? "receipt"
-          : "unknown",
+        : resolved.kind === "bank_app"
+          ? "bank_app"
+          : resolved.kind === "receipt_or_other"
+            ? "receipt"
+            : "unknown",
     balanceAfterMinor: resolved.balanceAfterMinor,
     fingerprint: resolved.fingerprint,
     alreadyKnown: resolved.alreadyKnown,
@@ -1339,9 +1416,14 @@ export async function confirmReceiptExpense(
 
       const existingCheckpoint = await latestCheckpointForAccount(account.id);
       const hadCheckpoint = existingCheckpoint != null;
+      const isBankAppBatch = pending.some(
+        (c) => c.rawPayload?.importKind === "bank_app",
+      );
       if (!hadCheckpoint && tipBalance == null) {
         throw new Error(
-          "Första importen måste vara ett bank-SMS med saldo (available balance)",
+          isBankAppBatch
+            ? "Första importen måste vara ett bank-SMS med saldo — bankapp-bilder fungerar efteråt."
+            : "Första importen måste vara ett bank-SMS med saldo (available balance)",
         );
       }
 
@@ -1355,18 +1437,21 @@ export async function confirmReceiptExpense(
       for (let i = 0; i < chronological.length; i++) {
         const cand = chronological[i]!;
         if (known.includes(cand.fingerprint!)) {
-          throw new Error("Den här bankrörelsen finns redan");
+          throw new Error("Den här bankrörelsen finns redan sparad i NUMA");
         }
         known.push(cand.fingerprint!);
         // Oldest→newest, all strictly before checkpointAt (= baseMs).
-        const movedAt = new Date(
-          baseMs - (chronological.length - i) * 3_000,
-        ).toISOString();
+        const movedAt =
+          typeof cand.occurredAt === "string" && cand.occurredAt
+            ? cand.occurredAt
+            : new Date(
+                baseMs - (chronological.length - i) * 3_000,
+              ).toISOString();
         const direction = cand.direction as "debit" | "credit";
         const amountMinor = cand.amountMinor!;
         const description =
           cand.description ||
-          (direction === "credit" ? "Insättning (bank-SMS)" : "Utgift (bank-SMS)");
+          (direction === "credit" ? "Insättning (import)" : "Utgift (import)");
 
         lastTx =
           direction === "credit"
@@ -1426,7 +1511,7 @@ export async function confirmReceiptExpense(
           status: "processed",
           notes:
             pending.length > 1
-              ? `${pending.length} SMS sparade`
+              ? `${pending.length} rörelser sparade`
               : hadCheckpoint
                 ? "Bekräftad och sparad"
                 : "Första SMS — saldo och rörelse sparade",
@@ -1435,7 +1520,7 @@ export async function confirmReceiptExpense(
         .eq("user_id", userId)
         .eq("id", input.observationId);
 
-      if (!lastTx) throw new Error("Kunde inte spara SMS");
+      if (!lastTx) throw new Error("Kunde inte spara importen");
       return {
         ...lastTx,
         balanceAfterMinor: tipBalance ?? lastTx.balanceAfterMinor,
@@ -1482,7 +1567,7 @@ export async function confirmReceiptExpense(
   if (fingerprint) {
     const known = await listConfirmedFingerprints();
     if (known.includes(fingerprint)) {
-      throw new Error("Den här bankrörelsen finns redan");
+      throw new Error("Den här bankrörelsen finns redan sparad i NUMA");
     }
   }
 
@@ -1504,7 +1589,12 @@ export async function confirmReceiptExpense(
     );
   }
 
-  if (source === "screenshot" && (!fingerprint || balanceAfterMinor == null)) {
+  // Bank-SMS requires saldo; bank-app / receipt-with-fingerprint may omit it
+  // once Hem already has a verified balance.
+  if (
+    source === "screenshot" &&
+    (!fingerprint || (balanceAfterMinor == null && !hadCheckpoint))
+  ) {
     throw new Error(
       "Bank-SMS saknar komplett belopp/saldo — ta en tydligare bild.",
     );
@@ -1520,7 +1610,7 @@ export async function confirmReceiptExpense(
       ? await createManualIncome({
           accountId: account.id,
           amountMinor,
-          description: description || "Insättning (bank-SMS)",
+          description: description || "Insättning (import)",
           source,
           sourceObservationId: input.observationId,
           fingerprint,
@@ -1539,7 +1629,7 @@ export async function confirmReceiptExpense(
           occurredAt: movedAt,
         });
 
-  // Receipt OCR must not mint sms_* tip checkpoints — only bank-SMS.
+  // Receipt OCR must not mint sms_* tip checkpoints — only bank-SMS with saldo.
   if (source === "screenshot" && balanceAfterMinor != null) {
     await createCheckpoint({
       accountId: account.id,

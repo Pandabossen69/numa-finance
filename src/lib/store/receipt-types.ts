@@ -17,14 +17,14 @@ export type ReceiptUploadEvent = {
 export type ReceiptUploadResult = {
   observation: SourceObservation;
   candidate: ExtractedTransactionCandidate | null;
-  /** All unknown SMS events from this screenshot (bank_sms). */
+  /** Unknown events from this screenshot (bank_sms / bank_app). */
   events: ReceiptUploadEvent[];
   suggestedAmountMinor: number | null;
   suggestedDescription: string | null;
   currency: CurrencyCode;
   ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
   message: string | null;
-  importKind: "bank_sms" | "receipt" | "unknown";
+  importKind: "bank_sms" | "bank_app" | "receipt" | "unknown";
   balanceAfterMinor: number | null;
   fingerprint: string | null;
   alreadyKnown: boolean;

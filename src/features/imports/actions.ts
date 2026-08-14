@@ -41,15 +41,18 @@ export async function uploadReceiptAction(
       return { ok: false, error: "Endast bildfiler stöds" };
     }
 
-    const preferBankSms =
-      formData.get("mode") === "bank_sms" || formData.get("mode") === "sms";
+    const mode = String(formData.get("mode") ?? "");
+    const preferBankSms = mode === "bank_sms" || mode === "sms";
+    const preferBankApp =
+      mode === "bank_app" || mode === "bunq" || mode === "revolut";
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = await uploadReceiptAndExtract({
-      fileName: file.name || "bank-sms.jpg",
+      fileName: file.name || (preferBankApp ? "bank-app.jpg" : "bank-sms.jpg"),
       mimeType,
       bytes,
       preferBankSms,
+      preferBankApp,
     });
 
     revalidatePath("/importera");

@@ -14,11 +14,15 @@ export default async function FotaPage({
   const initialMode =
     modeParam === "sms" || modeParam === "bank_sms"
       ? ("bank_sms" as const)
-      : modeParam === "kvitto" || modeParam === "receipt"
-        ? ("receipt" as const)
-        : modeParam === "manual"
-          ? ("manual" as const)
-          : ("pick" as const);
+      : modeParam === "bank_app" ||
+          modeParam === "bunq" ||
+          modeParam === "revolut"
+        ? ("bank_app" as const)
+        : modeParam === "kvitto" || modeParam === "receipt"
+          ? ("receipt" as const)
+          : modeParam === "manual"
+            ? ("manual" as const)
+            : ("pick" as const);
 
   const [home, snap] = await Promise.all([
     loadHomeSnapshot(),
