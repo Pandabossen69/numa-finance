@@ -3,6 +3,8 @@
  * AI/OCR must never write canonical transactions directly.
  */
 
+import type { CurrencyCode } from "@/domain/money";
+
 export type ExtractionProviderName = "none" | "manual_stub" | "vision_api";
 
 export type ExtractionRequest = {
@@ -19,7 +21,7 @@ export type ExtractionProviderResult = {
   candidates: Array<{
     direction: "debit" | "credit" | null;
     amountMinor: number | null;
-    currency: "THB" | "SEK" | null;
+    currency: CurrencyCode | null;
     balanceAfterMinor: number | null;
     occurredAt: string | null;
     description: string | null;

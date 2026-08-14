@@ -41,15 +41,18 @@ export async function uploadReceiptAction(
       return { ok: false, error: "Endast bildfiler stöds" };
     }
 
-    const preferBankSms =
-      formData.get("mode") === "bank_sms" || formData.get("mode") === "sms";
+    const mode = String(formData.get("mode") ?? "");
+    const preferBankSms = mode === "bank_sms" || mode === "sms";
+    const preferBankApp =
+      mode === "bank_app" || mode === "bunq" || mode === "revolut";
 
     const bytes = new Uint8Array(await file.arrayBuffer());
     const result = await uploadReceiptAndExtract({
-      fileName: file.name || "bank-sms.jpg",
+      fileName: file.name || (preferBankApp ? "bank-app.jpg" : "bank-sms.jpg"),
       mimeType,
       bytes,
       preferBankSms,
+      preferBankApp,
     });
 
     revalidatePath("/importera");
@@ -76,7 +79,7 @@ const confirmSchema = z.object({
   category: z.string().trim().max(40).optional().nullable(),
   fingerprint: z.string().trim().max(240).optional().nullable(),
   balanceAfterMinor: z.number().int().optional().nullable(),
-  source: z.enum(["receipt_camera", "screenshot"]).optional(),
+  source: z.enum(["receipt_camera", "screenshot", "bank_import"]).optional(),
   maskedAccount: z.string().trim().max(32).optional().nullable(),
   direction: z.enum(["debit", "credit"]).optional().nullable(),
 });
@@ -94,7 +97,9 @@ export async function confirmReceiptExpenseAction(
   try {
     const input = confirmSchema.parse(raw);
     const isSmsBatch =
-      input.confirmAllPending === true || input.source === "screenshot";
+      input.confirmAllPending === true ||
+      input.source === "screenshot" ||
+      input.source === "bank_import";
 
     let amountMinor: number | undefined;
     if (!isSmsBatch) {

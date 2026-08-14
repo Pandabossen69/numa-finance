@@ -230,6 +230,62 @@ describe("bank-SMS rows are not household income/spend", () => {
     ).toBe(false);
   });
 
+  it("counts bank-app card imports as household spend and moves EUR saldo", () => {
+    expect(
+      appliesToSpending({
+        transactionType: "expense",
+        status: "confirmed",
+        source: "bank_import",
+        fingerprint: "bankapp|bunq|grab|debit|660:EUR|at=2026-07-23T16:46",
+      }),
+    ).toBe(true);
+    // Even if legacy path tagged screenshot, bankapp fingerprint must spend.
+    expect(
+      appliesToSpending({
+        transactionType: "expense",
+        status: "confirmed",
+        source: "screenshot",
+        fingerprint: "bankapp|bunq|grab|debit|660:EUR|at=2026-07-23T16:46",
+      }),
+    ).toBe(true);
+
+    const tip = checkpoint({
+      balanceMinor: 0,
+      verifiedAt: "2026-07-23T16:00:00.000Z",
+      source: "bank_app_bootstrap",
+      currency: "EUR",
+    });
+    const expense: CanonicalTransaction = {
+      id: "t-eur",
+      userId: "u1",
+      accountId: "a1",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: 660,
+      currency: "EUR",
+      occurredAt: "2026-07-23T16:46:00.000Z",
+      description: "Grab",
+      merchant: "Grab",
+      category: null,
+      source: "bank_import",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: "bankapp|bunq|grab|debit|660:EUR|at=2026-07-23T16:46",
+      sourceObservationId: "obs1",
+      transferGroupId: null,
+      syncStatus: "saved",
+      createdAt: "2026-07-23T16:46:00.000Z",
+      updatedAt: "2026-07-23T16:46:00.000Z",
+    };
+    const bal = calculateAccountBalance({
+      checkpoint: tip,
+      transactionsAfterCheckpoint: [expense],
+    });
+    expect(bal?.amountMinor).toBe(-660);
+    expect(bal?.currency).toBe("EUR");
+  });
+
   it("screenshot/sms sources never count in spending windows", () => {
     const now = new Date("2026-08-11T10:00:00.000Z");
     const windows = computeSpendingWindows({

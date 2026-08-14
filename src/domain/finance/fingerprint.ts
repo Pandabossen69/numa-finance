@@ -7,6 +7,9 @@ import type { TransactionDirection } from "./types";
  * Two screenshots of the same SMS always produce the same fingerprint, so we
  * never import it twice — even when the thread also contains newer SMS.
  * Never use amount alone (50 Bt can happen many times).
+ *
+ * Bank-app screenshots (bunq / Revolut) use merchant + occurredAt instead of
+ * balance-after — see buildBankAppFingerprint.
  */
 export type FingerprintParts = {
   institution: string;
@@ -16,6 +19,18 @@ export type FingerprintParts = {
   balanceAfterMinor: number | null;
   occurredAt?: string | null;
   channel?: string | null;
+};
+
+export type BankAppFingerprintParts = {
+  institution: string;
+  merchant: string;
+  direction: TransactionDirection;
+  amountMinor: number;
+  currency: string;
+  /** ISO-ish local stamp, e.g. 2026-07-23T16:46 — minute precision is enough. */
+  occurredAt: string;
+  originalAmountMinor?: number | null;
+  originalCurrency?: string | null;
 };
 
 export type FingerprintResult = {
@@ -32,6 +47,26 @@ export function normalizeMaskedAccount(value: string): string {
   const digits = value.replace(/\D/g, "");
   if (digits.length >= 4) return digits.slice(-4);
   return value.trim().toUpperCase();
+}
+
+export function normalizeMerchantKey(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/\.(com|co|th|se|net|app)\b/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 48);
+}
+
+/** Truncate to minute so OCR second-noise cannot create dupes. */
+export function normalizeOccurredAtMinute(value: string): string {
+  const trimmed = value.trim();
+  const m = trimmed.match(
+    /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})(?::\d{2})?/,
+  );
+  if (m) return `${m[1]}T${m[2]}:${m[3]}`;
+  return trimmed.slice(0, 16);
 }
 
 export function buildTransactionFingerprint(
@@ -64,7 +99,7 @@ export function buildTransactionFingerprint(
       account,
       parts.direction,
       String(parts.amountMinor),
-      `at=${parts.occurredAt}`,
+      `at=${normalizeOccurredAtMinute(parts.occurredAt)}`,
       channel,
     ].join("|");
 
@@ -87,6 +122,36 @@ export function buildTransactionFingerprint(
     fingerprint,
     confidence: "low",
     strategy: "institution+account+direction+amount+channel",
+  };
+}
+
+/**
+ * bunq / Revolut / similar: no available-balance in the UI row.
+ * Identity = card amount (account currency) + merchant + minute.
+ * Detail and list shots of the same EUR debit then share one fingerprint
+ * even when only the detail screen shows a THB FX annotation.
+ */
+export function buildBankAppFingerprint(
+  parts: BankAppFingerprintParts,
+): FingerprintResult {
+  const institution = normalizeInstitution(parts.institution);
+  const merchant = normalizeMerchantKey(parts.merchant) || "unknown";
+  const at = normalizeOccurredAtMinute(parts.occurredAt);
+  const amountKey = `${parts.amountMinor}:${parts.currency.toUpperCase()}`;
+
+  const fingerprint = [
+    "bankapp",
+    institution,
+    merchant,
+    parts.direction,
+    amountKey,
+    `at=${at}`,
+  ].join("|");
+
+  return {
+    fingerprint,
+    confidence: "high",
+    strategy: "bankapp+institution+merchant+direction+cardAmount+occurredAt",
   };
 }
 

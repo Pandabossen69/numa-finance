@@ -1,3 +1,4 @@
+import { isCurrencyCode, type CurrencyCode } from "@/domain/money";
 import {
   defaultBankParserRegistry,
   selectImportableBankEvent,
@@ -5,6 +6,14 @@ import {
   type ParsedBankMessage,
   type SelectImportableResult,
 } from "./bank-parsers";
+import {
+  looksLikeBankAppScreenshot,
+  parseBankAppVisionRows,
+  parseBunqDetailFromText,
+  selectImportableBankAppEvents,
+  type BankAppEventCandidate,
+  type SelectBankAppImportResult,
+} from "./bank-app-parsers";
 import type { ExtractionProviderResult } from "./extraction";
 
 export type ResolvedScreenshotImport =
@@ -19,7 +28,23 @@ export type ResolvedScreenshotImport =
       balanceAfterMinor: number | null;
       fingerprint: string | null;
       direction: "debit" | "credit" | null;
-      currency: "THB" | "SEK";
+      currency: CurrencyCode;
+      observationKind: "screenshot";
+      source: "screenshot";
+      messageSv: string;
+      alreadyKnown: boolean;
+    }
+  | {
+      kind: "bank_app";
+      selection: SelectBankAppImportResult;
+      selected: BankAppEventCandidate | null;
+      selectedBatch: BankAppEventCandidate[];
+      suggestedAmountMinor: number | null;
+      suggestedDescription: string | null;
+      balanceAfterMinor: null;
+      fingerprint: string | null;
+      direction: "debit" | "credit" | null;
+      currency: CurrencyCode;
       observationKind: "screenshot";
       source: "screenshot";
       messageSv: string;
@@ -33,7 +58,7 @@ export type ResolvedScreenshotImport =
       balanceAfterMinor: number | null;
       fingerprint: string | null;
       direction: "debit" | "credit" | null;
-      currency: "THB" | "SEK";
+      currency: CurrencyCode;
       observationKind: "receipt";
       source: "receipt_camera";
       messageSv: string;
@@ -117,14 +142,185 @@ function dedupeParsedMessages(
   return out;
 }
 
+function collectTextParts(extraction: ExtractionProviderResult): string {
+  const meta = extraction.rawMetadata ?? {};
+  const textParts: string[] = [];
+  if (typeof meta.fullText === "string" && meta.fullText.trim()) {
+    textParts.push(meta.fullText);
+  }
+  if (Array.isArray(meta.smsTexts)) {
+    for (const t of meta.smsTexts) {
+      if (typeof t === "string" && t.trim()) textParts.push(t);
+    }
+  }
+  const structured = structuredMessagesToText(meta.messages);
+  if (structured.text) textParts.push(structured.text);
+
+  for (const c of extraction.candidates) {
+    const raw = c.rawPayload;
+    if (raw && typeof raw.rawText === "string") textParts.push(raw.rawText);
+    if (raw && typeof raw.fullText === "string") textParts.push(raw.fullText);
+  }
+  return textParts.join("\n\n");
+}
+
+function resolveBankAppImport(
+  extraction: ExtractionProviderResult,
+  existingFingerprints: Iterable<string>,
+  combinedText: string,
+): ResolvedScreenshotImport | null {
+  const meta = extraction.rawMetadata ?? {};
+  const detectedKind =
+    typeof meta.detectedKind === "string" ? meta.detectedKind : null;
+
+  if (
+    !looksLikeBankAppScreenshot(combinedText, detectedKind) &&
+    detectedKind !== "bank_app" &&
+    detectedKind !== "bank_app_detail" &&
+    detectedKind !== "bank_app_list"
+  ) {
+    return null;
+  }
+
+  const institutionHint =
+    typeof meta.institutionHint === "string" ? meta.institutionHint : null;
+
+  const visionRows = Array.isArray(meta.transactions)
+    ? (meta.transactions as Parameters<typeof parseBankAppVisionRows>[0])
+    : extraction.candidates.map((c) => ({
+        merchant:
+          typeof c.rawPayload?.merchant === "string"
+            ? c.rawPayload.merchant
+            : c.description,
+        direction: c.direction,
+        amountMajor:
+          c.amountMinor != null ? c.amountMinor / 100 : null,
+        currency: c.currency,
+        originalAmountMajor:
+          typeof c.rawPayload?.originalAmountMajor === "number" ||
+          typeof c.rawPayload?.originalAmountMajor === "string"
+            ? c.rawPayload.originalAmountMajor
+            : null,
+        originalCurrency:
+          typeof c.rawPayload?.originalCurrency === "string"
+            ? c.rawPayload.originalCurrency
+            : null,
+        occurredAt:
+          c.occurredAt ??
+          (typeof c.rawPayload?.occurredAt === "string"
+            ? c.rawPayload.occurredAt
+            : null),
+        categoryHint:
+          typeof c.rawPayload?.categoryHint === "string"
+            ? c.rawPayload.categoryHint
+            : null,
+        failed:
+          c.rawPayload?.failed === true ||
+          c.rawPayload?.strikethrough === true,
+        strikethrough: c.rawPayload?.strikethrough === true,
+        statusText:
+          typeof c.rawPayload?.statusText === "string"
+            ? c.rawPayload.statusText
+            : null,
+        rawText:
+          typeof c.rawPayload?.rawText === "string"
+            ? c.rawPayload.rawText
+            : null,
+      }));
+
+  let parsed = parseBankAppVisionRows(visionRows, {
+    institutionHint,
+    fullText: combinedText,
+  });
+
+  if (parsed.length === 0 && combinedText.trim()) {
+    parsed = parseBunqDetailFromText(combinedText);
+  }
+
+  const selection = selectImportableBankAppEvents(
+    parsed,
+    existingFingerprints,
+  );
+
+  if (selection.status === "ready") {
+    const s = selection.selectedBatch[0]!;
+    return {
+      kind: "bank_app",
+      selection,
+      selected: s,
+      selectedBatch: selection.selectedBatch,
+      suggestedAmountMinor: s.amountMinor,
+      suggestedDescription: s.labelSv,
+      balanceAfterMinor: null,
+      fingerprint: s.fingerprint.fingerprint,
+      direction: s.direction,
+      currency: s.currency,
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv: selection.messageSv,
+      alreadyKnown: false,
+    };
+  }
+
+  if (selection.status === "all_known") {
+    return {
+      kind: "bank_app",
+      selection,
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency: "THB",
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv: selection.messageSv,
+      alreadyKnown: true,
+    };
+  }
+
+  // Fall through to receipt only when we are not sure this is a bank app.
+  if (
+    detectedKind === "bank_app" ||
+    detectedKind === "bank_app_detail" ||
+    detectedKind === "bank_app_list" ||
+    looksLikeBankAppScreenshot(combinedText, detectedKind)
+  ) {
+    return {
+      kind: "bank_app",
+      selection,
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency: "THB",
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv: selection.messageSv,
+      alreadyKnown: false,
+    };
+  }
+
+  return null;
+}
+
 /**
  * SCREENSHOT → observations → normalize → propose all unknown bank events.
  * Never writes the ledger — only proposes candidates.
+ *
+ * Duplicate checks must use **confirmed** fingerprints only. Pending
+ * needs_review candidates from abandoned uploads must not block a re-scan
+ * (that bug showed “finns redan” when nothing was saved).
  */
 export function resolveScreenshotImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
-  options?: { preferBankSms?: boolean },
+  options?: { preferBankSms?: boolean; preferBankApp?: boolean },
 ): ResolvedScreenshotImport {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
@@ -173,14 +369,14 @@ export function resolveScreenshotImport(
     if (fromCandidates.text) textParts.push(fromCandidates.text);
   }
 
-  const combinedText = textParts.join("\n\n");
-  const treatAsBank =
+  const combinedText = textParts.join("\n\n") || collectTextParts(extraction);
+  const treatAsBankSms =
     options?.preferBankSms === true ||
     looksLikeBankSmsText(combinedText, detectedKind) ||
     detectedKind === "bangkok_bank_sms" ||
     structured.count > 0;
 
-  if (treatAsBank && combinedText.trim()) {
+  if (treatAsBankSms && combinedText.trim()) {
     const parsed = dedupeParsedMessages(
       defaultBankParserRegistry.parse({
         institution: "Bangkok Bank",
@@ -231,27 +427,39 @@ export function resolveScreenshotImport(
       };
     }
 
-    return {
-      kind: "bank_sms",
-      selection,
-      selected: null,
-      selectedBatch: [],
-      suggestedAmountMinor: null,
-      suggestedDescription: null,
-      balanceAfterMinor: null,
-      fingerprint: null,
-      direction: null,
-      currency: "THB",
-      observationKind: "screenshot",
-      source: "screenshot",
-      messageSv: selection.messageSv,
-      alreadyKnown: false,
-    };
+    // Prefer bank SMS when forced; otherwise try bank-app / receipt fallback.
+    if (options?.preferBankSms) {
+      return {
+        kind: "bank_sms",
+        selection,
+        selected: null,
+        selectedBatch: [],
+        suggestedAmountMinor: null,
+        suggestedDescription: null,
+        balanceAfterMinor: null,
+        fingerprint: null,
+        direction: null,
+        currency: "THB",
+        observationKind: "screenshot",
+        source: "screenshot",
+        messageSv: selection.messageSv,
+        alreadyKnown: false,
+      };
+    }
+  }
+
+  if (!options?.preferBankSms || options?.preferBankApp) {
+    const bankApp = resolveBankAppImport(
+      extraction,
+      existingFingerprints,
+      combinedText,
+    );
+    if (bankApp) return bankApp;
   }
 
   const first = extraction.candidates[0];
-  const currency =
-    first?.currency === "SEK" || first?.currency === "THB"
+  const currency: CurrencyCode =
+    first?.currency && isCurrencyCode(first.currency)
       ? first.currency
       : "THB";
 

@@ -17,7 +17,7 @@ import { compressImageForUpload } from "@/lib/media/compress-image";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 
-type CaptureMode = "pick" | "bank_sms" | "receipt" | "manual";
+type CaptureMode = "pick" | "bank_sms" | "bank_app" | "receipt" | "manual";
 
 type PreviewEvent = {
   candidateId: string;
@@ -35,7 +35,7 @@ type Preview = {
   ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
   message: string | null;
   previewUrl: string;
-  importKind: "bank_sms" | "receipt" | "unknown";
+  importKind: "bank_sms" | "bank_app" | "receipt" | "unknown";
   balanceAfterMinor: number | null;
   fingerprint: string | null;
   alreadyKnown: boolean;
@@ -89,7 +89,9 @@ export function ReceiptCaptureFlow({
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;
-    if (preview.importKind === "bank_sms") return null;
+    if (preview.importKind === "bank_sms" || preview.importKind === "bank_app") {
+      return null;
+    }
     try {
       const amountMinor = parseUiAmountToMinor(preview.amount || "0");
       const remaining = roomBefore - amountMinor;
@@ -120,11 +122,12 @@ export function ReceiptCaptureFlow({
 
     startTransition(async () => {
       const uploadFile = await compressImageForUpload(file, {
-        preserveText: mode === "bank_sms",
+        preserveText: mode === "bank_sms" || mode === "bank_app",
       });
       const fd = new FormData();
       fd.set("file", uploadFile);
       if (mode === "bank_sms") fd.set("mode", "bank_sms");
+      if (mode === "bank_app") fd.set("mode", "bank_app");
 
       const result = await uploadReceiptAction(fd);
       setScanning(false);
@@ -150,24 +153,37 @@ export function ReceiptCaptureFlow({
       const importKind: Preview["importKind"] =
         data.importKind === "bank_sms"
           ? "bank_sms"
-          : mode === "bank_sms"
-            ? "bank_sms"
-            : data.importKind === "receipt"
-              ? "receipt"
-              : "receipt";
+          : data.importKind === "bank_app"
+            ? "bank_app"
+            : mode === "bank_sms"
+              ? "bank_sms"
+              : mode === "bank_app"
+                ? "bank_app"
+                : data.importKind === "receipt"
+                  ? "receipt"
+                  : "receipt";
 
-      // Bank-SMS never falls back to manual typing — retry with clearer photo.
-      if (mode === "bank_sms" && events.length === 0 && !data.alreadyKnown) {
+      // Auto-scan imports never fall back to manual typing — retry photo.
+      if (
+        (mode === "bank_sms" || mode === "bank_app") &&
+        events.length === 0 &&
+        !data.alreadyKnown
+      ) {
         URL.revokeObjectURL(previewUrl);
         setError(
           data.message ??
-            "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump.",
+            (mode === "bank_app"
+              ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
+              : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump."),
         );
         return;
       }
-      // Keep the same object URL for the confirm view.
 
-      setAmountEditable(importKind !== "bank_sms" && !hasAmount);
+      setAmountEditable(
+        importKind !== "bank_sms" &&
+          importKind !== "bank_app" &&
+          !hasAmount,
+      );
       setPreview({
         observationId: data.observation.id,
         candidateId: data.candidate?.id ?? events[0]?.candidateId ?? null,
@@ -192,31 +208,44 @@ export function ReceiptCaptureFlow({
   function onConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!preview || preview.alreadyKnown) return;
-    if (preview.importKind === "bank_sms" && preview.events.length === 0) {
-      setError("Bank-SMS måste läsas automatiskt — ta en tydligare bild.");
+    if (
+      (preview.importKind === "bank_sms" ||
+        preview.importKind === "bank_app") &&
+      preview.events.length === 0
+    ) {
+      setError("Bilden måste läsas automatiskt — ta en tydligare bild.");
       return;
     }
     setError(null);
     startTransition(async () => {
-      const isSms = preview.importKind === "bank_sms";
+      const isAutoImport =
+        preview.importKind === "bank_sms" ||
+        preview.importKind === "bank_app";
       const result = await confirmReceiptExpenseAction({
-        accountId: accountId,
+        accountId:
+          preview.importKind === "bank_app" ? null : accountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
-        confirmAllPending: isSms,
-        amount: isSms ? "0" : preview.amount,
+        confirmAllPending: isAutoImport,
+        // Batch confirm reads amounts from candidates; placeholder avoids Zod zero.
+        amount: isAutoImport ? "0" : preview.amount,
         description: preview.description || undefined,
         category:
-          isSms && preview.direction === "credit"
+          isAutoImport && preview.direction === "credit"
             ? null
-            : isSms
+            : isAutoImport
               ? category
               : preview.direction === "credit"
                 ? null
                 : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
-        source: isSms ? "screenshot" : "receipt_camera",
+        source:
+          preview.importKind === "bank_app"
+            ? "bank_import"
+            : isAutoImport
+              ? "screenshot"
+              : "receipt_camera",
         direction: preview.direction,
       });
       if (!result.ok) {
@@ -360,12 +389,18 @@ export function ReceiptCaptureFlow({
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold tracking-tight">
-            {mode === "receipt" ? "Läser kvitto…" : "Läser SMS…"}
+            {mode === "receipt"
+              ? "Läser kvitto…"
+              : mode === "bank_app"
+                ? "Läser bankapp…"
+                : "Läser SMS…"}
           </p>
           <p className="mx-auto mt-2 max-w-[30ch] text-sm text-[var(--numa-muted)]">
             {mode === "receipt"
               ? "Hämtar beloppet — dubbelkolla innan du sparar."
-              : "Hämtar +/− och saldo automatiskt — du behöver inte skriva något."}
+              : mode === "bank_app"
+                ? "Hämtar utgifter från skärmdumpen — misslyckade rader hoppas över."
+                : "Hämtar +/− och saldo automatiskt — du behöver inte skriva något."}
           </p>
         </div>
       </div>
@@ -374,24 +409,29 @@ export function ReceiptCaptureFlow({
 
   if (!preview) {
     const isSms = mode === "bank_sms";
+    const isBankApp = mode === "bank_app";
     return (
       <div className="animate-rise space-y-8">
         {!bootstrapping ? <BackLink onClick={resetToPick} /> : null}
         <header className="space-y-2">
           <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            {isSms ? "Bank-SMS" : "Kvitto"}
+            {isSms ? "Bank-SMS" : isBankApp ? "Bankapp" : "Kvitto"}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight">
             {bootstrapping
               ? "Fota senaste SMS"
               : isSms
                 ? "Fota bank-SMS"
-                : "Fota kvitto"}
+                : isBankApp
+                  ? "Fota bankapp"
+                  : "Fota kvitto"}
           </h2>
           <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {isSms
               ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
-              : "Håll texten skarp. Beloppet fylls i automatiskt."}
+              : isBankApp
+                ? "bunq / Revolut — kortbelopp i €, samma köp aldrig dubbelt"
+                : "Håll texten skarp. Beloppet fylls i automatiskt."}
           </p>
         </header>
 
@@ -460,7 +500,9 @@ export function ReceiptCaptureFlow({
         <p className="text-center text-xs text-[var(--numa-faint)]">
           {isSms
             ? "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över"
-            : "Beloppet synligt i bild"}
+            : isBankApp
+              ? "Bäst: detalj eller lista · € postas på bunq-konto · samma köp hoppas över"
+              : "Beloppet synligt i bild"}
         </p>
 
         {error ? (
@@ -480,7 +522,7 @@ export function ReceiptCaptureFlow({
           <p className="text-xl font-semibold tracking-tight">Inget nytt</p>
           <p className="mx-auto max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {preview.message ??
-              "Det här SMS:et finns redan. Vänta på nästa notis från banken."}
+              "Det här finns redan sparat i NUMA. Vänta på nästa notis eller ny utgift."}
           </p>
         </div>
         <button
@@ -499,8 +541,10 @@ export function ReceiptCaptureFlow({
   }
 
   const isSms = preview.importKind === "bank_sms";
+  const isBankApp = preview.importKind === "bank_app";
+  const isAutoImport = isSms || isBankApp;
   const isCredit = preview.direction === "credit";
-  const needsManualAmount = !isSms && !preview.amountFromScan;
+  const needsManualAmount = !isAutoImport && !preview.amountFromScan;
   const remainingTone =
     impact && impact.remaining < 0
       ? "text-[var(--numa-danger)]"
@@ -515,9 +559,9 @@ export function ReceiptCaptureFlow({
     <form onSubmit={onConfirm} className="animate-rise space-y-7">
       <PreviewThumb src={preview.previewUrl} />
 
-      {isSms ? (
+      {isAutoImport ? (
         <div className="animate-rise-delay-1 space-y-1 text-center">
-          {preview.balanceAfterMinor != null ? (
+          {isSms && preview.balanceAfterMinor != null ? (
             <>
               <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
                 Saldo på Hem
@@ -530,7 +574,7 @@ export function ReceiptCaptureFlow({
             </>
           ) : (
             <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-              Bank-SMS
+              {isBankApp ? "Bankapp" : "Bank-SMS"}
             </p>
           )}
           <p className="text-sm text-[var(--numa-muted)]">
@@ -552,7 +596,7 @@ export function ReceiptCaptureFlow({
         </div>
       )}
 
-      {isSms && eventCount > 0 ? (
+      {isAutoImport && eventCount > 0 ? (
         <ul className="animate-rise-delay-2 divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
           {preview.events.map((event) => {
             const plus = event.direction === "credit";
@@ -562,13 +606,18 @@ export function ReceiptCaptureFlow({
                 className="flex items-baseline justify-between gap-4 py-3.5"
               >
                 <span
-                  className={`text-sm font-semibold ${
+                  className={`min-w-0 text-sm font-semibold ${
                     plus
                       ? "text-[var(--numa-positive)]"
                       : "text-[var(--numa-ink)]"
                   }`}
                 >
-                  {plus ? "Insättning" : "Utgift"}
+                  {event.labelSv?.includes("·")
+                    ? event.labelSv.split("·").slice(1).join("·").trim() ||
+                      (plus ? "Insättning" : "Utgift")
+                    : plus
+                      ? "Insättning"
+                      : "Utgift"}
                 </span>
                 <span
                   className={`money shrink-0 text-lg font-semibold ${
@@ -613,9 +662,9 @@ export function ReceiptCaptureFlow({
         </div>
       )}
 
-      {isSms && preview.skippedOlderCount > 0 ? (
+      {isAutoImport && preview.skippedOlderCount > 0 ? (
         <p className="text-xs text-[var(--numa-faint)]">
-          {preview.skippedOlderCount} redan sparade SMS hoppades över.
+          {preview.skippedOlderCount} redan sparade hoppades över.
         </p>
       ) : null}
 
@@ -626,7 +675,7 @@ export function ReceiptCaptureFlow({
         </p>
       ) : null}
 
-      {!isSms ? (
+      {!isAutoImport ? (
         <input
           value={preview.description}
           onChange={(e) =>
@@ -637,7 +686,7 @@ export function ReceiptCaptureFlow({
         />
       ) : null}
 
-      {isSms && debitCount > 0 && creditCount === 0 ? (
+      {isAutoImport && debitCount > 0 && creditCount === 0 ? (
         <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
           {CATEGORIES.map((c) => (
             <button
@@ -667,7 +716,7 @@ export function ReceiptCaptureFlow({
           type="submit"
           disabled={
             pending ||
-            (isSms ? eventCount === 0 : !preview.amount.trim())
+            (isAutoImport ? eventCount === 0 : !preview.amount.trim())
           }
           className="flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-sm font-semibold text-white disabled:opacity-45"
         >
@@ -675,9 +724,9 @@ export function ReceiptCaptureFlow({
             ? "Sparar…"
             : bootstrapping
               ? "Spara saldo på Hem"
-              : isSms && eventCount > 1
+              : isAutoImport && eventCount > 1
                 ? `Spara ${eventCount} rörelser`
-                : isSms && isCredit
+                : isAutoImport && isCredit
                   ? "Spara insättning"
                   : "Bekräfta"}
         </button>
@@ -717,6 +766,13 @@ function ModePicker({
       hint: "Skärmdump → allt läses in",
     },
     {
+      id: "bank_app",
+      title: "Bankapp",
+      hint: hasAccount
+        ? "bunq / Revolut — utgift utan dubblett"
+        : "Kräver saldo först via SMS",
+    },
+    {
       id: "receipt",
       title: "Kvitto",
       hint: "Fota priset på kvitto eller skärm",
@@ -748,8 +804,11 @@ function ModePicker({
           <button
             key={item.id}
             type="button"
+            disabled={
+              (item.id === "bank_app" || item.id === "manual") && !hasAccount
+            }
             onClick={() => onChoose(item.id)}
-            className="flex w-full items-baseline justify-between gap-4 py-5 text-left transition hover:opacity-80 active:opacity-60"
+            className="flex w-full items-baseline justify-between gap-4 py-5 text-left transition hover:opacity-80 active:opacity-60 disabled:opacity-40"
           >
             <span>
               <span className="block text-[15px] font-semibold tracking-tight">

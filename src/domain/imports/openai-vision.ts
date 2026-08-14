@@ -4,6 +4,22 @@ import {
   type ExtractionProviderResult,
   type ExtractionRequest,
 } from "./extraction";
+import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
+import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
+
+function bankAppMajorToMinor(
+  value: number | string | null | undefined,
+): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0) return null;
+    return Math.round(value * 100);
+  }
+  // Vision may return European strings ("6,60") or western ("6.60").
+  return (
+    tryEuropeanAmountToMinor(String(value)) ?? visionMajorToMinor(value)
+  );
+}
 
 type VisionSmsMessage = {
   rawText?: string | null;
@@ -16,10 +32,35 @@ type VisionSmsMessage = {
   channel?: string | null;
 };
 
+type VisionBankAppTx = {
+  merchant?: string | null;
+  direction?: "debit" | "credit" | null;
+  amountMajor?: number | string | null;
+  currency?: string | null;
+  originalAmountMajor?: number | string | null;
+  originalCurrency?: string | null;
+  occurredAt?: string | null;
+  categoryHint?: string | null;
+  failed?: boolean | null;
+  strikethrough?: boolean | null;
+  statusText?: string | null;
+  rawText?: string | null;
+};
+
 type VisionJson = {
-  kind?: "bangkok_bank_sms" | "receipt" | "unknown" | string | null;
+  kind?:
+    | "bangkok_bank_sms"
+    | "bank_app"
+    | "bank_app_detail"
+    | "bank_app_list"
+    | "receipt"
+    | "unknown"
+    | string
+    | null;
+  institutionHint?: string | null;
   fullText?: string | null;
   messages?: VisionSmsMessage[] | null;
+  transactions?: VisionBankAppTx[] | null;
   amountMajor?: number | string | null;
   currency?: string | null;
   description?: string | null;
@@ -35,14 +76,6 @@ type VisionCallFail = {
   model?: undefined;
 };
 
-function majorToMinor(value: number | string | null | undefined): number | null {
-  if (value == null) return null;
-  const raw = typeof value === "number" ? String(value) : String(value);
-  const major = Number(raw.replace(/,/g, "").replace(/\s/g, ""));
-  if (!Number.isFinite(major) || major < 0) return null;
-  return Math.round(major * 100);
-}
-
 function looksLikeBankText(text: string): boolean {
   const t = text.toLowerCase();
   return (
@@ -52,6 +85,19 @@ function looksLikeBankText(text: string): boolean {
     t.includes("promptpay") ||
     t.includes("moneyplus") ||
     t.includes("bangkok")
+  );
+}
+
+function looksLikeBankAppText(text: string): boolean {
+  const t = text.toLowerCase();
+  return (
+    t.includes("bunq") ||
+    t.includes("revolut") ||
+    t.includes("zerofx") ||
+    t.includes("onlinebetalning") ||
+    t.includes("senaste transaktioner") ||
+    t.includes("påfyllning av kort") ||
+    (t.includes("grab") && (/€|eur|thb/.test(t)))
   );
 }
 
@@ -70,10 +116,10 @@ function synthesizeRawText(m: VisionSmsMessage): string | null {
 }
 
 /**
- * OpenAI Vision — Bangkok Bank SMS first-class.
+ * OpenAI Vision — Bangkok Bank SMS first-class, bank-app screenshots second.
  * Token rules:
  * - Bank-SMS mode = ONE high-detail call (no duplicate retry with same prompt).
- * - Receipt mode = ONE low-detail call; bank retry only if the image looks like SMS.
+ * - Bank-app / receipt mode = ONE low-detail call; bank SMS retry only if needed.
  * - API/transport errors get one retry; weak JSON does not.
  */
 export class OpenAiVisionExtractionProvider implements ExtractionProvider {
@@ -91,19 +137,22 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     }
 
     const preferBank = request.institutionHint === "Bangkok Bank";
+    const preferBankApp =
+      request.institutionHint === "bank_app" ||
+      request.institutionHint === "bunq" ||
+      request.institutionHint === "revolut";
     let apiCalls = 0;
 
     if (preferBank) {
       apiCalls += 1;
       let pass = await this.callVision(request, {
-        bankForced: true,
+        mode: "bank_sms",
         detail: "high",
       });
       if (!pass.ok) {
-        // Only burn a second call on transport/API failure — never same prompt twice for "weak OCR".
         apiCalls += 1;
         pass = await this.callVision(request, {
-          bankForced: true,
+          mode: "bank_sms",
           detail: "high",
         });
       }
@@ -113,28 +162,63 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           mode: "bank_sms",
         });
       }
-      const bankError = pass.error;
       return {
         provider: "vision_api",
         candidates: [],
         rawMetadata: {
-          message: bankError || "Kunde inte läsa bilden",
+          message: pass.error || "Kunde inte läsa bilden",
           apiCalls,
           mode: "bank_sms",
         },
       };
     }
 
-    // Receipt / unknown: cheap first pass.
+    if (preferBankApp) {
+      apiCalls += 1;
+      let pass = await this.callVision(request, {
+        mode: "bank_app",
+        detail: "high",
+      });
+      if (!pass.ok) {
+        apiCalls += 1;
+        pass = await this.callVision(request, {
+          mode: "bank_app",
+          detail: "high",
+        });
+      }
+      if (pass.ok) {
+        return this.toResult(request, pass.parsed, pass.model, {
+          apiCalls,
+          mode: "bank_app",
+        });
+      }
+      return {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          message: pass.error || "Kunde inte läsa bankappen",
+          apiCalls,
+          mode: "bank_app",
+        },
+      };
+    }
+
+    // Receipt / unknown: cheap first pass (also detects bank app + SMS).
     apiCalls += 1;
     const first = await this.callVision(request, {
-      bankForced: false,
+      mode: "general",
       detail: "low",
     });
     if (first.ok && this.hasUsableSms(first.parsed)) {
       return this.toResult(request, first.parsed, first.model, {
         apiCalls,
         mode: "receipt_detected_bank",
+      });
+    }
+    if (first.ok && this.hasUsableBankApp(first.parsed)) {
+      return this.toResult(request, first.parsed, first.model, {
+        apiCalls,
+        mode: "receipt_detected_bank_app",
       });
     }
     if (first.ok && this.hasUsableReceipt(first.parsed)) {
@@ -144,7 +228,6 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       });
     }
 
-    // Bank retry only when the cheap pass hints at SMS but didn't extract bubbles.
     const hintText =
       (first.ok &&
         typeof first.parsed.fullText === "string" &&
@@ -154,11 +237,17 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       !first.ok ||
       first.parsed.kind === "bangkok_bank_sms" ||
       looksLikeBankText(hintText);
+    const shouldBankAppRetry =
+      first.ok &&
+      (first.parsed.kind === "bank_app" ||
+        first.parsed.kind === "bank_app_detail" ||
+        first.parsed.kind === "bank_app_list" ||
+        looksLikeBankAppText(hintText));
 
     if (shouldBankRetry) {
       apiCalls += 1;
       const second = await this.callVision(request, {
-        bankForced: true,
+        mode: "bank_sms",
         detail: "high",
       });
       if (second.ok && this.hasUsableSms(second.parsed)) {
@@ -173,21 +262,37 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           mode: "receipt_fallback",
         });
       }
-      const failMsg = !second.ok
-        ? second.error
-        : "Kunde inte läsa bilden";
       return {
         provider: "vision_api",
         candidates: [],
         rawMetadata: {
-          message: failMsg,
+          message: !second.ok ? second.error : "Kunde inte läsa bilden",
           apiCalls,
           mode: "receipt_failed",
         },
       };
     }
 
-    // shouldBankRetry is false ⇒ first.ok is true (see condition above).
+    if (shouldBankAppRetry) {
+      apiCalls += 1;
+      const second = await this.callVision(request, {
+        mode: "bank_app",
+        detail: "high",
+      });
+      if (second.ok && this.hasUsableBankApp(second.parsed)) {
+        return this.toResult(request, second.parsed, second.model, {
+          apiCalls,
+          mode: "receipt_bank_app_retry",
+        });
+      }
+      if (first.ok) {
+        return this.toResult(request, first.parsed, first.model, {
+          apiCalls,
+          mode: "receipt_fallback",
+        });
+      }
+    }
+
     return this.toResult(request, first.parsed, first.model, {
       apiCalls,
       mode: "receipt",
@@ -209,54 +314,97 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     return looksLikeBankText(fullText);
   }
 
+  private hasUsableBankApp(parsed: VisionJson): boolean {
+    if (
+      parsed.kind === "bank_app" ||
+      parsed.kind === "bank_app_detail" ||
+      parsed.kind === "bank_app_list"
+    ) {
+      const txs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+      if (txs.some((t) => t.amountMajor != null || t.originalAmountMajor != null)) {
+        return true;
+      }
+    }
+    const fullText = typeof parsed.fullText === "string" ? parsed.fullText : "";
+    return looksLikeBankAppText(fullText);
+  }
+
   private hasUsableReceipt(parsed: VisionJson): boolean {
-    if (parsed.kind === "bangkok_bank_sms") return false;
-    return majorToMinor(parsed.amountMajor) != null;
+    if (
+      parsed.kind === "bangkok_bank_sms" ||
+      parsed.kind === "bank_app" ||
+      parsed.kind === "bank_app_detail" ||
+      parsed.kind === "bank_app_list"
+    ) {
+      return false;
+    }
+    return visionMajorToMinor(parsed.amountMajor) != null;
   }
 
   private async callVision(
     request: ExtractionRequest,
-    options: { bankForced: boolean; detail: "high" | "low" },
+    options: {
+      mode: "bank_sms" | "bank_app" | "general";
+      detail: "high" | "low";
+    },
   ): Promise<VisionCallOk | VisionCallFail> {
     const model = "gpt-4o";
-    const { bankForced, detail } = options;
-    const system = bankForced
-      ? [
-          "Expert OCR for Bangkok Bank iMessage/SMS screenshots.",
-          "Read EVERY grey bubble. Bottom ≈ newest.",
-          "Templates (Bt/TH/THB):",
-          'Debit: "Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04."',
-          'Debit short: "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,028.04."',
-          'Credit: "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04"',
-          "amountMajor = moved amount. balanceAfterMajor = available balance. NEVER swap.",
-          "direction=debit for Withdrawal; credit for PromptPay/MoneyPlus to account.",
-          "JSON: kind=bangkok_bank_sms, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], currency=THB, confidence.",
-          "Never invent numbers. Ignore UI chrome (idag, Textmeddelande).",
-        ].join(" ")
-      : [
-          "Read finance screenshots for NUMA.",
-          "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
-          "Else receipt total → kind=receipt.",
-          "JSON: kind, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], amountMajor, currency, confidence.",
-        ].join(" ");
+    const { mode, detail } = options;
+
+    const system =
+      mode === "bank_sms"
+        ? [
+            "Expert OCR for Bangkok Bank iMessage/SMS screenshots.",
+            "Read EVERY grey bubble. Bottom ≈ newest.",
+            "Templates (Bt/TH/THB):",
+            'Debit: "Withdrawal/transfer/payment from your account X6591 of Bt 5,000.00 via ATM; the available balance is Bt 7,028.04."',
+            'Debit short: "Withdrawal from your account X6591 of Bt 50.00 via MOBILE; the available balance is Bt 12,028.04."',
+            'Credit: "PromptPay transfer to your account X6591 of Bt 3,400.00 via MOBILE; the available balance is Bt 10,108.04"',
+            "amountMajor = moved amount. balanceAfterMajor = available balance. NEVER swap.",
+            "direction=debit for Withdrawal; credit for PromptPay/MoneyPlus to account.",
+            "JSON: kind=bangkok_bank_sms, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], currency=THB, confidence.",
+            "Never invent numbers. Ignore UI chrome (idag, Textmeddelande).",
+            "Digit care: 0 vs O, 1 vs l — prefer digits next to Bt/THB amounts.",
+          ].join(" ")
+        : mode === "bank_app"
+          ? [
+              "Expert OCR for European bank-app screenshots (bunq, Revolut).",
+              "Handle DETAIL screens (one payment) and LIST screens (Senaste transaktioner).",
+              "Swedish UI OK. Comma decimals: 6,60 € → amountMajor 6.60 currency EUR.",
+              "amountMajor/currency = what left the card (usually EUR). NEVER put THB there.",
+              "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB only.",
+              "occurredAt as ISO minute: 2026-07-23T16:46 from '23 juli 2026 16:46'.",
+              "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
+              "failed=true OR strikethrough=true for Failed/Expired/misslyckade (do NOT treat as spend).",
+              "JSON: kind=bank_app_detail|bank_app_list, institutionHint, fullText, transactions[{merchant,direction,amountMajor,currency,originalAmountMajor,originalCurrency,occurredAt,categoryHint,failed,strikethrough,statusText,rawText}], confidence.",
+              "Never invent amounts. Skip UI chrome (Tillbaka, Begär betalning, Dela).",
+            ].join(" ")
+          : [
+              "Read finance screenshots for NUMA.",
+              "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
+              "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[]. Card amount = EUR when shown.",
+              "Else receipt total → kind=receipt.",
+              "JSON: kind, institutionHint, fullText, messages[…], transactions[…], amountMajor, currency, confidence.",
+            ].join(" ");
+
+    const userText =
+      mode === "bank_sms"
+        ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
+        : mode === "bank_app"
+          ? "Extract every real bank-app transaction (skip failed/strikethrough). amountMajor = card currency (EUR), original* = merchant THB if shown. JSON only."
+          : "Extract bank SMS bubbles, bank-app transactions, or receipt total. JSON only.";
 
     const body = {
       model,
       temperature: 0,
-      // 4–6 bubbles fit well under 1200; avoids paying for unused completion headroom.
-      max_tokens: bankForced ? 1400 : 700,
+      max_tokens: mode === "bank_sms" || mode === "bank_app" ? 1400 : 700,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: system },
         {
           role: "user",
           content: [
-            {
-              type: "text",
-              text: bankForced
-                ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
-                : "Extract bank SMS bubbles or receipt total. JSON only.",
-            },
+            { type: "text", text: userText },
             {
               type: "image_url",
               image_url: {
@@ -319,6 +467,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
   ): ExtractionProviderResult {
     let kind = parsed.kind ?? "unknown";
     const messagesIn = Array.isArray(parsed.messages) ? parsed.messages : [];
+    const txsIn = Array.isArray(parsed.transactions) ? parsed.transactions : [];
 
     const normalizedMessages = messagesIn.map((m, index) => {
       const rawText = synthesizeRawText(m);
@@ -336,23 +485,36 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
 
     const fullText =
       (typeof parsed.fullText === "string" && parsed.fullText.trim()) ||
-      smsTexts.join("\n\n");
+      smsTexts.join("\n\n") ||
+      txsIn.map((t) => t.rawText).filter(Boolean).join("\n");
 
     if (
       kind !== "bangkok_bank_sms" &&
-      (looksLikeBankText(fullText) || normalizedMessages.length > 0)
+      (looksLikeBankText(fullText) || normalizedMessages.length > 0) &&
+      !looksLikeBankAppText(fullText)
     ) {
       kind = "bangkok_bank_sms";
     }
 
-    const currency =
-      parsed.currency === "SEK" || parsed.currency === "THB"
-        ? parsed.currency
-        : ("THB" as const);
+    if (
+      (kind === "unknown" || kind === "receipt") &&
+      (txsIn.length > 0 || looksLikeBankAppText(fullText))
+    ) {
+      kind = txsIn.length > 1 ? "bank_app_list" : "bank_app_detail";
+    }
+
+    const currency: CurrencyCode = isCurrencyCode(String(parsed.currency ?? ""))
+      ? (parsed.currency as CurrencyCode)
+      : "THB";
     const confidence =
       typeof parsed.confidence === "number"
         ? Math.min(1, Math.max(0, parsed.confidence))
         : null;
+
+    const isBankApp =
+      kind === "bank_app" ||
+      kind === "bank_app_detail" ||
+      kind === "bank_app_list";
 
     const candidates: ExtractionProviderResult["candidates"] =
       kind === "bangkok_bank_sms" && normalizedMessages.length > 0
@@ -361,9 +523,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               m.direction === "credit" || m.direction === "debit"
                 ? m.direction
                 : null,
-            amountMinor: majorToMinor(m.amountMajor),
+            amountMinor: visionMajorToMinor(m.amountMajor),
             currency: "THB" as const,
-            balanceAfterMinor: majorToMinor(m.balanceAfterMajor),
+            balanceAfterMinor: visionMajorToMinor(m.balanceAfterMajor),
             occurredAt: null,
             description: m.rawText?.slice(0, 160) ?? null,
             confidence,
@@ -373,24 +535,70 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               fullText,
             },
           }))
-        : [
-            {
-              direction: "debit" as const,
-              amountMinor: majorToMinor(parsed.amountMajor),
-              currency,
-              balanceAfterMinor: null,
-              occurredAt: new Date().toISOString(),
-              description:
-                [parsed.merchant, parsed.description]
-                  .filter(Boolean)
-                  .join(" · ") ||
-                parsed.description ||
-                parsed.merchant ||
-                null,
-              confidence,
-              rawPayload: parsed as Record<string, unknown>,
-            },
-          ];
+        : isBankApp && txsIn.length > 0
+          ? txsIn.map((t) => {
+              const displayMinor = bankAppMajorToMinor(t.amountMajor);
+              const displayCur = isCurrencyCode(
+                String(t.currency ?? "").toUpperCase(),
+              )
+                ? (String(t.currency).toUpperCase() as CurrencyCode)
+                : t.currency === "€"
+                  ? ("EUR" as const)
+                  : null;
+              const origCurRaw = t.originalCurrency
+                ? String(t.originalCurrency).toUpperCase()
+                : null;
+              const origCur = origCurRaw && isCurrencyCode(origCurRaw)
+                ? origCurRaw
+                : null;
+              // Prefer card/account currency (EUR) — THB original stays in rawPayload.
+              const ledgerCurrency = displayCur ?? origCur ?? "EUR";
+              const ledgerMinor =
+                displayCur && displayMinor != null
+                  ? displayMinor
+                  : bankAppMajorToMinor(t.originalAmountMajor);
+              return {
+                direction:
+                  t.direction === "credit" || t.direction === "debit"
+                    ? t.direction
+                    : ("debit" as const),
+                amountMinor: ledgerMinor,
+                currency: ledgerCurrency,
+                balanceAfterMinor: null,
+                occurredAt: t.occurredAt ?? null,
+                description: t.merchant ?? t.rawText?.slice(0, 160) ?? null,
+                confidence,
+                rawPayload: {
+                  ...(t as Record<string, unknown>),
+                  merchant: t.merchant ?? null,
+                  originalAmountMajor: t.originalAmountMajor ?? null,
+                  originalCurrency: t.originalCurrency ?? null,
+                  failed: t.failed === true,
+                  strikethrough: t.strikethrough === true,
+                  statusText: t.statusText ?? null,
+                  rawText: t.rawText ?? null,
+                  fullText,
+                },
+              };
+            })
+          : [
+              {
+                direction: "debit" as const,
+                amountMinor: visionMajorToMinor(parsed.amountMajor),
+                currency,
+                balanceAfterMinor: null,
+                occurredAt: new Date().toISOString(),
+                description:
+                  [parsed.merchant, parsed.description]
+                    .filter(Boolean)
+                    .join(" · ") ||
+                  parsed.description ||
+                  parsed.merchant ||
+                  null,
+                confidence,
+                rawPayload: parsed as Record<string, unknown>,
+              },
+            ];
 
     return {
       provider: "vision_api",
@@ -399,10 +607,15 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         model,
         observationId: request.observationId,
         detectedKind: kind,
+        institutionHint: parsed.institutionHint ?? null,
         fullText,
         smsTexts,
         messages: normalizedMessages,
-        messageCount: normalizedMessages.length || (fullText ? 1 : 0),
+        transactions: txsIn,
+        messageCount:
+          normalizedMessages.length ||
+          txsIn.length ||
+          (fullText ? 1 : 0),
         apiCalls: meta.apiCalls,
         mode: meta.mode,
       },
