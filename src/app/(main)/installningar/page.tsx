@@ -6,6 +6,7 @@ import {
   MerPageHeader,
   MerSection,
 } from "@/components/mer/MerHub";
+import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -31,6 +32,10 @@ export default async function InstallningarPage({
       <MerPageHeader back title="Inställningar" />
 
       <div className="animate-rise-delay-1 space-y-6">
+        <MerSection title="På hemskärmen">
+          <HomescreenInstallHint dismissible={false} />
+        </MerSection>
+
         <MerSection title="Underhåll">
           <MerListGroup>
             <MerListRow className="space-y-3 py-4">

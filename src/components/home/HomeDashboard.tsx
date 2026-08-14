@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
+import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
@@ -75,6 +76,7 @@ export function HomeDashboard({
 
   return (
     <div className="mx-auto max-w-lg space-y-6 pb-2">
+      <HomescreenInstallHint />
       <header className="animate-rise space-y-1 px-0.5">
         <p className="text-[13px] font-medium capitalize text-[var(--numa-muted)]">
           {greeting}

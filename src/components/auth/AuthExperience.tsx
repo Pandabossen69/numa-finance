@@ -131,6 +131,13 @@ function WelcomeScreen({
           Se vad som är ledigt, vad som är reserverat och hur mycket du kan
           spendera idag.
         </p>
+        <p className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-[var(--numa-faint)]">
+          Alla konton använder samma app-länk:{" "}
+          <span className="font-semibold text-[var(--numa-muted)]">
+            numa-finance.vercel.app
+          </span>
+          . Lägg till på hemskärmen därifrån.
+        </p>
       </div>
 
       <div className="space-y-3" style={{ animationDelay: "80ms" }}>
