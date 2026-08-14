@@ -180,15 +180,15 @@ describe("SMS tip saldo must not double-count", () => {
   });
 });
 
-describe("bank-SMS rows are not household income/spend", () => {
-  it("excludes screenshot sources from spending and income totals", () => {
+describe("bank-SMS rows: spend yes, income/saldo no", () => {
+  it("counts screenshot expenses toward spending but not income", () => {
     expect(
       appliesToSpending({
         transactionType: "expense",
         status: "confirmed",
         source: "screenshot",
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       appliesToIncome({
         transactionType: "income",
@@ -212,14 +212,14 @@ describe("bank-SMS rows are not household income/spend", () => {
     ).toBe(true);
   });
 
-  it("excludes source sms the same way as screenshot", () => {
+  it("counts source sms expenses the same way as screenshot", () => {
     expect(
       appliesToSpending({
         transactionType: "expense",
         status: "confirmed",
         source: "sms",
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       appliesToIncome({
         transactionType: "income",
@@ -229,7 +229,7 @@ describe("bank-SMS rows are not household income/spend", () => {
     ).toBe(false);
   });
 
-  it("screenshot/sms sources never count in spending windows", () => {
+  it("screenshot/sms expenses count in spending windows (tip still owns saldo)", () => {
     const now = new Date("2026-08-11T10:00:00.000Z");
     const windows = computeSpendingWindows({
       transactions: [
@@ -254,8 +254,8 @@ describe("bank-SMS rows are not household income/spend", () => {
       now,
       timeZone: "Asia/Bangkok",
     });
-    expect(windows.today.amountMinor).toBe(0);
-    expect(windows.month.amountMinor).toBe(0);
+    expect(windows.today.amountMinor).toBe(10_610_700);
+    expect(windows.month.amountMinor).toBe(10_610_700);
   });
 });
 
@@ -328,14 +328,14 @@ describe("computeSpendingWindows (Asia/Bangkok)", () => {
       timeZone: tz,
     });
 
-    expect(windows.today.amountMinor).toBe(25_000);
-    expect(windows.month.amountMinor).toBe(35_000);
+    expect(windows.today.amountMinor).toBe(124_000);
+    expect(windows.month.amountMinor).toBe(134_000);
     expect(windows.today.amountMinor).toBeLessThanOrEqual(
       windows.month.amountMinor,
     );
   });
 
-  it("excludes mis-tagged bank-SMS ledger rows via fingerprint+tip balance", () => {
+  it("counts fingerprint+tip bank-SMS expenses toward spending windows", () => {
     const windows = computeSpendingWindows({
       transactions: [
         tx({
@@ -354,8 +354,8 @@ describe("computeSpendingWindows (Asia/Bangkok)", () => {
       now,
       timeZone: tz,
     });
-    expect(windows.today.amountMinor).toBe(0);
-    expect(windows.month.amountMinor).toBe(0);
+    expect(windows.today.amountMinor).toBe(500_000);
+    expect(windows.month.amountMinor).toBe(500_000);
   });
 });
 

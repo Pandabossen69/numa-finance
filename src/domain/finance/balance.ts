@@ -53,7 +53,7 @@ type BankSmsLedgerHints = Partial<
 
 /**
  * Bank-SMS / tip-ledger rows stay in history lists but must not move
- * household spend totals (or tip-checkpoint saldo again).
+ * tip-checkpoint saldo again (tip already embeds their effect).
  *
  * Primary signal: source screenshot/sms/bank_import.
  * Fallback: fingerprint + tip balance + observation — catches legacy rows
@@ -74,13 +74,16 @@ export function isBankSmsLedgerRow(tx: BankSmsLedgerHints): boolean {
   );
 }
 
+/**
+ * Confirmed expenses reduce spend envelopes (today / period).
+ * Bank-SMS *expenses* count — they are real spending; tip still owns saldo math.
+ * Bank-SMS *income* stays out of income totals (see appliesToIncome).
+ */
 export function appliesToSpending(
   tx: Pick<CanonicalTransaction, "transactionType" | "status"> &
     BankSmsLedgerHints,
 ): boolean {
   if (tx.status !== "confirmed") return false;
-  // Bank-SMS ledger rows are history for the tip checkpoint — not household spend.
-  if (isBankSmsLedgerRow(tx)) return false;
   return tx.transactionType === "expense";
 }
 
@@ -238,7 +241,7 @@ export type SpendingWindows = {
  * - month: same YYYY-MM calendar month as `now`
  * - cycle: occurredAt on/after cycle start (when provided)
  *
- * Bank-SMS / screenshot / sms rows never count (via sumSpending → appliesToSpending).
+ * Bank-SMS expenses count via appliesToSpending; tip checkpoints still own saldo.
  * Invariant: today.amountMinor <= month.amountMinor for the same currency filter.
  */
 export function computeSpendingWindows(params: {

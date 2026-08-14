@@ -209,7 +209,7 @@ export function MovementsScreen({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold">{filtered.length} rörelser</h2>
           <Link
-            href="/lagg-till"
+            href="/fota"
             prefetch
             className="text-xs font-semibold text-[var(--numa-accent)]"
           >
@@ -235,7 +235,7 @@ export function MovementsScreen({
                   Inga rörelser här ännu.
                 </p>
                 <Link
-                  href="/lagg-till"
+                  href="/fota"
                   prefetch
                   className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
                 >

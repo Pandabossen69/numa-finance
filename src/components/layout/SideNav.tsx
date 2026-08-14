@@ -61,7 +61,7 @@ export function SideNav() {
         </nav>
 
         <Link
-          href="/lagg-till"
+          href="/fota"
           prefetch
           className="rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
         >

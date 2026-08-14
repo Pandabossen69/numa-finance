@@ -90,8 +90,15 @@ export function ReceiptCaptureFlow({
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;
-    if (preview.importKind === "bank_sms") return null;
     try {
+      if (preview.importKind === "bank_sms") {
+        const amountMinor = preview.events
+          .filter((e) => e.direction === "debit")
+          .reduce((sum, e) => sum + e.amountMinor, 0);
+        if (amountMinor <= 0) return null;
+        const remaining = roomBefore - amountMinor;
+        return { amountMinor, remaining, canAfford: remaining >= 0 };
+      }
       const amountMinor = parseUiAmountToMinor(preview.amount || "0");
       const remaining = roomBefore - amountMinor;
       return { amountMinor, remaining, canAfford: remaining >= 0 };
@@ -108,7 +115,8 @@ export function ReceiptCaptureFlow({
     setError(null);
     setAmountEditable(false);
     setScanning(false);
-    setMode(bootstrapping ? "bank_sms" : "pick");
+    // Always return to the mode picker — even during bootstrap — so Manual/Kvitto stay reachable.
+    setMode("pick");
   }
 
   function onFile(file: File | null) {
@@ -204,6 +212,8 @@ export function ReceiptCaptureFlow({
     setError(null);
     startTransition(async () => {
       const isSms = preview.importKind === "bank_sms";
+      const smsDebits = preview.events.filter((e) => e.direction === "debit")
+        .length;
       const result = await confirmReceiptExpenseAction({
         accountId: accountId,
         observationId: preview.observationId,
@@ -211,8 +221,13 @@ export function ReceiptCaptureFlow({
         confirmAllPending: isSms,
         amount: isSms ? "1" : preview.amount,
         description: preview.description || undefined,
-        category:
-          isSms || preview.direction === "credit" ? null : category,
+        category: isSms
+          ? smsDebits > 0
+            ? category
+            : null
+          : preview.direction === "credit"
+            ? null
+            : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
         source: isSms ? "screenshot" : "receipt_camera",
@@ -375,13 +390,13 @@ export function ReceiptCaptureFlow({
     const isSms = mode === "bank_sms";
     return (
       <div className="animate-rise space-y-8">
-        {!bootstrapping ? <BackLink onClick={resetToPick} /> : null}
+        <BackLink onClick={resetToPick} />
         <header className="space-y-2">
           <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
             {isSms ? "Bank-SMS" : "Kvitto"}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight">
-            {bootstrapping
+            {bootstrapping && isSms
               ? "Fota senaste SMS"
               : isSms
                 ? "Fota bank-SMS"
@@ -390,7 +405,7 @@ export function ReceiptCaptureFlow({
           <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
             {isSms
               ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
-              : "Håll texten skarp. Beloppet fylls i automatiskt."}
+              : "Håll texten skarp. Beloppet fylls i automatiskt — du kan alltid ändra innan du sparar."}
           </p>
         </header>
 
@@ -661,22 +676,29 @@ export function ReceiptCaptureFlow({
         />
       ) : null}
 
-      {isSms && debitCount > 0 && creditCount === 0 ? (
-        <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCategory(c)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
-                category === c
-                  ? "bg-[var(--numa-ink)] font-semibold text-white"
-                  : "text-[var(--numa-muted)] hover:bg-white/60"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+      {(!isSms && !isCredit) || (isSms && debitCount > 0) ? (
+        <div className="space-y-2">
+          {isSms && creditCount > 0 ? (
+            <p className="text-xs text-[var(--numa-faint)]">
+              Kategori gäller utgifterna i bilden.
+            </p>
+          ) : null}
+          <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
+                  category === c
+                    ? "bg-[var(--numa-ink)] font-semibold text-white"
+                    : "text-[var(--numa-muted)] hover:bg-white/60"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -738,19 +760,21 @@ function ModePicker({
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: "Skärmdump → allt läses in",
+      hint: bootstrapping
+        ? "Börja här — saldot i SMS:et blir Hem"
+        : "Skärmdump → allt läses in",
     },
     {
       id: "receipt",
       title: "Kvitto",
-      hint: "Fota priset på kvitto eller skärm",
+      hint: "Fota priset — ändra belopp om det behövs",
     },
     {
       id: "manual",
       title: "Manuellt",
       hint: hasAccount
         ? "Skriv belopp utan kamera"
-        : "Kräver saldo först via SMS",
+        : "Bäst efter första bank-SMS",
     },
   ];
 
@@ -762,7 +786,7 @@ function ModePicker({
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           {bootstrapping
-            ? "Fota senaste bank-SMS. Saldot i SMS:et blir ditt saldo på Hem."
+            ? "Fota senaste bank-SMS först så Hem får rätt saldo. Du kan alltid välja kvitto eller manuellt."
             : "Ett steg. Vi läser bilden och du bekräftar."}
         </p>
       </header>

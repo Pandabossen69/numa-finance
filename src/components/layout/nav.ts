@@ -13,8 +13,6 @@ export const MER_PREFIXES = [
   "/transaktioner",
   "/importera",
   "/installningar",
-  "/fota",
-  "/lagg-till",
   "/laga",
 ] as const;
 

@@ -53,7 +53,14 @@ export default async function FotaPage({
           remainingTodayMinor={data.remainingTodayMinor}
           currency={data.currency}
           bootstrapping={bootstrapping}
-          initialMode={bootstrapping ? "bank_sms" : initialMode}
+          initialMode={
+            // Explicit ?mode= wins; otherwise bootstrap opens bank-SMS first.
+            modeParam
+              ? initialMode
+              : bootstrapping
+                ? "bank_sms"
+                : initialMode
+          }
         />
       )}
     </div>
