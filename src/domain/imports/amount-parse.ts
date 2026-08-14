@@ -17,6 +17,7 @@ export function majorToMinor(
 
   // Keep digits, separators, and optional leading currency noise stripping.
   let cleaned = raw
+    .replace(/[฿€£$]/gu, "")
     .replace(/^(?:bt|thb|sek|kr)\s*/i, "")
     .replace(/\s*(?:bt|thb|sek|kr)$/i, "")
     .trim();

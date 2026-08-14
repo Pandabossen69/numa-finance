@@ -23,6 +23,7 @@ describe("majorToMinor", () => {
     expect(majorToMinor("Bt 300.00")).toBe(30_000);
     expect(majorToMinor("THB 785")).toBe(78_500);
     expect(majorToMinor("785")).toBe(78_500);
+    expect(majorToMinor("฿749")).toBe(74_900);
   });
 
   it("rejects garbage", () => {

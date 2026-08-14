@@ -6,6 +6,7 @@ import {
 } from "./extraction";
 import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
 import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
+import { resolveReceiptPaidAmountMinor } from "./receipt-total";
 
 function bankAppMajorToMinor(
   value: number | string | null | undefined,
@@ -584,7 +585,10 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           : [
               {
                 direction: "debit" as const,
-                amountMinor: visionMajorToMinor(parsed.amountMajor),
+                amountMinor: resolveReceiptPaidAmountMinor({
+                  visionAmountMinor: visionMajorToMinor(parsed.amountMajor),
+                  fullText,
+                }),
                 currency,
                 balanceAfterMinor: null,
                 occurredAt: new Date().toISOString(),

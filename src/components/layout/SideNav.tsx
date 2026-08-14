@@ -38,10 +38,10 @@ export function SideNav() {
                 onClick={() => {
                   startTransition(() => setOptimisticHref(item.href));
                 }}
-                className={`relative rounded-xl px-1 py-3 transition active:scale-[0.99] ${
+                className={`relative rounded-2xl px-1 py-3 transition active:scale-[0.99] ${
                   active
-                    ? "bg-[var(--numa-accent-soft)]/55 text-[var(--numa-ink)]"
-                    : "text-[var(--numa-muted)] hover:bg-white/45 hover:text-[var(--numa-ink)]"
+                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(11,111,93,0.14)]"
+                    : "text-[var(--numa-muted)] hover:bg-white/55 hover:text-[var(--numa-ink)]"
                 }`}
               >
                 {active ? (
