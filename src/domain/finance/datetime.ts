@@ -101,6 +101,43 @@ export function zonedDayAnchorMs(
   return Date.parse(`${zonedDayKey(date, timeZone)}T12:00:00.000Z`);
 }
 
+/**
+ * Interpret a naive wall-clock `YYYY-MM-DDTHH:mm[:ss]` as local time in
+ * `timeZone` and return an absolute ISO string. Prevents evening Bangkok
+ * times from shifting to the next calendar day on UTC hosts.
+ *
+ * Asia/Bangkok (no DST) keeps an explicit `+07:00` so fingerprints that
+ * truncate to wall-clock minute stay stable across imports.
+ */
+export function zonedWallTimeToUtcIso(
+  wallLocal: string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const m = wallLocal
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) {
+    const parsed = Date.parse(wallLocal);
+    if (!Number.isFinite(parsed)) {
+      throw new Error(`Ogiltig lokal tid: ${wallLocal}`);
+    }
+    return new Date(parsed).toISOString();
+  }
+  const wall = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] ?? "00"}`;
+  if (timeZone === "Asia/Bangkok") {
+    return `${wall}+07:00`;
+  }
+  const asLocalComponents = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4]),
+    Number(m[5]),
+    Number(m[6] ?? "0"),
+  );
+  return fromZonedTime(asLocalComponents, timeZone).toISOString();
+}
+
 /** Whole calendar days from `from` to `to` in `timeZone` (can be negative). */
 export function calendarDaysBetween(
   from: Date | string,

@@ -1,4 +1,3 @@
-import { cache } from "react";
 import {
   appliesToIncome,
   appliesToSpending,
@@ -47,16 +46,14 @@ export type MovementsSnapshotResult =
   | { ok: true; data: MovementsSnapshot }
   | { ok: false; error: string };
 
-const listCachedTransactions = cache(async () =>
-  listTransactions(undefined, { limit: 200 }),
-);
-
 export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> {
   try {
-    const [snap, transactions] = await Promise.all([
-      getCachedTodaySnapshot(),
-      listCachedTransactions(),
-    ]);
+    const snap = await getCachedTodaySnapshot();
+    const primaryId = snap.primaryAccount?.id ?? null;
+    const transactions = await listTransactions(
+      primaryId ?? undefined,
+      primaryId ? undefined : { limit: 200 },
+    );
 
     const timezone = snap.profile.timezone || "Asia/Bangkok";
     const thisMonth = monthKeyFromDate(new Date(), timezone);
@@ -68,7 +65,12 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
     let allExpenseMinor = 0;
     const categoryMap = new Map<string, CategoryTotal>();
 
-    const confirmed = transactions.filter((t) => t.status === "confirmed");
+    const confirmed = transactions.filter(
+      (t) =>
+        t.status === "confirmed" &&
+        t.currency === currency &&
+        (primaryId == null || t.accountId === primaryId),
+    );
 
     for (const tx of confirmed) {
       const inMonth =

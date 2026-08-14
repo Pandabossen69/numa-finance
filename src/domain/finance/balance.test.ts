@@ -181,15 +181,15 @@ describe("SMS tip saldo must not double-count", () => {
   });
 });
 
-describe("bank-SMS rows are not household income/spend", () => {
-  it("excludes screenshot sources from spending and income totals", () => {
+describe("bank-SMS tip vs day-dial spend", () => {
+  it("counts screenshot SMS expenses as spend but not as income", () => {
     expect(
       appliesToSpending({
         transactionType: "expense",
         status: "confirmed",
         source: "screenshot",
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       appliesToIncome({
         transactionType: "income",
@@ -213,14 +213,14 @@ describe("bank-SMS rows are not household income/spend", () => {
     ).toBe(true);
   });
 
-  it("excludes source sms the same way as screenshot", () => {
+  it("counts source sms expenses the same way as screenshot", () => {
     expect(
       appliesToSpending({
         transactionType: "expense",
         status: "confirmed",
         source: "sms",
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       appliesToIncome({
         transactionType: "income",
@@ -286,7 +286,7 @@ describe("bank-SMS rows are not household income/spend", () => {
     expect(bal?.currency).toBe("EUR");
   });
 
-  it("screenshot/sms sources never count in spending windows", () => {
+  it("screenshot/sms expenses count in spending windows (day dial)", () => {
     const now = new Date("2026-08-11T10:00:00.000Z");
     const windows = computeSpendingWindows({
       transactions: [
@@ -297,6 +297,9 @@ describe("bank-SMS rows are not household income/spend", () => {
           amountMinor: 10_560_700,
           source: "screenshot",
           occurredAt: "2026-08-11T09:00:00.000Z",
+          fingerprint: "bb|debit|1",
+          balanceAfterMinor: 5_000_000,
+          sourceObservationId: "obs-sms",
         }),
         tx({
           id: "sms-legacy",
@@ -311,8 +314,40 @@ describe("bank-SMS rows are not household income/spend", () => {
       now,
       timeZone: "Asia/Bangkok",
     });
-    expect(windows.today.amountMinor).toBe(0);
-    expect(windows.month.amountMinor).toBe(0);
+    expect(windows.today.amountMinor).toBe(10_610_700);
+    expect(windows.month.amountMinor).toBe(10_610_700);
+  });
+
+  it("still does not move tip saldo when SMS expenses count as spend", () => {
+    const tip = checkpoint({
+      balanceMinor: 5_274_00,
+      verifiedAt: "2026-08-11T09:00:00.000Z",
+      source: "sms_import",
+    });
+    const smsSpend = tx({
+      id: "sms-today",
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: 1_200_00,
+      source: "screenshot",
+      occurredAt: "2026-08-11T08:50:00.000Z",
+      fingerprint: "bb|debit|1200",
+      balanceAfterMinor: 5_274_00,
+      sourceObservationId: "obs-1",
+    });
+    const bal = calculateAccountBalance({
+      checkpoint: tip,
+      transactionsAfterCheckpoint: [smsSpend],
+    });
+    // Tip already embeds the debit — do not subtract again.
+    expect(bal?.amountMinor).toBe(5_274_00);
+    expect(
+      appliesToSpending({
+        transactionType: "expense",
+        status: "confirmed",
+        source: "screenshot",
+      }),
+    ).toBe(true);
   });
 });
 
@@ -385,14 +420,14 @@ describe("computeSpendingWindows (Asia/Bangkok)", () => {
       timeZone: tz,
     });
 
-    expect(windows.today.amountMinor).toBe(25_000);
-    expect(windows.month.amountMinor).toBe(35_000);
+    expect(windows.today.amountMinor).toBe(124_000);
+    expect(windows.month.amountMinor).toBe(134_000);
     expect(windows.today.amountMinor).toBeLessThanOrEqual(
       windows.month.amountMinor,
     );
   });
 
-  it("excludes mis-tagged bank-SMS ledger rows via fingerprint+tip balance", () => {
+  it("counts mis-tagged bank-SMS expenses in spend but not tip saldo", () => {
     const windows = computeSpendingWindows({
       transactions: [
         tx({
@@ -411,8 +446,8 @@ describe("computeSpendingWindows (Asia/Bangkok)", () => {
       now,
       timeZone: tz,
     });
-    expect(windows.today.amountMinor).toBe(0);
-    expect(windows.month.amountMinor).toBe(0);
+    expect(windows.today.amountMinor).toBe(500_000);
+    expect(windows.month.amountMinor).toBe(500_000);
   });
 
   it("bounds cycle spending to [start, end)", () => {

@@ -18,6 +18,7 @@ import {
   swedishFingerprintConflictError,
   collectPairedVoidIds,
   hasCycleFundingEvidence,
+  resolveSmsBatchOccurredAt,
   zonedDayKey,
   type Account,
   type BalanceCheckpoint,
@@ -1722,10 +1723,13 @@ export async function confirmReceiptExpense(
 
     const insertRows = fresh.map((cand, i) => {
       const direction = cand.direction as "debit" | "credit";
-      const movedAt =
-        typeof cand.occurredAt === "string" && cand.occurredAt
-          ? cand.occurredAt
-          : new Date(baseMs - (fresh.length - i) * 3_000).toISOString();
+      const movedAt = resolveSmsBatchOccurredAt({
+        candidateOccurredAt: cand.occurredAt,
+        index: i,
+        batchLength: fresh.length,
+        baseMs,
+        tipInBatch: tipInBatchEffective || isBankAppBatch,
+      });
       return {
         id: crypto.randomUUID(),
         user_id: userId,
