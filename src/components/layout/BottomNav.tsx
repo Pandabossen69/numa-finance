@@ -25,7 +25,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/96 shadow-[0_-12px_40px_rgba(7,21,17,0.08)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/97 shadow-[0_-16px_48px_rgba(7,21,17,0.10)] backdrop-blur-2xl md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
@@ -47,9 +47,13 @@ export function BottomNav() {
             href="/fota"
             prefetch
             onClick={() => startTransition(() => setOptimisticHref("/fota"))}
-            className="relative -mt-8 flex h-[3.55rem] w-[3.55rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white ring-[6px] ring-[var(--numa-nav)] shadow-[0_12px_32px_rgba(11,111,93,0.38)] transition active:scale-95"
+            className="relative -mt-8 flex h-[3.6rem] w-[3.6rem] items-center justify-center rounded-full bg-[linear-gradient(180deg,color-mix(in_srgb,var(--numa-accent)_88%,white)_0%,var(--numa-accent)_100%)] text-white ring-[6px] ring-[var(--numa-nav)] shadow-[0_14px_34px_rgba(11,111,93,0.42)] transition active:scale-95"
             aria-label="Lägg till eller fota"
           >
+            <span
+              className="pointer-events-none absolute inset-[3px] rounded-full ring-1 ring-white/25"
+              aria-hidden
+            />
             <PlusIcon />
           </Link>
         </div>
