@@ -362,8 +362,15 @@ export function MovementsScreen({
                           className="text-xs text-[var(--numa-muted)]"
                           disabled={pending}
                           onClick={() => {
+                            const paired =
+                              tx.transactionType === "transfer" ||
+                              tx.transactionType === "cash_withdrawal";
                             if (
-                              !window.confirm("Ta bort rörelsen?")
+                              !window.confirm(
+                                paired
+                                  ? "Ta bort båda sidorna av flytten?"
+                                  : "Ta bort rörelsen?",
+                              )
                             ) {
                               return;
                             }

@@ -136,6 +136,8 @@ export type CanonicalTransaction = {
   balanceAfterMinor: number | null;
   fingerprint: string | null;
   sourceObservationId: string | null;
+  /** Shared by debit+credit legs of a transfer / cash_withdrawal. */
+  transferGroupId: string | null;
   syncStatus: SyncStatus;
   createdAt: string;
   updatedAt: string;
