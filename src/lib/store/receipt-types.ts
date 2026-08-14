@@ -23,6 +23,8 @@ export type ReceiptUploadResult = {
   suggestedDescription: string | null;
   currency: CurrencyCode;
   ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
+  /** Vision confidence 0–1 when available. */
+  confidence: number | null;
   message: string | null;
   importKind: "bank_sms" | "bank_app" | "receipt" | "unknown";
   balanceAfterMinor: number | null;

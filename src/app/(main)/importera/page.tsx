@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   MerListGroup,
   MerListLink,
@@ -52,6 +53,19 @@ export default async function ImporteraPage() {
                     {o.notes ? (
                       <p className="text-sm leading-snug text-[var(--numa-muted)]">
                         {o.notes}
+                      </p>
+                    ) : null}
+                    {o.status === "needs_review" || o.status === "failed" ? (
+                      <p className="pt-1">
+                        <Link
+                          href="/fota"
+                          prefetch
+                          className="text-sm font-semibold text-[var(--numa-accent)]"
+                        >
+                          {o.status === "failed"
+                            ? "Fota igen →"
+                            : "Fortsätt i + →"}
+                        </Link>
                       </p>
                     ) : null}
                   </MerListRow>

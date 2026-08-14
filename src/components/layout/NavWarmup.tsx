@@ -8,6 +8,7 @@ const WARM_HREFS = [
   ...PRIMARY_NAV.map((item) => item.href),
   "/fota",
   "/transaktioner",
+  "/lagg-till",
 ] as const;
 
 /**

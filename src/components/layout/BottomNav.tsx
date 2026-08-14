@@ -44,7 +44,7 @@ export function BottomNav() {
         ))}
         <div className="flex justify-center pb-0.5">
           <Link
-            href="/lagg-till"
+            href="/fota"
             prefetch
             onClick={() => startTransition(() => setOptimisticHref("/fota"))}
             className="relative -mt-7 flex h-[3.35rem] w-[3.35rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white shadow-[0_10px_28px_rgba(13,122,102,0.35)] transition active:scale-95"
