@@ -4,6 +4,7 @@ import {
   type ExtractionProviderResult,
   type ExtractionRequest,
 } from "./extraction";
+import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
 import { visionMajorToMinor } from "./ocr-amounts";
 
 type VisionSmsMessage = {
@@ -487,10 +488,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       kind = txsIn.length > 1 ? "bank_app_list" : "bank_app_detail";
     }
 
-    const currency =
-      parsed.currency === "SEK" || parsed.currency === "THB"
-        ? parsed.currency
-        : ("THB" as const);
+    const currency: CurrencyCode = isCurrencyCode(String(parsed.currency ?? ""))
+      ? (parsed.currency as CurrencyCode)
+      : "THB";
     const confidence =
       typeof parsed.confidence === "number"
         ? Math.min(1, Math.max(0, parsed.confidence))
@@ -522,21 +522,26 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           }))
         : isBankApp && txsIn.length > 0
           ? txsIn.map((t) => {
-              const origMinor = visionMajorToMinor(t.originalAmountMajor);
               const displayMinor = visionMajorToMinor(t.amountMajor);
-              const origCur = t.originalCurrency
+              const displayCur = isCurrencyCode(
+                String(t.currency ?? "").toUpperCase(),
+              )
+                ? (String(t.currency).toUpperCase() as CurrencyCode)
+                : t.currency === "€"
+                  ? ("EUR" as const)
+                  : null;
+              const origCurRaw = t.originalCurrency
                 ? String(t.originalCurrency).toUpperCase()
                 : null;
-              const ledgerCurrency =
-                origCur === "THB" || origCur === "SEK"
-                  ? (origCur as "THB" | "SEK")
-                  : t.currency === "THB" || t.currency === "SEK"
-                    ? t.currency
-                    : ("THB" as const);
+              const origCur = origCurRaw && isCurrencyCode(origCurRaw)
+                ? origCurRaw
+                : null;
+              // Prefer card/account currency (EUR) — THB original stays in rawPayload.
+              const ledgerCurrency = displayCur ?? origCur ?? "EUR";
               const ledgerMinor =
-                origMinor != null && (origCur === "THB" || origCur === "SEK")
-                  ? origMinor
-                  : displayMinor;
+                displayCur && displayMinor != null
+                  ? displayMinor
+                  : visionMajorToMinor(t.originalAmountMajor);
               return {
                 direction:
                   t.direction === "credit" || t.direction === "debit"

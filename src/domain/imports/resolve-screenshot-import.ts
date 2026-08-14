@@ -1,3 +1,4 @@
+import { isCurrencyCode, type CurrencyCode } from "@/domain/money";
 import {
   defaultBankParserRegistry,
   selectImportableBankEvent,
@@ -27,7 +28,7 @@ export type ResolvedScreenshotImport =
       balanceAfterMinor: number | null;
       fingerprint: string | null;
       direction: "debit" | "credit" | null;
-      currency: "THB" | "SEK";
+      currency: CurrencyCode;
       observationKind: "screenshot";
       source: "screenshot";
       messageSv: string;
@@ -43,7 +44,7 @@ export type ResolvedScreenshotImport =
       balanceAfterMinor: null;
       fingerprint: string | null;
       direction: "debit" | "credit" | null;
-      currency: "THB" | "SEK";
+      currency: CurrencyCode;
       observationKind: "screenshot";
       source: "screenshot";
       messageSv: string;
@@ -57,7 +58,7 @@ export type ResolvedScreenshotImport =
       balanceAfterMinor: number | null;
       fingerprint: string | null;
       direction: "debit" | "credit" | null;
-      currency: "THB" | "SEK";
+      currency: CurrencyCode;
       observationKind: "receipt";
       source: "receipt_camera";
       messageSv: string;
@@ -457,8 +458,8 @@ export function resolveScreenshotImport(
   }
 
   const first = extraction.candidates[0];
-  const currency =
-    first?.currency === "SEK" || first?.currency === "THB"
+  const currency: CurrencyCode =
+    first?.currency && isCurrencyCode(first.currency)
       ? first.currency
       : "THB";
 

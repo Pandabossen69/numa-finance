@@ -19,7 +19,7 @@ import {
   matchFingerprint,
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
-import { formatMoney, money } from "@/domain/money";
+import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import {
   sanitizeOcrDigitNoise,
   westernAmountToMinor,
@@ -35,7 +35,7 @@ export type ParsedBankMessage = {
   maskedAccount: string | null;
   direction: "debit" | "credit" | null;
   amountMinor: number | null;
-  currency: "THB" | "SEK" | null;
+  currency: CurrencyCode | null;
   balanceAfterMinor: number | null;
   channel: string | null;
   confidence: number;

@@ -3,9 +3,9 @@
  *
  * Rules:
  * 1. Never invent money; skip failed / expired / strikethrough rows.
- * 2. Prefer original amount in THB/SEK when FX line is present (e.g. Grab THB).
- * 3. Fingerprint = institution + merchant + direction + amount + minute timestamp
- *    so the same expense is never imported twice from detail + list shots.
+ * 2. Post in the **card/account currency** (usually EUR); THB FX lines are annotation.
+ * 3. Fingerprint = institution + merchant + direction + card amount + minute
+ *    so detail + list shots of the same debit never double-import.
  */
 
 import {
@@ -14,10 +14,12 @@ import {
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
+import { parseCurrencyToken } from "@/domain/money/currency";
 import {
   europeanAmountToMinor,
   tryEuropeanAmountToMinor,
 } from "@/domain/imports/ocr-amounts";
+import { planBankAppLedger } from "@/domain/imports/bank-app-ledger";
 
 export type BankAppInstitution = "bunq" | "revolut" | "unknown_bank_app";
 
@@ -25,13 +27,14 @@ export type ParsedBankAppTransaction = {
   institution: BankAppInstitution;
   merchant: string;
   direction: "debit" | "credit";
-  /** Ledger amount in THB or SEK (NUMA currencies). */
+  /** Ledger amount in account currency (what left the card). */
   amountMinor: number;
   currency: CurrencyCode;
   displayAmountMinor: number | null;
   displayCurrency: string | null;
   originalAmountMinor: number | null;
   originalCurrency: string | null;
+  annotationSv: string | null;
   occurredAt: string;
   categoryHint: string | null;
   failed: boolean;
@@ -160,30 +163,32 @@ function pickLedgerAmount(input: {
   currency: string | null;
   originalAmountMinor: number | null;
   originalCurrency: string | null;
-}): { amountMinor: number; currency: CurrencyCode } | null {
-  const origCur = (input.originalCurrency ?? "").toUpperCase();
-  if (
-    input.originalAmountMinor != null &&
-    input.originalAmountMinor > 0 &&
-    (origCur === "THB" || origCur === "SEK")
-  ) {
-    return {
-      amountMinor: input.originalAmountMinor,
-      currency: origCur as CurrencyCode,
-    };
-  }
-
-  const cur = (input.currency ?? "").toUpperCase();
-  if (
-    input.amountMinor != null &&
-    input.amountMinor > 0 &&
-    (cur === "THB" || cur === "SEK")
-  ) {
-    return { amountMinor: input.amountMinor, currency: cur as CurrencyCode };
-  }
-
-  // EUR-only (or other): no NUMA currency yet — caller must skip or ask.
-  return null;
+  institution: string;
+  merchant: string;
+  direction: "debit" | "credit";
+  rawText?: string | null;
+  fullText?: string | null;
+  occurredAt?: string | null;
+}): { amountMinor: number; currency: CurrencyCode; annotationSv: string | null } | null {
+  const plan = planBankAppLedger({
+    institution: input.institution,
+    merchant: input.merchant,
+    direction: input.direction,
+    displayAmountMinor: input.amountMinor,
+    displayCurrency: input.currency,
+    originalAmountMinor: input.originalAmountMinor,
+    originalCurrency: input.originalCurrency,
+    rawText: input.rawText,
+    fullText: input.fullText,
+    occurredAt: input.occurredAt,
+    preferFxToPrimary: false,
+  });
+  if (plan.mode === "unsupported") return null;
+  return {
+    amountMinor: plan.amountMinor,
+    currency: plan.currency,
+    annotationSv: plan.annotationSv,
+  };
 }
 
 export type BankAppVisionRow = {
@@ -238,37 +243,43 @@ export function parseBankAppVisionRows(
         : "debit";
 
     const displayAmountMinor = majorFieldToMinor(row.amountMajor);
-    const displayCurrency = row.currency
-      ? String(row.currency).toUpperCase()
-      : null;
+    const displayCurrency = parseCurrencyToken(row.currency) ??
+      (row.currency ? String(row.currency).toUpperCase() : null);
     const originalAmountMinor = majorFieldToMinor(row.originalAmountMajor);
-    const originalCurrency = row.originalCurrency
-      ? String(row.originalCurrency).toUpperCase()
-      : null;
+    const originalCurrency = parseCurrencyToken(row.originalCurrency) ??
+      (row.originalCurrency ? String(row.originalCurrency).toUpperCase() : null);
+
+    const occurredAt = parseBankAppOccurredAt(row.occurredAt);
+    if (!occurredAt) return;
 
     const ledger = pickLedgerAmount({
       amountMinor: displayAmountMinor,
       currency: displayCurrency,
       originalAmountMinor,
       originalCurrency,
+      institution,
+      merchant,
+      direction,
+      rawText: row.rawText,
+      fullText: options?.fullText,
+      occurredAt,
     });
 
-    const occurredAt = parseBankAppOccurredAt(row.occurredAt);
-    if (!occurredAt) return;
-
-    // Failed / strikethrough: keep a stub so select can report skippedFailedCount,
-    // even when currency is EUR-only (not yet a NUMA ledger currency).
+    // Failed / strikethrough: keep a stub so select can report skippedFailedCount.
     if (failed) {
       out.push({
         institution,
         merchant,
         direction,
         amountMinor: ledger?.amountMinor ?? displayAmountMinor ?? 1,
-        currency: ledger?.currency ?? "THB",
+        currency: ledger?.currency ?? parseCurrencyToken(displayCurrency) ?? "EUR",
         displayAmountMinor,
-        displayCurrency,
+        displayCurrency:
+          typeof displayCurrency === "string" ? displayCurrency : null,
         originalAmountMinor,
-        originalCurrency,
+        originalCurrency:
+          typeof originalCurrency === "string" ? originalCurrency : null,
+        annotationSv: ledger?.annotationSv ?? null,
         occurredAt,
         categoryHint: row.categoryHint?.trim() || null,
         failed: true,
@@ -288,13 +299,16 @@ export function parseBankAppVisionRows(
       amountMinor: ledger.amountMinor,
       currency: ledger.currency,
       displayAmountMinor,
-      displayCurrency,
+      displayCurrency:
+        typeof displayCurrency === "string" ? displayCurrency : null,
       originalAmountMinor,
-      originalCurrency,
+      originalCurrency:
+        typeof originalCurrency === "string" ? originalCurrency : null,
+      annotationSv: ledger.annotationSv,
       occurredAt,
       categoryHint: row.categoryHint?.trim() || null,
       failed: false,
-      confidence: originalAmountMinor != null ? 0.92 : 0.8,
+      confidence: displayAmountMinor != null ? 0.92 : 0.8,
       raw: row.rawText?.trim() || statusBlob,
       sourceIndex,
     });
@@ -350,24 +364,49 @@ export function parseBunqDetailFromText(text: string): ParsedBankAppTransaction[
     currency: displayAmountMinor != null ? "EUR" : null,
     originalAmountMinor,
     originalCurrency: originalAmountMinor != null ? "THB" : null,
+    institution,
+    merchant,
+    direction: "debit",
+    rawText: text,
+    fullText: text,
+    occurredAt,
   });
-  if (!ledger) return [];
+  if (!ledger && !failed) return [];
 
   const isCredit =
     /påfyllning|top\s*up|insättning|\+\s*\d/i.test(text) &&
     !/onlinebetalning|−|-\d/i.test(text);
 
+  const direction = isCredit ? "credit" : "debit";
+  // Re-plan with correct direction for annotation consistency.
+  const planned =
+    pickLedgerAmount({
+      amountMinor: displayAmountMinor,
+      currency: displayAmountMinor != null ? "EUR" : null,
+      originalAmountMinor,
+      originalCurrency: originalAmountMinor != null ? "THB" : null,
+      institution,
+      merchant,
+      direction,
+      rawText: text,
+      fullText: text,
+      occurredAt,
+    }) ?? ledger;
+
+  if (!planned) return [];
+
   return [
     {
       institution,
       merchant,
-      direction: isCredit ? "credit" : "debit",
-      amountMinor: ledger.amountMinor,
-      currency: ledger.currency,
+      direction,
+      amountMinor: planned.amountMinor,
+      currency: planned.currency,
       displayAmountMinor,
       displayCurrency: displayAmountMinor != null ? "EUR" : null,
       originalAmountMinor,
       originalCurrency: originalAmountMinor != null ? "THB" : null,
+      annotationSv: planned.annotationSv,
       occurredAt,
       categoryHint: /resor|travel|flyg/i.test(text) ? "Resor" : null,
       failed,
@@ -395,7 +434,8 @@ export function toBankAppEventCandidate(
   const dir = row.direction === "credit" ? "+" : "−";
   const kind = row.direction === "credit" ? "Insättning" : "Utgift";
   const amount = formatMoney(money(row.amountMinor, row.currency));
-  const labelSv = `${dir} ${kind} ${amount} · ${row.merchant}`;
+  const note = row.annotationSv ? ` · ${row.annotationSv}` : "";
+  const labelSv = `${dir} ${kind} ${amount} · ${row.merchant}${note}`;
 
   return { ...row, fingerprint, labelSv };
 }

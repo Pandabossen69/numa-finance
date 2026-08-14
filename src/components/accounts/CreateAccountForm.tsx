@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createAccountAction } from "@/features/finance/actions";
+import { CURRENCIES, type CurrencyCode } from "@/domain/money";
 
 export function CreateAccountForm() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export function CreateAccountForm() {
       | "credit"
       | "investment"
       | "other",
-    currency: "THB" as "THB" | "SEK",
+    currency: "THB" as CurrencyCode,
     maskedIdentifier: "6591",
     openingBalance: "",
   });
@@ -71,13 +72,20 @@ export function CreateAccountForm() {
           onChange={(e) =>
             setForm((f) => ({
               ...f,
-              currency: e.target.value as "THB" | "SEK",
+              currency: e.target.value as CurrencyCode,
             }))
           }
           className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none"
         >
-          <option value="THB">THB — baht</option>
-          <option value="SEK">SEK — kronor</option>
+          {CURRENCIES.map((code) => (
+            <option key={code} value={code}>
+              {code === "THB"
+                ? "THB — baht"
+                : code === "SEK"
+                  ? "SEK — kronor"
+                  : "EUR — euro (bunq/Revolut)"}
+            </option>
+          ))}
         </select>
       </label>
 

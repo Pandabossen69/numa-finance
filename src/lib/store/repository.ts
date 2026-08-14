@@ -58,6 +58,12 @@ export async function ensureDefaultBankAccount(
   return api().ensureDefaultBankAccount(input);
 }
 
+export async function ensureAccountForCurrency(
+  input: Parameters<typeof local.ensureAccountForCurrency>[0],
+) {
+  return api().ensureAccountForCurrency(input);
+}
+
 export async function createCheckpoint(
   input: Parameters<typeof local.createCheckpoint>[0],
 ) {

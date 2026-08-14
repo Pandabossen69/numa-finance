@@ -163,6 +163,42 @@ export async function ensureDefaultBankAccount(input?: {
   });
 }
 
+/**
+ * Find or create an active account for a given currency (bank-app EUR, etc.).
+ * Never steals the default THB account for foreign currencies.
+ */
+export async function ensureAccountForCurrency(input: {
+  currency: CurrencyCode;
+  name: string;
+  institution?: string | null;
+}): Promise<Account> {
+  const existing = await listAccounts();
+  const match =
+    existing.find(
+      (a) =>
+        a.currency === input.currency &&
+        (input.institution
+          ? (a.institution ?? "").toLowerCase() ===
+            input.institution.toLowerCase()
+          : true),
+    ) ??
+    existing.find((a) => a.currency === input.currency) ??
+    null;
+  if (match) return match;
+
+  if (input.currency === "THB") {
+    return ensureDefaultBankAccount({ currency: "THB" });
+  }
+
+  return createAccount({
+    name: input.name,
+    institution: input.institution ?? input.name,
+    accountType: "checking",
+    currency: input.currency,
+    makeDefault: false,
+  });
+}
+
 export async function createAccount(input: {
   name: string;
   institution?: string | null;
@@ -1220,6 +1256,21 @@ export async function uploadReceiptAndExtract(input: {
               "merchant" in event && typeof event.merchant === "string"
                 ? event.merchant
                 : null,
+            accountInstitution:
+              "institution" in event ? String(event.institution) : null,
+            accountName:
+              "institution" in event
+                ? event.institution === "bunq"
+                  ? "bunq"
+                  : event.institution === "revolut"
+                    ? "Revolut"
+                    : "Bankapp"
+                : null,
+            annotationSv:
+              "annotationSv" in event &&
+              typeof event.annotationSv === "string"
+                ? event.annotationSv
+                : null,
           },
         })
         .select("*")
@@ -1407,24 +1458,66 @@ export async function confirmReceiptExpense(
 
       const maskedFromCandidate =
         input.maskedAccount ?? observation.accountHint ?? null;
-      const account =
-        (input.accountId ? await getAccount(input.accountId) : null) ??
-        (await ensureDefaultBankAccount({
-          maskedIdentifier: maskedFromCandidate,
-          currency: "THB",
-        }));
-
-      const existingCheckpoint = await latestCheckpointForAccount(account.id);
-      const hadCheckpoint = existingCheckpoint != null;
+      const batchCurrency =
+        (pending[0]?.currency as import("@/domain/money").CurrencyCode | null) ??
+        "THB";
       const isBankAppBatch = pending.some(
         (c) => c.rawPayload?.importKind === "bank_app",
       );
-      if (!hadCheckpoint && tipBalance == null) {
+      const institutionHint =
+        typeof pending[0]?.rawPayload?.accountInstitution === "string"
+          ? pending[0].rawPayload.accountInstitution
+          : observation.institutionHint;
+
+      const account =
+        (input.accountId ? await getAccount(input.accountId) : null) ??
+        (isBankAppBatch
+          ? await ensureAccountForCurrency({
+              currency: batchCurrency,
+              name:
+                typeof pending[0]?.rawPayload?.accountName === "string"
+                  ? pending[0].rawPayload.accountName
+                  : institutionHint || "Bankapp",
+              institution: institutionHint,
+            })
+          : await ensureDefaultBankAccount({
+              maskedIdentifier: maskedFromCandidate,
+              currency: "THB",
+            }));
+
+      if (account.currency !== batchCurrency && isBankAppBatch) {
         throw new Error(
-          isBankAppBatch
-            ? "Första importen måste vara ett bank-SMS med saldo — bankapp-bilder fungerar efteråt."
-            : "Första importen måste vara ett bank-SMS med saldo (available balance)",
+          `Kontovaluta (${account.currency}) matchar inte importen (${batchCurrency})`,
         );
+      }
+
+      const existingCheckpoint = await latestCheckpointForAccount(account.id);
+      const hadCheckpoint = existingCheckpoint != null;
+      if (!hadCheckpoint && tipBalance == null) {
+        if (!(isBankAppBatch && account.currency !== "THB")) {
+          throw new Error(
+            isBankAppBatch
+              ? "Första importen måste vara ett bank-SMS med saldo — bankapp-bilder fungerar efteråt."
+              : "Första importen måste vara ett bank-SMS med saldo (available balance)",
+          );
+        }
+      }
+
+      // Secondary currency accounts (EUR): bootstrap running balance at 0 so
+      // imports have a verifiable tip without inventing a real bank saldo.
+      if (
+        isBankAppBatch &&
+        !hadCheckpoint &&
+        account.currency !== "THB" &&
+        tipBalance == null
+      ) {
+        await createCheckpoint({
+          accountId: account.id,
+          balanceMinor: 0,
+          verifiedAt: new Date(Date.now() - 60_000).toISOString(),
+          source: "bank_app_bootstrap",
+          note: `Startsaldo 0 ${account.currency} — justera under Konton om du vet verkligt saldo`,
+        });
       }
 
       const known = await listConfirmedFingerprints();
@@ -1488,18 +1581,22 @@ export async function confirmReceiptExpense(
           .eq("id", cand.id);
       }
 
+      const tipReady = await latestCheckpointForAccount(account.id);
+      const tipInBatchEffective =
+        tipInBatch && tipBalance != null && account.currency === "THB";
+
       if (
         shouldWriteSmsTipCheckpoint({
           tipBalanceMinor: tipBalance,
-          tipInBatch,
+          tipInBatch: tipInBatchEffective,
         })
       ) {
         await createCheckpoint({
           accountId: account.id,
           balanceMinor: tipBalance!,
           verifiedAt: new Date(baseMs).toISOString(),
-          source: hadCheckpoint ? "sms_import" : "sms_bootstrap",
-          note: hadCheckpoint
+          source: tipReady ? "sms_import" : "sms_bootstrap",
+          note: tipReady
             ? "Saldo från Bangkok Bank SMS"
             : "Första saldo från Bangkok Bank SMS",
         });
@@ -1512,7 +1609,7 @@ export async function confirmReceiptExpense(
           notes:
             pending.length > 1
               ? `${pending.length} rörelser sparade`
-              : hadCheckpoint
+              : hadCheckpoint || isBankAppBatch
                 ? "Bekräftad och sparad"
                 : "Första SMS — saldo och rörelse sparade",
           updated_at: new Date().toISOString(),

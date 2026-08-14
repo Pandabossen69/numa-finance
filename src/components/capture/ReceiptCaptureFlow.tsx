@@ -175,7 +175,7 @@ export function ReceiptCaptureFlow({
         setError(
           data.message ??
             (mode === "bank_app"
-              ? "Kunde inte läsa bankappen (behöver belopp i THB + tidpunkt). Ta detaljvy eller tydligare lista."
+              ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
               : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump."),
         );
         return;
@@ -419,7 +419,7 @@ export function ReceiptCaptureFlow({
             {isSms
               ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
               : isBankApp
-                ? "bunq, Revolut m.fl. — detaljvy eller lista. Vi hoppar över misslyckade och sparar aldrig samma utgift två gånger."
+                ? "bunq / Revolut — kortbelopp i €, samma köp aldrig dubbelt"
                 : "Håll texten skarp. Beloppet fylls i automatiskt."}
           </p>
         </header>
@@ -490,7 +490,7 @@ export function ReceiptCaptureFlow({
           {isSms
             ? "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över"
             : isBankApp
-              ? "Bäst: detaljvy med THB-original · samma köp igen hoppas över"
+              ? "Bäst: detalj eller lista · € postas på bunq-konto · samma köp hoppas över"
               : "Beloppet synligt i bild"}
         </p>
 

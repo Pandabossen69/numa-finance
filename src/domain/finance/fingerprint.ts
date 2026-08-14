@@ -127,8 +127,9 @@ export function buildTransactionFingerprint(
 
 /**
  * bunq / Revolut / similar: no available-balance in the UI row.
- * Prefer original (THB) amount in the key when present so EUR↔THB FX
- * display cannot create a second identity for the same purchase.
+ * Identity = card amount (account currency) + merchant + minute.
+ * Detail and list shots of the same EUR debit then share one fingerprint
+ * even when only the detail screen shows a THB FX annotation.
  */
 export function buildBankAppFingerprint(
   parts: BankAppFingerprintParts,
@@ -136,10 +137,7 @@ export function buildBankAppFingerprint(
   const institution = normalizeInstitution(parts.institution);
   const merchant = normalizeMerchantKey(parts.merchant) || "unknown";
   const at = normalizeOccurredAtMinute(parts.occurredAt);
-  const amountKey =
-    parts.originalAmountMinor != null && parts.originalCurrency
-      ? `${parts.originalAmountMinor}:${parts.originalCurrency.toUpperCase()}`
-      : `${parts.amountMinor}:${parts.currency.toUpperCase()}`;
+  const amountKey = `${parts.amountMinor}:${parts.currency.toUpperCase()}`;
 
   const fingerprint = [
     "bankapp",
@@ -152,8 +150,8 @@ export function buildBankAppFingerprint(
 
   return {
     fingerprint,
-    confidence: parts.originalAmountMinor != null ? "high" : "medium",
-    strategy: "bankapp+institution+merchant+direction+amount+occurredAt",
+    confidence: "high",
+    strategy: "bankapp+institution+merchant+direction+cardAmount+occurredAt",
   };
 }
 

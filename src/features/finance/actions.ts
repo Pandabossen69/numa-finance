@@ -14,7 +14,7 @@ import {
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
-import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
+import { CURRENCIES, parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -27,7 +27,7 @@ const accountSchema = z.object({
     "investment",
     "other",
   ]),
-  currency: z.enum(["THB", "SEK"]),
+  currency: z.enum(CURRENCIES),
   maskedIdentifier: z.string().trim().max(32).optional().nullable(),
   openingBalance: z.string().trim().min(1),
   makeDefault: z.boolean().optional(),
