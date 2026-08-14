@@ -18,7 +18,7 @@ import {
   parseCurrencyToken,
   type CurrencyCode,
 } from "@/domain/money/currency";
-import { convertWithRate, type FxRate } from "@/domain/money/fx";
+import { convertWithRate } from "@/domain/money/fx";
 import { money } from "@/domain/money";
 import { findOcrFxRate, parseOcrFxQuotes } from "@/domain/imports/fx-ocr";
 import type { BankAppInstitution } from "@/domain/imports/bank-app-parsers";

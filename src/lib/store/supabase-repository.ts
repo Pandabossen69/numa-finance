@@ -173,26 +173,28 @@ export async function ensureAccountForCurrency(input: {
   institution?: string | null;
 }): Promise<Account> {
   const existing = await listAccounts();
-  const match =
-    existing.find(
+  const institution = input.institution?.trim() || null;
+
+  if (institution) {
+    const exact = existing.find(
       (a) =>
         a.currency === input.currency &&
-        (input.institution
-          ? (a.institution ?? "").toLowerCase() ===
-            input.institution.toLowerCase()
-          : true),
-    ) ??
-    existing.find((a) => a.currency === input.currency) ??
-    null;
-  if (match) return match;
+        (a.institution ?? "").toLowerCase() === institution.toLowerCase(),
+    );
+    if (exact) return exact;
+    // Do not reuse another institution's same-currency wallet (bunq vs Revolut).
+  } else {
+    const any = existing.find((a) => a.currency === input.currency);
+    if (any) return any;
+  }
 
-  if (input.currency === "THB") {
+  if (input.currency === "THB" && !institution) {
     return ensureDefaultBankAccount({ currency: "THB" });
   }
 
   return createAccount({
     name: input.name,
-    institution: input.institution ?? input.name,
+    institution: institution ?? input.name,
     accountType: "checking",
     currency: input.currency,
     makeDefault: false,
@@ -1469,21 +1471,27 @@ export async function confirmReceiptExpense(
           ? pending[0].rawPayload.accountInstitution
           : observation.institutionHint;
 
+      const accountFromInput = input.accountId
+        ? await getAccount(input.accountId)
+        : null;
+      // Bank-app EUR must not land on Hem's THB account just because UI passed it.
       const account =
-        (input.accountId ? await getAccount(input.accountId) : null) ??
-        (isBankAppBatch
-          ? await ensureAccountForCurrency({
-              currency: batchCurrency,
-              name:
-                typeof pending[0]?.rawPayload?.accountName === "string"
-                  ? pending[0].rawPayload.accountName
-                  : institutionHint || "Bankapp",
-              institution: institutionHint,
-            })
-          : await ensureDefaultBankAccount({
-              maskedIdentifier: maskedFromCandidate,
-              currency: "THB",
-            }));
+        accountFromInput &&
+        (!isBankAppBatch || accountFromInput.currency === batchCurrency)
+          ? accountFromInput
+          : isBankAppBatch
+            ? await ensureAccountForCurrency({
+                currency: batchCurrency,
+                name:
+                  typeof pending[0]?.rawPayload?.accountName === "string"
+                    ? pending[0].rawPayload.accountName
+                    : institutionHint || "Bankapp",
+                institution: institutionHint,
+              })
+            : await ensureDefaultBankAccount({
+                maskedIdentifier: maskedFromCandidate,
+                currency: "THB",
+              });
 
       if (account.currency !== batchCurrency && isBankAppBatch) {
         throw new Error(
@@ -1503,18 +1511,23 @@ export async function confirmReceiptExpense(
         }
       }
 
-      // Secondary currency accounts (EUR): bootstrap running balance at 0 so
-      // imports have a verifiable tip without inventing a real bank saldo.
+      // Secondary currency accounts (EUR): bootstrap before the oldest imported
+      // occurredAt so OCR timestamps still affect calculated balance.
       if (
         isBankAppBatch &&
         !hadCheckpoint &&
         account.currency !== "THB" &&
         tipBalance == null
       ) {
+        const earliestMs = pending.reduce((min, c) => {
+          if (typeof c.occurredAt !== "string" || !c.occurredAt) return min;
+          const t = Date.parse(c.occurredAt);
+          return Number.isFinite(t) ? Math.min(min, t) : min;
+        }, Date.now());
         await createCheckpoint({
           accountId: account.id,
           balanceMinor: 0,
-          verifiedAt: new Date(Date.now() - 60_000).toISOString(),
+          verifiedAt: new Date(earliestMs - 60_000).toISOString(),
           source: "bank_app_bootstrap",
           note: `Startsaldo 0 ${account.currency} — justera under Konton om du vet verkligt saldo`,
         });
@@ -1526,6 +1539,7 @@ export async function confirmReceiptExpense(
       const baseMs = Date.now();
       let lastTx: CanonicalTransaction | null = null;
       const chronological = [...pending].reverse();
+      const ledgerSource = isBankAppBatch ? "bank_import" : "screenshot";
 
       for (let i = 0; i < chronological.length; i++) {
         const cand = chronological[i]!;
@@ -1552,7 +1566,7 @@ export async function confirmReceiptExpense(
                 accountId: account.id,
                 amountMinor,
                 description,
-                source: "screenshot",
+                source: ledgerSource,
                 sourceObservationId: input.observationId,
                 fingerprint: cand.fingerprint,
                 balanceAfterMinor: cand.balanceAfterMinor,
@@ -1563,7 +1577,7 @@ export async function confirmReceiptExpense(
                 amountMinor,
                 description,
                 category: input.category,
-                source: "screenshot",
+                source: ledgerSource,
                 sourceObservationId: input.observationId,
                 fingerprint: cand.fingerprint,
                 balanceAfterMinor: cand.balanceAfterMinor,

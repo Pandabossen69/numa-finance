@@ -5,7 +5,21 @@ import {
   type ExtractionRequest,
 } from "./extraction";
 import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
-import { visionMajorToMinor } from "./ocr-amounts";
+import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
+
+function bankAppMajorToMinor(
+  value: number | string | null | undefined,
+): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0) return null;
+    return Math.round(value * 100);
+  }
+  // Vision may return European strings ("6,60") or western ("6.60").
+  return (
+    tryEuropeanAmountToMinor(String(value)) ?? visionMajorToMinor(value)
+  );
+}
 
 type VisionSmsMessage = {
   rawText?: string | null;
@@ -357,7 +371,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Expert OCR for European bank-app screenshots (bunq, Revolut).",
               "Handle DETAIL screens (one payment) and LIST screens (Senaste transaktioner).",
               "Swedish UI OK. Comma decimals: 6,60 € → amountMajor 6.60 currency EUR.",
-              "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB.",
+              "amountMajor/currency = what left the card (usually EUR). NEVER put THB there.",
+              "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB only.",
               "occurredAt as ISO minute: 2026-07-23T16:46 from '23 juli 2026 16:46'.",
               "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
               "failed=true OR strikethrough=true for Failed/Expired/misslyckade (do NOT treat as spend).",
@@ -367,7 +382,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           : [
               "Read finance screenshots for NUMA.",
               "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
-              "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[].",
+              "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[]. Card amount = EUR when shown.",
               "Else receipt total → kind=receipt.",
               "JSON: kind, institutionHint, fullText, messages[…], transactions[…], amountMajor, currency, confidence.",
             ].join(" ");
@@ -376,7 +391,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       mode === "bank_sms"
         ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
         : mode === "bank_app"
-          ? "Extract every real bank-app transaction (skip failed/strikethrough). Prefer THB original when present. JSON only."
+          ? "Extract every real bank-app transaction (skip failed/strikethrough). amountMajor = card currency (EUR), original* = merchant THB if shown. JSON only."
           : "Extract bank SMS bubbles, bank-app transactions, or receipt total. JSON only.";
 
     const body = {
@@ -522,7 +537,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           }))
         : isBankApp && txsIn.length > 0
           ? txsIn.map((t) => {
-              const displayMinor = visionMajorToMinor(t.amountMajor);
+              const displayMinor = bankAppMajorToMinor(t.amountMajor);
               const displayCur = isCurrencyCode(
                 String(t.currency ?? "").toUpperCase(),
               )
@@ -541,7 +556,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               const ledgerMinor =
                 displayCur && displayMinor != null
                   ? displayMinor
-                  : visionMajorToMinor(t.originalAmountMajor);
+                  : bankAppMajorToMinor(t.originalAmountMajor);
               return {
                 direction:
                   t.direction === "credit" || t.direction === "debit"

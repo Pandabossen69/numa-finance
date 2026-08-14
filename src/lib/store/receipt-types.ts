@@ -43,7 +43,7 @@ export type ConfirmReceiptInput = {
   category?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
-  source?: "receipt_camera" | "screenshot";
+  source?: "receipt_camera" | "screenshot" | "bank_import";
   maskedAccount?: string | null;
   direction?: "debit" | "credit" | null;
 };

@@ -55,16 +55,17 @@ type BankSmsLedgerHints = Partial<
  * Bank-SMS / tip-ledger rows stay in history lists but must not move
  * household spend totals (or tip-checkpoint saldo again).
  *
- * Primary signal: source screenshot/sms/bank_import.
- * Fallback: fingerprint + tip balance + observation — catches legacy rows
- * mis-tagged as receipt_camera/manual while still being bank-SMS imports.
+ * Primary signal: Bangkok Bank SMS sources (screenshot / sms) with tip semantics.
+ * Bank-app card imports (`bank_import` or fingerprint `bankapp|…`) are normal
+ * ledger rows — they must move EUR/THB account balances and count as spend.
  */
 export function isBankSmsLedgerRow(tx: BankSmsLedgerHints): boolean {
-  if (
-    tx.source === "screenshot" ||
-    tx.source === "sms" ||
-    tx.source === "bank_import"
-  ) {
+  if (tx.fingerprint?.startsWith("bankapp|")) return false;
+  if (tx.source === "bank_import") {
+    // Card-app imports: only tip-like if they somehow carry balance-after.
+    return tx.balanceAfterMinor != null;
+  }
+  if (tx.source === "screenshot" || tx.source === "sms") {
     return true;
   }
   return (

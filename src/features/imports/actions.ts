@@ -79,7 +79,7 @@ const confirmSchema = z.object({
   category: z.string().trim().max(40).optional().nullable(),
   fingerprint: z.string().trim().max(240).optional().nullable(),
   balanceAfterMinor: z.number().int().optional().nullable(),
-  source: z.enum(["receipt_camera", "screenshot"]).optional(),
+  source: z.enum(["receipt_camera", "screenshot", "bank_import"]).optional(),
   maskedAccount: z.string().trim().max(32).optional().nullable(),
   direction: z.enum(["debit", "credit"]).optional().nullable(),
 });
@@ -97,7 +97,9 @@ export async function confirmReceiptExpenseAction(
   try {
     const input = confirmSchema.parse(raw);
     const isSmsBatch =
-      input.confirmAllPending === true || input.source === "screenshot";
+      input.confirmAllPending === true ||
+      input.source === "screenshot" ||
+      input.source === "bank_import";
 
     let amountMinor = 0;
     if (!isSmsBatch) {

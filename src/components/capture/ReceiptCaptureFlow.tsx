@@ -224,7 +224,8 @@ export function ReceiptCaptureFlow({
         preview.importKind === "bank_sms" ||
         preview.importKind === "bank_app";
       const result = await confirmReceiptExpenseAction({
-        accountId: accountId,
+        accountId:
+          preview.importKind === "bank_app" ? null : accountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         confirmAllPending: isAutoImport,
@@ -234,7 +235,12 @@ export function ReceiptCaptureFlow({
           isAutoImport || preview.direction === "credit" ? null : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
-        source: isAutoImport ? "screenshot" : "receipt_camera",
+        source:
+          preview.importKind === "bank_app"
+            ? "bank_import"
+            : isAutoImport
+              ? "screenshot"
+              : "receipt_camera",
         direction: preview.direction,
       });
       if (!result.ok) {
