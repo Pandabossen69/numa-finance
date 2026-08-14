@@ -19,7 +19,7 @@ export function SideNav() {
       <div className="sticky top-0 flex h-dvh flex-col gap-10 py-10 pr-2">
         <Link href="/idag" prefetch className="group block px-1">
           <p className="numa-section-title">Personlig ekonomi</p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
+          <p className="mt-1 text-3xl font-semibold tracking-[-0.05em] text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
             NUMA
           </p>
         </Link>

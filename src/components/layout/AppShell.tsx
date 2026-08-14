@@ -15,15 +15,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex gap-8 md:gap-12">
         <SideNav />
         <div className="min-w-0 flex-1">
-          <header className="flex items-center justify-between pt-[max(0.85rem,var(--numa-safe-top))] pb-1 md:hidden">
+          <header className="flex items-center justify-between pt-[max(0.85rem,var(--numa-safe-top))] pb-2 md:hidden">
             <Link href="/idag" prefetch className="block min-w-0">
-              <span className="text-[1.35rem] font-semibold tracking-tight text-[var(--numa-ink)]">
-                NUMA
-              </span>
+              <span className="numa-brand-mark">NUMA</span>
             </Link>
           </header>
 
-          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(7.75rem+var(--numa-safe-bottom))] pt-1 md:max-w-none md:pb-14 md:pt-8">
+          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(7.75rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-14 md:pt-8">
             {children}
           </main>
         </div>

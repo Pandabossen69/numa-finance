@@ -14,7 +14,7 @@ export function MoneyDisplay({
 }: {
   amountMinor: number;
   currency: CurrencyCode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "display";
   compact?: boolean;
   /** Color negative amounts as danger when "signed". */
   tone?: "neutral" | "signed";
@@ -32,22 +32,26 @@ export function MoneyDisplay({
   const currencyText = CURRENCY_META[currency].symbol;
 
   const sizeClass =
-    size === "xl"
-      ? "text-[2.75rem] leading-none font-semibold tracking-tight"
-      : size === "lg"
-        ? "text-3xl font-semibold tracking-tight"
-        : size === "md"
-          ? "text-xl font-semibold"
-          : "text-base font-medium";
+    size === "display"
+      ? "text-[2.35rem] leading-none font-semibold tracking-[-0.045em] sm:text-[2.65rem]"
+      : size === "xl"
+        ? "text-[2.75rem] leading-none font-semibold tracking-tight"
+        : size === "lg"
+          ? "text-3xl font-semibold tracking-tight"
+          : size === "md"
+            ? "text-xl font-semibold"
+            : "text-base font-medium";
 
   const codeSize =
-    size === "xl"
-      ? "text-[1.05rem] font-semibold tracking-[0.04em]"
-      : size === "lg"
-        ? "text-sm font-semibold tracking-[0.04em]"
-        : size === "md"
-          ? "text-xs font-semibold tracking-[0.06em]"
-          : "text-[0.65rem] font-semibold tracking-[0.06em]";
+    size === "display"
+      ? "text-[0.78rem] font-semibold tracking-[0.08em]"
+      : size === "xl"
+        ? "text-[1.05rem] font-semibold tracking-[0.04em]"
+        : size === "lg"
+          ? "text-sm font-semibold tracking-[0.04em]"
+          : size === "md"
+            ? "text-xs font-semibold tracking-[0.06em]"
+            : "text-[0.65rem] font-semibold tracking-[0.06em]";
 
   const toneClass =
     tone === "signed" && safeMinor < 0

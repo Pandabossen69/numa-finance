@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Sora, JetBrains_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import "./globals.css";
 
-const sans = Plus_Jakarta_Sans({
+const sans = Sora({
   variable: "--font-numa-sans",
   subsets: ["latin"],
   display: "swap",
@@ -36,7 +36,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Allow pinch-zoom; inputs use 16px so iOS won't auto-zoom on focus.
   viewportFit: "cover",
-  themeColor: "#e6eee9",
+  themeColor: "#e4efe8",
   colorScheme: "light",
 };
 

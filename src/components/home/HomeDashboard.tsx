@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { DayDial } from "@/components/home/DayDial";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
@@ -60,21 +61,20 @@ export function HomeDashboard({
 
   const dayUsedRatio =
     snap.dayBudgetMinor > 0
-      ? Math.min(1.15, snap.todaySpendingMinor / snap.dayBudgetMinor)
+      ? snap.todaySpendingMinor / snap.dayBudgetMinor
       : 0;
-  const dayBarWidth = Math.min(100, Math.max(0, dayUsedRatio * 100));
   const daysWord = formatCountSv(snap.spendDaysLeft, "dag", "dagar");
 
   const statusLine = overToday
     ? SV.overDagsbudget
     : snap.dayBudgetMinor > 0 && snap.todaySpendingMinor === 0
-      ? `Hela dagsbudgeten kvar · ${daysWord} i perioden`
+      ? `Hela dagsbudgeten kvar · ${daysWord}`
       : snap.dayBudgetMinor > 0
-        ? `${formatMoneyHint(snap.todaySpendingMinor, currency)} använda av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
+        ? `${formatMoneyHint(snap.todaySpendingMinor, currency)} av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
         : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 pb-2">
+    <div className="mx-auto max-w-lg space-y-6 pb-2">
       <header className="animate-rise space-y-1 px-0.5">
         <p className="text-[13px] font-medium capitalize text-[var(--numa-muted)]">
           {greeting}
@@ -82,11 +82,13 @@ export function HomeDashboard({
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
           ) : null}
         </p>
-        <h1 className="numa-page-title">Hem</h1>
         {isEmpty ? (
-          <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
-            Lägg in intäkter under Plan — då får du en dagsbudget här.
-          </p>
+          <>
+            <h1 className="numa-page-title">Hem</h1>
+            <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
+              Lägg in intäkter under Plan — då får du en dagsbudget här.
+            </p>
+          </>
         ) : null}
       </header>
 
@@ -101,32 +103,47 @@ export function HomeDashboard({
       {!snap.needsAvailableInput ? (
         <>
           <section
-            className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5"
+            className="numa-panel-strong numa-day-stage animate-rise-delay-1 space-y-5 px-5 pb-5 pt-6"
             aria-labelledby="spend-heading"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p id="spend-heading" className="numa-section-title">
-                  {SV.kvarIdag}
+            <div className="flex items-center justify-between gap-3 px-0.5">
+              <p id="spend-heading" className="numa-section-title">
+                {SV.kvarIdag}
+              </p>
+              {!isEmpty ? (
+                <p className="text-[12px] font-medium text-[var(--numa-muted)]">
+                  {daysWord}
                 </p>
-                <div
-                  className={`money-hero mt-2 ${
-                    overToday
-                      ? "text-[var(--numa-danger)]"
-                      : dayOk
-                        ? "text-[var(--numa-ink)]"
-                        : "text-[var(--numa-muted)]"
-                  }`}
-                >
-                  <MoneyDisplay
-                    amountMinor={Math.max(0, snap.remainingTodayMinor)}
-                    currency={currency}
-                    size="xl"
-                  />
-                </div>
+              ) : null}
+            </div>
+
+            {snap.dayBudgetMinor > 0 ? (
+              <>
+                <DayDial usedRatio={dayUsedRatio} over={overToday}>
+                  <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
+                    {overToday ? "Över" : "Kvar"}
+                  </p>
+                  <div
+                    className={`money-hero ${
+                      overToday
+                        ? "text-[var(--numa-danger)]"
+                        : dayOk
+                          ? "text-[var(--numa-ink)]"
+                          : "text-[var(--numa-muted)]"
+                    }`}
+                  >
+                    <MoneyDisplay
+                      amountMinor={Math.max(0, snap.remainingTodayMinor)}
+                      currency={currency}
+                      size="display"
+                      compact
+                    />
+                  </div>
+                </DayDial>
+
                 {statusLine ? (
                   <p
-                    className={`mt-2 text-sm leading-snug ${
+                    className={`text-center text-sm leading-snug ${
                       overToday
                         ? "font-medium text-[var(--numa-danger)]"
                         : "text-[var(--numa-muted)]"
@@ -135,60 +152,80 @@ export function HomeDashboard({
                     {statusLine}
                   </p>
                 ) : null}
-              </div>
-              {!isEmpty ? (
-                <p className="shrink-0 pt-0.5 text-right text-[12px] font-medium text-[var(--numa-muted)]">
-                  {daysWord}
-                </p>
-              ) : null}
-            </div>
 
-            {snap.dayBudgetMinor > 0 ? (
-              <div className="space-y-2.5">
-                <div className="numa-progress h-2" aria-hidden>
-                  <span
-                    className="animate-bar"
-                    style={{
-                      width: `${Math.max(dayBarWidth > 0 ? 6 : 0, dayBarWidth)}%`,
-                      ...(overToday
-                        ? {
-                            background:
-                              "linear-gradient(90deg, var(--numa-danger) 0%, #d94a3d 100%)",
-                          }
-                        : undefined),
-                    }}
+                <div className="numa-split border-t border-[var(--numa-border)] pt-1">
+                  <div>
+                    <p className="text-[11px] font-medium text-[var(--numa-faint)]">
+                      {SV.dagsbudget}
+                    </p>
+                    <div className="mt-1.5 text-[var(--numa-ink)]">
+                      <MoneyDisplay
+                        amountMinor={snap.dayBudgetMinor}
+                        currency={currency}
+                        size="md"
+                        compact
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
+                      Sätts på morgonen
+                    </p>
+                  </div>
+                  <div className="numa-split-rule" aria-hidden />
+                  <div>
+                    <p className="text-[11px] font-medium text-[var(--numa-faint)]">
+                      {SV.spenderatIdag}
+                    </p>
+                    <div
+                      className={`mt-1.5 ${
+                        overToday
+                          ? "text-[var(--numa-danger)]"
+                          : "text-[var(--numa-ink)]"
+                      }`}
+                    >
+                      <MoneyDisplay
+                        amountMinor={snap.todaySpendingMinor}
+                        currency={currency}
+                        size="md"
+                        compact
+                      />
+                    </div>
+                    <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
+                      Sänker bara idag
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3 py-6 text-center">
+                <div
+                  className={`money-hero mx-auto ${
+                    dayOk
+                      ? "text-[var(--numa-ink)]"
+                      : "text-[var(--numa-muted)]"
+                  }`}
+                >
+                  <MoneyDisplay
+                    amountMinor={Math.max(0, snap.remainingTodayMinor)}
+                    currency={currency}
+                    size="xl"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <MiniStat
-                    label={SV.dagsbudget}
-                    amountMinor={snap.dayBudgetMinor}
-                    currency={currency}
-                    hint="Sätts på morgonen"
-                  />
-                  <MiniStat
-                    label={SV.spenderatIdag}
-                    amountMinor={snap.todaySpendingMinor}
-                    currency={currency}
-                    tone={overToday ? "danger" : undefined}
-                    hint="Sänker bara idag"
-                  />
-                </div>
+                {!isEmpty ? (
+                  <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                    {isBridge
+                      ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                      : "När planen har pengar kvar syns dagsbudgeten här."}
+                  </p>
+                ) : null}
               </div>
-            ) : !isEmpty ? (
-              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                {isBridge
-                  ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
-                  : "När planen har pengar kvar syns dagsbudgeten här."}
-              </p>
-            ) : null}
+            )}
           </section>
 
-          <section className="space-y-2">
+          <section className="animate-rise-delay-2 space-y-2">
             <p className="numa-section-title px-1">
               {isBridge ? SV.saldo : SV.perioden}
             </p>
-            <div className="numa-panel-list animate-rise-delay-2 animate-scale-in px-4 py-1">
+            <div className="numa-panel-list animate-scale-in px-4 py-1">
               <MetricRow
                 label={isBridge ? SV.saldo : SV.kvarIPerioden}
                 amountMinor={snap.remainingFreeMinor}
@@ -240,12 +277,8 @@ export function HomeDashboard({
           ) : null}
 
           <section className="animate-rise-delay-2 grid grid-cols-2 gap-3">
-            <ActionCard
-              href="/fota"
-              title={SV.fota}
-              subtitle={SV.fotaHint}
-            />
-            <ActionCard href="/plan" title={SV.plan} subtitle={SV.planHint} />
+            <ActionLink href="/fota" title={SV.fota} subtitle={SV.fotaHint} />
+            <ActionLink href="/plan" title={SV.plan} subtitle={SV.planHint} />
           </section>
 
           <QuickExpense
@@ -260,46 +293,7 @@ export function HomeDashboard({
   );
 }
 
-function MiniStat({
-  label,
-  amountMinor,
-  currency,
-  tone,
-  hint,
-}: {
-  label: string;
-  amountMinor: number;
-  currency: CurrencyCode;
-  tone?: "danger";
-  hint?: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-[rgba(10,26,20,0.035)] px-3 py-2.5">
-      <p className="text-[11px] font-medium text-[var(--numa-faint)]">{label}</p>
-      <div
-        className={`mt-1 ${
-          tone === "danger"
-            ? "text-[var(--numa-danger)]"
-            : "text-[var(--numa-ink)]"
-        }`}
-      >
-        <MoneyDisplay
-          amountMinor={amountMinor}
-          currency={currency}
-          size="sm"
-          compact
-        />
-      </div>
-      {hint ? (
-        <p className="mt-1 text-[10px] leading-snug text-[var(--numa-faint)]">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function ActionCard({
+function ActionLink({
   href,
   title,
   subtitle,
@@ -312,10 +306,14 @@ function ActionCard({
     <Link
       href={href}
       prefetch
-      className="numa-panel flex min-h-[4.75rem] flex-col justify-center px-4 py-3 transition active:scale-[0.98]"
+      className="numa-panel group flex min-h-[5rem] flex-col justify-center px-4 py-3.5 transition active:scale-[0.98]"
     >
-      <span className="text-sm font-semibold text-[var(--numa-ink)]">{title}</span>
-      <span className="mt-0.5 text-xs text-[var(--numa-muted)]">{subtitle}</span>
+      <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
+        {title}
+      </span>
+      <span className="mt-0.5 text-xs leading-snug text-[var(--numa-muted)]">
+        {subtitle}
+      </span>
     </Link>
   );
 }
@@ -343,7 +341,9 @@ function AvailableNowCard({
         </h2>
         <p className="mt-1 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Vi räknar ut en dagsbudget
-          {nextIncomeLabel ? ` fram till ${nextIncomeLabel}` : " fram till nästa intäkt"}
+          {nextIncomeLabel
+            ? ` fram till ${nextIncomeLabel}`
+            : " fram till nästa intäkt"}
           . När du handlar sjunker bara kvar idag.
         </p>
       </div>
@@ -540,7 +540,7 @@ function QuickExpense({
             <button
               type="button"
               disabled={pending || !amount.trim()}
-              className="min-h-12 rounded-xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(13,122,102,0.25)] transition active:scale-[0.98] disabled:opacity-45"
+              className="min-h-12 rounded-xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:opacity-45"
               onClick={() => {
                 if (!accountId) return;
                 startTransition(async () => {
