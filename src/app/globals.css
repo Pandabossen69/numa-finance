@@ -211,6 +211,23 @@ body {
   background: rgba(10, 26, 20, 0.055);
 }
 
+.numa-progress.h-2 {
+  height: 0.5rem;
+}
+
+.numa-panel-list .numa-row {
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
+}
+
+.numa-panel-list .numa-row:first-child {
+  padding-top: 1rem;
+}
+
+.numa-panel-list .numa-row:last-child {
+  padding-bottom: 1rem;
+}
+
 .numa-progress > span {
   display: block;
   height: 100%;
