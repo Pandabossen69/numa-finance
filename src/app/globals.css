@@ -1,33 +1,34 @@
 @import "tailwindcss";
 
 /*
- * NUMA visual foundation — light theme only.
- * Warm mint washes; money uses tabular mono; soft life via glow + rise.
+ * NUMA visual foundation — light only.
+ * Perspective: sticky day envelope as a dial.
+ * Atmosphere: layered mint mesh + fine grain; money in tabular mono.
  */
 :root {
-  --numa-bg: #e8f0eb;
-  --numa-bg-deep: #d9e6de;
-  --numa-ink: #0a1a14;
-  --numa-muted: #51645b;
-  --numa-faint: #7e9087;
-  --numa-surface: rgba(252, 254, 253, 0.78);
-  --numa-surface-solid: #fbfdfc;
+  --numa-bg: #e4efe8;
+  --numa-bg-deep: #d2e3d9;
+  --numa-ink: #071511;
+  --numa-muted: #4a5f56;
+  --numa-faint: #7a8f84;
+  --numa-surface: rgba(252, 254, 253, 0.72);
+  --numa-surface-solid: #f8fcfa;
   --numa-surface-strong: #ffffff;
-  --numa-border: rgba(10, 26, 20, 0.07);
-  --numa-border-strong: rgba(10, 26, 20, 0.12);
-  --numa-accent: #0d7a66;
-  --numa-accent-soft: #cfe8e0;
-  --numa-accent-ink: #064c40;
-  --numa-accent-glow: rgba(13, 122, 102, 0.2);
+  --numa-border: rgba(7, 21, 17, 0.07);
+  --numa-border-strong: rgba(7, 21, 17, 0.11);
+  --numa-accent: #0b6f5d;
+  --numa-accent-soft: #c5e6dc;
+  --numa-accent-ink: #053f35;
+  --numa-accent-glow: rgba(11, 111, 93, 0.16);
   --numa-danger: #b42318;
   --numa-danger-soft: #fde8e6;
-  --numa-positive: #176b45;
-  --numa-positive-soft: #d7f0e4;
+  --numa-positive: #146b42;
+  --numa-positive-soft: #d4efdf;
   --numa-warning: #9a6700;
   --numa-warning-soft: #fef3c7;
-  --numa-shadow: 0 18px 44px rgba(10, 26, 20, 0.07);
-  --numa-shadow-sm: 0 6px 20px rgba(10, 26, 20, 0.05);
-  --numa-nav: rgba(251, 253, 252, 0.9);
+  --numa-shadow: 0 22px 48px rgba(7, 21, 17, 0.07);
+  --numa-shadow-sm: 0 8px 22px rgba(7, 21, 17, 0.045);
+  --numa-nav: rgba(248, 252, 250, 0.88);
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   --numa-shell-max: 72rem;
@@ -66,9 +67,11 @@ html {
 
 body {
   min-height: 100dvh;
-  background:
-    radial-gradient(980px 520px at 8% -12%, #f5faf7 0%, transparent 58%),
-    radial-gradient(820px 480px at 100% 0%, rgba(13, 122, 102, 0.12) 0%, transparent 52%),
+  background-color: var(--numa-bg);
+  background-image:
+    radial-gradient(1200px 640px at 12% -18%, #f7fcf9 0%, transparent 55%),
+    radial-gradient(900px 520px at 100% -4%, rgba(11, 111, 93, 0.16) 0%, transparent 48%),
+    radial-gradient(700px 480px at 80% 110%, rgba(7, 21, 17, 0.05) 0%, transparent 50%),
     linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
   background-attachment: scroll;
   color: var(--numa-ink);
@@ -76,13 +79,24 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 @media (min-width: 768px) {
   body {
-    background:
-      radial-gradient(980px 520px at 8% -12%, #f5faf7 0%, transparent 58%),
-      radial-gradient(820px 480px at 100% 0%, rgba(13, 122, 102, 0.12) 0%, transparent 52%),
-      radial-gradient(700px 420px at 70% 110%, rgba(10, 26, 20, 0.04) 0%, transparent 48%),
-      linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
     background-attachment: fixed;
   }
 }
@@ -103,13 +117,13 @@ body {
 .numa-panel {
   position: relative;
   background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    var(--numa-surface-solid) 48%,
-    rgba(247, 252, 249, 0.96) 100%
+    168deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    var(--numa-surface-solid) 52%,
+    rgba(244, 250, 247, 0.98) 100%
   );
   border: 1px solid var(--numa-border);
-  border-radius: 1.35rem;
+  border-radius: 1.45rem;
   box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
@@ -122,8 +136,8 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(13, 122, 102, 0.22) 40%,
-    rgba(255, 255, 255, 0.7) 70%,
+    rgba(11, 111, 93, 0.2) 42%,
+    rgba(255, 255, 255, 0.75) 72%,
     transparent 100%
   );
   pointer-events: none;
@@ -131,14 +145,11 @@ body {
 
 .numa-panel-strong {
   position: relative;
-  background: linear-gradient(
-    160deg,
-    #ffffff 0%,
-    var(--numa-surface-strong) 55%,
-    #f4faf7 100%
-  );
+  background:
+    radial-gradient(520px 280px at 100% 0%, rgba(11, 111, 93, 0.1), transparent 55%),
+    linear-gradient(165deg, #ffffff 0%, #f7fcf9 58%, #eef7f2 100%);
   border: 1px solid var(--numa-border-strong);
-  border-radius: 1.5rem;
+  border-radius: 1.75rem;
   box-shadow: var(--numa-shadow);
   overflow: hidden;
 }
@@ -147,40 +158,47 @@ body {
   content: "";
   position: absolute;
   left: 0;
-  top: 12%;
-  bottom: 12%;
+  top: 14%;
+  bottom: 14%;
   width: 2px;
   border-radius: 999px;
   background: linear-gradient(
     180deg,
     var(--numa-accent) 0%,
-    rgba(13, 122, 102, 0.28) 100%
+    rgba(11, 111, 93, 0.2) 100%
   );
   pointer-events: none;
 }
 
-/* List groups: same surface, no top shimmer (rows already divide). */
 .numa-panel-list {
-  background: var(--numa-surface-solid);
+  background: rgba(255, 255, 255, 0.78);
   border: 1px solid var(--numa-border);
-  border-radius: 1.25rem;
+  border-radius: 1.35rem;
   box-shadow: var(--numa-shadow-sm);
+  backdrop-filter: blur(10px);
   overflow: hidden;
 }
 
 .numa-section-title {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--numa-faint);
 }
 
 .numa-page-title {
-  font-size: 1.875rem;
-  line-height: 1.15;
+  font-size: clamp(1.85rem, 5vw, 2.15rem);
+  line-height: 1.05;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.045em;
+  color: var(--numa-ink);
+}
+
+.numa-brand-mark {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.05em;
   color: var(--numa-ink);
 }
 
@@ -189,13 +207,13 @@ body {
   align-items: baseline;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.85rem 0;
+  padding: 0.9rem 0;
   border-bottom: 1px solid var(--numa-border);
 }
 
 .numa-row:last-child {
   border-bottom: none;
-  padding-bottom: 0.15rem;
+  padding-bottom: 0.2rem;
 }
 
 .numa-divider {
@@ -208,7 +226,7 @@ body {
   height: 0.35rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(10, 26, 20, 0.055);
+  background: rgba(7, 21, 17, 0.06);
 }
 
 .numa-progress.h-2 {
@@ -232,18 +250,44 @@ body {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    var(--numa-accent) 0%,
-    #1a9a82 100%
-  );
+  background: linear-gradient(90deg, var(--numa-accent) 0%, #14927a 100%);
   transform-origin: left center;
+}
+
+.numa-split {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 0;
+  align-items: stretch;
+}
+
+.numa-split > div {
+  padding: 0.85rem 0.9rem;
+}
+
+.numa-split > div:first-child {
+  padding-left: 0.15rem;
+}
+
+.numa-split > div:last-child {
+  padding-right: 0.15rem;
+}
+
+.numa-split-rule {
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 8%,
+    var(--numa-border-strong) 30%,
+    var(--numa-border-strong) 70%,
+    transparent 92%
+  );
 }
 
 @keyframes numa-rise {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -254,7 +298,7 @@ body {
 @keyframes numa-scale-in {
   from {
     opacity: 0;
-    transform: scale(0.97);
+    transform: scale(0.965);
   }
   to {
     opacity: 1;
@@ -262,23 +306,52 @@ body {
   }
 }
 
-@keyframes numa-soft-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 24px 0 rgba(13, 122, 102, 0.04);
-  }
-  50% {
-    box-shadow: 0 10px 32px rgba(13, 122, 102, 0.1);
+@keyframes numa-dial-draw {
+  from {
+    stroke-dasharray: 0 var(--numa-dial-track, 320);
   }
 }
 
+@keyframes numa-mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-1.5%, 1%, 0) scale(1.03);
+  }
+}
+
+.numa-day-stage {
+  position: relative;
+  isolation: isolate;
+}
+
+.numa-day-stage::after {
+  content: "";
+  position: absolute;
+  inset: -18% -12% auto auto;
+  width: min(70%, 18rem);
+  height: min(55%, 14rem);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(11, 111, 93, 0.14) 0%,
+    transparent 68%
+  );
+  z-index: -1;
+  animation: numa-mesh-drift 14s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.numa-day-dial-arc {
+  animation: numa-dial-draw 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .money-hero {
-  animation:
-    numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    numa-soft-glow 5.6s ease-in-out 600ms infinite;
-  border-radius: 0.85rem;
-  padding: 0.1rem 0.2rem 0.1rem 0;
+  animation: numa-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
   width: fit-content;
+  max-width: 100%;
 }
 
 @keyframes numa-scan {
@@ -314,32 +387,32 @@ body {
 }
 
 .animate-rise {
-  animation: numa-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-1 {
-  animation: numa-rise 300ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+  animation: numa-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) 50ms both;
 }
 
 .animate-rise-delay-2 {
-  animation: numa-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) 70ms both;
+  animation: numa-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both;
 }
 
 .animate-rise-delay-3 {
-  animation: numa-rise 340ms cubic-bezier(0.22, 1, 0.36, 1) 100ms both;
+  animation: numa-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) 130ms both;
 }
 
 .animate-scale-in {
-  animation: numa-scale-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-scale-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-bar {
   transform-origin: left center;
-  animation: numa-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+  animation: numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both;
 }
 
 .animate-page-in {
-  animation: numa-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes numa-nav-progress {
@@ -356,7 +429,7 @@ body {
 }
 
 .numa-cta-glow {
-  animation: numa-soft-glow 3.6s ease-in-out infinite;
+  box-shadow: 0 10px 28px rgba(7, 21, 17, 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -370,8 +443,9 @@ body {
   .money-hero,
   .numa-scan-line,
   .numa-pulse-soft,
-  .numa-cta-glow,
-  .numa-nav-progress {
+  .numa-nav-progress,
+  .numa-day-dial-arc,
+  .numa-day-stage::after {
     animation: none !important;
   }
 }
@@ -387,7 +461,7 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(900px 520px at 50% -8%, rgba(13, 122, 102, 0.18), transparent 58%),
-    radial-gradient(700px 420px at 100% 85%, rgba(13, 122, 102, 0.08), transparent 50%),
-    radial-gradient(600px 380px at 0% 70%, rgba(10, 26, 20, 0.04), transparent 45%);
+    radial-gradient(900px 520px at 50% -8%, rgba(11, 111, 93, 0.18), transparent 58%),
+    radial-gradient(700px 420px at 100% 85%, rgba(11, 111, 93, 0.08), transparent 50%),
+    radial-gradient(600px 380px at 0% 70%, rgba(7, 21, 17, 0.04), transparent 45%);
 }

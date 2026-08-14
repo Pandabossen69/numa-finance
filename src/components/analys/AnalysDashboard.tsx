@@ -111,10 +111,10 @@ export function AnalysDashboard({
           <div className="numa-panel-list px-4 py-1">
             <MetricRow
               label={SV.kvarIdag}
-              amountMinor={isBridge && !hasSaldo ? 0 : cycle.perDayMinor}
+              amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
               currency={currency}
               tone={
-                (!isBridge || hasSaldo) && cycle.perDayMinor > 0
+                (!isBridge || hasSaldo) && cycle.remainingTodayMinor > 0
                   ? "positive"
                   : undefined
               }

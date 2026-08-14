@@ -47,8 +47,8 @@ export type AnalysSnapshot = {
     freeToSpendMinor: number;
     remainingFreeMinor: number;
     daysLeft: number;
-    perDayMinor: number;
     dayBudgetMinor: number;
+    remainingTodayMinor: number;
     incomes: AnalysLine[];
     expenses: AnalysLine[];
   };
@@ -106,8 +106,8 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       todaySpendingMinor: snap.todaySpendingMinor,
     });
     const remainingFreeMinor = living.remainingFreeMinor;
-    const perDayMinor = living.perDayMinor;
     const dayBudgetMinor = living.dayBudgetMinor;
+    const remainingTodayMinor = living.remainingTodayMinor;
 
     const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) => ({
       id: i.id,
@@ -189,6 +189,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
             ? [
                 "Tidiga intäkter ingår redan i budgeten.",
                 "Dagsbudget räknas fram till månadens sista intäkt.",
+                "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte mitt på dagen.",
                 "När sista intäkten kommer räknas perioden om till nästa.",
               ]
             : [
@@ -225,8 +226,8 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           freeToSpendMinor: cycle.freeToSpendMinor,
           remainingFreeMinor,
           daysLeft: living.daysLeft,
-          perDayMinor,
           dayBudgetMinor,
+          remainingTodayMinor,
           incomes: cycleIncomes,
           expenses: cycleExpenses,
         },

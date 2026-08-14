@@ -32,9 +32,9 @@ export type LivingBudget = {
   dayBudgetMinor: number;
   /**
    * What is left of today's dagsbudget: max(0, dayBudget − spentToday).
-   * This is the Hem hero number.
+   * This is the Hem hero number ("Kvar idag").
    */
-  perDayMinor: number;
+  remainingTodayMinor: number;
   nextIncomeAt: string | null;
   nextIncomeLabelSv: string | null;
   cycleEndLabelSv: string | null;
@@ -72,7 +72,7 @@ export function projectLivingBudget(input: {
       remainingFreeMinor: 0,
       daysLeft: 1,
       dayBudgetMinor: 0,
-      perDayMinor: 0,
+      remainingTodayMinor: 0,
       nextIncomeAt: null,
       nextIncomeLabelSv: null,
       cycleEndLabelSv: null,
@@ -109,7 +109,7 @@ export function projectLivingBudget(input: {
       remainingFreeMinor: availableMinor,
       daysLeft,
       dayBudgetMinor,
-      perDayMinor: remainingToday,
+      remainingTodayMinor: remainingToday,
       nextIncomeAt: cycle.startAt,
       nextIncomeLabelSv: cycle.startLabelSv,
       cycleEndLabelSv: cycle.endLabelSv,
@@ -137,7 +137,7 @@ export function projectLivingBudget(input: {
     remainingFreeMinor: remainingFree,
     daysLeft,
     dayBudgetMinor,
-    perDayMinor: remainingToday,
+    remainingTodayMinor: remainingToday,
     nextIncomeAt: cycle.endAt,
     nextIncomeLabelSv: cycle.endLabelSv,
     cycleEndLabelSv: cycle.endLabelSv,
