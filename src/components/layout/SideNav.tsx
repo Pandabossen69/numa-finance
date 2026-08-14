@@ -38,10 +38,10 @@ export function SideNav() {
                 onClick={() => {
                   startTransition(() => setOptimisticHref(item.href));
                 }}
-                className={`relative rounded-xl px-1 py-3 transition active:scale-[0.99] ${
+                className={`relative rounded-2xl px-1 py-3 transition active:scale-[0.99] ${
                   active
-                    ? "bg-[var(--numa-accent-soft)]/55 text-[var(--numa-ink)]"
-                    : "text-[var(--numa-muted)] hover:bg-white/45 hover:text-[var(--numa-ink)]"
+                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(11,111,93,0.14)]"
+                    : "text-[var(--numa-muted)] hover:bg-white/55 hover:text-[var(--numa-ink)]"
                 }`}
               >
                 {active ? (
@@ -65,7 +65,7 @@ export function SideNav() {
           <Link
             href="/lagg-till"
             prefetch
-            className="block rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
+            className="block rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white shadow-[0_10px_24px_rgba(19,32,25,0.18)] transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
           >
             + Lägg till
           </Link>

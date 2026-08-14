@@ -52,12 +52,15 @@ type BankSmsLedgerHints = Partial<
 >;
 
 /**
- * Bank-SMS / tip-ledger rows stay in history lists but must not move
- * household spend totals (or tip-checkpoint saldo again).
+ * Bank-SMS / tip-ledger rows: tip checkpoints already embed their effect on
+ * saldo. Never re-apply them to calculated balance (would double-count).
  *
- * Primary signal: Bangkok Bank SMS sources (screenshot / sms) with tip semantics.
- * Bank-app card imports (`bank_import` or fingerprint `bankapp|…`) are normal
- * ledger rows — they must move EUR/THB account balances and count as spend.
+ * They *do* still count as household spend for the day dial — otherwise
+ * "Spenderat idag" stays 0 after bank-SMS imports while tip saldo dropped,
+ * and Hem falsely shows the whole dagsbudget remaining.
+ *
+ * Bank-app card imports (`bank_import` / `bankapp|…`) are normal ledger rows
+ * for both saldo and spend (unless a tip-like balance-after sneaks in).
  */
 export function isBankSmsLedgerRow(tx: BankSmsLedgerHints): boolean {
   if (tx.fingerprint?.startsWith("bankapp|")) return false;
@@ -80,8 +83,8 @@ export function appliesToSpending(
     BankSmsLedgerHints,
 ): boolean {
   if (tx.status !== "confirmed") return false;
-  // Bank-SMS ledger rows are history for the tip checkpoint — not household spend.
-  if (isBankSmsLedgerRow(tx)) return false;
+  // Bank-SMS expenses count toward Spenderat idag / perioden.
+  // Saldo still ignores them via isBankSmsLedgerRow in balance helpers.
   return tx.transactionType === "expense";
 }
 
@@ -239,7 +242,8 @@ export type SpendingWindows = {
  * - month: same YYYY-MM calendar month as `now`
  * - cycle: occurredAt on/after cycle start (when provided)
  *
- * Bank-SMS / screenshot / sms rows never count (via sumSpending → appliesToSpending).
+ * Bank-SMS expenses count here (day dial). Tip saldo still ignores them via
+ * isBankSmsLedgerRow so available-balance checkpoints are not double-applied.
  * Invariant: today.amountMinor <= month.amountMinor for the same currency filter.
  */
 export function computeSpendingWindows(params: {

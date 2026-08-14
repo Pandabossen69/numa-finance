@@ -13,6 +13,10 @@ import {
   matchFingerprint,
   type FingerprintResult,
 } from "@/domain/finance/fingerprint";
+import {
+  DEFAULT_TIMEZONE,
+  zonedWallTimeToUtcIso,
+} from "@/domain/finance/datetime";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import { parseCurrencyToken } from "@/domain/money/currency";
 import {
@@ -133,29 +137,36 @@ export function looksLikeBankAppScreenshot(
   );
 }
 
-/** Parse "23 juli 2026 16:46" or ISO-ish strings → YYYY-MM-DDTHH:mm */
+/** Parse "23 juli 2026 16:46" or ISO-ish strings → absolute UTC ISO (Bangkok wall). */
 export function parseBankAppOccurredAt(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const s = raw.trim();
   const iso = s.match(
-    /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})(?::\d{2})?/,
+    /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/,
   );
-  if (iso) return `${iso[1]}T${iso[2]}:${iso[3]}`;
-
-  const sv = s.match(
-    /(\d{1,2})\s+(januari|februari|mars|april|maj|juni|juli|augusti|september|oktober|november|december)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/i,
-  );
-  if (sv) {
-    const day = sv[1]!.padStart(2, "0");
-    const month = MONTHS_SV[sv[2]!.toLowerCase()];
-    const year = sv[3]!;
-    const hh = (sv[4] ?? "12").padStart(2, "0");
-    const mm = (sv[5] ?? "00").padStart(2, "0");
-    if (!month) return null;
-    return `${year}-${month}-${day}T${hh}:${mm}`;
+  let wall: string | null = null;
+  if (iso) {
+    wall = `${iso[1]}T${iso[2]}:${iso[3]}:${iso[4] ?? "00"}`;
+  } else {
+    const sv = s.match(
+      /(\d{1,2})\s+(januari|februari|mars|april|maj|juni|juli|augusti|september|oktober|november|december)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/i,
+    );
+    if (sv) {
+      const day = sv[1]!.padStart(2, "0");
+      const month = MONTHS_SV[sv[2]!.toLowerCase()];
+      const year = sv[3]!;
+      const hh = (sv[4] ?? "12").padStart(2, "0");
+      const mm = (sv[5] ?? "00").padStart(2, "0");
+      if (!month) return null;
+      wall = `${year}-${month}-${day}T${hh}:${mm}:00`;
+    }
   }
-
-  return null;
+  if (!wall) return null;
+  try {
+    return zonedWallTimeToUtcIso(wall, DEFAULT_TIMEZONE);
+  } catch {
+    return null;
+  }
 }
 
 function pickLedgerAmount(input: {

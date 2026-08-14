@@ -18,6 +18,7 @@ import {
   swedishFingerprintConflictError,
   collectPairedVoidIds,
   hasCycleFundingEvidence,
+  resolveSmsBatchOccurredAt,
   zonedDayKey,
   type Account,
   type BalanceCheckpoint,
@@ -1423,7 +1424,10 @@ export async function uploadReceiptAndExtract(input: {
         confidence:
           resolved.kind === "bank_sms" || resolved.kind === "bank_app"
             ? (resolved.selected?.confidence ?? null)
-            : null,
+            : (extraction.candidates[0]?.confidence ??
+              (typeof extraction.rawMetadata?.confidence === "number"
+                ? extraction.rawMetadata.confidence
+                : null)),
         fingerprint: resolved.fingerprint,
         status: "needs_review",
         raw_payload: {
@@ -1465,6 +1469,23 @@ export async function uploadReceiptAndExtract(input: {
   else if (resolved.alreadyKnown) ocrStatus = "all_known";
   else if (createdCandidates.length === 0) ocrStatus = "failed";
 
+  const confidence =
+    candidate?.confidence ??
+    (typeof extraction.rawMetadata?.confidence === "number"
+      ? extraction.rawMetadata.confidence
+      : null);
+
+  // Very unclear receipt with an amount still allowed (user must confirm),
+  // but SMS with critically low confidence should force a clearer photo.
+  if (
+    ocrStatus === "ok" &&
+    resolved.kind === "bank_sms" &&
+    confidence != null &&
+    confidence < 0.55
+  ) {
+    ocrStatus = "failed";
+  }
+
   const skippedOlderCount =
     (resolved.kind === "bank_sms" || resolved.kind === "bank_app") &&
     resolved.selection.status === "ready"
@@ -1504,6 +1525,7 @@ export async function uploadReceiptAndExtract(input: {
     suggestedDescription: resolved.suggestedDescription,
     currency: resolved.currency ?? profile.primaryCurrency,
     ocrStatus,
+    confidence,
     message:
       ocrStatus === "unavailable"
         ? "Autoläsning är inte konfigurerad (OPENAI_API_KEY saknas i miljön)."
@@ -1722,10 +1744,13 @@ export async function confirmReceiptExpense(
 
     const insertRows = fresh.map((cand, i) => {
       const direction = cand.direction as "debit" | "credit";
-      const movedAt =
-        typeof cand.occurredAt === "string" && cand.occurredAt
-          ? cand.occurredAt
-          : new Date(baseMs - (fresh.length - i) * 3_000).toISOString();
+      const movedAt = resolveSmsBatchOccurredAt({
+        candidateOccurredAt: cand.occurredAt,
+        index: i,
+        batchLength: fresh.length,
+        baseMs,
+        tipInBatch: tipInBatchEffective || isBankAppBatch,
+      });
       return {
         id: crypto.randomUUID(),
         user_id: userId,
@@ -1857,13 +1882,21 @@ export async function confirmReceiptExpense(
     balanceAfterMinor =
       (cand.balance_after_minor as number | null) ?? balanceAfterMinor;
     amountMinor = cand.amount_minor as number;
+    // Receipt camera: prefer the amount/description the user confirmed in the UI.
+    const isReceiptConfirm =
+      input.source === "receipt_camera" || observation.kind === "receipt";
+    if (isReceiptConfirm && input.amountMinor != null && input.amountMinor > 0) {
+      amountMinor = input.amountMinor;
+    }
     if (amountMinor == null || amountMinor <= 0) {
       throw new Error("Kandidaten saknar giltigt belopp");
     }
     if (cand.direction === "credit" || cand.direction === "debit") {
       direction = cand.direction;
     }
-    if (typeof cand.description === "string" && cand.description) {
+    if (isReceiptConfirm && input.description?.trim()) {
+      description = input.description.trim();
+    } else if (typeof cand.description === "string" && cand.description) {
       description = cand.description;
     }
     if (observation.kind === "screenshot") source = "screenshot";

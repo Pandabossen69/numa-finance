@@ -33,6 +33,7 @@ type Preview = {
   description: string;
   currency: CurrencyCode;
   ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
+  confidence: number | null;
   message: string | null;
   previewUrl: string;
   importKind: "bank_sms" | "bank_app" | "receipt" | "unknown";
@@ -89,10 +90,18 @@ export function ReceiptCaptureFlow({
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;
-    if (preview.importKind === "bank_sms" || preview.importKind === "bank_app") {
+    if (preview.importKind === "bank_app") {
       return null;
     }
     try {
+      if (preview.importKind === "bank_sms") {
+        const amountMinor = preview.events
+          .filter((e) => e.direction === "debit")
+          .reduce((sum, e) => sum + e.amountMinor, 0);
+        if (amountMinor <= 0) return null;
+        const remaining = roomBefore - amountMinor;
+        return { amountMinor, remaining, canAfford: remaining >= 0 };
+      }
       const amountMinor = parseUiAmountToMinor(preview.amount || "0");
       const remaining = roomBefore - amountMinor;
       return { amountMinor, remaining, canAfford: remaining >= 0 };
@@ -109,7 +118,8 @@ export function ReceiptCaptureFlow({
     setError(null);
     setAmountEditable(false);
     setScanning(false);
-    setMode(bootstrapping ? "bank_sms" : "pick");
+    // Always return to the mode picker — even during bootstrap — so Manual/Kvitto stay reachable.
+    setMode("pick");
   }
 
   function onFile(file: File | null) {
@@ -122,7 +132,7 @@ export function ReceiptCaptureFlow({
 
     startTransition(async () => {
       const uploadFile = await compressImageForUpload(file, {
-        preserveText: mode === "bank_sms" || mode === "bank_app",
+        preserveText: true,
       });
       const fd = new FormData();
       fd.set("file", uploadFile);
@@ -181,8 +191,7 @@ export function ReceiptCaptureFlow({
 
       setAmountEditable(
         importKind !== "bank_sms" &&
-          importKind !== "bank_app" &&
-          !hasAmount,
+          importKind !== "bank_app",
       );
       setPreview({
         observationId: data.observation.id,
@@ -191,6 +200,7 @@ export function ReceiptCaptureFlow({
         description: data.suggestedDescription ?? "",
         currency: data.currency,
         ocrStatus: data.ocrStatus,
+        confidence: data.confidence ?? null,
         message: data.message,
         previewUrl,
         importKind,
@@ -412,13 +422,13 @@ export function ReceiptCaptureFlow({
     const isBankApp = mode === "bank_app";
     return (
       <div className="animate-rise space-y-8">
-        {!bootstrapping ? <BackLink onClick={resetToPick} /> : null}
+        <BackLink onClick={resetToPick} />
         <header className="space-y-2">
           <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
             {isSms ? "Bank-SMS" : isBankApp ? "Bankapp" : "Kvitto"}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight">
-            {bootstrapping
+            {bootstrapping && isSms
               ? "Fota senaste SMS"
               : isSms
                 ? "Fota bank-SMS"
@@ -431,7 +441,7 @@ export function ReceiptCaptureFlow({
               ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
               : isBankApp
                 ? "bunq / Revolut — kortbelopp i €, samma köp aldrig dubbelt"
-                : "Håll texten skarp. Beloppet fylls i automatiskt."}
+                : "Håll texten skarp. Beloppet fylls i automatiskt — du kan alltid ändra innan du sparar."}
           </p>
         </header>
 
@@ -545,6 +555,12 @@ export function ReceiptCaptureFlow({
   const isAutoImport = isSms || isBankApp;
   const isCredit = preview.direction === "credit";
   const needsManualAmount = !isAutoImport && !preview.amountFromScan;
+  const ocrWarn =
+    !isAutoImport &&
+    (needsManualAmount ||
+      preview.ocrStatus === "failed" ||
+      preview.ocrStatus === "unavailable" ||
+      (preview.confidence != null && preview.confidence < 0.75));
   const remainingTone =
     impact && impact.remaining < 0
       ? "text-[var(--numa-danger)]"
@@ -584,14 +600,28 @@ export function ReceiptCaptureFlow({
                 ? "Insättning läst automatiskt"
                 : "Utgift läst automatiskt"}
           </p>
+          {preview.message ? (
+            <p className="mx-auto max-w-[34ch] pt-1 text-sm text-[var(--numa-muted)]">
+              {preview.message}
+            </p>
+          ) : null}
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            Kvitto
+            Kvitto · totalsumma
           </p>
           {preview.message ? (
-            <p className="text-sm text-[var(--numa-muted)]">{preview.message}</p>
+            <p
+              className={`rounded-2xl px-3.5 py-3 text-sm leading-relaxed ${
+                ocrWarn
+                  ? "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]"
+                  : "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
+              }`}
+              role={ocrWarn ? "status" : undefined}
+            >
+              {preview.message}
+            </p>
           ) : null}
         </div>
       )}
@@ -641,14 +671,14 @@ export function ReceiptCaptureFlow({
           {amountEditable || needsManualAmount ? (
             <input
               inputMode="decimal"
-              autoFocus={needsManualAmount}
+              autoFocus={needsManualAmount || ocrWarn}
               value={preview.amount}
               onChange={(e) =>
                 setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
               }
               placeholder="0,00"
               className="money mt-2 w-full border-0 bg-transparent p-0 text-[2rem] font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
-              aria-label="Belopp"
+              aria-label="Belopp från kvittot"
               required
             />
           ) : (
@@ -659,6 +689,11 @@ export function ReceiptCaptureFlow({
               </span>
             </p>
           )}
+          {!isSms && preview.amountFromScan ? (
+            <p className="mt-1 text-xs text-[var(--numa-faint)]">
+              Inläst från bilden — ändra om något siffror är fel.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -686,22 +721,29 @@ export function ReceiptCaptureFlow({
         />
       ) : null}
 
-      {isAutoImport && debitCount > 0 && creditCount === 0 ? (
-        <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCategory(c)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
-                category === c
-                  ? "bg-[var(--numa-ink)] font-semibold text-white"
-                  : "text-[var(--numa-muted)] hover:bg-white/60"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+      {(!isAutoImport && !isCredit) || (isAutoImport && debitCount > 0) ? (
+        <div className="space-y-2">
+          {isSms && creditCount > 0 ? (
+            <p className="text-xs text-[var(--numa-faint)]">
+              Kategori gäller utgifterna i bilden.
+            </p>
+          ) : null}
+          <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
+                  category === c
+                    ? "bg-[var(--numa-ink)] font-semibold text-white"
+                    : "text-[var(--numa-muted)] hover:bg-white/60"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -763,7 +805,9 @@ function ModePicker({
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: "Skärmdump → allt läses in",
+      hint: bootstrapping
+        ? "Börja här — saldot i SMS:et blir Hem"
+        : "Skärmdump → allt läses in",
     },
     {
       id: "bank_app",
@@ -775,14 +819,14 @@ function ModePicker({
     {
       id: "receipt",
       title: "Kvitto",
-      hint: "Fota priset på kvitto eller skärm",
+      hint: "Fota priset — ändra belopp om det behövs",
     },
     {
       id: "manual",
       title: "Manuellt",
       hint: hasAccount
         ? "Skriv belopp utan kamera"
-        : "Kräver saldo först via SMS",
+        : "Bäst efter första bank-SMS",
     },
   ];
 
@@ -794,7 +838,7 @@ function ModePicker({
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           {bootstrapping
-            ? "Fota senaste bank-SMS. Saldot i SMS:et blir ditt saldo på Hem."
+            ? "Fota senaste bank-SMS först så Hem får rätt saldo. Du kan alltid välja kvitto eller manuellt."
             : "Ett steg. Vi läser bilden och du bekräftar."}
         </p>
       </header>

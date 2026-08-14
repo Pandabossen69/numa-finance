@@ -25,11 +25,11 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/95 shadow-[0_-8px_32px_rgba(10,26,20,0.06)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/97 shadow-[0_-16px_48px_rgba(7,21,17,0.10)] backdrop-blur-2xl md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1.5 pb-1.5 pt-1">
+      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-2 pb-1.5 pt-1.5">
         {left.map((tab) => (
           <NavItem
             key={tab.href}
@@ -44,12 +44,16 @@ export function BottomNav() {
         ))}
         <div className="flex justify-center pb-0.5">
           <Link
-            href="/lagg-till"
+            href="/fota"
             prefetch
             onClick={() => startTransition(() => setOptimisticHref("/fota"))}
-            className="relative -mt-7 flex h-[3.35rem] w-[3.35rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white shadow-[0_10px_28px_rgba(13,122,102,0.35)] transition active:scale-95"
+            className="relative -mt-8 flex h-[3.6rem] w-[3.6rem] items-center justify-center rounded-full bg-[linear-gradient(180deg,color-mix(in_srgb,var(--numa-accent)_88%,white)_0%,var(--numa-accent)_100%)] text-white ring-[6px] ring-[var(--numa-nav)] shadow-[0_14px_34px_rgba(11,111,93,0.42)] transition active:scale-95"
             aria-label="Lägg till eller fota"
           >
+            <span
+              className="pointer-events-none absolute inset-[3px] rounded-full ring-1 ring-white/25"
+              aria-hidden
+            />
             <PlusIcon />
           </Link>
         </div>
@@ -96,7 +100,7 @@ function NavItem({
     >
       {active ? (
         <span
-          className="absolute inset-x-2 top-0.5 bottom-0.5 -z-10 rounded-2xl bg-[var(--numa-accent-soft)]/80"
+          className="absolute inset-x-1.5 top-0.5 bottom-0.5 -z-10 rounded-[1.15rem] bg-[var(--numa-accent-soft)] shadow-[inset_0_0_0_1px_rgba(11,111,93,0.12)]"
           aria-hidden
         />
       ) : null}

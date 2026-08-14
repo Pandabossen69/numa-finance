@@ -15,6 +15,7 @@ import {
   type SelectBankAppImportResult,
 } from "./bank-app-parsers";
 import type { ExtractionProviderResult } from "./extraction";
+import { resolveReceiptPaidAmountMinor } from "./receipt-total";
 
 export type ResolvedScreenshotImport =
   | {
@@ -462,11 +463,31 @@ export function resolveScreenshotImport(
     first?.currency && isCurrencyCode(first.currency)
       ? first.currency
       : "THB";
+  const metaFullText =
+    typeof extraction.rawMetadata?.fullText === "string"
+      ? extraction.rawMetadata.fullText
+      : combinedText;
+  const suggestedAmountMinor = resolveReceiptPaidAmountMinor({
+    visionAmountMinor: first?.amountMinor ?? null,
+    fullText: metaFullText,
+  });
+  const hasAmount =
+    suggestedAmountMinor != null && suggestedAmountMinor > 0;
+  const confidence =
+    typeof first?.confidence === "number" ? first.confidence : null;
+  const unclear = extraction.rawMetadata?.unclear === true;
+  const quality = !hasAmount
+    ? "Kunde inte läsa beloppet säkert. Fyll i själv eller ta en skarpare bild av totalsumman."
+    : unclear || (confidence != null && confidence < 0.55)
+      ? "Bilden är otydlig — kontrollera att beloppet är exakt samma som på kvittot innan du sparar."
+      : confidence != null && confidence < 0.75
+        ? "Osäker läsning — dubbelkolla beloppet noga innan du sparar."
+        : "Vi läste totalsumman (det du faktiskt betalade) — dubbelkolla innan du sparar.";
 
   return {
     kind: "receipt_or_other",
     selectedBatch: [],
-    suggestedAmountMinor: first?.amountMinor ?? null,
+    suggestedAmountMinor,
     suggestedDescription: first?.description ?? null,
     balanceAfterMinor: first?.balanceAfterMinor ?? null,
     fingerprint: null,
@@ -474,9 +495,7 @@ export function resolveScreenshotImport(
     currency,
     observationKind: "receipt",
     source: "receipt_camera",
-    messageSv: first?.amountMinor
-      ? "Vi hittade ett belopp på kvittot — dubbelkolla innan du sparar."
-      : "Kunde inte läsa beloppet säkert. Fyll i själv.",
+    messageSv: quality,
     alreadyKnown: false,
   };
 }

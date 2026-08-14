@@ -1,6 +1,8 @@
 import { calendarDaysBetween, zonedDayAnchorMs } from "./datetime";
 import type { PayCycleProjection } from "./pay-cycle";
 import { perDayBudgetMinor } from "./plan-months";
+import { isBankSmsLedgerRow } from "./balance";
+import type { TransactionSource } from "./types";
 
 export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 
@@ -89,16 +91,31 @@ function projectBridge(input: {
 
 /**
  * Credit that proves planned funding actually landed in the ledger.
- * Bank-SMS tip checkpoints are handled separately by callers when needed.
+ * Bank-SMS / tip-ledger credits (PromptPay etc.) are already in tip saldo —
+ * they must not flip Hem into cycle mode.
  */
 export function isFundingEvidenceTransaction(tx: {
   status: string;
   direction: string;
   transactionType: string;
   occurredAt: string;
+  source?: string | null;
+  fingerprint?: string | null;
+  balanceAfterMinor?: number | null;
+  sourceObservationId?: string | null;
 }): boolean {
   if (tx.status !== "confirmed") return false;
   if (tx.direction !== "credit") return false;
+  if (
+    isBankSmsLedgerRow({
+      source: (tx.source ?? undefined) as TransactionSource | undefined,
+      fingerprint: tx.fingerprint ?? undefined,
+      balanceAfterMinor: tx.balanceAfterMinor ?? undefined,
+      sourceObservationId: tx.sourceObservationId ?? undefined,
+    })
+  ) {
+    return false;
+  }
   return (
     tx.transactionType === "income" || tx.transactionType === "refund"
   );
@@ -112,6 +129,10 @@ export function hasCycleFundingEvidence(input: {
     direction: string;
     transactionType: string;
     occurredAt: string;
+    source?: string | null;
+    fingerprint?: string | null;
+    balanceAfterMinor?: number | null;
+    sourceObservationId?: string | null;
   }>;
 }): boolean {
   const startMs = input.cycleStartAt ? Date.parse(input.cycleStartAt) : NaN;

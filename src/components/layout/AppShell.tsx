@@ -16,9 +16,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex gap-8 md:gap-12">
         <SideNav />
         <div className="min-w-0 flex-1">
-          <header className="flex items-center justify-between gap-3 pt-[max(0.85rem,var(--numa-safe-top))] pb-2 md:hidden">
+          <header className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)]/70 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:hidden">
             <Link href="/idag" prefetch className="block min-w-0">
               <span className="numa-brand-mark">NUMA</span>
+              <span className="mt-0.5 block text-[10px] font-medium tracking-[0.14em] text-[var(--numa-faint)] uppercase">
+                Dina pengar, tydligt
+              </span>
             </Link>
             <SignOutButton variant="header" />
           </header>

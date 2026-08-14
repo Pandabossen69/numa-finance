@@ -222,6 +222,42 @@ describe("projectLivingBudget", () => {
     expect(living.remainingTodayMinor).toBe(living.dayBudgetMinor - spentToday);
   });
 
+  it("bank-SMS tip + today's SMS spend must not show hela dagsbudgeten kvar", () => {
+    // Tip already embeds today's SMS debits. If spentToday is left at 0,
+    // Hem reconstructs morning from the depleted tip and shows full day left.
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-14T15:00:00.000Z"),
+      tz,
+    );
+    const tipAfterSpend = 5_274_00;
+    const smsSpentToday = 1_200_00;
+
+    const broken = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-14T15:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: tipAfterSpend,
+      todaySpendingMinor: 0,
+    });
+    expect(broken.remainingTodayMinor).toBe(broken.dayBudgetMinor);
+
+    const fixed = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-14T15:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: tipAfterSpend,
+      todaySpendingMinor: smsSpentToday,
+    });
+    expect(fixed.dayBudgetMinor).toBe(
+      Math.floor((tipAfterSpend + smsSpentToday) / fixed.daysLeft),
+    );
+    expect(fixed.remainingTodayMinor).toBe(
+      Math.max(0, fixed.dayBudgetMinor - smsSpentToday),
+    );
+    expect(fixed.remainingTodayMinor).toBeLessThan(fixed.dayBudgetMinor);
+  });
+
   it("stays on bank bridge when calendar phase flipped but funding is unconfirmed", () => {
     const cycle = projectPayCycle(
       items,
