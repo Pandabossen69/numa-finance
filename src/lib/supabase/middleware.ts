@@ -37,28 +37,32 @@ async function withTimeout<T>(
   }
 }
 
+function redirectToLogin(request: NextRequest) {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = "/logga-in";
+  redirectUrl.search = "";
+  return NextResponse.redirect(redirectUrl);
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    return supabaseResponse;
-  }
 
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    // Fail closed on protected routes when auth cannot be verified.
+    if (!isPublic) return redirectToLogin(request);
+    return supabaseResponse;
+  }
+
   // Fast path: no auth cookie → skip network round-trip to Supabase.
   if (!hasSupabaseAuthCookie(request)) {
-    if (!isPublic) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/logga-in";
-      redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
-    }
+    if (!isPublic) return redirectToLogin(request);
     return supabaseResponse;
   }
 
@@ -90,14 +94,13 @@ export async function updateSession(request: NextRequest) {
     user = result.data.user;
   } catch (error) {
     console.error("[numa] proxy auth failed", error);
+    // Fail closed: cookie present but session unverifiable.
+    if (!isPublic) return redirectToLogin(request);
     return supabaseResponse;
   }
 
   if (!user && !isPublic) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/logga-in";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    return redirectToLogin(request);
   }
 
   if (user && pathname === "/logga-in") {
@@ -107,9 +110,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && (pathname === "/lista" || pathname === "/")) {
+  // Legacy /lista → Rörelser. "/" → Hem.
+  if (user && pathname === "/") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/idag";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
+  if (user && pathname === "/lista") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/transaktioner";
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }

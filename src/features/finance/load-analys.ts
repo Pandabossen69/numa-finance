@@ -104,6 +104,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor,
       todaySpendingMinor: snap.todaySpendingMinor,
+      fundingConfirmed: snap.fundingConfirmed,
     });
     const remainingFreeMinor = living.remainingFreeMinor;
     const dayBudgetMinor = living.dayBudgetMinor;

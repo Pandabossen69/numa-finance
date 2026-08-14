@@ -7,8 +7,8 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 /**
  * What you can live on right now on Hem.
  *
- * - bridge: before the first income of the wave — kontosaldo until then
- * - cycle: after any funding income landed (partial or full phase from pay-cycle)
+ * - bridge: before funding is evidenced — kontosaldo until then
+ * - cycle: after funding income landed (partial or full phase from pay-cycle)
  * - empty: no planned incomes yet
  *
  * Day envelope (dagsbudget):
@@ -41,6 +41,92 @@ export type LivingBudget = {
   cycleEndInferred: boolean;
 };
 
+function bridgeHorizonIso(
+  cycle: PayCycleProjection,
+  todayMs: number,
+): string | null {
+  const startMs = cycle.startAt ? Date.parse(cycle.startAt) : NaN;
+  if (Number.isFinite(startMs) && todayMs < startMs) return cycle.startAt;
+  return cycle.endAt;
+}
+
+function projectBridge(input: {
+  cycle: PayCycleProjection;
+  now: Date;
+  timeZone: string;
+  bankBalanceMinor: number | null;
+  spentToday: number;
+  nextIncomeAt: string | null;
+  nextIncomeLabelSv: string | null;
+}): LivingBudget {
+  const { cycle, now, timeZone, bankBalanceMinor, spentToday } = input;
+  const hasBalance = bankBalanceMinor != null;
+  const availableMinor = hasBalance ? Math.max(0, bankBalanceMinor) : 0;
+  const morningAvailable = hasBalance
+    ? Math.max(0, availableMinor + spentToday)
+    : 0;
+  const horizon = input.nextIncomeAt;
+  const daysLeft = horizon
+    ? Math.max(1, calendarDaysBetween(now, horizon, timeZone))
+    : 1;
+  const dayBudgetMinor = perDayBudgetMinor(morningAvailable, daysLeft);
+  const remainingToday = Math.max(0, dayBudgetMinor - spentToday);
+  return {
+    mode: "bridge",
+    needsAvailableInput: !hasBalance,
+    usesBankBalance: hasBalance,
+    availableMinor,
+    remainingFreeMinor: availableMinor,
+    daysLeft,
+    dayBudgetMinor,
+    remainingTodayMinor: remainingToday,
+    nextIncomeAt: input.nextIncomeAt,
+    nextIncomeLabelSv: input.nextIncomeLabelSv,
+    cycleEndLabelSv: cycle.endLabelSv,
+    cycleEndInferred: cycle.endInferred,
+  };
+}
+
+/**
+ * Credit that proves planned funding actually landed in the ledger.
+ * Bank-SMS tip checkpoints are handled separately by callers when needed.
+ */
+export function isFundingEvidenceTransaction(tx: {
+  status: string;
+  direction: string;
+  transactionType: string;
+  occurredAt: string;
+}): boolean {
+  if (tx.status !== "confirmed") return false;
+  if (tx.direction !== "credit") return false;
+  return (
+    tx.transactionType === "income" || tx.transactionType === "refund"
+  );
+}
+
+export function hasCycleFundingEvidence(input: {
+  cycleStartAt: string | null;
+  cycleEndAt: string | null;
+  transactions: Array<{
+    status: string;
+    direction: string;
+    transactionType: string;
+    occurredAt: string;
+  }>;
+}): boolean {
+  const startMs = input.cycleStartAt ? Date.parse(input.cycleStartAt) : NaN;
+  const endMs = input.cycleEndAt ? Date.parse(input.cycleEndAt) : NaN;
+  if (!Number.isFinite(startMs)) return false;
+
+  return input.transactions.some((tx) => {
+    if (!isFundingEvidenceTransaction(tx)) return false;
+    const at = Date.parse(tx.occurredAt);
+    if (!Number.isFinite(at) || at < startMs) return false;
+    if (Number.isFinite(endMs) && at >= endMs) return false;
+    return true;
+  });
+}
+
 export function projectLivingBudget(input: {
   cycle: PayCycleProjection;
   now: Date;
@@ -51,6 +137,12 @@ export function projectLivingBudget(input: {
   cycleSpendingMinor?: number;
   /** Confirmed spending on the current zoned calendar day. */
   todaySpendingMinor?: number;
+  /**
+   * When false, stay on bank bridge even if the calendar pay-cycle phase
+   * already flipped — planned income must not inflate "available today".
+   * When omitted, calendar phase alone decides (Plan preview).
+   */
+  fundingConfirmed?: boolean;
 }): LivingBudget {
   const {
     cycle,
@@ -59,6 +151,7 @@ export function projectLivingBudget(input: {
     bankBalanceMinor,
     cycleSpendingMinor = 0,
     todaySpendingMinor = 0,
+    fundingConfirmed,
   } = input;
 
   const spentToday = Math.max(0, todaySpendingMinor);
@@ -83,48 +176,35 @@ export function projectLivingBudget(input: {
   const todayMs = zonedDayAnchorMs(now, timeZone);
   const startMs = Date.parse(cycle.startAt);
   const endMs = Date.parse(cycle.endAt);
-
-  // Waiting for the first paycheck of the wave — live on kontosaldo.
-  if (
+  const cycleClosed =
+    !cycle.isActive || (Number.isFinite(endMs) && todayMs >= endMs);
+  const calendarWaiting =
     cycle.phase === "pre" ||
-    (!cycle.isActive && Number.isFinite(startMs) && todayMs < startMs)
-  ) {
-    const hasBalance = bankBalanceMinor != null;
-    const availableMinor = hasBalance ? Math.max(0, bankBalanceMinor) : 0;
-    // Balance already includes today's spends → restore morning pool.
-    const morningAvailable = hasBalance
-      ? Math.max(0, availableMinor + spentToday)
-      : 0;
-    const daysLeft = Math.max(
-      1,
-      calendarDaysBetween(now, cycle.startAt, timeZone),
-    );
-    const dayBudgetMinor = perDayBudgetMinor(morningAvailable, daysLeft);
-    const remainingToday = Math.max(0, dayBudgetMinor - spentToday);
-    return {
-      mode: "bridge",
-      needsAvailableInput: !hasBalance,
-      usesBankBalance: hasBalance,
-      availableMinor,
-      remainingFreeMinor: availableMinor,
-      daysLeft,
-      dayBudgetMinor,
-      remainingTodayMinor: remainingToday,
-      nextIncomeAt: cycle.startAt,
-      nextIncomeLabelSv: cycle.startLabelSv,
-      cycleEndLabelSv: cycle.endLabelSv,
-      cycleEndInferred: cycle.endInferred,
-    };
+    (!cycle.isActive && Number.isFinite(startMs) && todayMs < startMs);
+  const waitingForBankEvidence =
+    fundingConfirmed === false && !cycleClosed && cycle.phase !== "pre";
+
+  // Bridge: before first paycheck, after cycle end, or payday without bank proof.
+  if (calendarWaiting || cycleClosed || waitingForBankEvidence) {
+    const horizon = bridgeHorizonIso(cycle, todayMs);
+    return projectBridge({
+      cycle,
+      now,
+      timeZone,
+      bankBalanceMinor,
+      spentToday,
+      nextIncomeAt: horizon,
+      nextIncomeLabelSv:
+        horizon === cycle.startAt ? cycle.startLabelSv : cycle.endLabelSv,
+    });
   }
 
   const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
   const poolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
-  const from =
-    Number.isFinite(endMs) && todayMs < endMs ? now : cycle.startAt;
   const daysLeft = Math.max(
     1,
-    calendarDaysBetween(from, cycle.endAt, timeZone),
+    calendarDaysBetween(now, cycle.endAt, timeZone),
   );
   const dayBudgetMinor = perDayBudgetMinor(poolAtMorning, daysLeft);
   const remainingToday = Math.max(0, dayBudgetMinor - spentToday);

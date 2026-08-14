@@ -8,7 +8,6 @@ import {
   createCheckpoint,
   createManualExpense,
   createManualIncome,
-  createScreenshotObservation,
   createTransfer,
   ensureDefaultBankAccount,
   updateTransaction,
@@ -60,7 +59,7 @@ export async function createAccountAction(
       accountType: input.accountType,
       currency: input.currency,
       maskedIdentifier: input.maskedIdentifier,
-      makeDefault: input.makeDefault ?? true,
+      makeDefault: input.makeDefault ?? false,
     });
 
     await createCheckpoint({
@@ -125,7 +124,7 @@ const transferSchema = z.object({
 
 const cashSchema = z.object({
   fromAccountId: z.string().uuid(),
-  toAccountId: z.string().uuid().optional().nullable(),
+  toAccountId: z.string().uuid(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
 });
@@ -326,25 +325,6 @@ export async function setAvailableNowAction(raw: {
         error instanceof Error
           ? error.message
           : "Kunde inte spara tillgängligt belopp",
-    };
-  }
-}
-
-export async function registerScreenshotImportAction(): Promise<ActionResult> {
-  try {
-    await createScreenshotObservation({
-      institutionHint: null,
-      notes:
-        "Skärmbild markerad. För kvitton — använd Fota kvitto så systemet kan läsa beloppet.",
-    });
-    revalidatePath("/importera");
-    revalidatePath("/mer");
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte registrera import",
     };
   }
 }

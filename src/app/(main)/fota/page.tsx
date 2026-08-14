@@ -25,6 +25,7 @@ export default async function FotaPage({
     getCachedTodaySnapshot().catch(() => null),
   ]);
   const data = home.ok ? home.data : null;
+  const bootstrapping = Boolean(data && !data.hasBankTruth);
 
   const accounts =
     snap?.accounts
@@ -33,9 +34,18 @@ export default async function FotaPage({
         id: a.id,
         name: a.name,
         accountType: a.accountType,
+        currency: a.currency,
       })) ?? [];
 
-  const bootstrapping = Boolean(data && !data.hasBankTruth);
+  const thbAccountId =
+    accounts.find((a) => a.currency === "THB" && a.accountType !== "cash")?.id ??
+    accounts.find((a) => a.currency === "THB")?.id ??
+    null;
+  const preferThb = bootstrapping || initialMode === "bank_sms";
+  const preferredAccountId =
+    (preferThb ? thbAccountId : null) ??
+    data?.primaryAccountId ??
+    thbAccountId;
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -48,7 +58,7 @@ export default async function FotaPage({
         </div>
       ) : (
         <ReceiptCaptureFlow
-          accountId={data.primaryAccountId}
+          accountId={preferredAccountId}
           accounts={accounts}
           remainingTodayMinor={data.remainingTodayMinor}
           currency={data.currency}

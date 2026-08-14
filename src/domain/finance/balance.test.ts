@@ -54,6 +54,7 @@ function tx(
     syncStatus: "saved",
     createdAt: overrides.occurredAt,
     updatedAt: overrides.occurredAt,
+    transferGroupId: null,
     ...overrides,
   };
 }
@@ -356,6 +357,35 @@ describe("computeSpendingWindows (Asia/Bangkok)", () => {
     });
     expect(windows.today.amountMinor).toBe(0);
     expect(windows.month.amountMinor).toBe(0);
+  });
+
+  it("bounds cycle spending to [start, end)", () => {
+    const windows = computeSpendingWindows({
+      transactions: [
+        tx({
+          id: "in-window",
+          direction: "debit",
+          transactionType: "expense",
+          amountMinor: 100_00,
+          source: "manual",
+          occurredAt: "2026-08-12T06:00:00.000Z",
+        }),
+        tx({
+          id: "after-window",
+          direction: "debit",
+          transactionType: "expense",
+          amountMinor: 800_00,
+          source: "manual",
+          occurredAt: "2026-09-26T06:00:00.000Z",
+        }),
+      ],
+      currency: "THB",
+      now: new Date("2026-09-26T06:00:00.000Z"),
+      timeZone: tz,
+      cycleStartAt: "2026-08-11T12:00:00.000Z",
+      cycleEndAt: "2026-09-25T12:00:00.000Z",
+    });
+    expect(windows.cycle.amountMinor).toBe(100_00);
   });
 });
 

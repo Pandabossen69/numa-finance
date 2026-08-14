@@ -130,6 +130,7 @@ export async function confirmReceiptExpenseAction(
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
       todaySpendingMinor: snap.todaySpendingMinor,
+      fundingConfirmed: snap.fundingConfirmed,
     });
     const pulse = calculateDayPulse({
       safeToSpendToday: money(living.dayBudgetMinor, snap.currency),

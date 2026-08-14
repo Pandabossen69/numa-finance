@@ -16,6 +16,8 @@ import {
   decideSmsBatchConfirm,
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
+  collectPairedVoidIds,
+  hasCycleFundingEvidence,
   zonedDayKey,
   type Account,
   type BalanceCheckpoint,
@@ -135,8 +137,28 @@ export async function ensureDefaultBankAccount(input?: {
   currency?: CurrencyCode;
 }): Promise<Account> {
   const existing = await listAccounts();
+  const wantedCurrency = input?.currency ?? "THB";
   const primary = existing.find((a) => a.isDefault) ?? existing[0] ?? null;
   if (primary) {
+    if (primary.currency !== wantedCurrency) {
+      const matching =
+        existing.find(
+          (a) => a.currency === wantedCurrency && a.accountType !== "cash",
+        ) ??
+        existing.find((a) => a.currency === wantedCurrency) ??
+        null;
+      if (matching) {
+        return matching;
+      }
+      return createAccount({
+        name: wantedCurrency === "THB" ? "Bangkok Bank" : "Bankkonto",
+        institution: wantedCurrency === "THB" ? "Bangkok Bank" : null,
+        accountType: "checking",
+        currency: wantedCurrency,
+        maskedIdentifier: input?.maskedIdentifier ?? null,
+        makeDefault: existing.length === 0,
+      });
+    }
     if (
       input?.maskedIdentifier &&
       (!primary.maskedIdentifier || primary.maskedIdentifier === "")
@@ -160,7 +182,7 @@ export async function ensureDefaultBankAccount(input?: {
     name: "Bangkok Bank",
     institution: "Bangkok Bank",
     accountType: "checking",
-    currency: input?.currency ?? "THB",
+    currency: wantedCurrency,
     maskedIdentifier: input?.maskedIdentifier ?? null,
     makeDefault: true,
   });
@@ -388,122 +410,142 @@ export async function createTransfer(input: {
   const ts = new Date().toISOString();
   const occurredAt = input.occurredAt ?? ts;
   const description = input.description?.trim() || "Överföring";
+  const transferGroupId = crypto.randomUUID();
+  const outId = crypto.randomUUID();
+  const inId = crypto.randomUUID();
 
-  const { data: outRow, error: outError } = await supabase
+  // Single multi-row insert — both legs commit together or neither does.
+  const { data: rows, error } = await supabase
     .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: from.id,
-      counter_account_id: to.id,
-      direction: "debit",
-      transaction_type: "transfer",
-      amount_minor: input.amountMinor,
-      currency: from.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (outError) throw new Error(outError.message);
+    .insert([
+      {
+        id: outId,
+        user_id: userId,
+        account_id: from.id,
+        counter_account_id: to.id,
+        direction: "debit",
+        transaction_type: "transfer",
+        amount_minor: input.amountMinor,
+        currency: from.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+      {
+        id: inId,
+        user_id: userId,
+        account_id: to.id,
+        counter_account_id: from.id,
+        direction: "credit",
+        transaction_type: "transfer",
+        amount_minor: input.amountMinor,
+        currency: to.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+    ])
+    .select("*");
+  if (error) throw new Error(error.message);
 
-  const { data: inRow, error: inError } = await supabase
-    .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: to.id,
-      counter_account_id: from.id,
-      direction: "credit",
-      transaction_type: "transfer",
-      amount_minor: input.amountMinor,
-      currency: to.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (inError) throw new Error(inError.message);
+  const outRow = (rows ?? []).find((r) => r.id === outId);
+  const inRow = (rows ?? []).find((r) => r.id === inId);
+  if (!outRow || !inRow) {
+    throw new Error("Överföringen sparades inte komplett");
+  }
 
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
 }
 
 export async function createCashWithdrawal(input: {
   fromAccountId: string;
-  toAccountId?: string | null;
+  toAccountId: string;
   amountMinor: number;
   description?: string;
   occurredAt?: string;
-}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction | null }> {
+}): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
+  }
+  if (!input.toAccountId) {
+    throw new Error(
+      "Välj ett kontantkonto — annars försvinner pengarna i modellen",
+    );
+  }
+  if (input.fromAccountId === input.toAccountId) {
+    throw new Error("Välj två olika konton");
   }
 
   const userId = await requireUserId();
   const from = await getAccount(input.fromAccountId);
   if (!from) throw new Error("Kontot hittades inte");
-
-  let to = null as Awaited<ReturnType<typeof getAccount>>;
-  if (input.toAccountId) {
-    to = await getAccount(input.toAccountId);
-    if (!to) throw new Error("Kontantkontot hittades inte");
-    if (from.currency !== to.currency) {
-      throw new Error("Olika valutor stöds inte ännu");
-    }
+  const to = await getAccount(input.toAccountId);
+  if (!to) throw new Error("Kontantkontot hittades inte");
+  if (to.accountType !== "cash") {
+    throw new Error("Kontantuttag måste gå till ett konto av typen Kontanter");
+  }
+  if (from.currency !== to.currency) {
+    throw new Error("Olika valutor stöds inte ännu");
   }
 
   const supabase = await createSupabaseServerClient();
   const ts = new Date().toISOString();
   const occurredAt = input.occurredAt ?? ts;
   const description = input.description?.trim() || "Kontantuttag";
+  const transferGroupId = crypto.randomUUID();
+  const outId = crypto.randomUUID();
+  const inId = crypto.randomUUID();
 
-  const { data: outRow, error: outError } = await supabase
+  const { data: rows, error } = await supabase
     .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: from.id,
-      counter_account_id: to?.id ?? null,
-      direction: "debit",
-      transaction_type: "cash_withdrawal",
-      amount_minor: input.amountMinor,
-      currency: from.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (outError) throw new Error(outError.message);
+    .insert([
+      {
+        id: outId,
+        user_id: userId,
+        account_id: from.id,
+        counter_account_id: to.id,
+        direction: "debit",
+        transaction_type: "cash_withdrawal",
+        amount_minor: input.amountMinor,
+        currency: from.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+      {
+        id: inId,
+        user_id: userId,
+        account_id: to.id,
+        counter_account_id: from.id,
+        direction: "credit",
+        transaction_type: "cash_withdrawal",
+        amount_minor: input.amountMinor,
+        currency: to.currency,
+        occurred_at: occurredAt,
+        description,
+        source: "manual",
+        status: "confirmed",
+        sync_status: "synced",
+        transfer_group_id: transferGroupId,
+      },
+    ])
+    .select("*");
+  if (error) throw new Error(error.message);
 
-  if (!to) {
-    return { out: mapTransaction(outRow), inn: null };
+  const outRow = (rows ?? []).find((r) => r.id === outId);
+  const inRow = (rows ?? []).find((r) => r.id === inId);
+  if (!outRow || !inRow) {
+    throw new Error("Kontantuttaget sparades inte komplett");
   }
-
-  const { data: inRow, error: inError } = await supabase
-    .from("transactions")
-    .insert({
-      user_id: userId,
-      account_id: to.id,
-      counter_account_id: from.id,
-      direction: "credit",
-      transaction_type: "cash_withdrawal",
-      amount_minor: input.amountMinor,
-      currency: to.currency,
-      occurred_at: occurredAt,
-      description,
-      source: "manual",
-      status: "confirmed",
-      sync_status: "synced",
-    })
-    .select("*")
-    .single();
-  if (inError) throw new Error(inError.message);
 
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
 }
@@ -572,18 +614,82 @@ export async function updateTransaction(input: {
 export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  const { data: target, error: readError } = await supabase
     .from("transactions")
-    .update({
-      status: "voided",
-      updated_at: new Date().toISOString(),
-    })
+    .select("*")
     .eq("user_id", userId)
     .eq("id", id)
+    .maybeSingle();
+  if (readError) throw new Error(readError.message);
+  if (!target) throw new Error("Rörelsen hittades inte");
+
+  let siblingRows: Array<Record<string, unknown>> = [];
+  if (
+    target.transaction_type === "transfer" ||
+    target.transaction_type === "cash_withdrawal"
+  ) {
+    if (target.transfer_group_id) {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("transfer_group_id", target.transfer_group_id);
+      if (error) throw new Error(error.message);
+      siblingRows = data ?? [];
+    } else if (target.counter_account_id) {
+      // Legacy rows without transfer_group_id.
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("transaction_type", target.transaction_type)
+        .eq("amount_minor", target.amount_minor)
+        .eq("occurred_at", target.occurred_at)
+        .eq("account_id", target.counter_account_id)
+        .eq("counter_account_id", target.account_id)
+        .neq("status", "voided");
+      if (error) throw new Error(error.message);
+      siblingRows = data ?? [];
+    }
+  }
+
+  const ids = collectPairedVoidIds(
+    {
+      id: target.id as string,
+      transactionType: target.transaction_type as string,
+      accountId: target.account_id as string,
+      counterAccountId: (target.counter_account_id as string | null) ?? null,
+      amountMinor: Number(target.amount_minor),
+      occurredAt: target.occurred_at as string,
+      transferGroupId: (target.transfer_group_id as string | null) ?? null,
+      status: target.status as string,
+    },
+    siblingRows.map((row) => ({
+      id: row.id as string,
+      transactionType: row.transaction_type as string,
+      accountId: row.account_id as string,
+      counterAccountId: (row.counter_account_id as string | null) ?? null,
+      amountMinor: Number(row.amount_minor),
+      occurredAt: row.occurred_at as string,
+      transferGroupId: (row.transfer_group_id as string | null) ?? null,
+      status: row.status as string,
+    })),
+  );
+
+  const { error: updateError } = await supabase
+    .from("transactions")
+    .update({ status: "voided", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .in("id", ids);
+  if (updateError) throw new Error(updateError.message);
+
+  const { data: voided, error: afterError } = await supabase
+    .from("transactions")
     .select("*")
+    .eq("id", id)
     .single();
-  if (error) throw new Error(error.message);
-  return mapTransaction(data);
+  if (afterError) throw new Error(afterError.message);
+  return mapTransaction(voided);
 }
 
 export async function listKnownFingerprints(options?: {
@@ -858,7 +964,13 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       now,
       timeZone: timezone || "Asia/Bangkok",
       cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
     });
+  const fundingConfirmed = hasCycleFundingEvidence({
+    cycleStartAt: cycle.startAt,
+    cycleEndAt: cycle.endAt,
+    transactions: accountTx,
+  });
   // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
   const safe =
     calculated != null
@@ -893,6 +1005,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
     cycleSpendingMinor: cycleSpending.amountMinor,
+    fundingConfirmed,
     safeToSpendTodayMinor: safe?.today.amountMinor ?? 0,
     safeToSpendWeekMinor: safe?.week.amountMinor ?? 0,
     freeMinor: safe?.free.amountMinor ?? 0,
@@ -924,6 +1037,7 @@ function emptySnapshot(
     todaySpendingMinor: 0,
     monthSpendingMinor: 0,
     cycleSpendingMinor: 0,
+    fundingConfirmed: false,
     safeToSpendTodayMinor: 0,
     safeToSpendWeekMinor: 0,
     freeMinor: 0,
@@ -1379,12 +1493,24 @@ export async function confirmReceiptExpense(
 
     const maskedFromCandidate =
       input.maskedAccount ?? observation.accountHint ?? null;
-    const account =
-      (input.accountId ? await getAccount(input.accountId) : null) ??
+    let account =
+      (input.accountId ? await getAccount(input.accountId) : null) ?? null;
+    if (account && account.currency !== "THB") {
+      throw new Error(
+        "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+      );
+    }
+    account =
+      account ??
       (await ensureDefaultBankAccount({
         maskedIdentifier: maskedFromCandidate,
         currency: "THB",
       }));
+    if (account.currency !== "THB") {
+      throw new Error(
+        "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+      );
+    }
 
     const existingCheckpoint = await latestCheckpointForAccount(account.id);
     const hadCheckpoint = existingCheckpoint != null;
@@ -1568,12 +1694,24 @@ export async function confirmReceiptExpense(
   maskedFromCandidate =
     maskedFromCandidate ?? observation.accountHint ?? null;
 
-  const account =
-    (input.accountId ? await getAccount(input.accountId) : null) ??
+  let account =
+    (input.accountId ? await getAccount(input.accountId) : null) ?? null;
+  if (source === "screenshot" && account && account.currency !== "THB") {
+    throw new Error(
+      "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+    );
+  }
+  account =
+    account ??
     (await ensureDefaultBankAccount({
       maskedIdentifier: maskedFromCandidate,
-      currency: "THB",
+      currency: source === "screenshot" ? "THB" : undefined,
     }));
+  if (source === "screenshot" && account.currency !== "THB") {
+    throw new Error(
+      "Bank-SMS är i THB — välj eller skapa ett THB-konto innan du sparar",
+    );
+  }
 
   const existingCheckpoint = await latestCheckpointForAccount(account.id);
   const hadCheckpoint = existingCheckpoint != null;

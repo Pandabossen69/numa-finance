@@ -8,6 +8,7 @@ export function CreateAccountForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [useOnIdag, setUseOnIdag] = useState(false);
   const [form, setForm] = useState({
     name: "Bangkok Bank",
     institution: "Bangkok Bank",
@@ -29,13 +30,13 @@ export function CreateAccountForm() {
     startTransition(async () => {
       const result = await createAccountAction({
         ...form,
-        makeDefault: true,
+        makeDefault: useOnIdag,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      router.push("/idag");
+      router.push(useOnIdag ? "/idag" : "/konton");
       router.refresh();
     });
   }
@@ -109,6 +110,18 @@ export function CreateAccountForm() {
         placeholder="t.ex. 10058,04"
         inputMode="decimal"
       />
+
+      <label className="flex items-start gap-3 rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3">
+        <input
+          type="checkbox"
+          checked={useOnIdag}
+          onChange={(e) => setUseOnIdag(e.target.checked)}
+          className="mt-1 h-4 w-4 accent-[var(--numa-accent)]"
+        />
+        <span className="text-sm leading-relaxed text-[var(--numa-muted)]">
+          Använd på Idag (gör detta till ditt primära saldo)
+        </span>
+      </label>
 
       {error ? (
         <p

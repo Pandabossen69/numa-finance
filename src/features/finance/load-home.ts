@@ -65,6 +65,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor,
       todaySpendingMinor: snap.todaySpendingMinor,
+      fundingConfirmed: snap.fundingConfirmed,
     });
 
     return {
@@ -80,11 +81,12 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         todaySpendingMinor: snap.todaySpendingMinor,
         monthSpendingMinor: snap.monthSpendingMinor,
         cycleSpendingMinor,
-        safeToSpendTodayMinor: snap.safeToSpendTodayMinor,
+        // Prefer living-budget hero number over legacy STS dual engine.
+        safeToSpendTodayMinor: living.remainingTodayMinor,
         cycleStartLabelSv: cycle.startLabelSv,
         cycleEndLabelSv: living.cycleEndLabelSv,
         cycleEndInferred: living.cycleEndInferred,
-        cycleIsActive: cycle.isActive,
+        cycleIsActive: cycle.isActive && snap.fundingConfirmed,
         livingMode: living.mode,
         needsAvailableInput: living.needsAvailableInput,
         usesBankBalance: living.usesBankBalance,
@@ -96,7 +98,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         spendDaysLeft: living.daysLeft,
         dayBudgetMinor: living.dayBudgetMinor,
         remainingTodayMinor: living.remainingTodayMinor,
-        daysUntilIncome: snap.daysUntilIncome,
+        daysUntilIncome: living.daysLeft,
         nextIncomeLabelSv: living.nextIncomeLabelSv,
       },
     };
