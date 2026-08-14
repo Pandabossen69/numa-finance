@@ -1,11 +1,14 @@
 import type { MetadataRoute } from "next";
+import { PRODUCTION_ORIGIN } from "@/lib/site";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: `${PRODUCTION_ORIGIN}/`,
     name: "NUMA",
     short_name: "NUMA",
     description: "Personlig ekonomisk kontroll",
-    start_url: "/idag",
+    start_url: `${PRODUCTION_ORIGIN}/idag`,
+    scope: `${PRODUCTION_ORIGIN}/`,
     display: "standalone",
     background_color: "#eef2ef",
     theme_color: "#eef2ef",

@@ -1,5 +1,6 @@
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { getProfile } from "@/lib/store/repository";
+import { PRODUCTION_ORIGIN } from "@/lib/site";
 import {
   MerListGroup,
   MerListLink,
@@ -51,6 +52,16 @@ export default async function MerPage() {
       <MerPageHeader title="Mer" description={`Inloggad som ${displayName}`} />
 
       <nav className="animate-rise-delay-1 space-y-6" aria-label="Mer-meny">
+        <MerSection title="På telefonen">
+          <MerListGroup>
+            <MerListLink
+              href={PRODUCTION_ORIGIN}
+              label="Production-länk"
+              hint="numa-finance.vercel.app — lägg till på hemskärmen härifrån"
+            />
+          </MerListGroup>
+        </MerSection>
+
         {sections.map((section) => (
           <MerSection key={section.title} title={section.title}>
             <MerListGroup>
@@ -69,8 +80,12 @@ export default async function MerPage() {
         <MerSection title="Konto">
           <MerListGroup>
             <MerListRow>
-              <p className="text-[15px] font-semibold tracking-tight">{displayName}</p>
-              <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">Inloggad nu</p>
+              <p className="text-[15px] font-semibold tracking-tight">
+                {displayName}
+              </p>
+              <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
+                Inloggad nu
+              </p>
             </MerListRow>
             <MerListRow className="py-3">
               <SignOutButton />

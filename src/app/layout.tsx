@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, JetBrains_Mono } from "next/font/google";
+import { CanonicalHostRedirect } from "@/components/pwa/CanonicalHostRedirect";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
+import { PRODUCTION_ORIGIN } from "@/lib/site";
 import "./globals.css";
 
 const sans = Sora({
@@ -18,6 +20,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(PRODUCTION_ORIGIN),
   title: "NUMA",
   description: "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
   applicationName: "NUMA",
@@ -48,6 +51,7 @@ export default function RootLayout({
   return (
     <html lang="sv" className={`${sans.variable} ${mono.variable} h-full`}>
       <body className="min-h-full antialiased">
+        <CanonicalHostRedirect />
         {children}
         <PwaRegister />
       </body>

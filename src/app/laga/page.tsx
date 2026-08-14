@@ -77,10 +77,21 @@ export default function LagaPage() {
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#5a6b61" }}>
         {status}
       </p>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#5a6b61" }}>
+        Tip: lägg till NUMA på hemskärmen från{" "}
+        <a
+          href="https://numa-finance.vercel.app/idag"
+          style={{ color: "#1f6f5b", fontWeight: 600 }}
+        >
+          numa-finance.vercel.app
+        </a>{" "}
+        — inte från tillfälliga Vercel-länkar. Då får du alltid senaste
+        production automatiskt.
+      </p>
       {ready ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <a
-            href={`/mer?r=${Date.now()}`}
+            href="https://numa-finance.vercel.app/idag"
             style={{
               display: "flex",
               minHeight: 48,
@@ -94,7 +105,24 @@ export default function LagaPage() {
               textDecoration: "none",
             }}
           >
-            Öppna Mer-menyn
+            Öppna production (rätt länk)
+          </a>
+          <a
+            href={`/mer?r=${Date.now()}`}
+            style={{
+              display: "flex",
+              minHeight: 48,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 16,
+              border: "1px solid rgba(19,32,25,0.12)",
+              color: "#132019",
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: "none",
+            }}
+          >
+            Öppna Mer-menyn här
           </a>
           <a
             href={`/idag?r=${Date.now()}`}
@@ -111,7 +139,7 @@ export default function LagaPage() {
               textDecoration: "none",
             }}
           >
-            Öppna Hem
+            Öppna Hem här
           </a>
         </div>
       ) : null}

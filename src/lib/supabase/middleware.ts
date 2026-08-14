@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  PRODUCTION_ORIGIN,
+  shouldRedirectToProduction,
+} from "@/lib/site";
 import { supabaseServerOptions } from "./options";
 
 const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga"];
@@ -44,7 +48,20 @@ function redirectToLogin(request: NextRequest) {
   return NextResponse.redirect(redirectUrl);
 }
 
+function redirectToProduction(request: NextRequest) {
+  const dest = new URL(
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    PRODUCTION_ORIGIN,
+  );
+  return NextResponse.redirect(dest, 308);
+}
+
 export async function updateSession(request: NextRequest) {
+  const host = request.headers.get("host") ?? request.nextUrl.host;
+  if (shouldRedirectToProduction(host, request.nextUrl.searchParams)) {
+    return redirectToProduction(request);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const pathname = request.nextUrl.pathname;
