@@ -42,6 +42,7 @@ async function PlanContent() {
         timeZone={timeZone}
         bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
         cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
+        todaySpendingMinor={snap?.todaySpendingMinor ?? 0}
       />
     </section>
   );

@@ -102,6 +102,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       timeZone,
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor,
+      todaySpendingMinor: snap.todaySpendingMinor,
     });
     const remainingFreeMinor = living.remainingFreeMinor;
     const perDayMinor = living.perDayMinor;
@@ -174,18 +175,19 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         ? [
             "Innan nästa intäkt lever du på det som finns kvar på kontot (från förra månaden).",
             "Ange saldo manuellt eller fota bank-SMS / kvitto — då uppdateras saldot.",
-            "Kvar per dag = saldo ÷ dagar kvar till nästa intäkt.",
+            "Dagsbudget = saldo ÷ dagar kvar till nästa intäkt (ligger kvar hela dagen).",
+            "Kvar idag = dagsbudget − det du spenderat idag.",
             "När intäkterna landar växlar Hem till plan-poolen för den månaden.",
           ]
         : living.mode === "empty"
           ? [
               "Lägg in intäkter med datum i Plan — då startar en inkomstcykel.",
-              "Fota bank-SMS eller ange saldo på Hem så att kvar per dag kan räknas.",
+              "Fota bank-SMS eller ange saldo på Hem så att dagsbudget kan räknas.",
             ]
           : cycle.phase === "partial"
             ? [
                 "Tidiga intäkter i månaden ingår redan i budgeten.",
-                "Kvar per dag räknas fram till månadens sista intäkt (då blir det mer per dag).",
+                "Dagsbudget räknas fram till månadens sista intäkt (då blir det mer per dag).",
                 "När sista intäkten landar räknas hela poolen om till nästa månads sista intäkt.",
               ]
             : [
@@ -193,7 +195,8 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
                 "Den poolen ska täcka fasta + extra utgifter fram till nästa månads sista intäkt.",
                 "Planerat fritt = intäkter − utgifter i perioden − sparande.",
                 "Kvar totalt = planerat fritt − faktiskt spenderat sedan periodens start.",
-                "Kvar per dag = kvar totalt ÷ dagar kvar till nästa månads sista intäkt.",
+                "Dagsbudget = morgonens kvar ÷ dagar kvar (ligger kvar hela dagen).",
+                "Kvar idag = dagsbudget − det du spenderat idag (andra dagar ändras inte).",
               ];
 
     return {

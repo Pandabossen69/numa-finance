@@ -6,7 +6,7 @@ import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
-import type { CurrencyCode } from "@/domain/money";
+import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import {
   createExpenseAction,
   setAvailableNowAction,
@@ -14,6 +14,9 @@ import {
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
 
+function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
+  return formatMoney(money(Math.max(0, amountMinor), currency));
+}
 export function HomeDashboard({
   snap,
   error,
@@ -88,7 +91,7 @@ export function HomeDashboard({
             aria-labelledby="spend-heading"
           >
             <p id="spend-heading" className="numa-section-title">
-              Kvar per dag
+              Kvar idag
             </p>
             <div
               className={
@@ -105,6 +108,13 @@ export function HomeDashboard({
             </div>
             {!isEmpty ? (
               <p className="text-sm text-[var(--numa-muted)]">
+                {snap.dayBudgetMinor > 0
+                  ? `Dagsbudget ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
+                  : null}
+                {snap.dayBudgetMinor > 0 && snap.todaySpendingMinor > 0
+                  ? ` · spenderat ${formatMoneyHint(snap.todaySpendingMinor, currency)}`
+                  : ""}
+                {snap.dayBudgetMinor > 0 ? " · " : ""}
                 {isBridge
                   ? `${formatCountSv(snap.spendDaysLeft, "dag", "dagar")} till nästa intäkt`
                   : `${formatCountSv(snap.spendDaysLeft, "dag", "dagar")} kvar`}

@@ -36,8 +36,10 @@ export type HomeSnapshot = {
   /** What you have left to live on right now. */
   remainingFreeMinor: number;
   spendDaysLeft: number;
-  /** remainingFree ÷ days left. */
+  /** remaining of today's sticky dagsbudget (Hem hero). */
   perDayBudgetMinor: number;
+  /** Morning sticky dagsbudget — does not fall when you spend today. */
+  dayBudgetMinor: number;
   daysUntilIncome: number;
   nextIncomeLabelSv: string | null;
 };
@@ -62,6 +64,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       timeZone,
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor,
+      todaySpendingMinor: snap.todaySpendingMinor,
     });
 
     return {
@@ -92,6 +95,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         remainingFreeMinor: living.remainingFreeMinor,
         spendDaysLeft: living.daysLeft,
         perDayBudgetMinor: living.perDayMinor,
+        dayBudgetMinor: living.dayBudgetMinor,
         daysUntilIncome: snap.daysUntilIncome,
         nextIncomeLabelSv: living.nextIncomeLabelSv,
       },

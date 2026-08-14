@@ -53,7 +53,7 @@ export function ReceiptCaptureFlow({
   accountId,
   accounts,
   perDayBudgetMinor,
-  todaySpendingMinor,
+  todaySpendingMinor: _todaySpendingMinor,
   currency,
   bootstrapping = false,
   initialMode = "pick",
@@ -87,7 +87,7 @@ export function ReceiptCaptureFlow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const roomBefore = Math.max(0, perDayBudgetMinor - todaySpendingMinor);
+  const roomBefore = Math.max(0, perDayBudgetMinor);
 
   const impact = useMemo(() => {
     if (!preview || preview.alreadyKnown) return null;

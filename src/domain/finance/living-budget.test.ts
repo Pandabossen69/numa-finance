@@ -158,4 +158,67 @@ describe("projectLivingBudget", () => {
     expect(living.mode).toBe("cycle");
     expect(living.remainingFreeMinor).toBe(cycle.freeToSpendMinor - 1_000_00);
   });
+
+  it("keeps sticky dagsbudget and only depletes today's remaining when you spend", () => {
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-26T03:00:00.000Z"),
+      tz,
+    );
+    expect(cycle.phase).toBe("full");
+
+    const morning = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-26T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 50_000_00,
+      cycleSpendingMinor: 0,
+      todaySpendingMinor: 0,
+    });
+    expect(morning.dayBudgetMinor).toBeGreaterThan(0);
+    expect(morning.perDayMinor).toBe(morning.dayBudgetMinor);
+
+    const spentToday = 300_00;
+    const after = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-26T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 50_000_00,
+      cycleSpendingMinor: spentToday,
+      todaySpendingMinor: spentToday,
+    });
+
+    // Dagsbudget stays the morning rate — other days are not rewritten.
+    expect(after.dayBudgetMinor).toBe(morning.dayBudgetMinor);
+    // Hero remaining drops by exactly today's spend.
+    expect(after.perDayMinor).toBe(morning.dayBudgetMinor - spentToday);
+    // Must NOT be the redistributed floor((free-spend)/days) model.
+    const redistributed = Math.floor(
+      (cycle.freeToSpendMinor - spentToday) / after.daysLeft,
+    );
+    expect(after.perDayMinor).not.toBe(redistributed);
+  });
+
+  it("bridge mode also depletes sticky day budget from today's spend", () => {
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-11T03:00:00.000Z"),
+      tz,
+    );
+    const spentToday = 300_00;
+    const morningSaldo = 21_000_97;
+    const currentSaldo = morningSaldo - spentToday;
+
+    const living = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-11T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: currentSaldo,
+      todaySpendingMinor: spentToday,
+    });
+
+    expect(living.mode).toBe("bridge");
+    expect(living.dayBudgetMinor).toBe(Math.floor(morningSaldo / 12));
+    expect(living.perDayMinor).toBe(living.dayBudgetMinor - spentToday);
+  });
 });

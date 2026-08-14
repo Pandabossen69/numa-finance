@@ -129,9 +129,10 @@ export async function confirmReceiptExpenseAction(
       timeZone,
       bankBalanceMinor: snap.calculatedBalanceMinor,
       cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
+      todaySpendingMinor: snap.todaySpendingMinor,
     });
     const pulse = calculateDayPulse({
-      safeToSpendToday: money(living.perDayMinor, snap.currency),
+      safeToSpendToday: money(living.dayBudgetMinor, snap.currency),
       spentToday: money(snap.todaySpendingMinor, snap.currency),
     });
 

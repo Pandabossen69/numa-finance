@@ -129,7 +129,7 @@ export function AnalysDashboard({
               />
             )}
             <MetricRow
-              label="Kvar per dag"
+              label="Kvar idag"
               amountMinor={hasSaldo ? cycle.perDayMinor : 0}
               currency={currency}
               tone={hasSaldo && cycle.perDayMinor > 0 ? "positive" : undefined}
@@ -165,7 +165,7 @@ export function AnalysDashboard({
               currency={currency}
             />
             <MetricRow
-              label="Kvar per dag"
+              label="Kvar idag"
               amountMinor={cycle.perDayMinor}
               currency={currency}
               tone={cycle.perDayMinor > 0 ? "positive" : undefined}

@@ -10,6 +10,11 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
  * - bridge: before the first income of the wave — kontosaldo until then
  * - cycle: after any funding income landed (partial or full phase from pay-cycle)
  * - empty: no planned incomes yet
+ *
+ * Day envelope (dagsbudget):
+ * Morning sticky allowance is floor(poolWithoutTodaySpend / daysLeft).
+ * Spending today depletes *today's remaining only* — it does not
+ * redistribute into a lower rate for other days mid-day.
  */
 export type LivingBudget = {
   mode: LivingBudgetMode;
@@ -20,6 +25,15 @@ export type LivingBudget = {
   availableMinor: number;
   remainingFreeMinor: number;
   daysLeft: number;
+  /**
+   * Sticky morning dagsbudget for this calendar day.
+   * Does not shrink when you spend today.
+   */
+  dayBudgetMinor: number;
+  /**
+   * What is left of today's dagsbudget: max(0, dayBudget − spentToday).
+   * This is the Hem hero number.
+   */
   perDayMinor: number;
   nextIncomeAt: string | null;
   nextIncomeLabelSv: string | null;
@@ -35,6 +49,8 @@ export function projectLivingBudget(input: {
   bankBalanceMinor: number | null;
   /** Actual spending attributed to the active cycle (ignored in bridge). */
   cycleSpendingMinor?: number;
+  /** Confirmed spending on the current zoned calendar day. */
+  todaySpendingMinor?: number;
 }): LivingBudget {
   const {
     cycle,
@@ -42,7 +58,10 @@ export function projectLivingBudget(input: {
     timeZone,
     bankBalanceMinor,
     cycleSpendingMinor = 0,
+    todaySpendingMinor = 0,
   } = input;
+
+  const spentToday = Math.max(0, todaySpendingMinor);
 
   if (!cycle.startAt || !cycle.endAt) {
     return {
@@ -52,6 +71,7 @@ export function projectLivingBudget(input: {
       availableMinor: 0,
       remainingFreeMinor: 0,
       daysLeft: 1,
+      dayBudgetMinor: 0,
       perDayMinor: 0,
       nextIncomeAt: null,
       nextIncomeLabelSv: null,
@@ -71,10 +91,16 @@ export function projectLivingBudget(input: {
   ) {
     const hasBalance = bankBalanceMinor != null;
     const availableMinor = hasBalance ? Math.max(0, bankBalanceMinor) : 0;
+    // Balance already includes today's spends → restore morning pool.
+    const morningAvailable = hasBalance
+      ? Math.max(0, availableMinor + spentToday)
+      : 0;
     const daysLeft = Math.max(
       1,
       calendarDaysBetween(now, cycle.startAt, timeZone),
     );
+    const dayBudgetMinor = perDayBudgetMinor(morningAvailable, daysLeft);
+    const remainingToday = Math.max(0, dayBudgetMinor - spentToday);
     return {
       mode: "bridge",
       needsAvailableInput: !hasBalance,
@@ -82,7 +108,8 @@ export function projectLivingBudget(input: {
       availableMinor,
       remainingFreeMinor: availableMinor,
       daysLeft,
-      perDayMinor: perDayBudgetMinor(availableMinor, daysLeft),
+      dayBudgetMinor,
+      perDayMinor: remainingToday,
       nextIncomeAt: cycle.startAt,
       nextIncomeLabelSv: cycle.startLabelSv,
       cycleEndLabelSv: cycle.endLabelSv,
@@ -90,22 +117,27 @@ export function projectLivingBudget(input: {
     };
   }
 
-  const free = cycle.freeToSpendMinor - cycleSpendingMinor;
+  const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
+  const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
+  const poolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
   const from =
     Number.isFinite(endMs) && todayMs < endMs ? now : cycle.startAt;
   const daysLeft = Math.max(
     1,
     calendarDaysBetween(from, cycle.endAt, timeZone),
   );
+  const dayBudgetMinor = perDayBudgetMinor(poolAtMorning, daysLeft);
+  const remainingToday = Math.max(0, dayBudgetMinor - spentToday);
 
   return {
     mode: "cycle",
     needsAvailableInput: false,
     usesBankBalance: false,
-    availableMinor: free,
-    remainingFreeMinor: free,
+    availableMinor: remainingFree,
+    remainingFreeMinor: remainingFree,
     daysLeft,
-    perDayMinor: perDayBudgetMinor(free, daysLeft),
+    dayBudgetMinor,
+    perDayMinor: remainingToday,
     nextIncomeAt: cycle.endAt,
     nextIncomeLabelSv: cycle.endLabelSv,
     cycleEndLabelSv: cycle.endLabelSv,
