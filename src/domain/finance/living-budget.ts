@@ -2,6 +2,7 @@ import { calendarDaysBetween, zonedDayAnchorMs } from "./datetime";
 import type { PayCycleProjection } from "./pay-cycle";
 import { perDayBudgetMinor } from "./plan-months";
 import { isBankSmsLedgerRow } from "./balance";
+import type { TransactionSource } from "./types";
 
 export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 
@@ -107,7 +108,7 @@ export function isFundingEvidenceTransaction(tx: {
   if (tx.direction !== "credit") return false;
   if (
     isBankSmsLedgerRow({
-      source: tx.source ?? undefined,
+      source: (tx.source ?? undefined) as TransactionSource | undefined,
       fingerprint: tx.fingerprint ?? undefined,
       balanceAfterMinor: tx.balanceAfterMinor ?? undefined,
       sourceObservationId: tx.sourceObservationId ?? undefined,
