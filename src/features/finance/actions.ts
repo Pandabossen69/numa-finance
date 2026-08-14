@@ -125,7 +125,7 @@ const transferSchema = z.object({
 
 const cashSchema = z.object({
   fromAccountId: z.string().uuid(),
-  toAccountId: z.string().uuid().optional().nullable(),
+  toAccountId: z.string().uuid(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
 });

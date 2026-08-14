@@ -66,6 +66,7 @@ type DbTransaction = {
   balance_after_minor: number | null;
   fingerprint: string | null;
   source_observation_id: string | null;
+  transfer_group_id?: string | null;
   sync_status: CanonicalTransaction["syncStatus"];
   created_at: string;
   updated_at: string;
@@ -148,6 +149,7 @@ export function mapTransaction(row: DbTransaction): CanonicalTransaction {
       row.balance_after_minor == null ? null : Number(row.balance_after_minor),
     fingerprint: row.fingerprint,
     sourceObservationId: row.source_observation_id,
+    transferGroupId: row.transfer_group_id ?? null,
     syncStatus: row.sync_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

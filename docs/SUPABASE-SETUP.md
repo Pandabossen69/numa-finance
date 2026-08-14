@@ -21,6 +21,8 @@ Do **not** put NUMA tables in `public`.
    - `supabase/migrations/20260809000000_numa_schema.sql`
    - `supabase/migrations/20260809000001_numa_grants.sql`
    - `supabase/migrations/20260809000002_numa_progress.sql` (levels / streak / future leaderboard)
+   - `supabase/migrations/20260811135906_candidate_fingerprint_unique.sql` (unique candidate fingerprints)
+   - `supabase/migrations/20260814141040_transfer_group.sql` (pair transfer / cash legs)
 3. Confirm success (no errors).
 
 ## Expose schema to the Data API

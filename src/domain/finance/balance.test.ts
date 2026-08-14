@@ -54,6 +54,7 @@ function tx(
     syncStatus: "saved",
     createdAt: overrides.occurredAt,
     updatedAt: overrides.occurredAt,
+    transferGroupId: null,
     ...overrides,
   };
 }

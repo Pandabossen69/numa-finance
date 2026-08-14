@@ -347,6 +347,15 @@ function CashForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  if (cashAccounts.length === 0) {
+    return (
+      <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+        Skapa först ett saldo av typen Kontanter under Mer → Mina saldon. Annars
+        försvinner uttaget i modellen.
+      </p>
+    );
+  }
+
   return (
     <form
       className="space-y-4"
@@ -354,9 +363,13 @@ function CashForm({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
+          if (!toId) {
+            setError("Välj ett kontantkonto");
+            return;
+          }
           const result = await createCashWithdrawalAction({
             fromAccountId: fromId,
-            toAccountId: toId || null,
+            toAccountId: toId,
             amount,
             description: description || undefined,
           });
@@ -376,22 +389,21 @@ function CashForm({
       <AccountSelect
         label="Från"
         value={fromId}
-        onChange={setFromId}
-        accounts={accounts}
+        onChange={(id) => {
+          setFromId(id);
+          if (id === toId) {
+            const next = cashAccounts.find((a) => a.id !== id);
+            if (next) setToId(next.id);
+          }
+        }}
+        accounts={accounts.filter((a) => a.accountType !== "cash" || a.id !== toId)}
       />
-      {cashAccounts.length > 0 ? (
-        <AccountSelect
-          label="Till kontanter"
-          value={toId}
-          onChange={setToId}
-          accounts={cashAccounts}
-        />
-      ) : (
-        <p className="text-xs text-[var(--numa-faint)]">
-          Tips: skapa ett saldo av typen Kontanter under Mina saldon om du vill
-          följa plånboken också.
-        </p>
-      )}
+      <AccountSelect
+        label="Till kontanter"
+        value={toId}
+        onChange={setToId}
+        accounts={cashAccounts.filter((a) => a.id !== fromId)}
+      />
       <AmountField value={amount} onChange={setAmount} />
       <TextField
         value={description}
@@ -399,7 +411,11 @@ function CashForm({
         placeholder="t.ex. ATM"
       />
       <ErrorText error={error} />
-      <Submit pending={pending} disabled={!amount.trim()} label="Spara uttag" />
+      <Submit
+        pending={pending}
+        disabled={!amount.trim() || !toId}
+        label="Spara uttag"
+      />
     </form>
   );
 }
