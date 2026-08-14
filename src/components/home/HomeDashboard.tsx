@@ -44,7 +44,7 @@ export function HomeDashboard({
   }
 
   const currency = snap.currency;
-  const greeting = homeGreeting();
+  const greeting = homeGreeting(snap.displayName);
   const isBridge = snap.livingMode === "bridge";
   const isEmpty = snap.livingMode === "empty";
   const remainingOk = snap.remainingFreeMinor >= 0;

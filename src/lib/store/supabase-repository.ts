@@ -55,9 +55,10 @@ import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
 import { withTimeout } from "@/lib/async";
+import { knownDisplayNameForEmail } from "@/domain/identity/display-name";
 
 /** One auth lookup per request — repeated getUser() made Idag feel stuck. */
-const requireUserId = cache(async (): Promise<string> => {
+const requireAuthUser = cache(async (): Promise<{ id: string; email: string }> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -70,10 +71,16 @@ const requireUserId = cache(async (): Promise<string> => {
   if (error || !user) {
     throw new Error("Du måste vara inloggad");
   }
-  return user.id;
+  return { id: user.id, email: user.email ?? "" };
 });
 
-async function ensureProfile(userId: string): Promise<Profile> {
+const requireUserId = cache(async (): Promise<string> => {
+  return (await requireAuthUser()).id;
+});
+
+async function ensureProfile(_userId?: string): Promise<Profile> {
+  const { id: userId, email } = await requireAuthUser();
+  const named = knownDisplayNameForEmail(email);
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -82,13 +89,23 @@ async function ensureProfile(userId: string): Promise<Profile> {
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (data) return mapProfile(data);
+  if (data) {
+    const mapped = mapProfile(data);
+    if (named && mapped.displayName !== named) {
+      await supabase
+        .from("profiles")
+        .update({ display_name: named })
+        .eq("id", userId);
+      return { ...mapped, displayName: named };
+    }
+    return mapped;
+  }
 
   const { data: created, error: insertError } = await supabase
     .from("profiles")
     .insert({
       id: userId,
-      display_name: "Användare",
+      display_name: named ?? "Användare",
       timezone: "Asia/Bangkok",
       primary_currency: "THB",
       reference_currency: "SEK",
@@ -101,8 +118,7 @@ async function ensureProfile(userId: string): Promise<Profile> {
 }
 
 export async function getProfile(): Promise<Profile> {
-  const userId = await requireUserId();
-  return ensureProfile(userId);
+  return ensureProfile();
 }
 
 export async function listAccounts(): Promise<Account[]> {

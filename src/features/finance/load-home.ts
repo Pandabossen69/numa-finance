@@ -9,6 +9,7 @@ import type { CurrencyCode } from "@/domain/money";
 import { getTodaySnapshot } from "@/lib/store/repository";
 
 export type HomeSnapshot = {
+  displayName: string;
   primaryAccountId: string | null;
   currency: CurrencyCode;
   monthKey: string;
@@ -71,6 +72,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     return {
       ok: true,
       data: {
+        displayName: snap.profile.displayName,
         primaryAccountId: snap.primaryAccount?.id ?? null,
         currency: snap.currency,
         monthKey,

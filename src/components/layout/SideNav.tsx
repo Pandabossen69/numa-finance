@@ -6,7 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
-export function SideNav() {
+export function SideNav({ displayName }: { displayName: string }) {
   const pathname = usePathname();
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -22,6 +22,9 @@ export function SideNav() {
           <p className="numa-section-title">Personlig ekonomi</p>
           <p className="mt-1 text-3xl font-semibold tracking-[-0.05em] text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
             NUMA
+          </p>
+          <p className="mt-1 text-sm font-semibold tracking-tight text-[var(--numa-accent-ink)]">
+            {displayName}
           </p>
         </Link>
 

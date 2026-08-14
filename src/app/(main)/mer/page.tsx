@@ -1,4 +1,5 @@
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { getProfile } from "@/lib/store/repository";
 import {
   MerListGroup,
   MerListLink,
@@ -37,10 +38,17 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
   },
 ];
 
-export default function MerPage() {
+export default async function MerPage() {
+  let displayName = "Användare";
+  try {
+    displayName = (await getProfile()).displayName;
+  } catch (error) {
+    console.error("[numa] mer profile failed", error);
+  }
+
   return (
     <div className="mx-auto max-w-lg space-y-7">
-      <MerPageHeader title="Mer" />
+      <MerPageHeader title="Mer" description={`Inloggad som ${displayName}`} />
 
       <nav className="animate-rise-delay-1 space-y-6" aria-label="Mer-meny">
         {sections.map((section) => (
@@ -60,6 +68,10 @@ export default function MerPage() {
 
         <MerSection title="Konto">
           <MerListGroup>
+            <MerListRow>
+              <p className="text-[15px] font-semibold tracking-tight">{displayName}</p>
+              <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">Inloggad nu</p>
+            </MerListRow>
             <MerListRow className="py-3">
               <SignOutButton />
             </MerListRow>

@@ -53,6 +53,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
 
   return {
     mockMode: true,
+    displayName: "Hugo",
     hasBankTruth: true,
     primaryAccountId: "mock-bangkok-bank",
     currency: CURRENCY,
@@ -88,9 +89,9 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
   };
 }
 
-export function homeGreeting(now = new Date()): string {
+export function homeGreeting(displayName?: string, now = new Date()): string {
   const hour = now.getHours();
-  if (hour < 11) return "God morgon";
-  if (hour < 18) return "Hej";
-  return "God kväll";
+  const hello = hour < 11 ? "God morgon" : hour < 18 ? "Hej" : "God kväll";
+  const name = displayName?.trim();
+  return name ? `${hello} ${name}` : hello;
 }

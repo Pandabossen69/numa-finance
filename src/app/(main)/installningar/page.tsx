@@ -51,6 +51,7 @@ export default async function InstallningarPage({
           {profile ? (
             <MerListGroup>
               <dl>
+                <MerMetaRow label="Namn" value={profile.displayName} />
                 <MerMetaRow label="Tidszon" value={profile.timezone} />
                 <MerMetaRow label="Valuta" value={profile.primaryCurrency} />
                 <MerMetaRow
