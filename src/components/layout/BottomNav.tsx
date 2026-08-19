@@ -25,7 +25,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/97 shadow-[0_-16px_48px_rgba(7,21,17,0.10)] backdrop-blur-2xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/97 shadow-[0_-16px_48px_rgba(7,21,17,0.10)] md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >

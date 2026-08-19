@@ -32,7 +32,7 @@ export function AppShell({
             <SignOutButton variant="header" />
           </header>
 
-          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(7.75rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-14 md:pt-8">
+          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(7.75rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-16 md:pt-10">
             {children}
           </main>
         </div>

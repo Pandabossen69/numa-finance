@@ -175,3 +175,51 @@ export function formatCountSv(n: number, one: string, many: string): string {
   const count = Math.max(0, Math.floor(n));
   return `${count} ${pluralSv(count, one, many)}`;
 }
+
+/** Earliest valid instant among ISO strings / Dates. */
+export function earliestInstant(
+  ...values: Array<string | Date | null | undefined>
+): Date | null {
+  let min = Infinity;
+  for (const value of values) {
+    if (value == null || value === "") continue;
+    const ms = value instanceof Date ? value.getTime() : Date.parse(value);
+    if (!Number.isFinite(ms)) continue;
+    if (ms < min) min = ms;
+  }
+  return Number.isFinite(min) ? new Date(min) : null;
+}
+
+/**
+ * Ledger fetch window for Hem/Analys snapshots.
+ *
+ * Spend totals only need txs from month/cycle start. Saldo needs every tx
+ * after the latest checkpoint — refetch when that checkpoint is older.
+ */
+export function snapshotLedgerWindow(params: {
+  monthStart: Date | string;
+  cycleStartAt?: string | null;
+  checkpointVerifiedAt?: string | null;
+}): {
+  spendSinceIso: string;
+  saldoSinceIso: string;
+  refetchFromCheckpoint: boolean;
+} {
+  const spend = earliestInstant(params.monthStart, params.cycleStartAt);
+  if (!spend) {
+    throw new Error("monthStart krävs för snapshot-fönster");
+  }
+  const spendSinceIso = spend.toISOString();
+  const checkpointMs = params.checkpointVerifiedAt
+    ? Date.parse(params.checkpointVerifiedAt)
+    : NaN;
+  const refetchFromCheckpoint =
+    Number.isFinite(checkpointMs) && checkpointMs < spend.getTime();
+  return {
+    spendSinceIso,
+    saldoSinceIso: refetchFromCheckpoint
+      ? params.checkpointVerifiedAt!
+      : spendSinceIso,
+    refetchFromCheckpoint,
+  };
+}

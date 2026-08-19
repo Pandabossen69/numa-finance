@@ -67,7 +67,7 @@ export function AnalysDashboard({
       : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="numa-page numa-page-wide space-y-6">
       <header className="animate-rise space-y-1">
         <h1 className="numa-page-title">Analys</h1>
         <p className="max-w-[36ch] text-sm text-[var(--numa-muted)]">
@@ -75,143 +75,149 @@ export function AnalysDashboard({
         </p>
       </header>
 
-      <section
-        className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
-        aria-labelledby="analys-hero"
-      >
-        <p className="numa-section-title">{modeEyebrow}</p>
-        <h2
-          id="analys-hero"
-          className="text-base font-semibold tracking-tight text-[var(--numa-ink)]"
-        >
-          {cycleTitle}
-        </h2>
-        <p className="text-xs font-medium text-[var(--numa-faint)]">{heroLabel}</p>
-        {isBridge && !hasSaldo ? (
-          <p className="text-base font-medium text-[var(--numa-muted)]">
-            Ange saldo på Hem
-          </p>
-        ) : (
-          <div className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}>
-            <MoneyDisplay
-              amountMinor={heroMinor}
-              currency={currency}
-              size="xl"
-            />
-          </div>
-        )}
-        {!(isBridge && !hasSaldo) ? (
-          <p className="text-sm text-[var(--numa-muted)]">{heroMeta}</p>
-        ) : null}
-      </section>
+      <div className="grid items-start gap-6 md:grid-cols-2">
+        <div className="min-w-0 space-y-6">
+          <section
+            className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
+            aria-labelledby="analys-hero"
+          >
+            <p className="numa-section-title">{modeEyebrow}</p>
+            <h2
+              id="analys-hero"
+              className="text-base font-semibold tracking-tight text-[var(--numa-ink)]"
+            >
+              {cycleTitle}
+            </h2>
+            <p className="text-xs font-medium text-[var(--numa-faint)]">{heroLabel}</p>
+            {isBridge && !hasSaldo ? (
+              <p className="text-base font-medium text-[var(--numa-muted)]">
+                Ange saldo på Hem
+              </p>
+            ) : (
+              <div className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}>
+                <MoneyDisplay
+                  amountMinor={heroMinor}
+                  currency={currency}
+                  size="xl"
+                />
+              </div>
+            )}
+            {!(isBridge && !hasSaldo) ? (
+              <p className="text-sm text-[var(--numa-muted)]">{heroMeta}</p>
+            ) : null}
+          </section>
 
-      {!isEmpty ? (
-        <section className="animate-rise-delay-2 space-y-2">
-          <p className="numa-section-title px-1">{SV.idag}</p>
-          <div className="numa-panel-list px-4 py-1">
-            <MetricRow
-              label={SV.kvarIdag}
-              amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
-              currency={currency}
-              tone={
-                (!isBridge || hasSaldo) && cycle.remainingTodayMinor > 0
-                  ? "positive"
-                  : undefined
-              }
-              hint="Det du kan handla för just nu"
-            />
-            <MetricRow
-              label={SV.dagsbudget}
-              amountMinor={isBridge && !hasSaldo ? 0 : cycle.dayBudgetMinor}
-              currency={currency}
-              hint="Samma belopp hela dagen"
-            />
-            <MetricRow
-              label={SV.spenderatIdag}
-              amountMinor={data.todaySpendingMinor}
-              currency={currency}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      <section className="animate-rise-delay-2 space-y-2" aria-label="Periodens siffror">
-        {!isEmpty ? (
-          <p className="numa-section-title px-1">{SV.perioden}</p>
-        ) : null}
-        <div className="numa-panel-list px-4 py-1">
-          {isBridge ? (
-            <>
-              {hasSaldo ? (
+          {!isEmpty ? (
+            <section className="animate-rise-delay-2 space-y-2">
+              <p className="numa-section-title px-1">{SV.idag}</p>
+              <div className="numa-panel-list px-4 py-1">
                 <MetricRow
-                  label={SV.saldo}
+                  label={SV.kvarIdag}
+                  amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
+                  currency={currency}
+                  tone={
+                    (!isBridge || hasSaldo) && cycle.remainingTodayMinor > 0
+                      ? "positive"
+                      : undefined
+                  }
+                  hint="Det du kan handla för just nu"
+                />
+                <MetricRow
+                  label={SV.dagsbudget}
+                  amountMinor={isBridge && !hasSaldo ? 0 : cycle.dayBudgetMinor}
+                  currency={currency}
+                  hint="Samma belopp hela dagen"
+                />
+                <MetricRow
+                  label={SV.spenderatIdag}
+                  amountMinor={data.todaySpendingMinor}
+                  currency={currency}
+                />
+              </div>
+            </section>
+          ) : null}
+        </div>
+
+        <section className="min-w-0 animate-rise-delay-2 space-y-2" aria-label="Periodens siffror">
+          {!isEmpty ? (
+            <p className="numa-section-title px-1">{SV.perioden}</p>
+          ) : null}
+          <div className="numa-panel-list px-4 py-1">
+            {isBridge ? (
+              <>
+                {hasSaldo ? (
+                  <MetricRow
+                    label={SV.saldo}
+                    amountMinor={cycle.remainingFreeMinor}
+                    currency={currency}
+                    tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
+                    hint={data.verificationLabel ?? undefined}
+                  />
+                ) : (
+                  <MetricRow
+                    label={SV.saldo}
+                    value={
+                      <span className="text-sm text-[var(--numa-faint)]">—</span>
+                    }
+                    hint="Ange på Hem eller fota SMS"
+                  />
+                )}
+              </>
+            ) : isCycle ? (
+              <>
+                <MetricRow
+                  label={SV.intakter}
+                  amountMinor={cycle.incomeMinor}
+                  currency={currency}
+                  tone="positive"
+                />
+                <MetricRow
+                  label={SV.utgifter}
+                  amountMinor={cycle.expenseMinor}
+                  currency={currency}
+                  hint="Planerade i perioden"
+                />
+                <MetricRow
+                  label={SV.kvarIPerioden}
                   amountMinor={cycle.remainingFreeMinor}
                   currency={currency}
                   tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-                  hint={data.verificationLabel ?? undefined}
                 />
-              ) : (
                 <MetricRow
-                  label={SV.saldo}
-                  value={
-                    <span className="text-sm text-[var(--numa-faint)]">—</span>
-                  }
-                  hint="Ange på Hem eller fota SMS"
+                  label={SV.sparande}
+                  amountMinor={cycle.savingsMinor}
+                  currency={currency}
                 />
-              )}
-            </>
-          ) : isCycle ? (
-            <>
-              <MetricRow
-                label={SV.intakter}
-                amountMinor={cycle.incomeMinor}
-                currency={currency}
-                tone="positive"
-              />
-              <MetricRow
-                label={SV.utgifter}
-                amountMinor={cycle.expenseMinor}
-                currency={currency}
-                hint="Planerade i perioden"
-              />
-              <MetricRow
-                label={SV.kvarIPerioden}
-                amountMinor={cycle.remainingFreeMinor}
-                currency={currency}
-                tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-              />
-              <MetricRow
-                label={SV.sparande}
-                amountMinor={cycle.savingsMinor}
-                currency={currency}
-              />
-              <MetricRow
-                label={SV.spenderatIPerioden}
-                amountMinor={data.cycleSpendingMinor}
-                currency={currency}
-              />
-            </>
-          ) : null}
-        </div>
-      </section>
+                <MetricRow
+                  label={SV.spenderatIPerioden}
+                  amountMinor={data.cycleSpendingMinor}
+                  currency={currency}
+                />
+              </>
+            ) : null}
+          </div>
+        </section>
+      </div>
 
       {!isEmpty ? (
         <section className="animate-rise-delay-2 space-y-4">
           <hr className="numa-divider" />
-          <LineList
-            title={isBridge ? "Kommande intäkter" : "Intäkter"}
-            empty={isBridge ? "Inga kommande." : "Inga i perioden."}
-            lines={cycle.incomes}
-            currency={currency}
-            totalMinor={cycle.incomeMinor}
-          />
-          <LineList
-            title={isBridge ? "Kommande utgifter" : "Utgifter"}
-            empty={isBridge ? "Inga kommande." : "Inga i perioden."}
-            lines={cycle.expenses}
-            currency={currency}
-            totalMinor={cycle.expenseMinor}
-          />
+          <div className="grid items-start gap-4 md:grid-cols-2">
+            <LineList
+              title={isBridge ? "Kommande intäkter" : "Intäkter"}
+              empty={isBridge ? "Inga kommande." : "Inga i perioden."}
+              lines={cycle.incomes}
+              currency={currency}
+              totalMinor={cycle.incomeMinor}
+            />
+            <LineList
+              title={isBridge ? "Kommande utgifter" : "Utgifter"}
+              empty={isBridge ? "Inga kommande." : "Inga i perioden."}
+              lines={cycle.expenses}
+              currency={currency}
+              totalMinor={cycle.expenseMinor}
+            />
+          </div>
         </section>
       ) : null}
 
@@ -259,7 +265,7 @@ export function AnalysDashboard({
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="grid items-start gap-4 md:grid-cols-2">
           <LineList
             title="Intäkter"
             empty="Inga intäkter inlagda."
@@ -422,7 +428,7 @@ function LineList({
   totalMinor: number;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <div className="flex items-baseline justify-between gap-3 px-0.5">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">

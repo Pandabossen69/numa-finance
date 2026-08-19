@@ -52,7 +52,7 @@ export default async function FotaPage({
     thbAccountId;
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="numa-page space-y-6">
       {home.ok === false || !data ? (
         <div className="space-y-3">
           <h1 className="text-3xl font-semibold tracking-tight">Lägg till</h1>

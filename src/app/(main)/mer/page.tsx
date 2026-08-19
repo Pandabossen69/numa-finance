@@ -49,12 +49,14 @@ export default async function MerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-7">
+    <div className="numa-page space-y-7">
       <MerPageHeader title="Mer" description={`Inloggad som ${displayName}`} />
 
       <div className="animate-rise-delay-1 space-y-6">
         <MerSection title="På telefonen (alla konton)">
-          <HomescreenInstallHint dismissible={false} />
+          <div className="md:hidden">
+            <HomescreenInstallHint dismissible={false} />
+          </div>
           <div className="pt-2">
             <MerListGroup>
               <MerListLink

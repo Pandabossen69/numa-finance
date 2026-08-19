@@ -130,12 +130,14 @@ const cashSchema = z.object({
 });
 
 function revalidateMoneyPaths() {
+  revalidatePath("/", "layout");
   revalidatePath("/idag");
   revalidatePath("/transaktioner");
   revalidatePath("/analys");
   revalidatePath("/plan");
   revalidatePath("/konton");
   revalidatePath("/lagg-till");
+  revalidatePath("/fota");
   revalidatePath("/mer");
 }
 

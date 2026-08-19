@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   calendarDaysBetween,
+  earliestInstant,
   formatCountSv,
   formatRelativeVerificationSv,
   isSameZonedDay,
+  snapshotLedgerWindow,
   startOfZonedDay,
   zonedDayAnchorMs,
   zonedDayKey,
@@ -92,5 +94,43 @@ describe("Swedish relative verification copy", () => {
     ).toBe("2 dagar sedan");
     expect(formatCountSv(1, "dag", "dagar")).toBe("1 dag");
     expect(formatCountSv(12, "dag", "dagar")).toBe("12 dagar");
+  });
+});
+
+describe("snapshot ledger window", () => {
+  const monthStart = new Date("2026-08-01T00:00:00.000+07:00");
+
+  it("picks the earlier of month vs cycle start via Date, not ISO string sort", () => {
+    const offsetCycle = "2026-07-25T17:00:00.000Z";
+    const plusOffset = "2026-07-26T00:00:00+07:00";
+    expect(earliestInstant(offsetCycle, plusOffset)?.toISOString()).toBe(
+      "2026-07-25T17:00:00.000Z",
+    );
+    const window = snapshotLedgerWindow({
+      monthStart,
+      cycleStartAt: plusOffset,
+    });
+    expect(window.spendSinceIso).toBe("2026-07-25T17:00:00.000Z");
+    expect(window.refetchFromCheckpoint).toBe(false);
+  });
+
+  it("refetches from checkpoint when it is older than the spend window", () => {
+    const window = snapshotLedgerWindow({
+      monthStart,
+      cycleStartAt: "2026-08-10T00:00:00.000+07:00",
+      checkpointVerifiedAt: "2026-07-20T09:15:00.000Z",
+    });
+    expect(window.spendSinceIso).toBe(monthStart.toISOString());
+    expect(window.refetchFromCheckpoint).toBe(true);
+    expect(window.saldoSinceIso).toBe("2026-07-20T09:15:00.000Z");
+  });
+
+  it("keeps the spend window when checkpoint is newer (saldo filters extra txs)", () => {
+    const window = snapshotLedgerWindow({
+      monthStart,
+      checkpointVerifiedAt: "2026-08-12T04:00:00.000Z",
+    });
+    expect(window.refetchFromCheckpoint).toBe(false);
+    expect(window.saldoSinceIso).toBe(window.spendSinceIso);
   });
 });

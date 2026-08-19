@@ -11,6 +11,7 @@ import {
   projectPlanForMonth,
   resolveSmsTipBalanceMinor,
   shouldWriteSmsTipCheckpoint,
+  snapshotLedgerWindow,
   startOfZonedDay,
   startOfZonedMonth,
   decideSmsBatchConfirm,
@@ -999,21 +1000,25 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const timezone = profile.timezone;
   const now = new Date();
   const monthStart = startOfZonedMonth(now, timezone);
-
-  const checkpoint = await latestCheckpointForAccount(primary.id);
   const monthKey = monthKeyFromDate(now, timezone);
   const cycle = projectPayCycle(planItems, now, timezone);
 
-  const sinceCandidates = [monthStart.toISOString()];
-  if (checkpoint) sinceCandidates.push(checkpoint.verifiedAt);
-  if (cycle.startAt) sinceCandidates.push(cycle.startAt);
-  const sinceIso = sinceCandidates.sort()[0]!;
-
-  // No low limit: Konton loads all account txs for saldo; Hem must match.
-  // Spending is computed even without a checkpoint (cycle mode needs it).
-  const accountTx = await listTransactions(primary.id, {
-    sinceIso,
+  const spendWindow = snapshotLedgerWindow({
+    monthStart,
+    cycleStartAt: cycle.startAt,
   });
+  const [checkpoint, spendTx] = await Promise.all([
+    latestCheckpointForAccount(primary.id),
+    listTransactions(primary.id, { sinceIso: spendWindow.spendSinceIso }),
+  ]);
+  const ledger = snapshotLedgerWindow({
+    monthStart,
+    cycleStartAt: cycle.startAt,
+    checkpointVerifiedAt: checkpoint?.verifiedAt,
+  });
+  const accountTx = ledger.refetchFromCheckpoint
+    ? await listTransactions(primary.id, { sinceIso: ledger.saldoSinceIso })
+    : spendTx;
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
   let calculated = null;

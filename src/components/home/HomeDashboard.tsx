@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -75,8 +74,10 @@ export function HomeDashboard({
         : null;
 
   return (
-    <div className="mx-auto max-w-lg space-y-6 pb-2">
-      <HomescreenInstallHint />
+    <div className="numa-page numa-page-wide space-y-6 pb-2">
+      <div className="md:hidden">
+        <HomescreenInstallHint />
+      </div>
       <header className="animate-rise space-y-1 px-0.5">
         <p className="text-[13px] font-medium capitalize text-[var(--numa-muted)]">
           {greeting}
@@ -104,10 +105,11 @@ export function HomeDashboard({
 
       {!snap.needsAvailableInput ? (
         <>
-          <section
-            className="numa-panel-strong numa-day-stage animate-rise-delay-1 space-y-5 px-5 pb-5 pt-6"
-            aria-labelledby="spend-heading"
-          >
+          <div className="grid items-stretch gap-6 md:grid-cols-2">
+            <section
+              className="numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pb-5 pt-6"
+              aria-labelledby="spend-heading"
+            >
             <div className="flex items-center justify-between gap-3 px-0.5">
               <p id="spend-heading" className="numa-section-title">
                 {SV.kvarIdag}
@@ -221,9 +223,10 @@ export function HomeDashboard({
                 ) : null}
               </div>
             )}
-          </section>
+            </section>
 
-          <section className="animate-rise-delay-2 space-y-2">
+            <div className="flex h-full min-w-0 flex-col gap-6">
+              <section className="animate-rise-delay-2 space-y-2">
             <p className="numa-section-title px-1">
               {isBridge ? SV.saldo : SV.perioden}
             </p>
@@ -278,10 +281,12 @@ export function HomeDashboard({
             </div>
           ) : null}
 
-          <section className="animate-rise-delay-2 grid grid-cols-2 gap-3">
-            <ActionLink href="/fota" title={SV.fota} subtitle={SV.fotaHint} />
-            <ActionLink href="/plan" title={SV.plan} subtitle={SV.planHint} />
-          </section>
+              <section className="animate-rise-delay-2 mt-auto grid grid-cols-2 gap-3">
+                <ActionLink href="/fota" title={SV.fota} subtitle={SV.fotaHint} />
+                <ActionLink href="/plan" title={SV.plan} subtitle={SV.planHint} />
+              </section>
+            </div>
+          </div>
 
           <QuickExpense
             accountId={snap.primaryAccountId}
@@ -308,7 +313,7 @@ function ActionLink({
     <Link
       href={href}
       prefetch
-      className="numa-panel group flex min-h-[5rem] flex-col justify-center px-4 py-3.5 transition active:scale-[0.98]"
+      className="numa-panel group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5 transition active:scale-[0.98]"
     >
       <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
         {title}
@@ -329,7 +334,6 @@ function AvailableNowCard({
   currency: CurrencyCode;
   nextIncomeLabel: string | null;
 }) {
-  const router = useRouter();
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -373,7 +377,7 @@ function AvailableNowCard({
                 return;
               }
               setError(null);
-              router.refresh();
+              window.location.assign("/idag");
             });
           }}
         >
@@ -396,7 +400,6 @@ function UpdateBalanceLink({
   accountId: string | null;
   currency: CurrencyCode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -445,7 +448,7 @@ function UpdateBalanceLink({
                 setOpen(false);
                 setBalance("");
                 setError(null);
-                router.refresh();
+                window.location.assign("/idag");
                 return;
               }
               setError(result.error);
@@ -485,7 +488,6 @@ function QuickExpense({
   disabled: boolean;
   remainingTodayMinor: number;
 }) {
-  const router = useRouter();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -558,7 +560,7 @@ function QuickExpense({
                   setError(null);
                   setAmount("");
                   setNote("");
-                  router.refresh();
+                  window.location.assign("/idag");
                 });
               }}
             >
