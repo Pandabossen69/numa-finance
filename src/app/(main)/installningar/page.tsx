@@ -28,13 +28,15 @@ export default async function InstallningarPage({
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="mx-auto max-w-lg space-y-7 text-[var(--numa-ink)]">
+    <div className="numa-page space-y-7 text-[var(--numa-ink)]">
       <MerPageHeader back title="Inställningar" />
 
       <div className="animate-rise-delay-1 space-y-6">
-        <MerSection title="På hemskärmen">
-          <HomescreenInstallHint dismissible={false} />
-        </MerSection>
+        <div className="md:hidden">
+          <MerSection title="På hemskärmen">
+            <HomescreenInstallHint dismissible={false} />
+          </MerSection>
+        </div>
 
         <MerSection title="Underhåll">
           <MerListGroup>

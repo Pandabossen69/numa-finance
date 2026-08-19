@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default function PlanPage() {
   return (
-    <div className="space-y-6">
+    <div className="numa-page numa-page-wide space-y-6">
       <header className="animate-rise">
         <h1 className="numa-page-title">Plan</h1>
       </header>

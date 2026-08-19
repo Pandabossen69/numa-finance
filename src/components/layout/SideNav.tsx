@@ -66,7 +66,7 @@ export function SideNav({ displayName }: { displayName: string }) {
 
         <div className="space-y-2">
           <Link
-            href="/lagg-till"
+            href="/fota"
             prefetch
             className="block rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white shadow-[0_10px_24px_rgba(19,32,25,0.18)] transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
           >

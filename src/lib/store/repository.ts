@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { withTimeout } from "@/lib/async";
 import { withRolledMonthlyDues } from "@/domain/finance";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -34,9 +35,8 @@ async function ensurePlanDuesRolled(): Promise<void> {
   }
 }
 
-export async function getProfile() {
-  return api().getProfile();
-}
+/** Request-scoped: layout + Hem/Analys share one profile round-trip. */
+export const getProfile = cache(async () => api().getProfile());
 
 export async function listAccounts() {
   return api().listAccounts();

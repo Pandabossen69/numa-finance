@@ -32,13 +32,15 @@ export function MetricRow({
 
   return (
     <div className="numa-row">
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-[var(--numa-muted)]">{label}</p>
         {hint ? (
-          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{hint}</p>
+          <p className="mt-0.5 text-xs leading-snug text-[var(--numa-faint)]">
+            {hint}
+          </p>
         ) : null}
       </div>
-      <div className={`shrink-0 ${amountClass}`}>
+      <div className={`min-w-0 max-w-full text-right ${amountClass}`}>
         {value != null ? (
           value
         ) : amountMinor != null && currency != null ? (
@@ -46,6 +48,7 @@ export function MetricRow({
             amountMinor={amountMinor}
             currency={currency}
             size="md"
+            compact
           />
         ) : (
           <span className="text-sm text-[var(--numa-faint)]">—</span>

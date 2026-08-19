@@ -21,7 +21,7 @@ export default async function KontonPage() {
   const accounts = await listAccounts();
 
   return (
-    <div className="mx-auto max-w-lg space-y-7">
+    <div className="numa-page space-y-7">
       <MerPageHeader
         back
         title="Saldo"

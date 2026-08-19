@@ -33,9 +33,9 @@ export function MoneyDisplay({
 
   const sizeClass =
     size === "display"
-      ? "text-[2.35rem] leading-none font-semibold tracking-[-0.045em] sm:text-[2.65rem]"
+      ? "text-[clamp(1.35rem,4.8vw,2.35rem)] leading-[1.08] font-semibold tracking-[-0.04em]"
       : size === "xl"
-        ? "text-[2.75rem] leading-none font-semibold tracking-tight"
+        ? "text-[clamp(1.75rem,5vw,2.55rem)] leading-[1.08] font-semibold tracking-tight"
         : size === "lg"
           ? "text-3xl font-semibold tracking-tight"
           : size === "md"
@@ -62,7 +62,7 @@ export function MoneyDisplay({
 
   return (
     <span
-      className={`inline-flex items-baseline gap-1.5 ${toneClass}`.trim()}
+      className={`inline-flex max-w-full flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0 ${toneClass}`.trim()}
       aria-label={`${amountText} ${currencyText}`}
     >
       <span className={`money ${sizeClass}`}>{amountText}</span>
