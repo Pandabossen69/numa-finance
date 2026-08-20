@@ -10,6 +10,9 @@ export default function PlanPage() {
     <div className="numa-page numa-page-wide space-y-6">
       <header className="animate-rise">
         <h1 className="numa-page-title">Plan</h1>
+        <p className="mt-1 max-w-[40ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          Två högar: saldo att leva för, och sparande som ligger avsatt.
+        </p>
       </header>
       <Suspense fallback={<TabSoftFallback />}>
         <PlanContent />

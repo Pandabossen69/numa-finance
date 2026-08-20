@@ -131,6 +131,30 @@ export type MonthPlanProjection = {
 };
 
 /**
+ * Planned savings from the app start month through `throughMonthKey`.
+ * Each month's savings stays in that month in the plan — this sum is what
+ * you have set aside so far when looking at a later month.
+ */
+export function cumulativePlanSavingsMinor(
+  items: PlanItem[],
+  throughMonthKey: string,
+  timeZone: string,
+  startMonthKey: string = APP_PLAN_START_MONTH,
+): number {
+  const fromKey =
+    startMonthKey > throughMonthKey ? throughMonthKey : startMonthKey;
+  let sum = 0;
+  let cursor = fromKey;
+  let guard = 0;
+  while (cursor <= throughMonthKey && guard < 240) {
+    sum += projectPlanForMonth(items, cursor, timeZone).savingsMinor;
+    cursor = addMonthsKey(cursor, 1);
+    guard += 1;
+  }
+  return sum;
+}
+
+/**
  * Project active plan buckets onto a calendar month.
  * Recurring monthly expenses always appear. One-off extras, incomes and
  * savings appear only when their nextDueAt falls in that month.

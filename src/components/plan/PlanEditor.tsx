@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
+  addMonthsKey,
   dayOfMonthFromIso,
   extraSaldoHintSv,
   labelDayOfMonthSv,
   labelMonthNameSv,
   monthKeyFromDate,
-  monthLeftoverHintSv,
+  cumulativePlanSavingsMinor,
+  monthLivingSaldoMinor,
   projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
@@ -116,7 +118,14 @@ export function PlanEditor({
     [items, spendingByMonthKey, monthKey, currentMonthKey, timeZone],
   );
   const extraHint = extraSaldoHintSv(extra, currentMonthKey);
-  const leftoverHint = monthLeftoverHintSv(extra, currentMonthKey);
+  const livingSaldoMinor = monthLivingSaldoMinor(extra);
+  const savingsTotalMinor = useMemo(
+    () => cumulativePlanSavingsMinor(items, monthKey, timeZone),
+    [items, monthKey, timeZone],
+  );
+  const monthName = labelMonthNameSv(monthKey);
+  const nextMonthName = labelMonthNameSv(addMonthsKey(monthKey, 1));
+  const saldoOk = livingSaldoMinor >= 0;
 
   const cycle = useMemo(
     () => projectPayCycle(items, new Date(), timeZone),
@@ -257,76 +266,127 @@ export function PlanEditor({
           ))}
         </div>
 
-        <div className="space-y-4 border-b border-[var(--numa-border-strong)] pb-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="numa-section-title">
-                Kvar · {labelMonthNameSv(monthKey)}
-              </p>
-              <div
-                className={`money-hero mt-1.5 ${
-                  projection.freeToSpendMinor >= 0
-                    ? "text-[var(--numa-positive)]"
-                    : "text-[var(--numa-danger)]"
-                }`}
-              >
-                <MoneyDisplay
-                  amountMinor={projection.freeToSpendMinor}
-                  currency={currency}
-                  size="lg"
-                />
-              </div>
+        <div className="grid items-stretch gap-4 md:grid-cols-2">
+          <section
+            className="numa-panel-strong flex h-full min-w-0 flex-col gap-4 p-5 pl-6"
+            aria-labelledby="plan-saldo-heading"
+          >
+            <p id="plan-saldo-heading" className="numa-section-title">
+              {SV.saldo}
+            </p>
+            <div
+              className={`money-hero ${
+                saldoOk
+                  ? "text-[var(--numa-positive)]"
+                  : "text-[var(--numa-danger)]"
+              }`}
+            >
+              <MoneyDisplay
+                amountMinor={livingSaldoMinor}
+                currency={currency}
+                size="lg"
+              />
+            </div>
+            <p className="text-sm leading-snug text-[var(--numa-muted)]">
+              {saldoOk ? SV.saldoLevaFor : SV.minusMotPlanen}
+              <span className="text-[var(--numa-faint)]"> · {monthName}</span>
+            </p>
+
+            <div className="mt-auto space-y-2.5 border-t border-[var(--numa-border)] pt-4">
+              {extra.monthResultMinor !== livingSaldoMinor &&
+              extra.carriedInMinor > 0 &&
+              extra.monthResultMinor >= 0 ? (
+                <p className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-[var(--numa-muted)]">I månaden</span>
+                  <span className="text-[var(--numa-ink)]">
+                    <MoneyDisplay
+                      amountMinor={extra.monthResultMinor}
+                      currency={currency}
+                      size="sm"
+                    />
+                  </span>
+                </p>
+              ) : null}
               {extra.extraSaldoMinor > 0 ? (
-                <div className="mt-3 space-y-1.5">
-                  <p className="inline-flex max-w-full flex-wrap items-baseline gap-x-2 gap-y-1 rounded-full bg-[var(--numa-accent-soft)] px-3 py-1.5 text-sm font-medium text-[var(--numa-accent-ink)]">
-                    <span>Extra saldo</span>
+                <p className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-[var(--numa-muted)]">{SV.extraSaldo}</span>
+                  <span className="text-[var(--numa-accent-ink)]">
                     <MoneyDisplay
                       amountMinor={extra.extraSaldoMinor}
                       currency={currency}
                       size="sm"
                     />
-                  </p>
-                  {extraHint ? (
-                    <p className="text-sm text-[var(--numa-muted)]">{extraHint}</p>
-                  ) : null}
-                </div>
+                  </span>
+                </p>
               ) : extra.drawnMinor > 0 ? (
-                <p className="mt-3 text-sm text-[var(--numa-danger)]">
-                  {extraHint}
+                <p className="text-sm text-[var(--numa-danger)]">{extraHint}</p>
+              ) : null}
+              {monthKey === currentMonthKey && extra.spentMinor > 0 ? (
+                <p className="flex items-baseline justify-between gap-3 text-sm">
+                  <span className="text-[var(--numa-muted)]">
+                    {SV.spenderatIManaden}
+                  </span>
+                  <span className="text-[var(--numa-ink)]">
+                    <MoneyDisplay
+                      amountMinor={extra.spentMinor}
+                      currency={currency}
+                      size="sm"
+                    />
+                  </span>
                 </p>
-              ) : leftoverHint ? (
-                <p className="mt-3 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                  {leftoverHint}
+              ) : null}
+              {monthKey === currentMonthKey && extra.monthResultMinor > 0 ? (
+                <p className="text-sm text-[var(--numa-muted)]">
+                  Följer med till {nextMonthName}
                 </p>
-              ) : monthKey === currentMonthKey ? (
-                <p className="mt-3 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                  Det som blir över följer med till nästa månad som extra saldo.
+              ) : extraHint && extra.extraSaldoMinor > 0 ? (
+                <p className="text-sm text-[var(--numa-muted)]">{extraHint}</p>
+              ) : null}
+              {cycle.startAt &&
+              monthKey === (cycle.fundingMonthKey ?? currentMonthKey) &&
+              living.mode !== "bridge" ? (
+                <p className="text-sm text-[var(--numa-muted)]">
+                  <MoneyDisplay
+                    amountMinor={living.dayBudgetMinor}
+                    currency={currency}
+                    size="sm"
+                  />{" "}
+                  dagsbudget / dag
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--numa-muted)]">
-              <span className="inline-flex items-baseline gap-1.5">
-                Intäkter
-                <span className="text-[var(--numa-ink)]">
-                  <MoneyDisplay
-                    amountMinor={projection.incomeMinor}
-                    currency={currency}
-                    size="sm"
-                  />
+          </section>
+
+          <section
+            className="numa-panel flex h-full min-w-0 flex-col gap-4 p-5"
+            aria-labelledby="plan-sparande-heading"
+          >
+            <p id="plan-sparande-heading" className="numa-section-title">
+              {SV.sparande}
+            </p>
+            <div className="money-hero text-[var(--numa-ink)]">
+              <MoneyDisplay
+                amountMinor={savingsTotalMinor}
+                currency={currency}
+                size="lg"
+              />
+            </div>
+            <p className="text-sm leading-snug text-[var(--numa-muted)]">
+              {savingsTotalMinor <= 0
+                ? "Inget avsatt än"
+                : projection.savingsMinor <= 0
+                  ? "Sparat i tidigare månader"
+                  : savingsTotalMinor === projection.savingsMinor
+                    ? `Avsatt i ${monthName}`
+                    : "Sparat till och med denna månad"}
+            </p>
+            {savingsTotalMinor > 0 &&
+            projection.savingsMinor > 0 &&
+            savingsTotalMinor !== projection.savingsMinor ? (
+              <p className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-[var(--numa-muted)]">
+                  Varav i {monthName}
                 </span>
-              </span>
-              <span className="inline-flex items-baseline gap-1.5">
-                Utgifter
-                <span className="text-[var(--numa-ink)]">
-                  <MoneyDisplay
-                    amountMinor={projection.fixedMinor + projection.extraMinor}
-                    currency={currency}
-                    size="sm"
-                  />
-                </span>
-              </span>
-              <span className="inline-flex items-baseline gap-1.5">
-                Sparande
                 <span className="text-[var(--numa-ink)]">
                   <MoneyDisplay
                     amountMinor={projection.savingsMinor}
@@ -334,93 +394,77 @@ export function PlanEditor({
                     size="sm"
                   />
                 </span>
-              </span>
+              </p>
+            ) : null}
+            <p className="text-xs leading-snug text-[var(--numa-faint)]">
+              {SV.sparandeAvsatt}
+            </p>
+
+            <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+                Avsätt i {monthName}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={savingsAmount}
+                  onChange={(e) => setSavingsAmount(e.target.value)}
+                  placeholder="0"
+                  aria-label={`Sparande i ${monthName}`}
+                  className="money min-h-11 w-full min-w-0 max-w-[10rem] rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    void (async () => {
+                      refreshAfter(
+                        await setMonthSavingsAction({
+                          monthKey,
+                          amount:
+                            savingsAmount.trim() === "" ? "0" : savingsAmount,
+                        }),
+                      );
+                    })();
+                  }}
+                  className="numa-btn numa-btn-primary min-h-11 px-4"
+                >
+                  Spara
+                </button>
+                {projection.savingsMinor > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void (async () => {
+                        const result = await setMonthSavingsAction({
+                          monthKey,
+                          amount: "0",
+                        });
+                        if (refreshAfter(result)) setSavingsAmount("");
+                      })();
+                    }}
+                    className="numa-btn numa-btn-soft min-h-11 px-3"
+                  >
+                    Nollställ
+                  </button>
+                ) : null}
+              </div>
             </div>
-          </div>
-          {monthKey <= currentMonthKey && extra.spentMinor > 0 ? (
-            <div className="numa-panel-list px-4 py-1">
-              <MetricRow
-                label={SV.spenderatIManaden}
-                amountMinor={extra.spentMinor}
-                currency={currency}
-              />
-              <MetricRow
-                label={
-                  extra.monthResultMinor >= 0
-                    ? SV.overskottHittills
-                    : SV.minusMotPlanen
-                }
-                amountMinor={extra.monthResultMinor}
-                currency={currency}
-                tone={extra.monthResultMinor >= 0 ? "positive" : "danger"}
-                hint={leftoverHint}
-              />
-            </div>
-          ) : null}
+          </section>
         </div>
 
-        {cycle.startAt &&
-        monthKey === (cycle.fundingMonthKey ?? currentMonthKey) &&
-        living.mode !== "bridge" ? (
-          <p className="inline-flex items-baseline gap-1.5 text-sm text-[var(--numa-muted)]">
-            <MoneyDisplay
-              amountMinor={living.dayBudgetMinor}
-              currency={currency}
-              size="sm"
-            />
-            <span>dagsbudget / dag</span>
-          </p>
-        ) : null}
-
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="shrink-0 text-sm text-[var(--numa-muted)]">
-              Spara denna månad
-            </span>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={savingsAmount}
-              onChange={(e) => setSavingsAmount(e.target.value)}
-              placeholder="0"
-              className="money min-h-11 w-full max-w-[10rem] rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
-            />
-          </label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                void (async () => {
-                  refreshAfter(
-                    await setMonthSavingsAction({
-                      monthKey,
-                      amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
-                    }),
-                  );
-                })();
-              }}
-              className="numa-btn numa-btn-primary min-h-11 px-4"
-            >
-              Spara
-            </button>
-            {projection.savingsMinor > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void (async () => {
-                    const result = await setMonthSavingsAction({
-                      monthKey,
-                      amount: "0",
-                    });
-                    if (refreshAfter(result)) setSavingsAmount("");
-                  })();
-                }}
-                className="numa-btn numa-btn-soft min-h-11 px-3"
-              >
-                Nollställ
-              </button>
-            ) : null}
-          </div>
+        <div className="numa-panel-list px-4 py-1">
+          <MetricRow
+            label={SV.intakter}
+            amountMinor={projection.incomeMinor}
+            currency={currency}
+            tone="positive"
+          />
+          <MetricRow
+            label={SV.utgifter}
+            amountMinor={projection.fixedMinor + projection.extraMinor}
+            currency={currency}
+          />
         </div>
       </section>
 

@@ -4,6 +4,7 @@ import {
   isRecurringMonthly,
   perDayBudgetMinor,
   projectPlanForMonth,
+  cumulativePlanSavingsMinor,
   rollDueDateForward,
   spendDaysForMonth,
   withRolledMonthlyDues,
@@ -128,6 +129,25 @@ describe("plan-months", () => {
     expect(aug.freeToSpendMinor).toBe(25_000_00);
     expect(sep.savingsMinor).toBe(0);
     expect(perDayBudgetMinor(25_000_00, 10)).toBe(2_500_00);
+    expect(cumulativePlanSavingsMinor(items, "2026-08", "UTC")).toBe(5_000_00);
+    expect(cumulativePlanSavingsMinor(items, "2026-09", "UTC")).toBe(5_000_00);
+
+    const withSeptember = [
+      ...items,
+      item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 3_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-09-15T12:00:00.000Z",
+      }),
+    ];
+    expect(cumulativePlanSavingsMinor(withSeptember, "2026-08", "UTC")).toBe(
+      5_000_00,
+    );
+    expect(cumulativePlanSavingsMinor(withSeptember, "2026-09", "UTC")).toBe(
+      8_000_00,
+    );
   });
 
   it("keeps Hem/Plan card math identical for a live month", () => {

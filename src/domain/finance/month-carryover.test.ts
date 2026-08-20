@@ -3,6 +3,7 @@ import type { CanonicalTransaction, PlanItem } from "./types";
 import {
   extraSaldoHintSv,
   monthLeftoverHintSv,
+  monthLivingSaldoMinor,
   projectExtraSaldo,
   spendingByMonthKey,
 } from "./month-carryover";
@@ -114,6 +115,7 @@ describe("month extra saldo carry-over", () => {
     expect(aug.extraSaldoMinor).toBe(0);
     expect(aug.nextMonthExtraMinor).toBe(15_000_00);
     expect(monthLeftoverHintSv(aug, "2026-08")).toMatch(/september/i);
+    expect(monthLivingSaldoMinor(aug)).toBe(15_000_00);
   });
 
   it("shows August leftover as extra saldo on September", () => {
@@ -131,6 +133,7 @@ describe("month extra saldo carry-over", () => {
     expect(sep.monthResultMinor).toBe(25_000_00);
     // Future unused plan must not inflate extra further.
     expect(sep.nextMonthExtraMinor).toBe(15_000_00);
+    expect(monthLivingSaldoMinor(sep)).toBe(40_000_00);
   });
 
   it("draws from extra saldo when the month is minus", () => {
@@ -151,6 +154,7 @@ describe("month extra saldo carry-over", () => {
     expect(sep.extraSaldoMinor).toBe(8_000_00);
     expect(sep.nextMonthExtraMinor).toBe(8_000_00);
     expect(extraSaldoHintSv(sep, "2026-09")).toBe("Minus tas från extra saldo");
+    expect(monthLivingSaldoMinor(sep)).toBe(8_000_00);
   });
 
   it("floors extra at zero when the deficit is larger than leftover", () => {
@@ -177,6 +181,7 @@ describe("month extra saldo carry-over", () => {
       timeZone: tz,
     });
     expect(oct.extraSaldoMinor).toBe(0);
+    expect(monthLivingSaldoMinor(sep)).toBe(-10_000_00);
   });
 
   it("lets leftover follow month after month", () => {
