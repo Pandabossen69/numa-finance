@@ -4,7 +4,10 @@ import {
   extraSaldoHintSv,
   monthLeftoverHintSv,
   monthLivingSaldoMinor,
+  monthPileBreakdown,
+  planWealthTotalMinor,
   projectExtraSaldo,
+  projectExtraSaldoSeries,
   spendingByMonthKey,
 } from "./month-carryover";
 
@@ -28,7 +31,11 @@ function item(
   };
 }
 
-function expense(id: string, amountMinor: number, occurredAt: string): CanonicalTransaction {
+function expense(
+  id: string,
+  amountMinor: number,
+  occurredAt: string,
+): CanonicalTransaction {
   return {
     id,
     userId: "u1",
@@ -116,6 +123,20 @@ describe("month extra saldo carry-over", () => {
     expect(aug.nextMonthExtraMinor).toBe(15_000_00);
     expect(monthLeftoverHintSv(aug, "2026-08")).toMatch(/september/i);
     expect(monthLivingSaldoMinor(aug)).toBe(15_000_00);
+    expect(monthPileBreakdown(aug).showBreakdown).toBe(false);
+  });
+
+  it("keeps leftover hint when you look back at a closed month", () => {
+    const spending = { "2026-08": 10_000_00 };
+    const aug = projectExtraSaldo({
+      planItems: plan,
+      spendingByMonthKey: spending,
+      monthKey: "2026-08",
+      currentMonthKey: "2026-09",
+      timeZone: tz,
+    });
+    expect(monthLivingSaldoMinor(aug)).toBe(15_000_00);
+    expect(monthLeftoverHintSv(aug, "2026-09")).toMatch(/september/i);
   });
 
   it("shows August leftover as extra saldo on September", () => {
@@ -155,6 +176,13 @@ describe("month extra saldo carry-over", () => {
     expect(sep.nextMonthExtraMinor).toBe(8_000_00);
     expect(extraSaldoHintSv(sep, "2026-09")).toBe("Minus tas från extra saldo");
     expect(monthLivingSaldoMinor(sep)).toBe(8_000_00);
+    const piles = monthPileBreakdown(sep);
+    expect(piles.showBreakdown).toBe(true);
+    expect(piles.monthSliceMinor + piles.extraInMinor).toBe(piles.livingMinor);
+    expect(piles.extraInMinor).toBe(15_000_00);
+    expect(piles.livingMinor).toBe(8_000_00);
+    // Remaining extra equals the hero — must not be shown as a second pile.
+    expect(sep.extraSaldoMinor).toBe(piles.livingMinor);
   });
 
   it("floors extra at zero when the deficit is larger than leftover", () => {
@@ -218,5 +246,32 @@ describe("month extra saldo carry-over", () => {
       timeZone: tz,
     });
     expect(byMonth["2026-08"]).toBe(3_400_00);
+  });
+
+  it("walks a year of months without changing a single-month closeout", () => {
+    const spending = { "2026-08": 10_000_00 };
+    const series = projectExtraSaldoSeries({
+      planItems: plan,
+      spendingByMonthKey: spending,
+      throughMonthKey: "2026-10",
+      currentMonthKey: "2026-08",
+      timeZone: tz,
+    });
+    const oct = projectExtraSaldo({
+      planItems: plan,
+      spendingByMonthKey: spending,
+      monthKey: "2026-10",
+      currentMonthKey: "2026-08",
+      timeZone: tz,
+    });
+    expect(series.map((row) => row.monthKey)).toEqual(["2026-08", "2026-09", "2026-10"]);
+    expect(series[2]).toEqual(oct);
+  });
+
+  it("keeps living saldo and savings as two piles that sum to allt i NUMA", () => {
+    const living = 40_000_00;
+    const savings = 50_000_00;
+    expect(planWealthTotalMinor(living, savings)).toBe(90_000_00);
+    expect(planWealthTotalMinor(-10_000_00, 50_000_00)).toBe(40_000_00);
   });
 });

@@ -42,6 +42,106 @@ export function monthLivingSaldoMinor(view: ExtraSaldoView): number {
   return view.monthResultMinor + view.carriedInMinor;
 }
 
+/** Planerat att leva för i månaden + extra som följde med in. */
+export function monthLivingPoolMinor(view: ExtraSaldoView): number {
+  return view.planFreeMinor + view.carriedInMinor;
+}
+
+/**
+ * How to render the living pile without double-counting extra.
+ * Hero is always `livingMinor`. When extra came in, show the two parts
+ * (this month + extra in) — never a third "remaining extra" equal to the hero.
+ */
+export type MonthPileBreakdown = {
+  livingMinor: number;
+  monthSliceMinor: number;
+  extraInMinor: number;
+  showBreakdown: boolean;
+  poolMinor: number;
+  spentRatio: number;
+};
+
+export function monthPileBreakdown(view: ExtraSaldoView): MonthPileBreakdown {
+  const livingMinor = monthLivingSaldoMinor(view);
+  const poolMinor = monthLivingPoolMinor(view);
+  const spentRatio =
+    poolMinor > 0 ? Math.min(1.15, Math.max(0, view.spentMinor / poolMinor)) : 0;
+  return {
+    livingMinor,
+    monthSliceMinor: view.monthResultMinor,
+    extraInMinor: view.carriedInMinor,
+    showBreakdown: view.carriedInMinor > 0,
+    poolMinor,
+    spentRatio,
+  };
+}
+
+export function planWealthTotalMinor(livingMinor: number, savingsMinor: number): number {
+  return livingMinor + savingsMinor;
+}
+
+export function projectExtraSaldoSeries(params: {
+  planItems: PlanItem[];
+  spendingByMonthKey: Record<string, number>;
+  throughMonthKey: string;
+  currentMonthKey: string;
+  timeZone: string;
+  startMonthKey?: string;
+}): ExtraSaldoView[] {
+  const start = params.startMonthKey ?? APP_PLAN_START_MONTH;
+  const fromKey = start > params.throughMonthKey ? params.throughMonthKey : start;
+  const keys = monthKeysInclusive(fromKey, params.throughMonthKey);
+  const views: ExtraSaldoView[] = [];
+  let carried = 0;
+
+  for (const key of keys) {
+    const view = closeMonthView({
+      key,
+      planItems: params.planItems,
+      spendingByMonthKey: params.spendingByMonthKey,
+      currentMonthKey: params.currentMonthKey,
+      timeZone: params.timeZone,
+      carried,
+    });
+    views.push(view);
+    carried = view.nextMonthExtraMinor;
+  }
+
+  return views;
+}
+
+function closeMonthView(params: {
+  key: string;
+  planItems: PlanItem[];
+  spendingByMonthKey: Record<string, number>;
+  currentMonthKey: string;
+  timeZone: string;
+  carried: number;
+}): ExtraSaldoView {
+  const plan = projectPlanForMonth(params.planItems, params.key, params.timeZone);
+  const isFuture = params.key > params.currentMonthKey;
+  const spent = isFuture ? 0 : (params.spendingByMonthKey[params.key] ?? 0);
+  const monthResult = isFuture ? plan.freeToSpendMinor : plan.freeToSpendMinor - spent;
+  const drawn = !isFuture && monthResult < 0 ? Math.min(params.carried, -monthResult) : 0;
+  const extraSaldo = isFuture
+    ? Math.max(0, params.carried)
+    : Math.max(0, monthResult < 0 ? params.carried + monthResult : params.carried);
+  const nextMonthExtra = isFuture
+    ? Math.max(0, params.carried)
+    : Math.max(0, params.carried + monthResult);
+
+  return {
+    monthKey: params.key,
+    planFreeMinor: plan.freeToSpendMinor,
+    spentMinor: spent,
+    monthResultMinor: monthResult,
+    carriedInMinor: params.carried,
+    drawnMinor: drawn,
+    extraSaldoMinor: extraSaldo,
+    nextMonthExtraMinor: nextMonthExtra,
+  };
+}
+
 export function spendingByMonthKey(params: {
   transactions: CanonicalTransaction[];
   currency: CurrencyCode;
@@ -78,61 +178,25 @@ export function projectExtraSaldo(params: {
   timeZone: string;
   startMonthKey?: string;
 }): ExtraSaldoView {
-  const start = params.startMonthKey ?? APP_PLAN_START_MONTH;
-  const fromKey = start > params.monthKey ? params.monthKey : start;
-  const keys = monthKeysInclusive(fromKey, params.monthKey);
-
-  let carried = 0;
-  let view: ExtraSaldoView | null = null;
-
-  for (const key of keys) {
-    const plan = projectPlanForMonth(params.planItems, key, params.timeZone);
-    const isFuture = key > params.currentMonthKey;
-    const spent = isFuture ? 0 : (params.spendingByMonthKey[key] ?? 0);
-    const monthResult = isFuture
-      ? plan.freeToSpendMinor
-      : plan.freeToSpendMinor - spent;
-    const drawn = !isFuture && monthResult < 0 ? Math.min(carried, -monthResult) : 0;
-    const extraSaldo = isFuture
-      ? Math.max(0, carried)
-      : Math.max(0, monthResult < 0 ? carried + monthResult : carried);
-    const nextMonthExtra = isFuture
-      ? Math.max(0, carried)
-      : Math.max(0, carried + monthResult);
-
-    if (key === params.monthKey) {
-      view = {
-        monthKey: key,
-        planFreeMinor: plan.freeToSpendMinor,
-        spentMinor: spent,
-        monthResultMinor: monthResult,
-        carriedInMinor: carried,
-        drawnMinor: drawn,
-        extraSaldoMinor: extraSaldo,
-        nextMonthExtraMinor: nextMonthExtra,
-      };
-    }
-
-    carried = nextMonthExtra;
-  }
-
+  const views = projectExtraSaldoSeries({
+    planItems: params.planItems,
+    spendingByMonthKey: params.spendingByMonthKey,
+    throughMonthKey: params.monthKey,
+    currentMonthKey: params.currentMonthKey,
+    timeZone: params.timeZone,
+    startMonthKey: params.startMonthKey,
+  });
+  const view = views.find((row) => row.monthKey === params.monthKey);
   if (view) return view;
 
-  const plan = projectPlanForMonth(
-    params.planItems,
-    params.monthKey,
-    params.timeZone,
-  );
-  return {
-    monthKey: params.monthKey,
-    planFreeMinor: plan.freeToSpendMinor,
-    spentMinor: 0,
-    monthResultMinor: plan.freeToSpendMinor,
-    carriedInMinor: 0,
-    drawnMinor: 0,
-    extraSaldoMinor: 0,
-    nextMonthExtraMinor: Math.max(0, plan.freeToSpendMinor),
-  };
+  return closeMonthView({
+    key: params.monthKey,
+    planItems: params.planItems,
+    spendingByMonthKey: params.spendingByMonthKey,
+    currentMonthKey: params.currentMonthKey,
+    timeZone: params.timeZone,
+    carried: 0,
+  });
 }
 
 export function extraSaldoHintSv(
@@ -160,11 +224,15 @@ export function monthLeftoverHintSv(
   currentMonthKey: string,
 ): string | undefined {
   const nextName = labelMonthNameSv(addMonthsKey(view.monthKey, 1));
-  if (view.monthKey !== currentMonthKey) return undefined;
   if (view.monthResultMinor > 0) {
-    return `Blir extra saldo i ${nextName}`;
+    if (view.monthKey === currentMonthKey) {
+      return `Följer med till ${nextName}`;
+    }
+    if (view.monthKey < currentMonthKey) {
+      return `Följde med till ${nextName}`;
+    }
   }
-  if (view.drawnMinor > 0) {
+  if (view.monthKey === currentMonthKey && view.drawnMinor > 0) {
     return "Tas från extra saldo";
   }
   return undefined;

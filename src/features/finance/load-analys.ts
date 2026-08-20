@@ -9,6 +9,9 @@ import {
   labelMonthSv,
   monthKeyFromDate,
   monthLeftoverHintSv,
+  monthLivingSaldoMinor,
+  cumulativePlanSavingsMinor,
+  planWealthTotalMinor,
   projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
@@ -63,6 +66,10 @@ export type AnalysSnapshot = {
     extraSaldoMinor: number;
     extraSaldoDrawnMinor: number;
     extraSaldoHint: string | null;
+    extraCarriedInMinor: number;
+    livingSaldoMinor: number;
+    savingsTotalMinor: number;
+    wealthTotalMinor: number;
     monthLeftoverHint: string | null;
     monthResultMinor: number;
     spentMinor: number;
@@ -85,8 +92,7 @@ export type AnalysSnapshot = {
 };
 
 export type AnalysSnapshotResult =
-  | { ok: true; data: AnalysSnapshot }
-  | { ok: false; error: string };
+  { ok: true; data: AnalysSnapshot } | { ok: false; error: string };
 
 function labelIncomeDate(iso: string | null, timeZone: string): string {
   if (!iso) return "Datum saknas";
@@ -122,6 +128,12 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       currentMonthKey: monthKey,
       timeZone,
     });
+    const livingSaldoMinor = monthLivingSaldoMinor(extra);
+    const savingsTotalMinor = cumulativePlanSavingsMinor(
+      snap.planItems ?? [],
+      monthKey,
+      timeZone,
+    );
     const remainingFreeMinor = living.remainingFreeMinor;
     const dayBudgetMinor = living.dayBudgetMinor;
     const remainingTodayMinor = living.remainingTodayMinor;
@@ -259,6 +271,10 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           extraSaldoMinor: extra.extraSaldoMinor,
           extraSaldoDrawnMinor: extra.drawnMinor,
           extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
+          extraCarriedInMinor: extra.carriedInMinor,
+          livingSaldoMinor,
+          savingsTotalMinor,
+          wealthTotalMinor: planWealthTotalMinor(livingSaldoMinor, savingsTotalMinor),
           monthLeftoverHint: monthLeftoverHintSv(extra, monthKey) ?? null,
           monthResultMinor: extra.monthResultMinor,
           spentMinor: extra.spentMinor,
@@ -274,8 +290,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     console.error("[numa] loadAnalysSnapshot failed", error);
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte hämta analysen",
+      error: error instanceof Error ? error.message : "Kunde inte hämta analysen",
     };
   }
 }

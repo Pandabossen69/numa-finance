@@ -163,11 +163,7 @@ body {
   bottom: 14%;
   width: 2px;
   border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    var(--numa-accent) 0%,
-    rgba(11, 111, 93, 0.2) 100%
-  );
+  background: linear-gradient(180deg, var(--numa-accent) 0%, rgba(11, 111, 93, 0.2) 100%);
   pointer-events: none;
 }
 
@@ -354,11 +350,7 @@ body {
   width: min(58%, 14rem);
   height: min(42%, 11rem);
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(11, 111, 93, 0.12) 0%,
-    transparent 68%
-  );
+  background: radial-gradient(circle, rgba(11, 111, 93, 0.12) 0%, transparent 68%);
   z-index: -1;
   pointer-events: none;
 }
@@ -412,6 +404,145 @@ body {
 .animate-scale-in,
 .animate-page-in {
   animation: none;
+}
+
+.numa-month-strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.numa-month-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.numa-month-chip {
+  scroll-snap-align: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.numa-month-dots {
+  display: inline-flex;
+  gap: 0.18rem;
+}
+
+.numa-month-dots i {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  display: block;
+}
+
+.numa-month-dots i.is-saldo {
+  background: var(--numa-accent);
+}
+
+.numa-month-dots i.is-save {
+  background: var(--numa-ink);
+}
+
+.numa-month-chip.is-active .numa-month-dots i.is-saldo {
+  background: #6ee7c5;
+}
+
+.numa-month-chip.is-active .numa-month-dots i.is-save {
+  background: #f8faf9;
+}
+
+.numa-wealth-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.45rem 0.7rem;
+  padding: 0.95rem 1.1rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid var(--numa-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--numa-shadow-sm);
+}
+
+.numa-wealth-score > div {
+  flex: 1 1 5.5rem;
+  min-width: 0;
+}
+
+.numa-wealth-op {
+  padding-bottom: 0.15rem;
+  color: var(--numa-faint);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.numa-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.numa-chip-mint {
+  background: var(--numa-positive-soft);
+  color: var(--numa-positive);
+}
+
+.numa-chip-danger {
+  background: var(--numa-danger-soft);
+  color: var(--numa-danger);
+}
+
+.numa-chip-ink {
+  background: rgba(7, 21, 17, 0.06);
+  color: var(--numa-ink);
+}
+
+.numa-pile-meter {
+  height: 0.42rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(7, 21, 17, 0.06);
+}
+
+.numa-pile-meter > i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--numa-accent) 0%, #20a88c 100%);
+  transform-origin: left center;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.numa-pile-meter > i.is-danger {
+  background: linear-gradient(90deg, #d3453a 0%, var(--numa-danger) 100%);
+}
+
+.numa-year-dots {
+  display: flex;
+  gap: 0.28rem;
+}
+
+.numa-year-dots > span {
+  flex: 1;
+  height: 0.32rem;
+  border-radius: 999px;
+  background: rgba(7, 21, 17, 0.08);
+}
+
+.numa-year-dots > span.is-on {
+  background: var(--numa-ink);
 }
 
 .numa-press {
@@ -524,6 +655,10 @@ body {
   .numa-nav-progress,
   .numa-day-dial-arc {
     animation: none !important;
+  }
+
+  .numa-pile-meter > i {
+    transition: none;
   }
 }
 

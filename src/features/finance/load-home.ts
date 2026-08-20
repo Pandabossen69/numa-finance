@@ -1,8 +1,11 @@
 import { cache } from "react";
 import {
   extraSaldoHintSv,
+  cumulativePlanSavingsMinor,
   labelMonthSv,
   monthKeyFromDate,
+  monthLivingSaldoMinor,
+  planWealthTotalMinor,
   projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
@@ -48,12 +51,15 @@ export type HomeSnapshot = {
   extraSaldoMinor: number;
   extraSaldoDrawnMinor: number;
   extraSaldoHint: string | null;
+  extraCarriedInMinor: number;
+  livingSaldoMinor: number;
+  savingsTotalMinor: number;
+  wealthTotalMinor: number;
   monthResultMinor: number;
 };
 
 export type HomeSnapshotResult =
-  | { ok: true; data: HomeSnapshot }
-  | { ok: false; error: string };
+  { ok: true; data: HomeSnapshot } | { ok: false; error: string };
 
 export const getCachedTodaySnapshot = cache(getTodaySnapshot);
 
@@ -82,6 +88,12 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       currentMonthKey: monthKey,
       timeZone,
     });
+    const livingSaldoMinor = monthLivingSaldoMinor(extra);
+    const savingsTotalMinor = cumulativePlanSavingsMinor(
+      snap.planItems ?? [],
+      monthKey,
+      timeZone,
+    );
 
     return {
       ok: true,
@@ -119,6 +131,10 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         extraSaldoMinor: extra.extraSaldoMinor,
         extraSaldoDrawnMinor: extra.drawnMinor,
         extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
+        extraCarriedInMinor: extra.carriedInMinor,
+        livingSaldoMinor,
+        savingsTotalMinor,
+        wealthTotalMinor: planWealthTotalMinor(livingSaldoMinor, savingsTotalMinor),
         monthResultMinor: extra.monthResultMinor,
       },
     };
@@ -126,8 +142,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     console.error("[numa] loadHomeSnapshot failed", error);
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte hämta din ekonomi",
+      error: error instanceof Error ? error.message : "Kunde inte hämta din ekonomi",
     };
   }
 }

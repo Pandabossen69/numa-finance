@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
+import { CompactPiles, WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
@@ -60,8 +61,7 @@ export function AnalysDashboard({
         ? daysLeftLabel
         : "Lägg in intäkter i Plan";
 
-  const monthPool =
-    month.freeToSpendMinor + month.extraSaldoMinor + month.extraSaldoDrawnMinor;
+  const monthPool = month.freeToSpendMinor + month.extraCarriedInMinor;
   const monthSpendProgress =
     data.monthSpendingMinor > 0 && monthPool > 0
       ? Math.min(1, data.monthSpendingMinor / monthPool)
@@ -95,12 +95,10 @@ export function AnalysDashboard({
                 Ange saldo på Hem
               </p>
             ) : (
-              <div className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}>
-                <MoneyDisplay
-                  amountMinor={heroMinor}
-                  currency={currency}
-                  size="xl"
-                />
+              <div
+                className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}
+              >
+                <MoneyDisplay amountMinor={heroMinor} currency={currency} size="xl" />
               </div>
             )}
             {!(isBridge && !hasSaldo) ? (
@@ -139,10 +137,11 @@ export function AnalysDashboard({
           ) : null}
         </div>
 
-        <section className="min-w-0 animate-rise-delay-2 space-y-2" aria-label="Periodens siffror">
-          {!isEmpty ? (
-            <p className="numa-section-title px-1">{SV.perioden}</p>
-          ) : null}
+        <section
+          className="animate-rise-delay-2 min-w-0 space-y-2"
+          aria-label="Periodens siffror"
+        >
+          {!isEmpty ? <p className="numa-section-title px-1">{SV.perioden}</p> : null}
           <div className="numa-panel-list px-4 py-1">
             {isBridge ? (
               <>
@@ -157,9 +156,7 @@ export function AnalysDashboard({
                 ) : (
                   <MetricRow
                     label={SV.saldo}
-                    value={
-                      <span className="text-sm text-[var(--numa-faint)]">—</span>
-                    }
+                    value={<span className="text-sm text-[var(--numa-faint)]">—</span>}
                     hint="Ange på Hem eller fota SMS"
                   />
                 )}
@@ -240,6 +237,18 @@ export function AnalysDashboard({
           </Link>
         </div>
 
+        <CompactPiles
+          livingMinor={month.livingSaldoMinor}
+          savingsMinor={month.savingsTotalMinor}
+          currency={currency}
+        />
+        <WealthScoreboard
+          livingMinor={month.livingSaldoMinor}
+          savingsMinor={month.savingsTotalMinor}
+          totalMinor={month.wealthTotalMinor}
+          currency={currency}
+        />
+
         <div className="numa-panel-list px-4 py-1">
           <MetricRow
             label={SV.intakter}
@@ -256,6 +265,13 @@ export function AnalysDashboard({
             label={SV.sparande}
             amountMinor={month.savingsMinor}
             currency={currency}
+            hint="Avsatt i denna månad"
+          />
+          <MetricRow
+            label={SV.sparandeTotalt}
+            amountMinor={month.savingsTotalMinor}
+            currency={currency}
+            hint={SV.sparandeAvsatt}
           />
           <MetricRow
             label="Kvar i månaden (plan)"
@@ -264,21 +280,29 @@ export function AnalysDashboard({
             tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
             hint="Intäkter minus planerade utgifter och sparande"
           />
-          <ExtraSaldoRow
-            extraSaldoMinor={month.extraSaldoMinor}
-            drawnMinor={month.extraSaldoDrawnMinor}
-            hint={month.extraSaldoHint}
-            currency={currency}
-          />
+          {month.extraCarriedInMinor > 0 ? (
+            <MetricRow
+              label={SV.extraMed}
+              amountMinor={month.extraCarriedInMinor}
+              currency={currency}
+              tone="positive"
+              hint={month.extraSaldoHint ?? undefined}
+            />
+          ) : (
+            <ExtraSaldoRow
+              extraSaldoMinor={month.extraSaldoMinor}
+              drawnMinor={month.extraSaldoDrawnMinor}
+              hint={month.extraSaldoHint}
+              currency={currency}
+            />
+          )}
           <MetricRow
             label={SV.spenderatIManaden}
             amountMinor={month.spentMinor}
             currency={currency}
           />
           <MetricRow
-            label={
-              month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen
-            }
+            label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
             amountMinor={month.monthResultMinor}
             currency={currency}
             tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
@@ -287,9 +311,7 @@ export function AnalysDashboard({
         </div>
         {monthSpendProgress != null ? (
           <div className="numa-progress animate-bar" aria-hidden>
-            <span
-              style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }}
-            />
+            <span style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }} />
           </div>
         ) : null}
 
@@ -323,10 +345,7 @@ export function AnalysDashboard({
               hint={data.verificationLabel ?? undefined}
             />
           ) : (
-            <MetricRow
-              label={SV.saldo}
-              hint="Ange på Hem eller fota SMS"
-            />
+            <MetricRow label={SV.saldo} hint="Ange på Hem eller fota SMS" />
           )}
           <MetricRow
             label={SV.spenderatIdag}
@@ -395,8 +414,7 @@ export function AnalysDashboard({
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {data.recent.map((tx) => {
-              const signed =
-                tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
               return (
                 <li
                   key={tx.id}

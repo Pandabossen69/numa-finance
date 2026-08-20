@@ -8,6 +8,7 @@ import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
+import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { formatCountSv } from "@/domain/finance";
 import {
   formatMoney,
@@ -16,10 +17,7 @@ import {
   type CurrencyCode,
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
-import {
-  createExpenseAction,
-  setAvailableNowAction,
-} from "@/features/finance/actions";
+import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
 import { refreshQuiet } from "@/lib/nav/instant";
@@ -38,11 +36,7 @@ export function HomeDashboard({
   const [deltaSpent, setDeltaSpent] = useState(0);
   useEffect(() => {
     setDeltaSpent(0);
-  }, [
-    snap?.todaySpendingMinor,
-    snap?.remainingTodayMinor,
-    snap?.remainingFreeMinor,
-  ]);
+  }, [snap?.todaySpendingMinor, snap?.remainingTodayMinor, snap?.remainingFreeMinor]);
 
   if (error || !snap) {
     return (
@@ -72,8 +66,7 @@ export function HomeDashboard({
   const isEmpty = snap.livingMode === "empty";
   const remainingOk = remainingFreeMinor >= 0;
   const dayOk = remainingTodayMinor > 0;
-  const overToday =
-    snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
+  const overToday = snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
       ? `Till ${snap.nextIncomeLabelSv}`
@@ -83,9 +76,7 @@ export function HomeDashboard({
       : null;
 
   const dayUsedRatio =
-    snap.dayBudgetMinor > 0
-      ? todaySpendingMinor / snap.dayBudgetMinor
-      : 0;
+    snap.dayBudgetMinor > 0 ? todaySpendingMinor / snap.dayBudgetMinor : 0;
   const daysWord = formatCountSv(snap.spendDaysLeft, "dag", "dagar");
 
   const statusLine = overToday
@@ -102,7 +93,7 @@ export function HomeDashboard({
         <HomescreenInstallHint />
       </div>
       <header className="animate-rise space-y-1 px-0.5">
-        <p className="text-[13px] font-medium capitalize text-[var(--numa-muted)]">
+        <p className="text-[13px] font-medium text-[var(--numa-muted)] capitalize">
           {greeting}
           {rangeLabel ? (
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
@@ -130,185 +121,201 @@ export function HomeDashboard({
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
-              className="numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pb-5 pt-6"
+              className="numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5"
               aria-labelledby="spend-heading"
             >
-            <div className="flex items-center justify-between gap-3 px-0.5">
-              <p id="spend-heading" className="numa-section-title">
-                {SV.kvarIdag}
-              </p>
-              {!isEmpty ? (
-                <p className="text-[12px] font-medium text-[var(--numa-muted)]">
-                  {daysWord}
+              <div className="flex items-center justify-between gap-3 px-0.5">
+                <p id="spend-heading" className="numa-section-title">
+                  {SV.kvarIdag}
                 </p>
-              ) : null}
-            </div>
-
-            {snap.dayBudgetMinor > 0 ? (
-              <>
-                <DayDial usedRatio={dayUsedRatio} over={overToday}>
-                  <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
-                    {overToday ? "Över" : "Kvar"}
+                {!isEmpty ? (
+                  <p className="text-[12px] font-medium text-[var(--numa-muted)]">
+                    {daysWord}
                   </p>
-                  <div
-                    className={`money-hero ${
-                      overToday
-                        ? "text-[var(--numa-danger)]"
-                        : dayOk
-                          ? "text-[var(--numa-ink)]"
+                ) : null}
+              </div>
+
+              {snap.dayBudgetMinor > 0 ? (
+                <>
+                  <DayDial usedRatio={dayUsedRatio} over={overToday}>
+                    <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
+                      {overToday ? "Över" : "Kvar"}
+                    </p>
+                    <div
+                      className={`money-hero ${
+                        overToday
+                          ? "text-[var(--numa-danger)]"
+                          : dayOk
+                            ? "text-[var(--numa-ink)]"
+                            : "text-[var(--numa-muted)]"
+                      }`}
+                    >
+                      <MoneyDisplay
+                        amountMinor={remainingTodayMinor}
+                        currency={currency}
+                        size="display"
+                        compact
+                      />
+                    </div>
+                  </DayDial>
+
+                  {statusLine ? (
+                    <p
+                      className={`text-center text-sm leading-snug ${
+                        overToday
+                          ? "font-medium text-[var(--numa-danger)]"
                           : "text-[var(--numa-muted)]"
+                      }`}
+                    >
+                      {statusLine}
+                    </p>
+                  ) : null}
+
+                  <div className="numa-split border-t border-[var(--numa-border)] pt-1">
+                    <div>
+                      <p className="text-[11px] font-medium text-[var(--numa-faint)]">
+                        {SV.dagsbudget}
+                      </p>
+                      <div className="mt-1.5 text-[var(--numa-ink)]">
+                        <MoneyDisplay
+                          amountMinor={snap.dayBudgetMinor}
+                          currency={currency}
+                          size="md"
+                          compact
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
+                        Sätts på morgonen
+                      </p>
+                    </div>
+                    <div className="numa-split-rule" aria-hidden />
+                    <div>
+                      <p className="text-[11px] font-medium text-[var(--numa-faint)]">
+                        {SV.spenderatIdag}
+                      </p>
+                      <div
+                        className={`mt-1.5 ${
+                          overToday
+                            ? "text-[var(--numa-danger)]"
+                            : "text-[var(--numa-ink)]"
+                        }`}
+                      >
+                        <MoneyDisplay
+                          amountMinor={todaySpendingMinor}
+                          currency={currency}
+                          size="md"
+                          compact
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
+                        Sänker bara idag
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3 py-6 text-center">
+                  <div
+                    className={`money-hero mx-auto ${
+                      dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
                     }`}
                   >
                     <MoneyDisplay
                       amountMinor={remainingTodayMinor}
                       currency={currency}
-                      size="display"
-                      compact
+                      size="xl"
                     />
                   </div>
-                </DayDial>
-
-                {statusLine ? (
-                  <p
-                    className={`text-center text-sm leading-snug ${
-                      overToday
-                        ? "font-medium text-[var(--numa-danger)]"
-                        : "text-[var(--numa-muted)]"
-                    }`}
-                  >
-                    {statusLine}
-                  </p>
-                ) : null}
-
-                <div className="numa-split border-t border-[var(--numa-border)] pt-1">
-                  <div>
-                    <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-                      {SV.dagsbudget}
+                  {!isEmpty ? (
+                    <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                      {isBridge
+                        ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                        : "När planen har pengar kvar syns dagsbudgeten här."}
                     </p>
-                    <div className="mt-1.5 text-[var(--numa-ink)]">
-                      <MoneyDisplay
-                        amountMinor={snap.dayBudgetMinor}
-                        currency={currency}
-                        size="md"
-                        compact
-                      />
-                    </div>
-                    <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
-                      Sätts på morgonen
-                    </p>
-                  </div>
-                  <div className="numa-split-rule" aria-hidden />
-                  <div>
-                    <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-                      {SV.spenderatIdag}
-                    </p>
-                    <div
-                      className={`mt-1.5 ${
-                        overToday
-                          ? "text-[var(--numa-danger)]"
-                          : "text-[var(--numa-ink)]"
-                      }`}
-                    >
-                      <MoneyDisplay
-                        amountMinor={todaySpendingMinor}
-                        currency={currency}
-                        size="md"
-                        compact
-                      />
-                    </div>
-                    <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
-                      Sänker bara idag
-                    </p>
-                  </div>
+                  ) : null}
                 </div>
-              </>
-            ) : (
-              <div className="space-y-3 py-6 text-center">
-                <div
-                  className={`money-hero mx-auto ${
-                    dayOk
-                      ? "text-[var(--numa-ink)]"
-                      : "text-[var(--numa-muted)]"
-                  }`}
-                >
-                  <MoneyDisplay
-                    amountMinor={remainingTodayMinor}
-                    currency={currency}
-                    size="xl"
-                  />
-                </div>
-                {!isEmpty ? (
-                  <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                    {isBridge
-                      ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
-                      : "När planen har pengar kvar syns dagsbudgeten här."}
-                  </p>
-                ) : null}
-              </div>
-            )}
+              )}
             </section>
 
             <div className="flex h-full min-w-0 flex-col gap-6">
               <section className="animate-rise-delay-2 space-y-2">
-            <p className="numa-section-title px-1">
-              {isBridge ? SV.saldo : SV.perioden}
-            </p>
-            <div className="numa-panel-list animate-scale-in px-4 py-1">
-              <MetricRow
-                label={isBridge ? SV.saldo : SV.kvarIPerioden}
-                amountMinor={remainingFreeMinor}
-                currency={currency}
-                tone={remainingOk ? "positive" : "danger"}
-                hint={
-                  isBridge && snap.verificationLabel
-                    ? snap.verificationLabel
-                    : !isBridge
-                      ? "Efter planerade utgifter och det du redan spenderat"
-                      : undefined
-                }
-              />
-              <ExtraSaldoRow
-                extraSaldoMinor={snap.extraSaldoMinor}
-                drawnMinor={snap.extraSaldoDrawnMinor}
-                hint={snap.extraSaldoHint}
-                currency={currency}
-              />
-              {!isBridge ? (
-                <MetricRow
-                  label={SV.sparande}
-                  amountMinor={snap.planSavingsMinor}
-                  currency={currency}
-                  hint="Avsatt i planen"
-                />
-              ) : null}
-              {snap.hasBankTruth &&
-              snap.calculatedBalanceMinor != null &&
-              !isBridge ? (
-                <MetricRow
-                  label={SV.saldo}
-                  amountMinor={snap.calculatedBalanceMinor}
-                  currency={currency}
-                  hint={snap.verificationLabel ?? "På kontot"}
-                />
-              ) : null}
-              {!isBridge && snap.cycleSpendingMinor + deltaSpent > 0 ? (
-                <MetricRow
-                  label={SV.spenderatIPerioden}
-                  amountMinor={snap.cycleSpendingMinor + Math.max(0, deltaSpent)}
+                <p className="numa-section-title px-1">
+                  {isBridge ? SV.saldo : SV.perioden}
+                </p>
+                <CompactPiles
+                  livingMinor={snap.livingSaldoMinor}
+                  savingsMinor={snap.savingsTotalMinor}
                   currency={currency}
                 />
-              ) : null}
-            </div>
-          </section>
+                <p className="px-1 text-xs font-medium text-[var(--numa-muted)]">
+                  {SV.alltINuma}{" "}
+                  <span className="text-[var(--numa-accent-ink)]">
+                    <MoneyDisplay
+                      amountMinor={snap.wealthTotalMinor}
+                      currency={currency}
+                      size="sm"
+                      compact
+                    />
+                  </span>
+                </p>
+                <div className="numa-panel-list animate-scale-in px-4 py-1">
+                  <MetricRow
+                    label={isBridge ? SV.saldo : SV.kvarIPerioden}
+                    amountMinor={remainingFreeMinor}
+                    currency={currency}
+                    tone={remainingOk ? "positive" : "danger"}
+                    hint={
+                      isBridge && snap.verificationLabel
+                        ? snap.verificationLabel
+                        : !isBridge
+                          ? "Efter planerade utgifter och det du redan spenderat"
+                          : undefined
+                    }
+                  />
+                  {snap.extraCarriedInMinor > 0 ? (
+                    <MetricRow
+                      label={SV.extraMed}
+                      amountMinor={snap.extraCarriedInMinor}
+                      currency={currency}
+                      tone="positive"
+                      hint={snap.extraSaldoHint ?? "Följde med från tidigare månader"}
+                    />
+                  ) : (
+                    <ExtraSaldoRow
+                      extraSaldoMinor={snap.extraSaldoMinor}
+                      drawnMinor={snap.extraSaldoDrawnMinor}
+                      hint={snap.extraSaldoHint}
+                      currency={currency}
+                    />
+                  )}
+                  {snap.hasBankTruth &&
+                  snap.calculatedBalanceMinor != null &&
+                  !isBridge ? (
+                    <MetricRow
+                      label="På kontot"
+                      amountMinor={snap.calculatedBalanceMinor}
+                      currency={currency}
+                      hint={snap.verificationLabel ?? undefined}
+                    />
+                  ) : null}
+                  {!isBridge && snap.cycleSpendingMinor + deltaSpent > 0 ? (
+                    <MetricRow
+                      label={SV.spenderatIPerioden}
+                      amountMinor={snap.cycleSpendingMinor + Math.max(0, deltaSpent)}
+                      currency={currency}
+                    />
+                  ) : null}
+                </div>
+              </section>
 
-          {isBridge ? (
-            <div className="animate-rise-delay-2 px-0.5 text-sm">
-              <UpdateBalanceLink
-                accountId={snap.primaryAccountId}
-                currency={currency}
-              />
-            </div>
-          ) : null}
+              {isBridge ? (
+                <div className="animate-rise-delay-2 px-0.5 text-sm">
+                  <UpdateBalanceLink
+                    accountId={snap.primaryAccountId}
+                    currency={currency}
+                  />
+                </div>
+              ) : null}
 
               <section className="animate-rise-delay-2 mt-auto grid grid-cols-2 gap-3">
                 <ActionLink href="/fota" title={SV.fota} subtitle={SV.fotaHint} />
@@ -322,12 +329,8 @@ export function HomeDashboard({
             currency={currency}
             disabled={!snap.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
-            onOptimisticSpend={(amountMinor) =>
-              setDeltaSpent((n) => n + amountMinor)
-            }
-            onSpendFailed={(amountMinor) =>
-              setDeltaSpent((n) => n - amountMinor)
-            }
+            onOptimisticSpend={(amountMinor) => setDeltaSpent((n) => n + amountMinor)}
+            onSpendFailed={(amountMinor) => setDeltaSpent((n) => n - amountMinor)}
           />
         </>
       ) : null}
@@ -378,15 +381,11 @@ function AvailableNowCard({
     <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
       <div>
         <p className="numa-section-title">{SV.komIgång}</p>
-        <h2 className="mt-1 text-lg font-semibold tracking-tight">
-          {SV.hurMycketKvar}
-        </h2>
+        <h2 className="mt-1 text-lg font-semibold tracking-tight">{SV.hurMycketKvar}</h2>
         <p className="mt-1 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Vi räknar ut en dagsbudget
-          {nextIncomeLabel
-            ? ` fram till ${nextIncomeLabel}`
-            : " fram till nästa intäkt"}
-          . När du handlar sjunker bara kvar idag.
+          {nextIncomeLabel ? ` fram till ${nextIncomeLabel}` : " fram till nästa intäkt"}.
+          När du handlar sjunker bara kvar idag.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -546,9 +545,7 @@ function QuickExpense({
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
-          <p className="mt-1 text-sm text-[var(--numa-muted)]">
-            {SV.laggtillUtgiftHint}
-          </p>
+          <p className="mt-1 text-sm text-[var(--numa-muted)]">{SV.laggtillUtgiftHint}</p>
         </div>
         {!disabled ? (
           <p className="shrink-0 text-right text-[11px] text-[var(--numa-faint)]">
@@ -564,11 +561,7 @@ function QuickExpense({
       {disabled ? (
         <p className="text-sm text-[var(--numa-muted)]">
           Behöver ett konto —{" "}
-          <Link
-            href="/fota"
-            prefetch
-            className="font-semibold text-[var(--numa-accent)]"
-          >
+          <Link href="/fota" prefetch className="font-semibold text-[var(--numa-accent)]">
             fota bank-SMS
           </Link>
           .

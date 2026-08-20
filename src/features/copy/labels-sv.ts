@@ -15,6 +15,10 @@ export const SV = {
   kvarIPerioden: "Kvar i perioden",
   spenderatIPerioden: "Spenderat i perioden",
   extraSaldo: "Extra saldo",
+  extraMed: "Extra med",
+  iManaden: "I månaden",
+  alltINuma: "Allt i NUMA",
+  sparandeTotalt: "Sparat i NUMA",
   overskottHittills: "Överskott hittills",
   minusMotPlanen: "Minus mot planen",
   spenderatIManaden: "Spenderat i månaden",
@@ -22,6 +26,7 @@ export const SV = {
   saldo: "Saldo",
   saldoLevaFor: "Att leva för",
   sparandeAvsatt: "Ligger avsatt",
+  vaxer: "Växer",
   intakter: "Intäkter",
   utgifter: "Utgifter",
   laggtillUtgift: "Lägg till utgift",
@@ -40,6 +45,7 @@ export const SV = {
   visaDagsbudget: "Visa dagsbudget",
   perioden: "Perioden",
   idag: "Idag",
-  appDescription: "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
+  appDescription:
+    "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
   notFoundHint: "Gå tillbaka till Hem — där ser du hur mycket som är kvar idag.",
 } as const;
