@@ -1,7 +1,9 @@
 import { cache } from "react";
 import {
+  extraSaldoHintSv,
   labelMonthSv,
   monthKeyFromDate,
+  projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
 } from "@/domain/finance";
@@ -43,6 +45,10 @@ export type HomeSnapshot = {
   remainingTodayMinor: number;
   daysUntilIncome: number;
   nextIncomeLabelSv: string | null;
+  extraSaldoMinor: number;
+  extraSaldoDrawnMinor: number;
+  extraSaldoHint: string | null;
+  monthResultMinor: number;
 };
 
 export type HomeSnapshotResult =
@@ -67,6 +73,14 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       cycleSpendingMinor,
       todaySpendingMinor: snap.todaySpendingMinor,
       fundingConfirmed: snap.fundingConfirmed,
+    });
+
+    const extra = projectExtraSaldo({
+      planItems: snap.planItems ?? [],
+      spendingByMonthKey: snap.monthSpendingByKey ?? {},
+      monthKey,
+      currentMonthKey: monthKey,
+      timeZone,
     });
 
     return {
@@ -102,6 +116,10 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         remainingTodayMinor: living.remainingTodayMinor,
         daysUntilIncome: living.daysLeft,
         nextIncomeLabelSv: living.nextIncomeLabelSv,
+        extraSaldoMinor: extra.extraSaldoMinor,
+        extraSaldoDrawnMinor: extra.drawnMinor,
+        extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
+        monthResultMinor: extra.monthResultMinor,
       },
     };
   } catch (error) {

@@ -1,12 +1,15 @@
 import {
   NEXT_INCOME_NAME,
   dayOfMonthFromIso,
+  extraSaldoHintSv,
   isPlanIncome,
   isPlanSavings,
   isRecurringMonthly,
   labelDayOfMonthSv,
   labelMonthSv,
   monthKeyFromDate,
+  monthLeftoverHintSv,
+  projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
   projectPlanForMonth,
@@ -57,6 +60,12 @@ export type AnalysSnapshot = {
     expenseMinor: number;
     savingsMinor: number;
     freeToSpendMinor: number;
+    extraSaldoMinor: number;
+    extraSaldoDrawnMinor: number;
+    extraSaldoHint: string | null;
+    monthLeftoverHint: string | null;
+    monthResultMinor: number;
+    spentMinor: number;
     incomes: AnalysLine[];
     expenses: AnalysLine[];
   };
@@ -105,6 +114,13 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       cycleSpendingMinor,
       todaySpendingMinor: snap.todaySpendingMinor,
       fundingConfirmed: snap.fundingConfirmed,
+    });
+    const extra = projectExtraSaldo({
+      planItems: snap.planItems ?? [],
+      spendingByMonthKey: snap.monthSpendingByKey ?? {},
+      monthKey,
+      currentMonthKey: monthKey,
+      timeZone,
     });
     const remainingFreeMinor = living.remainingFreeMinor;
     const dayBudgetMinor = living.dayBudgetMinor;
@@ -179,6 +195,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
             "Innan nästa intäkt lever du på saldot på kontot.",
             "Dagsbudget = saldo ÷ dagar kvar (samma belopp hela dagen).",
             "Kvar idag = dagsbudget − det du spenderat idag.",
+            "Det som blir över en månad följer med som extra saldo.",
             "När intäkterna kommer växlar Hem till periodens budget.",
           ]
         : living.mode === "empty"
@@ -192,9 +209,11 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
                 "Dagsbudget räknas fram till månadens sista intäkt.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte mitt på dagen.",
                 "När sista intäkten kommer räknas perioden om till nästa.",
+                "Det som blir över en månad följer med som extra saldo.",
               ]
             : [
                 "Intäkterna i perioden minus planerade utgifter och sparande = kvar i perioden.",
+                "Det som blir över en månad följer med som extra saldo.",
                 "Dagsbudget = kvar i perioden (på morgonen) ÷ dagar kvar.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte.",
               ];
@@ -237,6 +256,12 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           expenseMinor: month.totalPlannedMinor,
           savingsMinor: month.savingsMinor,
           freeToSpendMinor: month.freeToSpendMinor,
+          extraSaldoMinor: extra.extraSaldoMinor,
+          extraSaldoDrawnMinor: extra.drawnMinor,
+          extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
+          monthLeftoverHint: monthLeftoverHintSv(extra, monthKey) ?? null,
+          monthResultMinor: extra.monthResultMinor,
+          spentMinor: extra.spentMinor,
           incomes: monthIncomes,
           expenses: monthExpenses,
         },

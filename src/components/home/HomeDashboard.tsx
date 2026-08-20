@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
+import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
@@ -243,6 +244,12 @@ export function HomeDashboard({
                       ? "Efter planerade utgifter och det du redan spenderat"
                       : undefined
                 }
+              />
+              <ExtraSaldoRow
+                extraSaldoMinor={snap.extraSaldoMinor}
+                drawnMinor={snap.extraSaldoDrawnMinor}
+                hint={snap.extraSaldoHint}
+                currency={currency}
               />
               {!isBridge ? (
                 <MetricRow

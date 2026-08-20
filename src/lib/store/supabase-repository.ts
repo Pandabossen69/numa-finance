@@ -7,11 +7,13 @@ import {
   formatRelativeVerificationSv,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
+  APP_PLAN_START_MONTH,
   projectPayCycle,
   projectPlanForMonth,
   resolveSmsTipBalanceMinor,
   shouldWriteSmsTipCheckpoint,
   snapshotLedgerWindow,
+  spendingByMonthKey,
   startOfZonedDay,
   startOfZonedMonth,
   decideSmsBatchConfirm,
@@ -1006,6 +1008,10 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const spendWindow = snapshotLedgerWindow({
     monthStart,
     cycleStartAt: cycle.startAt,
+    historySince: startOfZonedMonth(
+      new Date(`${APP_PLAN_START_MONTH}-15T12:00:00.000Z`),
+      timezone,
+    ),
   });
   const [checkpoint, spendTx] = await Promise.all([
     latestCheckpointForAccount(primary.id),
@@ -1015,6 +1021,10 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     monthStart,
     cycleStartAt: cycle.startAt,
     checkpointVerifiedAt: checkpoint?.verifiedAt,
+    historySince: startOfZonedMonth(
+      new Date(`${APP_PLAN_START_MONTH}-15T12:00:00.000Z`),
+      timezone,
+    ),
   });
   const accountTx = ledger.refetchFromCheckpoint
     ? await listTransactions(primary.id, { sinceIso: ledger.saldoSinceIso })
@@ -1091,6 +1101,11 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     todaySpendingMinor: todaySpending.amountMinor,
     monthSpendingMinor: monthSpending.amountMinor,
     cycleSpendingMinor: cycleSpending.amountMinor,
+    monthSpendingByKey: spendingByMonthKey({
+      transactions: accountTx,
+      currency,
+      timeZone: timezone || "Asia/Bangkok",
+    }),
     fundingConfirmed,
     safeToSpendTodayMinor: safe?.today.amountMinor ?? 0,
     safeToSpendWeekMinor: safe?.week.amountMinor ?? 0,
@@ -1123,6 +1138,7 @@ function emptySnapshot(
     todaySpendingMinor: 0,
     monthSpendingMinor: 0,
     cycleSpendingMinor: 0,
+    monthSpendingByKey: {},
     fundingConfirmed: false,
     safeToSpendTodayMinor: 0,
     safeToSpendWeekMinor: 0,

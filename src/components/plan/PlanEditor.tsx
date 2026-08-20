@@ -6,9 +6,12 @@ import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   dayOfMonthFromIso,
+  extraSaldoHintSv,
   labelDayOfMonthSv,
   labelMonthNameSv,
   monthKeyFromDate,
+  monthLeftoverHintSv,
+  projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
   projectPlanForMonth,
@@ -16,7 +19,11 @@ import {
   visibleMonthKeysForYear,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import { MetricRow } from "@/components/ui/MetricRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { SV } from "@/features/copy/labels-sv";
+
+const EMPTY_MONTH_SPEND: Record<string, number> = {};
 import {
   createPlanExtraAction,
   createPlanIncomeAction,
@@ -51,6 +58,7 @@ export function PlanEditor({
   bankBalanceMinor = null,
   cycleSpendingMinor = 0,
   todaySpendingMinor = 0,
+  spendingByMonthKey = EMPTY_MONTH_SPEND,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
@@ -58,6 +66,7 @@ export function PlanEditor({
   bankBalanceMinor?: number | null;
   cycleSpendingMinor?: number;
   todaySpendingMinor?: number;
+  spendingByMonthKey?: Record<string, number>;
 }) {
   const router = useRouter();
   const currentMonthKey = useMemo(
@@ -95,6 +104,20 @@ export function PlanEditor({
     () => projectPlanForMonth(items, monthKey, timeZone),
     [items, monthKey, timeZone],
   );
+
+  const extra = useMemo(
+    () =>
+      projectExtraSaldo({
+        planItems: items,
+        spendingByMonthKey,
+        monthKey,
+        currentMonthKey,
+        timeZone,
+      }),
+    [items, spendingByMonthKey, monthKey, currentMonthKey, timeZone],
+  );
+  const extraHint = extraSaldoHintSv(extra, currentMonthKey);
+  const leftoverHint = monthLeftoverHintSv(extra, currentMonthKey);
 
   const cycle = useMemo(
     () => projectPayCycle(items, new Date(), timeZone),
@@ -235,55 +258,106 @@ export function PlanEditor({
           ))}
         </div>
 
-        <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--numa-border-strong)] pb-5">
-          <div>
-            <p className="numa-section-title">Kvar · {labelMonthNameSv(monthKey)}</p>
-            <div
-              className={`money-hero mt-1.5 ${
-                projection.freeToSpendMinor >= 0
-                  ? "text-[var(--numa-positive)]"
-                  : "text-[var(--numa-danger)]"
-              }`}
-            >
-              <MoneyDisplay
-                amountMinor={projection.freeToSpendMinor}
-                currency={currency}
-                size="lg"
-              />
+        <div className="space-y-4 border-b border-[var(--numa-border-strong)] pb-5">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="numa-section-title">
+                Kvar · {labelMonthNameSv(monthKey)}
+              </p>
+              <div
+                className={`money-hero mt-1.5 ${
+                  projection.freeToSpendMinor >= 0
+                    ? "text-[var(--numa-positive)]"
+                    : "text-[var(--numa-danger)]"
+                }`}
+              >
+                <MoneyDisplay
+                  amountMinor={projection.freeToSpendMinor}
+                  currency={currency}
+                  size="lg"
+                />
+              </div>
+              {extra.extraSaldoMinor > 0 ? (
+                <div className="mt-3 space-y-1.5">
+                  <p className="inline-flex max-w-full flex-wrap items-baseline gap-x-2 gap-y-1 rounded-full bg-[var(--numa-accent-soft)] px-3 py-1.5 text-sm font-medium text-[var(--numa-accent-ink)]">
+                    <span>Extra saldo</span>
+                    <MoneyDisplay
+                      amountMinor={extra.extraSaldoMinor}
+                      currency={currency}
+                      size="sm"
+                    />
+                  </p>
+                  {extraHint ? (
+                    <p className="text-sm text-[var(--numa-muted)]">{extraHint}</p>
+                  ) : null}
+                </div>
+              ) : extra.drawnMinor > 0 ? (
+                <p className="mt-3 text-sm text-[var(--numa-danger)]">
+                  {extraHint}
+                </p>
+              ) : leftoverHint ? (
+                <p className="mt-3 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                  {leftoverHint}
+                </p>
+              ) : monthKey === currentMonthKey ? (
+                <p className="mt-3 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                  Det som blir över följer med till nästa månad som extra saldo.
+                </p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--numa-muted)]">
+              <span className="inline-flex items-baseline gap-1.5">
+                Intäkter
+                <span className="text-[var(--numa-ink)]">
+                  <MoneyDisplay
+                    amountMinor={projection.incomeMinor}
+                    currency={currency}
+                    size="sm"
+                  />
+                </span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                Utgifter
+                <span className="text-[var(--numa-ink)]">
+                  <MoneyDisplay
+                    amountMinor={projection.fixedMinor + projection.extraMinor}
+                    currency={currency}
+                    size="sm"
+                  />
+                </span>
+              </span>
+              <span className="inline-flex items-baseline gap-1.5">
+                Sparande
+                <span className="text-[var(--numa-ink)]">
+                  <MoneyDisplay
+                    amountMinor={projection.savingsMinor}
+                    currency={currency}
+                    size="sm"
+                  />
+                </span>
+              </span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--numa-muted)]">
-            <span className="inline-flex items-baseline gap-1.5">
-              Intäkter
-              <span className="text-[var(--numa-ink)]">
-                <MoneyDisplay
-                  amountMinor={projection.incomeMinor}
-                  currency={currency}
-                  size="sm"
-                />
-              </span>
-            </span>
-            <span className="inline-flex items-baseline gap-1.5">
-              Utgifter
-              <span className="text-[var(--numa-ink)]">
-                <MoneyDisplay
-                  amountMinor={projection.fixedMinor + projection.extraMinor}
-                  currency={currency}
-                  size="sm"
-                />
-              </span>
-            </span>
-            <span className="inline-flex items-baseline gap-1.5">
-              Sparande
-              <span className="text-[var(--numa-ink)]">
-                <MoneyDisplay
-                  amountMinor={projection.savingsMinor}
-                  currency={currency}
-                  size="sm"
-                />
-              </span>
-            </span>
-          </div>
+          {monthKey <= currentMonthKey && extra.spentMinor > 0 ? (
+            <div className="numa-panel-list px-4 py-1">
+              <MetricRow
+                label={SV.spenderatIManaden}
+                amountMinor={extra.spentMinor}
+                currency={currency}
+              />
+              <MetricRow
+                label={
+                  extra.monthResultMinor >= 0
+                    ? SV.overskottHittills
+                    : SV.minusMotPlanen
+                }
+                amountMinor={extra.monthResultMinor}
+                currency={currency}
+                tone={extra.monthResultMinor >= 0 ? "positive" : "danger"}
+                hint={leftoverHint}
+              />
+            </div>
+          ) : null}
         </div>
 
         {cycle.startAt &&

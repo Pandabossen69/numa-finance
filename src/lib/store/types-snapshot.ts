@@ -20,6 +20,8 @@ export type TodaySnapshot = {
   monthSpendingMinor: number;
   /** Confirmed spending since active pay-cycle start (bounded by end). */
   cycleSpendingMinor: number;
+  /** Calendar-month spend totals for extra saldo (Bangkok month keys). */
+  monthSpendingByKey: Record<string, number>;
   /**
    * True when a confirmed credit in the cycle window proves funding landed.
    * Hem stays on bank bridge until this is true.

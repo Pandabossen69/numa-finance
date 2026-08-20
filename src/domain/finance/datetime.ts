@@ -200,12 +200,18 @@ export function snapshotLedgerWindow(params: {
   monthStart: Date | string;
   cycleStartAt?: string | null;
   checkpointVerifiedAt?: string | null;
+  /** Inclusive lower bound for historical month closeouts (extra saldo). */
+  historySince?: Date | string | null;
 }): {
   spendSinceIso: string;
   saldoSinceIso: string;
   refetchFromCheckpoint: boolean;
 } {
-  const spend = earliestInstant(params.monthStart, params.cycleStartAt);
+  const spend = earliestInstant(
+    params.monthStart,
+    params.cycleStartAt,
+    params.historySince,
+  );
   if (!spend) {
     throw new Error("monthStart krävs för snapshot-fönster");
   }

@@ -133,4 +133,14 @@ describe("snapshot ledger window", () => {
     expect(window.refetchFromCheckpoint).toBe(false);
     expect(window.saldoSinceIso).toBe(window.spendSinceIso);
   });
+
+  it("extends the spend window back to plan history for extra saldo", () => {
+    const window = snapshotLedgerWindow({
+      monthStart: new Date("2026-10-01T00:00:00.000+07:00"),
+      cycleStartAt: "2026-09-23T00:00:00.000+07:00",
+      historySince: new Date("2026-08-01T00:00:00.000+07:00"),
+    });
+    expect(window.spendSinceIso).toBe("2026-07-31T17:00:00.000Z");
+    expect(window.refetchFromCheckpoint).toBe(false);
+  });
 });

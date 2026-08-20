@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
@@ -59,11 +60,11 @@ export function AnalysDashboard({
         ? daysLeftLabel
         : "Lägg in intäkter i Plan";
 
-  const spendPool =
-    data.monthSpendingMinor + Math.max(0, cycle.remainingFreeMinor);
+  const monthPool =
+    month.freeToSpendMinor + month.extraSaldoMinor + month.extraSaldoDrawnMinor;
   const monthSpendProgress =
-    data.monthSpendingMinor > 0 && spendPool > 0
-      ? Math.min(1, data.monthSpendingMinor / spendPool)
+    data.monthSpendingMinor > 0 && monthPool > 0
+      ? Math.min(1, data.monthSpendingMinor / monthPool)
       : null;
 
   return (
@@ -261,9 +262,36 @@ export function AnalysDashboard({
             amountMinor={month.freeToSpendMinor}
             currency={currency}
             tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
-            hint="Planerat, före faktiska köp"
+            hint="Intäkter minus planerade utgifter och sparande"
+          />
+          <ExtraSaldoRow
+            extraSaldoMinor={month.extraSaldoMinor}
+            drawnMinor={month.extraSaldoDrawnMinor}
+            hint={month.extraSaldoHint}
+            currency={currency}
+          />
+          <MetricRow
+            label={SV.spenderatIManaden}
+            amountMinor={month.spentMinor}
+            currency={currency}
+          />
+          <MetricRow
+            label={
+              month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen
+            }
+            amountMinor={month.monthResultMinor}
+            currency={currency}
+            tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
+            hint={month.monthLeftoverHint ?? undefined}
           />
         </div>
+        {monthSpendProgress != null ? (
+          <div className="numa-progress animate-bar" aria-hidden>
+            <span
+              style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }}
+            />
+          </div>
+        ) : null}
 
         <div className="grid items-start gap-4 md:grid-cols-2">
           <LineList
@@ -301,23 +329,11 @@ export function AnalysDashboard({
             />
           )}
           <MetricRow
-            label="Spenderat denna månad"
-            amountMinor={data.monthSpendingMinor}
-            currency={currency}
-          />
-          <MetricRow
             label={SV.spenderatIdag}
             amountMinor={data.todaySpendingMinor}
             currency={currency}
           />
         </div>
-        {monthSpendProgress != null ? (
-          <div className="numa-progress animate-bar" aria-hidden>
-            <span
-              style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }}
-            />
-          </div>
-        ) : null}
       </section>
 
       <section className="animate-rise-delay-3 space-y-3">
