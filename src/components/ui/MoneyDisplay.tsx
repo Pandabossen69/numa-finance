@@ -11,6 +11,7 @@ export function MoneyDisplay({
   size = "md",
   compact = false,
   tone = "neutral",
+  align = "center",
 }: {
   amountMinor: number;
   currency: CurrencyCode;
@@ -18,6 +19,7 @@ export function MoneyDisplay({
   compact?: boolean;
   /** Color negative amounts as danger when "signed". */
   tone?: "neutral" | "signed";
+  align?: "start" | "center" | "end";
 }) {
   const safeMinor = Number.isInteger(amountMinor)
     ? amountMinor
@@ -60,9 +62,16 @@ export function MoneyDisplay({
         ? "text-[var(--numa-positive)]"
         : "";
 
+  const alignClass =
+    align === "start"
+      ? "justify-start"
+      : align === "end"
+        ? "justify-end"
+        : "justify-center";
+
   return (
     <span
-      className={`inline-flex max-w-full flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0 ${toneClass}`.trim()}
+      className={`inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 gap-y-0 ${alignClass} ${toneClass}`.trim()}
       aria-label={`${amountText} ${currencyText}`}
     >
       <span className={`money ${sizeClass}`}>{amountText}</span>

@@ -49,6 +49,7 @@ export function MetricRow({
             currency={currency}
             size="md"
             compact
+            align="end"
           />
         ) : (
           <span className="text-sm text-[var(--numa-faint)]">—</span>

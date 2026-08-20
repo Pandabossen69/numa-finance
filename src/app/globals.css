@@ -171,6 +171,33 @@ body {
   pointer-events: none;
 }
 
+.numa-panel-park {
+  position: relative;
+  background:
+    radial-gradient(480px 240px at 0% 0%, rgba(7, 21, 17, 0.05), transparent 55%),
+    linear-gradient(165deg, #ffffff 0%, #f6f8f7 62%, #eef1ef 100%);
+  border: 1px solid var(--numa-border-strong);
+  border-radius: 1.75rem;
+  box-shadow: var(--numa-shadow);
+  overflow: hidden;
+}
+
+.numa-panel-park::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    var(--numa-ink) 0%,
+    rgba(7, 21, 17, 0.18) 100%
+  );
+  pointer-events: none;
+}
+
 .numa-panel-list {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--numa-border);

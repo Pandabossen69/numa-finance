@@ -21,11 +21,8 @@ import {
   visibleMonthKeysForYear,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
-import { MetricRow } from "@/components/ui/MetricRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { SV } from "@/features/copy/labels-sv";
-
-const EMPTY_MONTH_SPEND: Record<string, number> = {};
 import {
   createPlanExtraAction,
   createPlanIncomeAction,
@@ -34,6 +31,8 @@ import {
   setMonthSavingsAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
+
+const EMPTY_MONTH_SPEND: Record<string, number> = {};
 
 function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
@@ -268,107 +267,92 @@ export function PlanEditor({
 
         <div className="grid items-stretch gap-4 md:grid-cols-2">
           <section
-            className="numa-panel-strong flex h-full min-w-0 flex-col gap-4 p-5 pl-6"
+            className="numa-panel-strong flex h-full min-w-0 flex-col gap-3 p-5 pl-6"
             aria-labelledby="plan-saldo-heading"
           >
             <p id="plan-saldo-heading" className="numa-section-title">
-              {SV.saldo}
+              {SV.saldo} · {monthName}
             </p>
             <div
-              className={`money-hero ${
+              className={
                 saldoOk
                   ? "text-[var(--numa-positive)]"
                   : "text-[var(--numa-danger)]"
-              }`}
+              }
             >
               <MoneyDisplay
                 amountMinor={livingSaldoMinor}
                 currency={currency}
                 size="lg"
+                compact
+                align="start"
               />
             </div>
             <p className="text-sm leading-snug text-[var(--numa-muted)]">
               {saldoOk ? SV.saldoLevaFor : SV.minusMotPlanen}
-              <span className="text-[var(--numa-faint)]"> · {monthName}</span>
             </p>
 
-            <div className="mt-auto space-y-2.5 border-t border-[var(--numa-border)] pt-4">
-              {extra.monthResultMinor !== livingSaldoMinor &&
-              extra.carriedInMinor > 0 &&
-              extra.monthResultMinor >= 0 ? (
-                <p className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="text-[var(--numa-muted)]">I månaden</span>
-                  <span className="text-[var(--numa-ink)]">
-                    <MoneyDisplay
-                      amountMinor={extra.monthResultMinor}
-                      currency={currency}
-                      size="sm"
-                    />
-                  </span>
-                </p>
-              ) : null}
-              {extra.extraSaldoMinor > 0 ? (
-                <p className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="text-[var(--numa-muted)]">{SV.extraSaldo}</span>
-                  <span className="text-[var(--numa-accent-ink)]">
-                    <MoneyDisplay
-                      amountMinor={extra.extraSaldoMinor}
-                      currency={currency}
-                      size="sm"
-                    />
-                  </span>
-                </p>
-              ) : extra.drawnMinor > 0 ? (
-                <p className="text-sm text-[var(--numa-danger)]">{extraHint}</p>
-              ) : null}
-              {monthKey === currentMonthKey && extra.spentMinor > 0 ? (
-                <p className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="text-[var(--numa-muted)]">
-                    {SV.spenderatIManaden}
-                  </span>
-                  <span className="text-[var(--numa-ink)]">
-                    <MoneyDisplay
-                      amountMinor={extra.spentMinor}
-                      currency={currency}
-                      size="sm"
-                    />
-                  </span>
-                </p>
-              ) : null}
-              {monthKey === currentMonthKey && extra.monthResultMinor > 0 ? (
-                <p className="text-sm text-[var(--numa-muted)]">
-                  Följer med till {nextMonthName}
-                </p>
-              ) : extraHint && extra.extraSaldoMinor > 0 ? (
-                <p className="text-sm text-[var(--numa-muted)]">{extraHint}</p>
-              ) : null}
-              {cycle.startAt &&
-              monthKey === (cycle.fundingMonthKey ?? currentMonthKey) &&
-              living.mode !== "bridge" ? (
-                <p className="text-sm text-[var(--numa-muted)]">
-                  <MoneyDisplay
-                    amountMinor={living.dayBudgetMinor}
-                    currency={currency}
-                    size="sm"
-                  />{" "}
-                  dagsbudget / dag
-                </p>
-              ) : null}
-            </div>
+            {extra.carriedInMinor > 0 && extra.monthResultMinor >= 0 ? (
+              <BucketLine
+                label="I månaden"
+                amountMinor={extra.monthResultMinor}
+                currency={currency}
+              />
+            ) : null}
+            {extra.extraSaldoMinor > 0 ? (
+              <BucketLine
+                label={SV.extraSaldo}
+                amountMinor={extra.extraSaldoMinor}
+                currency={currency}
+                tint="accent"
+              />
+            ) : extra.drawnMinor > 0 ? (
+              <p className="text-sm text-[var(--numa-danger)]">{extraHint}</p>
+            ) : null}
+            {monthKey <= currentMonthKey && extra.spentMinor > 0 ? (
+              <BucketLine
+                label={SV.spenderatIManaden}
+                amountMinor={extra.spentMinor}
+                currency={currency}
+              />
+            ) : null}
+            {monthKey === currentMonthKey && extra.monthResultMinor > 0 ? (
+              <p className="text-sm text-[var(--numa-muted)]">
+                Följer med till {nextMonthName}
+              </p>
+            ) : extra.extraSaldoMinor > 0 && extraHint ? (
+              <p className="text-sm text-[var(--numa-muted)]">{extraHint}</p>
+            ) : null}
+            {cycle.startAt &&
+            monthKey === (cycle.fundingMonthKey ?? currentMonthKey) &&
+            living.mode !== "bridge" ? (
+              <p className="text-sm text-[var(--numa-muted)]">
+                <MoneyDisplay
+                  amountMinor={living.dayBudgetMinor}
+                  currency={currency}
+                  size="sm"
+                  compact
+                  align="start"
+                />{" "}
+                / dag
+              </p>
+            ) : null}
           </section>
 
           <section
-            className="numa-panel flex h-full min-w-0 flex-col gap-4 p-5"
+            className="numa-panel-park flex h-full min-w-0 flex-col gap-3 p-5 pl-6"
             aria-labelledby="plan-sparande-heading"
           >
             <p id="plan-sparande-heading" className="numa-section-title">
-              {SV.sparande}
+              {SV.sparande} · {monthName}
             </p>
-            <div className="money-hero text-[var(--numa-ink)]">
+            <div className="text-[var(--numa-ink)]">
               <MoneyDisplay
                 amountMinor={savingsTotalMinor}
                 currency={currency}
                 size="lg"
+                compact
+                align="start"
               />
             </div>
             <p className="text-sm leading-snug text-[var(--numa-muted)]">
@@ -378,29 +362,19 @@ export function PlanEditor({
                   ? "Sparat i tidigare månader"
                   : savingsTotalMinor === projection.savingsMinor
                     ? `Avsatt i ${monthName}`
-                    : "Sparat till och med denna månad"}
+                    : "Sparat hittills"}
             </p>
             {savingsTotalMinor > 0 &&
             projection.savingsMinor > 0 &&
             savingsTotalMinor !== projection.savingsMinor ? (
-              <p className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-[var(--numa-muted)]">
-                  Varav i {monthName}
-                </span>
-                <span className="text-[var(--numa-ink)]">
-                  <MoneyDisplay
-                    amountMinor={projection.savingsMinor}
-                    currency={currency}
-                    size="sm"
-                  />
-                </span>
-              </p>
+              <BucketLine
+                label={`I ${monthName}`}
+                amountMinor={projection.savingsMinor}
+                currency={currency}
+              />
             ) : null}
-            <p className="text-xs leading-snug text-[var(--numa-faint)]">
-              {SV.sparandeAvsatt}
-            </p>
 
-            <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
+            <div className="mt-auto space-y-2 pt-2">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
                 Avsätt i {monthName}
               </p>
@@ -412,7 +386,7 @@ export function PlanEditor({
                   onChange={(e) => setSavingsAmount(e.target.value)}
                   placeholder="0"
                   aria-label={`Sparande i ${monthName}`}
-                  className="money min-h-11 w-full min-w-0 max-w-[10rem] rounded-xl border border-[var(--numa-border)] bg-white/80 px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+                  className="money min-h-11 w-full min-w-0 max-w-[9rem] rounded-xl border border-[var(--numa-border)] bg-white px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
                 />
                 <button
                   type="button"
@@ -429,7 +403,7 @@ export function PlanEditor({
                   }}
                   className="numa-btn numa-btn-primary min-h-11 px-4"
                 >
-                  Spara
+                  Avsätt
                 </button>
                 {projection.savingsMinor > 0 ? (
                   <button
@@ -443,7 +417,7 @@ export function PlanEditor({
                         if (refreshAfter(result)) setSavingsAmount("");
                       })();
                     }}
-                    className="numa-btn numa-btn-soft min-h-11 px-3"
+                    className="numa-press text-sm font-semibold text-[var(--numa-muted)]"
                   >
                     Nollställ
                   </button>
@@ -453,18 +427,36 @@ export function PlanEditor({
           </section>
         </div>
 
-        <div className="numa-panel-list px-4 py-1">
-          <MetricRow
-            label={SV.intakter}
-            amountMinor={projection.incomeMinor}
-            currency={currency}
-            tone="positive"
-          />
-          <MetricRow
-            label={SV.utgifter}
-            amountMinor={projection.fixedMinor + projection.extraMinor}
-            currency={currency}
-          />
+        <div className="numa-panel numa-split">
+          <div>
+            <p className="text-[11px] font-medium text-[var(--numa-faint)]">
+              {SV.intakter}
+            </p>
+            <div className="mt-1.5 text-[var(--numa-positive)]">
+              <MoneyDisplay
+                amountMinor={projection.incomeMinor}
+                currency={currency}
+                size="md"
+                compact
+                align="start"
+              />
+            </div>
+          </div>
+          <div className="numa-split-rule" aria-hidden />
+          <div>
+            <p className="text-[11px] font-medium text-[var(--numa-faint)]">
+              {SV.utgifter}
+            </p>
+            <div className="mt-1.5 text-[var(--numa-ink)]">
+              <MoneyDisplay
+                amountMinor={projection.fixedMinor + projection.extraMinor}
+                currency={currency}
+                size="md"
+                compact
+                align="start"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -688,6 +680,39 @@ export function PlanEditor({
   );
 }
 
+function BucketLine({
+  label,
+  amountMinor,
+  currency,
+  tint = "ink",
+}: {
+  label: string;
+  amountMinor: number;
+  currency: CurrencyCode;
+  tint?: "ink" | "accent";
+}) {
+  return (
+    <p className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="text-[var(--numa-muted)]">{label}</span>
+      <span
+        className={
+          tint === "accent"
+            ? "text-[var(--numa-accent-ink)]"
+            : "text-[var(--numa-ink)]"
+        }
+      >
+        <MoneyDisplay
+          amountMinor={amountMinor}
+          currency={currency}
+          size="sm"
+          compact
+          align="end"
+        />
+      </span>
+    </p>
+  );
+}
+
 function PlanCard({
   title,
   hint,
@@ -719,6 +744,8 @@ function PlanCard({
               amountMinor={totalMinor}
               currency={currency}
               size="sm"
+              compact
+              align="end"
             />
           </div>
         </div>
@@ -839,6 +866,8 @@ function PlanRows({
                   amountMinor={item.amountMinor}
                   currency={(item.currency || currency) as CurrencyCode}
                   size="sm"
+                  compact
+                  align="end"
                 />
               </span>
               <button

@@ -21,7 +21,7 @@ export const SV = {
   sparande: "Sparande",
   saldo: "Saldo",
   saldoLevaFor: "Att leva för",
-  sparandeAvsatt: "Avsatt — inte att handla för",
+  sparandeAvsatt: "Ligger avsatt",
   intakter: "Intäkter",
   utgifter: "Utgifter",
   laggtillUtgift: "Lägg till utgift",
