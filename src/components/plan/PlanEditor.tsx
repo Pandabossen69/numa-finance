@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
+  addMonthsKey,
   dayOfMonthFromIso,
+  importableFixedExpenses,
   labelDayOfMonthSv,
   labelMonthNameSv,
   monthKeyFromDate,
@@ -27,6 +29,7 @@ import {
   createPlanIncomeAction,
   createPlanItemAction,
   deletePlanItemAction,
+  importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
@@ -96,6 +99,21 @@ export function PlanEditor({
   const [editDay, setEditDay] = useState("1");
 
   const [error, setError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const isPastMonth = monthKey < currentMonthKey;
+  const previousMonthKey = addMonthsKey(monthKey, -1);
+  const importableFixed = useMemo(
+    () =>
+      importableFixedExpenses({
+        items,
+        fromMonthKey: previousMonthKey,
+        toMonthKey: monthKey,
+        timeZone,
+      }),
+    [items, previousMonthKey, monthKey, timeZone],
+  );
+  const canImportFixed = !isPastMonth && importableFixed.length > 0;
 
   const projection = useMemo(
     () => projectPlanForMonth(items, monthKey, timeZone),
@@ -459,10 +477,41 @@ export function PlanEditor({
       <div className="grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Fasta utgifter"
+          hint={
+            isPastMonth
+              ? "Låst — passerad månad ändras inte."
+              : "Gäller bara den här månaden."
+          }
           totalLabel="Summa"
           totalMinor={projection.fixedMinor}
           currency={currency}
         >
+          {canImportFixed ? (
+            <button
+              type="button"
+              disabled={importing}
+              className="numa-btn numa-btn-soft w-full"
+              onClick={() => {
+                void (async () => {
+                  setImporting(true);
+                  try {
+                    refreshAfter(
+                      await importFixedExpensesFromPreviousMonthAction({
+                        monthKey,
+                      }),
+                    );
+                  } finally {
+                    setImporting(false);
+                  }
+                })();
+              }}
+            >
+              {importing
+                ? "Läser in…"
+                : `Läs in från ${labelMonthNameSv(previousMonthKey)}`}
+            </button>
+          ) : null}
+
           <PlanRows
             items={projection.fixedItems}
             currency={currency}
@@ -471,11 +520,18 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDay}
             editExtraType="day"
-            emptyHint="Hyra, el, Netflix…"
+            locked={isPastMonth}
+            emptyHint={
+              isPastMonth
+                ? "Inga fasta utgifter den här månaden."
+                : canImportFixed
+                  ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
+                  : "Hyra, el, Netflix…"
+            }
             subtitle={(item) =>
               item.nextDueAt
-                ? `den ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
-                : "Varje månad"
+                ? labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))
+                : "Dag saknas"
             }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
@@ -502,34 +558,36 @@ export function PlanEditor({
             }}
           />
 
-          <InlineAdd
-            name={expenseName}
-            amount={expenseAmount}
-            extra={expenseDay}
-            extraType="day"
-            extraLabel="Dag"
-            namePlaceholder="t.ex. Hyra, El, Netflix"
-            amountPlaceholder={`Belopp (${currency})`}
-            submitLabel="Lägg till fast utgift"
-            onName={setExpenseName}
-            onAmount={setExpenseAmount}
-            onExtra={setExpenseDay}
-            onSubmit={() => {
-              void (async () => {
-                const day = Number(expenseDay);
-                const result = await createPlanItemAction({
-                  name: expenseName,
-                  kind: "mandatory",
-                  amount: expenseAmount,
-                  dayOfMonth: Number.isFinite(day) ? day : 1,
-                  monthKey,
-                });
-                if (!refreshAfter(result)) return;
-                setExpenseName("");
-                setExpenseAmount("");
-              })();
-            }}
-          />
+          {isPastMonth ? null : (
+            <InlineAdd
+              name={expenseName}
+              amount={expenseAmount}
+              extra={expenseDay}
+              extraType="day"
+              extraLabel="Dag"
+              namePlaceholder="t.ex. Hyra, El, Netflix"
+              amountPlaceholder={`Belopp (${currency})`}
+              submitLabel="Lägg till fast utgift"
+              onName={setExpenseName}
+              onAmount={setExpenseAmount}
+              onExtra={setExpenseDay}
+              onSubmit={() => {
+                void (async () => {
+                  const day = Number(expenseDay);
+                  const result = await createPlanItemAction({
+                    name: expenseName,
+                    kind: "mandatory",
+                    amount: expenseAmount,
+                    dayOfMonth: Number.isFinite(day) ? day : 1,
+                    monthKey,
+                  });
+                  if (!refreshAfter(result)) return;
+                  setExpenseName("");
+                  setExpenseAmount("");
+                })();
+              }}
+            />
+          )}
         </PlanCard>
 
         <PlanCard
@@ -653,6 +711,7 @@ function PlanRows({
   editExtra,
   editExtraType,
   emptyHint = "Inget här ännu.",
+  locked = false,
   subtitle,
   onEditName,
   onEditAmount,
@@ -670,6 +729,7 @@ function PlanRows({
   editExtra: string;
   editExtraType: "date" | "day";
   emptyHint?: string;
+  locked?: boolean;
   subtitle: (item: PlanItem) => string;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
@@ -755,21 +815,25 @@ function PlanRows({
                   align="end"
                 />
               </span>
-              <button
-                type="button"
-                className="numa-press inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)]"
-                onClick={() => onStartEdit(item)}
-              >
-                Redigera
-              </button>
-              <button
-                type="button"
-                className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)]"
-                onClick={() => onDelete(item.id)}
-                aria-label={`Ta bort ${item.name}`}
-              >
-                ×
-              </button>
+              {locked ? null : (
+                <>
+                  <button
+                    type="button"
+                    className="numa-press inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)]"
+                    onClick={() => onStartEdit(item)}
+                  >
+                    Redigera
+                  </button>
+                  <button
+                    type="button"
+                    className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)]"
+                    onClick={() => onDelete(item.id)}
+                    aria-label={`Ta bort ${item.name}`}
+                  >
+                    ×
+                  </button>
+                </>
+              )}
             </div>
           </li>
         ),

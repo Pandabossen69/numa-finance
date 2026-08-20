@@ -89,6 +89,18 @@ const plan = [
     amountMinor: 15_000_00,
     nextDueAt: "2026-08-01T00:00:00.000Z",
   }),
+  item({
+    name: "Hyra",
+    kind: "mandatory",
+    amountMinor: 15_000_00,
+    nextDueAt: "2026-09-01T00:00:00.000Z",
+  }),
+  item({
+    name: "Hyra",
+    kind: "mandatory",
+    amountMinor: 15_000_00,
+    nextDueAt: "2026-10-01T00:00:00.000Z",
+  }),
 ];
 
 describe("month extra saldo carry-over", () => {

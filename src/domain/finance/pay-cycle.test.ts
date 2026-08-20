@@ -337,8 +337,8 @@ describe("projectPayCycle", () => {
     expect(cycle.freeToSpendMinor).toBe(32_000_00);
   });
 
-  it("excludes expenses that fall before the paycheck wave", () => {
-    const inWindow = expensesInWindow(
+  it("does not invent a next-month due from a monthly row", () => {
+    const onlyAugust = expensesInWindow(
       [
         item({
           name: "Netflix",
@@ -349,9 +349,30 @@ describe("projectPayCycle", () => {
       ],
       "2026-08-25T12:00:00.000Z",
       "2026-09-25T12:00:00.000Z",
-      tz,
     );
-    expect(inWindow.map((e) => e.dueAt)).toEqual(["2026-09-20T12:00:00.000Z"]);
+    expect(onlyAugust).toEqual([]);
+
+    const withSeptemberCopy = expensesInWindow(
+      [
+        item({
+          name: "Netflix",
+          kind: "mandatory",
+          amountMinor: 199_00,
+          nextDueAt: "2026-08-20T12:00:00.000Z",
+        }),
+        item({
+          name: "Netflix",
+          kind: "mandatory",
+          amountMinor: 199_00,
+          nextDueAt: "2026-09-20T12:00:00.000Z",
+        }),
+      ],
+      "2026-08-25T12:00:00.000Z",
+      "2026-09-25T12:00:00.000Z",
+    );
+    expect(withSeptemberCopy.map((e) => e.dueAt)).toEqual([
+      "2026-09-20T12:00:00.000Z",
+    ]);
   });
 
   it("counts daysLeft on Bangkok calendar days (not raw UTC hours)", () => {

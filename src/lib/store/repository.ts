@@ -19,7 +19,7 @@ function api() {
   return supabase ? remote : local;
 }
 
-/** Keep monthly due dates rolling into future months automatically. */
+/** Keep the "Nästa inkomst" pointer rolling; fixed expenses stay month-pinned. */
 async function ensurePlanDuesRolled(): Promise<void> {
   try {
     const items = await api().listPlanItems();

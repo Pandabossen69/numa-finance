@@ -24,7 +24,10 @@ export function monthAnchorIso(monthKey: string): string {
   return `${monthKey}-15T12:00:00.000Z`;
 }
 
-/** True when the bucket repeats every month until deleted. */
+/**
+ * True when the bucket is a *fixed* monthly expense (hyra, el, Netflix).
+ * Recurrence is copy-forward in the UI — one row is never cloned across months.
+ */
 export function isRecurringMonthly(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
   if (isPlanIncome(item) || isPlanSavings(item)) return false;
@@ -37,6 +40,49 @@ export function isRecurringMonthly(item: PlanItem): boolean {
     return false;
   }
   return cadence === "monthly" || item.kind === "mandatory";
+}
+
+/** Calendar month a plan row belongs to, from `nextDueAt`. */
+export function planItemMonthKey(
+  item: PlanItem,
+  timeZone: string,
+): string | null {
+  if (!item.nextDueAt) return null;
+  const t = Date.parse(item.nextDueAt);
+  if (!Number.isFinite(t)) return null;
+  return monthKeyFromDate(new Date(item.nextDueAt), timeZone);
+}
+
+export function normalizeFixedExpenseName(name: string): string {
+  return name.trim().toLocaleLowerCase("sv-SE");
+}
+
+/**
+ * Previous month's fixed expenses that the target month does not already have
+ * (matched on normalized name). Used by "Läs in från …".
+ */
+export function importableFixedExpenses(params: {
+  items: PlanItem[];
+  fromMonthKey: string;
+  toMonthKey: string;
+  timeZone: string;
+}): PlanItem[] {
+  const from = projectPlanForMonth(
+    params.items,
+    params.fromMonthKey,
+    params.timeZone,
+  );
+  const to = projectPlanForMonth(
+    params.items,
+    params.toMonthKey,
+    params.timeZone,
+  );
+  const taken = new Set(
+    to.fixedItems.map((item) => normalizeFixedExpenseName(item.name)),
+  );
+  return from.fixedItems.filter(
+    (item) => !taken.has(normalizeFixedExpenseName(item.name)),
+  );
 }
 
 /** One-off planned expense (loan payment, trip, etc.) — date-scoped only. */
@@ -63,7 +109,6 @@ export function rollDueDateForward(
   let guard = 0;
 
   const atMonth = (y: number, m: number) => {
-    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
     const max = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
     const clamped = Math.min(day, max);
     return new Date(Date.UTC(y, m, clamped, 12, 0, 0));
@@ -110,7 +155,7 @@ export type MonthPlanProjection = {
   labelSv: string;
   /** All expenses for the month (fixed + extras). */
   items: PlanItem[];
-  /** Recurring fixed expenses (carry to next months). */
+  /** Fixed expenses whose nextDueAt falls in this month. */
   fixedItems: PlanItem[];
   /** One-off extras due only in this month. */
   extraItems: PlanItem[];
@@ -156,8 +201,8 @@ export function cumulativePlanSavingsMinor(
 
 /**
  * Project active plan buckets onto a calendar month.
- * Recurring monthly expenses always appear. One-off extras, incomes and
- * savings appear only when their nextDueAt falls in that month.
+ * Fixed expenses, extras, incomes and savings all appear only when their
+ * nextDueAt falls in that month. Fixed rows are never cloned into other months.
  */
 export function projectPlanForMonth(
   items: PlanItem[],
@@ -174,33 +219,25 @@ export function projectPlanForMonth(
   let savings: PlanItem | null = null;
 
   for (const item of active) {
+    const dueMonth = planItemMonthKey(item, timeZone);
     if (isPlanIncome(item)) {
-      if (item.nextDueAt) {
-        const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
-        if (key === monthKey) incomes.push(item);
-      }
+      if (dueMonth === monthKey) incomes.push(item);
       continue;
     }
     if (isPlanSavings(item)) {
-      if (item.nextDueAt) {
-        const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
-        if (key === monthKey) {
-          const prev = savings;
-          if (!prev || item.updatedAt >= prev.updatedAt) {
-            savings = item;
-          }
+      if (dueMonth === monthKey) {
+        const prev = savings;
+        if (!prev || item.updatedAt >= prev.updatedAt) {
+          savings = item;
         }
       }
       continue;
     }
     if (isRecurringMonthly(item)) {
-      fixedItems.push(item);
+      if (dueMonth === monthKey) fixedItems.push(item);
       continue;
     }
-    if (item.nextDueAt) {
-      const key = monthKeyFromDate(new Date(item.nextDueAt), timeZone);
-      if (key === monthKey) extraItems.push(item);
-    }
+    if (dueMonth === monthKey) extraItems.push(item);
   }
 
   const projected = [...fixedItems, ...extraItems];
@@ -329,8 +366,9 @@ export function yearFromMonthKey(monthKey: string): number {
 }
 
 /**
- * Returns plan items with overdue monthly nextDueAt rolled forward.
- * Does not mutate input.
+ * Rolls only the "Nästa inkomst" pointer forward.
+ * Fixed expenses stay pinned to the month they were saved in so past months
+ * never change when a new month starts.
  */
 export function withRolledMonthlyDues(
   items: PlanItem[],
@@ -339,9 +377,7 @@ export function withRolledMonthlyDues(
   const changed: PlanItem[] = [];
   const next = items.map((item) => {
     if (!item.isActive || !item.nextDueAt) return item;
-    if (!isRecurringMonthly(item) && item.name !== NEXT_INCOME_NAME) {
-      return item;
-    }
+    if (item.name !== NEXT_INCOME_NAME) return item;
     const rolled = rollDueDateForward(item.nextDueAt, now);
     if (rolled === item.nextDueAt) return item;
     const updated = { ...item, nextDueAt: rolled, updatedAt: now.toISOString() };

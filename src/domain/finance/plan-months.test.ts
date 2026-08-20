@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
+  importableFixedExpenses,
   isRecurringMonthly,
   perDayBudgetMinor,
   projectPlanForMonth,
@@ -11,6 +12,7 @@ import {
   yearMonthKeys,
   visibleMonthKeysForYear,
 } from "./plan-months";
+import { NEXT_INCOME_NAME } from "./plan-totals";
 
 function item(
   partial: Partial<PlanItem> & Pick<PlanItem, "kind" | "amountMinor" | "name">,
@@ -39,7 +41,7 @@ describe("plan-months", () => {
     ).toBe(true);
   });
 
-  it("projects fixed expenses into future months", () => {
+  it("keeps fixed expenses in the month they were saved", () => {
     const items = [
       item({
         name: "Hyra",
@@ -81,10 +83,62 @@ describe("plan-months", () => {
     expect(aug.incomeMinor).toBe(40_000_00);
     expect(aug.savingsMinor).toBe(0);
     expect(aug.freeToSpendMinor).toBe(40_000_00 - aug.totalPlannedMinor);
-    expect(sep.items.map((i) => i.name)).toEqual(["Hyra"]);
+    expect(sep.items.map((i) => i.name)).toEqual([]);
+    expect(sep.fixedItems).toEqual([]);
     expect(sep.extraItems).toEqual([]);
     expect(sep.incomes.map((i) => i.name)).toEqual(["Provision"]);
-    expect(sep.reservedMinor).toBe(15_000_00);
+    expect(sep.reservedMinor).toBe(0);
+  });
+
+  it("does not let a new September fixed expense leak into August", () => {
+    const items = [
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 15_000_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
+      }),
+      item({
+        name: "Spotify",
+        kind: "mandatory",
+        amountMinor: 119_00,
+        nextDueAt: "2026-09-01T12:00:00.000Z",
+      }),
+    ];
+    const aug = projectPlanForMonth(items, "2026-08", "UTC");
+    const sep = projectPlanForMonth(items, "2026-09", "UTC");
+    expect(aug.fixedItems.map((i) => i.name)).toEqual(["Hyra"]);
+    expect(aug.fixedMinor).toBe(15_000_00);
+    expect(sep.fixedItems.map((i) => i.name)).toEqual(["Spotify"]);
+    expect(sep.fixedMinor).toBe(119_00);
+  });
+
+  it("lists previous-month fixed expenses that the target month is missing", () => {
+    const hyraAug = item({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15_000_00,
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    const elAug = item({
+      name: "El",
+      kind: "mandatory",
+      amountMinor: 800_00,
+      nextDueAt: "2026-08-12T12:00:00.000Z",
+    });
+    const hyraSep = item({
+      name: " hyra ",
+      kind: "mandatory",
+      amountMinor: 15_000_00,
+      nextDueAt: "2026-09-01T12:00:00.000Z",
+    });
+    const importable = importableFixedExpenses({
+      items: [hyraAug, elAug, hyraSep],
+      fromMonthKey: "2026-08",
+      toMonthKey: "2026-09",
+      timeZone: "UTC",
+    });
+    expect(importable.map((i) => i.name)).toEqual(["El"]);
   });
 
   it("does not treat once cadence as recurring monthly", () => {
@@ -107,6 +161,7 @@ describe("plan-months", () => {
         name: "Hyra",
         kind: "mandatory",
         amountMinor: 10_000_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
       }),
       item({
         name: "Lön",
@@ -156,16 +211,19 @@ describe("plan-months", () => {
         name: "Hyra",
         kind: "mandatory",
         amountMinor: 12_000_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
       }),
       item({
         name: "Netflix",
         kind: "mandatory",
         amountMinor: 199_00,
+        nextDueAt: "2026-08-15T12:00:00.000Z",
       }),
       item({
         name: "Buffert",
         kind: "buffer",
         amountMinor: 2_000_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
       }),
       item({
         name: "Lön",
@@ -219,7 +277,7 @@ describe("plan-months", () => {
     ).toBe(false);
   });
 
-  it("rolls overdue monthly dues forward", () => {
+  it("does not roll overdue fixed expenses out of their month", () => {
     const now = new Date("2026-08-11T03:00:00.000Z");
     const overdue = item({
       name: "Netflix",
@@ -228,11 +286,21 @@ describe("plan-months", () => {
       nextDueAt: "2026-06-01T00:00:00.000Z",
     });
     const { changed, items } = withRolledMonthlyDues([overdue], now);
+    expect(changed).toHaveLength(0);
+    expect(items[0]!.nextDueAt).toBe("2026-06-01T00:00:00.000Z");
+  });
+
+  it("still rolls the next-income pointer forward", () => {
+    const now = new Date("2026-08-11T03:00:00.000Z");
+    const pointer = item({
+      name: NEXT_INCOME_NAME,
+      kind: "expected",
+      amountMinor: 0,
+      nextDueAt: "2026-06-01T00:00:00.000Z",
+    });
+    const { changed, items } = withRolledMonthlyDues([pointer], now);
     expect(changed).toHaveLength(1);
-    expect(items[0]!.nextDueAt).toBe(rollDueDateForward(overdue.nextDueAt!, now));
-    expect(new Date(items[0]!.nextDueAt!).getTime()).toBeGreaterThanOrEqual(
-      now.getTime(),
-    );
+    expect(items[0]!.nextDueAt).toBe(rollDueDateForward(pointer.nextDueAt!, now));
   });
 
   it("lists all twelve months for a year", () => {

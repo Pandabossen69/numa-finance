@@ -6,7 +6,6 @@ import {
   daysInMonthKey,
   isPlanIncome,
   isPlanSavings,
-  isRecurringMonthly,
   monthKeyFromDate,
   perDayBudgetMinor,
   projectPlanForMonth,
@@ -157,13 +156,14 @@ function expenseAmountParts(item: PlanItem): {
 }
 
 /**
- * Recurring / one-off expense occurrences that fall in [start, end).
+ * Expense rows whose actual nextDueAt falls in [start, end).
+ * Fixed monthly expenses are month-scoped — they are never synthesized
+ * into other months of the window.
  */
 export function expensesInWindow(
   items: PlanItem[],
   startIso: string,
   endIso: string,
-  timeZone: string,
 ): CycleExpense[] {
   const start = Date.parse(startIso);
   const end = Date.parse(endIso);
@@ -171,49 +171,20 @@ export function expensesInWindow(
     return [];
   }
 
-  const startKey = monthKeyFromDate(new Date(startIso), timeZone);
-  const endKey = monthKeyFromDate(new Date(endIso), timeZone);
-  const monthKeys: string[] = [];
-  let cursor = startKey;
-  let guard = 0;
-  while (cursor <= endKey && guard < 36) {
-    monthKeys.push(cursor);
-    cursor = addMonthsKey(cursor, 1);
-    guard += 1;
-  }
-  monthKeys.unshift(addMonthsKey(startKey, -1));
-
   const result: CycleExpense[] = [];
   const seen = new Set<string>();
 
   for (const item of items) {
     if (!item.isActive || item.name === NEXT_INCOME_NAME) continue;
     if (isPlanIncome(item) || isPlanSavings(item)) continue;
+    if (!item.nextDueAt) continue;
 
-    if (isRecurringMonthly(item)) {
-      const day = item.nextDueAt ? dayOfMonthFromIso(item.nextDueAt) : 1;
-      for (const monthKey of monthKeys) {
-        const dueAt = dueDateInMonth(monthKey, day);
-        const t = Date.parse(dueAt);
-        if (t >= start && t < end) {
-          const key = `${item.id}:${dueAt}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            result.push({ item, dueAt });
-          }
-        }
-      }
-      continue;
-    }
-
-    if (item.nextDueAt) {
-      const t = Date.parse(item.nextDueAt);
-      if (t >= start && t < end) {
-        const key = `${item.id}:${item.nextDueAt}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          result.push({ item, dueAt: item.nextDueAt });
-        }
+    const t = Date.parse(item.nextDueAt);
+    if (t >= start && t < end) {
+      const key = `${item.id}:${item.nextDueAt}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push({ item, dueAt: item.nextDueAt });
       }
     }
   }
@@ -381,7 +352,6 @@ export function projectPayCycle(
     items,
     expenseStartIso,
     expenseEndIso,
-    timeZone,
   );
   const { reservedMinor, bufferMinor, flexibleMinor, expenseMinor } =
     sumExpenseParts(expenses);
