@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   QuickAddForms,
   type ShellAccount,
@@ -13,6 +14,7 @@ import {
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import { compressImageForUpload } from "@/lib/media/compress-image";
+import { goHomeInstant } from "@/lib/nav/instant";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 
@@ -71,18 +73,12 @@ export function ReceiptCaptureFlow({
   const [category, setCategory] = useState<string>("Mat");
   const [amountEditable, setAmountEditable] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [doneStatus, setDoneStatus] = useState<"plus" | "even" | "minus" | null>(
-    null,
-  );
-  const [doneBalanceMinor, setDoneBalanceMinor] = useState<number | null>(null);
-  const [doneDirection, setDoneDirection] = useState<
-    "debit" | "credit" | null
-  >(null);
   const [scanning, setScanning] = useState(false);
   const [scanPreviewUrl, setScanPreviewUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const roomBefore = Math.max(0, remainingTodayMinor);
 
@@ -260,69 +256,9 @@ export function ReceiptCaptureFlow({
         setError(result.error);
         return;
       }
-      setDoneStatus(result.data.pulseStatus);
-      setDoneBalanceMinor(result.data.balanceAfterMinor);
-      setDoneDirection(result.data.direction);
       URL.revokeObjectURL(preview.previewUrl);
-      // Hard navigate so Hem always reloads saldo + Spenderat idag (iPhone
-      // soft refresh can keep a stale RSC payload after SMS confirm).
-      setTimeout(() => {
-        window.location.assign("/idag");
-      }, 1200);
+      goHomeInstant(router);
     });
-  }
-
-  if (doneStatus) {
-    const pulseLabel =
-      doneStatus === "plus"
-        ? "Inom dagsbudgeten"
-        : doneStatus === "even"
-          ? "Exakt på dagsbudgeten"
-          : "Över dagsbudgeten";
-    const pulseTone =
-      doneStatus === "plus"
-        ? "text-[var(--numa-positive)]"
-        : doneStatus === "even"
-          ? "text-[var(--numa-ink)]"
-          : "text-[var(--numa-danger)]";
-
-    return (
-      <div className="animate-rise space-y-4 py-14 text-center">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.18em] text-[var(--numa-faint)]">
-          {doneDirection === "credit" ? "Insättning sparad" : "Sparat"}
-        </p>
-        {doneBalanceMinor != null ? (
-          <>
-            <p className="text-sm text-[var(--numa-muted)]">Ditt saldo nu</p>
-            <p className="money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
-              {formatMoney(money(doneBalanceMinor, currency))}
-            </p>
-            <p className={`text-sm font-semibold ${pulseTone}`}>{pulseLabel}</p>
-            <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
-              Tar dig till Hem…
-            </p>
-          </>
-        ) : (
-          <>
-            <p className={`text-3xl font-semibold tracking-tight ${pulseTone}`}>
-              {pulseLabel}
-            </p>
-            <p className="mx-auto max-w-[28ch] text-sm text-[var(--numa-muted)]">
-              Tar dig till Hem…
-            </p>
-          </>
-        )}
-        <button
-          type="button"
-          className="text-sm font-semibold text-[var(--numa-accent)]"
-          onClick={() => {
-            window.location.assign("/idag");
-          }}
-        >
-          Visa Hem →
-        </button>
-      </div>
-    );
   }
 
   if (mode === "pick") {
@@ -345,7 +281,7 @@ export function ReceiptCaptureFlow({
           </p>
           <button
             type="button"
-            className="text-sm font-semibold text-[var(--numa-accent)]"
+            className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
             onClick={() => setMode("bank_sms")}
           >
             Fota bank-SMS →
@@ -366,7 +302,7 @@ export function ReceiptCaptureFlow({
           primaryAccountId={accountId}
           accounts={accounts}
           onSuccess={() => {
-            window.location.assign("/idag");
+            goHomeInstant(router);
           }}
         />
       </div>
@@ -447,7 +383,7 @@ export function ReceiptCaptureFlow({
             type="button"
             disabled={pending}
             onClick={() => cameraInputRef.current?.click()}
-            className="group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] transition hover:bg-[var(--numa-accent)] active:scale-[0.98] disabled:opacity-50"
+            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
           >
             <span className="text-2xl font-light leading-none" aria-hidden>
               ◉
@@ -461,7 +397,7 @@ export function ReceiptCaptureFlow({
             type="button"
             disabled={pending}
             onClick={() => galleryInputRef.current?.click()}
-            className="group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border)] bg-white/70 px-3 py-5 transition hover:bg-white active:scale-[0.98] disabled:opacity-50"
+            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-white px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
           >
             <span
               className="text-2xl font-light leading-none text-[var(--numa-ink)]"
@@ -731,10 +667,10 @@ export function ReceiptCaptureFlow({
                 key={c}
                 type="button"
                 onClick={() => setCategory(c)}
-                className={`min-h-11 shrink-0 rounded-full px-4 text-sm transition ${
+                className={`numa-press min-h-11 shrink-0 rounded-full px-4 text-sm ${
                   category === c
                     ? "bg-[var(--numa-ink)] font-semibold text-white"
-                    : "text-[var(--numa-muted)] hover:bg-white/60"
+                    : "bg-white font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
                 }`}
               >
                 {c}
@@ -757,7 +693,7 @@ export function ReceiptCaptureFlow({
             pending ||
             (isAutoImport ? eventCount === 0 : !preview.amount.trim())
           }
-          className="flex min-h-12 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-sm font-semibold text-white disabled:opacity-45"
+          className="numa-btn numa-btn-primary w-full rounded-full"
         >
           {pending
             ? "Sparar…"
@@ -771,7 +707,7 @@ export function ReceiptCaptureFlow({
         </button>
         <button
           type="button"
-          className="flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
+          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
           onClick={() => {
             URL.revokeObjectURL(preview.previewUrl);
             setPreview(null);
@@ -840,7 +776,7 @@ function ModePicker({
         </p>
       </header>
 
-      <nav className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+      <nav className="grid gap-3">
         {items.map((item) => (
           <button
             key={item.id}
@@ -849,7 +785,7 @@ function ModePicker({
               (item.id === "bank_app" || item.id === "manual") && !hasAccount
             }
             onClick={() => onChoose(item.id)}
-            className="flex w-full items-baseline justify-between gap-4 py-5 text-left transition hover:opacity-80 active:opacity-60 disabled:opacity-40"
+            className="numa-panel numa-press flex w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
           >
             <span>
               <span className="block text-[15px] font-semibold tracking-tight">
@@ -859,7 +795,10 @@ function ModePicker({
                 {item.hint}
               </span>
             </span>
-            <span className="text-[var(--numa-faint)]" aria-hidden>
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
+              aria-hidden
+            >
               →
             </span>
           </button>
@@ -880,7 +819,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="text-sm font-semibold text-[var(--numa-accent)]"
+      className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
     >
       ← Tillbaka
     </button>

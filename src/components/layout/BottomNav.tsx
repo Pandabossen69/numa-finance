@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { useLinkStatus } from "next/link";
+import { useEffect, useState } from "react";
 import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
 
 export function BottomNav() {
   const pathname = usePathname();
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
 
   useEffect(() => {
     setOptimisticHref(null);
@@ -25,11 +23,11 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/97 shadow-[0_-16px_48px_rgba(7,21,17,0.10)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] shadow-[0_-12px_32px_rgba(7,21,17,0.08)] md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-2 pb-1.5 pt-1.5">
+      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1.5 pt-1.5">
         {left.map((tab) => (
           <NavItem
             key={tab.href}
@@ -37,25 +35,22 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            onIntent={() => {
-              startTransition(() => setOptimisticHref(tab.href));
-            }}
+            onIntent={() => setOptimisticHref(tab.href)}
           />
         ))}
-        <div className="flex justify-center pb-0.5">
+        <div className="flex flex-col items-center justify-end gap-0.5 pb-0.5">
           <Link
             href="/fota"
             prefetch
-            onClick={() => startTransition(() => setOptimisticHref("/fota"))}
-            className="relative -mt-8 flex h-[3.6rem] w-[3.6rem] items-center justify-center rounded-full bg-[linear-gradient(180deg,color-mix(in_srgb,var(--numa-accent)_88%,white)_0%,var(--numa-accent)_100%)] text-white ring-[6px] ring-[var(--numa-nav)] shadow-[0_14px_34px_rgba(11,111,93,0.42)] transition active:scale-95"
-            aria-label="Lägg till eller fota"
+            onClick={() => setOptimisticHref("/fota")}
+            className="numa-press relative -mt-7 flex h-[3.65rem] w-[3.65rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white ring-[5px] ring-[var(--numa-nav)] shadow-[0_12px_26px_rgba(12,125,104,0.38)]"
+            aria-label="Fota eller lägg till"
           >
-            <span
-              className="pointer-events-none absolute inset-[3px] rounded-full ring-1 ring-white/25"
-              aria-hidden
-            />
             <PlusIcon />
           </Link>
+          <span className="text-[10px] font-semibold tracking-wide text-[var(--numa-accent-ink)]">
+            Fota
+          </span>
         </div>
         {right.map((tab) => (
           <NavItem
@@ -64,9 +59,7 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            onIntent={() => {
-              startTransition(() => setOptimisticHref(tab.href));
-            }}
+            onIntent={() => setOptimisticHref(tab.href)}
           />
         ))}
       </div>
@@ -92,7 +85,7 @@ function NavItem({
       href={href}
       prefetch
       onClick={onIntent}
-      className={`relative flex min-h-[3.35rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 transition active:scale-[0.97] ${
+      className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 ${
         active
           ? "text-[var(--numa-accent-ink)]"
           : "text-[var(--numa-faint)]"
@@ -100,14 +93,11 @@ function NavItem({
     >
       {active ? (
         <span
-          className="absolute inset-x-1.5 top-0.5 bottom-0.5 -z-10 rounded-[1.15rem] bg-[var(--numa-accent-soft)] shadow-[inset_0_0_0_1px_rgba(11,111,93,0.12)]"
+          className="absolute inset-x-1 top-0.5 bottom-0.5 -z-10 rounded-[1.15rem] bg-[var(--numa-accent-soft)]"
           aria-hidden
         />
       ) : null}
-      <span className="relative">
-        <NavIcon name={icon} active={active} />
-        <PendingDot />
-      </span>
+      <NavIcon name={icon} active={active} />
       <span
         className={`text-[10px] font-semibold tracking-wide ${
           active ? "text-[var(--numa-accent-ink)]" : ""
@@ -119,31 +109,20 @@ function NavItem({
   );
 }
 
-function PendingDot() {
-  const { pending } = useLinkStatus();
-  if (!pending) return null;
-  return (
-    <span
-      className="absolute -right-1 -top-0.5 h-1.5 w-1.5 rounded-full bg-[var(--numa-accent)] numa-pulse-soft"
-      aria-hidden
-    />
-  );
-}
-
 function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
   const stroke = active ? "var(--numa-accent)" : "currentColor";
+  const fill = active ? "var(--numa-accent-soft)" : "none";
   const common = {
     width: 22,
     height: 22,
     viewBox: "0 0 24 24",
-    fill: "none",
     "aria-hidden": true as const,
   };
 
   switch (name) {
     case "home":
       return (
-        <svg {...common}>
+        <svg {...common} fill={fill}>
           <path
             d="M4.5 10.5 12 4.5l7.5 6V19a1.5 1.5 0 0 1-1.5 1.5h-3.25v-5.25h-5.5V20.5H6A1.5 1.5 0 0 1 4.5 19v-8.5Z"
             stroke={stroke}
@@ -154,7 +133,7 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
       );
     case "plan":
       return (
-        <svg {...common}>
+        <svg {...common} fill={fill}>
           <rect
             x="4.5"
             y="6"
@@ -169,26 +148,27 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
             stroke={stroke}
             strokeWidth="1.7"
             strokeLinecap="round"
+            fill="none"
           />
         </svg>
       );
     case "analys":
       return (
-        <svg {...common}>
+        <svg {...common} fill="none">
           <path
             d="M5 18.5V11M10.5 18.5V7M16 18.5v-5.5M20.5 18.5V5.5"
             stroke={stroke}
-            strokeWidth="1.7"
+            strokeWidth={active ? "2.2" : "1.7"}
             strokeLinecap="round"
           />
         </svg>
       );
     case "mer":
       return (
-        <svg {...common}>
-          <circle cx="6.5" cy="12" r="1.6" fill={stroke} />
-          <circle cx="12" cy="12" r="1.6" fill={stroke} />
-          <circle cx="17.5" cy="12" r="1.6" fill={stroke} />
+        <svg {...common} fill="none">
+          <circle cx="6.5" cy="12" r="1.7" fill={stroke} />
+          <circle cx="12" cy="12" r="1.7" fill={stroke} />
+          <circle cx="17.5" cy="12" r="1.7" fill={stroke} />
         </svg>
       );
   }
@@ -200,7 +180,7 @@ function PlusIcon() {
       <path
         d="M12 5.5v13M5.5 12h13"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="2.4"
         strokeLinecap="round"
       />
     </svg>

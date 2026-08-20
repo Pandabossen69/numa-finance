@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
 export function SideNav({ displayName }: { displayName: string }) {
   const pathname = usePathname();
   const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
-  const [, startTransition] = useTransition();
 
   useEffect(() => {
     setOptimisticHref(null);
@@ -38,13 +37,11 @@ export function SideNav({ displayName }: { displayName: string }) {
                 key={item.href}
                 href={item.href}
                 prefetch
-                onClick={() => {
-                  startTransition(() => setOptimisticHref(item.href));
-                }}
-                className={`relative rounded-2xl px-1 py-3 transition active:scale-[0.99] ${
+                onClick={() => setOptimisticHref(item.href)}
+                className={`numa-press relative rounded-2xl px-1 py-3 ${
                   active
-                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(11,111,93,0.14)]"
-                    : "text-[var(--numa-muted)] hover:bg-white/55 hover:text-[var(--numa-ink)]"
+                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(12,125,104,0.16)]"
+                    : "text-[var(--numa-muted)] hover:bg-white/70 hover:text-[var(--numa-ink)]"
                 }`}
               >
                 {active ? (
@@ -68,9 +65,9 @@ export function SideNav({ displayName }: { displayName: string }) {
           <Link
             href="/fota"
             prefetch
-            className="block rounded-full bg-[var(--numa-ink)] px-4 py-3.5 text-center text-sm font-semibold text-white shadow-[0_10px_24px_rgba(19,32,25,0.18)] transition hover:bg-[var(--numa-accent)] active:scale-[0.99]"
+            className="numa-btn numa-btn-accent w-full rounded-full"
           >
-            + Lägg till
+            Fota
           </Link>
           <SignOutButton variant="nav" />
         </div>

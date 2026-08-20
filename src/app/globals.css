@@ -16,10 +16,10 @@
   --numa-surface-strong: #ffffff;
   --numa-border: rgba(7, 21, 17, 0.07);
   --numa-border-strong: rgba(7, 21, 17, 0.11);
-  --numa-accent: #0b6f5d;
-  --numa-accent-soft: #c5e6dc;
-  --numa-accent-ink: #053f35;
-  --numa-accent-glow: rgba(11, 111, 93, 0.16);
+  --numa-accent: #0c7d68;
+  --numa-accent-soft: #b6eadc;
+  --numa-accent-ink: #04372f;
+  --numa-accent-glow: rgba(12, 125, 104, 0.18);
   --numa-danger: #b42318;
   --numa-danger-soft: #fde8e6;
   --numa-positive: #146b42;
@@ -28,7 +28,7 @@
   --numa-warning-soft: #fef3c7;
   --numa-shadow: 0 22px 48px rgba(7, 21, 17, 0.07);
   --numa-shadow-sm: 0 8px 22px rgba(7, 21, 17, 0.045);
-  --numa-nav: rgba(248, 252, 250, 0.88);
+  --numa-nav: #f3faf7;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   --numa-shell-max: 72rem;
@@ -59,8 +59,15 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+button,
+a,
+[role="button"],
+summary {
+  touch-action: manipulation;
+}
+
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   color-scheme: light;
   background: var(--numa-bg);
 }
@@ -330,11 +337,11 @@ body {
 }
 
 .numa-day-dial-arc {
-  animation: numa-dial-draw 780ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: none;
 }
 
 .money-hero {
-  animation: numa-rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: none;
   width: 100%;
   max-width: 100%;
 }
@@ -371,33 +378,92 @@ body {
   animation: numa-pulse-soft 1.4s ease-in-out infinite;
 }
 
-.animate-rise {
-  animation: numa-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.animate-rise,
+.animate-rise-delay-1,
+.animate-rise-delay-2,
+.animate-rise-delay-3,
+.animate-scale-in,
+.animate-page-in {
+  animation: none;
 }
 
-.animate-rise-delay-1 {
-  animation: numa-rise 360ms cubic-bezier(0.22, 1, 0.36, 1) 50ms both;
+.numa-press {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  transition:
+    transform 70ms ease,
+    background-color 70ms ease,
+    box-shadow 70ms ease,
+    color 70ms ease;
 }
 
-.animate-rise-delay-2 {
-  animation: numa-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both;
+.numa-press:active {
+  transform: scale(0.96);
 }
 
-.animate-rise-delay-3 {
-  animation: numa-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) 130ms both;
+.numa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  padding: 0 1.1rem;
+  border-radius: 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  transition:
+    transform 70ms ease,
+    background-color 70ms ease,
+    box-shadow 70ms ease,
+    opacity 70ms ease;
 }
 
-.animate-scale-in {
-  animation: numa-scale-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+.numa-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.numa-btn:disabled {
+  opacity: 0.45;
+}
+
+.numa-btn-primary {
+  background: var(--numa-ink);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(7, 21, 17, 0.16);
+}
+
+.numa-btn-primary:active:not(:disabled) {
+  background: var(--numa-accent);
+}
+
+.numa-btn-accent {
+  background: var(--numa-accent);
+  color: #fff;
+}
+
+.numa-btn-accent:active:not(:disabled) {
+  background: var(--numa-accent-ink);
+}
+
+.numa-btn-soft {
+  background: var(--numa-accent-soft);
+  color: var(--numa-accent-ink);
+}
+
+.numa-btn-soft:active:not(:disabled) {
+  background: var(--numa-accent);
+  color: #fff;
 }
 
 .animate-bar {
   transform-origin: left center;
-  animation: numa-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both;
-}
-
-.animate-page-in {
-  animation: numa-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: none;
 }
 
 @keyframes numa-nav-progress {

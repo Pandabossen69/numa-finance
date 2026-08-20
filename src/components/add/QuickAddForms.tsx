@@ -31,7 +31,6 @@ export function QuickAddForms({
   onSuccess?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>("expense");
-  const [savedNote, setSavedNote] = useState<string | null>(null);
   const modes: Array<{ id: Mode; label: string }> = [
     { id: "expense", label: "Utgift" },
     { id: "income", label: "Inkomst" },
@@ -39,31 +38,22 @@ export function QuickAddForms({
     { id: "cash", label: "Kontant" },
   ];
 
-  function handleSuccess(note: string) {
-    setSavedNote(note);
-    window.setTimeout(() => onSuccess?.(), 850);
+  function handleSuccess() {
+    onSuccess?.();
   }
 
   return (
     <div className="space-y-4">
-      {savedNote ? (
-        <p
-          className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-positive)_14%,transparent)] px-3 py-2.5 text-sm text-[var(--numa-positive)]"
-          role="status"
-        >
-          {savedNote}
-        </p>
-      ) : null}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
         {modes.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => setMode(m.id)}
-            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm transition ${
+            className={`numa-press min-h-11 shrink-0 rounded-full px-3.5 text-sm ${
               mode === m.id
-                ? "bg-[var(--numa-accent-soft)] font-medium text-[var(--numa-accent-ink)]"
-                : "text-[var(--numa-muted)]"
+                ? "bg-[var(--numa-ink)] font-semibold text-white"
+                : "bg-white font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {m.label}
@@ -74,28 +64,28 @@ export function QuickAddForms({
       {mode === "expense" ? (
         <ExpenseForm
           accountId={primaryAccountId}
-          onSuccess={() => handleSuccess("Utgift sparad — dagens läge uppdateras.")}
+          onSuccess={() => handleSuccess()}
         />
       ) : null}
       {mode === "income" ? (
         <IncomeForm
           accountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={() => handleSuccess("Inkomst sparad — saldot ökar.")}
+          onSuccess={() => handleSuccess()}
         />
       ) : null}
       {mode === "transfer" ? (
         <TransferForm
           primaryAccountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={() => handleSuccess("Flytt sparad mellan dina saldon.")}
+          onSuccess={() => handleSuccess()}
         />
       ) : null}
       {mode === "cash" ? (
         <CashForm
           primaryAccountId={primaryAccountId}
           accounts={accounts}
-          onSuccess={() => handleSuccess("Kontantuttag sparat.")}
+          onSuccess={() => handleSuccess()}
         />
       ) : null}
     </div>
@@ -163,10 +153,10 @@ function ExpenseForm({
             key={c}
             type="button"
             onClick={() => setCategory(c)}
-            className={`min-h-10 rounded-xl px-3 text-sm transition ${
+            className={`numa-press min-h-10 rounded-full px-3 text-sm ${
               category === c
-                ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
-                : "text-[var(--numa-muted)]"
+                ? "bg-[var(--numa-ink)] font-semibold text-white"
+                : "bg-white font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {c}
@@ -518,7 +508,7 @@ function Submit({
     <button
       type="submit"
       disabled={pending || disabled}
-      className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--numa-accent)] text-sm font-medium text-white transition enabled:active:scale-[0.99] disabled:opacity-50"
+      className="numa-btn numa-btn-accent w-full"
     >
       {pending ? "Sparar…" : label}
     </button>

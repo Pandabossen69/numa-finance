@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
-import { formatMoney, money, type CurrencyCode } from "@/domain/money";
+import {
+  formatMoney,
+  money,
+  parseUiAmountToMinor,
+  type CurrencyCode,
+} from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import {
   createExpenseAction,
@@ -16,6 +22,7 @@ import {
 } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
+import { refreshQuiet } from "@/lib/nav/instant";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
   return formatMoney(money(Math.max(0, amountMinor), currency));
@@ -28,6 +35,15 @@ export function HomeDashboard({
   snap: HomeSnapshot | null;
   error?: string | null;
 }) {
+  const [deltaSpent, setDeltaSpent] = useState(0);
+  useEffect(() => {
+    setDeltaSpent(0);
+  }, [
+    snap?.todaySpendingMinor,
+    snap?.remainingTodayMinor,
+    snap?.remainingFreeMinor,
+  ]);
+
   if (error || !snap) {
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
@@ -44,14 +60,20 @@ export function HomeDashboard({
     );
   }
 
+  const remainingTodayMinor = Math.max(0, snap.remainingTodayMinor - deltaSpent);
+  const todaySpendingMinor = snap.todaySpendingMinor + deltaSpent;
+  const remainingFreeMinor =
+    snap.livingMode === "cycle"
+      ? snap.remainingFreeMinor - deltaSpent
+      : snap.remainingFreeMinor;
   const currency = snap.currency;
   const greeting = homeGreeting(snap.displayName);
   const isBridge = snap.livingMode === "bridge";
   const isEmpty = snap.livingMode === "empty";
-  const remainingOk = snap.remainingFreeMinor >= 0;
-  const dayOk = snap.remainingTodayMinor > 0;
+  const remainingOk = remainingFreeMinor >= 0;
+  const dayOk = remainingTodayMinor > 0;
   const overToday =
-    snap.dayBudgetMinor > 0 && snap.todaySpendingMinor > snap.dayBudgetMinor;
+    snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
       ? `Till ${snap.nextIncomeLabelSv}`
@@ -62,16 +84,16 @@ export function HomeDashboard({
 
   const dayUsedRatio =
     snap.dayBudgetMinor > 0
-      ? snap.todaySpendingMinor / snap.dayBudgetMinor
+      ? todaySpendingMinor / snap.dayBudgetMinor
       : 0;
   const daysWord = formatCountSv(snap.spendDaysLeft, "dag", "dagar");
 
   const statusLine = overToday
     ? SV.overDagsbudget
-    : snap.dayBudgetMinor > 0 && snap.todaySpendingMinor === 0
+    : snap.dayBudgetMinor > 0 && todaySpendingMinor === 0
       ? `Hela dagsbudgeten kvar · ${daysWord}`
       : snap.dayBudgetMinor > 0
-        ? `${formatMoneyHint(snap.todaySpendingMinor, currency)} av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
+        ? `${formatMoneyHint(todaySpendingMinor, currency)} av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
         : null;
 
   return (
@@ -138,7 +160,7 @@ export function HomeDashboard({
                     }`}
                   >
                     <MoneyDisplay
-                      amountMinor={Math.max(0, snap.remainingTodayMinor)}
+                      amountMinor={remainingTodayMinor}
                       currency={currency}
                       size="display"
                       compact
@@ -188,7 +210,7 @@ export function HomeDashboard({
                       }`}
                     >
                       <MoneyDisplay
-                        amountMinor={snap.todaySpendingMinor}
+                        amountMinor={todaySpendingMinor}
                         currency={currency}
                         size="md"
                         compact
@@ -210,7 +232,7 @@ export function HomeDashboard({
                   }`}
                 >
                   <MoneyDisplay
-                    amountMinor={Math.max(0, snap.remainingTodayMinor)}
+                    amountMinor={remainingTodayMinor}
                     currency={currency}
                     size="xl"
                   />
@@ -234,7 +256,7 @@ export function HomeDashboard({
             <div className="numa-panel-list animate-scale-in px-4 py-1">
               <MetricRow
                 label={isBridge ? SV.saldo : SV.kvarIPerioden}
-                amountMinor={snap.remainingFreeMinor}
+                amountMinor={remainingFreeMinor}
                 currency={currency}
                 tone={remainingOk ? "positive" : "danger"}
                 hint={
@@ -269,10 +291,10 @@ export function HomeDashboard({
                   hint={snap.verificationLabel ?? "På kontot"}
                 />
               ) : null}
-              {!isBridge && snap.cycleSpendingMinor > 0 ? (
+              {!isBridge && snap.cycleSpendingMinor + deltaSpent > 0 ? (
                 <MetricRow
                   label={SV.spenderatIPerioden}
-                  amountMinor={snap.cycleSpendingMinor}
+                  amountMinor={snap.cycleSpendingMinor + Math.max(0, deltaSpent)}
                   currency={currency}
                 />
               ) : null}
@@ -299,7 +321,13 @@ export function HomeDashboard({
             accountId={snap.primaryAccountId}
             currency={currency}
             disabled={!snap.primaryAccountId}
-            remainingTodayMinor={snap.remainingTodayMinor}
+            remainingTodayMinor={remainingTodayMinor}
+            onOptimisticSpend={(amountMinor) =>
+              setDeltaSpent((n) => n + amountMinor)
+            }
+            onSpendFailed={(amountMinor) =>
+              setDeltaSpent((n) => n - amountMinor)
+            }
           />
         </>
       ) : null}
@@ -320,7 +348,7 @@ function ActionLink({
     <Link
       href={href}
       prefetch
-      className="numa-panel group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5 transition active:scale-[0.98]"
+      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5"
     >
       <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
         {title}
@@ -341,9 +369,10 @@ function AvailableNowCard({
   currency: CurrencyCode;
   nextIncomeLabel: string | null;
 }) {
+  const router = useRouter();
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
 
   return (
     <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
@@ -370,25 +399,28 @@ function AvailableNowCard({
         />
         <button
           type="button"
-          disabled={pending || !balance.trim()}
-          className="numa-cta-glow min-h-12 rounded-xl bg-[var(--numa-ink)] px-5 text-sm font-semibold text-white disabled:opacity-45"
+          disabled={busy || !balance.trim()}
+          className="numa-btn numa-btn-primary numa-cta-glow min-h-12 px-5"
           onClick={() => {
-            startTransition(async () => {
+            if (busy || !balance.trim()) return;
+            setBusy(true);
+            setError(null);
+            void (async () => {
               const result = await setAvailableNowAction({
                 balance,
                 accountId,
                 currency,
               });
               if (!result.ok) {
+                setBusy(false);
                 setError(result.error);
                 return;
               }
-              setError(null);
-              window.location.assign("/idag");
-            });
+              refreshQuiet(router);
+            })();
           }}
         >
-          {pending ? "Sparar…" : SV.visaDagsbudget}
+          {busy ? "Klart" : SV.visaDagsbudget}
         </button>
       </div>
       {error ? (
@@ -407,16 +439,17 @@ function UpdateBalanceLink({
   accountId: string | null;
   currency: CurrencyCode;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
 
   if (!open) {
     return (
       <button
         type="button"
-        className="font-semibold text-[var(--numa-accent)]"
+        className="numa-press font-semibold text-[var(--numa-accent)]"
         onClick={() => {
           setError(null);
           setOpen(true);
@@ -442,31 +475,35 @@ function UpdateBalanceLink({
         />
         <button
           type="button"
-          disabled={pending || !balance.trim()}
-          className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)] disabled:opacity-45"
+          disabled={busy || !balance.trim()}
+          className="numa-btn numa-btn-soft min-h-11 px-3 text-sm"
           onClick={() => {
-            startTransition(async () => {
+            if (busy || !balance.trim()) return;
+            setBusy(true);
+            setError(null);
+            void (async () => {
               const result = await setAvailableNowAction({
                 balance,
                 accountId,
                 currency,
               });
-              if (result.ok) {
-                setOpen(false);
-                setBalance("");
-                setError(null);
-                window.location.assign("/idag");
+              if (!result.ok) {
+                setBusy(false);
+                setError(result.error);
                 return;
               }
-              setError(result.error);
-            });
+              setOpen(false);
+              setBalance("");
+              setBusy(false);
+              refreshQuiet(router);
+            })();
           }}
         >
-          Spara
+          {busy ? "Klart" : "Spara"}
         </button>
         <button
           type="button"
-          className="inline-flex min-h-11 items-center px-2 text-sm text-[var(--numa-muted)]"
+          className="numa-press inline-flex min-h-11 items-center px-2 text-sm text-[var(--numa-muted)]"
           onClick={() => {
             setOpen(false);
             setError(null);
@@ -489,16 +526,20 @@ function QuickExpense({
   currency,
   disabled,
   remainingTodayMinor,
+  onOptimisticSpend,
+  onSpendFailed,
 }: {
   accountId: string | null;
   currency: CurrencyCode;
   disabled: boolean;
   remainingTodayMinor: number;
+  onOptimisticSpend: (amountMinor: number) => void;
+  onSpendFailed: (amountMinor: number) => void;
 }) {
+  const router = useRouter();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -550,28 +591,43 @@ function QuickExpense({
             />
             <button
               type="button"
-              disabled={pending || !amount.trim()}
-              className="min-h-12 rounded-xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white transition active:scale-[0.98] disabled:opacity-45"
+              disabled={!amount.trim()}
+              className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
                 if (!accountId) return;
-                startTransition(async () => {
+                let amountMinor: number;
+                try {
+                  amountMinor = parseUiAmountToMinor(amount);
+                } catch {
+                  setError("Ogiltigt belopp");
+                  return;
+                }
+                if (amountMinor <= 0) {
+                  setError("Beloppet måste vara större än 0");
+                  return;
+                }
+                const description = note.trim() || "Utgift";
+                const amountInput = amount;
+                setError(null);
+                setAmount("");
+                setNote("");
+                onOptimisticSpend(amountMinor);
+                void (async () => {
                   const result = await createExpenseAction({
                     accountId,
-                    amount,
-                    description: note.trim() || "Utgift",
+                    amount: amountInput,
+                    description,
                   });
                   if (!result.ok) {
+                    onSpendFailed(amountMinor);
                     setError(result.error);
                     return;
                   }
-                  setError(null);
-                  setAmount("");
-                  setNote("");
-                  window.location.assign("/idag");
-                });
+                  refreshQuiet(router);
+                })();
               }}
             >
-              {pending ? "…" : "Spara"}
+              Spara
             </button>
           </div>
           {error ? (

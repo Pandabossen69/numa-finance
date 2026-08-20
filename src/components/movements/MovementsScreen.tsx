@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -73,7 +73,6 @@ export function MovementsScreen({
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -194,10 +193,10 @@ export function MovementsScreen({
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`min-h-10 rounded-xl px-3 text-sm font-semibold transition ${
+            className={`numa-press min-h-10 rounded-full px-3.5 text-sm font-semibold ${
               filter === f.id
-                ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
-                : "text-[var(--numa-muted)]"
+                ? "bg-[var(--numa-ink)] text-white"
+                : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {f.label}
@@ -237,7 +236,7 @@ export function MovementsScreen({
                 <Link
                   href="/fota"
                   prefetch
-                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--numa-accent)] px-4 text-sm font-semibold text-white"
+                  className="numa-btn numa-btn-accent inline-flex min-h-11 px-4"
                 >
                   Lägg till
                 </Link>
@@ -279,11 +278,10 @@ export function MovementsScreen({
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        disabled={pending}
-                        className="min-h-10 flex-1 rounded-xl bg-[var(--numa-accent)] text-sm font-medium text-white disabled:opacity-45"
+                        className="numa-btn numa-btn-accent min-h-10 flex-1"
                         onClick={() => {
                           setActionError(null);
-                          startTransition(async () => {
+                          void (async () => {
                             const result = await updateTransactionAction({
                               id: tx.id,
                               amount: editAmount,
@@ -299,7 +297,7 @@ export function MovementsScreen({
                             }
                             setEditingId(null);
                             router.refresh();
-                          });
+                          })();
                         }}
                       >
                         Spara
@@ -345,8 +343,7 @@ export function MovementsScreen({
                       <div className="mt-1.5 flex gap-3">
                         <button
                           type="button"
-                          className="text-xs font-semibold text-[var(--numa-accent)]"
-                          disabled={pending}
+                          className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
                           onClick={() => {
                             setEditingId(tx.id);
                             setEditAmount(minorToUi(tx.amountMinor));
@@ -359,8 +356,7 @@ export function MovementsScreen({
                         </button>
                         <button
                           type="button"
-                          className="text-xs text-[var(--numa-muted)]"
-                          disabled={pending}
+                          className="numa-press text-xs text-[var(--numa-muted)]"
                           onClick={() => {
                             const paired =
                               tx.transactionType === "transfer" ||
@@ -375,14 +371,14 @@ export function MovementsScreen({
                               return;
                             }
                             setActionError(null);
-                            startTransition(async () => {
+                            void (async () => {
                               const result = await voidTransactionAction(tx.id);
                               if (!result.ok) {
                                 setActionError(result.error);
                                 return;
                               }
                               router.refresh();
-                            });
+                            })();
                           }}
                         >
                           Ta bort
@@ -419,10 +415,10 @@ function PeriodChip({
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-10 rounded-full px-4 text-sm font-semibold transition ${
+      className={`numa-press min-h-10 rounded-full px-4 text-sm font-semibold ${
         active
           ? "bg-[var(--numa-ink)] text-white"
-          : "bg-white/60 text-[var(--numa-muted)]"
+          : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >
       {label}

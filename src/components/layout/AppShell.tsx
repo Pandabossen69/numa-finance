@@ -23,7 +23,7 @@ export function AppShell({
         <SideNav displayName={displayName} />
         <div className="min-w-0 flex-1">
           <header className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)]/70 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:hidden">
-            <Link href="/idag" prefetch className="block min-w-0">
+            <Link href="/idag" prefetch className="numa-press block min-w-0">
               <span className="numa-brand-mark">NUMA</span>
               <span className="mt-0.5 block text-[13px] font-semibold tracking-tight text-[var(--numa-ink)]">
                 {displayName}

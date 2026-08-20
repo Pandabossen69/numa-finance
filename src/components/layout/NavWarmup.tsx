@@ -20,8 +20,6 @@ export function NavWarmup() {
 
   useEffect(() => {
     let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let idleId: number | null = null;
 
     const warm = () => {
       if (cancelled) return;
@@ -34,16 +32,7 @@ export function NavWarmup() {
       }
     };
 
-    const win = window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-
-    if (typeof win.requestIdleCallback === "function") {
-      idleId = win.requestIdleCallback(warm, { timeout: 1200 });
-    } else {
-      timeoutId = setTimeout(warm, 200);
-    }
+    warm();
 
     const onVisible = () => {
       if (document.visibilityState === "visible") warm();
@@ -53,10 +42,6 @@ export function NavWarmup() {
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
-      if (timeoutId != null) clearTimeout(timeoutId);
-      if (idleId != null && typeof win.cancelIdleCallback === "function") {
-        win.cancelIdleCallback(idleId);
-      }
     };
   }, [router]);
 

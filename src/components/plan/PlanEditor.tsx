@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
@@ -98,7 +98,6 @@ export function PlanEditor({
   const [editDay, setEditDay] = useState("1");
 
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
   const projection = useMemo(
     () => projectPlanForMonth(items, monthKey, timeZone),
@@ -211,7 +210,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => shiftYear(-1)}
-              className="min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] transition hover:bg-white/70"
+              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-white"
               aria-label="Föregående år"
             >
               ← {viewYear - 1}
@@ -222,7 +221,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => shiftYear(1)}
-              className="min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] transition hover:bg-white/70"
+              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-white"
               aria-label="Nästa år"
             >
               {viewYear + 1} →
@@ -232,7 +231,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => selectMonth(currentMonthKey)}
-              className="text-sm font-semibold text-[var(--numa-accent)]"
+              className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
             >
               Denna månad
             </button>
@@ -245,12 +244,12 @@ export function PlanEditor({
               key={key}
               type="button"
               onClick={() => selectMonth(key)}
-              className={`min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize transition ${
+              className={`numa-press min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize ${
                 monthKey === key
-                  ? "bg-[var(--numa-ink)] text-white"
+                  ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(7,21,17,0.18)]"
                   : key === currentMonthKey
-                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]"
-                    : "bg-white/60 text-[var(--numa-muted)] hover:bg-white"
+                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)] ring-1 ring-[var(--numa-accent)]/35"
+                    : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"
               }`}
             >
               {labelMonthNameSv(key)}
@@ -390,35 +389,33 @@ export function PlanEditor({
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={pending}
               onClick={() => {
-                startTransition(async () => {
+                void (async () => {
                   refreshAfter(
                     await setMonthSavingsAction({
                       monthKey,
                       amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
                     }),
                   );
-                });
+                })();
               }}
-              className="min-h-11 rounded-xl bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white disabled:opacity-50"
+              className="numa-btn numa-btn-primary min-h-11 px-4"
             >
               Spara
             </button>
             {projection.savingsMinor > 0 ? (
               <button
                 type="button"
-                disabled={pending}
                 onClick={() => {
-                  startTransition(async () => {
+                  void (async () => {
                     const result = await setMonthSavingsAction({
                       monthKey,
                       amount: "0",
                     });
                     if (refreshAfter(result)) setSavingsAmount("");
-                  });
+                  })();
                 }}
-                className="min-h-11 rounded-xl px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-white/70 disabled:opacity-50"
+                className="numa-btn numa-btn-soft min-h-11 px-3"
               >
                 Nollställ
               </button>
@@ -448,7 +445,6 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             editExtraType="date"
-            pending={pending}
             emptyHint="Lägg till lön eller CSN med datum."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             onEditName={setEditName}
@@ -457,7 +453,7 @@ export function PlanEditor({
             onStartEdit={startEditIncome}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
-              startTransition(async () => {
+              void (async () => {
                 const result = await updatePlanItemAction({
                   id,
                   name: editName,
@@ -465,12 +461,12 @@ export function PlanEditor({
                   date: editDate || undefined,
                 });
                 if (refreshAfter(result)) setEditingId(null);
-              });
+              })();
             }}
             onDelete={(id) => {
-              startTransition(async () => {
+              void (async () => {
                 refreshAfter(await deletePlanItemAction(id));
-              });
+              })();
             }}
           />
 
@@ -483,12 +479,11 @@ export function PlanEditor({
             namePlaceholder="t.ex. Lön, Trukks, CSN"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till intäkt"
-            pending={pending}
             onName={setIncomeName}
             onAmount={setIncomeAmount}
             onExtra={setIncomeDate}
             onSubmit={() => {
-              startTransition(async () => {
+              void (async () => {
                 const result = await createPlanIncomeAction({
                   name: incomeName,
                   amount: incomeAmount,
@@ -497,7 +492,7 @@ export function PlanEditor({
                 if (!refreshAfter(result)) return;
                 setIncomeName("");
                 setIncomeAmount("");
-              });
+              })();
             }}
           />
         </PlanCard>
@@ -518,7 +513,6 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDay}
             editExtraType="day"
-            pending={pending}
             emptyHint="Hyra, el, Netflix…"
             subtitle={(item) =>
               item.nextDueAt
@@ -531,7 +525,7 @@ export function PlanEditor({
             onStartEdit={startEditExpense}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
-              startTransition(async () => {
+              void (async () => {
                 const day = Number(editDay);
                 const result = await updatePlanItemAction({
                   id,
@@ -541,12 +535,12 @@ export function PlanEditor({
                   monthKey,
                 });
                 if (refreshAfter(result)) setEditingId(null);
-              });
+              })();
             }}
             onDelete={(id) => {
-              startTransition(async () => {
+              void (async () => {
                 refreshAfter(await deletePlanItemAction(id));
-              });
+              })();
             }}
           />
 
@@ -559,12 +553,11 @@ export function PlanEditor({
             namePlaceholder="t.ex. Hyra, El, Netflix"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till fast utgift"
-            pending={pending}
             onName={setExpenseName}
             onAmount={setExpenseAmount}
             onExtra={setExpenseDay}
             onSubmit={() => {
-              startTransition(async () => {
+              void (async () => {
                 const day = Number(expenseDay);
                 const result = await createPlanItemAction({
                   name: expenseName,
@@ -576,7 +569,7 @@ export function PlanEditor({
                 if (!refreshAfter(result)) return;
                 setExpenseName("");
                 setExpenseAmount("");
-              });
+              })();
             }}
           />
         </PlanCard>
@@ -595,7 +588,6 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             editExtraType="date"
-            pending={pending}
             emptyHint="Engångskostnader med datum."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             onEditName={setEditName}
@@ -604,7 +596,7 @@ export function PlanEditor({
             onStartEdit={startEditExtra}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
-              startTransition(async () => {
+              void (async () => {
                 const result = await updatePlanItemAction({
                   id,
                   name: editName,
@@ -612,12 +604,12 @@ export function PlanEditor({
                   date: editDate || undefined,
                 });
                 if (refreshAfter(result)) setEditingId(null);
-              });
+              })();
             }}
             onDelete={(id) => {
-              startTransition(async () => {
+              void (async () => {
                 refreshAfter(await deletePlanItemAction(id));
-              });
+              })();
             }}
           />
 
@@ -630,12 +622,11 @@ export function PlanEditor({
             namePlaceholder="t.ex. Lån, Flygbiljett"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till extra"
-            pending={pending}
             onName={setExtraName}
             onAmount={setExtraAmount}
             onExtra={setExtraDate}
             onSubmit={() => {
-              startTransition(async () => {
+              void (async () => {
                 const result = await createPlanExtraAction({
                   name: extraName,
                   amount: extraAmount,
@@ -644,7 +635,7 @@ export function PlanEditor({
                 if (!refreshAfter(result)) return;
                 setExtraName("");
                 setExtraAmount("");
-              });
+              })();
             }}
           />
         </PlanCard>
@@ -701,7 +692,6 @@ function PlanRows({
   editAmount,
   editExtra,
   editExtraType,
-  pending,
   emptyHint = "Inget här ännu.",
   subtitle,
   onEditName,
@@ -719,7 +709,6 @@ function PlanRows({
   editAmount: string;
   editExtra: string;
   editExtraType: "date" | "day";
-  pending: boolean;
   emptyHint?: string;
   subtitle: (item: PlanItem) => string;
   onEditName: (v: string) => void;
@@ -775,15 +764,14 @@ function PlanRows({
             <div className="flex gap-2">
               <button
                 type="button"
-                disabled={pending}
-                className="min-h-10 flex-1 rounded-xl bg-[var(--numa-accent)] text-sm font-medium text-white disabled:opacity-45"
+                className="numa-btn numa-btn-accent min-h-10 flex-1"
                 onClick={() => onSaveEdit(item.id)}
               >
                 Spara
               </button>
               <button
                 type="button"
-                className="min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
+                className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
                 onClick={onCancelEdit}
               >
                 Avbryt
@@ -811,16 +799,14 @@ function PlanRows({
               </span>
               <button
                 type="button"
-                className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)]"
-                disabled={pending}
+                className="numa-press inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)]"
                 onClick={() => onStartEdit(item)}
               >
                 Redigera
               </button>
               <button
                 type="button"
-                className="inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)]"
-                disabled={pending}
+                className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)]"
                 onClick={() => onDelete(item.id)}
                 aria-label={`Ta bort ${item.name}`}
               >
@@ -843,7 +829,6 @@ function InlineAdd({
   namePlaceholder,
   amountPlaceholder,
   submitLabel,
-  pending,
   onName,
   onAmount,
   onExtra,
@@ -857,14 +842,12 @@ function InlineAdd({
   namePlaceholder: string;
   amountPlaceholder: string;
   submitLabel: string;
-  pending: boolean;
   onName: (v: string) => void;
   onAmount: (v: string) => void;
   onExtra: (v: string) => void;
   onSubmit: () => void;
 }) {
-  const disabled =
-    pending || !name.trim() || !amount.trim() || !String(extra).trim();
+  const disabled = !name.trim() || !amount.trim() || !String(extra).trim();
   return (
     <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
       <div className="grid gap-2 sm:grid-cols-[1fr_7rem_6.5rem]">
@@ -905,10 +888,10 @@ function InlineAdd({
       <button
         type="button"
         disabled={disabled}
-        className="min-h-11 w-full rounded-xl bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)] transition hover:bg-[var(--numa-accent)] hover:text-white disabled:opacity-45"
+        className="numa-btn numa-btn-soft w-full"
         onClick={onSubmit}
       >
-        {pending ? "Sparar…" : submitLabel}
+        {submitLabel}
       </button>
     </div>
   );
