@@ -24,6 +24,7 @@ import {
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { SV } from "@/features/copy/labels-sv";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
@@ -134,6 +135,9 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
+  const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
+    null,
+  );
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
@@ -244,6 +248,7 @@ export function PlanEditor({
     setMonthKey(key);
     setViewYear(yearFromMonthKey(key));
     setEditingId(null);
+    setAddKind(null);
   }
 
   function shiftYear(delta: number) {
@@ -254,6 +259,7 @@ export function PlanEditor({
     setViewYear(nextYear);
     setMonthKey(nextKey);
     setEditingId(null);
+    setAddKind(null);
   }
 
   async function runMutation(opts: {
@@ -296,6 +302,7 @@ export function PlanEditor({
 
   function startEditIncome(item: PlanItem) {
     if (isTempPlanId(item.id)) return;
+    setAddKind(null);
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
@@ -304,6 +311,7 @@ export function PlanEditor({
 
   function startEditExpense(item: PlanItem) {
     if (isTempPlanId(item.id)) return;
+    setAddKind(null);
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
@@ -312,6 +320,7 @@ export function PlanEditor({
 
   function startEditExtra(item: PlanItem) {
     if (isTempPlanId(item.id)) return;
+    setAddKind(null);
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
@@ -611,6 +620,10 @@ export function PlanEditor({
             namePlaceholder="t.ex. Lön, Trukks, CSN"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till intäkt"
+            collapsedLabel="Lägg till intäkt"
+            open={addKind === "income"}
+            onOpen={() => setAddKind("income")}
+            onClose={() => setAddKind(null)}
             busy={busy === "add-income"}
             onName={setIncomeName}
             onAmount={setIncomeAmount}
@@ -653,6 +666,8 @@ export function PlanEditor({
                 if (!ok) {
                   setIncomeName(name);
                   setIncomeAmount(amount);
+                } else {
+                  setAddKind(null);
                 }
               });
             }}
@@ -790,6 +805,10 @@ export function PlanEditor({
               namePlaceholder="t.ex. Hyra, El, Netflix"
               amountPlaceholder={`Belopp (${currency})`}
               submitLabel="Lägg till fast utgift"
+              collapsedLabel="Lägg till fast utgift"
+              open={addKind === "fixed"}
+              onOpen={() => setAddKind("fixed")}
+              onClose={() => setAddKind(null)}
               busy={busy === "add-fixed"}
               onName={setExpenseName}
               onAmount={setExpenseAmount}
@@ -837,6 +856,8 @@ export function PlanEditor({
                   if (!ok) {
                     setExpenseName(name);
                     setExpenseAmount(amount);
+                  } else {
+                    setAddKind(null);
                   }
                 });
               }}
@@ -910,6 +931,10 @@ export function PlanEditor({
             namePlaceholder="t.ex. Lån, Flygbiljett"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till extra"
+            collapsedLabel="Lägg till extra"
+            open={addKind === "extra"}
+            onOpen={() => setAddKind("extra")}
+            onClose={() => setAddKind(null)}
             busy={busy === "add-extra"}
             onName={setExtraName}
             onAmount={setExtraAmount}
@@ -952,6 +977,8 @@ export function PlanEditor({
                 if (!ok) {
                   setExtraName(name);
                   setExtraAmount(amount);
+                } else {
+                  setAddKind(null);
                 }
               });
             }}
@@ -1131,24 +1158,22 @@ function PlanRows({
                 />
               </span>
               {locked || isTempPlanId(item.id) ? null : (
-                <>
-                  <button
-                    type="button"
-                    className="numa-press inline-flex min-h-11 items-center px-2 text-sm font-semibold text-[var(--numa-accent)]"
-                    onClick={() => onStartEdit(item)}
-                  >
-                    Redigera
-                  </button>
-                  <button
-                    type="button"
-                    disabled={pendingId === item.id && pendingAction === "delete"}
-                    className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)] disabled:opacity-45"
-                    onClick={() => onDelete(item.id)}
-                    aria-label={`Ta bort ${item.name}`}
-                  >
-                    ×
-                  </button>
-                </>
+                <OverflowMenu
+                  label={`Åtgärder för ${item.name}`}
+                  items={[
+                    {
+                      label: "Redigera",
+                      onSelect: () => onStartEdit(item),
+                    },
+                    {
+                      label: "Ta bort",
+                      tone: "danger",
+                      disabled:
+                        pendingId === item.id && pendingAction === "delete",
+                      onSelect: () => onDelete(item.id),
+                    },
+                  ]}
+                />
               )}
             </div>
           </li>
@@ -1167,6 +1192,10 @@ function InlineAdd({
   namePlaceholder,
   amountPlaceholder,
   submitLabel,
+  collapsedLabel,
+  open,
+  onOpen,
+  onClose,
   busy = false,
   onName,
   onAmount,
@@ -1181,6 +1210,10 @@ function InlineAdd({
   namePlaceholder: string;
   amountPlaceholder: string;
   submitLabel: string;
+  collapsedLabel: string;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
   busy?: boolean;
   onName: (v: string) => void;
   onAmount: (v: string) => void;
@@ -1188,6 +1221,19 @@ function InlineAdd({
   onSubmit: () => void;
 }) {
   const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
+  if (!open) {
+    return (
+      <div className="mt-auto border-t border-[var(--numa-border)] pt-4">
+        <button
+          type="button"
+          className="numa-btn numa-btn-soft w-full"
+          onClick={onOpen}
+        >
+          {collapsedLabel}
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
@@ -1225,14 +1271,24 @@ function InlineAdd({
           />
         )}
       </div>
-      <button
-        type="button"
-        disabled={disabled}
-        className="numa-btn numa-btn-soft w-full"
-        onClick={onSubmit}
-      >
-        {busy ? "Sparar…" : submitLabel}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          className="numa-btn numa-btn-soft min-w-0 flex-1"
+          onClick={onSubmit}
+        >
+          {busy ? "Sparar…" : submitLabel}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="numa-press min-h-12 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+          onClick={onClose}
+        >
+          Avbryt
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,12 +1,18 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { FormulaInfo } from "@/components/analys/FormulaInfo";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
-import { formatCountSv, livingVsPlanHintSv } from "@/domain/finance";
+import { formatCountSv } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
+
+type AnalysScope = "period" | "month";
 
 export function AnalysDashboard({
   data,
@@ -15,6 +21,8 @@ export function AnalysDashboard({
   data: AnalysSnapshot | null;
   error?: string | null;
 }) {
+  const [scope, setScope] = useState<AnalysScope>("period");
+
   if (error || !data) {
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
@@ -60,6 +68,10 @@ export function AnalysDashboard({
       : cycle.isActive
         ? daysLeftLabel
         : "Lägg in intäkter i Plan";
+  const cycleRange =
+    cycle.startLabelSv && cycle.endLabelSv
+      ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
+      : undefined;
 
   const monthPool = month.freeToSpendMinor + month.extraCarriedInMinor;
   const monthSpendProgress =
@@ -69,16 +81,30 @@ export function AnalysDashboard({
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
-      <header className="animate-rise space-y-1">
+      <header className="animate-rise flex items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
-        <p className="max-w-[36ch] text-sm text-[var(--numa-muted)]">
-          Löneperioden och kalendermånaden räknas var för sig — samma formler
-          som på Hem och Plan.
-        </p>
+        <FormulaInfo steps={data.formula.steps} />
       </header>
 
-      <div className="grid items-start gap-6 md:grid-cols-2">
-        <div className="min-w-0 space-y-6">
+      <div
+        className="animate-rise-delay-1 flex gap-2"
+        role="tablist"
+        aria-label="Analysvy"
+      >
+        <ScopeChip
+          active={scope === "period"}
+          onClick={() => setScope("period")}
+          label={SV.perioden}
+        />
+        <ScopeChip
+          active={scope === "month"}
+          onClick={() => setScope("month")}
+          label={SV.manad}
+        />
+      </div>
+
+      {scope === "period" ? (
+        <div className="space-y-6">
           <section
             className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
             aria-labelledby="analys-hero"
@@ -120,13 +146,11 @@ export function AnalysDashboard({
                       ? "positive"
                       : undefined
                   }
-                  hint="Det du kan handla för just nu"
                 />
                 <MetricRow
                   label={SV.dagsbudget}
                   amountMinor={isBridge && !hasSaldo ? 0 : cycle.dayBudgetMinor}
                   currency={currency}
-                  hint="Samma belopp hela dagen"
                 />
                 <MetricRow
                   label={SV.spenderatIdag}
@@ -136,252 +160,176 @@ export function AnalysDashboard({
               </div>
             </section>
           ) : null}
-        </div>
 
-        <section
-          className="animate-rise-delay-2 min-w-0 space-y-2"
-          aria-label="Periodens siffror"
-        >
-          {!isEmpty ? <p className="numa-section-title px-1">{SV.perioden}</p> : null}
-          <div className="numa-panel-list px-4 py-1">
-            {isBridge ? (
-              <>
+          {!isEmpty ? (
+            <section
+              className="animate-rise-delay-2 min-w-0 space-y-2"
+              aria-label="Periodens siffror"
+            >
+              <div className="numa-panel-list px-4 py-1">
+                {isBridge ? (
+                  hasSaldo ? null : (
+                    <MetricRow
+                      label={SV.saldo}
+                      value={<span className="text-sm text-[var(--numa-faint)]">—</span>}
+                    />
+                  )
+                ) : isCycle ? (
+                  <>
+                    <MetricRow
+                      label={SV.intakter}
+                      amountMinor={cycle.incomeMinor}
+                      currency={currency}
+                      tone="positive"
+                    />
+                    <MetricRow
+                      label={SV.utgifter}
+                      amountMinor={cycle.expenseMinor}
+                      currency={currency}
+                    />
+                    <MetricRow
+                      label={SV.sparande}
+                      amountMinor={cycle.savingsMinor}
+                      currency={currency}
+                    />
+                    <MetricRow
+                      label={SV.spenderatIPerioden}
+                      amountMinor={data.cycleSpendingMinor}
+                      currency={currency}
+                    />
+                  </>
+                ) : null}
                 {hasSaldo ? (
                   <MetricRow
-                    label={SV.saldo}
-                    amountMinor={cycle.remainingFreeMinor}
+                    label={SV.paKontot}
+                    amountMinor={data.calculatedBalanceMinor!}
                     currency={currency}
-                    tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-                    hint={data.verificationLabel ?? undefined}
                   />
-                ) : (
-                  <MetricRow
-                    label={SV.saldo}
-                    value={<span className="text-sm text-[var(--numa-faint)]">—</span>}
-                    hint="Ange på Hem eller fota SMS"
-                  />
+                ) : isBridge ? null : (
+                  <MetricRow label={SV.saldo} />
                 )}
-              </>
-            ) : isCycle ? (
-              <>
-                <MetricRow
-                  label={SV.intakter}
-                  amountMinor={cycle.incomeMinor}
-                  currency={currency}
-                  tone="positive"
-                />
-                <MetricRow
-                  label={SV.utgifter}
-                  amountMinor={cycle.expenseMinor}
-                  currency={currency}
-                  hint={
-                    cycle.startLabelSv && cycle.endLabelSv
-                      ? `Planerade i löneperioden ${cycle.startLabelSv} – ${cycle.endLabelSv}`
-                      : "Planerade i löneperioden, inte kalendermånaden"
-                  }
-                />
-                <MetricRow
-                  label={SV.kvarIPerioden}
-                  amountMinor={cycle.remainingFreeMinor}
-                  currency={currency}
-                  tone={cycle.remainingFreeMinor >= 0 ? "positive" : "danger"}
-                />
-                <MetricRow
-                  label={SV.sparande}
-                  amountMinor={cycle.savingsMinor}
-                  currency={currency}
-                />
-                <MetricRow
-                  label={SV.spenderatIPerioden}
-                  amountMinor={data.cycleSpendingMinor}
-                  currency={currency}
-                />
-              </>
-            ) : null}
-          </div>
-        </section>
-      </div>
+              </div>
+            </section>
+          ) : null}
 
-      {!isEmpty ? (
-        <section className="animate-rise-delay-2 space-y-4">
-          <hr className="numa-divider" />
-          <div className="grid items-start gap-4 md:grid-cols-2">
-            <LineList
-              title={isBridge ? "Kommande intäkter" : "Intäkter i perioden"}
-              subtitle={
-                cycle.startLabelSv && cycle.endLabelSv
-                  ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
-                  : "Löneperioden, inte kalendermånaden"
-              }
-              empty={isBridge ? "Inga kommande." : "Inga i perioden."}
-              lines={cycle.incomes}
-              currency={currency}
-              totalMinor={cycle.incomeMinor}
-            />
-            <LineList
-              title={isBridge ? "Kommande utgifter" : "Utgifter i perioden"}
-              subtitle={
-                cycle.startLabelSv && cycle.endLabelSv
-                  ? `${cycle.startLabelSv} – ${cycle.endLabelSv} · inte kalendermånaden`
-                  : "Löneperioden, inte kalendermånaden"
-              }
-              empty={isBridge ? "Inga kommande." : "Inga i perioden."}
-              lines={cycle.expenses}
-              currency={currency}
-              totalMinor={cycle.expenseMinor}
-            />
-          </div>
-        </section>
-      ) : null}
-
-      <section className="animate-rise-delay-3 space-y-5">
-        <hr className="numa-divider" />
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="numa-section-title">Denna månad</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-tight">
-              {data.monthLabelSv}
-            </h2>
-          </div>
-          <Link
-            href="/plan"
-            prefetch
-            className="shrink-0 pb-0.5 text-xs font-semibold text-[var(--numa-accent)]"
-          >
-            Plan →
-          </Link>
-        </div>
-
-        <WealthScoreboard
-          livingMinor={month.livingSaldoMinor}
-          savingsMinor={month.savingsTotalMinor}
-          totalMinor={month.wealthTotalMinor}
-          currency={currency}
-        />
-
-        <div className="numa-panel-list px-4 py-1">
-          <MetricRow
-            label={SV.intakter}
-            amountMinor={month.incomeMinor}
-            currency={currency}
-            tone="positive"
-          />
-          <MetricRow
-            label={SV.utgifter}
-            amountMinor={month.expenseMinor}
-            currency={currency}
-            hint={`Kalendermånaden ${data.monthLabelSv}`}
-          />
-          <MetricRow
-            label={SV.sparande}
-            amountMinor={month.savingsMinor}
-            currency={currency}
-            hint="Avsatt i denna månad"
-          />
-          <MetricRow
-            label={SV.sparandeTotalt}
-            amountMinor={month.savingsTotalMinor}
-            currency={currency}
-            hint={SV.sparandeAvsatt}
-          />
-          <MetricRow
-            label={SV.kvarIManadenPlan}
-            amountMinor={month.freeToSpendMinor}
-            currency={currency}
-            tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
-            hint="Intäkter minus planerade utgifter och sparande — utan faktiskt spenderat"
-          />
-          {month.extraCarriedInMinor > 0 ? (
-            <MetricRow
-              label={SV.extraMed}
-              amountMinor={month.extraCarriedInMinor}
-              currency={currency}
-              tone="positive"
-              hint={month.extraSaldoHint ?? undefined}
-            />
-          ) : (
-            <ExtraSaldoRow
-              extraSaldoMinor={month.extraSaldoMinor}
-              drawnMinor={month.extraSaldoDrawnMinor}
-              hint={month.extraSaldoHint}
-              currency={currency}
-            />
-          )}
-          <MetricRow
-            label={SV.spenderatIManaden}
-            amountMinor={month.spentMinor}
-            currency={currency}
-          />
-          <MetricRow
-            label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
-            amountMinor={month.monthResultMinor}
-            currency={currency}
-            tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
-            hint={
-              month.monthLeftoverHint ??
-              livingVsPlanHintSv({ carriedInMinor: month.extraCarriedInMinor })
-            }
-          />
-          {month.extraCarriedInMinor > 0 &&
-          month.livingSaldoMinor !== month.monthResultMinor ? (
-            <MetricRow
-              label={SV.motPlanen}
-              amountMinor={month.livingSaldoMinor}
-              currency={currency}
-              tone={month.livingSaldoMinor >= 0 ? "positive" : "danger"}
-              hint={livingVsPlanHintSv({
-                carriedInMinor: month.extraCarriedInMinor,
-              })}
-            />
+          {!isEmpty ? (
+            <section className="animate-rise-delay-2 space-y-4">
+              <div className="grid items-start gap-4 md:grid-cols-2">
+                <LineList
+                  title={isBridge ? "Kommande intäkter" : "Intäkter i perioden"}
+                  subtitle={cycleRange}
+                  empty={isBridge ? "Inga kommande." : "Inga i perioden."}
+                  lines={cycle.incomes}
+                  currency={currency}
+                  totalMinor={cycle.incomeMinor}
+                />
+                <LineList
+                  title={isBridge ? "Kommande utgifter" : "Utgifter i perioden"}
+                  subtitle={cycleRange}
+                  empty={isBridge ? "Inga kommande." : "Inga i perioden."}
+                  lines={cycle.expenses}
+                  currency={currency}
+                  totalMinor={cycle.expenseMinor}
+                />
+              </div>
+            </section>
           ) : null}
         </div>
-        {monthSpendProgress != null ? (
-          <div className="numa-progress animate-bar" aria-hidden>
-            <span style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }} />
+      ) : (
+        <section className="animate-rise-delay-2 space-y-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="numa-section-title">{SV.manad}</p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight">
+                {data.monthLabelSv}
+              </h2>
+            </div>
+            <Link
+              href="/plan"
+              prefetch
+              className="shrink-0 pb-0.5 text-xs font-semibold text-[var(--numa-accent)]"
+            >
+              Plan →
+            </Link>
           </div>
-        ) : null}
 
-        <div className="grid items-start gap-4 md:grid-cols-2">
-          <LineList
-            title="Intäkter"
-            subtitle={`Kalendermånaden ${data.monthLabelSv}`}
-            empty="Inga intäkter inlagda."
-            lines={month.incomes}
+          <WealthScoreboard
+            livingMinor={month.livingSaldoMinor}
+            savingsMinor={month.savingsTotalMinor}
+            totalMinor={month.wealthTotalMinor}
             currency={currency}
-            totalMinor={month.incomeMinor}
           />
-          <LineList
-            title="Utgifter"
-            subtitle={`Kalendermånaden ${data.monthLabelSv}`}
-            empty="Inga utgifter inlagda."
-            lines={month.expenses}
-            currency={currency}
-            totalMinor={month.expenseMinor}
-          />
-        </div>
-      </section>
 
-      <section className="animate-rise-delay-3 space-y-5">
-        <hr className="numa-divider" />
-        <h2 className="text-lg font-semibold tracking-tight">Konto</h2>
-        <div className="space-y-0">
-          {hasSaldo ? (
+          <div className="numa-panel-list px-4 py-1">
             <MetricRow
-              label={SV.paKontot}
-              amountMinor={data.calculatedBalanceMinor!}
+              label={SV.intakter}
+              amountMinor={month.incomeMinor}
               currency={currency}
-              hint={data.verificationLabel ?? undefined}
+              tone="positive"
             />
-          ) : (
-            <MetricRow label={SV.saldo} hint="Ange på Hem eller fota SMS" />
-          )}
-          <MetricRow
-            label={SV.spenderatIdag}
-            amountMinor={data.todaySpendingMinor}
-            currency={currency}
-          />
-        </div>
-      </section>
+            <MetricRow
+              label={SV.utgifter}
+              amountMinor={month.expenseMinor}
+              currency={currency}
+            />
+            <MetricRow
+              label={SV.kvarIManadenPlan}
+              amountMinor={month.freeToSpendMinor}
+              currency={currency}
+              tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
+            />
+            {month.extraCarriedInMinor > 0 ? (
+              <MetricRow
+                label={SV.extraMed}
+                amountMinor={month.extraCarriedInMinor}
+                currency={currency}
+                tone="positive"
+              />
+            ) : (
+              <ExtraSaldoRow
+                extraSaldoMinor={month.extraSaldoMinor}
+                drawnMinor={month.extraSaldoDrawnMinor}
+                currency={currency}
+              />
+            )}
+            <MetricRow
+              label={SV.spenderatIManaden}
+              amountMinor={month.spentMinor}
+              currency={currency}
+            />
+            <MetricRow
+              label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
+              amountMinor={month.monthResultMinor}
+              currency={currency}
+              tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
+            />
+          </div>
+          {monthSpendProgress != null ? (
+            <div className="numa-progress animate-bar" aria-hidden>
+              <span style={{ width: `${Math.max(8, monthSpendProgress * 100)}%` }} />
+            </div>
+          ) : null}
+
+          <div className="grid items-start gap-4 md:grid-cols-2">
+            <LineList
+              title="Intäkter"
+              subtitle={data.monthLabelSv}
+              empty="Inga intäkter inlagda."
+              lines={month.incomes}
+              currency={currency}
+              totalMinor={month.incomeMinor}
+            />
+            <LineList
+              title="Utgifter"
+              subtitle={data.monthLabelSv}
+              empty="Inga utgifter inlagda."
+              lines={month.expenses}
+              currency={currency}
+              totalMinor={month.expenseMinor}
+            />
+          </div>
+        </section>
+      )}
 
       <section className="animate-rise-delay-3 space-y-3">
         <div className="flex items-center justify-between gap-3">
@@ -471,6 +419,32 @@ export function AnalysDashboard({
         )}
       </section>
     </div>
+  );
+}
+
+function ScopeChip({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`numa-press min-h-10 rounded-full px-4 text-sm font-semibold ${
+        active
+          ? "bg-[var(--numa-ink)] text-white"
+          : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

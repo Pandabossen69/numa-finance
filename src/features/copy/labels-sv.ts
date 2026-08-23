@@ -54,6 +54,8 @@ export const SV = {
   hurMycketKvar: "Hur mycket har du kvar på kontot?",
   visaDagsbudget: "Visa dagsbudget",
   perioden: "Perioden",
+  manad: "Månad",
+  saRaknarNuma: "Så räknar NUMA",
   idag: "Idag",
   appDescription:
     "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
