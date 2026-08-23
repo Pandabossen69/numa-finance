@@ -18,6 +18,29 @@ export function ViewLoading() {
   );
 }
 
+/** Hem-shaped shell so /idag never paints an empty content column. */
+export function HomeViewLoading() {
+  return (
+    <div
+      className="numa-page numa-page-wide space-y-6"
+      data-numa-view-loading="true"
+      aria-busy="true"
+      aria-label="Laddar Hem"
+    >
+      <div className="space-y-2">
+        <div className="numa-skel h-4 w-40" />
+        <div className="numa-skel h-8 w-24" />
+      </div>
+      <div className="numa-skel h-[16.5rem] w-full" />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="numa-skel h-28 w-full" />
+        <div className="numa-skel h-28 w-full" />
+      </div>
+      <div className="numa-skel h-20 w-full" />
+    </div>
+  );
+}
+
 /** Analys-shaped shell so /analys never paints an empty header/gradient. */
 export function AnalysViewLoading() {
   return (

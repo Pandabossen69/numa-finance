@@ -1,5 +1,9 @@
 import { isValidElement, type ReactNode } from "react";
-import { AnalysViewLoading, ViewLoading } from "@/components/layout/ViewLoading";
+import {
+  AnalysViewLoading,
+  HomeViewLoading,
+  ViewLoading,
+} from "@/components/layout/ViewLoading";
 
 export function shouldHoldPreviousView(input: {
   loading: boolean;
@@ -15,7 +19,13 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   if (node == null || typeof node === "boolean") return false;
   if (Array.isArray(node)) return node.some(isViewLoadingNode);
   if (!isValidElement(node)) return false;
-  if (node.type === ViewLoading || node.type === AnalysViewLoading) return true;
+  if (
+    node.type === ViewLoading ||
+    node.type === AnalysViewLoading ||
+    node.type === HomeViewLoading
+  ) {
+    return true;
+  }
   const props = node.props as {
     "data-numa-view-loading"?: unknown;
     children?: ReactNode;

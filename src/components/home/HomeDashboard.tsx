@@ -21,7 +21,7 @@ import { createExpenseAction, setAvailableNowAction } from "@/features/finance/a
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { lastHomeSnapshot, rememberHomeSnapshot } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import { HomeViewLoading } from "@/components/layout/ViewLoading";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
 
@@ -44,7 +44,7 @@ export function HomeDashboard({
   const [deltaSpent, setDeltaSpent] = useValueForKey(0, snapResetKey);
 
   if (!view) {
-    if (!error) return <ViewLoading />;
+    if (!error) return <HomeViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>

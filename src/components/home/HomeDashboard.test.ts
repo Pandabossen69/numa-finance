@@ -14,4 +14,8 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("Över");
     expect(src).toContain("numa-chip-alarm");
   });
+
+  it("shows the Hem-shaped skeleton while snapshot is empty", () => {
+    expect(src).toContain("HomeViewLoading");
+  });
 });

@@ -1,12 +1,13 @@
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
-import { AnalysViewLoading, ViewLoading } from "./ViewLoading";
+import { AnalysViewLoading, HomeViewLoading, ViewLoading } from "./ViewLoading";
 import { isViewLoadingNode, shouldHoldPreviousView } from "./view-hold";
 
 describe("isViewLoadingNode", () => {
   it("recognizes ViewLoading and the data marker", () => {
     expect(isViewLoadingNode(createElement(ViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(AnalysViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
     expect(
       isViewLoadingNode(
         createElement("div", { "data-numa-view-loading": true }, "x"),
