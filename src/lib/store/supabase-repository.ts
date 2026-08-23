@@ -865,6 +865,39 @@ export async function getObservation(
   return data ? mapObservation(data) : null;
 }
 
+export async function listObservationCandidates(
+  observationId: string,
+): Promise<ExtractedTransactionCandidate[]> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("extracted_transaction_candidates")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("observation_id", observationId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapCandidate);
+}
+
+const MEDIA_BUCKET = "numa-source-media";
+
+export async function getObservationMediaUrl(
+  storagePath: string,
+): Promise<string | null> {
+  const userId = await requireUserId();
+  assertUserOwnsStoragePath(userId, storagePath);
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.storage
+    .from(MEDIA_BUCKET)
+    .createSignedUrl(storagePath, 60 * 15);
+  if (error || !data?.signedUrl) {
+    console.warn("[numa] signed media url failed", error?.message);
+    return null;
+  }
+  return data.signedUrl;
+}
+
 export async function latestCheckpointForAccount(
   accountId: string,
 ): Promise<BalanceCheckpoint | null> {
@@ -1153,8 +1186,6 @@ function emptySnapshot(
     progress: progress ?? emptyUserProgress(profile.id),
   };
 }
-
-const MEDIA_BUCKET = "numa-source-media";
 
 export async function getUserProgress(): Promise<UserProgress | null> {
   const userId = await requireUserId();

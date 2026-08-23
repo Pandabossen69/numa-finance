@@ -7,6 +7,7 @@ import {
   MerSection,
 } from "@/components/mer/MerHub";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
+import { fotaHrefForObservation } from "@/features/imports/capture-resume";
 import { listObservations } from "@/lib/store/repository";
 
 export default async function ImporteraPage() {
@@ -61,7 +62,7 @@ export default async function ImporteraPage() {
                     {o.status === "needs_review" || o.status === "failed" ? (
                       <p className="pt-1">
                         <Link
-                          href="/fota"
+                          href={fotaHrefForObservation(o)}
                           prefetch
                           className="text-sm font-semibold text-[var(--numa-accent)]"
                         >

@@ -1,5 +1,10 @@
 import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
 import {
+  isObservationId,
+  parseFotaMode,
+} from "@/features/imports/capture-resume";
+import { loadCaptureResume } from "@/features/imports/load-capture-resume";
+import {
   getCachedTodaySnapshot,
   loadHomeSnapshot,
 } from "@/features/finance/load-home";
@@ -7,29 +12,26 @@ import {
 export default async function FotaPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ mode?: string }>;
+  searchParams?: Promise<{ mode?: string; observation?: string }>;
 }) {
   const params = (await searchParams) ?? {};
   const modeParam = params.mode;
-  const initialMode =
-    modeParam === "sms" || modeParam === "bank_sms"
-      ? ("bank_sms" as const)
-      : modeParam === "bank_app" ||
-          modeParam === "bunq" ||
-          modeParam === "revolut"
-        ? ("bank_app" as const)
-        : modeParam === "kvitto" || modeParam === "receipt"
-          ? ("receipt" as const)
-          : modeParam === "manual"
-            ? ("manual" as const)
-            : ("pick" as const);
+  const observationId = isObservationId(params.observation)
+    ? params.observation
+    : null;
+  const parsedMode = parseFotaMode(modeParam);
 
-  const [home, snap] = await Promise.all([
+  const [home, snap, resume] = await Promise.all([
     loadHomeSnapshot(),
     getCachedTodaySnapshot().catch(() => null),
+    observationId ? loadCaptureResume(observationId) : Promise.resolve(null),
   ]);
   const data = home.ok ? home.data : null;
   const bootstrapping = Boolean(data && !data.hasBankTruth);
+
+  const initialMode =
+    resume?.mode ??
+    (modeParam ? parsedMode : bootstrapping ? "bank_sms" : parsedMode);
 
   const accounts =
     snap?.accounts
@@ -67,14 +69,8 @@ export default async function FotaPage({
           remainingTodayMinor={data.remainingTodayMinor}
           currency={data.currency}
           bootstrapping={bootstrapping}
-          initialMode={
-            // Explicit ?mode= wins; otherwise bootstrap opens bank-SMS first.
-            modeParam
-              ? initialMode
-              : bootstrapping
-                ? "bank_sms"
-                : initialMode
-          }
+          initialMode={initialMode}
+          initialPreview={resume?.preview ?? null}
         />
       )}
     </div>

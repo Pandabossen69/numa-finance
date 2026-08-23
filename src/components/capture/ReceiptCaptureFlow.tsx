@@ -15,37 +15,11 @@ import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import { compressImageForUpload } from "@/lib/media/compress-image";
 import { goHomeInstant } from "@/lib/nav/instant";
+import type { CapturePreview } from "@/features/imports/capture-preview";
+import type { CaptureMode } from "@/features/imports/capture-resume";
+import { CAPTURE_UI_COPY } from "@/features/imports/capture-ui-copy";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
-
-type CaptureMode = "pick" | "bank_sms" | "bank_app" | "receipt" | "manual";
-
-type PreviewEvent = {
-  candidateId: string;
-  direction: "debit" | "credit";
-  amountMinor: number;
-  labelSv: string;
-};
-
-type Preview = {
-  observationId: string;
-  candidateId: string | null;
-  amount: string;
-  description: string;
-  currency: CurrencyCode;
-  ocrStatus: "ok" | "unavailable" | "failed" | "all_known";
-  confidence: number | null;
-  message: string | null;
-  previewUrl: string;
-  importKind: "bank_sms" | "bank_app" | "receipt" | "unknown";
-  balanceAfterMinor: number | null;
-  fingerprint: string | null;
-  alreadyKnown: boolean;
-  skippedOlderCount: number;
-  amountFromScan: boolean;
-  direction: "debit" | "credit" | null;
-  events: PreviewEvent[];
-};
 
 function minorToInput(minor: number): string {
   return (minor / 100).toFixed(2).replace(".", ",");
@@ -58,6 +32,7 @@ export function ReceiptCaptureFlow({
   currency,
   bootstrapping = false,
   initialMode = "pick",
+  initialPreview = null,
 }: {
   accountId: string | null;
   accounts: ShellAccount[];
@@ -65,13 +40,25 @@ export function ReceiptCaptureFlow({
   currency: CurrencyCode;
   bootstrapping?: boolean;
   initialMode?: CaptureMode;
+  initialPreview?: CapturePreview | null;
 }) {
-  const [mode, setMode] = useState<CaptureMode>(
-    bootstrapping ? "bank_sms" : initialMode,
+  const [mode, setMode] = useState<CaptureMode>(() => {
+    if (initialPreview && initialPreview.importKind !== "unknown") {
+      return initialPreview.importKind;
+    }
+    return initialMode;
+  });
+  const [preview, setPreview] = useState<CapturePreview | null>(
+    initialPreview,
   );
-  const [preview, setPreview] = useState<Preview | null>(null);
   const [category, setCategory] = useState<string>("Mat");
-  const [amountEditable, setAmountEditable] = useState(false);
+  const [amountEditable, setAmountEditable] = useState(
+    Boolean(
+      initialPreview &&
+        initialPreview.importKind !== "bank_sms" &&
+        initialPreview.importKind !== "bank_app",
+    ),
+  );
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanPreviewUrl, setScanPreviewUrl] = useState<string | null>(null);
@@ -154,7 +141,7 @@ export function ReceiptCaptureFlow({
         data.suggestedAmountMinor != null
           ? minorToInput(data.suggestedAmountMinor)
           : "";
-      const importKind: Preview["importKind"] =
+      const importKind: CapturePreview["importKind"] =
         data.importKind === "bank_sms"
           ? "bank_sms"
           : data.importKind === "bank_app"
@@ -332,18 +319,10 @@ export function ReceiptCaptureFlow({
         </div>
         <div className="text-center">
           <p className="text-lg font-semibold tracking-tight">
-            {mode === "receipt"
-              ? "Läser kvitto…"
-              : mode === "bank_app"
-                ? "Läser bankapp…"
-                : "Läser SMS…"}
+            {captureCopy(mode).scanning}
           </p>
           <p className="mx-auto mt-2 max-w-[30ch] text-sm text-[var(--numa-muted)]">
-            {mode === "receipt"
-              ? "Hämtar beloppet — dubbelkolla innan du sparar."
-              : mode === "bank_app"
-                ? "Hämtar utgifter från skärmdumpen — misslyckade rader hoppas över."
-                : "Hämtar +/− och saldo automatiskt — du behöver inte skriva något."}
+            {captureCopy(mode).scanningHint}
           </p>
         </div>
       </div>
@@ -351,30 +330,22 @@ export function ReceiptCaptureFlow({
   }
 
   if (!preview) {
+    const copy = captureCopy(mode);
     const isSms = mode === "bank_sms";
-    const isBankApp = mode === "bank_app";
     return (
       <div className="animate-rise space-y-8">
         <BackLink onClick={resetToPick} />
         <header className="space-y-2">
           <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-            {isSms ? "Bank-SMS" : isBankApp ? "Bankapp" : "Kvitto"}
+            {copy.eyebrow}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight">
-            {bootstrapping && isSms
-              ? "Fota senaste SMS"
-              : isSms
-                ? "Fota bank-SMS"
-                : isBankApp
-                  ? "Fota bankapp"
-                  : "Fota kvitto"}
+            {bootstrapping && isSms && "titleBootstrap" in copy
+              ? copy.titleBootstrap
+              : copy.title}
           </h2>
           <p className="max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-            {isSms
-              ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
-              : isBankApp
-                ? "bunq / Revolut — kortbelopp i €, samma köp aldrig dubbelt"
-                : "Tillåt kameran om webbläsaren frågar. Håll texten skarp. Beloppet fylls i automatiskt — du kan alltid ändra innan du sparar."}
+            {copy.hint}
           </p>
         </header>
 
@@ -390,7 +361,7 @@ export function ReceiptCaptureFlow({
             </span>
             <span className="text-sm font-semibold tracking-tight">Kamera</span>
             <span className="text-center text-xs text-white/70">
-              {isSms || isBankApp ? "Fota skärmen nu" : "Fota kvittot"}
+              {copy.camera}
             </span>
           </button>
           <button
@@ -409,7 +380,7 @@ export function ReceiptCaptureFlow({
               Galleri
             </span>
             <span className="text-center text-xs text-[var(--numa-muted)]">
-              {isSms || isBankApp ? "Välj skärmdump" : "Välj foto"}
+              {copy.gallery}
             </span>
           </button>
         </div>
@@ -441,11 +412,7 @@ export function ReceiptCaptureFlow({
         />
 
         <p className="text-center text-xs text-[var(--numa-faint)]">
-          {isSms
-            ? "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över"
-            : isBankApp
-              ? "Bäst: detalj eller lista · € postas på bunq-konto · samma köp hoppas över"
-              : "Beloppet synligt i bild"}
+          {copy.footer}
         </p>
 
         {error ? (
@@ -824,6 +791,12 @@ function BackLink({ onClick }: { onClick: () => void }) {
       ← Tillbaka
     </button>
   );
+}
+
+function captureCopy(mode: CaptureMode) {
+  if (mode === "bank_sms") return CAPTURE_UI_COPY.bank_sms;
+  if (mode === "bank_app") return CAPTURE_UI_COPY.bank_app;
+  return CAPTURE_UI_COPY.receipt;
 }
 
 function PreviewThumb({ src }: { src: string }) {

@@ -132,6 +132,14 @@ export async function getObservation(observationId: string) {
   return api().getObservation(observationId);
 }
 
+export async function listObservationCandidates(observationId: string) {
+  return api().listObservationCandidates(observationId);
+}
+
+export async function getObservationMediaUrl(storagePath: string) {
+  return api().getObservationMediaUrl(storagePath);
+}
+
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   await ensurePlanDuesRolled();
   return withTimeout(
