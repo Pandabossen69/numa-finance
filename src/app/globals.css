@@ -621,6 +621,7 @@ body {
 .numa-expand {
   display: grid;
   grid-template-rows: 0fr;
+  overflow: hidden;
   opacity: 0;
   transition:
     grid-template-rows 200ms ease,

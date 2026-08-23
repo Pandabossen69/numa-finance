@@ -28,6 +28,7 @@ describe("Plan dates and add-form", () => {
 
   it("does not keep the add toggle over the fields while they expand", () => {
     expect(src).toContain("fieldsMounted");
+    expect(src).toContain("const showFields = open || fieldsMounted");
     expect(src).toContain("onTransitionEnd");
   });
 

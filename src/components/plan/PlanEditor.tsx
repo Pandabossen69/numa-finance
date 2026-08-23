@@ -1295,6 +1295,8 @@ function InlineAdd({
   if (open && !fieldsMounted) {
     setFieldsMounted(true);
   }
+  // Button and fields never share a frame — even on the first open paint.
+  const showFields = open || fieldsMounted;
 
   useEffect(() => {
     if (!open) return;
@@ -1324,7 +1326,7 @@ function InlineAdd({
           : ""
       }`}
     >
-      {fieldsMounted ? (
+      {showFields ? (
       <div
         className={`numa-expand ${open ? "is-open" : ""}`}
         onTransitionEnd={(event) => {
