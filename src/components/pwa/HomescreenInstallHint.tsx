@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
+import {
+  isProductionAppHost,
+  PRODUCTION_HOST,
+  PRODUCTION_ORIGIN,
+} from "@/lib/site";
 
 const DISMISS_KEY = "numa.homescreenHint.v1";
 
@@ -48,6 +52,11 @@ export function HomescreenInstallHint({
   const storedVisible = useSyncExternalStore(
     subscribeHomescreenHint,
     () => getHomescreenHintVisible(dismissible),
+    () => false,
+  );
+  const alreadyOnProduction = useSyncExternalStore(
+    subscribeHomescreenHint,
+    () => isProductionAppHost(window.location.hostname),
     () => false,
   );
   const [dismissedHere, setDismissedHere] = useState(false);
@@ -98,12 +107,14 @@ export function HomescreenInstallHint({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <a
-          href={PRODUCTION_ORIGIN}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white"
-        >
-          Öppna rätt länk
-        </a>
+        {alreadyOnProduction ? null : (
+          <a
+            href={PRODUCTION_ORIGIN}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white"
+          >
+            Öppna rätt länk
+          </a>
+        )}
         {dismissible ? (
           <button
             type="button"

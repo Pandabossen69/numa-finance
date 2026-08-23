@@ -26,7 +26,10 @@ export function SideNav({ displayName }: { displayName: string }) {
           <p className="mt-1 text-3xl font-semibold tracking-[-0.05em] text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
             NUMA
           </p>
-          <p className="mt-1 text-sm font-semibold tracking-tight text-[var(--numa-accent-ink)]">
+          <p
+            className="mt-1 truncate text-sm font-semibold tracking-tight text-[var(--numa-accent-ink)]"
+            title={displayName}
+          >
             {displayName}
           </p>
         </Link>

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
   dayOfMonthFromIso,
+  dueDateInMonth,
   importableFixedExpenses,
   labelDayOfMonthSv,
   labelMonthNameSv,
@@ -20,11 +21,23 @@ import {
   yearFromMonthKey,
   visibleMonthKeysForYear,
 } from "@/domain/finance";
-import type { CurrencyCode } from "@/domain/money";
+import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { SV } from "@/features/copy/labels-sv";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
+import { refreshQuiet } from "@/lib/nav/instant";
+import {
+  applyMonthSavings,
+  isTempPlanId,
+  mergeReturnedItem,
+  mergeReturnedItems,
+  optimisticPlanItem,
+  removeItemById,
+  replaceItemById,
+  revertMonthSavings,
+} from "@/features/plan/optimistic";
+import type { ActionResult } from "@/features/plan/actions";
 import {
   createPlanExtraAction,
   createPlanIncomeAction,
@@ -36,6 +49,17 @@ import {
 } from "@/features/plan/actions";
 
 const EMPTY_MONTH_SPEND: Record<string, number> = {};
+
+type BusyKey =
+  | null
+  | "savings"
+  | "savings-clear"
+  | "import"
+  | "add-income"
+  | "add-fixed"
+  | "add-extra"
+  | `edit:${string}`
+  | `delete:${string}`;
 
 function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
@@ -53,6 +77,16 @@ function labelIncomeDateSv(iso: string | null, timeZone: string): string {
     day: "numeric",
     month: "short",
   });
+}
+
+function parsePlanAmount(raw: string): number | { error: string } {
+  try {
+    const amountMinor = parseUiAmountToMinor(raw);
+    if (amountMinor < 0) return { error: "Belopp kan inte vara negativt" };
+    return amountMinor;
+  } catch {
+    return { error: "Ogiltigt belopp" };
+  }
 }
 
 export function PlanEditor({
@@ -79,6 +113,8 @@ export function PlanEditor({
   );
   const [viewYear, setViewYear] = useState(() => yearFromMonthKey(currentMonthKey));
   const [monthKey, setMonthKey] = useState(currentMonthKey);
+  const [localItems, setLocalItems] = useState(items);
+  const ownerId = localItems[0]?.userId ?? items[0]?.userId ?? "";
 
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
@@ -97,54 +133,54 @@ export function PlanEditor({
   const [editDay, setEditDay] = useState("1");
 
   const [error, setError] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [busy, setBusy] = useState<BusyKey>(null);
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
   const importableFixed = useMemo(
     () =>
       importableFixedExpenses({
-        items,
+        items: localItems,
         fromMonthKey: previousMonthKey,
         toMonthKey: monthKey,
         timeZone,
       }),
-    [items, previousMonthKey, monthKey, timeZone],
+    [localItems, previousMonthKey, monthKey, timeZone],
   );
   const canImportFixed = !isPastMonth && importableFixed.length > 0;
 
   const projection = useMemo(
-    () => projectPlanForMonth(items, monthKey, timeZone),
-    [items, monthKey, timeZone],
+    () => projectPlanForMonth(localItems, monthKey, timeZone),
+    [localItems, monthKey, timeZone],
   );
 
   const extra = useMemo(
     () =>
       projectExtraSaldo({
-        planItems: items,
+        planItems: localItems,
         spendingByMonthKey,
         monthKey,
         currentMonthKey,
         timeZone,
       }),
-    [items, spendingByMonthKey, monthKey, currentMonthKey, timeZone],
+    [localItems, spendingByMonthKey, monthKey, currentMonthKey, timeZone],
   );
   const savingsTotalMinor = useMemo(
-    () => cumulativePlanSavingsMinor(items, monthKey, timeZone),
-    [items, monthKey, timeZone],
+    () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
+    [localItems, monthKey, timeZone],
   );
   const monthName = labelMonthNameSv(monthKey);
   const yearThroughKey = monthKeys[monthKeys.length - 1] ?? monthKey;
   const yearExtra = useMemo(
     () =>
       projectExtraSaldoSeries({
-        planItems: items,
+        planItems: localItems,
         spendingByMonthKey,
         throughMonthKey: yearThroughKey,
         currentMonthKey,
         timeZone,
       }),
-    [items, spendingByMonthKey, yearThroughKey, currentMonthKey, timeZone],
+    [localItems, spendingByMonthKey, yearThroughKey, currentMonthKey, timeZone],
   );
   const extraByMonth = useMemo(() => {
     const out: Record<string, number> = {};
@@ -156,10 +192,10 @@ export function PlanEditor({
   const savingsByMonth = useMemo(() => {
     const out: Record<string, number> = {};
     for (const key of monthKeys) {
-      out[key] = projectPlanForMonth(items, key, timeZone).savingsMinor;
+      out[key] = projectPlanForMonth(localItems, key, timeZone).savingsMinor;
     }
     return out;
-  }, [items, monthKeys, timeZone]);
+  }, [localItems, monthKeys, timeZone]);
   const monthChipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [savingsAmount, setSavingsAmount] = useValueForKey(
     projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
@@ -179,8 +215,8 @@ export function PlanEditor({
   }
 
   const cycle = useMemo(
-    () => projectPayCycle(items, new Date(), timeZone),
-    [items, timeZone],
+    () => projectPayCycle(localItems, new Date(), timeZone),
+    [localItems, timeZone],
   );
 
   const living = useMemo(
@@ -220,17 +256,46 @@ export function PlanEditor({
     setEditingId(null);
   }
 
-  function refreshAfter(result: { ok: true } | { ok: false; error: string }) {
-    if (!result.ok) {
-      setError(result.error);
-      return false;
-    }
+  async function runMutation(opts: {
+    busy: BusyKey;
+    apply: (items: PlanItem[]) => PlanItem[];
+    revert: (items: PlanItem[]) => PlanItem[];
+    action: () => Promise<ActionResult>;
+    reconcile?: (items: PlanItem[], result: Extract<ActionResult, { ok: true }>) => PlanItem[];
+  }): Promise<boolean> {
     setError(null);
-    router.refresh();
-    return true;
+    setBusy(opts.busy);
+    setLocalItems(opts.apply);
+    try {
+      const result = await opts.action();
+      if (!result.ok) {
+        setLocalItems(opts.revert);
+        setError(result.error);
+        return false;
+      }
+      setLocalItems((current) => {
+        if (opts.reconcile) return opts.reconcile(current, result);
+        if (result.item) return mergeReturnedItem(current, result.item);
+        if (result.items) {
+          return mergeReturnedItems(current, result.items, new Set());
+        }
+        return current;
+      });
+      startTransition(() => {
+        refreshQuiet(router);
+      });
+      return true;
+    } catch (err) {
+      setLocalItems(opts.revert);
+      setError(err instanceof Error ? err.message : "Något gick fel");
+      return false;
+    } finally {
+      setBusy((current) => (current === opts.busy ? null : current));
+    }
   }
 
   function startEditIncome(item: PlanItem) {
+    if (isTempPlanId(item.id)) return;
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
@@ -238,6 +303,7 @@ export function PlanEditor({
   }
 
   function startEditExpense(item: PlanItem) {
+    if (isTempPlanId(item.id)) return;
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
@@ -245,10 +311,39 @@ export function PlanEditor({
   }
 
   function startEditExtra(item: PlanItem) {
+    if (isTempPlanId(item.id)) return;
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
     setEditDate(isoToDateInput(item.nextDueAt));
+  }
+
+  function saveEditedItem(id: string, patch: Partial<PlanItem>) {
+    const previous = localItems.find((row) => row.id === id);
+    if (!previous) return;
+    const next: PlanItem = {
+      ...previous,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    void runMutation({
+      busy: `edit:${id}`,
+      apply: (rows) => replaceItemById(rows, id, next),
+      revert: (rows) => replaceItemById(rows, id, previous),
+      action: () =>
+        updatePlanItemAction({
+          id,
+          name: next.name,
+          amount: editAmount,
+          date: next.nextDueAt
+            ? isoToDateInput(next.nextDueAt) || undefined
+            : undefined,
+        }),
+      reconcile: (rows, result) =>
+        result.item ? mergeReturnedItem(rows, result.item) : rows,
+    }).then((ok) => {
+      if (ok) setEditingId(null);
+    });
   }
 
   return (
@@ -335,24 +430,70 @@ export function PlanEditor({
           monthKeys={monthKeys}
           savingsAmount={savingsAmount}
           onSavingsAmount={setSavingsAmount}
+          savingsBusy={busy === "savings"}
+          clearBusy={busy === "savings-clear"}
           onSaveSavings={() => {
-            void (async () => {
-              refreshAfter(
-                await setMonthSavingsAction({
+            const parsed = parsePlanAmount(
+              savingsAmount.trim() === "" ? "0" : savingsAmount,
+            );
+            if (typeof parsed !== "number") {
+              setError(parsed.error);
+              return;
+            }
+            let tempId: string | undefined;
+            let previous: PlanItem | null = null;
+            void runMutation({
+              busy: "savings",
+              apply: (rows) => {
+                const applied = applyMonthSavings(
+                  rows,
+                  monthKey,
+                  parsed,
+                  currency,
+                  timeZone,
+                );
+                tempId = applied.tempId;
+                previous = applied.previous;
+                return applied.items;
+              },
+              revert: (rows) =>
+                revertMonthSavings(rows, monthKey, previous, tempId, timeZone),
+              action: () =>
+                setMonthSavingsAction({
                   monthKey,
                   amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
                 }),
-              );
-            })();
+              reconcile: (rows, result) =>
+                result.item
+                  ? mergeReturnedItem(rows, result.item, tempId)
+                  : rows,
+            });
           }}
           onClearSavings={() => {
-            void (async () => {
-              const result = await setMonthSavingsAction({
-                monthKey,
-                amount: "0",
-              });
-              if (refreshAfter(result)) setSavingsAmount("");
-            })();
+            let previous: PlanItem | null = null;
+            void runMutation({
+              busy: "savings-clear",
+              apply: (rows) => {
+                const applied = applyMonthSavings(
+                  rows,
+                  monthKey,
+                  0,
+                  currency,
+                  timeZone,
+                );
+                previous = applied.previous;
+                return applied.items;
+              },
+              revert: (rows) =>
+                revertMonthSavings(rows, monthKey, previous, undefined, timeZone),
+              action: () =>
+                setMonthSavingsAction({
+                  monthKey,
+                  amount: "0",
+                }),
+            }).then((ok) => {
+              if (ok) setSavingsAmount("");
+            });
           }}
           showSpent={monthKey <= currentMonthKey}
           dayBudgetMinor={
@@ -420,26 +561,44 @@ export function PlanEditor({
             editExtraType="date"
             emptyHint="Lägg till lön eller CSN med datum."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
+            pendingId={
+              busy?.startsWith("edit:") || busy?.startsWith("delete:")
+                ? busy.slice(busy.indexOf(":") + 1)
+                : null
+            }
+            pendingAction={
+              busy?.startsWith("edit:")
+                ? "save"
+                : busy?.startsWith("delete:")
+                  ? "delete"
+                  : null
+            }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
             onStartEdit={startEditIncome}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
-              void (async () => {
-                const result = await updatePlanItemAction({
-                  id,
-                  name: editName,
-                  amount: editAmount,
-                  date: editDate || undefined,
-                });
-                if (refreshAfter(result)) setEditingId(null);
-              })();
+              const parsed = parsePlanAmount(editAmount);
+              if (typeof parsed !== "number") {
+                setError(parsed.error);
+                return;
+              }
+              saveEditedItem(id, {
+                name: editName.trim(),
+                amountMinor: parsed,
+                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
+              });
             }}
             onDelete={(id) => {
-              void (async () => {
-                refreshAfter(await deletePlanItemAction(id));
-              })();
+              const previous = localItems.find((row) => row.id === id);
+              if (!previous) return;
+              void runMutation({
+                busy: `delete:${id}`,
+                apply: (rows) => removeItemById(rows, id),
+                revert: (rows) => [...rows, previous],
+                action: () => deletePlanItemAction(id),
+              });
             }}
           />
 
@@ -452,20 +611,50 @@ export function PlanEditor({
             namePlaceholder="t.ex. Lön, Trukks, CSN"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till intäkt"
+            busy={busy === "add-income"}
             onName={setIncomeName}
             onAmount={setIncomeAmount}
             onExtra={setIncomeDate}
             onSubmit={() => {
-              void (async () => {
-                const result = await createPlanIncomeAction({
-                  name: incomeName,
-                  amount: incomeAmount,
-                  date: incomeDate,
-                });
-                if (!refreshAfter(result)) return;
-                setIncomeName("");
-                setIncomeAmount("");
-              })();
+              const parsed = parsePlanAmount(incomeAmount);
+              if (typeof parsed !== "number") {
+                setError(parsed.error);
+                return;
+              }
+              const created = optimisticPlanItem({
+                name: incomeName,
+                kind: "expected",
+                amountMinor: parsed,
+                currency,
+                cadence: "income",
+                nextDueAt: `${incomeDate}T12:00:00.000Z`,
+                userId: ownerId,
+              });
+              const name = incomeName;
+              const amount = incomeAmount;
+              const date = incomeDate;
+              setIncomeName("");
+              setIncomeAmount("");
+              void runMutation({
+                busy: "add-income",
+                apply: (rows) => [...rows, created],
+                revert: (rows) => removeItemById(rows, created.id),
+                action: () =>
+                  createPlanIncomeAction({
+                    name,
+                    amount,
+                    date,
+                  }),
+                reconcile: (rows, result) =>
+                  result.item
+                    ? mergeReturnedItem(rows, result.item, created.id)
+                    : rows,
+              }).then((ok) => {
+                if (!ok) {
+                  setIncomeName(name);
+                  setIncomeAmount(amount);
+                }
+              });
             }}
           />
         </PlanCard>
@@ -486,24 +675,40 @@ export function PlanEditor({
           {canImportFixed ? (
             <button
               type="button"
-              disabled={importing}
+              disabled={busy === "import"}
               className="numa-btn numa-btn-soft w-full"
               onClick={() => {
-                void (async () => {
-                  setImporting(true);
-                  try {
-                    refreshAfter(
-                      await importFixedExpensesFromPreviousMonthAction({
-                        monthKey,
-                      }),
-                    );
-                  } finally {
-                    setImporting(false);
-                  }
-                })();
+                const temps = importableFixed.map((src) =>
+                  optimisticPlanItem({
+                    name: src.name,
+                    kind: src.kind,
+                    amountMinor: src.amountMinor,
+                    currency: src.currency || currency,
+                    cadence: "monthly",
+                    nextDueAt: dueDateInMonth(
+                      monthKey,
+                      src.nextDueAt ? dayOfMonthFromIso(src.nextDueAt) : 1,
+                    ),
+                    userId: ownerId,
+                  }),
+                );
+                const tempIds = new Set(temps.map((row) => row.id));
+                void runMutation({
+                  busy: "import",
+                  apply: (rows) => [...rows, ...temps],
+                  revert: (rows) => rows.filter((row) => !tempIds.has(row.id)),
+                  action: () =>
+                    importFixedExpensesFromPreviousMonthAction({
+                      monthKey,
+                    }),
+                  reconcile: (rows, result) =>
+                    result.items
+                      ? mergeReturnedItems(rows, result.items, tempIds)
+                      : rows,
+                });
               }}
             >
-              {importing
+              {busy === "import"
                 ? "Läser in…"
                 : `Läs in från ${labelMonthNameSv(previousMonthKey)}`}
             </button>
@@ -530,28 +735,48 @@ export function PlanEditor({
                 ? labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))
                 : "Dag saknas"
             }
+            pendingId={
+              busy?.startsWith("edit:") || busy?.startsWith("delete:")
+                ? busy.slice(busy.indexOf(":") + 1)
+                : null
+            }
+            pendingAction={
+              busy?.startsWith("edit:")
+                ? "save"
+                : busy?.startsWith("delete:")
+                  ? "delete"
+                  : null
+            }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDay}
             onStartEdit={startEditExpense}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
-              void (async () => {
-                const day = Number(editDay);
-                const result = await updatePlanItemAction({
-                  id,
-                  name: editName,
-                  amount: editAmount,
-                  dayOfMonth: Number.isFinite(day) ? day : 1,
+              const parsed = parsePlanAmount(editAmount);
+              if (typeof parsed !== "number") {
+                setError(parsed.error);
+                return;
+              }
+              const day = Number(editDay);
+              saveEditedItem(id, {
+                name: editName.trim(),
+                amountMinor: parsed,
+                nextDueAt: dueDateInMonth(
                   monthKey,
-                });
-                if (refreshAfter(result)) setEditingId(null);
-              })();
+                  Number.isFinite(day) ? day : 1,
+                ),
+              });
             }}
             onDelete={(id) => {
-              void (async () => {
-                refreshAfter(await deletePlanItemAction(id));
-              })();
+              const previous = localItems.find((row) => row.id === id);
+              if (!previous) return;
+              void runMutation({
+                busy: `delete:${id}`,
+                apply: (rows) => removeItemById(rows, id),
+                revert: (rows) => [...rows, previous],
+                action: () => deletePlanItemAction(id),
+              });
             }}
           />
 
@@ -565,23 +790,55 @@ export function PlanEditor({
               namePlaceholder="t.ex. Hyra, El, Netflix"
               amountPlaceholder={`Belopp (${currency})`}
               submitLabel="Lägg till fast utgift"
+              busy={busy === "add-fixed"}
               onName={setExpenseName}
               onAmount={setExpenseAmount}
               onExtra={setExpenseDay}
               onSubmit={() => {
-                void (async () => {
-                  const day = Number(expenseDay);
-                  const result = await createPlanItemAction({
-                    name: expenseName,
-                    kind: "mandatory",
-                    amount: expenseAmount,
-                    dayOfMonth: Number.isFinite(day) ? day : 1,
+                const parsed = parsePlanAmount(expenseAmount);
+                if (typeof parsed !== "number") {
+                  setError(parsed.error);
+                  return;
+                }
+                const day = Number(expenseDay);
+                const created = optimisticPlanItem({
+                  name: expenseName,
+                  kind: "mandatory",
+                  amountMinor: parsed,
+                  currency,
+                  cadence: "monthly",
+                  nextDueAt: dueDateInMonth(
                     monthKey,
-                  });
-                  if (!refreshAfter(result)) return;
-                  setExpenseName("");
-                  setExpenseAmount("");
-                })();
+                    Number.isFinite(day) ? day : 1,
+                  ),
+                  userId: ownerId,
+                });
+                const name = expenseName;
+                const amount = expenseAmount;
+                setExpenseName("");
+                setExpenseAmount("");
+                void runMutation({
+                  busy: "add-fixed",
+                  apply: (rows) => [...rows, created],
+                  revert: (rows) => removeItemById(rows, created.id),
+                  action: () =>
+                    createPlanItemAction({
+                      name,
+                      kind: "mandatory",
+                      amount,
+                      dayOfMonth: Number.isFinite(day) ? day : 1,
+                      monthKey,
+                    }),
+                  reconcile: (rows, result) =>
+                    result.item
+                      ? mergeReturnedItem(rows, result.item, created.id)
+                      : rows,
+                }).then((ok) => {
+                  if (!ok) {
+                    setExpenseName(name);
+                    setExpenseAmount(amount);
+                  }
+                });
               }}
             />
           )}
@@ -603,26 +860,44 @@ export function PlanEditor({
             editExtraType="date"
             emptyHint="Engångskostnader med datum."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
+            pendingId={
+              busy?.startsWith("edit:") || busy?.startsWith("delete:")
+                ? busy.slice(busy.indexOf(":") + 1)
+                : null
+            }
+            pendingAction={
+              busy?.startsWith("edit:")
+                ? "save"
+                : busy?.startsWith("delete:")
+                  ? "delete"
+                  : null
+            }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
             onStartEdit={startEditExtra}
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={(id) => {
-              void (async () => {
-                const result = await updatePlanItemAction({
-                  id,
-                  name: editName,
-                  amount: editAmount,
-                  date: editDate || undefined,
-                });
-                if (refreshAfter(result)) setEditingId(null);
-              })();
+              const parsed = parsePlanAmount(editAmount);
+              if (typeof parsed !== "number") {
+                setError(parsed.error);
+                return;
+              }
+              saveEditedItem(id, {
+                name: editName.trim(),
+                amountMinor: parsed,
+                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
+              });
             }}
             onDelete={(id) => {
-              void (async () => {
-                refreshAfter(await deletePlanItemAction(id));
-              })();
+              const previous = localItems.find((row) => row.id === id);
+              if (!previous) return;
+              void runMutation({
+                busy: `delete:${id}`,
+                apply: (rows) => removeItemById(rows, id),
+                revert: (rows) => [...rows, previous],
+                action: () => deletePlanItemAction(id),
+              });
             }}
           />
 
@@ -635,20 +910,50 @@ export function PlanEditor({
             namePlaceholder="t.ex. Lån, Flygbiljett"
             amountPlaceholder={`Belopp (${currency})`}
             submitLabel="Lägg till extra"
+            busy={busy === "add-extra"}
             onName={setExtraName}
             onAmount={setExtraAmount}
             onExtra={setExtraDate}
             onSubmit={() => {
-              void (async () => {
-                const result = await createPlanExtraAction({
-                  name: extraName,
-                  amount: extraAmount,
-                  date: extraDate,
-                });
-                if (!refreshAfter(result)) return;
-                setExtraName("");
-                setExtraAmount("");
-              })();
+              const parsed = parsePlanAmount(extraAmount);
+              if (typeof parsed !== "number") {
+                setError(parsed.error);
+                return;
+              }
+              const created = optimisticPlanItem({
+                name: extraName,
+                kind: "expected",
+                amountMinor: parsed,
+                currency,
+                cadence: "once",
+                nextDueAt: `${extraDate}T12:00:00.000Z`,
+                userId: ownerId,
+              });
+              const name = extraName;
+              const amount = extraAmount;
+              const date = extraDate;
+              setExtraName("");
+              setExtraAmount("");
+              void runMutation({
+                busy: "add-extra",
+                apply: (rows) => [...rows, created],
+                revert: (rows) => removeItemById(rows, created.id),
+                action: () =>
+                  createPlanExtraAction({
+                    name,
+                    amount,
+                    date,
+                  }),
+                reconcile: (rows, result) =>
+                  result.item
+                    ? mergeReturnedItem(rows, result.item, created.id)
+                    : rows,
+              }).then((ok) => {
+                if (!ok) {
+                  setExtraName(name);
+                  setExtraAmount(amount);
+                }
+              });
             }}
           />
         </PlanCard>
@@ -710,6 +1015,8 @@ function PlanRows({
   emptyHint = "Inget här ännu.",
   locked = false,
   subtitle,
+  pendingId = null,
+  pendingAction = null,
   onEditName,
   onEditAmount,
   onEditExtra,
@@ -728,6 +1035,8 @@ function PlanRows({
   emptyHint?: string;
   locked?: boolean;
   subtitle: (item: PlanItem) => string;
+  pendingId?: string | null;
+  pendingAction?: "save" | "delete" | null;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
   onEditExtra: (v: string) => void;
@@ -779,14 +1088,18 @@ function PlanRows({
             <div className="flex gap-2">
               <button
                 type="button"
+                disabled={pendingId === item.id && pendingAction === "save"}
                 className="numa-btn numa-btn-accent min-h-10 flex-1"
                 onClick={() => onSaveEdit(item.id)}
               >
-                Spara
+                {pendingId === item.id && pendingAction === "save"
+                  ? "Sparar…"
+                  : "Spara"}
               </button>
               <button
                 type="button"
-                className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
+                disabled={pendingId === item.id}
+                className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
                 onClick={onCancelEdit}
               >
                 Avbryt
@@ -796,14 +1109,19 @@ function PlanRows({
         ) : (
           <li
             key={item.id}
-            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-3 first:pt-0"
+            className="flex items-start justify-between gap-x-3 gap-y-2 py-3 first:pt-0"
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{item.name}</p>
+              <p
+                className="break-words font-medium leading-snug [overflow-wrap:anywhere]"
+                title={item.name}
+              >
+                {item.name}
+              </p>
               <p className="text-xs text-[var(--numa-faint)]">{subtitle(item)}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <span className="mr-1 text-[var(--numa-ink)]">
+              <span className="mr-1 max-w-[9.5rem] text-[var(--numa-ink)] sm:max-w-none">
                 <MoneyDisplay
                   amountMinor={item.amountMinor}
                   currency={(item.currency || currency) as CurrencyCode}
@@ -812,7 +1130,7 @@ function PlanRows({
                   align="end"
                 />
               </span>
-              {locked ? null : (
+              {locked || isTempPlanId(item.id) ? null : (
                 <>
                   <button
                     type="button"
@@ -823,7 +1141,8 @@ function PlanRows({
                   </button>
                   <button
                     type="button"
-                    className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)]"
+                    disabled={pendingId === item.id && pendingAction === "delete"}
+                    className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center text-lg text-[var(--numa-muted)] disabled:opacity-45"
                     onClick={() => onDelete(item.id)}
                     aria-label={`Ta bort ${item.name}`}
                   >
@@ -848,6 +1167,7 @@ function InlineAdd({
   namePlaceholder,
   amountPlaceholder,
   submitLabel,
+  busy = false,
   onName,
   onAmount,
   onExtra,
@@ -861,27 +1181,28 @@ function InlineAdd({
   namePlaceholder: string;
   amountPlaceholder: string;
   submitLabel: string;
+  busy?: boolean;
   onName: (v: string) => void;
   onAmount: (v: string) => void;
   onExtra: (v: string) => void;
   onSubmit: () => void;
 }) {
-  const disabled = !name.trim() || !amount.trim() || !String(extra).trim();
+  const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
   return (
     <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
-      <div className="grid gap-2 sm:grid-cols-[1fr_7rem_6.5rem]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
         <input
           value={name}
           onChange={(e) => onName(e.target.value)}
           placeholder={namePlaceholder}
-          className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         <input
           inputMode="decimal"
           value={amount}
           onChange={(e) => onAmount(e.target.value)}
           placeholder={amountPlaceholder}
-          className="money min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         {extraType === "date" ? (
           <input
@@ -889,7 +1210,7 @@ function InlineAdd({
             value={extra}
             onChange={(e) => onExtra(e.target.value)}
             aria-label={extraLabel}
-            className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+            className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
           />
         ) : (
           <input
@@ -900,7 +1221,7 @@ function InlineAdd({
             onChange={(e) => onExtra(e.target.value)}
             aria-label={extraLabel}
             placeholder="Dag"
-            className="min-h-11 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+            className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
           />
         )}
       </div>
@@ -910,7 +1231,7 @@ function InlineAdd({
         className="numa-btn numa-btn-soft w-full"
         onClick={onSubmit}
       >
-        {submitLabel}
+        {busy ? "Sparar…" : submitLabel}
       </button>
     </div>
   );

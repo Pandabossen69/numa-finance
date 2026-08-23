@@ -27,6 +27,8 @@ export function PlanPiles({
   onClearSavings,
   showSpent,
   dayBudgetMinor,
+  savingsBusy = false,
+  clearBusy = false,
 }: {
   extra: ExtraSaldoView;
   currentMonthKey: string;
@@ -42,6 +44,8 @@ export function PlanPiles({
   onClearSavings: () => void;
   showSpent: boolean;
   dayBudgetMinor: number | null;
+  savingsBusy?: boolean;
+  clearBusy?: boolean;
 }) {
   const piles = monthPileBreakdown(extra);
   const leftoverHint = monthLeftoverHintSv(extra, currentMonthKey);
@@ -237,18 +241,20 @@ export function PlanPiles({
               />
               <button
                 type="button"
+                disabled={savingsBusy}
                 onClick={onSaveSavings}
                 className="numa-btn numa-btn-primary min-h-11 px-4"
               >
-                Avsätt
+                {savingsBusy ? "Sparar…" : "Avsätt"}
               </button>
               {savingsThisMonthMinor > 0 ? (
                 <button
                   type="button"
+                  disabled={clearBusy || savingsBusy}
                   onClick={onClearSavings}
-                  className="numa-press text-sm font-semibold text-[var(--numa-muted)]"
+                  className="numa-press text-sm font-semibold text-[var(--numa-muted)] disabled:opacity-45"
                 >
-                  Nollställ
+                  {clearBusy ? "Sparar…" : "Nollställ"}
                 </button>
               ) : null}
             </div>

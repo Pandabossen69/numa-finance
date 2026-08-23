@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
-import { CompactPiles, WealthScoreboard } from "@/components/ui/WealthScoreboard";
+import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatCountSv } from "@/domain/finance";
@@ -237,11 +237,6 @@ export function AnalysDashboard({
           </Link>
         </div>
 
-        <CompactPiles
-          livingMinor={month.livingSaldoMinor}
-          savingsMinor={month.savingsTotalMinor}
-          currency={currency}
-        />
         <WealthScoreboard
           livingMinor={month.livingSaldoMinor}
           savingsMinor={month.savingsTotalMinor}

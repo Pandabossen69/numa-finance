@@ -89,7 +89,7 @@ export function HomeDashboard({
         : null;
 
   return (
-    <div className="numa-page numa-page-wide space-y-6 pb-2">
+    <div className="numa-page numa-page-wide space-y-6 pb-10">
       <div className="md:hidden">
         <HomescreenInstallHint />
       </div>

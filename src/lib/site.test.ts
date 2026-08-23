@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isCanonicalAppHost,
+  isProductionAppHost,
   productionUrlForPath,
   shouldRedirectToProduction,
 } from "./site";
@@ -9,6 +10,8 @@ describe("canonical production host", () => {
   it("accepts production and localhost", () => {
     expect(isCanonicalAppHost("numa-finance.vercel.app")).toBe(true);
     expect(isCanonicalAppHost("localhost")).toBe(true);
+    expect(isProductionAppHost("numa-finance.vercel.app")).toBe(true);
+    expect(isProductionAppHost("localhost")).toBe(false);
   });
 
   it("redirects temporary vercel hosts to production", () => {
