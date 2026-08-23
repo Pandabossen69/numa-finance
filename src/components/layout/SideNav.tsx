@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   PRIMARY_NAV,
   isNavActive,
@@ -74,7 +73,6 @@ export function SideNav({ displayName }: { displayName: string }) {
           >
             Fota
           </Link>
-          <SignOutButton variant="nav" />
         </div>
       </div>
     </aside>

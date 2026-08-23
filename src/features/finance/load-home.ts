@@ -15,6 +15,7 @@ import { getTodaySnapshot } from "@/lib/store/repository";
 
 export type HomeSnapshot = {
   displayName: string;
+  timeZone: string;
   primaryAccountId: string | null;
   currency: CurrencyCode;
   monthKey: string;
@@ -100,6 +101,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       ok: true,
       data: {
         displayName: snap.profile.displayName,
+        timeZone,
         primaryAccountId: snap.primaryAccount?.id ?? null,
         currency: snap.currency,
         monthKey,

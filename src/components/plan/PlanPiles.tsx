@@ -94,14 +94,14 @@ export function PlanPiles({
               {SV.motPlanen} · {monthName}
             </p>
             <span
-              className={`numa-chip ${livingOk ? "numa-chip-mint" : "numa-chip-danger"}`}
+              className={`numa-chip ${livingOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
             >
               {saldoChip}
             </span>
           </div>
           <div
             className={
-              livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-danger)]"
+              livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
             }
           >
             <MoneyDisplay
@@ -113,7 +113,9 @@ export function PlanPiles({
             />
           </div>
           <p className="text-sm leading-snug text-[var(--numa-muted)]">
-            {livingOk ? SV.saldoLevaFor : SV.minusMotPlanen}
+            {livingOk
+              ? SV.saldoLevaFor
+              : `Du har handlat mer än ${monthName} planerat.`}
           </p>
           {showSpent ? (
             <p className="text-xs leading-snug text-[var(--numa-faint)]">
@@ -123,7 +125,7 @@ export function PlanPiles({
 
           <div className="numa-pile-meter" aria-hidden>
             <i
-              className={livingOk ? "" : "is-danger"}
+              className={livingOk ? "" : "is-alarm"}
               style={{ transform: `scaleX(${Math.max(0.04, remainRatio)})` }}
             />
           </div>
@@ -145,7 +147,7 @@ export function PlanPiles({
                 />
               </>
             ) : extra.drawnMinor > 0 ? (
-              <p className="text-sm text-[var(--numa-danger)]">{extraHint}</p>
+              <p className="text-sm text-[var(--numa-alarm)]">{extraHint}</p>
             ) : null}
             {showSpent && extra.spentMinor > 0 ? (
               <PileLine
@@ -290,7 +292,7 @@ function PileLine({
       <span
         className={
           danger
-            ? "text-[var(--numa-danger)]"
+            ? "text-[var(--numa-alarm)]"
             : accent
               ? "text-[var(--numa-accent-ink)]"
               : "text-[var(--numa-ink)]"

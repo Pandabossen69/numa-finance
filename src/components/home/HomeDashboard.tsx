@@ -62,15 +62,13 @@ export function HomeDashboard({
       ? snap.remainingFreeMinor - deltaSpent
       : snap.remainingFreeMinor;
   const currency = snap.currency;
-  const greeting = homeGreeting(snap.displayName);
+  const greeting = homeGreeting(snap.displayName, new Date(), snap.timeZone);
   const isBridge = snap.livingMode === "bridge";
   const isEmpty = snap.livingMode === "empty";
   const remainingOk = remainingFreeMinor >= 0;
   const dayOk = remainingTodayMinor > 0;
   const overToday = snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
-  const dialCenterMinor = overToday
-    ? todaySpendingMinor - snap.dayBudgetMinor
-    : Math.max(0, remainingTodayMinor);
+  const dialCenterMinor = remainingTodayMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
       ? `Till ${snap.nextIncomeLabelSv}`
@@ -92,12 +90,12 @@ export function HomeDashboard({
         : null;
 
   return (
-    <div className="numa-page numa-page-wide space-y-6 pb-10">
+    <div className="numa-page numa-page-wide space-y-6">
       <div className="md:hidden">
         <HomescreenInstallHint />
       </div>
       <header className="animate-rise space-y-1 px-0.5">
-        <p className="text-[13px] font-medium text-[var(--numa-muted)] capitalize">
+        <p className="text-[13px] font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
@@ -125,7 +123,9 @@ export function HomeDashboard({
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
-              className="numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5"
+              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5${
+                overToday ? " is-over" : ""
+              }`}
               aria-labelledby="spend-heading"
             >
               <div className="flex items-center justify-between gap-3 px-0.5">
@@ -142,13 +142,17 @@ export function HomeDashboard({
               {snap.dayBudgetMinor > 0 ? (
                 <>
                   <DayDial usedRatio={dayUsedRatio} over={overToday}>
-                    <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
-                      {overToday ? "Över" : "Kvar"}
-                    </p>
+                    {overToday ? (
+                      <p className="numa-chip numa-chip-alarm mb-2">Över</p>
+                    ) : (
+                      <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
+                        Kvar
+                      </p>
+                    )}
                     <div
                       className={`money-hero ${
                         overToday
-                          ? "text-[var(--numa-danger)]"
+                          ? "text-[var(--numa-ink)]"
                           : dayOk
                             ? "text-[var(--numa-ink)]"
                             : "text-[var(--numa-muted)]"
@@ -167,7 +171,7 @@ export function HomeDashboard({
                     <p
                       className={`text-center text-sm leading-snug ${
                         overToday
-                          ? "font-medium text-[var(--numa-danger)]"
+                          ? "font-medium text-[var(--numa-muted)]"
                           : "text-[var(--numa-muted)]"
                       }`}
                     >
@@ -200,7 +204,7 @@ export function HomeDashboard({
                       <div
                         className={`mt-1.5 ${
                           overToday
-                            ? "text-[var(--numa-danger)]"
+                            ? "text-[var(--numa-alarm)]"
                             : "text-[var(--numa-ink)]"
                         }`}
                       >
@@ -268,7 +272,7 @@ export function HomeDashboard({
                     label={isBridge ? SV.saldo : SV.kvarIPerioden}
                     amountMinor={remainingFreeMinor}
                     currency={currency}
-                    tone={remainingOk ? "positive" : "danger"}
+                    tone={remainingOk ? "positive" : "alarm"}
                     hint={
                       isBridge && snap.verificationLabel
                         ? snap.verificationLabel
@@ -334,6 +338,7 @@ export function HomeDashboard({
             currency={currency}
             disabled={!snap.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
+            overToday={overToday}
             onOptimisticSpend={(amountMinor) => setDeltaSpent((n) => n + amountMinor)}
             onSpendFailed={(amountMinor) => setDeltaSpent((n) => n - amountMinor)}
           />
@@ -530,6 +535,7 @@ function QuickExpense({
   currency,
   disabled,
   remainingTodayMinor,
+  overToday,
   onOptimisticSpend,
   onSpendFailed,
 }: {
@@ -537,6 +543,7 @@ function QuickExpense({
   currency: CurrencyCode;
   disabled: boolean;
   remainingTodayMinor: number;
+  overToday: boolean;
   onOptimisticSpend: (amountMinor: number) => void;
   onSpendFailed: (amountMinor: number) => void;
 }) {
@@ -554,10 +561,16 @@ function QuickExpense({
         </div>
         {!disabled ? (
           <p className="shrink-0 text-right text-[11px] text-[var(--numa-faint)]">
-            {SV.kvarIdag}
+            {overToday || remainingTodayMinor < 0 ? SV.overDagsbudget : SV.kvarIdag}
             <br />
-            <span className="font-semibold text-[var(--numa-ink)]">
-              {formatMoneyHint(remainingTodayMinor, currency)}
+            <span
+              className={`font-semibold ${
+                remainingTodayMinor < 0
+                  ? "text-[var(--numa-alarm)]"
+                  : "text-[var(--numa-ink)]"
+              }`}
+            >
+              {formatMoney(money(remainingTodayMinor, currency))}
             </span>
           </p>
         ) : null}

@@ -374,7 +374,7 @@ export function ReceiptCaptureFlow({
               ? "Välj skärmdump från galleriet — eller fota skärmen. Vi läser alla bubblor (+/−) och sätter saldo."
               : isBankApp
                 ? "bunq / Revolut — kortbelopp i €, samma köp aldrig dubbelt"
-                : "Håll texten skarp. Beloppet fylls i automatiskt — du kan alltid ändra innan du sparar."}
+                : "Tillåt kameran om webbläsaren frågar. Håll texten skarp. Beloppet fylls i automatiskt — du kan alltid ändra innan du sparar."}
           </p>
         </header>
 
@@ -390,7 +390,7 @@ export function ReceiptCaptureFlow({
             </span>
             <span className="text-sm font-semibold tracking-tight">Kamera</span>
             <span className="text-center text-xs text-white/70">
-              Fota skärmen nu
+              {isSms || isBankApp ? "Fota skärmen nu" : "Fota kvittot"}
             </span>
           </button>
           <button
@@ -409,7 +409,7 @@ export function ReceiptCaptureFlow({
               Galleri
             </span>
             <span className="text-center text-xs text-[var(--numa-muted)]">
-              Välj skärmdump
+              {isSms || isBankApp ? "Välj skärmdump" : "Välj foto"}
             </span>
           </button>
         </div>

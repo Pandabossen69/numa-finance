@@ -95,6 +95,9 @@ export default async function MerPage() {
                 </p>
               </MerListRow>
               <MerListRow className="py-3">
+                <p className="mb-2 text-[12px] leading-snug text-[var(--numa-faint)]">
+                  Avslutar sessionen på den här enheten
+                </p>
                 <SignOutButton />
               </MerListRow>
             </MerListGroup>

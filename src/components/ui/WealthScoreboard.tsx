@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import type { CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
@@ -83,7 +84,7 @@ export function CompactPiles({
       <div className="numa-panel-strong min-w-0 px-3.5 py-3.5">
         <p className="numa-section-title">{SV.motPlanen}</p>
         <div
-          className={`mt-1.5 ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-danger)]"}`}
+          className={`mt-1.5 ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
         >
           <MoneyDisplay
             amountMinor={livingMinor}
@@ -96,7 +97,18 @@ export function CompactPiles({
         <p className="mt-1 text-[11px] text-[var(--numa-faint)]">
           {livingOk ? SV.saldoLevaFor : SV.minusMotPlanen}
         </p>
-        {livingHint ? (
+        {!livingOk ? (
+          <p className="mt-1.5 text-[11px] leading-snug text-[var(--numa-muted)]">
+            Du har handlat mer än månaden planerat.{" "}
+            <Link
+              href="/plan"
+              prefetch
+              className="font-semibold text-[var(--numa-accent)]"
+            >
+              Justera planen
+            </Link>
+          </p>
+        ) : livingHint ? (
           <p className="mt-1 text-[11px] leading-snug text-[var(--numa-faint)]">
             {livingHint}
           </p>
