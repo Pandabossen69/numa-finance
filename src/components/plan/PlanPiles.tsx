@@ -3,6 +3,7 @@
 import type { ExtraSaldoView } from "@/domain/finance";
 import {
   extraSaldoHintSv,
+  livingVsPlanHintSv,
   monthLeftoverHintSv,
   monthPileBreakdown,
   planWealthTotalMinor,
@@ -90,7 +91,7 @@ export function PlanPiles({
         >
           <div className="flex items-start justify-between gap-3">
             <p id="plan-saldo-heading" className="numa-section-title">
-              {SV.saldo} · {monthName}
+              {SV.motPlanen} · {monthName}
             </p>
             <span
               className={`numa-chip ${livingOk ? "numa-chip-mint" : "numa-chip-danger"}`}
@@ -114,6 +115,11 @@ export function PlanPiles({
           <p className="text-sm leading-snug text-[var(--numa-muted)]">
             {livingOk ? SV.saldoLevaFor : SV.minusMotPlanen}
           </p>
+          {showSpent ? (
+            <p className="text-xs leading-snug text-[var(--numa-faint)]">
+              {livingVsPlanHintSv(extra)}
+            </p>
+          ) : null}
 
           <div className="numa-pile-meter" aria-hidden>
             <i

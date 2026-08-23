@@ -3,7 +3,7 @@ import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
-import { formatCountSv } from "@/domain/finance";
+import { formatCountSv, livingVsPlanHintSv } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
@@ -72,7 +72,8 @@ export function AnalysDashboard({
       <header className="animate-rise space-y-1">
         <h1 className="numa-page-title">Analys</h1>
         <p className="max-w-[36ch] text-sm text-[var(--numa-muted)]">
-          Samma siffror som på Hem — här ser du hela perioden.
+          Löneperioden och kalendermånaden räknas var för sig — samma formler
+          som på Hem och Plan.
         </p>
       </header>
 
@@ -173,7 +174,11 @@ export function AnalysDashboard({
                   label={SV.utgifter}
                   amountMinor={cycle.expenseMinor}
                   currency={currency}
-                  hint="Planerade i perioden"
+                  hint={
+                    cycle.startLabelSv && cycle.endLabelSv
+                      ? `Planerade i löneperioden ${cycle.startLabelSv} – ${cycle.endLabelSv}`
+                      : "Planerade i löneperioden, inte kalendermånaden"
+                  }
                 />
                 <MetricRow
                   label={SV.kvarIPerioden}
@@ -202,14 +207,24 @@ export function AnalysDashboard({
           <hr className="numa-divider" />
           <div className="grid items-start gap-4 md:grid-cols-2">
             <LineList
-              title={isBridge ? "Kommande intäkter" : "Intäkter"}
+              title={isBridge ? "Kommande intäkter" : "Intäkter i perioden"}
+              subtitle={
+                cycle.startLabelSv && cycle.endLabelSv
+                  ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
+                  : "Löneperioden, inte kalendermånaden"
+              }
               empty={isBridge ? "Inga kommande." : "Inga i perioden."}
               lines={cycle.incomes}
               currency={currency}
               totalMinor={cycle.incomeMinor}
             />
             <LineList
-              title={isBridge ? "Kommande utgifter" : "Utgifter"}
+              title={isBridge ? "Kommande utgifter" : "Utgifter i perioden"}
+              subtitle={
+                cycle.startLabelSv && cycle.endLabelSv
+                  ? `${cycle.startLabelSv} – ${cycle.endLabelSv} · inte kalendermånaden`
+                  : "Löneperioden, inte kalendermånaden"
+              }
               empty={isBridge ? "Inga kommande." : "Inga i perioden."}
               lines={cycle.expenses}
               currency={currency}
@@ -255,6 +270,7 @@ export function AnalysDashboard({
             label={SV.utgifter}
             amountMinor={month.expenseMinor}
             currency={currency}
+            hint={`Kalendermånaden ${data.monthLabelSv}`}
           />
           <MetricRow
             label={SV.sparande}
@@ -269,11 +285,11 @@ export function AnalysDashboard({
             hint={SV.sparandeAvsatt}
           />
           <MetricRow
-            label="Kvar i månaden (plan)"
+            label={SV.kvarIManadenPlan}
             amountMinor={month.freeToSpendMinor}
             currency={currency}
             tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
-            hint="Intäkter minus planerade utgifter och sparande"
+            hint="Intäkter minus planerade utgifter och sparande — utan faktiskt spenderat"
           />
           {month.extraCarriedInMinor > 0 ? (
             <MetricRow
@@ -301,8 +317,23 @@ export function AnalysDashboard({
             amountMinor={month.monthResultMinor}
             currency={currency}
             tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
-            hint={month.monthLeftoverHint ?? undefined}
+            hint={
+              month.monthLeftoverHint ??
+              livingVsPlanHintSv({ carriedInMinor: month.extraCarriedInMinor })
+            }
           />
+          {month.extraCarriedInMinor > 0 &&
+          month.livingSaldoMinor !== month.monthResultMinor ? (
+            <MetricRow
+              label={SV.motPlanen}
+              amountMinor={month.livingSaldoMinor}
+              currency={currency}
+              tone={month.livingSaldoMinor >= 0 ? "positive" : "danger"}
+              hint={livingVsPlanHintSv({
+                carriedInMinor: month.extraCarriedInMinor,
+              })}
+            />
+          ) : null}
         </div>
         {monthSpendProgress != null ? (
           <div className="numa-progress animate-bar" aria-hidden>
@@ -313,6 +344,7 @@ export function AnalysDashboard({
         <div className="grid items-start gap-4 md:grid-cols-2">
           <LineList
             title="Intäkter"
+            subtitle={`Kalendermånaden ${data.monthLabelSv}`}
             empty="Inga intäkter inlagda."
             lines={month.incomes}
             currency={currency}
@@ -320,6 +352,7 @@ export function AnalysDashboard({
           />
           <LineList
             title="Utgifter"
+            subtitle={`Kalendermånaden ${data.monthLabelSv}`}
             empty="Inga utgifter inlagda."
             lines={month.expenses}
             currency={currency}
@@ -334,7 +367,7 @@ export function AnalysDashboard({
         <div className="space-y-0">
           {hasSaldo ? (
             <MetricRow
-              label={SV.saldo}
+              label={SV.paKontot}
               amountMinor={data.calculatedBalanceMinor!}
               currency={currency}
               hint={data.verificationLabel ?? undefined}

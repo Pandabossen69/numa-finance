@@ -44,7 +44,7 @@ export type HomeSnapshot = {
   spendDaysLeft: number;
   /** Morning sticky dagsbudget — does not fall when you spend today. */
   dayBudgetMinor: number;
-  /** Remaining of today's sticky dagsbudget (Hem hero: Kvar idag). */
+  /** Signed leftover of today's sticky dagsbudget (negative = overspent). */
   remainingTodayMinor: number;
   daysUntilIncome: number;
   nextIncomeLabelSv: string | null;
@@ -52,6 +52,7 @@ export type HomeSnapshot = {
   extraSaldoDrawnMinor: number;
   extraSaldoHint: string | null;
   extraCarriedInMinor: number;
+  /** Calendar-month plan leftover minus spent (+ extra). Not bank cash. */
   livingSaldoMinor: number;
   savingsTotalMinor: number;
   wealthTotalMinor: number;

@@ -8,7 +8,7 @@ import {
   labelDayOfMonthSv,
   projectPayCycle,
 } from "./pay-cycle";
-import { rollDueDateForward } from "./plan-months";
+import { projectPlanForMonth, rollDueDateForward } from "./plan-months";
 
 function item(
   partial: Partial<PlanItem> & Pick<PlanItem, "kind" | "amountMinor" | "name">,
@@ -410,5 +410,51 @@ describe("projectPayCycle", () => {
       tz,
     );
     expect(paycheckEvening.daysLeft).toBe(31);
+  });
+
+  it("pay-cycle expenses can differ from the calendar-month plan (different windows)", () => {
+    const items = [
+      item({
+        name: "Lön",
+        kind: "expected",
+        amountMinor: 134_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-23T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 134_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Fasta + extra augusti",
+        kind: "mandatory",
+        amountMinor: 81_350_00,
+        nextDueAt: "2026-08-24T12:00:00.000Z",
+      }),
+      item({
+        name: "Septemberpost",
+        kind: "expected",
+        amountMinor: 1_100_00,
+        cadence: "once",
+        nextDueAt: "2026-09-01T12:00:00.000Z",
+      }),
+    ];
+
+    const august = projectPlanForMonth(items, "2026-08", tz);
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-26T03:00:00.000Z"),
+      tz,
+    );
+
+    // QA: Plan augusti 81 350 vs Analys löneperiod 82 450.
+    expect(august.totalPlannedMinor).toBe(81_350_00);
+    expect(cycle.expenseMinor).toBe(82_450_00);
+    expect(cycle.expenseMinor).not.toBe(august.totalPlannedMinor);
+    expect(cycle.startAt).toBe("2026-08-23T12:00:00.000Z");
+    expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
   });
 });

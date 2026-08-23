@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
-import { projectLivingBudget } from "./living-budget";
+import { projectLivingBudget, remainingTodayOf } from "./living-budget";
 import { projectPayCycle } from "./pay-cycle";
 
 function item(
@@ -253,9 +253,41 @@ describe("projectLivingBudget", () => {
       Math.floor((tipAfterSpend + smsSpentToday) / fixed.daysLeft),
     );
     expect(fixed.remainingTodayMinor).toBe(
-      Math.max(0, fixed.dayBudgetMinor - smsSpentToday),
+      remainingTodayOf(fixed.dayBudgetMinor, smsSpentToday),
     );
     expect(fixed.remainingTodayMinor).toBeLessThan(fixed.dayBudgetMinor);
+  });
+
+  it("keeps signed remaining when spend exceeds sticky dagsbudget", () => {
+    // Live bug: 523 − 204,44 must stay 318,56 (not clamp to 0).
+    expect(remainingTodayOf(204_44, 523_00)).toBe(-318_56);
+
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-08-26T03:00:00.000Z"),
+      tz,
+    );
+    const morning = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-26T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 50_000_00,
+      cycleSpendingMinor: 0,
+      todaySpendingMinor: 0,
+    });
+    const spentToday = morning.dayBudgetMinor + 318_56;
+    const after = projectLivingBudget({
+      cycle,
+      now: new Date("2026-08-26T03:00:00.000Z"),
+      timeZone: tz,
+      bankBalanceMinor: 50_000_00,
+      cycleSpendingMinor: spentToday,
+      todaySpendingMinor: spentToday,
+    });
+
+    expect(after.dayBudgetMinor).toBe(morning.dayBudgetMinor);
+    expect(after.remainingTodayMinor).toBe(-318_56);
+    expect(Math.abs(after.remainingTodayMinor)).toBe(spentToday - after.dayBudgetMinor);
   });
 
   it("stays on bank bridge when calendar phase flipped but funding is unconfirmed", () => {

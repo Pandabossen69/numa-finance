@@ -67,6 +67,7 @@ export type AnalysSnapshot = {
     extraSaldoDrawnMinor: number;
     extraSaldoHint: string | null;
     extraCarriedInMinor: number;
+    /** Calendar-month plan leftover minus spent (+ extra). Not bank cash. */
     livingSaldoMinor: number;
     savingsTotalMinor: number;
     wealthTotalMinor: number;
@@ -207,6 +208,8 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
             "Innan nästa intäkt lever du på saldot på kontot.",
             "Dagsbudget = saldo ÷ dagar kvar (samma belopp hela dagen).",
             "Kvar idag = dagsbudget − det du spenderat idag.",
+            "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
+            "Löneperiodens utgifter kan skilja sig från kalendermånadens.",
             "Det som blir över en månad följer med som extra saldo.",
             "När intäkterna kommer växlar Hem till periodens budget.",
           ]
@@ -221,10 +224,14 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
                 "Dagsbudget räknas fram till månadens sista intäkt.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte mitt på dagen.",
                 "När sista intäkten kommer räknas perioden om till nästa.",
+                "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
+                "Löneperiodens utgifter kan skilja sig från kalendermånadens.",
                 "Det som blir över en månad följer med som extra saldo.",
               ]
             : [
                 "Intäkterna i perioden minus planerade utgifter och sparande = kvar i perioden.",
+                "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
+                "Löneperiodens utgifter kan skilja sig från kalendermånadens.",
                 "Det som blir över en månad följer med som extra saldo.",
                 "Dagsbudget = kvar i perioden (på morgonen) ÷ dagar kvar.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte.",

@@ -33,8 +33,9 @@ export type LivingBudget = {
    */
   dayBudgetMinor: number;
   /**
-   * What is left of today's dagsbudget: max(0, dayBudget − spentToday).
-   * This is the Hem hero number ("Kvar idag").
+   * What is left of today's dagsbudget: dayBudget − spentToday.
+   * Negative when spend exceeds the sticky morning allowance.
+   * Hem shows the absolute value under "Över" when negative.
    */
   remainingTodayMinor: number;
   nextIncomeAt: string | null;
@@ -42,6 +43,14 @@ export type LivingBudget = {
   cycleEndLabelSv: string | null;
   cycleEndInferred: boolean;
 };
+
+/** Signed leftover of today's sticky dagsbudget. Negative means overspent. */
+export function remainingTodayOf(
+  dayBudgetMinor: number,
+  spentTodayMinor: number,
+): number {
+  return dayBudgetMinor - Math.max(0, spentTodayMinor);
+}
 
 function bridgeHorizonIso(
   cycle: PayCycleProjection,
@@ -72,7 +81,7 @@ function projectBridge(input: {
     ? Math.max(1, calendarDaysBetween(now, horizon, timeZone))
     : 1;
   const dayBudgetMinor = perDayBudgetMinor(morningAvailable, daysLeft);
-  const remainingToday = Math.max(0, dayBudgetMinor - spentToday);
+  const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
   return {
     mode: "bridge",
     needsAvailableInput: !hasBalance,
@@ -228,7 +237,7 @@ export function projectLivingBudget(input: {
     calendarDaysBetween(now, cycle.endAt, timeZone),
   );
   const dayBudgetMinor = perDayBudgetMinor(poolAtMorning, daysLeft);
-  const remainingToday = Math.max(0, dayBudgetMinor - spentToday);
+  const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
 
   return {
     mode: "cycle",
