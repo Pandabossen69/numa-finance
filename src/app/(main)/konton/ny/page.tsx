@@ -3,7 +3,7 @@ import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 
 export default function NyttKontoPage() {
   return (
-    <div className="numa-page space-y-6 pt-2 text-[var(--numa-ink)]">
+    <div className="numa-page numa-page-wide space-y-6 pt-2 text-[var(--numa-ink)]">
       <header className="space-y-2">
         <Link href="/konton" className="text-sm font-medium text-[var(--numa-muted)]">
           ← Saldo

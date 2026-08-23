@@ -106,7 +106,7 @@ export function MovementsScreen({
   const maxCategory = data.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="numa-page space-y-7">
+    <div className="numa-page numa-page-wide space-y-7">
       <header className="animate-rise">
         <h1 className="numa-page-title">Rörelser</h1>
       </header>

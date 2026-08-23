@@ -14,7 +14,7 @@ export default async function ImporteraPage() {
   const observations = await listObservations();
 
   return (
-    <div className="numa-page space-y-7">
+    <div className="numa-page numa-page-wide space-y-7">
       <MerPageHeader back title="Tidigare bilder" />
 
       <div className="animate-rise-delay-1 space-y-6">

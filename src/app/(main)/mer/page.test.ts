@@ -8,4 +8,8 @@ describe("Mer HIGH regress", () => {
     expect(src).toContain("SignOutButton");
     expect(src).toContain("Konto");
   });
+
+  it("uses the same desktop width as Hem and Plan", () => {
+    expect(src).toContain("numa-page-wide");
+  });
 });

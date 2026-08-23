@@ -11,4 +11,8 @@ describe("/fota resume", () => {
     expect(src).toContain("resume?.mode");
     expect(src).toContain("obs:${observationId}");
   });
+
+  it("uses the same desktop width as Hem and Plan", () => {
+    expect(src).toContain("numa-page-wide");
+  });
 });
