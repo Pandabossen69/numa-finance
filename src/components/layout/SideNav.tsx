@@ -1,21 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import {
-  PRIMARY_NAV,
-  isNavActive,
-  optimisticNavPath,
-} from "@/components/layout/nav";
+import { useNavIntent } from "@/components/layout/NavIntent";
+import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
 export function SideNav({ displayName }: { displayName: string }) {
-  const pathname = usePathname();
-  const [pending, setPending] = useState<{
-    href: string;
-    fromPath: string;
-  } | null>(null);
-  const highlightPath = optimisticNavPath(pathname, pending);
+  const { highlightPath, markIntent } = useNavIntent();
 
   return (
     <aside className="hidden w-56 shrink-0 md:block">
@@ -41,7 +31,7 @@ export function SideNav({ displayName }: { displayName: string }) {
                 key={item.href}
                 href={item.href}
                 prefetch
-                onClick={() => setPending({ href: item.href, fromPath: pathname })}
+                onClick={() => markIntent(item.href)}
                 className={`numa-press relative rounded-2xl px-1 py-3 ${
                   active
                     ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(12,125,104,0.16)]"
@@ -69,6 +59,7 @@ export function SideNav({ displayName }: { displayName: string }) {
           <Link
             href="/fota"
             prefetch
+            onClick={() => markIntent("/fota")}
             className="numa-btn numa-btn-accent w-full rounded-full"
           >
             Fota

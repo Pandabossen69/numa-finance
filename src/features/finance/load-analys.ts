@@ -2,6 +2,7 @@ import {
   NEXT_INCOME_NAME,
   dayOfMonthFromIso,
   extraSaldoHintSv,
+  formatListDateSv,
   isPlanIncome,
   isPlanSavings,
   isRecurringMonthly,
@@ -97,11 +98,7 @@ export type AnalysSnapshotResult =
 
 function labelIncomeDate(iso: string | null, timeZone: string): string {
   if (!iso) return "Datum saknas";
-  return new Date(iso).toLocaleDateString("sv-SE", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-  });
+  return formatListDateSv(iso, timeZone);
 }
 
 export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {

@@ -1,69 +1,65 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
+import { clearNumaRuntimeCache, nextLagaPhase, type LagaPhase } from "@/lib/pwa/repair";
 
-const KILL_FLAG = "numa.swKill.v8";
-
-async function hardRepair(): Promise<void> {
-  try {
-    localStorage.removeItem(KILL_FLAG);
-  } catch {
-    // ignore
-  }
-
-  if ("serviceWorker" in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(regs.map((r) => r.unregister()));
-  }
-  if ("caches" in window) {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((k) => caches.delete(k)));
-  }
-
-  try {
-    localStorage.setItem(KILL_FLAG, "done");
-  } catch {
-    // ignore
-  }
-}
-
-export function RepairAppButton({ autoStart = false }: { autoStart?: boolean }) {
+export function RepairAppButton() {
   const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
+  const [phase, setPhase] = useState<LagaPhase>("idle");
 
   function runRepair() {
+    setPhase("running");
     startTransition(async () => {
       try {
-        await hardRepair();
+        await clearNumaRuntimeCache();
+        setPhase((current) => nextLagaPhase(current, "success"));
+        window.location.replace(`/idag?repair=${Date.now()}`);
       } catch {
-        // continue to reload anyway
+        setPhase((current) => nextLagaPhase(current, "fail"));
       }
-      setDone(true);
-      window.location.replace(`/idag?repair=${Date.now()}`);
     });
   }
 
-  useEffect(() => {
-    if (!autoStart) return;
-    runRepair();
-    // intentionally once on mount when autoStart
-  }, [autoStart]);
-
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={runRepair}
-        className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] disabled:opacity-60"
-      >
-        {pending ? "Rensar cache…" : "Laga appen nu"}
-      </button>
-      {done ? (
-        <p className="text-[12px] text-[var(--numa-muted)]">Laddar om…</p>
+      {phase === "idle" || phase === "error" ? (
+        <button
+          type="button"
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition hover:bg-[var(--numa-accent-ink)]"
+          onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
+        >
+          Laga appen nu
+        </button>
+      ) : null}
+      {phase === "confirm" ? (
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={runRepair}
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] disabled:opacity-60"
+          >
+            Ja, rensa cache
+          </button>
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-[var(--numa-muted)]"
+            onClick={() => setPhase((current) => nextLagaPhase(current, "cancel"))}
+          >
+            Avbryt
+          </button>
+        </div>
+      ) : null}
+      {phase === "running" || pending ? (
+        <p className="text-[12px] text-[var(--numa-muted)]">Rensar cache…</p>
+      ) : phase === "error" ? (
+        <p className="text-[12px] text-[var(--numa-muted)]">
+          Kunde inte rensa. Prova igen.
+        </p>
       ) : (
         <p className="text-[12px] leading-relaxed text-[var(--numa-faint)]">
-          Rensar gammal cache som kan göra Hem tom. Tar en sekund.
+          Rensar gammal cache som kan göra Hem tom. Tar en sekund — bara när du
+          själv trycker.
         </p>
       )}
     </div>

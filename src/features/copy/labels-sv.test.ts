@@ -17,4 +17,10 @@ describe("Swedish money labels", () => {
     expect(SV.manad).toBe("Månad");
     expect(SV.saRaknarNuma).toBe("Så räknar NUMA");
   });
+
+  it("points Flytta/Kontant empty states to Mer → Saldo", () => {
+    expect(SV.merPathSaldo).toBe("Mer → Saldo");
+    expect(SV.merPathSaldo).not.toMatch(/Mina saldon/i);
+    expect(SV.saldo).toBe("Saldo");
+  });
 });

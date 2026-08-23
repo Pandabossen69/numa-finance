@@ -19,7 +19,9 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import { lastHomeSnapshot, rememberHomeSnapshot } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
+import { ViewLoading } from "@/components/layout/ViewLoading";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
 
@@ -34,16 +36,19 @@ export function HomeDashboard({
   snap: HomeSnapshot | null;
   error?: string | null;
 }) {
-  const snapResetKey = snap
-    ? `${snap.todaySpendingMinor}:${snap.remainingTodayMinor}:${snap.remainingFreeMinor}`
+  if (snap) rememberHomeSnapshot(snap);
+  const view = snap ?? lastHomeSnapshot();
+  const snapResetKey = view
+    ? `${view.todaySpendingMinor}:${view.remainingTodayMinor}:${view.remainingFreeMinor}`
     : "none";
   const [deltaSpent, setDeltaSpent] = useValueForKey(0, snapResetKey);
 
-  if (error || !snap) {
+  if (!view) {
+    if (!error) return <ViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
-        <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
+        <p className="text-sm text-[var(--numa-muted)]">{error}</p>
         <Link
           href="/fota"
           prefetch
@@ -55,38 +60,38 @@ export function HomeDashboard({
     );
   }
 
-  const remainingTodayMinor = snap.remainingTodayMinor - deltaSpent;
-  const todaySpendingMinor = snap.todaySpendingMinor + deltaSpent;
+  const remainingTodayMinor = view.remainingTodayMinor - deltaSpent;
+  const todaySpendingMinor = view.todaySpendingMinor + deltaSpent;
   const remainingFreeMinor =
-    snap.livingMode === "cycle"
-      ? snap.remainingFreeMinor - deltaSpent
-      : snap.remainingFreeMinor;
-  const currency = snap.currency;
-  const greeting = homeGreeting(snap.displayName, new Date(), snap.timeZone);
-  const isBridge = snap.livingMode === "bridge";
-  const isEmpty = snap.livingMode === "empty";
+    view.livingMode === "cycle"
+      ? view.remainingFreeMinor - deltaSpent
+      : view.remainingFreeMinor;
+  const currency = view.currency;
+  const greeting = homeGreeting(view.displayName, new Date(), view.timeZone);
+  const isBridge = view.livingMode === "bridge";
+  const isEmpty = view.livingMode === "empty";
   const remainingOk = remainingFreeMinor >= 0;
   const dayOk = remainingTodayMinor > 0;
-  const overToday = snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
+  const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
   const rangeLabel = isBridge
-    ? snap.nextIncomeLabelSv
-      ? `Till ${snap.nextIncomeLabelSv}`
+    ? view.nextIncomeLabelSv
+      ? `Till ${view.nextIncomeLabelSv}`
       : null
-    : snap.cycleStartLabelSv && snap.cycleEndLabelSv
-      ? `${snap.cycleStartLabelSv} – ${snap.cycleEndLabelSv}`
+    : view.cycleStartLabelSv && view.cycleEndLabelSv
+      ? `${view.cycleStartLabelSv} – ${view.cycleEndLabelSv}`
       : null;
 
   const dayUsedRatio =
-    snap.dayBudgetMinor > 0 ? todaySpendingMinor / snap.dayBudgetMinor : 0;
-  const daysWord = formatCountSv(snap.spendDaysLeft, "dag", "dagar");
+    view.dayBudgetMinor > 0 ? todaySpendingMinor / view.dayBudgetMinor : 0;
+  const daysWord = formatCountSv(view.spendDaysLeft, "dag", "dagar");
 
   const statusLine = overToday
     ? SV.overDagsbudget
-    : snap.dayBudgetMinor > 0 && todaySpendingMinor === 0
+    : view.dayBudgetMinor > 0 && todaySpendingMinor === 0
       ? `Hela dagsbudgeten kvar · ${daysWord}`
-      : snap.dayBudgetMinor > 0
-        ? `${formatMoneyHint(todaySpendingMinor, currency)} av ${formatMoneyHint(snap.dayBudgetMinor, currency)}`
+      : view.dayBudgetMinor > 0
+        ? `${formatMoneyHint(todaySpendingMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)}`
         : null;
 
   return (
@@ -111,15 +116,15 @@ export function HomeDashboard({
         ) : null}
       </header>
 
-      {snap.needsAvailableInput ? (
+      {view.needsAvailableInput ? (
         <AvailableNowCard
-          accountId={snap.primaryAccountId}
+          accountId={view.primaryAccountId}
           currency={currency}
-          nextIncomeLabel={snap.nextIncomeLabelSv}
+          nextIncomeLabel={view.nextIncomeLabelSv}
         />
       ) : null}
 
-      {!snap.needsAvailableInput ? (
+      {!view.needsAvailableInput ? (
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
@@ -139,7 +144,7 @@ export function HomeDashboard({
                 ) : null}
               </div>
 
-              {snap.dayBudgetMinor > 0 ? (
+              {view.dayBudgetMinor > 0 ? (
                 <>
                   <DayDial usedRatio={dayUsedRatio} over={overToday}>
                     {overToday ? (
@@ -186,7 +191,7 @@ export function HomeDashboard({
                       </p>
                       <div className="mt-1.5 text-[var(--numa-ink)]">
                         <MoneyDisplay
-                          amountMinor={snap.dayBudgetMinor}
+                          amountMinor={view.dayBudgetMinor}
                           currency={currency}
                           size="md"
                           compact
@@ -249,18 +254,18 @@ export function HomeDashboard({
               <section className="animate-rise-delay-2 space-y-2">
                 <p className="numa-section-title px-1">{SV.planOchSparande}</p>
                 <CompactPiles
-                  livingMinor={snap.livingSaldoMinor}
-                  savingsMinor={snap.savingsTotalMinor}
+                  livingMinor={view.livingSaldoMinor}
+                  savingsMinor={view.savingsTotalMinor}
                   currency={currency}
                   livingHint={livingVsPlanHintSv({
-                    carriedInMinor: snap.extraCarriedInMinor,
+                    carriedInMinor: view.extraCarriedInMinor,
                   })}
                 />
                 <p className="px-1 text-xs font-medium text-[var(--numa-muted)]">
                   {SV.alltINuma}{" "}
                   <span className="text-[var(--numa-accent-ink)]">
                     <MoneyDisplay
-                      amountMinor={snap.wealthTotalMinor}
+                      amountMinor={view.wealthTotalMinor}
                       currency={currency}
                       size="sm"
                       compact
@@ -274,43 +279,43 @@ export function HomeDashboard({
                     currency={currency}
                     tone={remainingOk ? "positive" : "alarm"}
                     hint={
-                      isBridge && snap.verificationLabel
-                        ? snap.verificationLabel
+                      isBridge && view.verificationLabel
+                        ? view.verificationLabel
                         : !isBridge
                           ? "I löneperioden, efter planerade utgifter och det du redan spenderat"
                           : undefined
                     }
                   />
-                  {snap.extraCarriedInMinor > 0 ? (
+                  {view.extraCarriedInMinor > 0 ? (
                     <MetricRow
                       label={SV.extraMed}
-                      amountMinor={snap.extraCarriedInMinor}
+                      amountMinor={view.extraCarriedInMinor}
                       currency={currency}
                       tone="positive"
-                      hint={snap.extraSaldoHint ?? "Följde med från tidigare månader"}
+                      hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
                     />
                   ) : (
                     <ExtraSaldoRow
-                      extraSaldoMinor={snap.extraSaldoMinor}
-                      drawnMinor={snap.extraSaldoDrawnMinor}
-                      hint={snap.extraSaldoHint}
+                      extraSaldoMinor={view.extraSaldoMinor}
+                      drawnMinor={view.extraSaldoDrawnMinor}
+                      hint={view.extraSaldoHint}
                       currency={currency}
                     />
                   )}
-                  {snap.hasBankTruth &&
-                  snap.calculatedBalanceMinor != null &&
+                  {view.hasBankTruth &&
+                  view.calculatedBalanceMinor != null &&
                   !isBridge ? (
                     <MetricRow
                       label={SV.paKontot}
-                      amountMinor={snap.calculatedBalanceMinor}
+                      amountMinor={view.calculatedBalanceMinor}
                       currency={currency}
-                      hint={snap.verificationLabel ?? undefined}
+                      hint={view.verificationLabel ?? undefined}
                     />
                   ) : null}
-                  {!isBridge && snap.cycleSpendingMinor + deltaSpent > 0 ? (
+                  {!isBridge && view.cycleSpendingMinor + deltaSpent > 0 ? (
                     <MetricRow
                       label={SV.spenderatIPerioden}
-                      amountMinor={snap.cycleSpendingMinor + Math.max(0, deltaSpent)}
+                      amountMinor={view.cycleSpendingMinor + Math.max(0, deltaSpent)}
                       currency={currency}
                     />
                   ) : null}
@@ -320,7 +325,7 @@ export function HomeDashboard({
               {isBridge ? (
                 <div className="animate-rise-delay-2 px-0.5 text-sm">
                   <UpdateBalanceLink
-                    accountId={snap.primaryAccountId}
+                    accountId={view.primaryAccountId}
                     currency={currency}
                   />
                 </div>
@@ -334,9 +339,9 @@ export function HomeDashboard({
           </div>
 
           <QuickExpense
-            accountId={snap.primaryAccountId}
+            accountId={view.primaryAccountId}
             currency={currency}
-            disabled={!snap.primaryAccountId}
+            disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
             onOptimisticSpend={(amountMinor) => setDeltaSpent((n) => n + amountMinor)}

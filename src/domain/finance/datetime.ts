@@ -229,3 +229,19 @@ export function snapshotLedgerWindow(params: {
     refetchFromCheckpoint,
   };
 }
+
+/** List dates in Swedish locale — never US `M/D/YYYY`. */
+export function formatListDateSv(
+  iso: string,
+  timeZone: string,
+  opts?: { withTime?: boolean },
+): string {
+  return new Date(iso).toLocaleString("sv-SE", {
+    timeZone,
+    day: "numeric",
+    month: "short",
+    ...(opts?.withTime
+      ? { hour: "2-digit", minute: "2-digit" }
+      : {}),
+  });
+}

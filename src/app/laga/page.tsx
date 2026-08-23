@@ -1,62 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-const KILL_FLAG = "numa.swKill.v8";
+import { useState } from "react";
+import {
+  clearNumaRuntimeCache,
+  nextLagaPhase,
+  type LagaPhase,
+} from "@/lib/pwa/repair";
 
 /**
- * Repair page — clears SW/cache, then STAYS here so we never auto-bounce
- * into a blank /idag. User chooses the next screen.
+ * Repair page — cache is cleared only after an explicit confirm.
+ * The three destinations stay available so we never auto-bounce into a blank Hem.
  */
 export default function LagaPage() {
-  const [status, setStatus] = useState("Rensar gammal cache…");
-  const [ready, setReady] = useState(false);
+  const [phase, setPhase] = useState<LagaPhase>("idle");
   const [cacheBust] = useState(() => Date.now());
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function run() {
-      try {
-        try {
-          localStorage.removeItem(KILL_FLAG);
-          sessionStorage.removeItem("numa.blankGuard.v1");
-        } catch {
-          // ignore
-        }
-
-        if ("serviceWorker" in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map((r) => r.unregister()));
-        }
-        if ("caches" in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        }
-
-        try {
-          localStorage.setItem(KILL_FLAG, "done");
-        } catch {
-          // ignore
-        }
-
-        if (!cancelled) {
-          setStatus("Cache rensad. Välj vart du vill gå.");
-          setReady(true);
-        }
-      } catch {
-        if (!cancelled) {
-          setStatus("Kunde inte rensa automatiskt. Prova länkarna ändå.");
-          setReady(true);
-        }
-      }
+  async function runRepair() {
+    setPhase("running");
+    try {
+      await clearNumaRuntimeCache();
+      setPhase((current) => nextLagaPhase(current, "success"));
+    } catch {
+      setPhase((current) => nextLagaPhase(current, "fail"));
     }
+  }
 
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const status =
+    phase === "running"
+      ? "Rensar cache…"
+      : phase === "done"
+        ? "Cache rensad. Välj vart du vill gå."
+        : phase === "error"
+          ? "Kunde inte rensa automatiskt. Prova länkarna ändå."
+          : phase === "confirm"
+            ? "Rensar bara cache på den här enheten. Dina konton raderas inte."
+            : "Något strular? Rensa cache först när du själv trycker.";
 
   return (
     <main
@@ -74,7 +52,7 @@ export default function LagaPage() {
       }}
     >
       <h1 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 600 }}>NUMA</h1>
-      <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Lagar appen</p>
+      <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Laga appen</p>
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#5a6b61" }}>
         {status}
       </p>
@@ -89,10 +67,36 @@ export default function LagaPage() {
         — inte från tillfälliga Vercel-länkar. Då får du alltid senaste
         production automatiskt.
       </p>
-      {ready ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <a
-            href="https://numa-finance.vercel.app/idag"
+
+      {phase === "idle" || phase === "error" ? (
+        <button
+          type="button"
+          onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
+          style={{
+            display: "flex",
+            minHeight: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            background: "#1f6f5b",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            border: 0,
+            cursor: "pointer",
+          }}
+        >
+          Laga appen nu
+        </button>
+      ) : null}
+
+      {phase === "confirm" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => {
+              void runRepair();
+            }}
             style={{
               display: "flex",
               minHeight: 48,
@@ -103,47 +107,94 @@ export default function LagaPage() {
               color: "#fff",
               fontSize: 14,
               fontWeight: 600,
-              textDecoration: "none",
+              border: 0,
+              cursor: "pointer",
             }}
           >
-            Öppna production (rätt länk)
-          </a>
-          <a
-            href={`/mer?r=${cacheBust}`}
+            Ja, rensa cache
+          </button>
+          <button
+            type="button"
+            onClick={() => setPhase((current) => nextLagaPhase(current, "cancel"))}
             style={{
               display: "flex",
-              minHeight: 48,
+              minHeight: 44,
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 16,
-              border: "1px solid rgba(19,32,25,0.12)",
-              color: "#132019",
+              background: "transparent",
+              color: "#5a6b61",
               fontSize: 14,
               fontWeight: 600,
-              textDecoration: "none",
-            }}
-          >
-            Öppna Mer-menyn här
-          </a>
-          <a
-            href={`/idag?r=${cacheBust}`}
-            style={{
-              display: "flex",
-              minHeight: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 16,
               border: "1px solid rgba(19,32,25,0.12)",
-              color: "#132019",
-              fontSize: 14,
-              fontWeight: 600,
-              textDecoration: "none",
+              cursor: "pointer",
             }}
           >
-            Öppna Hem här
-          </a>
+            Avbryt
+          </button>
         </div>
       ) : null}
+
+      {phase === "running" ? (
+        <p style={{ margin: 0, fontSize: 13, color: "#5a6b61" }}>
+          Tar bara en sekund…
+        </p>
+      ) : null}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <a
+          href="https://numa-finance.vercel.app/idag"
+          style={{
+            display: "flex",
+            minHeight: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            background: phase === "done" ? "#1f6f5b" : "transparent",
+            color: phase === "done" ? "#fff" : "#132019",
+            border: phase === "done" ? 0 : "1px solid rgba(19,32,25,0.12)",
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          Öppna production (rätt länk)
+        </a>
+        <a
+          href={`/mer?r=${cacheBust}`}
+          style={{
+            display: "flex",
+            minHeight: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            border: "1px solid rgba(19,32,25,0.12)",
+            color: "#132019",
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          Öppna Mer-menyn här
+        </a>
+        <a
+          href={`/idag?r=${cacheBust}`}
+          style={{
+            display: "flex",
+            minHeight: 48,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 16,
+            border: "1px solid rgba(19,32,25,0.12)",
+            color: "#132019",
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: "none",
+          }}
+        >
+          Öppna Hem här
+        </a>
+      </div>
     </main>
   );
 }

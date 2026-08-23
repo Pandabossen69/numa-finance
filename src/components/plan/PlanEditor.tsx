@@ -10,6 +10,7 @@ import {
   dueDateInMonth,
   importableFixedExpenses,
   labelDayOfMonthSv,
+  formatListDateSv,
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
@@ -31,6 +32,7 @@ import { refreshQuiet } from "@/lib/nav/instant";
 import {
   applyMonthSavings,
   isTempPlanId,
+  stampPlanItems,
   mergeReturnedItem,
   mergeReturnedItems,
   optimisticPlanItem,
@@ -73,11 +75,7 @@ function isoToDateInput(iso: string | null): string {
 
 function labelIncomeDateSv(iso: string | null, timeZone: string): string {
   if (!iso) return "Datum saknas";
-  return new Date(iso).toLocaleDateString("sv-SE", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-  });
+  return formatListDateSv(iso, timeZone);
 }
 
 function parsePlanAmount(raw: string): number | { error: string } {
@@ -115,6 +113,8 @@ export function PlanEditor({
   const [viewYear, setViewYear] = useState(() => yearFromMonthKey(currentMonthKey));
   const [monthKey, setMonthKey] = useState(currentMonthKey);
   const [localItems, setLocalItems] = useState(items);
+  const incomingStamp = stampPlanItems(items);
+  const [itemsStamp, setItemsStamp] = useState(incomingStamp);
   const ownerId = localItems[0]?.userId ?? items[0]?.userId ?? "";
 
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
@@ -138,6 +138,12 @@ export function PlanEditor({
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
     null,
   );
+  if (!busy && incomingStamp !== itemsStamp) {
+    setItemsStamp(incomingStamp);
+    if (items.length > 0 || localItems.length === 0) {
+      setLocalItems(items);
+    }
+  }
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
@@ -395,15 +401,7 @@ export function PlanEditor({
           )}
         </div>
 
-        <div
-          className="numa-month-strip -mx-1 px-1 pb-1"
-          style={{
-            WebkitMaskImage:
-              "linear-gradient(90deg, #000 0%, #000 calc(100% - 1.75rem), transparent 100%)",
-            maskImage:
-              "linear-gradient(90deg, #000 0%, #000 calc(100% - 1.75rem), transparent 100%)",
-          }}
-        >
+        <div className="numa-month-strip -mx-1 px-1 pb-1">
           {monthKeys.map((key) => {
             const livingDot = (extraByMonth[key] ?? 0) > 0;
             const saveDot = (savingsByMonth[key] ?? 0) > 0;
@@ -1255,9 +1253,9 @@ function InlineAdd({
   onSubmit: () => void;
 }) {
   const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
-  if (!open) {
-    return (
-      <div className="mt-auto border-t border-[var(--numa-border)] pt-4">
+  return (
+    <div className="mt-auto border-t border-[var(--numa-border)] pt-4">
+      {!open ? (
         <button
           type="button"
           className="numa-btn numa-btn-soft w-full"
@@ -1265,11 +1263,9 @@ function InlineAdd({
         >
           {collapsedLabel}
         </button>
-      </div>
-    );
-  }
-  return (
-    <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
+      ) : null}
+      <div className={`numa-expand ${open ? "is-open" : ""}`}>
+        <div className="numa-expand-inner space-y-2">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
         <input
           value={name}
@@ -1322,6 +1318,8 @@ function InlineAdd({
         >
           Avbryt
         </button>
+      </div>
+        </div>
       </div>
     </div>
   );

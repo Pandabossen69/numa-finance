@@ -9,7 +9,7 @@ import {
   updateTransactionAction,
   voidTransactionAction,
 } from "@/features/finance/actions";
-import { monthKeyFromDate } from "@/domain/finance";
+import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
 import { sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
@@ -329,11 +329,8 @@ export function MovementsScreen({
                         filter === "all" || filter === "expense"
                           ? tx.category
                           : null,
-                        new Date(tx.occurredAt).toLocaleString("sv-SE", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
+                        formatListDateSv(tx.occurredAt, data.timeZone, {
+                          withTime: true,
                         }),
                       ]
                         .filter(Boolean)

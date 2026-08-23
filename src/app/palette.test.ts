@@ -16,6 +16,19 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-alarm")).not.toBe(token("--numa-danger"));
   });
 
+  it("fades the Plan month strip at both edges", () => {
+    expect(css).toContain(".numa-month-strip");
+    expect(css).toMatch(/mask-image:\s*linear-gradient/);
+    expect(css).toContain("transparent 0");
+    expect(css).toContain("transparent 100%");
+  });
+
+  it("keeps status chips on one line", () => {
+    const chip = css.slice(css.indexOf(".numa-chip {"), css.indexOf(".numa-chip-mint"));
+    expect(chip).toContain("white-space: nowrap");
+    expect(chip).toContain("flex-shrink: 0");
+  });
+
   it("defines shell bottom padding from nav, FAB overhang, and safe-area", () => {
     expect(css).toContain("--numa-nav-bar");
     expect(css).toContain("--numa-fab-overhang");

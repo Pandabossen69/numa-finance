@@ -8,6 +8,7 @@ import {
   createIncomeAction,
   createTransferAction,
 } from "@/features/finance/actions";
+import { SV } from "@/features/copy/labels-sv";
 
 export type ShellAccount = {
   id: string;
@@ -273,7 +274,7 @@ function TransferForm({
   if (accounts.length < 2) {
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Lägg till ett till saldo under Mer → Saldo för att kunna flytta
+        Lägg till ett till saldo under {SV.merPathSaldo} för att kunna flytta
         pengar mellan konton.
       </p>
     );
@@ -359,7 +360,7 @@ function CashForm({
   if (cashAccounts.length === 0) {
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Skapa först ett saldo av typen Kontanter under Mer → Saldo. Annars
+        Skapa först ett saldo av typen Kontanter under {SV.merPathSaldo}. Annars
         försvinner uttaget i modellen.
       </p>
     );

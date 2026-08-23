@@ -3,6 +3,7 @@ import {
   calendarDaysBetween,
   earliestInstant,
   formatCountSv,
+  formatListDateSv,
   formatRelativeVerificationSv,
   isSameZonedDay,
   snapshotLedgerWindow,
@@ -142,5 +143,14 @@ describe("snapshot ledger window", () => {
     });
     expect(window.spendSinceIso).toBe("2026-07-31T17:00:00.000Z");
     expect(window.refetchFromCheckpoint).toBe(false);
+  });
+});
+
+describe("formatListDateSv", () => {
+  it("uses Swedish month names, not US M/D/YYYY", () => {
+    const label = formatListDateSv("2026-08-23T15:00:00.000Z", "Asia/Bangkok");
+    expect(label.toLowerCase()).toMatch(/aug/);
+    expect(label).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/);
+    expect(label).toMatch(/23/);
   });
 });
