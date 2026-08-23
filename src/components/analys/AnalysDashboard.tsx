@@ -5,7 +5,9 @@ import Link from "next/link";
 import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
 import {
+  lastAnalysScope,
   lastAnalysSnapshot,
+  rememberAnalysScope,
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
@@ -26,8 +28,11 @@ export function AnalysDashboard({
   data: AnalysSnapshot | null;
   error?: string | null;
 }) {
-  const [scope, setScope] = useState<AnalysScope>("period");
+  const [scope, setScope] = useState<AnalysScope>(
+    () => lastAnalysScope() ?? "period",
+  );
   if (data) rememberAnalysSnapshot(data);
+  rememberAnalysScope(scope);
   const view = data ?? lastAnalysSnapshot();
 
   if (!view) {

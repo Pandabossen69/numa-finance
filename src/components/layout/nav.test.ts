@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isNavActive, optimisticNavPath, primaryTab } from "./nav";
+import { isNavActive, isTabRoot, optimisticNavPath, primaryTab } from "./nav";
 
 describe("optimisticNavPath", () => {
   it("uses the pending href while still on the page that was clicked", () => {
@@ -36,5 +36,17 @@ describe("primaryTab", () => {
     expect(primaryTab("/idag")).toBe("/idag");
     expect(primaryTab("/plan")).toBe("/plan");
     expect(primaryTab("/fota")).toBe("/fota");
+  });
+});
+
+describe("isTabRoot", () => {
+  it("treats only Mer hub as a cacheable tab root", () => {
+    expect(isTabRoot("/mer")).toBe(true);
+    expect(isTabRoot("/konton")).toBe(false);
+    expect(isTabRoot("/konton/ny")).toBe(false);
+    expect(isTabRoot("/idag")).toBe(true);
+    expect(isTabRoot("/plan")).toBe(true);
+    expect(isTabRoot("/analys")).toBe(true);
+    expect(isTabRoot("/fota")).toBe(true);
   });
 });
