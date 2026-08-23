@@ -9,7 +9,7 @@ import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
-import { formatCountSv } from "@/domain/finance";
+import { formatCountSv, livingVsPlanHintSv } from "@/domain/finance";
 import {
   formatMoney,
   money,
@@ -240,13 +240,14 @@ export function HomeDashboard({
 
             <div className="flex h-full min-w-0 flex-col gap-6">
               <section className="animate-rise-delay-2 space-y-2">
-                <p className="numa-section-title px-1">
-                  {isBridge ? SV.saldo : SV.perioden}
-                </p>
+                <p className="numa-section-title px-1">{SV.planOchSparande}</p>
                 <CompactPiles
                   livingMinor={snap.livingSaldoMinor}
                   savingsMinor={snap.savingsTotalMinor}
                   currency={currency}
+                  livingHint={livingVsPlanHintSv({
+                    carriedInMinor: snap.extraCarriedInMinor,
+                  })}
                 />
                 <p className="px-1 text-xs font-medium text-[var(--numa-muted)]">
                   {SV.alltINuma}{" "}
@@ -269,7 +270,7 @@ export function HomeDashboard({
                       isBridge && snap.verificationLabel
                         ? snap.verificationLabel
                         : !isBridge
-                          ? "Efter planerade utgifter och det du redan spenderat"
+                          ? "I löneperioden, efter planerade utgifter och det du redan spenderat"
                           : undefined
                     }
                   />
@@ -293,7 +294,7 @@ export function HomeDashboard({
                   snap.calculatedBalanceMinor != null &&
                   !isBridge ? (
                     <MetricRow
-                      label="På kontot"
+                      label={SV.paKontot}
                       amountMinor={snap.calculatedBalanceMinor}
                       currency={currency}
                       hint={snap.verificationLabel ?? undefined}

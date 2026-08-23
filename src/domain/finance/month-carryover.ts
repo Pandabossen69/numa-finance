@@ -34,12 +34,24 @@ export type ExtraSaldoView = {
 };
 
 /**
- * Money to live on in the viewed month: this month's leftover/plan
- * plus extra carried in. Savings is not included — that is a separate pile.
- * Negative only when extra could not cover the hole.
+ * Plan leftover in the viewed month: this month's plan-vs-spend result
+ * plus extra carried in. **Not bank cash** — never label this "Saldo".
+ *
+ * Identity: `planFreeMinor − spentMinor + carriedInMinor`.
+ * Savings is a separate pile. Negative only when extra could not cover the hole.
  */
 export function monthLivingSaldoMinor(view: ExtraSaldoView): number {
-  return view.monthResultMinor + view.carriedInMinor;
+  return view.planFreeMinor - view.spentMinor + view.carriedInMinor;
+}
+
+/** Swedish hint that ties the living pile to the calendar-month plan formula. */
+export function livingVsPlanHintSv(
+  view: Pick<ExtraSaldoView, "carriedInMinor">,
+): string {
+  if (view.carriedInMinor > 0) {
+    return "Kvar i månaden (plan) minus spenderat, plus extra som följde med";
+  }
+  return "Kvar i månaden (plan) minus spenderat i månaden";
 }
 
 /** Planerat att leva för i månaden + extra som följde med in. */
