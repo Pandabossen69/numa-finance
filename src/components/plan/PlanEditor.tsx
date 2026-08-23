@@ -1291,6 +1291,10 @@ function InlineAdd({
 }) {
   const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
   const submitRowRef = useRef<HTMLDivElement>(null);
+  const [fieldsMounted, setFieldsMounted] = useState(open);
+  if (open && !fieldsMounted) {
+    setFieldsMounted(true);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -1306,24 +1310,28 @@ function InlineAdd({
     return () => window.clearTimeout(id);
   }, [open]);
 
+  useEffect(() => {
+    if (open || !fieldsMounted) return;
+    const id = window.setTimeout(() => setFieldsMounted(false), 280);
+    return () => window.clearTimeout(id);
+  }, [open, fieldsMounted]);
+
   return (
     <div
       className={`mt-auto border-t border-[var(--numa-border)] pt-4 ${
         open
-          ? "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+0.75rem)]"
+          ? "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)]"
           : ""
       }`}
     >
-      {!open ? (
-        <button
-          type="button"
-          className="numa-btn numa-btn-soft w-full"
-          onClick={onOpen}
-        >
-          {collapsedLabel}
-        </button>
-      ) : null}
-      <div className={`numa-expand ${open ? "is-open" : ""}`}>
+      {fieldsMounted ? (
+      <div
+        className={`numa-expand ${open ? "is-open" : ""}`}
+        onTransitionEnd={(event) => {
+          if (event.propertyName !== "grid-template-rows") return;
+          if (!open) setFieldsMounted(false);
+        }}
+      >
         <div className="numa-expand-inner space-y-2">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
         <input
@@ -1381,6 +1389,15 @@ function InlineAdd({
       </div>
         </div>
       </div>
+      ) : (
+        <button
+          type="button"
+          className="numa-btn numa-btn-soft w-full"
+          onClick={onOpen}
+        >
+          {collapsedLabel}
+        </button>
+      )}
     </div>
   );
 }

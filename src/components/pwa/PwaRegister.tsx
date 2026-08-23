@@ -1,67 +1,82 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-const KILL_FLAG = "numa.swKill.v8";
+const BUILD_ID =
+  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ??
+  process.env.NEXT_PUBLIC_NUMA_BUILD_ID ??
+  "dev";
 
 /**
- * Unregister service workers only. Never re-register.
- * Reload at most once when an active controller was present.
+ * Register the inert worker (skipWaiting + cache wipe, no HTML cache).
+ * When a new build is waiting, offer a soft reload — never wipe user data.
  */
 export function PwaRegister() {
+  const [updateReady, setUpdateReady] = useState(false);
+
   useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
     let cancelled = false;
 
-    async function detox() {
+    async function setup() {
       try {
-        if (localStorage.getItem(KILL_FLAG) === "done") {
-          // Still clear any lingering registrations without reload.
-          if ("serviceWorker" in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            if (regs.length > 0) {
-              await Promise.all(regs.map((reg) => reg.unregister()));
+        const reg = await navigator.serviceWorker.register(
+          `/sw.js?v=${encodeURIComponent(BUILD_ID)}`,
+          { updateViaCache: "none" },
+        );
+        const markReady = () => {
+          if (!cancelled) setUpdateReady(true);
+        };
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          markReady();
+        }
+        reg.addEventListener("updatefound", () => {
+          const worker = reg.installing;
+          if (!worker) return;
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+              markReady();
             }
-          }
-          return;
-        }
-
-        const hadController =
-          "serviceWorker" in navigator &&
-          Boolean(navigator.serviceWorker.controller);
-
-        if ("serviceWorker" in navigator) {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map((reg) => reg.unregister()));
-        }
-
-        if ("caches" in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((key) => caches.delete(key)));
-        }
-
-        if (cancelled) return;
-
-        localStorage.setItem(KILL_FLAG, "done");
-
-        if (hadController) {
-          const url = new URL(window.location.href);
-          url.searchParams.set("recovered", String(Date.now()));
-          window.location.replace(`${url.pathname}${url.search}`);
-        }
+          });
+        });
+        void reg.update();
       } catch {
-        try {
-          localStorage.setItem(KILL_FLAG, "done");
-        } catch {
-          // ignore
-        }
+        // Registration is best-effort.
       }
     }
 
-    void detox();
+    void setup();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return null;
+  if (!updateReady) return null;
+
+  function reloadFresh() {
+    void navigator.serviceWorker.getRegistration().then((reg) => {
+      reg?.waiting?.postMessage({ type: "SKIP_WAITING" });
+    });
+    window.location.reload();
+  }
+
+  return (
+    <aside
+      className="fixed inset-x-0 top-0 z-[80] flex items-center justify-center gap-3 px-4 pt-[max(0.6rem,var(--numa-safe-top))]"
+      aria-label="Ny version"
+    >
+      <div className="flex max-w-lg items-center gap-3 rounded-full border border-[var(--numa-border)] bg-white/95 px-3 py-1.5 shadow-[0_8px_24px_rgba(7,21,17,0.1)]">
+        <p className="min-w-0 text-[12px] font-medium text-[var(--numa-ink)]">
+          Ny version — uppdatera
+        </p>
+        <button
+          type="button"
+          onClick={reloadFresh}
+          className="numa-press shrink-0 text-[12px] font-semibold text-[var(--numa-accent)]"
+        >
+          Uppdatera
+        </button>
+      </div>
+    </aside>
+  );
 }

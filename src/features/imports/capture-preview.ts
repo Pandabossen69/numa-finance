@@ -54,6 +54,25 @@ function usableRow(candidate: ExtractedTransactionCandidate): boolean {
   );
 }
 
+function hasPositiveAmount(
+  candidate: ExtractedTransactionCandidate,
+): boolean {
+  return candidate.amountMinor != null && candidate.amountMinor > 0;
+}
+
+/** Receipt notes often mention the scanned total when fingerprint is missing. */
+export function parseNotesAmountMinor(notes: string | null): number | null {
+  if (!notes) return null;
+  const match = notes.match(
+    /(\d{1,3}(?:[ \u00a0]\d{3})*|\d+)(?:[,.](\d{1,2}))?/,
+  );
+  if (!match) return null;
+  const major = Number(match[1].replace(/[\s\u00a0]/g, ""));
+  if (!Number.isFinite(major) || major <= 0) return null;
+  const frac = (match[2] ?? "00").padEnd(2, "0").slice(0, 2);
+  return major * 100 + Number(frac);
+}
+
 function toEvent(candidate: ExtractedTransactionCandidate): CapturePreviewEvent {
   return {
     candidateId: candidate.id,
@@ -90,7 +109,10 @@ export function buildCapturePreview(input: {
     (pending.length === 0 && confirmed.length > 0);
 
   const first = pending[0] ?? confirmed[0] ?? null;
-  const amountMinor = first?.amountMinor ?? null;
+  const looseAmount = input.candidates.find(hasPositiveAmount)?.amountMinor ?? null;
+  const notesAmount =
+    importKind === "receipt" ? parseNotesAmountMinor(input.observation.notes) : null;
+  const amountMinor = first?.amountMinor ?? looseAmount ?? notesAmount;
   const amountFromScan = amountMinor != null;
   const ocrStatus: CapturePreview["ocrStatus"] = alreadyKnown
     ? "all_known"

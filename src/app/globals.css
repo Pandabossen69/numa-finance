@@ -36,7 +36,7 @@
   /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
   --numa-nav-bar: 4.25rem;
   --numa-fab-overhang: 2.25rem;
-  --numa-shell-breathing: 4rem;
+  --numa-shell-breathing: 5.75rem;
   --numa-shell-pad-bottom: calc(
     var(--numa-nav-bar) + var(--numa-fab-overhang) + var(--numa-shell-breathing) +
       var(--numa-safe-bottom)

@@ -21,9 +21,14 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("scrollIntoView");
     expect(src).toContain("block: \"nearest\"");
     expect(src).toContain(
-      "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+0.75rem)]",
+      "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)]",
     );
     expect(src).toContain("scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)");
+  });
+
+  it("does not keep the add toggle over the fields while they expand", () => {
+    expect(src).toContain("fieldsMounted");
+    expect(src).toContain("onTransitionEnd");
   });
 
   it("keeps month context and fades the chip strip only when it overflows", () => {

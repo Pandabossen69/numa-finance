@@ -1,4 +1,3 @@
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   MerListGroup,
   MerListRow,
@@ -71,13 +70,6 @@ export default async function InstallningarPage() {
           )}
         </MerSection>
 
-        <MerSection title="Konto">
-          <MerListGroup>
-            <MerListRow className="py-3">
-              <SignOutButton />
-            </MerListRow>
-          </MerListGroup>
-        </MerSection>
       </div>
     </div>
   );

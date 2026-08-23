@@ -111,15 +111,16 @@ export function PlanPiles({
             <MoneyDisplay
               amountMinor={piles.livingMinor}
               currency={currency}
-              size="lg"
+              size="md"
               compact
               align="start"
+              wrap={false}
             />
           </div>
-          <p className="text-sm leading-snug text-[var(--numa-muted)]">
+          <p className="min-h-[2.5rem] text-sm leading-snug text-[var(--numa-muted)]">
             {livingOk
               ? SV.saldoLevaFor
-              : `Du har handlat mer än ${monthName} planerat.`}
+              : `Mer än ${monthName} planerat.`}
           </p>
           {showSpent ? (
             <p className="text-xs leading-snug text-[var(--numa-faint)]">
@@ -196,9 +197,10 @@ export function PlanPiles({
             <MoneyDisplay
               amountMinor={savingsTotalMinor}
               currency={currency}
-              size="lg"
+              size="md"
               compact
               align="start"
+              wrap={false}
             />
           </div>
           <p className="text-sm leading-snug text-[var(--numa-muted)]">
