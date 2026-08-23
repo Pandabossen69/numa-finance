@@ -395,7 +395,15 @@ export function PlanEditor({
           )}
         </div>
 
-        <div className="numa-month-strip -mx-1 px-1 pb-1">
+        <div
+          className="numa-month-strip -mx-1 px-1 pb-1"
+          style={{
+            WebkitMaskImage:
+              "linear-gradient(90deg, #000 0%, #000 calc(100% - 1.75rem), transparent 100%)",
+            maskImage:
+              "linear-gradient(90deg, #000 0%, #000 calc(100% - 1.75rem), transparent 100%)",
+          }}
+        >
           {monthKeys.map((key) => {
             const livingDot = (extraByMonth[key] ?? 0) > 0;
             const saveDot = (savingsByMonth[key] ?? 0) > 0;
@@ -1072,6 +1080,8 @@ function PlanRows({
   onSaveEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
   if (items.length === 0) {
     return <p className="py-4 text-sm text-[var(--numa-muted)]">{emptyHint}</p>;
   }
@@ -1157,20 +1167,44 @@ function PlanRows({
                   align="end"
                 />
               </span>
-              {locked || isTempPlanId(item.id) ? null : (
+              {locked || isTempPlanId(item.id) ? null : confirmId === item.id ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={pendingId === item.id && pendingAction === "delete"}
+                    className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm font-semibold text-[var(--numa-danger)] hover:bg-[var(--numa-danger-soft)]/70 disabled:opacity-45"
+                    onClick={() => {
+                      onDelete(item.id);
+                      setConfirmId(null);
+                    }}
+                  >
+                    Ta bort
+                  </button>
+                  <button
+                    type="button"
+                    className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm text-[var(--numa-muted)]"
+                    onClick={() => setConfirmId(null)}
+                  >
+                    Avbryt
+                  </button>
+                </div>
+              ) : (
                 <OverflowMenu
                   label={`Åtgärder för ${item.name}`}
                   items={[
                     {
                       label: "Redigera",
-                      onSelect: () => onStartEdit(item),
+                      onSelect: () => {
+                        setConfirmId(null);
+                        onStartEdit(item);
+                      },
                     },
                     {
                       label: "Ta bort",
                       tone: "danger",
                       disabled:
                         pendingId === item.id && pendingAction === "delete",
-                      onSelect: () => onDelete(item.id),
+                      onSelect: () => setConfirmId(item.id),
                     },
                   ]}
                 />
