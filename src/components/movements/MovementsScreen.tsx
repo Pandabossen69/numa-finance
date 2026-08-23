@@ -73,6 +73,7 @@ export function MovementsScreen({
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -337,50 +338,59 @@ export function MovementsScreen({
                         .join(" · ")}
                     </p>
                     {canEdit ? (
-                      <div className="mt-1.5 flex gap-3">
-                        <button
-                          type="button"
-                          className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
-                          onClick={() => {
-                            setEditingId(tx.id);
-                            setEditAmount(minorToUi(tx.amountMinor));
-                            setEditDescription(tx.description);
-                            setEditCategory(tx.category ?? "");
-                            setActionError(null);
-                          }}
-                        >
-                          Redigera
-                        </button>
-                        <button
-                          type="button"
-                          className="numa-press text-xs text-[var(--numa-muted)]"
-                          onClick={() => {
-                            const paired =
-                              tx.transactionType === "transfer" ||
-                              tx.transactionType === "cash_withdrawal";
-                            if (
-                              !window.confirm(
-                                paired
-                                  ? "Ta bort båda sidorna av flytten?"
-                                  : "Ta bort rörelsen?",
-                              )
-                            ) {
-                              return;
-                            }
-                            setActionError(null);
-                            void (async () => {
-                              const result = await voidTransactionAction(tx.id);
-                              if (!result.ok) {
-                                setActionError(result.error);
-                                return;
-                              }
-                              router.refresh();
-                            })();
-                          }}
-                        >
-                          Ta bort
-                        </button>
-                      </div>
+                      confirmId === tx.id ? (
+                        <div className="mt-1.5 flex gap-3">
+                          <button
+                            type="button"
+                            className="numa-press text-xs font-semibold text-[var(--numa-danger)]"
+                            onClick={() => {
+                              setActionError(null);
+                              setConfirmId(null);
+                              void (async () => {
+                                const result = await voidTransactionAction(tx.id);
+                                if (!result.ok) {
+                                  setActionError(result.error);
+                                  return;
+                                }
+                                router.refresh();
+                              })();
+                            }}
+                          >
+                            Ta bort
+                          </button>
+                          <button
+                            type="button"
+                            className="numa-press text-xs text-[var(--numa-muted)]"
+                            onClick={() => setConfirmId(null)}
+                          >
+                            Avbryt
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-1.5 flex gap-3">
+                          <button
+                            type="button"
+                            className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
+                            onClick={() => {
+                              setEditingId(tx.id);
+                              setConfirmId(null);
+                              setEditAmount(minorToUi(tx.amountMinor));
+                              setEditDescription(tx.description);
+                              setEditCategory(tx.category ?? "");
+                              setActionError(null);
+                            }}
+                          >
+                            Redigera
+                          </button>
+                          <button
+                            type="button"
+                            className="numa-press text-xs text-[var(--numa-muted)]"
+                            onClick={() => setConfirmId(tx.id)}
+                          >
+                            Ta bort
+                          </button>
+                        </div>
+                      )
                     ) : null}
                   </div>
                   <MoneyDisplay

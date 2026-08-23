@@ -10,4 +10,10 @@ describe("Rörelser expense color", () => {
     expect(src).toContain('tone={net >= 0 ? "positive" : "alarm"}');
     expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,80}tone="danger"/);
   });
+
+  it("asks for an in-DOM confirm before Ta bort", () => {
+    expect(src).toContain("confirmId");
+    expect(src).toContain("setConfirmId(tx.id)");
+    expect(src).not.toContain("window.confirm");
+  });
 });

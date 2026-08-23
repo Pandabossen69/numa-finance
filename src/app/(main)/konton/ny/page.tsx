@@ -9,7 +9,7 @@ export default function NyttKontoPage() {
           ← Saldo
         </Link>
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
-          Ditt saldo i NUMA
+          Nytt saldo
         </h1>
         <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
           Ingen bankkoppling. Ange hur mycket du har just nu — det blir
