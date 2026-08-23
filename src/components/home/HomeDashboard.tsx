@@ -62,15 +62,13 @@ export function HomeDashboard({
       ? snap.remainingFreeMinor - deltaSpent
       : snap.remainingFreeMinor;
   const currency = snap.currency;
-  const greeting = homeGreeting(snap.displayName);
+  const greeting = homeGreeting(snap.displayName, new Date(), snap.timeZone);
   const isBridge = snap.livingMode === "bridge";
   const isEmpty = snap.livingMode === "empty";
   const remainingOk = remainingFreeMinor >= 0;
   const dayOk = remainingTodayMinor > 0;
   const overToday = snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
-  const dialCenterMinor = overToday
-    ? todaySpendingMinor - snap.dayBudgetMinor
-    : Math.max(0, remainingTodayMinor);
+  const dialCenterMinor = remainingTodayMinor;
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
       ? `Till ${snap.nextIncomeLabelSv}`
@@ -97,7 +95,7 @@ export function HomeDashboard({
         <HomescreenInstallHint />
       </div>
       <header className="animate-rise space-y-1 px-0.5">
-        <p className="text-[13px] font-medium text-[var(--numa-muted)] capitalize">
+        <p className="text-[13px] font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
@@ -144,13 +142,17 @@ export function HomeDashboard({
               {snap.dayBudgetMinor > 0 ? (
                 <>
                   <DayDial usedRatio={dayUsedRatio} over={overToday}>
-                    <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
-                      {overToday ? "Över" : "Kvar"}
-                    </p>
+                    {overToday ? (
+                      <p className="numa-chip numa-chip-alarm mb-2">Över</p>
+                    ) : (
+                      <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
+                        Kvar
+                      </p>
+                    )}
                     <div
                       className={`money-hero ${
                         overToday
-                          ? "text-[var(--numa-alarm)]"
+                          ? "text-[var(--numa-ink)]"
                           : dayOk
                             ? "text-[var(--numa-ink)]"
                             : "text-[var(--numa-muted)]"
@@ -169,7 +171,7 @@ export function HomeDashboard({
                     <p
                       className={`text-center text-sm leading-snug ${
                         overToday
-                          ? "font-medium text-[var(--numa-alarm)]"
+                          ? "font-medium text-[var(--numa-muted)]"
                           : "text-[var(--numa-muted)]"
                       }`}
                     >
@@ -336,6 +338,7 @@ export function HomeDashboard({
             currency={currency}
             disabled={!snap.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
+            overToday={overToday}
             onOptimisticSpend={(amountMinor) => setDeltaSpent((n) => n + amountMinor)}
             onSpendFailed={(amountMinor) => setDeltaSpent((n) => n - amountMinor)}
           />
@@ -532,6 +535,7 @@ function QuickExpense({
   currency,
   disabled,
   remainingTodayMinor,
+  overToday,
   onOptimisticSpend,
   onSpendFailed,
 }: {
@@ -539,6 +543,7 @@ function QuickExpense({
   currency: CurrencyCode;
   disabled: boolean;
   remainingTodayMinor: number;
+  overToday: boolean;
   onOptimisticSpend: (amountMinor: number) => void;
   onSpendFailed: (amountMinor: number) => void;
 }) {
@@ -556,10 +561,16 @@ function QuickExpense({
         </div>
         {!disabled ? (
           <p className="shrink-0 text-right text-[11px] text-[var(--numa-faint)]">
-            {SV.kvarIdag}
+            {overToday || remainingTodayMinor < 0 ? SV.overDagsbudget : SV.kvarIdag}
             <br />
-            <span className="font-semibold text-[var(--numa-ink)]">
-              {formatMoneyHint(remainingTodayMinor, currency)}
+            <span
+              className={`font-semibold ${
+                remainingTodayMinor < 0
+                  ? "text-[var(--numa-alarm)]"
+                  : "text-[var(--numa-ink)]"
+              }`}
+            >
+              {formatMoney(money(remainingTodayMinor, currency))}
             </span>
           </p>
         ) : null}

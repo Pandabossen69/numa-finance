@@ -1,4 +1,4 @@
-import { calculateSafeToSpend } from "@/domain/finance";
+import { calculateSafeToSpend, DEFAULT_TIMEZONE } from "@/domain/finance";
 import { calculateDayPulse } from "@/domain/gamification";
 import { money, type CurrencyCode } from "@/domain/money";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -54,6 +54,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
   return {
     mockMode: true,
     displayName: "Hugo",
+    timeZone: DEFAULT_TIMEZONE,
     hasBankTruth: true,
     primaryAccountId: "mock-bangkok-bank",
     currency: CURRENCY,
@@ -97,9 +98,22 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
   };
 }
 
-export function homeGreeting(displayName?: string, now = new Date()): string {
-  const hour = now.getHours();
+export function homeGreeting(
+  displayName?: string,
+  now = new Date(),
+  timeZone = DEFAULT_TIMEZONE,
+): string {
+  const hour = zonedHour(now, timeZone);
   const hello = hour < 11 ? "God morgon" : hour < 18 ? "Hej" : "God kväll";
   const name = displayName?.trim();
   return name ? `${hello} ${name}` : hello;
+}
+
+function zonedHour(now: Date, timeZone: string): number {
+  const formatted = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "numeric",
+    hourCycle: "h23",
+  }).format(now);
+  return Number.parseInt(formatted, 10);
 }

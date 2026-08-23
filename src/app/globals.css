@@ -500,12 +500,14 @@ body {
   display: inline-flex;
   align-items: center;
   min-height: 1.35rem;
+  max-width: 100%;
   padding: 0 0.55rem;
   border-radius: 999px;
   font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .numa-chip-mint {

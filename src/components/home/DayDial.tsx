@@ -14,6 +14,7 @@ export function DayDial({
 }) {
   const size = 220;
   const stroke = 7;
+  const usedStroke = over ? 4.5 : 7;
   const r = (size - stroke) / 2 - 2;
   const c = 2 * Math.PI * r;
   const clamped = Math.min(1.08, Math.max(0, usedRatio));
@@ -32,7 +33,7 @@ export function DayDial({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="rgba(10,26,20,0.06)"
+          stroke={over ? "rgba(12,125,104,0.16)" : "rgba(10,26,20,0.06)"}
           strokeWidth={stroke}
         />
         <circle
@@ -42,7 +43,7 @@ export function DayDial({
           r={r}
           fill="none"
           stroke={over ? "var(--numa-alarm)" : "var(--numa-accent)"}
-          strokeWidth={stroke}
+          strokeWidth={usedStroke}
           strokeLinecap="round"
           strokeDasharray={`${filled} ${track}`}
           style={

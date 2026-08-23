@@ -113,7 +113,9 @@ export function PlanPiles({
             />
           </div>
           <p className="text-sm leading-snug text-[var(--numa-muted)]">
-            {livingOk ? SV.saldoLevaFor : SV.minusMotPlanen}
+            {livingOk
+              ? SV.saldoLevaFor
+              : `Du har handlat mer än ${monthName} planerat.`}
           </p>
           {showSpent ? (
             <p className="text-xs leading-snug text-[var(--numa-faint)]">
