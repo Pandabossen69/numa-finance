@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   isProductionAppHost,
   PRODUCTION_HOST,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/site";
 
 const DISMISS_KEY = "numa.homescreenHint.v1";
+export const HOMESCREEN_BAR_DELAY_MS = 1800;
 
 function isStandaloneDisplay(): boolean {
   if (typeof window === "undefined") return true;
@@ -60,7 +61,14 @@ export function HomescreenInstallHint({
     () => false,
   );
   const [dismissedHere, setDismissedHere] = useState(false);
-  const visible = storedVisible && !dismissedHere;
+  const [barReady, setBarReady] = useState(variant !== "bar");
+  const visible = storedVisible && !dismissedHere && barReady;
+
+  useEffect(() => {
+    if (variant !== "bar") return;
+    const id = window.setTimeout(() => setBarReady(true), HOMESCREEN_BAR_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [variant]);
 
   if (!visible) return null;
 

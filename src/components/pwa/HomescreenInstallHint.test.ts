@@ -13,4 +13,10 @@ describe("HomescreenInstallHint bar", () => {
     expect(src).toContain("Dölj hemskärmstips");
     expect(src).toContain("Lägg NUMA på hemskärmen");
   });
+
+  it("delays the Hem bar so it does not steal the hero fold on cold open", () => {
+    expect(src).toContain("HOMESCREEN_BAR_DELAY_MS");
+    expect(src).toContain("1800");
+    expect(src).toContain("setBarReady");
+  });
 });

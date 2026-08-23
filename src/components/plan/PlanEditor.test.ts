@@ -19,11 +19,18 @@ describe("Plan dates and add-form", () => {
 
   it("scrolls the submit row into view and pads above the FAB when adding", () => {
     expect(src).toContain("scrollIntoView");
-    expect(src).toContain("pb-[calc(var(--numa-fab-overhang)+1.25rem)]");
+    expect(src).toContain("block: \"nearest\"");
+    expect(src).toContain(
+      "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+0.75rem)]",
+    );
+    expect(src).toContain("scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)");
   });
 
-  it("does not pull the month strip into the fade with negative margin", () => {
-    expect(src).toContain('className="numa-month-strip pb-1"');
+  it("keeps month context and fades the chip strip only when it overflows", () => {
+    expect(src).toContain("rememberPlanView");
+    expect(src).toContain("lastPlanView");
+    expect(src).toContain("MonthChipStrip");
+    expect(src).toContain("is-overflow-start");
     expect(src).not.toContain("numa-month-strip -mx-1");
   });
 });
