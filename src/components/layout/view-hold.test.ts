@@ -1,17 +1,28 @@
-import { createElement } from "react";
+import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
 import { AnalysViewLoading, HomeViewLoading, ViewLoading } from "./ViewLoading";
-import { isViewLoadingNode, shouldHoldPreviousView } from "./view-hold";
+import {
+  isViewLoadingNode,
+  resolveVisibleTab,
+  shouldHoldPreviousView,
+} from "./view-hold";
 
 describe("isViewLoadingNode", () => {
-  it("recognizes ViewLoading and the data marker", () => {
+  it("recognizes ViewLoading, Suspense, and the data marker", () => {
     expect(isViewLoadingNode(createElement(ViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(AnalysViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(true);
     expect(
       isViewLoadingNode(
         createElement("div", { "data-numa-view-loading": true }, "x"),
       ),
+    ).toBe(true);
+    expect(
+      isViewLoadingNode(createElement("div", { "aria-label": "Laddar Mer" })),
+    ).toBe(true);
+    expect(
+      isViewLoadingNode(createElement("div", { className: "numa-skel h-8" })),
     ).toBe(true);
     expect(isViewLoadingNode(createElement("div", null, "Plan"))).toBe(false);
     expect(
@@ -57,3 +68,43 @@ describe("shouldHoldPreviousView", () => {
   });
 });
 
+describe("resolveVisibleTab", () => {
+  it("shows dest cache on tab revisit so the dashboard is not remounted", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/idag",
+        heldTab: "/analys",
+        destIsTabRoot: true,
+        hasDestCache: true,
+      }),
+    ).toBe("dest");
+  });
+
+  it("holds the previous tab on a first visit", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/fota",
+        heldTab: "/plan",
+        destIsTabRoot: true,
+        hasDestCache: false,
+      }),
+    ).toBe("held");
+  });
+
+  it("does not hold Mer drill-in even when dest cache exists", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/mer",
+        heldTab: "/mer",
+        destIsTabRoot: false,
+        hasDestCache: true,
+      }),
+    ).toBe("children");
+  });
+});

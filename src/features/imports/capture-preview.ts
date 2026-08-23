@@ -2,6 +2,8 @@ import type {
   ExtractedTransactionCandidate,
   SourceObservation,
 } from "@/domain/finance";
+import { majorToMinor } from "@/domain/imports/amount-parse";
+import { resolveReceiptPaidAmountMinor } from "@/domain/imports/receipt-total";
 import type { CurrencyCode } from "@/domain/money";
 import {
   modeForObservation,
@@ -54,6 +56,58 @@ function usableRow(candidate: ExtractedTransactionCandidate): boolean {
   );
 }
 
+function hasPositiveAmount(
+  candidate: ExtractedTransactionCandidate,
+): boolean {
+  return candidate.amountMinor != null && candidate.amountMinor > 0;
+}
+
+function positiveMinor(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.round(value);
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
+  }
+  return null;
+}
+
+/** Recover a receipt total from vision payload when amount_minor was stored as 0. */
+export function amountFromRawPayload(
+  raw: Record<string, unknown> | null | undefined,
+): number | null {
+  if (!raw) return null;
+
+  const storedMinor =
+    positiveMinor(raw.suggestedAmountMinor) ??
+    positiveMinor(raw.amountMinor) ??
+    positiveMinor(raw.visionAmountMinor);
+  if (storedMinor) return storedMinor;
+
+  const fromMajor = majorToMinor(
+    (raw.amountMajor as string | number | null | undefined) ?? null,
+  );
+  const fullText = typeof raw.fullText === "string" ? raw.fullText : null;
+  return resolveReceiptPaidAmountMinor({
+    visionAmountMinor: fromMajor,
+    fullText,
+  });
+}
+
+/** Receipt notes often mention the scanned total when fingerprint is missing. */
+export function parseNotesAmountMinor(notes: string | null): number | null {
+  if (!notes) return null;
+  const match = notes.match(
+    /(\d{1,3}(?:[ \u00a0]\d{3})*|\d+)(?:[,.](\d{1,2}))?/,
+  );
+  if (!match) return null;
+  const major = Number(match[1].replace(/[\s\u00a0]/g, ""));
+  if (!Number.isFinite(major) || major <= 0) return null;
+  const frac = (match[2] ?? "00").padEnd(2, "0").slice(0, 2);
+  return major * 100 + Number(frac);
+}
+
 function toEvent(candidate: ExtractedTransactionCandidate): CapturePreviewEvent {
   return {
     candidateId: candidate.id,
@@ -90,8 +144,22 @@ export function buildCapturePreview(input: {
     (pending.length === 0 && confirmed.length > 0);
 
   const first = pending[0] ?? confirmed[0] ?? null;
-  const amountMinor = first?.amountMinor ?? null;
-  const amountFromScan = amountMinor != null;
+  const loose = input.candidates.find(hasPositiveAmount) ?? null;
+  const payloadAmount =
+    importKind === "receipt"
+      ? (input.candidates.map((c) => amountFromRawPayload(c.rawPayload)).find(
+          (n) => n != null && n > 0,
+        ) ?? null)
+      : null;
+  const notesAmount =
+    importKind === "receipt" ? parseNotesAmountMinor(input.observation.notes) : null;
+  const amountMinor =
+    first?.amountMinor ??
+    loose?.amountMinor ??
+    payloadAmount ??
+    notesAmount;
+  const amountFromScan = amountMinor != null && amountMinor > 0;
+  const receiptRow = importKind === "receipt" ? (first ?? loose ?? input.candidates[0] ?? null) : first;
   const ocrStatus: CapturePreview["ocrStatus"] = alreadyKnown
     ? "all_known"
     : pending.length > 0 || (importKind === "receipt" && amountFromScan)
@@ -104,23 +172,24 @@ export function buildCapturePreview(input: {
 
   return {
     observationId: input.observation.id,
-    candidateId: first?.id ?? null,
-    amount: amountMinor != null ? minorToInput(amountMinor) : "",
-    description: first?.description ?? "",
-    currency: first?.currency ?? input.fallbackCurrency,
+    candidateId: receiptRow?.id ?? null,
+    amount:
+      amountMinor != null && amountMinor > 0 ? minorToInput(amountMinor) : "",
+    description: receiptRow?.description ?? "",
+    currency: receiptRow?.currency ?? input.fallbackCurrency,
     ocrStatus,
-    confidence: first?.confidence ?? null,
+    confidence: receiptRow?.confidence ?? null,
     message: input.observation.notes,
     previewUrl: input.previewUrl,
     importKind,
     balanceAfterMinor: withBalance?.balanceAfterMinor ?? null,
-    fingerprint: first?.fingerprint ?? null,
+    fingerprint: receiptRow?.fingerprint ?? null,
     alreadyKnown,
     skippedOlderCount: 0,
     amountFromScan,
     direction:
-      first?.direction === "credit" || first?.direction === "debit"
-        ? first.direction
+      receiptRow?.direction === "credit" || receiptRow?.direction === "debit"
+        ? receiptRow.direction
         : null,
     events: alreadyKnown ? [] : pending.map(toEvent),
   };

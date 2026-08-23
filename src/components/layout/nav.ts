@@ -43,6 +43,28 @@ export function primaryTab(pathname: string): string | null {
   return null;
 }
 
+/**
+ * True on the tab root (Hem/Plan/Analys/Mer/Fota), not Mer drill-in.
+ * Keep-alive caches only these so /konton does not overwrite Mer.
+ */
+export function isTabRoot(pathname: string): boolean {
+  const tab = primaryTab(pathname);
+  if (!tab) return false;
+  if (tab === "/mer") return pathname === "/mer";
+  if (tab === "/fota") {
+    return (
+      pathname === "/fota" ||
+      pathname.startsWith("/fota/") ||
+      pathname.startsWith("/lagg-till")
+    );
+  }
+  return (
+    pathname === tab ||
+    pathname === "/" ||
+    (tab === "/idag" && (pathname === "/idag" || pathname.startsWith("/idag/")))
+  );
+}
+
 /** Highlight the tap target only while we are still on the page we left. */
 export function optimisticNavPath(
   pathname: string,

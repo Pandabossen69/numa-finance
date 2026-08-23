@@ -15,5 +15,7 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("confirmId");
     expect(src).toContain("setConfirmId(tx.id)");
     expect(src).not.toContain("window.confirm");
+    expect(src).toContain('event.key === "Escape"');
+    expect(src).toContain("confirmId == null || confirmId === tx.id");
   });
 });

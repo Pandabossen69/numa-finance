@@ -1,4 +1,4 @@
-import { isValidElement, type ReactNode } from "react";
+import { isValidElement, Suspense, type ReactNode } from "react";
 import {
   AnalysViewLoading,
   HomeViewLoading,
@@ -11,14 +11,42 @@ export function shouldHoldPreviousView(input: {
   destTab: string | null;
   heldTab: string | null;
 }): boolean {
-  if (!input.loading && !input.leaving) return false;
-  return Boolean(input.destTab && input.heldTab && input.destTab !== input.heldTab);
+  return resolveVisibleTab({
+    ...input,
+    destIsTabRoot: true,
+    hasDestCache: false,
+  }) === "held";
+}
+
+/**
+ * What to paint while a tab transition is in flight.
+ * - dest: cached destination (revisit — keep the heavy dashboard mounted)
+ * - held: previous tab (first visit to dest)
+ * - children: show the incoming tree (drill-in, first load, soft fallback)
+ */
+export function resolveVisibleTab(input: {
+  loading: boolean;
+  leaving: boolean;
+  destTab: string | null;
+  heldTab: string | null;
+  destIsTabRoot: boolean;
+  hasDestCache: boolean;
+}): "dest" | "held" | "children" {
+  const inFlight = input.loading || input.leaving;
+  if (!inFlight) return "children";
+  const crossTab = Boolean(
+    input.destTab && input.heldTab && input.destTab !== input.heldTab,
+  );
+  if (!crossTab) return "children";
+  if (input.destIsTabRoot && input.hasDestCache) return "dest";
+  return "held";
 }
 
 export function isViewLoadingNode(node: ReactNode): boolean {
   if (node == null || typeof node === "boolean") return false;
   if (Array.isArray(node)) return node.some(isViewLoadingNode);
   if (!isValidElement(node)) return false;
+  if (node.type === Suspense) return true;
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
@@ -28,11 +56,25 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   }
   const props = node.props as {
     "data-numa-view-loading"?: unknown;
+    "aria-label"?: unknown;
+    className?: unknown;
     children?: ReactNode;
   };
   if (
     props["data-numa-view-loading"] === true ||
     props["data-numa-view-loading"] === "true"
+  ) {
+    return true;
+  }
+  if (
+    typeof props["aria-label"] === "string" &&
+    props["aria-label"].startsWith("Laddar")
+  ) {
+    return true;
+  }
+  if (
+    typeof props.className === "string" &&
+    props.className.split(/\s+/).includes("numa-skel")
   ) {
     return true;
   }

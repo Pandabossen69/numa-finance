@@ -36,13 +36,13 @@
   /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
   --numa-nav-bar: 4.25rem;
   --numa-fab-overhang: 2.25rem;
-  --numa-shell-breathing: 4rem;
+  --numa-shell-breathing: 5.75rem;
   --numa-shell-pad-bottom: calc(
     var(--numa-nav-bar) + var(--numa-fab-overhang) + var(--numa-shell-breathing) +
       var(--numa-safe-bottom)
   );
   --numa-shell-max: 72rem;
-  --numa-content-max: 42rem;
+  --numa-content-max: 58rem;
   --background: var(--numa-bg);
   --foreground: var(--numa-ink);
   color-scheme: light;
@@ -103,13 +103,14 @@ body {
   max-width: 32rem;
 }
 
-@media (min-width: 768px) {
-  .numa-page {
-    max-width: 36rem;
-  }
+.numa-page-wide {
+  max-width: 32rem;
+}
 
+@media (min-width: 768px) {
+  .numa-page,
   .numa-page-wide {
-    max-width: 58rem;
+    max-width: var(--numa-content-max);
   }
 }
 
@@ -427,10 +428,33 @@ body {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
-  scroll-padding-inline: 1rem;
-  padding-inline: 1rem;
+  scroll-padding-inline: 1.25rem;
+  padding-inline: 0.25rem 1rem;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+}
+
+.numa-month-strip.is-overflow-end {
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.5rem),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.5rem),
+    transparent 100%
+  );
+}
+
+.numa-month-strip.is-overflow-start {
+  mask-image: linear-gradient(90deg, transparent 0, #000 1.5rem, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1.5rem, #000 100%);
+}
+
+.numa-month-strip.is-overflow-start.is-overflow-end {
   mask-image: linear-gradient(
     90deg,
     transparent 0,
@@ -597,6 +621,7 @@ body {
 .numa-expand {
   display: grid;
   grid-template-rows: 0fr;
+  overflow: hidden;
   opacity: 0;
   transition:
     grid-template-rows 200ms ease,
@@ -637,6 +662,10 @@ body {
 
 .numa-view {
   min-height: 24vh;
+}
+
+.numa-view-park {
+  display: none;
 }
 
 .numa-scope-panel {

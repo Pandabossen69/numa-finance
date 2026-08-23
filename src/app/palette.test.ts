@@ -16,12 +16,20 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-alarm")).not.toBe(token("--numa-danger"));
   });
 
-  it("fades the Plan month strip at both edges", () => {
+  it("fades the Plan month strip only on overflowing edges", () => {
     expect(css).toContain(".numa-month-strip");
+    expect(css).toContain(".numa-month-strip.is-overflow-start.is-overflow-end");
     expect(css).toMatch(/mask-image:\s*linear-gradient/);
     expect(css).toContain("transparent 0");
     expect(css).toContain("transparent 100%");
     expect(css).toContain("#000 1.5rem");
+  });
+
+  it("uses one desktop content width for Hem, Plan, Analys, Mer and Fota", () => {
+    expect(token("--numa-content-max")).toBe("58rem");
+    expect(css).toContain(".numa-page,");
+    expect(css).toContain(".numa-page-wide {");
+    expect(css).toContain("max-width: var(--numa-content-max)");
   });
 
   it("keeps status chips on one line", () => {

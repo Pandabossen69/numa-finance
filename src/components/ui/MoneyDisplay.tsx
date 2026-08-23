@@ -12,6 +12,7 @@ export function MoneyDisplay({
   compact = false,
   tone = "neutral",
   align = "center",
+  wrap = true,
 }: {
   amountMinor: number;
   currency: CurrencyCode;
@@ -20,6 +21,7 @@ export function MoneyDisplay({
   /** Color negative amounts as clay alarm when "signed" — not destroy red. */
   tone?: "neutral" | "signed";
   align?: "start" | "center" | "end";
+  wrap?: boolean;
 }) {
   const safeMinor = Number.isInteger(amountMinor)
     ? amountMinor
@@ -71,7 +73,7 @@ export function MoneyDisplay({
 
   return (
     <span
-      className={`inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 gap-y-0 ${alignClass} ${toneClass}`.trim()}
+      className={`inline-flex max-w-full items-baseline gap-x-1.5 gap-y-0 ${wrap ? "flex-wrap" : "flex-nowrap"} ${alignClass} ${toneClass}`.trim()}
       aria-label={`${amountText} ${currencyText}`}
     >
       <span className={`money ${sizeClass}`}>{amountText}</span>

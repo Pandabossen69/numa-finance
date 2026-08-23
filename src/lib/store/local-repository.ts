@@ -930,6 +930,7 @@ export async function uploadReceiptAndExtract(input: {
           importKind: importKindTag,
           labelSv: resolved.suggestedDescription,
           batchIndex: 0,
+          suggestedAmountMinor: resolved.suggestedAmountMinor,
         },
         createdAt: ts,
         updatedAt: ts,

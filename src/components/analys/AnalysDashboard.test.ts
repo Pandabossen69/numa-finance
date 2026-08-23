@@ -10,4 +10,9 @@ describe("Analys month result color", () => {
     expect(src).not.toMatch(/monthResultMinor >= 0 \? "positive" : "danger"/);
     expect(src).not.toMatch(/freeToSpendMinor >= 0 \? "positive" : "danger"/);
   });
+
+  it("restores Perioden/Månad when the dashboard remounts", () => {
+    expect(src).toContain("lastAnalysScope");
+    expect(src).toContain("rememberAnalysScope");
+  });
 });

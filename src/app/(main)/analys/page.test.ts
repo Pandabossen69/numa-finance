@@ -5,9 +5,9 @@ const page = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
 const loading = readFileSync(new URL("./loading.tsx", import.meta.url), "utf8");
 
 describe("/analys loading shell", () => {
-  it("streams an Analys-shaped skeleton instead of a blank header", () => {
-    expect(page).toContain("Suspense");
-    expect(page).toContain("AnalysViewLoading");
+  it("lets loading.tsx stream an Analys-shaped skeleton so LastViewOutlet can hold", () => {
+    expect(page).not.toContain("Suspense");
+    expect(page).toContain("AnalysDashboard");
     expect(loading).toContain("AnalysViewLoading");
   });
 });

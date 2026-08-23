@@ -1,5 +1,8 @@
+"use client";
+
 /**
  * Soft page placeholder — mint panels that match Hem/Plan/Analys layout.
+ * Client so LastViewOutlet can recognize the type across tab holds.
  * No pulse (that reads as a reload). Used by loading.tsx and LastViewOutlet.
  */
 export function ViewLoading() {

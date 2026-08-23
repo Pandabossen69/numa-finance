@@ -50,7 +50,7 @@ export default async function MerPage() {
   }
 
   return (
-    <div className="numa-page space-y-7">
+    <div className="numa-page numa-page-wide space-y-7">
       <MerPageHeader title="Mer" description={`Inloggad som ${displayName}`} />
 
       <div className="animate-rise-delay-1 space-y-6">

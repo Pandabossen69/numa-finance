@@ -182,6 +182,123 @@ describe("buildCapturePreview", () => {
     expect(preview?.events).toHaveLength(1);
   });
 
+  it("prefills a receipt total even without a fingerprint", () => {
+    const preview = buildCapturePreview({
+      observation: {
+        id: RECEIPT_ID,
+        kind: "receipt",
+        institutionHint: null,
+        status: "needs_review",
+        notes: "Totalt 249,00 inläst från kvittot",
+      },
+      candidates: [
+        candidate({
+          id: "cand-loose",
+          observationId: RECEIPT_ID,
+          amountMinor: 24900,
+          fingerprint: null,
+          description: "Kvitto",
+          balanceAfterMinor: null,
+        }),
+      ],
+      previewUrl: "https://example.test/kvitto.jpg",
+      fallbackCurrency: "THB",
+    });
+
+    expect(preview?.amount).toBe("249,00");
+    expect(preview?.amountFromScan).toBe(true);
+  });
+
+  it("prefills production Fortsätt receipts whose notes have no digits", () => {
+    const preview = buildCapturePreview({
+      observation: {
+        id: RECEIPT_ID,
+        kind: "receipt",
+        institutionHint: null,
+        status: "needs_review",
+        notes:
+          "Vi läste totalsumman (det du faktiskt betalade) — dubbelkolla innan du sparar.",
+      },
+      candidates: [
+        candidate({
+          id: "cand-prod",
+          observationId: RECEIPT_ID,
+          amountMinor: 24500,
+          fingerprint: null,
+          description: "7-Eleven",
+          balanceAfterMinor: null,
+        }),
+      ],
+      previewUrl: "https://example.test/kvitto.jpg",
+      fallbackCurrency: "THB",
+    });
+
+    expect(preview?.amount).toBe("245,00");
+    expect(preview?.amountFromScan).toBe(true);
+    expect(preview?.candidateId).toBe("cand-prod");
+    expect(preview?.description).toBe("7-Eleven");
+    expect(preview?.ocrStatus).toBe("ok");
+  });
+
+  it("recovers a receipt total from vision rawPayload when amount_minor is 0", () => {
+    const preview = buildCapturePreview({
+      observation: {
+        id: RECEIPT_ID,
+        kind: "receipt",
+        institutionHint: null,
+        status: "needs_review",
+        notes: "Belopp inläst från bilden. Dubbelkolla och spara.",
+      },
+      candidates: [
+        candidate({
+          id: "cand-payload",
+          observationId: RECEIPT_ID,
+          amountMinor: 0,
+          fingerprint: null,
+          description: "Grab",
+          balanceAfterMinor: null,
+          rawPayload: {
+            amountMajor: 189.5,
+            fullText: "Grab\nFinal total 189.50",
+            suggestedAmountMinor: 18950,
+          },
+        }),
+      ],
+      previewUrl: "https://example.test/kvitto.jpg",
+      fallbackCurrency: "THB",
+    });
+
+    expect(preview?.amount).toBe("189,50");
+    expect(preview?.amountFromScan).toBe(true);
+  });
+
+  it("reads a receipt total from notes when candidates have no amount", () => {
+    const preview = buildCapturePreview({
+      observation: {
+        id: RECEIPT_ID,
+        kind: "receipt",
+        institutionHint: null,
+        status: "needs_review",
+        notes: "Belopp 189,50 läst från kvittot",
+      },
+      candidates: [
+        candidate({
+          id: "cand-empty",
+          observationId: RECEIPT_ID,
+          amountMinor: 0,
+          fingerprint: null,
+          description: "",
+          balanceAfterMinor: null,
+        }),
+      ],
+      previewUrl: "https://example.test/kvitto.jpg",
+      fallbackCurrency: "THB",
+    });
+
+    expect(preview?.amount).toBe("189,50");
+    expect(preview?.amountFromScan).toBe(true);
+  });
+
   it("returns null without media so /fota still opens the right camera", () => {
     expect(
       buildCapturePreview({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -75,6 +75,15 @@ export function MovementsScreen({
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!confirmId) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setConfirmId(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [confirmId]);
+
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.items.filter((tx) => {
@@ -106,7 +115,7 @@ export function MovementsScreen({
   const maxCategory = data.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="numa-page space-y-7">
+    <div className="numa-page numa-page-wide space-y-7">
       <header className="animate-rise">
         <h1 className="numa-page-title">Rörelser</h1>
       </header>
@@ -337,7 +346,7 @@ export function MovementsScreen({
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
-                    {canEdit ? (
+                    {canEdit && (confirmId == null || confirmId === tx.id) ? (
                       confirmId === tx.id ? (
                         <div className="mt-1.5 flex gap-3">
                           <button

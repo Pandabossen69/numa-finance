@@ -1,4 +1,3 @@
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   MerListGroup,
   MerListRow,
@@ -21,7 +20,7 @@ export default async function InstallningarPage() {
   const supabaseReady = isSupabaseConfigured();
 
   return (
-    <div className="numa-page space-y-7 text-[var(--numa-ink)]">
+    <div className="numa-page numa-page-wide space-y-7 text-[var(--numa-ink)]">
       <MerPageHeader back title="Inställningar" />
 
       <div className="animate-rise-delay-1 space-y-6">
@@ -71,13 +70,6 @@ export default async function InstallningarPage() {
           )}
         </MerSection>
 
-        <MerSection title="Konto">
-          <MerListGroup>
-            <MerListRow className="py-3">
-              <SignOutButton />
-            </MerListRow>
-          </MerListGroup>
-        </MerSection>
       </div>
     </div>
   );

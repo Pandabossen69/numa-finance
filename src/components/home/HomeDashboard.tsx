@@ -181,17 +181,18 @@ export function HomeDashboard({
                     </p>
                   ) : null}
 
-                  <div className="numa-split border-t border-[var(--numa-border)] pt-1">
+                  <div className="numa-split relative z-[1] border-t border-[var(--numa-border)] bg-white/55 pt-1">
                     <div>
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.dagsbudget}
                       </p>
-                      <div className="mt-1.5 text-[var(--numa-ink)]">
+                      <div className="mt-1.5 min-h-[1.75rem] text-[var(--numa-ink)]">
                         <MoneyDisplay
                           amountMinor={view.dayBudgetMinor}
                           currency={currency}
                           size="md"
                           compact
+                          wrap={false}
                         />
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
@@ -204,7 +205,7 @@ export function HomeDashboard({
                         {SV.spenderatIdag}
                       </p>
                       <div
-                        className={`mt-1.5 ${
+                        className={`mt-1.5 min-h-[1.75rem] ${
                           overToday
                             ? "text-[var(--numa-alarm)]"
                             : "text-[var(--numa-ink)]"
@@ -215,6 +216,7 @@ export function HomeDashboard({
                           currency={currency}
                           size="md"
                           compact
+                          wrap={false}
                         />
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--numa-faint)]">

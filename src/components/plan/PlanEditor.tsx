@@ -27,6 +27,7 @@ import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { OverflowMenu } from "@/components/ui/OverflowMenu";
 import { SV } from "@/features/copy/labels-sv";
+import { lastPlanView, rememberPlanView } from "@/features/home/last-snapshot";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
 import {
@@ -141,8 +142,14 @@ export function PlanEditor({
     () => monthKeyFromDate(new Date(), timeZone),
     [timeZone],
   );
-  const [viewYear, setViewYear] = useState(() => yearFromMonthKey(currentMonthKey));
-  const [monthKey, setMonthKey] = useState(currentMonthKey);
+  const [viewYear, setViewYear] = useState(() => {
+    const remembered = lastPlanView();
+    return remembered?.viewYear ?? yearFromMonthKey(currentMonthKey);
+  });
+  const [monthKey, setMonthKey] = useState(
+    () => lastPlanView()?.monthKey ?? currentMonthKey,
+  );
+  rememberPlanView({ monthKey, viewYear });
   const [localItems, setLocalItems] = useState(items);
   const incomingStamp = stampPlanItems(items);
   const [itemsStamp, setItemsStamp] = useState(incomingStamp);
@@ -432,7 +439,7 @@ export function PlanEditor({
           )}
         </div>
 
-        <div className="numa-month-strip pb-1">
+        <MonthChipStrip>
           {monthKeys.map((key) => {
             const livingDot = (extraByMonth[key] ?? 0) > 0;
             const saveDot = (savingsByMonth[key] ?? 0) > 0;
@@ -463,7 +470,7 @@ export function PlanEditor({
               </button>
             );
           })}
-        </div>
+        </MonthChipStrip>
 
         <PlanPiles
           extra={extra}
@@ -1284,6 +1291,12 @@ function InlineAdd({
 }) {
   const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
   const submitRowRef = useRef<HTMLDivElement>(null);
+  const [fieldsMounted, setFieldsMounted] = useState(open);
+  if (open && !fieldsMounted) {
+    setFieldsMounted(true);
+  }
+  // Button and fields never share a frame — even on the first open paint.
+  const showFields = open || fieldsMounted;
 
   useEffect(() => {
     if (!open) return;
@@ -1291,7 +1304,7 @@ function InlineAdd({
     if (!node) return;
     const id = window.setTimeout(() => {
       node.scrollIntoView({
-        block: "end",
+        block: "nearest",
         inline: "nearest",
         behavior: "smooth",
       });
@@ -1299,22 +1312,28 @@ function InlineAdd({
     return () => window.clearTimeout(id);
   }, [open]);
 
+  useEffect(() => {
+    if (open || !fieldsMounted) return;
+    const id = window.setTimeout(() => setFieldsMounted(false), 280);
+    return () => window.clearTimeout(id);
+  }, [open, fieldsMounted]);
+
   return (
     <div
       className={`mt-auto border-t border-[var(--numa-border)] pt-4 ${
-        open ? "pb-[calc(var(--numa-fab-overhang)+1.25rem)]" : ""
+        open
+          ? "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)]"
+          : ""
       }`}
     >
-      {!open ? (
-        <button
-          type="button"
-          className="numa-btn numa-btn-soft w-full"
-          onClick={onOpen}
-        >
-          {collapsedLabel}
-        </button>
-      ) : null}
-      <div className={`numa-expand ${open ? "is-open" : ""}`}>
+      {showFields ? (
+      <div
+        className={`numa-expand ${open ? "is-open" : ""}`}
+        onTransitionEnd={(event) => {
+          if (event.propertyName !== "grid-template-rows") return;
+          if (!open) setFieldsMounted(false);
+        }}
+      >
         <div className="numa-expand-inner space-y-2">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
         <input
@@ -1349,7 +1368,10 @@ function InlineAdd({
           />
         )}
       </div>
-      <div ref={submitRowRef} className="flex gap-2">
+      <div
+        ref={submitRowRef}
+        className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2"
+      >
         <button
           type="button"
           disabled={disabled}
@@ -1369,6 +1391,66 @@ function InlineAdd({
       </div>
         </div>
       </div>
+      ) : (
+        <button
+          type="button"
+          className="numa-btn numa-btn-soft w-full"
+          onClick={onOpen}
+        >
+          {collapsedLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function MonthChipStrip({ children }: { children: ReactNode }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [overflow, setOverflow] = useState({ start: false, end: false });
+
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+
+    function sync() {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if (max <= 2) {
+        setOverflow({ start: false, end: false });
+        return;
+      }
+      setOverflow({
+        start: el.scrollLeft > 2,
+        end: el.scrollLeft < max - 2,
+      });
+    }
+
+    sync();
+    node.addEventListener("scroll", sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(node);
+    return () => {
+      node.removeEventListener("scroll", sync);
+      ro.disconnect();
+    };
+  }, []);
+
+  const fade =
+    overflow.start && overflow.end
+      ? "is-overflow-start is-overflow-end"
+      : overflow.start
+        ? "is-overflow-start"
+        : overflow.end
+          ? "is-overflow-end"
+          : "";
+
+  return (
+    <div
+      ref={scrollerRef}
+      className={`numa-month-strip pb-1 ${fade}`.trim()}
+    >
+      {children}
     </div>
   );
 }

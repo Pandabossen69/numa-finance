@@ -73,7 +73,11 @@ export function PlanPiles({
         : SV.saldoLevaFor;
 
   const savingsChip =
-    savingsThisMonthMinor > 0 ? SV.vaxer : savingsTotalMinor > 0 ? "Avsatt" : "Tomt";
+    savingsThisMonthMinor > 0
+      ? SV.vaxer
+      : savingsTotalMinor > 0
+        ? "Avsatt"
+        : "Inte ännu";
 
   return (
     <div className="space-y-4">
@@ -107,15 +111,16 @@ export function PlanPiles({
             <MoneyDisplay
               amountMinor={piles.livingMinor}
               currency={currency}
-              size="lg"
+              size="md"
               compact
               align="start"
+              wrap={false}
             />
           </div>
-          <p className="text-sm leading-snug text-[var(--numa-muted)]">
+          <p className="min-h-[2.5rem] text-sm leading-snug text-[var(--numa-muted)]">
             {livingOk
               ? SV.saldoLevaFor
-              : `Du har handlat mer än ${monthName} planerat.`}
+              : `Mer än ${monthName} planerat.`}
           </p>
           {showSpent ? (
             <p className="text-xs leading-snug text-[var(--numa-faint)]">
@@ -192,14 +197,15 @@ export function PlanPiles({
             <MoneyDisplay
               amountMinor={savingsTotalMinor}
               currency={currency}
-              size="lg"
+              size="md"
               compact
               align="start"
+              wrap={false}
             />
           </div>
           <p className="text-sm leading-snug text-[var(--numa-muted)]">
             {savingsTotalMinor <= 0
-              ? "Inget avsatt än"
+              ? "Sätt av det som inte ska levas upp."
               : savingsThisMonthMinor <= 0
                 ? "Sparat i tidigare månader"
                 : savingsTotalMinor === savingsThisMonthMinor
@@ -218,7 +224,11 @@ export function PlanPiles({
           <div className="numa-pile-meter" aria-hidden>
             <i
               style={{
-                transform: `scaleX(${Math.max(0.04, savingsFill || (savingsTotalMinor > 0 ? 0.22 : 0.04))})`,
+                transform: `scaleX(${
+                  savingsTotalMinor > 0
+                    ? Math.max(0.08, savingsFill || 0.22)
+                    : 0
+                })`,
               }}
             />
           </div>
@@ -243,7 +253,7 @@ export function PlanPiles({
                 inputMode="decimal"
                 value={savingsAmount}
                 onChange={(e) => onSavingsAmount(e.target.value)}
-                placeholder="Belopp"
+                placeholder="t.ex. 2 000"
                 aria-label={`Sparande i ${monthName}`}
                 className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-white px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
               />
