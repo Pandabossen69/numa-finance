@@ -149,7 +149,7 @@ export function revertMonthSavings(
   tempId: string | undefined,
   timeZone: string,
 ): PlanItem[] {
-  let next = tempId ? removeItemById(items, tempId) : items;
+  const next = tempId ? removeItemById(items, tempId) : items;
   const current = findMonthSavings(next, monthKey, timeZone);
   if (previous) {
     if (current) {
