@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
 
 const DISMISS_KEY = "numa.homescreenHint.v1";
@@ -14,6 +14,26 @@ function isStandaloneDisplay(): boolean {
   return mq || iosStandalone;
 }
 
+function subscribeHomescreenHint(onStoreChange: () => void) {
+  const mq = window.matchMedia("(display-mode: standalone)");
+  mq.addEventListener("change", onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    mq.removeEventListener("change", onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
+function getHomescreenHintVisible(dismissible: boolean): boolean {
+  try {
+    if (isStandaloneDisplay()) return false;
+    if (dismissible && localStorage.getItem(DISMISS_KEY) === "1") return false;
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Shown to every account until NUMA is on the home screen (or dismissed).
  * Always points at the shared production URL.
@@ -25,17 +45,13 @@ export function HomescreenInstallHint({
   variant?: "card" | "compact";
   dismissible?: boolean;
 }) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    try {
-      if (isStandaloneDisplay()) return;
-      if (dismissible && localStorage.getItem(DISMISS_KEY) === "1") return;
-      setVisible(true);
-    } catch {
-      setVisible(true);
-    }
-  }, [dismissible]);
+  const storedVisible = useSyncExternalStore(
+    subscribeHomescreenHint,
+    () => getHomescreenHintVisible(dismissible),
+    () => false,
+  );
+  const [dismissedHere, setDismissedHere] = useState(false);
+  const visible = storedVisible && !dismissedHere;
 
   if (!visible) return null;
 
@@ -45,7 +61,7 @@ export function HomescreenInstallHint({
     } catch {
       // ignore
     }
-    setVisible(false);
+    setDismissedHere(true);
   }
 
   if (variant === "compact") {

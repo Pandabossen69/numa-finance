@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DayDial } from "@/components/home/DayDial";
@@ -20,6 +20,7 @@ import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { homeGreeting } from "@/features/home/mock-snapshot";
+import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
@@ -33,10 +34,10 @@ export function HomeDashboard({
   snap: HomeSnapshot | null;
   error?: string | null;
 }) {
-  const [deltaSpent, setDeltaSpent] = useState(0);
-  useEffect(() => {
-    setDeltaSpent(0);
-  }, [snap?.todaySpendingMinor, snap?.remainingTodayMinor, snap?.remainingFreeMinor]);
+  const snapResetKey = snap
+    ? `${snap.todaySpendingMinor}:${snap.remainingTodayMinor}:${snap.remainingFreeMinor}`
+    : "none";
+  const [deltaSpent, setDeltaSpent] = useValueForKey(0, snapResetKey);
 
   if (error || !snap) {
     return (

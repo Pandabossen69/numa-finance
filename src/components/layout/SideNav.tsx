@@ -2,17 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
-import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
+import {
+  PRIMARY_NAV,
+  isNavActive,
+  optimisticNavPath,
+} from "@/components/layout/nav";
 
 export function SideNav({ displayName }: { displayName: string }) {
   const pathname = usePathname();
-  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
-
-  useEffect(() => {
-    setOptimisticHref(null);
-  }, [pathname]);
+  const [pending, setPending] = useState<{
+    href: string;
+    fromPath: string;
+  } | null>(null);
+  const highlightPath = optimisticNavPath(pathname, pending);
 
   return (
     <aside className="hidden w-56 shrink-0 md:block">
@@ -29,15 +33,13 @@ export function SideNav({ displayName }: { displayName: string }) {
 
         <nav className="flex flex-1 flex-col gap-0.5" aria-label="Sido­navigering">
           {PRIMARY_NAV.map((item) => {
-            const active = optimisticHref
-              ? isNavActive(optimisticHref, item.href)
-              : isNavActive(pathname, item.href);
+            const active = isNavActive(highlightPath, item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 prefetch
-                onClick={() => setOptimisticHref(item.href)}
+                onClick={() => setPending({ href: item.href, fromPath: pathname })}
                 className={`numa-press relative rounded-2xl px-1 py-3 ${
                   active
                     ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(12,125,104,0.16)]"

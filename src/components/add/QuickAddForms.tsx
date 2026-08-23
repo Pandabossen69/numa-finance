@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCashWithdrawalAction,
@@ -18,6 +18,29 @@ export type ShellAccount = {
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 const LAST_CATEGORY_KEY = "numa.lastExpenseCategory";
+const DEFAULT_CATEGORY: (typeof CATEGORIES)[number] = "Mat";
+
+function readLastExpenseCategory(): string {
+  try {
+    const saved = localStorage.getItem(LAST_CATEGORY_KEY);
+    if (saved && (CATEGORIES as readonly string[]).includes(saved)) {
+      return saved;
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_CATEGORY;
+}
+
+function subscribeLastExpenseCategory(onStoreChange: () => void) {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === LAST_CATEGORY_KEY || event.key === null) {
+      onStoreChange();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  return () => window.removeEventListener("storage", onStorage);
+}
 
 type Mode = "expense" | "income" | "transfer" | "cash";
 
@@ -101,21 +124,16 @@ function ExpenseForm({
 }) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<string>("Mat");
+  const storedCategory = useSyncExternalStore(
+    subscribeLastExpenseCategory,
+    readLastExpenseCategory,
+    () => DEFAULT_CATEGORY,
+  );
+  const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
+  const category = categoryOverride ?? storedCategory;
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LAST_CATEGORY_KEY);
-      if (saved && (CATEGORIES as readonly string[]).includes(saved)) {
-        setCategory(saved);
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
 
   return (
     <form
@@ -152,7 +170,7 @@ function ExpenseForm({
           <button
             key={c}
             type="button"
-            onClick={() => setCategory(c)}
+            onClick={() => setCategoryOverride(c)}
             className={`numa-press min-h-10 rounded-full px-3 text-sm ${
               category === c
                 ? "bg-[var(--numa-ink)] font-semibold text-white"

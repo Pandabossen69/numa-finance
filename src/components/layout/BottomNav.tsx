@@ -2,23 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
+import { useState } from "react";
+import {
+  PRIMARY_NAV,
+  isNavActive,
+  optimisticNavPath,
+  type NavIconName,
+} from "@/components/layout/nav";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const [optimisticHref, setOptimisticHref] = useState<string | null>(null);
-
-  useEffect(() => {
-    setOptimisticHref(null);
-  }, [pathname]);
+  const [pending, setPending] = useState<{
+    href: string;
+    fromPath: string;
+  } | null>(null);
+  const highlightPath = optimisticNavPath(pathname, pending);
 
   const left = PRIMARY_NAV.slice(0, 2);
   const right = PRIMARY_NAV.slice(2);
 
   function activeFor(href: string) {
-    if (optimisticHref) return isNavActive(optimisticHref, href);
-    return isNavActive(pathname, href);
+    return isNavActive(highlightPath, href);
+  }
+
+  function onIntent(href: string) {
+    setPending({ href, fromPath: pathname });
   }
 
   return (
@@ -35,14 +43,14 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            onIntent={() => setOptimisticHref(tab.href)}
+            onIntent={() => onIntent(tab.href)}
           />
         ))}
         <div className="flex flex-col items-center justify-end gap-0.5 pb-0.5">
           <Link
             href="/fota"
             prefetch
-            onClick={() => setOptimisticHref("/fota")}
+            onClick={() => onIntent("/fota")}
             className="numa-press relative -mt-7 flex h-[3.65rem] w-[3.65rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white ring-[5px] ring-[var(--numa-nav)] shadow-[0_12px_26px_rgba(12,125,104,0.38)]"
             aria-label="Fota eller lägg till"
           >
@@ -59,7 +67,7 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            onIntent={() => setOptimisticHref(tab.href)}
+            onIntent={() => onIntent(tab.href)}
           />
         ))}
       </div>
