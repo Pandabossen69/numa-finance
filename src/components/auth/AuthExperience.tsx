@@ -3,6 +3,11 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signInAction, signUpAction } from "@/features/auth/actions";
+import {
+  EMAIL_INVALID_MESSAGE,
+  isPlausibleEmail,
+  swedishEmailConstraintMessage,
+} from "@/domain/identity/email";
 
 type Screen = "welcome" | "login" | "signup-email" | "signup-password";
 
@@ -83,8 +88,8 @@ export function AuthExperience() {
             onBack={() => go("welcome")}
             onEmail={setEmail}
             onContinue={() => {
-              if (!email.trim() || !email.includes("@")) {
-                setError("Ange en giltig e-postadress");
+              if (!isPlausibleEmail(email)) {
+                setError(EMAIL_INVALID_MESSAGE);
                 return;
               }
               go("signup-password");
@@ -264,7 +269,14 @@ function SignupEmailScreen({
         </p>
       </header>
 
-      <div className="mt-8 flex flex-1 flex-col">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onContinue();
+        }}
+        className="mt-8 flex flex-1 flex-col"
+        noValidate
+      >
         <Field
           label="E-post"
           type="email"
@@ -277,11 +289,7 @@ function SignupEmailScreen({
         {error ? <div className="mt-3"><ErrorText>{error}</ErrorText></div> : null}
 
         <div className="mt-auto space-y-4 pt-10">
-          <PrimaryButton
-            type="button"
-            disabled={!email.trim()}
-            onClick={onContinue}
-          >
+          <PrimaryButton disabled={!email.trim()}>
             Fortsätt
           </PrimaryButton>
           <p className="text-center text-sm text-[var(--numa-muted)]">
@@ -295,7 +303,7 @@ function SignupEmailScreen({
             </button>
           </p>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
@@ -404,6 +412,11 @@ function StepDots({ current, total }: { current: number; total: number }) {
   );
 }
 
+function applySwedishEmailValidity(input: HTMLInputElement) {
+  input.setCustomValidity("");
+  input.setCustomValidity(swedishEmailConstraintMessage(input.validity));
+}
+
 function Field({
   label,
   type,
@@ -421,6 +434,8 @@ function Field({
   autoComplete?: string;
   autoFocus?: boolean;
 }) {
+  const isEmail = type === "email";
+
   return (
     <label className="block">
       <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
@@ -428,8 +443,17 @@ function Field({
       </span>
       <input
         type={type}
+        inputMode={isEmail ? "email" : undefined}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          if (isEmail) applySwedishEmailValidity(e.currentTarget);
+          onChange(e.target.value);
+        }}
+        onInvalid={
+          isEmail
+            ? (e) => applySwedishEmailValidity(e.currentTarget)
+            : undefined
+        }
         placeholder={placeholder}
         autoComplete={autoComplete}
         autoFocus={autoFocus}
