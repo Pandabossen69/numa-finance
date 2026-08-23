@@ -31,3 +31,12 @@ export function isNavActive(pathname: string, href: string): boolean {
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
+
+/** Highlight the tap target only while we are still on the page we left. */
+export function optimisticNavPath(
+  pathname: string,
+  pending: { href: string; fromPath: string } | null,
+): string {
+  if (pending && pending.fromPath === pathname) return pending.href;
+  return pathname;
+}
