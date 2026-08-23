@@ -18,6 +18,12 @@ describe("isViewLoadingNode", () => {
         createElement("div", { "data-numa-view-loading": true }, "x"),
       ),
     ).toBe(true);
+    expect(
+      isViewLoadingNode(createElement("div", { "aria-label": "Laddar Mer" })),
+    ).toBe(true);
+    expect(
+      isViewLoadingNode(createElement("div", { className: "numa-skel h-8" })),
+    ).toBe(true);
     expect(isViewLoadingNode(createElement("div", null, "Plan"))).toBe(false);
     expect(
       isViewLoadingNode(

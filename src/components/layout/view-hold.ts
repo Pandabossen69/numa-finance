@@ -56,11 +56,25 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   }
   const props = node.props as {
     "data-numa-view-loading"?: unknown;
+    "aria-label"?: unknown;
+    className?: unknown;
     children?: ReactNode;
   };
   if (
     props["data-numa-view-loading"] === true ||
     props["data-numa-view-loading"] === "true"
+  ) {
+    return true;
+  }
+  if (
+    typeof props["aria-label"] === "string" &&
+    props["aria-label"].startsWith("Laddar")
+  ) {
+    return true;
+  }
+  if (
+    typeof props.className === "string" &&
+    props.className.split(/\s+/).includes("numa-skel")
   ) {
     return true;
   }
