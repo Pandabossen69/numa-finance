@@ -11,6 +11,7 @@ const KILL_FLAG = "numa.swKill.v8";
 export default function LagaPage() {
   const [status, setStatus] = useState("Rensar gammal cache…");
   const [ready, setReady] = useState(false);
+  const [cacheBust] = useState(() => Date.now());
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +109,7 @@ export default function LagaPage() {
             Öppna production (rätt länk)
           </a>
           <a
-            href={`/mer?r=${Date.now()}`}
+            href={`/mer?r=${cacheBust}`}
             style={{
               display: "flex",
               minHeight: 48,
@@ -125,7 +126,7 @@ export default function LagaPage() {
             Öppna Mer-menyn här
           </a>
           <a
-            href={`/idag?r=${Date.now()}`}
+            href={`/idag?r=${cacheBust}`}
             style={{
               display: "flex",
               minHeight: 48,

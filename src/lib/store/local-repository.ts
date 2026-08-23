@@ -1109,7 +1109,7 @@ export async function confirmReceiptExpense(
       ? await getAccount(input.accountId)
       : null;
     // Bank-app EUR must not land on Hem's THB account just because UI passed it.
-    let account =
+    const account =
       accountFromInput &&
       (!isBankAppBatch || accountFromInput.currency === batchCurrency)
         ? accountFromInput

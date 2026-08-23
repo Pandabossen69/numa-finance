@@ -47,7 +47,6 @@ export function RepairAppButton({ autoStart = false }: { autoStart?: boolean }) 
     if (!autoStart) return;
     runRepair();
     // intentionally once on mount when autoStart
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
   return (
