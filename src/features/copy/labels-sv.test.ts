@@ -11,4 +11,10 @@ describe("Swedish money labels", () => {
     expect(SV.alltINuma.toLowerCase()).not.toMatch(/allt i numa/);
     expect(SV.kvarIManadenPlan).toMatch(/plan/i);
   });
+
+  it("keeps Analys scope labels short and Swedish", () => {
+    expect(SV.perioden).toBe("Perioden");
+    expect(SV.manad).toBe("Månad");
+    expect(SV.saRaknarNuma).toBe("Så räknar NUMA");
+  });
 });
