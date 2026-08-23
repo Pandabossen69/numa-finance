@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -66,6 +66,30 @@ export function ReceiptCaptureFlow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
+
+  useEffect(() => {
+    if (initialPreview) {
+      setPreview(initialPreview);
+      setMode(
+        initialPreview.importKind !== "unknown"
+          ? initialPreview.importKind
+          : initialMode,
+      );
+      setAmountEditable(
+        initialPreview.importKind !== "bank_sms" &&
+          initialPreview.importKind !== "bank_app",
+      );
+      setError(null);
+      setScanning(false);
+      return;
+    }
+    setPreview(null);
+    setMode(initialMode);
+    setAmountEditable(false);
+    // initialPreview is identified by resumeKey — do not reset on new object identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resume payload is keyed
+  }, [resumeKey, initialMode]);
 
   const roomBefore = Math.max(0, remainingTodayMinor);
 

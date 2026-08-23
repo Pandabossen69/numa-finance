@@ -9,5 +9,6 @@ describe("/fota resume", () => {
     expect(src).toContain("loadCaptureResume");
     expect(src).toContain("initialPreview");
     expect(src).toContain("resume?.mode");
+    expect(src).toContain("obs:${observationId}");
   });
 });

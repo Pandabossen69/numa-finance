@@ -64,6 +64,11 @@ export default async function FotaPage({
         </div>
       ) : (
         <ReceiptCaptureFlow
+          key={
+            observationId
+              ? `obs:${observationId}`
+              : `mode:${initialMode}`
+          }
           accountId={preferredAccountId}
           accounts={accounts}
           remainingTodayMinor={data.remainingTodayMinor}
