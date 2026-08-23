@@ -9,7 +9,7 @@ import {
   dayOfMonthFromIso,
   dueDateInMonth,
   importableFixedExpenses,
-  labelDayOfMonthSv,
+  formatIsoDateOnlySv,
   formatListDateSv,
   labelMonthNameSv,
   monthKeyFromDate,
@@ -76,6 +76,37 @@ function isoToDateInput(iso: string | null): string {
 function labelIncomeDateSv(iso: string | null, timeZone: string): string {
   if (!iso) return "Datum saknas";
   return formatListDateSv(iso, timeZone);
+}
+
+function PlanDateField({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="relative min-h-11 min-w-0">
+      <div
+        aria-hidden
+        className="pointer-events-none flex min-h-11 items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+      >
+        <span className={value ? "font-medium" : "text-[var(--numa-faint)]"}>
+          {value ? formatIsoDateOnlySv(value) : "ÅÅÅÅ-MM-DD"}
+        </span>
+      </div>
+      <input
+        type="date"
+        lang="sv-SE"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      />
+    </div>
+  );
 }
 
 function parsePlanAmount(raw: string): number | { error: string } {
@@ -401,7 +432,7 @@ export function PlanEditor({
           )}
         </div>
 
-        <div className="numa-month-strip -mx-1 px-1 pb-1">
+        <div className="numa-month-strip pb-1">
           {monthKeys.map((key) => {
             const livingDot = (extraByMonth[key] ?? 0) > 0;
             const saveDot = (savingsByMonth[key] ?? 0) > 0;
@@ -753,8 +784,8 @@ export function PlanEditor({
             }
             subtitle={(item) =>
               item.nextDueAt
-                ? labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))
-                : "Dag saknas"
+                ? formatListDateSv(item.nextDueAt, timeZone)
+                : "Datum saknas"
             }
             pendingId={
               busy?.startsWith("edit:") || busy?.startsWith("delete:")
@@ -1102,11 +1133,10 @@ function PlanRows({
                 className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
               />
               {editExtraType === "date" ? (
-                <input
-                  type="date"
+                <PlanDateField
                   value={editExtra}
-                  onChange={(e) => onEditExtra(e.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+                  onChange={onEditExtra}
+                  ariaLabel="Datum"
                 />
               ) : (
                 <input
@@ -1253,8 +1283,28 @@ function InlineAdd({
   onSubmit: () => void;
 }) {
   const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
+  const submitRowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const node = submitRowRef.current;
+    if (!node) return;
+    const id = window.setTimeout(() => {
+      node.scrollIntoView({
+        block: "end",
+        inline: "nearest",
+        behavior: "smooth",
+      });
+    }, 220);
+    return () => window.clearTimeout(id);
+  }, [open]);
+
   return (
-    <div className="mt-auto border-t border-[var(--numa-border)] pt-4">
+    <div
+      className={`mt-auto border-t border-[var(--numa-border)] pt-4 ${
+        open ? "pb-[calc(var(--numa-fab-overhang)+1.25rem)]" : ""
+      }`}
+    >
       {!open ? (
         <button
           type="button"
@@ -1281,12 +1331,10 @@ function InlineAdd({
           className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         {extraType === "date" ? (
-          <input
-            type="date"
+          <PlanDateField
             value={extra}
-            onChange={(e) => onExtra(e.target.value)}
-            aria-label={extraLabel}
-            className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+            onChange={onExtra}
+            ariaLabel={extraLabel}
           />
         ) : (
           <input
@@ -1301,7 +1349,7 @@ function InlineAdd({
           />
         )}
       </div>
-      <div className="flex gap-2">
+      <div ref={submitRowRef} className="flex gap-2">
         <button
           type="button"
           disabled={disabled}

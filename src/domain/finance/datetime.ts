@@ -245,3 +245,17 @@ export function formatListDateSv(
       : {}),
   });
 }
+
+/** Calendar `YYYY-MM-DD` as `28 aug.` — no US locale, no timezone shift. */
+export function formatIsoDateOnlySv(isoDate: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
+  if (!match) return isoDate;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleString("sv-SE", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+  });
+}

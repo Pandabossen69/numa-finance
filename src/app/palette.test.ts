@@ -21,12 +21,22 @@ describe("NUMA vision palette", () => {
     expect(css).toMatch(/mask-image:\s*linear-gradient/);
     expect(css).toContain("transparent 0");
     expect(css).toContain("transparent 100%");
+    expect(css).toContain("#000 1.5rem");
   });
 
   it("keeps status chips on one line", () => {
     const chip = css.slice(css.indexOf(".numa-chip {"), css.indexOf(".numa-chip-mint"));
     expect(chip).toContain("white-space: nowrap");
     expect(chip).toContain("flex-shrink: 0");
+  });
+
+  it("keeps pile meters for overspend on clay, not destroy red", () => {
+    const alarm = css.slice(
+      css.indexOf(".numa-pile-meter > i.is-alarm"),
+      css.indexOf(".numa-year-dots"),
+    );
+    expect(alarm).toContain("var(--numa-alarm)");
+    expect(alarm).not.toContain("var(--numa-danger)");
   });
 
   it("defines shell bottom padding from nav, FAB overhang, and safe-area", () => {

@@ -3,6 +3,7 @@ import {
   calendarDaysBetween,
   earliestInstant,
   formatCountSv,
+  formatIsoDateOnlySv,
   formatListDateSv,
   formatRelativeVerificationSv,
   isSameZonedDay,
@@ -152,5 +153,13 @@ describe("formatListDateSv", () => {
     expect(label.toLowerCase()).toMatch(/aug/);
     expect(label).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/);
     expect(label).toMatch(/23/);
+  });
+});
+
+describe("formatIsoDateOnlySv", () => {
+  it("formats a calendar date as Swedish short month", () => {
+    expect(formatIsoDateOnlySv("2026-08-28").toLowerCase()).toMatch(/28/);
+    expect(formatIsoDateOnlySv("2026-08-28").toLowerCase()).toMatch(/aug/);
+    expect(formatIsoDateOnlySv("2026-08-28")).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/);
   });
 });
