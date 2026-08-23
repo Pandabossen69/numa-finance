@@ -273,7 +273,7 @@ function TransferForm({
   if (accounts.length < 2) {
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Lägg till ett till saldo under Mer → Mina saldon för att kunna flytta
+        Lägg till ett till saldo under Mer → Saldo för att kunna flytta
         pengar mellan konton.
       </p>
     );
@@ -359,7 +359,7 @@ function CashForm({
   if (cashAccounts.length === 0) {
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Skapa först ett saldo av typen Kontanter under Mer → Mina saldon. Annars
+        Skapa först ett saldo av typen Kontanter under Mer → Saldo. Annars
         försvinner uttaget i modellen.
       </p>
     );
