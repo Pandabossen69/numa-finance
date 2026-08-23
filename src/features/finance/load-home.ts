@@ -52,6 +52,7 @@ export type HomeSnapshot = {
   extraSaldoDrawnMinor: number;
   extraSaldoHint: string | null;
   extraCarriedInMinor: number;
+  /** Calendar-month plan leftover minus spent (+ extra). Not bank cash. */
   livingSaldoMinor: number;
   savingsTotalMinor: number;
   wealthTotalMinor: number;

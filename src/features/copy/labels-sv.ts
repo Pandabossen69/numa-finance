@@ -7,6 +7,12 @@
  * - Spenderat idag: confirmed expenses this calendar day (inkl. bank-SMS)
  * - Kvar i perioden: free money left for the whole pay cycle
  * - Spenderat i perioden: spending since cycle start (inkl. bank-SMS)
+ *
+ * Vocabulary (cash vs plan — do not mix):
+ * - Saldo / På kontot: verified bank / calculated account balance
+ * - Mot planen: calendar-month plan leftover minus actual spend (+ extra)
+ * - Plan + sparande: mot planen + avsatt sparande (not cash on hand)
+ * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
  */
 export const SV = {
   kvarIdag: "Kvar idag",
@@ -17,13 +23,17 @@ export const SV = {
   extraSaldo: "Extra saldo",
   extraMed: "Extra med",
   iManaden: "I månaden",
-  alltINuma: "Allt i NUMA",
+  alltINuma: "Plan + sparande",
   sparandeTotalt: "Sparat i NUMA",
-  overskottHittills: "Överskott hittills",
+  overskottHittills: "Överskott mot planen",
   minusMotPlanen: "Minus mot planen",
+  motPlanen: "Mot planen",
+  kvarIManadenPlan: "Kvar i månaden (plan)",
+  planOchSparande: "Plan och sparande",
   spenderatIManaden: "Spenderat i månaden",
   sparande: "Sparande",
   saldo: "Saldo",
+  paKontot: "På kontot",
   saldoLevaFor: "Att leva för",
   sparandeAvsatt: "Ligger avsatt",
   vaxer: "Växer",

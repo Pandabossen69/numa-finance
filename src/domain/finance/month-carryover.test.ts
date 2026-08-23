@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CanonicalTransaction, PlanItem } from "./types";
 import {
   extraSaldoHintSv,
+  livingVsPlanHintSv,
   monthLeftoverHintSv,
   monthLivingSaldoMinor,
   monthPileBreakdown,
@@ -9,6 +10,7 @@ import {
   projectExtraSaldo,
   projectExtraSaldoSeries,
   spendingByMonthKey,
+  type ExtraSaldoView,
 } from "./month-carryover";
 
 const tz = "Asia/Bangkok";
@@ -280,10 +282,78 @@ describe("month extra saldo carry-over", () => {
     expect(series[2]).toEqual(oct);
   });
 
-  it("keeps living saldo and savings as two piles that sum to allt i NUMA", () => {
+  it("keeps living pile and savings as two piles that sum to plan + sparande", () => {
     const living = 40_000_00;
     const savings = 50_000_00;
     expect(planWealthTotalMinor(living, savings)).toBe(90_000_00);
     expect(planWealthTotalMinor(-10_000_00, 50_000_00)).toBe(40_000_00);
+  });
+
+  it("QA augusti: plan leftover minus spent is mot planen, not bank cash", () => {
+    const items = [
+      item({
+        name: "Lön",
+        kind: "expected",
+        amountMinor: 134_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Utgifter",
+        kind: "mandatory",
+        amountMinor: 81_350_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
+      }),
+    ];
+    const aug = projectExtraSaldo({
+      planItems: items,
+      spendingByMonthKey: { "2026-08": 119_546_28 },
+      monthKey: "2026-08",
+      currentMonthKey: "2026-08",
+      timeZone: tz,
+    });
+    expect(aug.planFreeMinor).toBe(52_650_00);
+    expect(aug.spentMinor).toBe(119_546_28);
+    expect(monthLivingSaldoMinor(aug)).toBe(-66_896_28);
+    expect(livingVsPlanHintSv(aug)).toBe(
+      "Kvar i månaden (plan) minus spenderat i månaden",
+    );
+  });
+
+  it("living pile is plan leftover minus spent plus extra — not bank cash", () => {
+    // Production QA (aug 2026): kvar i månaden 52 650 − spenderat 119 546,28.
+    const view: ExtraSaldoView = {
+      monthKey: "2026-08",
+      planFreeMinor: 52_650_00,
+      spentMinor: 119_546_28,
+      monthResultMinor: 52_650_00 - 119_546_28,
+      carriedInMinor: 0,
+      drawnMinor: 0,
+      extraSaldoMinor: 0,
+      nextMonthExtraMinor: 0,
+    };
+    expect(view.monthResultMinor).toBe(-66_896_28);
+    expect(monthLivingSaldoMinor(view)).toBe(-66_896_28);
+    expect(monthLivingSaldoMinor(view)).toBe(
+      view.planFreeMinor - view.spentMinor + view.carriedInMinor,
+    );
+    expect(livingVsPlanHintSv(view)).toBe(
+      "Kvar i månaden (plan) minus spenderat i månaden",
+    );
+  });
+
+  it("living pile adds extra carried in and names the formula", () => {
+    const view: ExtraSaldoView = {
+      monthKey: "2026-09",
+      planFreeMinor: 25_000_00,
+      spentMinor: 32_000_00,
+      monthResultMinor: -7_000_00,
+      carriedInMinor: 15_000_00,
+      drawnMinor: 7_000_00,
+      extraSaldoMinor: 8_000_00,
+      nextMonthExtraMinor: 8_000_00,
+    };
+    expect(monthLivingSaldoMinor(view)).toBe(8_000_00);
+    expect(livingVsPlanHintSv(view)).toMatch(/extra/i);
   });
 });
