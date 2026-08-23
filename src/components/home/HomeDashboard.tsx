@@ -181,8 +181,8 @@ export function HomeDashboard({
                     </p>
                   ) : null}
 
-                  <div className="numa-split border-t border-[var(--numa-border)] bg-transparent pt-1">
-                    <div className="bg-transparent">
+                  <div className="numa-split relative z-[1] border-t border-[var(--numa-border)] bg-white/55 pt-1">
+                    <div>
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.dagsbudget}
                       </p>
@@ -192,6 +192,7 @@ export function HomeDashboard({
                           currency={currency}
                           size="md"
                           compact
+                          wrap={false}
                         />
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
@@ -199,7 +200,7 @@ export function HomeDashboard({
                       </p>
                     </div>
                     <div className="numa-split-rule" aria-hidden />
-                    <div className="bg-transparent">
+                    <div>
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.spenderatIdag}
                       </p>
@@ -215,6 +216,7 @@ export function HomeDashboard({
                           currency={currency}
                           size="md"
                           compact
+                          wrap={false}
                         />
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--numa-faint)]">

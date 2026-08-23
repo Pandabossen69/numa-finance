@@ -2,13 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-const BUILD_ID =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ??
-  process.env.NEXT_PUBLIC_NUMA_BUILD_ID ??
-  "dev";
-
 /**
- * Register the inert worker (skipWaiting + cache wipe, no HTML cache).
+ * Register the inert worker at the stable /sw.js URL so deploys replace the
+ * existing registration (a ?v= query would leave the old worker in control).
  * When a new build is waiting, offer a soft reload — never wipe user data.
  */
 export function PwaRegister() {
@@ -20,24 +16,42 @@ export function PwaRegister() {
 
     async function setup() {
       try {
-        const reg = await navigator.serviceWorker.register(
-          `/sw.js?v=${encodeURIComponent(BUILD_ID)}`,
-          { updateViaCache: "none" },
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          regs
+            .filter((reg) => {
+              const url =
+                reg.active?.scriptURL ??
+                reg.waiting?.scriptURL ??
+                reg.installing?.scriptURL ??
+                "";
+              return url.includes("/sw.js?");
+            })
+            .map((reg) => reg.unregister()),
         );
+
+        const hadController = Boolean(navigator.serviceWorker.controller);
+        const reg = await navigator.serviceWorker.register("/sw.js", {
+          updateViaCache: "none",
+          scope: "/",
+        });
         const markReady = () => {
           if (!cancelled) setUpdateReady(true);
         };
-        if (reg.waiting && navigator.serviceWorker.controller) {
+        if (reg.waiting && hadController) {
           markReady();
         }
         reg.addEventListener("updatefound", () => {
           const worker = reg.installing;
           if (!worker) return;
           worker.addEventListener("statechange", () => {
-            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            if (worker.state === "installed" && hadController) {
               markReady();
             }
           });
+        });
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (hadController) markReady();
         });
         void reg.update();
       } catch {

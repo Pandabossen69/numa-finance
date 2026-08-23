@@ -89,17 +89,18 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={livingMinor}
             currency={currency}
-            size="md"
+            size="sm"
             compact
             align="start"
+            wrap={false}
           />
         </div>
-        <p className="mt-1 text-[11px] text-[var(--numa-faint)]">
+        <p className="mt-1 min-h-[1.15rem] text-[11px] text-[var(--numa-faint)]">
           {livingOk ? SV.saldoLevaFor : SV.minusMotPlanen}
         </p>
         {!livingOk ? (
-          <p className="mt-1.5 text-[11px] leading-snug text-[var(--numa-muted)]">
-            Du har handlat mer än månaden planerat.{" "}
+          <p className="mt-1.5 min-h-[2.5rem] text-[11px] leading-snug text-[var(--numa-muted)]">
+            Mer än planerat.{" "}
             <Link
               href="/plan"
               prefetch
@@ -109,10 +110,12 @@ export function CompactPiles({
             </Link>
           </p>
         ) : livingHint ? (
-          <p className="mt-1 text-[11px] leading-snug text-[var(--numa-faint)]">
+          <p className="mt-1 min-h-[2.5rem] text-[11px] leading-snug text-[var(--numa-faint)]">
             {livingHint}
           </p>
-        ) : null}
+        ) : (
+          <p className="mt-1 min-h-[2.5rem]" aria-hidden />
+        )}
       </div>
       <div className="numa-panel-park min-w-0 px-3.5 py-3.5">
         <p className="numa-section-title">{SV.sparande}</p>
@@ -120,12 +123,16 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="md"
+            size="sm"
             compact
             align="start"
+            wrap={false}
           />
         </div>
-        <p className="mt-1 text-[11px] text-[var(--numa-faint)]">{SV.sparandeTotalt}</p>
+        <p className="mt-1 min-h-[1.15rem] text-[11px] text-[var(--numa-faint)]">
+          {SV.sparandeTotalt}
+        </p>
+        <p className="mt-1 min-h-[2.5rem]" aria-hidden />
       </div>
     </div>
   );
