@@ -487,7 +487,7 @@ export function ReceiptCaptureFlow({
       (preview.confidence != null && preview.confidence < 0.75));
   const remainingTone =
     impact && impact.remaining < 0
-      ? "text-[var(--numa-danger)]"
+      ? "text-[var(--numa-alarm)]"
       : "text-[var(--numa-positive)]";
   const eventCount = preview.events.length;
   const creditCount = preview.events.filter((e) => e.direction === "credit")

@@ -284,7 +284,7 @@ export function AnalysDashboard({
               label={SV.kvarIManadenPlan}
               amountMinor={month.freeToSpendMinor}
               currency={currency}
-              tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
+              tone={month.freeToSpendMinor >= 0 ? "positive" : "alarm"}
             />
             {month.extraCarriedInMinor > 0 ? (
               <MetricRow
@@ -309,7 +309,7 @@ export function AnalysDashboard({
               label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
               amountMinor={month.monthResultMinor}
               currency={currency}
-              tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
+              tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
             />
           </div>
           {monthSpendProgress != null ? (

@@ -134,13 +134,13 @@ export function MovementsScreen({
           label="Utgifter"
           amountMinor={expense}
           currency={data.currency}
-          tone="danger"
+          tone="alarm"
         />
         <SummaryStat
           label="Netto"
           amountMinor={net}
           currency={data.currency}
-          tone={net >= 0 ? "positive" : "danger"}
+          tone={net >= 0 ? "positive" : "alarm"}
           signed
         />
       </section>
@@ -433,14 +433,14 @@ function SummaryStat({
   label: string;
   amountMinor: number;
   currency: MovementsSnapshot["currency"];
-  tone: "positive" | "danger" | "neutral";
+  tone: "positive" | "alarm" | "neutral";
   signed?: boolean;
 }) {
   const color =
     tone === "positive"
       ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
+      : tone === "alarm"
+        ? "text-[var(--numa-alarm)]"
         : "text-[var(--numa-ink)]";
 
   return (
