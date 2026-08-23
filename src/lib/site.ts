@@ -9,6 +9,12 @@ export function isCanonicalAppHost(hostname: string): boolean {
   return false;
 }
 
+/** True when the PWA / browser is already on the shared production host. */
+export function isProductionAppHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().split(":")[0] ?? "";
+  return host === PRODUCTION_HOST;
+}
+
 /**
  * Temporary Vercel URLs (preview deploys / team *.vercel.app) should bounce
  * to production so the phone home-screen app always hits the live build.

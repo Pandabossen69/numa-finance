@@ -1,0 +1,191 @@
+import { describe, expect, it } from "vitest";
+import {
+  MONTHLY_SAVE_NAME,
+  projectPlanForMonth,
+  type PlanItem,
+} from "@/domain/finance";
+import {
+  applyMonthSavings,
+  isTempPlanId,
+  mergeReturnedItem,
+  mergeReturnedItems,
+  optimisticPlanItem,
+  removeItemById,
+  revertMonthSavings,
+  stampPlanItems,
+} from "./optimistic";
+
+function item(
+  partial: Partial<PlanItem> & Pick<PlanItem, "kind" | "amountMinor">,
+): PlanItem {
+  return {
+    id: partial.id ?? crypto.randomUUID(),
+    userId: "u1",
+    name: partial.name ?? "x",
+    kind: partial.kind,
+    amountMinor: partial.amountMinor,
+    currency: "THB",
+    cadence: partial.cadence ?? "monthly",
+    nextDueAt: partial.nextDueAt ?? "2026-08-01T12:00:00.000Z",
+    isActive: partial.isActive ?? true,
+    createdAt: partial.createdAt ?? "2026-08-01T00:00:00.000Z",
+    updatedAt: partial.updatedAt ?? "2026-08-01T00:00:00.000Z",
+  };
+}
+
+describe("plan optimistic helpers", () => {
+  it("marks temp ids so edit/delete can wait for the real row", () => {
+    const created = optimisticPlanItem({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    expect(isTempPlanId(created.id)).toBe(true);
+    expect(isTempPlanId(crypto.randomUUID())).toBe(false);
+  });
+
+  it("shows a new fixed expense in the month projection immediately", () => {
+    const existing = item({
+      name: "El",
+      kind: "mandatory",
+      amountMinor: 800_00,
+    });
+    const added = optimisticPlanItem({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    const projection = projectPlanForMonth(
+      [existing, added],
+      "2026-08",
+      "Asia/Bangkok",
+    );
+    expect(projection.fixedMinor).toBe(15800_00);
+    expect(projection.fixedItems.map((row) => row.name)).toEqual(["El", "Hyra"]);
+  });
+
+  it("replaces the temp row with the server row without duplicating", () => {
+    const temp = optimisticPlanItem({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    const saved = item({
+      id: "11111111-1111-1111-1111-111111111111",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+    });
+    const merged = mergeReturnedItem([temp], saved, temp.id);
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.id).toBe(saved.id);
+    expect(isTempPlanId(merged[0]!.id)).toBe(false);
+  });
+
+  it("drops import temps and keeps the persisted copies", () => {
+    const keep = item({
+      name: "Netflix",
+      kind: "mandatory",
+      amountMinor: 199_00,
+      nextDueAt: "2026-08-05T12:00:00.000Z",
+    });
+    const temp = optimisticPlanItem({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-09-01T12:00:00.000Z",
+    });
+    const saved = item({
+      id: "22222222-2222-2222-2222-222222222222",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      nextDueAt: "2026-09-01T12:00:00.000Z",
+    });
+    const merged = mergeReturnedItems(
+      [keep, temp],
+      [saved],
+      new Set([temp.id]),
+    );
+    expect(merged.map((row) => row.id).sort()).toEqual(
+      [keep.id, saved.id].sort(),
+    );
+  });
+
+  it("upserts and reverts month savings without losing other rows", () => {
+    const rent = item({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 10000_00,
+    });
+    const applied = applyMonthSavings(
+      [rent],
+      "2026-08",
+      2500_00,
+      "THB",
+      "Asia/Bangkok",
+    );
+    expect(applied.tempId).toBeTruthy();
+    expect(projectPlanForMonth(applied.items, "2026-08", "Asia/Bangkok").savingsMinor).toBe(
+      2500_00,
+    );
+
+    const reverted = revertMonthSavings(
+      applied.items,
+      "2026-08",
+      applied.previous,
+      applied.tempId,
+      "Asia/Bangkok",
+    );
+    expect(reverted).toEqual([rent]);
+
+    const existing = item({
+      name: MONTHLY_SAVE_NAME,
+      kind: "goal",
+      amountMinor: 1000_00,
+      cadence: "savings",
+      nextDueAt: "2026-08-15T12:00:00.000Z",
+    });
+    const updated = applyMonthSavings(
+      [rent, existing],
+      "2026-08",
+      0,
+      "THB",
+      "Asia/Bangkok",
+    );
+    expect(updated.items).toEqual([rent]);
+    expect(
+      revertMonthSavings(
+        updated.items,
+        "2026-08",
+        updated.previous,
+        updated.tempId,
+        "Asia/Bangkok",
+      ),
+    ).toEqual([rent, existing]);
+  });
+
+  it("stamps items so an unchanged server list does not reset local edits", () => {
+    const a = item({ kind: "mandatory", amountMinor: 1 });
+    const b = item({ kind: "mandatory", amountMinor: 2 });
+    expect(stampPlanItems([a, b])).toBe(stampPlanItems([b, a]));
+    expect(stampPlanItems([a])).not.toBe(stampPlanItems([b]));
+  });
+
+  it("removeItemById leaves the remaining rows intact", () => {
+    const a = item({ id: "a", kind: "mandatory", amountMinor: 1 });
+    const b = item({ id: "b", kind: "mandatory", amountMinor: 2 });
+    expect(removeItemById([a, b], "a")).toEqual([b]);
+  });
+});

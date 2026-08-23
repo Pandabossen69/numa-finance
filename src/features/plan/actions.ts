@@ -18,13 +18,14 @@ import { parseUiAmountToMinor } from "@/domain/money";
 import {
   createPlanItem,
   deletePlanItem,
-  getTodaySnapshot,
+  getProfile,
+  listPlanItems,
   setNextIncomeDate,
   updatePlanItem,
 } from "@/lib/store/repository";
 
 export type ActionResult =
-  | { ok: true }
+  | { ok: true; item?: PlanItem; items?: PlanItem[] }
   | { ok: false; error: string };
 
 const kindSchema = z.enum([
@@ -53,7 +54,6 @@ function revalidatePlanPaths() {
   revalidatePath("/plan");
   revalidatePath("/idag");
   revalidatePath("/analys");
-  revalidatePath("/", "layout");
 }
 
 const PAST_FIXED_LOCKED =
@@ -72,6 +72,22 @@ function isLockedPastFixed(item: PlanItem, timeZone: string, currentMonthKey: st
   return isPastMonth(planItemMonthKey(item, timeZone), currentMonthKey);
 }
 
+/** Profile + plan rows only — never the full Hem snapshot. */
+async function planWriteContext() {
+  const [profile, planItems] = await Promise.all([
+    getProfile(),
+    listPlanItems(),
+  ]);
+  const timeZone = profileTimeZone(profile.timezone);
+  return {
+    profile,
+    planItems,
+    timeZone,
+    currentMonthKey: monthKeyFromDate(new Date(), timeZone),
+    currency: profile.primaryCurrency,
+  };
+}
+
 export async function createPlanItemAction(
   raw: z.infer<typeof createSchema>,
 ): Promise<ActionResult> {
@@ -81,25 +97,23 @@ export async function createPlanItemAction(
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const snap = await getTodaySnapshot();
-    const timeZone = profileTimeZone(snap.profile.timezone);
-    const currentMonthKey = monthKeyFromDate(new Date(), timeZone);
-    const monthKey = input.monthKey ?? currentMonthKey;
-    if (isPastMonth(monthKey, currentMonthKey)) {
+    const ctx = await planWriteContext();
+    const monthKey = input.monthKey ?? ctx.currentMonthKey;
+    if (isPastMonth(monthKey, ctx.currentMonthKey)) {
       return { ok: false, error: PAST_FIXED_LOCKED };
     }
     // Pin to the viewed month — never roll into a later month.
     const nextDueAt = dueDateInMonth(monthKey, input.dayOfMonth);
-    await createPlanItem({
+    const item = await createPlanItem({
       name: input.name,
       kind: input.kind,
       amountMinor,
-      currency: snap.currency,
+      currency: ctx.currency,
       cadence: "monthly",
       nextDueAt,
     });
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -118,17 +132,17 @@ export async function createPlanIncomeAction(
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const snap = await getTodaySnapshot();
-    await createPlanItem({
+    const ctx = await planWriteContext();
+    const item = await createPlanItem({
       name: input.name,
       kind: "expected",
       amountMinor,
-      currency: snap.currency,
+      currency: ctx.currency,
       cadence: "income",
       nextDueAt: `${input.date}T12:00:00.000Z`,
     });
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -157,17 +171,17 @@ export async function createPlanExtraAction(
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const snap = await getTodaySnapshot();
-    await createPlanItem({
+    const ctx = await planWriteContext();
+    const item = await createPlanItem({
       name: input.name,
       kind: "expected",
       amountMinor,
-      currency: snap.currency,
+      currency: ctx.currency,
       cadence: "once",
       nextDueAt: `${input.date}T12:00:00.000Z`,
     });
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -194,12 +208,11 @@ export async function setMonthSavingsAction(
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const snap = await getTodaySnapshot();
-    const timeZone = snap.profile.timezone || "Asia/Bangkok";
-    const existing = (snap.planItems ?? []).find((p) => {
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => {
       if (!p.isActive || !isPlanSavings(p) || !p.nextDueAt) return false;
       return (
-        monthKeyFromDate(new Date(p.nextDueAt), timeZone) === input.monthKey
+        monthKeyFromDate(new Date(p.nextDueAt), ctx.timeZone) === input.monthKey
       );
     });
 
@@ -209,20 +222,18 @@ export async function setMonthSavingsAction(
       return { ok: true };
     }
 
-    if (existing) {
-      await updatePlanItem({ id: existing.id, amountMinor });
-    } else {
-      await createPlanItem({
-        name: "Spara denna månad",
-        kind: "goal",
-        amountMinor,
-        currency: snap.currency,
-        cadence: "savings",
-        nextDueAt: monthAnchorIso(input.monthKey),
-      });
-    }
+    const item = existing
+      ? await updatePlanItem({ id: existing.id, amountMinor })
+      : await createPlanItem({
+          name: "Spara denna månad",
+          kind: "goal",
+          amountMinor,
+          currency: ctx.currency,
+          cadence: "savings",
+          nextDueAt: monthAnchorIso(input.monthKey),
+        });
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -235,11 +246,9 @@ export async function setMonthSavingsAction(
 export async function deletePlanItemAction(id: string): Promise<ActionResult> {
   try {
     const parsedId = z.string().uuid().parse(id);
-    const snap = await getTodaySnapshot();
-    const timeZone = profileTimeZone(snap.profile.timezone);
-    const currentMonthKey = monthKeyFromDate(new Date(), timeZone);
-    const existing = (snap.planItems ?? []).find((p) => p.id === parsedId);
-    if (existing && isLockedPastFixed(existing, timeZone, currentMonthKey)) {
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === parsedId);
+    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
       return { ok: false, error: PAST_FIXED_LOCKED };
     }
     await deletePlanItem(parsedId);
@@ -261,9 +270,9 @@ export async function setNextIncomeDateAction(
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .parse(date);
-    await setNextIncomeDate(`${parsed}T12:00:00.000Z`);
+    const item = await setNextIncomeDate(`${parsed}T12:00:00.000Z`);
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -283,16 +292,14 @@ export async function updatePlanItemAmountAction(raw: {
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const snap = await getTodaySnapshot();
-    const timeZone = profileTimeZone(snap.profile.timezone);
-    const currentMonthKey = monthKeyFromDate(new Date(), timeZone);
-    const existing = (snap.planItems ?? []).find((p) => p.id === id);
-    if (existing && isLockedPastFixed(existing, timeZone, currentMonthKey)) {
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === id);
+    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
       return { ok: false, error: PAST_FIXED_LOCKED };
     }
-    await updatePlanItem({ id, amountMinor });
+    const item = await updatePlanItem({ id, amountMinor });
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -330,11 +337,9 @@ export async function updatePlanItemAction(
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
 
-    const snap = await getTodaySnapshot();
-    const timeZone = profileTimeZone(snap.profile.timezone);
-    const currentMonthKey = monthKeyFromDate(new Date(), timeZone);
-    const existing = (snap.planItems ?? []).find((p) => p.id === input.id);
-    if (existing && isLockedPastFixed(existing, timeZone, currentMonthKey)) {
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === input.id);
+    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
       return { ok: false, error: PAST_FIXED_LOCKED };
     }
 
@@ -342,14 +347,14 @@ export async function updatePlanItemAction(
     if (input.date) {
       nextDueAt = `${input.date}T12:00:00.000Z`;
     } else if (input.dayOfMonth != null) {
-      const monthKey = input.monthKey ?? currentMonthKey;
-      if (isPastMonth(monthKey, currentMonthKey)) {
+      const monthKey = input.monthKey ?? ctx.currentMonthKey;
+      if (isPastMonth(monthKey, ctx.currentMonthKey)) {
         return { ok: false, error: PAST_FIXED_LOCKED };
       }
       nextDueAt = dueDateInMonth(monthKey, input.dayOfMonth);
     }
 
-    await updatePlanItem({
+    const item = await updatePlanItem({
       id: input.id,
       name: input.name,
       kind: input.kind,
@@ -357,7 +362,7 @@ export async function updatePlanItemAction(
       nextDueAt,
     });
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, item };
   } catch (error) {
     return {
       ok: false,
@@ -376,10 +381,8 @@ export async function importFixedExpensesFromPreviousMonthAction(
 ): Promise<ActionResult> {
   try {
     const input = importFixedSchema.parse(raw);
-    const snap = await getTodaySnapshot();
-    const timeZone = profileTimeZone(snap.profile.timezone);
-    const currentMonthKey = monthKeyFromDate(new Date(), timeZone);
-    if (isPastMonth(input.monthKey, currentMonthKey)) {
+    const ctx = await planWriteContext();
+    if (isPastMonth(input.monthKey, ctx.currentMonthKey)) {
       return {
         ok: false,
         error: "Du kan bara läsa in fasta utgifter i den här månaden och framåt.",
@@ -388,26 +391,28 @@ export async function importFixedExpensesFromPreviousMonthAction(
 
     const fromMonthKey = addMonthsKey(input.monthKey, -1);
     const toCopy = importableFixedExpenses({
-      items: snap.planItems ?? [],
+      items: ctx.planItems,
       fromMonthKey,
       toMonthKey: input.monthKey,
-      timeZone,
+      timeZone: ctx.timeZone,
     });
 
-    for (const src of toCopy) {
-      const day = src.nextDueAt ? dayOfMonthFromIso(src.nextDueAt) : 1;
-      await createPlanItem({
-        name: src.name,
-        kind: src.kind,
-        amountMinor: src.amountMinor,
-        currency: src.currency || snap.currency,
-        cadence: "monthly",
-        nextDueAt: dueDateInMonth(input.monthKey, day),
-      });
-    }
+    const items = await Promise.all(
+      toCopy.map((src) => {
+        const day = src.nextDueAt ? dayOfMonthFromIso(src.nextDueAt) : 1;
+        return createPlanItem({
+          name: src.name,
+          kind: src.kind,
+          amountMinor: src.amountMinor,
+          currency: src.currency || ctx.currency,
+          cadence: "monthly",
+          nextDueAt: dueDateInMonth(input.monthKey, day),
+        });
+      }),
+    );
 
     revalidatePlanPaths();
-    return { ok: true };
+    return { ok: true, items };
   } catch (error) {
     return {
       ok: false,

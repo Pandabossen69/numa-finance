@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
       static: 600,
     },
   },
+  async redirects() {
+    return [{ source: "/import", destination: "/fota", permanent: false }];
+  },
 };
 
 export default nextConfig;

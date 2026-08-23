@@ -25,14 +25,17 @@ export function AppShell({
           <header className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)]/70 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:hidden">
             <Link href="/idag" prefetch className="numa-press block min-w-0">
               <span className="numa-brand-mark">NUMA</span>
-              <span className="mt-0.5 block text-[13px] font-semibold tracking-tight text-[var(--numa-ink)]">
+              <span
+                className="mt-0.5 block truncate text-[13px] font-semibold tracking-tight text-[var(--numa-ink)]"
+                title={displayName}
+              >
                 {displayName}
               </span>
             </Link>
             <SignOutButton variant="header" />
           </header>
 
-          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(7.75rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-16 md:pt-10">
+          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(10.5rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-16 md:pt-10">
             {children}
           </main>
         </div>
