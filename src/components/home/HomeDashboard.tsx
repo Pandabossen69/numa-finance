@@ -55,7 +55,7 @@ export function HomeDashboard({
     );
   }
 
-  const remainingTodayMinor = Math.max(0, snap.remainingTodayMinor - deltaSpent);
+  const remainingTodayMinor = snap.remainingTodayMinor - deltaSpent;
   const todaySpendingMinor = snap.todaySpendingMinor + deltaSpent;
   const remainingFreeMinor =
     snap.livingMode === "cycle"
@@ -68,6 +68,9 @@ export function HomeDashboard({
   const remainingOk = remainingFreeMinor >= 0;
   const dayOk = remainingTodayMinor > 0;
   const overToday = snap.dayBudgetMinor > 0 && todaySpendingMinor > snap.dayBudgetMinor;
+  const dialCenterMinor = overToday
+    ? todaySpendingMinor - snap.dayBudgetMinor
+    : Math.max(0, remainingTodayMinor);
   const rangeLabel = isBridge
     ? snap.nextIncomeLabelSv
       ? `Till ${snap.nextIncomeLabelSv}`
@@ -152,7 +155,7 @@ export function HomeDashboard({
                       }`}
                     >
                       <MoneyDisplay
-                        amountMinor={remainingTodayMinor}
+                        amountMinor={dialCenterMinor}
                         currency={currency}
                         size="display"
                         compact
