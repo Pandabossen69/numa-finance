@@ -1,9 +1,19 @@
+import { Suspense } from "react";
 import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
+import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 
 export const dynamic = "force-dynamic";
 
-export default async function AnalysPage() {
+export default function AnalysPage() {
+  return (
+    <Suspense fallback={<AnalysViewLoading />}>
+      <AnalysBody />
+    </Suspense>
+  );
+}
+
+async function AnalysBody() {
   const result = await loadAnalysSnapshot();
   return (
     <AnalysDashboard

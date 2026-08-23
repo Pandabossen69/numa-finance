@@ -96,9 +96,6 @@ export function HomeDashboard({
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
-      <div className="md:hidden">
-        <HomescreenInstallHint />
-      </div>
       <header className="animate-rise space-y-1 px-0.5">
         <p className="text-[13px] font-medium text-[var(--numa-muted)]">
           {greeting}
@@ -336,6 +333,10 @@ export function HomeDashboard({
                 <ActionLink href="/plan" title={SV.plan} subtitle={SV.planHint} />
               </section>
             </div>
+          </div>
+
+          <div className="md:hidden">
+            <HomescreenInstallHint variant="bar" />
           </div>
 
           <QuickExpense

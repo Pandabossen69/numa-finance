@@ -3,7 +3,10 @@
 import { useState, type ReactNode } from "react";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { primaryTab } from "@/components/layout/nav";
-import { isViewLoadingNode } from "@/components/layout/view-hold";
+import {
+  isViewLoadingNode,
+  shouldHoldPreviousView,
+} from "@/components/layout/view-hold";
 
 /**
  * Keep the previous *tab* visible while the next tab streams.
@@ -19,7 +22,12 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   );
   const heldTab = readyAt ? primaryTab(readyAt) : null;
   const leaving = Boolean(pending && pending.fromPath === pathname);
-  const crossTab = Boolean(destTab && heldTab && destTab !== heldTab);
+  const holdPrevious = shouldHoldPreviousView({
+    loading,
+    leaving,
+    destTab,
+    heldTab,
+  });
 
   if (!loading && !leaving) {
     if (readyAt !== pathname) {
@@ -29,7 +37,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     return <div className="numa-view">{children}</div>;
   }
 
-  if (crossTab && readyAt) {
+  if (holdPrevious && readyAt) {
     return (
       <div className="numa-view numa-view-hold" aria-busy="true">
         {held}

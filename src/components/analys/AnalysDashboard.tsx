@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
 import {
   lastAnalysSnapshot,
@@ -31,7 +31,7 @@ export function AnalysDashboard({
   const view = data ?? lastAnalysSnapshot();
 
   if (!view) {
-    if (!error) return <ViewLoading />;
+    if (!error) return <AnalysViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
