@@ -24,6 +24,7 @@ import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { SV } from "@/features/copy/labels-sv";
+import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
   createPlanExtraAction,
   createPlanIncomeAction,
@@ -86,11 +87,8 @@ export function PlanEditor({
   const [expenseDay, setExpenseDay] = useState("1");
   const [extraName, setExtraName] = useState("");
   const [extraAmount, setExtraAmount] = useState("");
-  const [extraDate, setExtraDate] = useState(`${currentMonthKey}-15`);
   const [incomeName, setIncomeName] = useState("");
   const [incomeAmount, setIncomeAmount] = useState("");
-  const [incomeDate, setIncomeDate] = useState(`${currentMonthKey}-25`);
-  const [savingsAmount, setSavingsAmount] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -163,6 +161,22 @@ export function PlanEditor({
     return out;
   }, [items, monthKeys, timeZone]);
   const monthChipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [savingsAmount, setSavingsAmount] = useValueForKey(
+    projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
+    `${monthKey}:${projection.savingsMinor}`,
+  );
+  const [incomeDate, setIncomeDate] = useState(`${monthKey}-25`);
+  const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
+  const [dateMonthKey, setDateMonthKey] = useState(monthKey);
+  if (dateMonthKey !== monthKey) {
+    setDateMonthKey(monthKey);
+    setIncomeDate((prev) =>
+      prev.startsWith(monthKey) ? prev : `${monthKey}-25`,
+    );
+    setExtraDate((prev) =>
+      prev.startsWith(monthKey) ? prev : `${monthKey}-15`,
+    );
+  }
 
   const cycle = useMemo(
     () => projectPayCycle(items, new Date(), timeZone),
@@ -181,23 +195,6 @@ export function PlanEditor({
       }),
     [cycle, timeZone, bankBalanceMinor, cycleSpendingMinor, todaySpendingMinor],
   );
-
-  useEffect(() => {
-    setSavingsAmount(
-      projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
-    );
-  }, [monthKey, projection.savingsMinor]);
-
-  useEffect(() => {
-    setIncomeDate((prev) => {
-      if (prev.startsWith(monthKey)) return prev;
-      return `${monthKey}-25`;
-    });
-    setExtraDate((prev) => {
-      if (prev.startsWith(monthKey)) return prev;
-      return `${monthKey}-15`;
-    });
-  }, [monthKey]);
 
   useEffect(() => {
     monthChipRefs.current[monthKey]?.scrollIntoView({
