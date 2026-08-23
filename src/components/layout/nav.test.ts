@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isNavActive, optimisticNavPath } from "./nav";
+import { isNavActive, optimisticNavPath, primaryTab } from "./nav";
 
 describe("optimisticNavPath", () => {
   it("uses the pending href while still on the page that was clicked", () => {
@@ -26,5 +26,15 @@ describe("isNavActive", () => {
   it("treats mer-prefixed routes as Mer", () => {
     expect(isNavActive("/konton", "/mer")).toBe(true);
     expect(isNavActive("/plan", "/mer")).toBe(false);
+  });
+});
+
+describe("primaryTab", () => {
+  it("keeps Mer children on Mer so drill-in is not held", () => {
+    expect(primaryTab("/mer")).toBe("/mer");
+    expect(primaryTab("/konton")).toBe("/mer");
+    expect(primaryTab("/idag")).toBe("/idag");
+    expect(primaryTab("/plan")).toBe("/plan");
+    expect(primaryTab("/fota")).toBe("/fota");
   });
 });

@@ -6,6 +6,8 @@ import {
   MerPageHeader,
   MerSection,
 } from "@/components/mer/MerHub";
+import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
+import { fotaHrefForObservation } from "@/features/imports/capture-resume";
 import { listObservations } from "@/lib/store/repository";
 
 export default async function ImporteraPage() {
@@ -48,7 +50,9 @@ export default async function ImporteraPage() {
                       </span>
                     </div>
                     <p className="text-[12px] text-[var(--numa-faint)]">
-                      {new Date(o.createdAt).toLocaleString("sv-SE")}
+                      {formatListDateSv(o.createdAt, DEFAULT_TIMEZONE, {
+                        withTime: true,
+                      })}
                     </p>
                     {o.notes ? (
                       <p className="text-sm leading-snug text-[var(--numa-muted)]">
@@ -58,7 +62,7 @@ export default async function ImporteraPage() {
                     {o.status === "needs_review" || o.status === "failed" ? (
                       <p className="pt-1">
                         <Link
-                          href="/fota"
+                          href={fotaHrefForObservation(o)}
                           prefetch
                           className="text-sm font-semibold text-[var(--numa-accent)]"
                         >

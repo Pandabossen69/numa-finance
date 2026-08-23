@@ -1,22 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import {
-  PRIMARY_NAV,
-  isNavActive,
-  optimisticNavPath,
-  type NavIconName,
-} from "@/components/layout/nav";
+import { useNavIntent } from "@/components/layout/NavIntent";
+import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
 
 export function BottomNav() {
-  const pathname = usePathname();
-  const [pending, setPending] = useState<{
-    href: string;
-    fromPath: string;
-  } | null>(null);
-  const highlightPath = optimisticNavPath(pathname, pending);
+  const { highlightPath, markIntent } = useNavIntent();
 
   const left = PRIMARY_NAV.slice(0, 2);
   const right = PRIMARY_NAV.slice(2);
@@ -26,7 +15,7 @@ export function BottomNav() {
   }
 
   function onIntent(href: string) {
-    setPending({ href, fromPath: pathname });
+    markIntent(href);
   }
 
   return (

@@ -1,4 +1,6 @@
-/** Shell (nav/header) stays; avoid a pulse skeleton that feels like a reload. */
+import { ViewLoading } from "@/components/layout/ViewLoading";
+
+/** @deprecated Use ViewLoading — kept so older imports keep compiling. */
 export function TabSoftFallback() {
-  return <div className="min-h-[24vh]" aria-busy="true" aria-label="Laddar" />;
+  return <ViewLoading />;
 }

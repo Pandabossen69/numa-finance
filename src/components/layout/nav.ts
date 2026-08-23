@@ -32,6 +32,17 @@ export function isNavActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** Primary tab for last-view hold. Mer children stay on Mer — do not hold. */
+export function primaryTab(pathname: string): string | null {
+  if (pathname === "/fota" || pathname.startsWith("/fota/") || pathname.startsWith("/lagg-till")) {
+    return "/fota";
+  }
+  for (const item of PRIMARY_NAV) {
+    if (isNavActive(pathname, item.href)) return item.href;
+  }
+  return null;
+}
+
 /** Highlight the tap target only while we are still on the page we left. */
 export function optimisticNavPath(
   pathname: string,

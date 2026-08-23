@@ -658,6 +658,23 @@ export async function getObservation(
   return store.observations.find((o) => o.id === observationId) ?? null;
 }
 
+export async function listObservationCandidates(
+  observationId: string,
+): Promise<ExtractedTransactionCandidate[]> {
+  const store = await readStore();
+  return store.candidates.filter(
+    (c) =>
+      c.userId === LOCAL_DEMO_USER_ID && c.observationId === observationId,
+  );
+}
+
+export async function getObservationMediaUrl(
+  storagePath: string,
+): Promise<string | null> {
+  assertUserOwnsStoragePath(LOCAL_DEMO_USER_ID, storagePath);
+  return `/api/numa-media?p=${encodeURIComponent(storagePath)}`;
+}
+
 /** Dev-only in-memory progress (single tenant). */
 const localProgress = new Map<string, UserProgress>();
 const localProgressDays = new Set<string>();

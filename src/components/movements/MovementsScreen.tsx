@@ -9,7 +9,7 @@ import {
   updateTransactionAction,
   voidTransactionAction,
 } from "@/features/finance/actions";
-import { monthKeyFromDate } from "@/domain/finance";
+import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
 import { sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
@@ -73,6 +73,7 @@ export function MovementsScreen({
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -134,13 +135,13 @@ export function MovementsScreen({
           label="Utgifter"
           amountMinor={expense}
           currency={data.currency}
-          tone="danger"
+          tone="alarm"
         />
         <SummaryStat
           label="Netto"
           amountMinor={net}
           currency={data.currency}
-          tone={net >= 0 ? "positive" : "danger"}
+          tone={net >= 0 ? "positive" : "alarm"}
           signed
         />
       </section>
@@ -329,61 +330,67 @@ export function MovementsScreen({
                         filter === "all" || filter === "expense"
                           ? tx.category
                           : null,
-                        new Date(tx.occurredAt).toLocaleString("sv-SE", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
+                        formatListDateSv(tx.occurredAt, data.timeZone, {
+                          withTime: true,
                         }),
                       ]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                     {canEdit ? (
-                      <div className="mt-1.5 flex gap-3">
-                        <button
-                          type="button"
-                          className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
-                          onClick={() => {
-                            setEditingId(tx.id);
-                            setEditAmount(minorToUi(tx.amountMinor));
-                            setEditDescription(tx.description);
-                            setEditCategory(tx.category ?? "");
-                            setActionError(null);
-                          }}
-                        >
-                          Redigera
-                        </button>
-                        <button
-                          type="button"
-                          className="numa-press text-xs text-[var(--numa-muted)]"
-                          onClick={() => {
-                            const paired =
-                              tx.transactionType === "transfer" ||
-                              tx.transactionType === "cash_withdrawal";
-                            if (
-                              !window.confirm(
-                                paired
-                                  ? "Ta bort båda sidorna av flytten?"
-                                  : "Ta bort rörelsen?",
-                              )
-                            ) {
-                              return;
-                            }
-                            setActionError(null);
-                            void (async () => {
-                              const result = await voidTransactionAction(tx.id);
-                              if (!result.ok) {
-                                setActionError(result.error);
-                                return;
-                              }
-                              router.refresh();
-                            })();
-                          }}
-                        >
-                          Ta bort
-                        </button>
-                      </div>
+                      confirmId === tx.id ? (
+                        <div className="mt-1.5 flex gap-3">
+                          <button
+                            type="button"
+                            className="numa-press text-xs font-semibold text-[var(--numa-danger)]"
+                            onClick={() => {
+                              setActionError(null);
+                              setConfirmId(null);
+                              void (async () => {
+                                const result = await voidTransactionAction(tx.id);
+                                if (!result.ok) {
+                                  setActionError(result.error);
+                                  return;
+                                }
+                                router.refresh();
+                              })();
+                            }}
+                          >
+                            Ta bort
+                          </button>
+                          <button
+                            type="button"
+                            className="numa-press text-xs text-[var(--numa-muted)]"
+                            onClick={() => setConfirmId(null)}
+                          >
+                            Avbryt
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-1.5 flex gap-3">
+                          <button
+                            type="button"
+                            className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
+                            onClick={() => {
+                              setEditingId(tx.id);
+                              setConfirmId(null);
+                              setEditAmount(minorToUi(tx.amountMinor));
+                              setEditDescription(tx.description);
+                              setEditCategory(tx.category ?? "");
+                              setActionError(null);
+                            }}
+                          >
+                            Redigera
+                          </button>
+                          <button
+                            type="button"
+                            className="numa-press text-xs text-[var(--numa-muted)]"
+                            onClick={() => setConfirmId(tx.id)}
+                          >
+                            Ta bort
+                          </button>
+                        </div>
+                      )
                     ) : null}
                   </div>
                   <MoneyDisplay
@@ -436,14 +443,14 @@ function SummaryStat({
   label: string;
   amountMinor: number;
   currency: MovementsSnapshot["currency"];
-  tone: "positive" | "danger" | "neutral";
+  tone: "positive" | "alarm" | "neutral";
   signed?: boolean;
 }) {
   const color =
     tone === "positive"
       ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
+      : tone === "alarm"
+        ? "text-[var(--numa-alarm)]"
         : "text-[var(--numa-ink)]";
 
   return (

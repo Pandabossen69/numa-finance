@@ -1,27 +1,9 @@
-import { Suspense } from "react";
 import { PlanEditor } from "@/components/plan/PlanEditor";
-import { TabSoftFallback } from "@/components/layout/TabSoftFallback";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 
 export const dynamic = "force-dynamic";
 
-export default function PlanPage() {
-  return (
-    <div className="numa-page numa-page-wide space-y-6">
-      <header className="animate-rise">
-        <h1 className="numa-page-title">Plan</h1>
-        <p className="mt-1 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Två högar som växer. Följ månad för månad — även år framåt.
-        </p>
-      </header>
-      <Suspense fallback={<TabSoftFallback />}>
-        <PlanContent />
-      </Suspense>
-    </div>
-  );
-}
-
-async function PlanContent() {
+export default async function PlanPage() {
   let error: string | null = null;
   let snap = null;
   try {
@@ -33,21 +15,29 @@ async function PlanContent() {
   const currency = snap?.currency ?? "THB";
   const timeZone = snap?.profile.timezone || "Asia/Bangkok";
 
-  if (error) {
-    return <p className="text-sm text-[var(--numa-danger)]">{error}</p>;
-  }
-
   return (
-    <section className="animate-rise-delay-1">
-      <PlanEditor
-        items={snap?.planItems ?? []}
-        currency={currency}
-        timeZone={timeZone}
-        bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
-        cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
-        todaySpendingMinor={snap?.todaySpendingMinor ?? 0}
-        spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
-      />
-    </section>
+    <div className="numa-page numa-page-wide space-y-6">
+      <header>
+        <h1 className="numa-page-title">Plan</h1>
+        <p className="mt-1 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+          Två högar som växer. Följ månad för månad — även år framåt.
+        </p>
+      </header>
+      {error ? (
+        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
+      ) : (
+        <section>
+          <PlanEditor
+            items={snap?.planItems ?? []}
+            currency={currency}
+            timeZone={timeZone}
+            bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
+            cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
+            todaySpendingMinor={snap?.todaySpendingMinor ?? 0}
+            spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
+          />
+        </section>
+      )}
+    </div>
   );
 }

@@ -11,14 +11,7 @@ import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-export default async function InstallningarPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ laga?: string }>;
-}) {
-  const params = await searchParams;
-  const autoLaga = params.laga === "1";
-
+export default async function InstallningarPage() {
   let profile: Awaited<ReturnType<typeof getProfile>> | null = null;
   try {
     profile = await getProfile();
@@ -49,7 +42,7 @@ export default async function InstallningarPage({
                   Rensar cache och laddar om.
                 </p>
               </div>
-              <RepairAppButton autoStart={autoLaga} />
+              <RepairAppButton />
             </MerListRow>
           </MerListGroup>
         </MerSection>

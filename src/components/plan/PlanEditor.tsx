@@ -9,7 +9,8 @@ import {
   dayOfMonthFromIso,
   dueDateInMonth,
   importableFixedExpenses,
-  labelDayOfMonthSv,
+  formatIsoDateOnlySv,
+  formatListDateSv,
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
@@ -31,6 +32,7 @@ import { refreshQuiet } from "@/lib/nav/instant";
 import {
   applyMonthSavings,
   isTempPlanId,
+  stampPlanItems,
   mergeReturnedItem,
   mergeReturnedItems,
   optimisticPlanItem,
@@ -73,11 +75,38 @@ function isoToDateInput(iso: string | null): string {
 
 function labelIncomeDateSv(iso: string | null, timeZone: string): string {
   if (!iso) return "Datum saknas";
-  return new Date(iso).toLocaleDateString("sv-SE", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-  });
+  return formatListDateSv(iso, timeZone);
+}
+
+function PlanDateField({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="relative min-h-11 min-w-0">
+      <div
+        aria-hidden
+        className="pointer-events-none flex min-h-11 items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+      >
+        <span className={value ? "font-medium" : "text-[var(--numa-faint)]"}>
+          {value ? formatIsoDateOnlySv(value) : "ÅÅÅÅ-MM-DD"}
+        </span>
+      </div>
+      <input
+        type="date"
+        lang="sv-SE"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      />
+    </div>
+  );
 }
 
 function parsePlanAmount(raw: string): number | { error: string } {
@@ -115,6 +144,8 @@ export function PlanEditor({
   const [viewYear, setViewYear] = useState(() => yearFromMonthKey(currentMonthKey));
   const [monthKey, setMonthKey] = useState(currentMonthKey);
   const [localItems, setLocalItems] = useState(items);
+  const incomingStamp = stampPlanItems(items);
+  const [itemsStamp, setItemsStamp] = useState(incomingStamp);
   const ownerId = localItems[0]?.userId ?? items[0]?.userId ?? "";
 
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
@@ -138,6 +169,12 @@ export function PlanEditor({
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
     null,
   );
+  if (!busy && incomingStamp !== itemsStamp) {
+    setItemsStamp(incomingStamp);
+    if (items.length > 0 || localItems.length === 0) {
+      setLocalItems(items);
+    }
+  }
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
@@ -395,15 +432,7 @@ export function PlanEditor({
           )}
         </div>
 
-        <div
-          className="numa-month-strip -mx-1 px-1 pb-1"
-          style={{
-            WebkitMaskImage:
-              "linear-gradient(90deg, #000 0%, #000 calc(100% - 1.75rem), transparent 100%)",
-            maskImage:
-              "linear-gradient(90deg, #000 0%, #000 calc(100% - 1.75rem), transparent 100%)",
-          }}
-        >
+        <div className="numa-month-strip pb-1">
           {monthKeys.map((key) => {
             const livingDot = (extraByMonth[key] ?? 0) > 0;
             const saveDot = (savingsByMonth[key] ?? 0) > 0;
@@ -755,8 +784,8 @@ export function PlanEditor({
             }
             subtitle={(item) =>
               item.nextDueAt
-                ? labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))
-                : "Dag saknas"
+                ? formatListDateSv(item.nextDueAt, timeZone)
+                : "Datum saknas"
             }
             pendingId={
               busy?.startsWith("edit:") || busy?.startsWith("delete:")
@@ -1104,11 +1133,10 @@ function PlanRows({
                 className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
               />
               {editExtraType === "date" ? (
-                <input
-                  type="date"
+                <PlanDateField
                   value={editExtra}
-                  onChange={(e) => onEditExtra(e.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
+                  onChange={onEditExtra}
+                  ariaLabel="Datum"
                 />
               ) : (
                 <input
@@ -1255,9 +1283,29 @@ function InlineAdd({
   onSubmit: () => void;
 }) {
   const disabled = busy || !name.trim() || !amount.trim() || !String(extra).trim();
-  if (!open) {
-    return (
-      <div className="mt-auto border-t border-[var(--numa-border)] pt-4">
+  const submitRowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const node = submitRowRef.current;
+    if (!node) return;
+    const id = window.setTimeout(() => {
+      node.scrollIntoView({
+        block: "end",
+        inline: "nearest",
+        behavior: "smooth",
+      });
+    }, 220);
+    return () => window.clearTimeout(id);
+  }, [open]);
+
+  return (
+    <div
+      className={`mt-auto border-t border-[var(--numa-border)] pt-4 ${
+        open ? "pb-[calc(var(--numa-fab-overhang)+1.25rem)]" : ""
+      }`}
+    >
+      {!open ? (
         <button
           type="button"
           className="numa-btn numa-btn-soft w-full"
@@ -1265,11 +1313,9 @@ function InlineAdd({
         >
           {collapsedLabel}
         </button>
-      </div>
-    );
-  }
-  return (
-    <div className="mt-auto space-y-2 border-t border-[var(--numa-border)] pt-4">
+      ) : null}
+      <div className={`numa-expand ${open ? "is-open" : ""}`}>
+        <div className="numa-expand-inner space-y-2">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
         <input
           value={name}
@@ -1285,12 +1331,10 @@ function InlineAdd({
           className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
         />
         {extraType === "date" ? (
-          <input
-            type="date"
+          <PlanDateField
             value={extra}
-            onChange={(e) => onExtra(e.target.value)}
-            aria-label={extraLabel}
-            className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-2 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+            onChange={onExtra}
+            ariaLabel={extraLabel}
           />
         ) : (
           <input
@@ -1305,7 +1349,7 @@ function InlineAdd({
           />
         )}
       </div>
-      <div className="flex gap-2">
+      <div ref={submitRowRef} className="flex gap-2">
         <button
           type="button"
           disabled={disabled}
@@ -1322,6 +1366,8 @@ function InlineAdd({
         >
           Avbryt
         </button>
+      </div>
+        </div>
       </div>
     </div>
   );

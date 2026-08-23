@@ -89,12 +89,12 @@ export function PlanPiles({
           className="numa-panel-strong numa-pile flex h-full min-w-0 flex-col gap-3 p-5 pl-6"
           aria-labelledby="plan-saldo-heading"
         >
-          <div className="flex items-start justify-between gap-3">
-            <p id="plan-saldo-heading" className="numa-section-title">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <p id="plan-saldo-heading" className="numa-section-title min-w-0">
               {SV.motPlanen} · {monthName}
             </p>
             <span
-              className={`numa-chip ${livingOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
+              className={`numa-chip shrink-0 ${livingOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
             >
               {saldoChip}
             </span>
@@ -182,11 +182,11 @@ export function PlanPiles({
           className="numa-panel-park numa-pile flex h-full min-w-0 flex-col gap-3 p-5 pl-6"
           aria-labelledby="plan-sparande-heading"
         >
-          <div className="flex items-start justify-between gap-3">
-            <p id="plan-sparande-heading" className="numa-section-title">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <p id="plan-sparande-heading" className="numa-section-title min-w-0">
               {SV.sparande} · {monthName}
             </p>
-            <span className="numa-chip numa-chip-ink">{savingsChip}</span>
+            <span className="numa-chip numa-chip-ink shrink-0">{savingsChip}</span>
           </div>
           <div className="text-[var(--numa-ink)]">
             <MoneyDisplay
@@ -243,7 +243,7 @@ export function PlanPiles({
                 inputMode="decimal"
                 value={savingsAmount}
                 onChange={(e) => onSavingsAmount(e.target.value)}
-                placeholder="0"
+                placeholder="Belopp"
                 aria-label={`Sparande i ${monthName}`}
                 className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-white px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
               />

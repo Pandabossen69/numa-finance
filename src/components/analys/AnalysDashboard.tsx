@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
+import {
+  lastAnalysSnapshot,
+  rememberAnalysSnapshot,
+} from "@/features/home/last-snapshot";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -22,8 +27,11 @@ export function AnalysDashboard({
   error?: string | null;
 }) {
   const [scope, setScope] = useState<AnalysScope>("period");
+  if (data) rememberAnalysSnapshot(data);
+  const view = data ?? lastAnalysSnapshot();
 
-  if (error || !data) {
+  if (!view) {
+    if (!error) return <AnalysViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
@@ -39,11 +47,11 @@ export function AnalysDashboard({
     );
   }
 
-  const { currency, cycle, month } = data;
+  const { currency, cycle, month } = view;
   const isBridge = cycle.livingMode === "bridge";
   const isEmpty = cycle.livingMode === "empty";
   const isCycle = cycle.livingMode === "cycle";
-  const hasSaldo = data.hasBankTruth && data.calculatedBalanceMinor != null;
+  const hasSaldo = view.hasBankTruth && view.calculatedBalanceMinor != null;
   const heroMinor = isBridge && !hasSaldo ? 0 : cycle.remainingFreeMinor;
   const heroOk = hasSaldo || isCycle ? heroMinor >= 0 : false;
   const cycleTitle =
@@ -75,15 +83,15 @@ export function AnalysDashboard({
 
   const monthPool = month.freeToSpendMinor + month.extraCarriedInMinor;
   const monthSpendProgress =
-    data.monthSpendingMinor > 0 && monthPool > 0
-      ? Math.min(1, data.monthSpendingMinor / monthPool)
+    view.monthSpendingMinor > 0 && monthPool > 0
+      ? Math.min(1, view.monthSpendingMinor / monthPool)
       : null;
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
       <header className="animate-rise flex items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
-        <FormulaInfo steps={data.formula.steps} />
+        <FormulaInfo steps={view.formula.steps} />
       </header>
 
       <div
@@ -104,7 +112,7 @@ export function AnalysDashboard({
       </div>
 
       {scope === "period" ? (
-        <div className="space-y-6">
+        <div key="period" className="numa-scope-panel space-y-6">
           <section
             className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
             aria-labelledby="analys-hero"
@@ -154,7 +162,7 @@ export function AnalysDashboard({
                 />
                 <MetricRow
                   label={SV.spenderatIdag}
-                  amountMinor={data.todaySpendingMinor}
+                  amountMinor={view.todaySpendingMinor}
                   currency={currency}
                 />
               </div>
@@ -194,7 +202,7 @@ export function AnalysDashboard({
                     />
                     <MetricRow
                       label={SV.spenderatIPerioden}
-                      amountMinor={data.cycleSpendingMinor}
+                      amountMinor={view.cycleSpendingMinor}
                       currency={currency}
                     />
                   </>
@@ -202,7 +210,7 @@ export function AnalysDashboard({
                 {hasSaldo ? (
                   <MetricRow
                     label={SV.paKontot}
-                    amountMinor={data.calculatedBalanceMinor!}
+                    amountMinor={view.calculatedBalanceMinor!}
                     currency={currency}
                   />
                 ) : isBridge ? null : (
@@ -236,12 +244,12 @@ export function AnalysDashboard({
           ) : null}
         </div>
       ) : (
-        <section className="animate-rise-delay-2 space-y-5">
+        <section className="numa-scope-panel space-y-5">
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="numa-section-title">{SV.manad}</p>
               <h2 className="mt-1 text-lg font-semibold tracking-tight">
-                {data.monthLabelSv}
+                {view.monthLabelSv}
               </h2>
             </div>
             <Link
@@ -276,7 +284,7 @@ export function AnalysDashboard({
               label={SV.kvarIManadenPlan}
               amountMinor={month.freeToSpendMinor}
               currency={currency}
-              tone={month.freeToSpendMinor >= 0 ? "positive" : "danger"}
+              tone={month.freeToSpendMinor >= 0 ? "positive" : "alarm"}
             />
             {month.extraCarriedInMinor > 0 ? (
               <MetricRow
@@ -301,7 +309,7 @@ export function AnalysDashboard({
               label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
               amountMinor={month.monthResultMinor}
               currency={currency}
-              tone={month.monthResultMinor >= 0 ? "positive" : "danger"}
+              tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
             />
           </div>
           {monthSpendProgress != null ? (
@@ -313,7 +321,7 @@ export function AnalysDashboard({
           <div className="grid items-start gap-4 md:grid-cols-2">
             <LineList
               title="Intäkter"
-              subtitle={data.monthLabelSv}
+              subtitle={view.monthLabelSv}
               empty="Inga intäkter inlagda."
               lines={month.incomes}
               currency={currency}
@@ -321,7 +329,7 @@ export function AnalysDashboard({
             />
             <LineList
               title="Utgifter"
-              subtitle={data.monthLabelSv}
+              subtitle={view.monthLabelSv}
               empty="Inga utgifter inlagda."
               lines={month.expenses}
               currency={currency}
@@ -342,7 +350,7 @@ export function AnalysDashboard({
             Plan →
           </Link>
         </div>
-        {data.goals.length === 0 ? (
+        {view.goals.length === 0 ? (
           <p className="text-sm text-[var(--numa-muted)]">
             Inga mål ännu.{" "}
             <Link
@@ -355,7 +363,7 @@ export function AnalysDashboard({
           </p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
-            {data.goals.map((goal) => (
+            {view.goals.map((goal) => (
               <li
                 key={goal.id}
                 className="flex items-center justify-between gap-3 px-4 py-3.5"
@@ -385,11 +393,11 @@ export function AnalysDashboard({
             Alla →
           </Link>
         </div>
-        {data.recent.length === 0 ? (
+        {view.recent.length === 0 ? (
           <p className="text-sm text-[var(--numa-faint)]">Inga rörelser ännu</p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
-            {data.recent.map((tx) => {
+            {view.recent.map((tx) => {
               const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
               return (
                 <li
@@ -437,9 +445,9 @@ function ScopeChip({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`numa-press min-h-10 rounded-full px-4 text-sm font-semibold ${
+      className={`numa-press numa-scope-chip min-h-10 rounded-full px-4 text-sm font-semibold ${
         active
-          ? "bg-[var(--numa-ink)] text-white"
+          ? "is-active bg-[var(--numa-ink)] text-white"
           : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >

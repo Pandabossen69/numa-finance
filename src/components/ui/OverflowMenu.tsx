@@ -55,7 +55,7 @@ export function OverflowMenu({
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-2xl border border-[var(--numa-border)] bg-white py-1 shadow-[var(--numa-shadow-sm)]"
+          className="numa-overflow-menu absolute right-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-2xl border border-[var(--numa-border)] bg-white py-1 shadow-[var(--numa-shadow-sm)]"
         >
           {items.map((item) => (
             <button

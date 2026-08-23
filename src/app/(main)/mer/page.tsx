@@ -2,6 +2,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { getProfile } from "@/lib/store/repository";
 import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
+import { SV } from "@/features/copy/labels-sv";
 import {
   MerListGroup,
   MerListLink,
@@ -21,7 +22,7 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
     title: "Pengar",
     items: [
       { href: "/transaktioner", label: "Rörelser", hint: "Historik" },
-      { href: "/konton", label: "Saldo", hint: "Uppdatera belopp" },
+      { href: "/konton", label: SV.saldo, hint: "Uppdatera belopp" },
     ],
   },
   {

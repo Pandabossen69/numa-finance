@@ -11,8 +11,8 @@ export function CreateAccountForm() {
   const [error, setError] = useState<string | null>(null);
   const [useOnIdag, setUseOnIdag] = useState(false);
   const [form, setForm] = useState({
-    name: "Bangkok Bank",
-    institution: "Bangkok Bank",
+    name: "",
+    institution: "",
     accountType: "checking" as
       | "checking"
       | "savings"
@@ -20,8 +20,8 @@ export function CreateAccountForm() {
       | "credit"
       | "investment"
       | "other",
-    currency: "THB" as CurrencyCode,
-    maskedIdentifier: "6591",
+    currency: "SEK" as CurrencyCode,
+    maskedIdentifier: "",
     openingBalance: "",
   });
 
@@ -142,7 +142,7 @@ export function CreateAccountForm() {
 
       <button
         type="submit"
-        disabled={pending || !form.openingBalance.trim()}
+        disabled={pending || !form.name.trim() || !form.openingBalance.trim()}
         className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white disabled:opacity-45"
       >
         {pending ? "Sparar…" : "Spara saldo och fortsätt"}

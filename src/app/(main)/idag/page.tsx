@@ -1,19 +1,19 @@
 import { Suspense } from "react";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
-import { TabSoftFallback } from "@/components/layout/TabSoftFallback";
+import { HomeViewLoading } from "@/components/layout/ViewLoading";
 import { loadHomeSnapshot } from "@/features/finance/load-home";
 
 export const dynamic = "force-dynamic";
 
 export default function IdagPage() {
   return (
-    <Suspense fallback={<TabSoftFallback />}>
-      <IdagContent />
+    <Suspense fallback={<HomeViewLoading />}>
+      <IdagBody />
     </Suspense>
   );
 }
 
-async function IdagContent() {
+async function IdagBody() {
   const result = await loadHomeSnapshot();
   return (
     <HomeDashboard

@@ -33,6 +33,7 @@ export const SV = {
   spenderatIManaden: "Spenderat i månaden",
   sparande: "Sparande",
   saldo: "Saldo",
+  merPathSaldo: "Mer → Saldo",
   paKontot: "På kontot",
   saldoLevaFor: "Att leva för",
   sparandeAvsatt: "Ligger avsatt",

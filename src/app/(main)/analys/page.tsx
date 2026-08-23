@@ -1,19 +1,19 @@
 import { Suspense } from "react";
 import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
-import { TabSoftFallback } from "@/components/layout/TabSoftFallback";
+import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 
 export const dynamic = "force-dynamic";
 
 export default function AnalysPage() {
   return (
-    <Suspense fallback={<TabSoftFallback />}>
-      <AnalysContent />
+    <Suspense fallback={<AnalysViewLoading />}>
+      <AnalysBody />
     </Suspense>
   );
 }
 
-async function AnalysContent() {
+async function AnalysBody() {
   const result = await loadAnalysSnapshot();
   return (
     <AnalysDashboard

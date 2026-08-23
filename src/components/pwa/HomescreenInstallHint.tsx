@@ -46,7 +46,7 @@ export function HomescreenInstallHint({
   variant = "card",
   dismissible = true,
 }: {
-  variant?: "card" | "compact";
+  variant?: "card" | "compact" | "bar";
   dismissible?: boolean;
 }) {
   const storedVisible = useSyncExternalStore(
@@ -85,6 +85,37 @@ export function HomescreenInstallHint({
         </a>{" "}
         (Dela → Lägg till på hemskärmen).
       </p>
+    );
+  }
+
+  if (variant === "bar") {
+    return (
+      <aside
+        className="flex items-center gap-2 rounded-full border border-[var(--numa-border)] bg-white/70 px-3 py-1.5"
+        aria-label="Lägg till på hemskärmen"
+      >
+        <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--numa-muted)]">
+          Hemskärmen · {PRODUCTION_HOST}
+        </p>
+        {alreadyOnProduction ? null : (
+          <a
+            href={PRODUCTION_ORIGIN}
+            className="shrink-0 text-[12px] font-semibold text-[var(--numa-accent)]"
+          >
+            Öppna
+          </a>
+        )}
+        {dismissible ? (
+          <button
+            type="button"
+            onClick={dismiss}
+            className="shrink-0 text-[12px] font-medium text-[var(--numa-faint)]"
+            aria-label="Dölj hemskärmstips"
+          >
+            Stäng
+          </button>
+        ) : null}
+      </aside>
     );
   }
 
