@@ -17,7 +17,7 @@ export function MoneyDisplay({
   currency: CurrencyCode;
   size?: "sm" | "md" | "lg" | "xl" | "display";
   compact?: boolean;
-  /** Color negative amounts as danger when "signed". */
+  /** Color negative amounts as clay alarm when "signed" — not destroy red. */
   tone?: "neutral" | "signed";
   align?: "start" | "center" | "end";
 }) {
@@ -57,7 +57,7 @@ export function MoneyDisplay({
 
   const toneClass =
     tone === "signed" && safeMinor < 0
-      ? "text-[var(--numa-danger)]"
+      ? "text-[var(--numa-alarm)]"
       : tone === "signed" && safeMinor > 0
         ? "text-[var(--numa-positive)]"
         : "";

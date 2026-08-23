@@ -9,8 +9,8 @@
   --numa-bg: #e4efe8;
   --numa-bg-deep: #d2e3d9;
   --numa-ink: #071511;
-  --numa-muted: #4a5f56;
-  --numa-faint: #7a8f84;
+  --numa-muted: #3d524a;
+  --numa-faint: #5c7369;
   --numa-surface: rgba(252, 254, 253, 0.72);
   --numa-surface-solid: #f8fcfa;
   --numa-surface-strong: #ffffff;
@@ -22,6 +22,8 @@
   --numa-accent-glow: rgba(12, 125, 104, 0.18);
   --numa-danger: #b42318;
   --numa-danger-soft: #fde8e6;
+  --numa-alarm: #a86b3a;
+  --numa-alarm-soft: #f6e7d4;
   --numa-positive: #146b42;
   --numa-positive-soft: #d4efdf;
   --numa-warning: #9a6700;
@@ -31,6 +33,14 @@
   --numa-nav: #f3faf7;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
+  /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
+  --numa-nav-bar: 4.25rem;
+  --numa-fab-overhang: 2.25rem;
+  --numa-shell-breathing: 4rem;
+  --numa-shell-pad-bottom: calc(
+    var(--numa-nav-bar) + var(--numa-fab-overhang) + var(--numa-shell-breathing) +
+      var(--numa-safe-bottom)
+  );
   --numa-shell-max: 72rem;
   --numa-content-max: 42rem;
   --background: var(--numa-bg);
@@ -50,6 +60,7 @@
   --color-numa-accent: var(--numa-accent);
   --color-numa-accent-soft: var(--numa-accent-soft);
   --color-numa-danger: var(--numa-danger);
+  --color-numa-alarm: var(--numa-alarm);
   --color-numa-positive: var(--numa-positive);
   --font-sans: var(--font-numa-sans);
   --font-mono: var(--font-numa-mono);
@@ -203,18 +214,18 @@ body {
 }
 
 .numa-section-title {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--numa-faint);
+  color: var(--numa-muted);
 }
 
 .numa-page-title {
-  font-size: clamp(1.85rem, 5vw, 2.15rem);
-  line-height: 1.05;
+  font-size: clamp(1.9rem, 5.2vw, 2.2rem);
+  line-height: 1.08;
   font-weight: 600;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.04em;
   color: var(--numa-ink);
 }
 
@@ -353,6 +364,10 @@ body {
   background: radial-gradient(circle, rgba(11, 111, 93, 0.12) 0%, transparent 68%);
   z-index: -1;
   pointer-events: none;
+}
+
+.numa-day-stage.is-over::after {
+  background: radial-gradient(circle, rgba(168, 107, 58, 0.18) 0%, transparent 68%);
 }
 
 .numa-day-dial-arc {
@@ -503,6 +518,11 @@ body {
   color: var(--numa-danger);
 }
 
+.numa-chip-alarm {
+  background: var(--numa-alarm-soft);
+  color: var(--numa-alarm);
+}
+
 .numa-chip-ink {
   background: rgba(7, 21, 17, 0.06);
   color: var(--numa-ink);
@@ -527,6 +547,10 @@ body {
 
 .numa-pile-meter > i.is-danger {
   background: linear-gradient(90deg, #d3453a 0%, var(--numa-danger) 100%);
+}
+
+.numa-pile-meter > i.is-alarm {
+  background: linear-gradient(90deg, #d4925a 0%, var(--numa-alarm) 100%);
 }
 
 .numa-year-dots {

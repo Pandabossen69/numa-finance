@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { NavWarmup } from "@/components/layout/NavWarmup";
 import { SideNav } from "@/components/layout/SideNav";
@@ -22,7 +21,7 @@ export function AppShell({
       <div className="flex gap-8 md:gap-12">
         <SideNav displayName={displayName} />
         <div className="min-w-0 flex-1">
-          <header className="flex items-center justify-between gap-3 border-b border-[var(--numa-border)]/70 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:hidden">
+          <header className="border-b border-[var(--numa-border)]/70 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:hidden">
             <Link href="/idag" prefetch className="numa-press block min-w-0">
               <span className="numa-brand-mark">NUMA</span>
               <span
@@ -32,10 +31,9 @@ export function AppShell({
                 {displayName}
               </span>
             </Link>
-            <SignOutButton variant="header" />
           </header>
 
-          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[calc(10.5rem+var(--numa-safe-bottom))] pt-2 md:max-w-none md:pb-16 md:pt-10">
+          <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-2 md:max-w-none md:pb-16 md:pt-10">
             {children}
           </main>
         </div>

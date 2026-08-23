@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import type { CurrencyCode } from "@/domain/money";
 
-type Tone = "positive" | "danger";
+type Tone = "positive" | "danger" | "alarm";
 
 /**
  * Shared money metric row — warm separators via `.numa-row`.
@@ -26,9 +26,11 @@ export function MetricRow({
   const amountClass =
     tone === "positive"
       ? "text-[var(--numa-positive)]"
-      : tone === "danger"
-        ? "text-[var(--numa-danger)]"
-        : "text-[var(--numa-ink)]";
+      : tone === "alarm"
+        ? "text-[var(--numa-alarm)]"
+        : tone === "danger"
+          ? "text-[var(--numa-danger)]"
+          : "text-[var(--numa-ink)]";
 
   return (
     <div className="numa-row">

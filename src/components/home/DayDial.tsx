@@ -41,7 +41,7 @@ export function DayDial({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={over ? "var(--numa-danger)" : "var(--numa-accent)"}
+          stroke={over ? "var(--numa-alarm)" : "var(--numa-accent)"}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={`${filled} ${track}`}

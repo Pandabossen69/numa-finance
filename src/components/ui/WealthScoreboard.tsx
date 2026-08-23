@@ -83,7 +83,7 @@ export function CompactPiles({
       <div className="numa-panel-strong min-w-0 px-3.5 py-3.5">
         <p className="numa-section-title">{SV.motPlanen}</p>
         <div
-          className={`mt-1.5 ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-danger)]"}`}
+          className={`mt-1.5 ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
         >
           <MoneyDisplay
             amountMinor={livingMinor}

@@ -92,7 +92,7 @@ export function HomeDashboard({
         : null;
 
   return (
-    <div className="numa-page numa-page-wide space-y-6 pb-10">
+    <div className="numa-page numa-page-wide space-y-6">
       <div className="md:hidden">
         <HomescreenInstallHint />
       </div>
@@ -125,7 +125,9 @@ export function HomeDashboard({
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
-              className="numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5"
+              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5${
+                overToday ? " is-over" : ""
+              }`}
               aria-labelledby="spend-heading"
             >
               <div className="flex items-center justify-between gap-3 px-0.5">
@@ -148,7 +150,7 @@ export function HomeDashboard({
                     <div
                       className={`money-hero ${
                         overToday
-                          ? "text-[var(--numa-danger)]"
+                          ? "text-[var(--numa-alarm)]"
                           : dayOk
                             ? "text-[var(--numa-ink)]"
                             : "text-[var(--numa-muted)]"
@@ -167,7 +169,7 @@ export function HomeDashboard({
                     <p
                       className={`text-center text-sm leading-snug ${
                         overToday
-                          ? "font-medium text-[var(--numa-danger)]"
+                          ? "font-medium text-[var(--numa-alarm)]"
                           : "text-[var(--numa-muted)]"
                       }`}
                     >
@@ -200,7 +202,7 @@ export function HomeDashboard({
                       <div
                         className={`mt-1.5 ${
                           overToday
-                            ? "text-[var(--numa-danger)]"
+                            ? "text-[var(--numa-alarm)]"
                             : "text-[var(--numa-ink)]"
                         }`}
                       >
@@ -268,7 +270,7 @@ export function HomeDashboard({
                     label={isBridge ? SV.saldo : SV.kvarIPerioden}
                     amountMinor={remainingFreeMinor}
                     currency={currency}
-                    tone={remainingOk ? "positive" : "danger"}
+                    tone={remainingOk ? "positive" : "alarm"}
                     hint={
                       isBridge && snap.verificationLabel
                         ? snap.verificationLabel
