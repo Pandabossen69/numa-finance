@@ -57,7 +57,7 @@ import type { TodaySnapshot } from "./types-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
-import { withTimeout } from "@/lib/async";
+import { withTimeout, withTimeoutRetry } from "@/lib/async";
 import { knownDisplayNameForEmail } from "@/domain/identity/display-name";
 
 /** One auth lookup per request — repeated getUser() made Idag feel stuck. */
@@ -66,10 +66,11 @@ const requireAuthUser = cache(async (): Promise<{ id: string; email: string }> =
   const {
     data: { user },
     error,
-  } = await withTimeout(
-    supabase.auth.getUser(),
-    4_000,
+  } = await withTimeoutRetry(
+    () => supabase.auth.getUser(),
+    8_000,
     "requireUserId getUser",
+    1,
   );
   if (error || !user) {
     throw new Error("Du måste vara inloggad");
@@ -1024,7 +1025,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     getProfile(),
     listAccounts(),
     listPlanItems().catch(() => [] as PlanItem[]),
-    getUserProgress().catch(() => null),
+    withTimeout(getUserProgress(), 1_500, "getUserProgress").catch(() => null),
   ]);
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
 
@@ -1046,10 +1047,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       timezone,
     ),
   });
-  const [checkpoint, spendTx] = await Promise.all([
-    latestCheckpointForAccount(primary.id),
-    listTransactions(primary.id, { sinceIso: spendWindow.spendSinceIso }),
-  ]);
+  const checkpoint = await latestCheckpointForAccount(primary.id);
   const ledger = snapshotLedgerWindow({
     monthStart,
     cycleStartAt: cycle.startAt,
@@ -1059,9 +1057,11 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       timezone,
     ),
   });
-  const accountTx = ledger.refetchFromCheckpoint
-    ? await listTransactions(primary.id, { sinceIso: ledger.saldoSinceIso })
-    : spendTx;
+  const accountTx = await listTransactions(primary.id, {
+    sinceIso: ledger.refetchFromCheckpoint
+      ? ledger.saldoSinceIso
+      : spendWindow.spendSinceIso,
+  });
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
   let calculated = null;

@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { withTimeout } from "@/lib/async";
+import { isTimeoutError, withTimeout, withTimeoutRetry } from "@/lib/async";
 import { withRolledMonthlyDues } from "@/domain/finance";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import * as local from "./local-repository";
@@ -11,7 +11,7 @@ export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
 export type { UserProgress } from "./types-progress";
 
-/** Auth getUser already budgets 4s inside the snapshot — 3.5s always lost the race on login. */
+/** Data queries only — auth is warmed before this timer starts. */
 const SNAPSHOT_TIMEOUT_MS = 12_000;
 
 function api() {
@@ -145,11 +145,21 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   // Do not await due-rolling on the login path — it was an extra plan-items
   // round-trip before the timed snapshot even started.
   void ensurePlanDuesRolled();
-  return withTimeout(
-    api().getTodaySnapshot(),
-    SNAPSHOT_TIMEOUT_MS,
-    "getTodaySnapshot",
-  );
+  // Warm getUser/profile outside the timer so login auth cannot eat the budget.
+  await api().getProfile();
+  try {
+    return await withTimeoutRetry(
+      () => api().getTodaySnapshot(),
+      SNAPSHOT_TIMEOUT_MS,
+      "getTodaySnapshot",
+      1,
+    );
+  } catch (error) {
+    if (isTimeoutError(error)) {
+      console.warn("[numa] snapshot timed out after retry");
+    }
+    throw error;
+  }
 }
 
 export async function getLatestCheckpoint(accountId: string) {

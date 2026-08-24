@@ -33,3 +33,25 @@ export function loadErrorMessageSv(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message;
   return fallback;
 }
+
+/**
+ * Run `start()` under a timeout. On timeout, start a fresh attempt
+ * (`retries` extra tries). Non-timeout errors fail immediately.
+ */
+export async function withTimeoutRetry<T>(
+  start: () => Promise<T>,
+  ms: number,
+  label: string,
+  retries = 1,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await withTimeout(start(), ms, label);
+    } catch (error) {
+      lastError = error;
+      if (!isTimeoutError(error) || attempt === retries) throw error;
+    }
+  }
+  throw lastError;
+}
