@@ -11,7 +11,8 @@ export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
 export type { UserProgress } from "./types-progress";
 
-const SNAPSHOT_TIMEOUT_MS = 3_500;
+/** Auth getUser already budgets 4s inside the snapshot — 3.5s always lost the race on login. */
+const SNAPSHOT_TIMEOUT_MS = 12_000;
 
 function api() {
   const supabase = isSupabaseConfigured();
@@ -141,7 +142,9 @@ export async function getObservationMediaUrl(storagePath: string) {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  await ensurePlanDuesRolled();
+  // Do not await due-rolling on the login path — it was an extra plan-items
+  // round-trip before the timed snapshot even started.
+  void ensurePlanDuesRolled();
   return withTimeout(
     api().getTodaySnapshot(),
     SNAPSHOT_TIMEOUT_MS,

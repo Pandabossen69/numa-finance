@@ -11,6 +11,7 @@ import {
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
+import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
@@ -41,13 +42,7 @@ export function AnalysDashboard({
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
-        <Link
-          href="/idag"
-          prefetch
-          className="text-sm font-semibold text-[var(--numa-accent)]"
-        >
-          Tillbaka till Hem →
-        </Link>
+        <RetryLoadButton />
       </div>
     );
   }

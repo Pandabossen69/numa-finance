@@ -20,6 +20,7 @@ import {
 } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
+import { loadErrorMessageSv } from "@/lib/async";
 
 export type AnalysLine = {
   id: string;
@@ -294,7 +295,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     console.error("[numa] loadAnalysSnapshot failed", error);
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte hämta analysen",
+      error: loadErrorMessageSv(error, "Kunde inte hämta analysen"),
     };
   }
 }

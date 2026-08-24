@@ -1,5 +1,7 @@
 import { PlanEditor } from "@/components/plan/PlanEditor";
+import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
+import { loadErrorMessageSv } from "@/lib/async";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +11,7 @@ export default async function PlanPage() {
   try {
     snap = await getCachedTodaySnapshot();
   } catch (e) {
-    error = e instanceof Error ? e.message : "Kunde inte ladda planen";
+    error = loadErrorMessageSv(e, "Kunde inte ladda planen");
   }
 
   const currency = snap?.currency ?? "THB";
@@ -24,7 +26,11 @@ export default async function PlanPage() {
         </p>
       </header>
       {error ? (
-        <p className="text-sm text-[var(--numa-danger)]">{error}</p>
+        <div className="numa-panel-strong space-y-3 p-5">
+          <p className="text-sm font-semibold">Kunde inte ladda</p>
+          <p className="text-sm text-[var(--numa-muted)]">{error}</p>
+          <RetryLoadButton />
+        </div>
       ) : (
         <section>
           <PlanEditor

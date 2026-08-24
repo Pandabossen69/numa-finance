@@ -120,11 +120,11 @@ async function ensureProfile(_userId?: string): Promise<Profile> {
   return mapProfile(created);
 }
 
-export async function getProfile(): Promise<Profile> {
+export const getProfile = cache(async (): Promise<Profile> => {
   return ensureProfile();
-}
+});
 
-export async function listAccounts(): Promise<Account[]> {
+export const listAccounts = cache(async (): Promise<Account[]> => {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -136,7 +136,7 @@ export async function listAccounts(): Promise<Account[]> {
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAccount);
-}
+});
 
 export async function getAccount(accountId: string): Promise<Account | null> {
   const userId = await requireUserId();
@@ -916,7 +916,7 @@ export async function latestCheckpointForAccount(
   return data ? mapCheckpoint(data) : null;
 }
 
-export async function listPlanItems(): Promise<PlanItem[]> {
+export const listPlanItems = cache(async (): Promise<PlanItem[]> => {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -927,7 +927,7 @@ export async function listPlanItems(): Promise<PlanItem[]> {
     .order("name", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapPlanItem);
-}
+});
 
 export async function createPlanItem(input: {
   name: string;

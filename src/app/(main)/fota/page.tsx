@@ -1,4 +1,5 @@
 import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
+import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
   isObservationId,
   parseFotaMode,
@@ -61,6 +62,7 @@ export default async function FotaPage({
           <p className="text-sm text-[var(--numa-danger)]">
             {home.ok === false ? home.error : "Kunde inte ladda."}
           </p>
+          <RetryLoadButton />
         </div>
       ) : (
         <ReceiptCaptureFlow
