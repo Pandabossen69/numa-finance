@@ -57,7 +57,7 @@ import type { TodaySnapshot } from "./types-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
-import { withTimeout } from "@/lib/async";
+import { withTimeout, withTimeoutRetry } from "@/lib/async";
 import { knownDisplayNameForEmail } from "@/domain/identity/display-name";
 
 /** One auth lookup per request — repeated getUser() made Idag feel stuck. */
@@ -66,10 +66,11 @@ const requireAuthUser = cache(async (): Promise<{ id: string; email: string }> =
   const {
     data: { user },
     error,
-  } = await withTimeout(
-    supabase.auth.getUser(),
-    4_000,
+  } = await withTimeoutRetry(
+    () => supabase.auth.getUser(),
+    8_000,
     "requireUserId getUser",
+    1,
   );
   if (error || !user) {
     throw new Error("Du måste vara inloggad");
@@ -120,11 +121,11 @@ async function ensureProfile(_userId?: string): Promise<Profile> {
   return mapProfile(created);
 }
 
-export async function getProfile(): Promise<Profile> {
+export const getProfile = cache(async (): Promise<Profile> => {
   return ensureProfile();
-}
+});
 
-export async function listAccounts(): Promise<Account[]> {
+export const listAccounts = cache(async (): Promise<Account[]> => {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -136,7 +137,7 @@ export async function listAccounts(): Promise<Account[]> {
 
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapAccount);
-}
+});
 
 export async function getAccount(accountId: string): Promise<Account | null> {
   const userId = await requireUserId();
@@ -916,7 +917,7 @@ export async function latestCheckpointForAccount(
   return data ? mapCheckpoint(data) : null;
 }
 
-export async function listPlanItems(): Promise<PlanItem[]> {
+export const listPlanItems = cache(async (): Promise<PlanItem[]> => {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -927,7 +928,7 @@ export async function listPlanItems(): Promise<PlanItem[]> {
     .order("name", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapPlanItem);
-}
+});
 
 export async function createPlanItem(input: {
   name: string;
@@ -1024,7 +1025,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     getProfile(),
     listAccounts(),
     listPlanItems().catch(() => [] as PlanItem[]),
-    getUserProgress().catch(() => null),
+    withTimeout(getUserProgress(), 1_500, "getUserProgress").catch(() => null),
   ]);
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
 
@@ -1046,10 +1047,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       timezone,
     ),
   });
-  const [checkpoint, spendTx] = await Promise.all([
-    latestCheckpointForAccount(primary.id),
-    listTransactions(primary.id, { sinceIso: spendWindow.spendSinceIso }),
-  ]);
+  const checkpoint = await latestCheckpointForAccount(primary.id);
   const ledger = snapshotLedgerWindow({
     monthStart,
     cycleStartAt: cycle.startAt,
@@ -1059,9 +1057,11 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       timezone,
     ),
   });
-  const accountTx = ledger.refetchFromCheckpoint
-    ? await listTransactions(primary.id, { sinceIso: ledger.saldoSinceIso })
-    : spendTx;
+  const accountTx = await listTransactions(primary.id, {
+    sinceIso: ledger.refetchFromCheckpoint
+      ? ledger.saldoSinceIso
+      : spendWindow.spendSinceIso,
+  });
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
   let calculated = null;

@@ -11,6 +11,7 @@ import {
   projectPayCycle,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import { loadErrorMessageSv } from "@/lib/async";
 import { getTodaySnapshot } from "@/lib/store/repository";
 
 export type HomeSnapshot = {
@@ -145,7 +146,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     console.error("[numa] loadHomeSnapshot failed", error);
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte hämta din ekonomi",
+      error: loadErrorMessageSv(error, "Kunde inte hämta din ekonomi"),
     };
   }
 }

@@ -9,6 +9,7 @@ import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
+import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { formatCountSv, livingVsPlanHintSv } from "@/domain/finance";
 import {
   formatMoney,
@@ -49,13 +50,7 @@ export function HomeDashboard({
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error}</p>
-        <Link
-          href="/fota"
-          prefetch
-          className="inline-flex text-sm font-semibold text-[var(--numa-accent)]"
-        >
-          Gå till Fota →
-        </Link>
+        <RetryLoadButton />
       </div>
     );
   }

@@ -1,9 +1,11 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isSupabaseConfigured } from "./config";
 import { supabaseServerOptions } from "./options";
 
-export async function createSupabaseServerClient() {
+/** One cookie-backed client per request — snapshot used to build a new one per query. */
+export const createSupabaseServerClient = cache(async () => {
   if (!isSupabaseConfigured()) {
     throw new Error("Supabase is not configured");
   }
@@ -31,6 +33,6 @@ export async function createSupabaseServerClient() {
       },
     },
   );
-}
+});
 
 export { isSupabaseConfigured };

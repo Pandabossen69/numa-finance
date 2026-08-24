@@ -5,6 +5,7 @@ import {
 } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
+import { loadErrorMessageSv } from "@/lib/async";
 import { listTransactions } from "@/lib/store/repository";
 
 export type MovementRow = {
@@ -139,10 +140,10 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
     console.error("[numa] loadMovementsSnapshot failed", error);
     return {
       ok: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Kunde inte hämta utgifter och intäkter",
+      error: loadErrorMessageSv(
+        error,
+        "Kunde inte hämta utgifter och intäkter",
+      ),
     };
   }
 }

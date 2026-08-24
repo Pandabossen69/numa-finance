@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
+import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
   updateTransactionAction,
   voidTransactionAction,
@@ -103,6 +104,7 @@ export function MovementsScreen({
       <div className="space-y-2">
         <p className="font-semibold">Kunde inte ladda</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
+        <RetryLoadButton />
       </div>
     );
   }
