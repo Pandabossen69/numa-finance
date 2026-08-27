@@ -181,7 +181,7 @@ export function AnalysDashboard({
             </section>
           ) : null}
 
-          {!isEmpty ? (
+          {!isEmpty && !(isBridge && hasSaldo) ? (
             <section
               className="animate-rise-delay-2 min-w-0 space-y-2"
               aria-label="Periodens siffror"
