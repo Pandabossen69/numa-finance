@@ -136,7 +136,7 @@ export function MovementsScreen({
         />
       </div>
 
-      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 pl-6 sm:grid-cols-3">
+      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-3">
         <SummaryStat
           label="Intäkter"
           amountMinor={income}

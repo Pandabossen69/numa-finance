@@ -33,7 +33,7 @@ export function DayDial({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={over ? "rgba(168,107,58,0.22)" : "rgba(11,122,100,0.2)"}
+          stroke={over ? "rgba(168,107,58,0.28)" : "rgba(17,17,16,0.1)"}
           strokeWidth={stroke}
         />
         <circle

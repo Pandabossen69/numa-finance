@@ -362,7 +362,7 @@ function AvailableNowCard({
   const [busy, setBusy] = useState(false);
 
   return (
-    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
+    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5">
       <div>
         <p className="numa-section-title">{SV.komIgång}</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">{SV.hurMycketKvar}</h2>
