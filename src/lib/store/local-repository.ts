@@ -34,10 +34,7 @@ import { createExtractionProvider, resolveScreenshotImport } from "@/domain/impo
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 import { readStore, updateStore } from "./local-store";
-import {
-  assertUserOwnsStoragePath,
-  buildUserStoragePath,
-} from "./isolation";
+import { assertUserOwnsStoragePath, buildUserStoragePath } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 import type { TodaySnapshot } from "./types-snapshot";
@@ -88,9 +85,7 @@ export async function stampGettingStartedCompletedAt(): Promise<void> {
   });
 }
 
-export async function setGettingStartedCollapsed(
-  collapsed: boolean,
-): Promise<void> {
+export async function setGettingStartedCollapsed(collapsed: boolean): Promise<void> {
   await updateStore((s) => {
     const ts = nowIso();
     s.profile = {
@@ -122,9 +117,7 @@ export async function ensureDefaultBankAccount(input?: {
   if (primary) {
     if (primary.currency !== wantedCurrency) {
       const matching =
-        active.find(
-          (a) => a.currency === wantedCurrency && a.accountType !== "cash",
-        ) ??
+        active.find((a) => a.currency === wantedCurrency && a.accountType !== "cash") ??
         active.find((a) => a.currency === wantedCurrency) ??
         null;
       if (matching) return matching;
@@ -263,10 +256,7 @@ export async function listKnownFingerprints(options?: {
   const store = await readStore();
   const fromTx = store.transactions
     .filter(
-      (t) =>
-        t.userId === LOCAL_DEMO_USER_ID &&
-        t.fingerprint &&
-        t.status === "confirmed",
+      (t) => t.userId === LOCAL_DEMO_USER_ID && t.fingerprint && t.status === "confirmed",
     )
     .map((t) => t.fingerprint!);
   const pending = options?.includePendingCandidates !== false;
@@ -331,8 +321,7 @@ export async function createManualExpense(input: {
   if (
     input.sourceObservationId &&
     !store.observations.some(
-      (o) =>
-        o.id === input.sourceObservationId && o.userId === LOCAL_DEMO_USER_ID,
+      (o) => o.id === input.sourceObservationId && o.userId === LOCAL_DEMO_USER_ID,
     )
   ) {
     throw new Error("Importen hittades inte");
@@ -510,9 +499,7 @@ export async function createCashWithdrawal(input: {
     throw new Error("Beloppet måste vara större än noll");
   }
   if (!input.toAccountId) {
-    throw new Error(
-      "Välj ett kontantkonto — annars försvinner pengarna i modellen",
-    );
+    throw new Error("Välj ett kontantkonto — annars försvinner pengarna i modellen");
   }
   if (input.fromAccountId === input.toAccountId) {
     throw new Error("Välj två olika konton");
@@ -579,7 +566,9 @@ export async function createCashWithdrawal(input: {
   };
 }
 
-export async function listTransactions(accountId?: string): Promise<CanonicalTransaction[]> {
+export async function listTransactions(
+  accountId?: string,
+): Promise<CanonicalTransaction[]> {
   const store = await readStore();
   return store.transactions
     .filter((t) => (accountId ? t.accountId === accountId : true))
@@ -616,9 +605,7 @@ export async function updateTransaction(input: {
 export async function voidTransaction(id: string): Promise<CanonicalTransaction> {
   let found: CanonicalTransaction | null = null;
   await updateStore((s) => {
-    const tx = s.transactions.find(
-      (t) => t.id === id && t.userId === LOCAL_DEMO_USER_ID,
-    );
+    const tx = s.transactions.find((t) => t.id === id && t.userId === LOCAL_DEMO_USER_ID);
     if (!tx) throw new Error("Rörelsen hittades inte");
 
     const ids = collectPairedVoidIds(
@@ -705,8 +692,7 @@ export async function listObservationCandidates(
 ): Promise<ExtractedTransactionCandidate[]> {
   const store = await readStore();
   return store.candidates.filter(
-    (c) =>
-      c.userId === LOCAL_DEMO_USER_ID && c.observationId === observationId,
+    (c) => c.userId === LOCAL_DEMO_USER_ID && c.observationId === observationId,
   );
 }
 
@@ -722,10 +708,7 @@ const localProgress = new Map<string, UserProgress>();
 const localProgressDays = new Set<string>();
 
 export async function getUserProgress(): Promise<UserProgress | null> {
-  return (
-    localProgress.get(LOCAL_DEMO_USER_ID) ??
-    emptyUserProgress(LOCAL_DEMO_USER_ID)
-  );
+  return localProgress.get(LOCAL_DEMO_USER_ID) ?? emptyUserProgress(LOCAL_DEMO_USER_ID);
 }
 
 export async function recordOnTrackDayIfNeeded(
@@ -739,8 +722,7 @@ export async function recordOnTrackDayIfNeeded(
   localProgressDays.add(key);
 
   const current =
-    localProgress.get(LOCAL_DEMO_USER_ID) ??
-    emptyUserProgress(LOCAL_DEMO_USER_ID);
+    localProgress.get(LOCAL_DEMO_USER_ID) ?? emptyUserProgress(LOCAL_DEMO_USER_ID);
   const onTrackDays = current.onTrackDays + 1;
   const currentStreak = current.currentStreak + 1;
   const rank = rankForOnTrackDays(onTrackDays);
@@ -771,10 +753,7 @@ export async function uploadReceiptAndExtract(input: {
   try {
     const dir = path.join(process.cwd(), ".data", "media", LOCAL_DEMO_USER_ID);
     await mkdir(dir, { recursive: true });
-    await writeFile(
-      path.join(process.cwd(), ".data", "media", storagePath),
-      input.bytes,
-    );
+    await writeFile(path.join(process.cwd(), ".data", "media", storagePath), input.bytes);
   } catch {
     // Vercel/read-only: keep metadata-only path.
   }
@@ -811,15 +790,11 @@ export async function uploadReceiptAndExtract(input: {
       : [];
   const hasBatch = batch.length > 0;
   const hasSingle =
-    !hasBatch &&
-    resolved.suggestedAmountMinor != null &&
-    !resolved.alreadyKnown;
+    !hasBatch && resolved.suggestedAmountMinor != null && !resolved.alreadyKnown;
 
   if (hasBatch) {
     await supersedePendingCandidatesByFingerprints(
-      batch
-        .map((e) => e.fingerprint?.fingerprint)
-        .filter((f): f is string => Boolean(f)),
+      batch.map((e) => e.fingerprint?.fingerprint).filter((f): f is string => Boolean(f)),
     );
   } else if (hasSingle && resolved.fingerprint) {
     await supersedePendingCandidatesByFingerprints([resolved.fingerprint]);
@@ -847,17 +822,14 @@ export async function uploadReceiptAndExtract(input: {
       accountHint:
         resolved.kind === "bank_sms"
           ? (resolved.selected?.maskedAccount ??
-            (batch[0] && "maskedAccount" in batch[0]
-              ? batch[0].maskedAccount
-              : null) ??
+            (batch[0] && "maskedAccount" in batch[0] ? batch[0].maskedAccount : null) ??
             null)
           : null,
-      status:
-        resolved.alreadyKnown
-          ? "processed"
-          : hasBatch || hasSingle
-            ? "needs_review"
-            : "uploaded",
+      status: resolved.alreadyKnown
+        ? "processed"
+        : hasBatch || hasSingle
+          ? "needs_review"
+          : "uploaded",
       capturedAt: ts,
       notes: resolved.messageSv,
       createdAt: ts,
@@ -885,11 +857,7 @@ export async function uploadReceiptAndExtract(input: {
 
     if (hasBatch) {
       batch.forEach((event, batchIndex) => {
-        if (
-          event.amountMinor == null ||
-          !event.direction ||
-          !event.fingerprint
-        ) {
+        if (event.amountMinor == null || !event.direction || !event.fingerprint) {
           return;
         }
         const cand: ExtractedTransactionCandidate = {
@@ -918,14 +886,12 @@ export async function uploadReceiptAndExtract(input: {
             tipBalanceAfterMinor:
               resolved.kind === "bank_sms" ? resolved.balanceAfterMinor : null,
             updatesBalance:
-              resolved.kind === "bank_sms" &&
-              resolved.balanceAfterMinor != null,
+              resolved.kind === "bank_sms" && resolved.balanceAfterMinor != null,
             merchant:
               "merchant" in event && typeof event.merchant === "string"
                 ? event.merchant
                 : null,
-            accountInstitution:
-              "institution" in event ? String(event.institution) : null,
+            accountInstitution: "institution" in event ? String(event.institution) : null,
             accountName:
               "institution" in event
                 ? event.institution === "bunq"
@@ -935,8 +901,7 @@ export async function uploadReceiptAndExtract(input: {
                     : "Bankapp"
                 : null,
             annotationSv:
-              "annotationSv" in event &&
-              typeof event.annotationSv === "string"
+              "annotationSv" in event && typeof event.annotationSv === "string"
                 ? event.annotationSv
                 : null,
           },
@@ -1079,14 +1044,11 @@ export async function confirmReceiptExpense(
   );
   if (!observation) throw new Error("Importen hittades inte");
 
-  const batchMode =
-    input.confirmAllPending === true || observation.kind === "screenshot";
+  const batchMode = input.confirmAllPending === true || observation.kind === "screenshot";
 
   if (batchMode) {
     const allCandidates = store.candidates.filter(
-      (c) =>
-        c.userId === LOCAL_DEMO_USER_ID &&
-        c.observationId === input.observationId,
+      (c) => c.userId === LOCAL_DEMO_USER_ID && c.observationId === input.observationId,
     );
     const pending = allCandidates
       .filter(
@@ -1099,13 +1061,9 @@ export async function confirmReceiptExpense(
       )
       .sort((a, b) => {
         const ai =
-          typeof a.rawPayload?.batchIndex === "number"
-            ? a.rawPayload.batchIndex
-            : 0;
+          typeof a.rawPayload?.batchIndex === "number" ? a.rawPayload.batchIndex : 0;
         const bi =
-          typeof b.rawPayload?.batchIndex === "number"
-            ? b.rawPayload.batchIndex
-            : 0;
+          typeof b.rawPayload?.batchIndex === "number" ? b.rawPayload.batchIndex : 0;
         return ai - bi;
       });
 
@@ -1144,34 +1102,26 @@ export async function confirmReceiptExpense(
       .map((c) => c.rawPayload?.updatesBalance)
       .find((v): v is boolean => typeof v === "boolean");
     const tipInBatch =
-      updatesFlag === true ||
-      (updatesFlag == null && input.balanceAfterMinor != null);
+      updatesFlag === true || (updatesFlag == null && input.balanceAfterMinor != null);
     const tipBalance = resolveSmsTipBalanceMinor({
       inputBalanceAfterMinor: input.balanceAfterMinor,
       payloadTipBalanceMinor: payloadTip ?? null,
       updatesBalance: tipInBatch,
     });
 
-    const maskedFromCandidate =
-      input.maskedAccount ?? observation.accountHint ?? null;
+    const maskedFromCandidate = input.maskedAccount ?? observation.accountHint ?? null;
 
-    const batchCurrency =
-      (pending[0]?.currency as CurrencyCode | null) ?? "THB";
-    const isBankAppBatch = pending.some(
-      (c) => c.rawPayload?.importKind === "bank_app",
-    );
+    const batchCurrency = (pending[0]?.currency as CurrencyCode | null) ?? "THB";
+    const isBankAppBatch = pending.some((c) => c.rawPayload?.importKind === "bank_app");
     const institutionHint =
       typeof pending[0]?.rawPayload?.accountInstitution === "string"
         ? pending[0].rawPayload.accountInstitution
         : observation.institutionHint;
 
-    const accountFromInput = input.accountId
-      ? await getAccount(input.accountId)
-      : null;
+    const accountFromInput = input.accountId ? await getAccount(input.accountId) : null;
     // Bank-app EUR must not land on Hem's THB account just because UI passed it.
     const account =
-      accountFromInput &&
-      (!isBankAppBatch || accountFromInput.currency === batchCurrency)
+      accountFromInput && (!isBankAppBatch || accountFromInput.currency === batchCurrency)
         ? accountFromInput
         : isBankAppBatch
           ? await ensureAccountForCurrency({
@@ -1213,8 +1163,7 @@ export async function confirmReceiptExpense(
 
     // Validate first-import tip before mutating.
     const pre = await readStore();
-    const hadCheckpoint =
-      latestCheckpointForAccount(pre, account.id) != null;
+    const hadCheckpoint = latestCheckpointForAccount(pre, account.id) != null;
     if (!hadCheckpoint && tipBalance == null) {
       if (!(isBankAppBatch && account.currency !== "THB")) {
         throw new Error(
@@ -1247,9 +1196,7 @@ export async function confirmReceiptExpense(
 
     const baseMs = Date.now();
     let lastTxId = "";
-    const ledgerSource: TransactionSource = isBankAppBatch
-      ? "bank_import"
-      : "screenshot";
+    const ledgerSource: TransactionSource = isBankAppBatch ? "bank_import" : "screenshot";
     const tipInBatchEffective =
       tipInBatch && tipBalance != null && account.currency === "THB";
 
@@ -1414,8 +1361,7 @@ export async function confirmReceiptExpense(
     }
   }
 
-  maskedFromCandidate =
-    maskedFromCandidate ?? observation.accountHint ?? null;
+  maskedFromCandidate = maskedFromCandidate ?? observation.accountHint ?? null;
 
   const account =
     (input.accountId ? await getAccount(input.accountId) : null) ??
@@ -1438,9 +1384,7 @@ export async function confirmReceiptExpense(
     source === "screenshot" &&
     (!fingerprint || (balanceAfterMinor == null && !hadCheckpoint))
   ) {
-    throw new Error(
-      "Bank-SMS saknar komplett belopp/saldo — ta en tydligare bild.",
-    );
+    throw new Error("Bank-SMS saknar komplett belopp/saldo — ta en tydligare bild.");
   }
 
   const baseMs = Date.now();
@@ -1551,6 +1495,9 @@ export async function createPlanItem(input: {
       cadence: input.cadence ?? "monthly",
       nextDueAt: input.nextDueAt ?? null,
       isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -1567,6 +1514,9 @@ export async function updatePlanItem(input: {
   amountMinor?: number;
   nextDueAt?: string | null;
   isActive?: boolean;
+  settledAt?: string | null;
+  settledMinor?: number | null;
+  remainingDueAt?: string | null;
 }): Promise<PlanItem> {
   let found: PlanItem | null = null;
   await updateStore((s) => {
@@ -1580,6 +1530,9 @@ export async function updatePlanItem(input: {
     }
     if (input.nextDueAt !== undefined) item.nextDueAt = input.nextDueAt;
     if (input.isActive != null) item.isActive = input.isActive;
+    if (input.settledAt !== undefined) item.settledAt = input.settledAt;
+    if (input.settledMinor !== undefined) item.settledMinor = input.settledMinor;
+    if (input.remainingDueAt !== undefined) item.remainingDueAt = input.remainingDueAt;
     item.updatedAt = nowIso();
     found = item;
   });
@@ -1600,8 +1553,7 @@ export { NEXT_INCOME_NAME };
 export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
   const store = await readStore();
   const currency =
-    store.accounts.find((a) => a.isDefault)?.currency ??
-    store.profile.primaryCurrency;
+    store.accounts.find((a) => a.isDefault)?.currency ?? store.profile.primaryCurrency;
   const existing = (store.planItems ?? []).find(
     (p) => p.isActive && p.name === NEXT_INCOME_NAME,
   );
@@ -1626,8 +1578,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const store = await readStore();
   const profile = store.profile;
   const accounts = store.accounts.filter((a) => a.isActive);
-  const primary =
-    accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
+  const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
   const planItems = (store.planItems ?? []).filter((p) => p.isActive);
 
   if (!primary) {
@@ -1693,15 +1644,18 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     1,
     cycle.startAt ? cycle.daysLeft : totals.daysUntilNextIncome || 1,
   );
-  const { today: todaySpending, month: monthSpending, cycle: cycleSpending } =
-    computeSpendingWindows({
-      transactions: accountTx,
-      currency,
-      now,
-      timeZone: timezone,
-      cycleStartAt: cycle.startAt,
-      cycleEndAt: cycle.endAt,
-    });
+  const {
+    today: todaySpending,
+    month: monthSpending,
+    cycle: cycleSpending,
+  } = computeSpendingWindows({
+    transactions: accountTx,
+    currency,
+    now,
+    timeZone: timezone,
+    cycleStartAt: cycle.startAt,
+    cycleEndAt: cycle.endAt,
+  });
   const fundingConfirmed = hasCycleFundingEvidence({
     cycleStartAt: cycle.startAt,
     cycleEndAt: cycle.endAt,
@@ -1716,9 +1670,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
           safetyBuffer: money(bufferMinor, currency),
           daysUntilNextIncome,
           flexiblePlanRemaining:
-            cycle.flexibleMinor > 0
-              ? money(cycle.flexibleMinor, currency)
-              : undefined,
+            cycle.flexibleMinor > 0 ? money(cycle.flexibleMinor, currency) : undefined,
         })
       : null;
 

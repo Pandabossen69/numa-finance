@@ -16,16 +16,22 @@ import {
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
+  matchPlanItemsToLedger,
+  applyPlanItemEdits,
+  isPlanPartiallySettled,
+  isPlanSettled,
   projectCashCoverage,
   projectExtraSaldoSeries,
   projectPlanForMonth,
+  remainingDueIso,
+  settledAmountMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
 } from "@/domain/finance";
-import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
+import { formatMoneyCompact, parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { OverflowMenu } from "@/components/ui/OverflowMenu";
+import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { SV } from "@/features/copy/labels-sv";
 import { lastPlanView, rememberPlanView } from "@/features/home/last-snapshot";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
@@ -40,6 +46,7 @@ import {
   removeItemById,
   replaceItemById,
   revertMonthSavings,
+  settlePlanItem,
 } from "@/features/plan/optimistic";
 import type { ActionResult } from "@/features/plan/actions";
 import {
@@ -49,6 +56,7 @@ import {
   deletePlanItemAction,
   importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
+  setPlanItemSettledAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
 
@@ -64,7 +72,8 @@ type BusyKey =
   | "add-fixed"
   | "add-extra"
   | `edit:${string}`
-  | `delete:${string}`;
+  | `delete:${string}`
+  | `settle:${string}`;
 
 function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
@@ -84,19 +93,6 @@ function commitCalendarDate(
   if (next) onChange(next);
 }
 
-function openNativeDatePicker(input: HTMLInputElement | null) {
-  if (!input) return;
-  try {
-    if (typeof input.showPicker === "function") {
-      input.showPicker();
-      return;
-    }
-  } catch {
-    // InvalidStateError when the input is not rendered — fall through.
-  }
-  input.focus();
-}
-
 function PlanDateField({
   value,
   onChange,
@@ -106,43 +102,32 @@ function PlanDateField({
   onChange: (value: string) => void;
   ariaLabel: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   return (
-    <div className="relative min-h-11 min-w-0">
-      {/*
-        The native input sits behind the button (pointer-events: none) so it can
-        still anchor showPicker. Do not call preventDefault or stretch the
-        calendar-picker-indicator — both stop Chromium from writing the clicked
-        day back to input.value (keyboard still worked; tap did not).
-      */}
-      <input
-        ref={inputRef}
-        type="date"
-        lang="sv-SE"
-        value={value}
-        tabIndex={-1}
+    <div className="relative min-h-11 min-w-[9.5rem]">
+      <div
         aria-hidden
-        onChange={(e) => commitCalendarDate(e.target.value, value, onChange)}
-        onInput={(e) =>
-          commitCalendarDate(
-            (e.target as HTMLInputElement).value,
-            value,
-            onChange,
-          )
-        }
-        className="numa-date-input"
-      />
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        onClick={() => openNativeDatePicker(inputRef.current)}
-        className="relative z-10 flex min-h-11 w-full cursor-pointer items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-left text-sm"
+        className="pointer-events-none flex min-h-11 w-full items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-left text-sm"
       >
         <span className={value ? "font-medium" : "text-[var(--numa-faint)]"}>
           {value ? formatIsoDateOnlySv(value) : "ÅÅÅÅ-MM-DD"}
         </span>
-      </button>
+      </div>
+      {/*
+        Native input is the hit target so iOS and desktop both commit the
+        tapped day. Do not stretch ::-webkit-calendar-picker-indicator or
+        call preventDefault — those stop Chromium from writing input.value.
+      */}
+      <input
+        type="date"
+        lang="sv-SE"
+        value={value}
+        aria-label={ariaLabel}
+        onChange={(e) => commitCalendarDate(e.target.value, value, onChange)}
+        onInput={(e) =>
+          commitCalendarDate((e.target as HTMLInputElement).value, value, onChange)
+        }
+        className="numa-date-input"
+      />
     </div>
   );
 }
@@ -198,7 +183,6 @@ export function PlanEditor({
 
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
-  const [expenseDay, setExpenseDay] = useState("1");
   const [extraName, setExtraName] = useState("");
   const [extraAmount, setExtraAmount] = useState("");
   const [incomeName, setIncomeName] = useState("");
@@ -208,13 +192,13 @@ export function PlanEditor({
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editDate, setEditDate] = useState("");
-  const [editDay, setEditDay] = useState("1");
+  const [partialId, setPartialId] = useState<string | null>(null);
+  const [partialAmount, setPartialAmount] = useState("");
+  const [partialDate, setPartialDate] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
-  const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
-    focusAdd,
-  );
+  const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
   const focusCardRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!focusAdd) return;
@@ -265,6 +249,28 @@ export function PlanEditor({
       }),
     [localItems, ledgerTransactions, monthKey, timeZone, bankBalanceMinor],
   );
+  const matchedIncomeIds = useMemo(
+    () =>
+      matchPlanItemsToLedger({
+        items: projection.incomes,
+        transactions: ledgerTransactions,
+        kind: "income",
+        monthKey,
+        timeZone,
+      }),
+    [projection.incomes, ledgerTransactions, monthKey, timeZone],
+  );
+  const matchedExpenseIds = useMemo(
+    () =>
+      matchPlanItemsToLedger({
+        items: projection.items,
+        transactions: ledgerTransactions,
+        kind: "expense",
+        monthKey,
+        timeZone,
+      }),
+    [projection.items, ledgerTransactions, monthKey, timeZone],
+  );
   const savingsTotalMinor = useMemo(
     () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
     [localItems, monthKey, timeZone],
@@ -303,15 +309,13 @@ export function PlanEditor({
   );
   const [incomeDate, setIncomeDate] = useState(`${monthKey}-25`);
   const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
+  const [expenseDate, setExpenseDate] = useState(`${monthKey}-01`);
   const [dateMonthKey, setDateMonthKey] = useState(monthKey);
   if (dateMonthKey !== monthKey) {
     setDateMonthKey(monthKey);
-    setIncomeDate((prev) =>
-      prev.startsWith(monthKey) ? prev : `${monthKey}-25`,
-    );
-    setExtraDate((prev) =>
-      prev.startsWith(monthKey) ? prev : `${monthKey}-15`,
-    );
+    setIncomeDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-25`));
+    setExtraDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-15`));
+    setExpenseDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-01`));
   }
 
   useEffect(() => {
@@ -326,6 +330,7 @@ export function PlanEditor({
     setMonthKey(key);
     setViewYear(yearFromMonthKey(key));
     setEditingId(null);
+    setPartialId(null);
     setAddKind(null);
   }
 
@@ -337,6 +342,7 @@ export function PlanEditor({
     setViewYear(nextYear);
     setMonthKey(nextKey);
     setEditingId(null);
+    setPartialId(null);
     setAddKind(null);
   }
 
@@ -345,7 +351,10 @@ export function PlanEditor({
     apply: (items: PlanItem[]) => PlanItem[];
     revert: (items: PlanItem[]) => PlanItem[];
     action: () => Promise<ActionResult>;
-    reconcile?: (items: PlanItem[], result: Extract<ActionResult, { ok: true }>) => PlanItem[];
+    reconcile?: (
+      items: PlanItem[],
+      result: Extract<ActionResult, { ok: true }>,
+    ) => PlanItem[];
   }): Promise<boolean> {
     setError(null);
     setBusy(opts.busy);
@@ -378,41 +387,109 @@ export function PlanEditor({
     }
   }
 
+  function settleRow(
+    id: string,
+    settled: boolean,
+    amount?: string,
+    remainingDate?: string,
+  ) {
+    if (isTempPlanId(id)) return;
+    let settledMinor: number | null | undefined;
+    let remainingDueAt: string | null | undefined;
+    if (!settled) {
+      settledMinor = null;
+      remainingDueAt = null;
+    } else if (amount != null) {
+      const parsed = parsePlanAmount(amount);
+      if (typeof parsed !== "number") {
+        setError(parsed.error);
+        return;
+      }
+      if (parsed <= 0) {
+        setError("Belopp måste vara större än 0");
+        return;
+      }
+      settledMinor = parsed;
+      remainingDueAt = remainingDate ? `${remainingDate}T12:00:00.000Z` : null;
+    }
+    const previous = localItems.find((row) => row.id === id);
+    void runMutation({
+      busy: `settle:${id}`,
+      apply: (rows) =>
+        settlePlanItem(rows, id, { settled, settledMinor, remainingDueAt }),
+      revert: (rows) => (previous ? replaceItemById(rows, id, previous) : rows),
+      action: () =>
+        setPlanItemSettledAction({
+          id,
+          settled,
+          amount,
+          remainingDate,
+        }),
+      reconcile: (rows, result) =>
+        result.item ? mergeReturnedItem(rows, result.item) : rows,
+    }).then((ok) => {
+      if (ok) {
+        setPartialId(null);
+        setPartialAmount("");
+        setPartialDate("");
+      }
+    });
+  }
+
+  function startPartial(item: PlanItem) {
+    if (isTempPlanId(item.id)) return;
+    setAddKind(null);
+    setEditingId(null);
+    setPartialId(item.id);
+    const already = settledAmountMinor(item);
+    setPartialAmount(already > 0 ? minorToUi(already) : "");
+    const rest = remainingDueIso(item);
+    setPartialDate(isoToDateInput(rest, timeZone) || `${monthKey}-01`);
+  }
+
+  function rowBusy(): {
+    pendingId: string | null;
+    pendingAction: "save" | "delete" | "settle" | null;
+  } {
+    if (!busy || !busy.includes(":")) {
+      return { pendingId: null, pendingAction: null };
+    }
+    const id = busy.slice(busy.indexOf(":") + 1);
+    if (busy.startsWith("edit:")) return { pendingId: id, pendingAction: "save" };
+    if (busy.startsWith("delete:")) return { pendingId: id, pendingAction: "delete" };
+    if (busy.startsWith("settle:")) return { pendingId: id, pendingAction: "settle" };
+    return { pendingId: null, pendingAction: null };
+  }
+
   function startEditIncome(item: PlanItem) {
     if (isTempPlanId(item.id)) return;
     setAddKind(null);
+    setPartialId(null);
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(item.nextDueAt, timeZone));
+    setEditDate(isoToDateInput(remainingDueIso(item), timeZone));
   }
 
   function startEditExpense(item: PlanItem) {
-    if (isTempPlanId(item.id)) return;
-    setAddKind(null);
-    setEditingId(item.id);
-    setEditName(item.name);
-    setEditAmount(minorToUi(item.amountMinor));
-    setEditDay(item.nextDueAt ? String(dayOfMonthFromIso(item.nextDueAt)) : "1");
+    startEditIncome(item);
   }
 
   function startEditExtra(item: PlanItem) {
-    if (isTempPlanId(item.id)) return;
-    setAddKind(null);
-    setEditingId(item.id);
-    setEditName(item.name);
-    setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(item.nextDueAt, timeZone));
+    startEditIncome(item);
   }
 
   function saveEditedItem(id: string, patch: Partial<PlanItem>) {
     const previous = localItems.find((row) => row.id === id);
     if (!previous) return;
-    const next: PlanItem = {
-      ...previous,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
+    const next = applyPlanItemEdits(previous, {
+      name: patch.name,
+      amountMinor: patch.amountMinor,
+      nextDueAt: patch.nextDueAt,
+    });
+    const pickedDate = patch.nextDueAt
+      ? isoToDateInput(patch.nextDueAt, timeZone) || undefined
+      : undefined;
     void runMutation({
       busy: `edit:${id}`,
       apply: (rows) => replaceItemById(rows, id, next),
@@ -422,9 +499,7 @@ export function PlanEditor({
           id,
           name: next.name,
           amount: editAmount,
-          date: next.nextDueAt
-            ? isoToDateInput(next.nextDueAt, timeZone) || undefined
-            : undefined,
+          date: pickedDate,
         }),
       reconcile: (rows, result) =>
         result.item ? mergeReturnedItem(rows, result.item) : rows,
@@ -550,9 +625,7 @@ export function PlanEditor({
                   amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
                 }),
               reconcile: (rows, result) =>
-                result.item
-                  ? mergeReturnedItem(rows, result.item, tempId)
-                  : rows,
+                result.item ? mergeReturnedItem(rows, result.item, tempId) : rows,
             });
           }}
           onClearSavings={() => {
@@ -560,13 +633,7 @@ export function PlanEditor({
             void runMutation({
               busy: "savings-clear",
               apply: (rows) => {
-                const applied = applyMonthSavings(
-                  rows,
-                  monthKey,
-                  0,
-                  currency,
-                  timeZone,
-                );
+                const applied = applyMonthSavings(rows, monthKey, 0, currency, timeZone);
                 previous = applied.previous;
                 return applied.items;
               },
@@ -638,26 +705,33 @@ export function PlanEditor({
             editName={editName}
             editAmount={editAmount}
             editExtra={editDate}
-            editExtraType="date"
+            timeZone={timeZone}
             emptyHint="Lägg in lön eller CSN."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
-            pendingId={
-              busy?.startsWith("edit:") || busy?.startsWith("delete:")
-                ? busy.slice(busy.indexOf(":") + 1)
-                : null
-            }
-            pendingAction={
-              busy?.startsWith("edit:")
-                ? "save"
-                : busy?.startsWith("delete:")
-                  ? "delete"
-                  : null
+            pendingId={rowBusy().pendingId}
+            pendingAction={rowBusy().pendingAction}
+            matchedIds={matchedIncomeIds}
+            onSettle={settleRow}
+            partialId={partialId}
+            partialAmount={partialAmount}
+            partialDate={partialDate}
+            partialPrompt="Hur mycket har kommit in?"
+            remainingDatePrompt="När kommer resten?"
+            onPartialAmount={setPartialAmount}
+            onPartialDate={setPartialDate}
+            onStartPartial={startPartial}
+            onCancelPartial={() => setPartialId(null)}
+            onSavePartial={(id) =>
+              settleRow(id, true, partialAmount, partialDate)
             }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
             onStartEdit={startEditIncome}
-            onCancelEdit={() => setEditingId(null)}
+            onCancelEdit={() => {
+              setEditingId(null);
+              setPartialId(null);
+            }}
             onSaveEdit={(id) => {
               const parsed = parsePlanAmount(editAmount);
               if (typeof parsed !== "number") {
@@ -686,7 +760,6 @@ export function PlanEditor({
             name={incomeName}
             amount={incomeAmount}
             extra={incomeDate}
-            extraType="date"
             extraLabel="Datum"
             namePlaceholder="t.ex. Lön, Trukks, CSN"
             amountPlaceholder={`Belopp (${currency})`}
@@ -731,9 +804,7 @@ export function PlanEditor({
                     date,
                   }),
                 reconcile: (rows, result) =>
-                  result.item
-                    ? mergeReturnedItem(rows, result.item, created.id)
-                    : rows,
+                  result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
               }).then((ok) => {
                 if (!ok) {
                   setIncomeName(name);
@@ -750,11 +821,7 @@ export function PlanEditor({
       <div className="grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Fasta utgifter"
-          hint={
-            isPastMonth
-              ? "Låst — passerad månad ändras inte."
-              : "Gäller bara den här månaden."
-          }
+          hint="Gäller bara den här månaden."
           totalLabel="Summa"
           totalMinor={projection.fixedMinor}
           currency={currency}
@@ -791,9 +858,7 @@ export function PlanEditor({
                       monthKey,
                     }),
                   reconcile: (rows, result) =>
-                    result.items
-                      ? mergeReturnedItems(rows, result.items, tempIds)
-                      : rows,
+                    result.items ? mergeReturnedItems(rows, result.items, tempIds) : rows,
                 });
               }}
             >
@@ -809,52 +874,50 @@ export function PlanEditor({
             editingId={editingId}
             editName={editName}
             editAmount={editAmount}
-            editExtra={editDay}
-            editExtraType="day"
-            locked={isPastMonth}
+            editExtra={editDate}
+            timeZone={timeZone}
             emptyHint={
-              isPastMonth
-                ? "Inga fasta utgifter den här månaden."
-                : canImportFixed
-                  ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
-                  : "Hyra och räkningar du måste betala."
+              canImportFixed
+                ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
+                : "Hyra och räkningar du måste betala."
             }
             subtitle={(item) =>
-              item.nextDueAt
-                ? formatListDateSv(item.nextDueAt, timeZone)
-                : "Datum saknas"
+              item.nextDueAt ? formatListDateSv(item.nextDueAt, timeZone) : "Datum saknas"
             }
-            pendingId={
-              busy?.startsWith("edit:") || busy?.startsWith("delete:")
-                ? busy.slice(busy.indexOf(":") + 1)
-                : null
-            }
-            pendingAction={
-              busy?.startsWith("edit:")
-                ? "save"
-                : busy?.startsWith("delete:")
-                  ? "delete"
-                  : null
+            pendingId={rowBusy().pendingId}
+            pendingAction={rowBusy().pendingAction}
+            matchedIds={matchedExpenseIds}
+            onSettle={settleRow}
+            partialId={partialId}
+            partialAmount={partialAmount}
+            partialDate={partialDate}
+            partialPrompt="Hur mycket är betalt?"
+            remainingDatePrompt="När ska resten betalas?"
+            onPartialAmount={setPartialAmount}
+            onPartialDate={setPartialDate}
+            onStartPartial={startPartial}
+            onCancelPartial={() => setPartialId(null)}
+            onSavePartial={(id) =>
+              settleRow(id, true, partialAmount, partialDate)
             }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
-            onEditExtra={setEditDay}
+            onEditExtra={setEditDate}
             onStartEdit={startEditExpense}
-            onCancelEdit={() => setEditingId(null)}
+            onCancelEdit={() => {
+              setEditingId(null);
+              setPartialId(null);
+            }}
             onSaveEdit={(id) => {
               const parsed = parsePlanAmount(editAmount);
               if (typeof parsed !== "number") {
                 setError(parsed.error);
                 return;
               }
-              const day = Number(editDay);
               saveEditedItem(id, {
                 name: editName.trim(),
                 amountMinor: parsed,
-                nextDueAt: dueDateInMonth(
-                  monthKey,
-                  Number.isFinite(day) ? day : 1,
-                ),
+                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
               });
             }}
             onDelete={(id) => {
@@ -869,13 +932,11 @@ export function PlanEditor({
             }}
           />
 
-          {isPastMonth ? null : (
-            <InlineAdd
+          <InlineAdd
               name={expenseName}
               amount={expenseAmount}
-              extra={expenseDay}
-              extraType="day"
-              extraLabel="Dag"
+            extra={expenseDate}
+            extraLabel="Datum"
               namePlaceholder="t.ex. Hyra, El, Netflix"
               amountPlaceholder={`Belopp (${currency})`}
               submitLabel="Lägg till fast utgift"
@@ -887,28 +948,25 @@ export function PlanEditor({
               busy={busy === "add-fixed"}
               onName={setExpenseName}
               onAmount={setExpenseAmount}
-              onExtra={setExpenseDay}
+              onExtra={setExpenseDate}
               onSubmit={() => {
                 const parsed = parsePlanAmount(expenseAmount);
                 if (typeof parsed !== "number") {
                   setError(parsed.error);
                   return;
                 }
-                const day = Number(expenseDay);
                 const created = optimisticPlanItem({
                   name: expenseName,
                   kind: "mandatory",
                   amountMinor: parsed,
                   currency,
                   cadence: "monthly",
-                  nextDueAt: dueDateInMonth(
-                    monthKey,
-                    Number.isFinite(day) ? day : 1,
-                  ),
+                  nextDueAt: `${expenseDate}T12:00:00.000Z`,
                   userId: ownerId,
                 });
                 const name = expenseName;
                 const amount = expenseAmount;
+                const date = expenseDate;
                 setExpenseName("");
                 setExpenseAmount("");
                 void runMutation({
@@ -920,13 +978,11 @@ export function PlanEditor({
                       name,
                       kind: "mandatory",
                       amount,
-                      dayOfMonth: Number.isFinite(day) ? day : 1,
+                      date,
                       monthKey,
                     }),
                   reconcile: (rows, result) =>
-                    result.item
-                      ? mergeReturnedItem(rows, result.item, created.id)
-                      : rows,
+                    result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
                 }).then((ok) => {
                   if (!ok) {
                     setExpenseName(name);
@@ -937,7 +993,6 @@ export function PlanEditor({
                 });
               }}
             />
-          )}
         </PlanCard>
 
         <PlanCard
@@ -953,26 +1008,33 @@ export function PlanEditor({
             editName={editName}
             editAmount={editAmount}
             editExtra={editDate}
-            editExtraType="date"
+            timeZone={timeZone}
             emptyHint="En räkning som bara kommer en gång."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
-            pendingId={
-              busy?.startsWith("edit:") || busy?.startsWith("delete:")
-                ? busy.slice(busy.indexOf(":") + 1)
-                : null
-            }
-            pendingAction={
-              busy?.startsWith("edit:")
-                ? "save"
-                : busy?.startsWith("delete:")
-                  ? "delete"
-                  : null
+            pendingId={rowBusy().pendingId}
+            pendingAction={rowBusy().pendingAction}
+            matchedIds={matchedExpenseIds}
+            onSettle={settleRow}
+            partialId={partialId}
+            partialAmount={partialAmount}
+            partialDate={partialDate}
+            partialPrompt="Hur mycket är betalt?"
+            remainingDatePrompt="När ska resten betalas?"
+            onPartialAmount={setPartialAmount}
+            onPartialDate={setPartialDate}
+            onStartPartial={startPartial}
+            onCancelPartial={() => setPartialId(null)}
+            onSavePartial={(id) =>
+              settleRow(id, true, partialAmount, partialDate)
             }
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
             onStartEdit={startEditExtra}
-            onCancelEdit={() => setEditingId(null)}
+            onCancelEdit={() => {
+              setEditingId(null);
+              setPartialId(null);
+            }}
             onSaveEdit={(id) => {
               const parsed = parsePlanAmount(editAmount);
               if (typeof parsed !== "number") {
@@ -1001,7 +1063,6 @@ export function PlanEditor({
             name={extraName}
             amount={extraAmount}
             extra={extraDate}
-            extraType="date"
             extraLabel="Datum"
             namePlaceholder="t.ex. Lån, Flygbiljett"
             amountPlaceholder={`Belopp (${currency})`}
@@ -1045,9 +1106,7 @@ export function PlanEditor({
                     date,
                   }),
                 reconcile: (rows, result) =>
-                  result.item
-                    ? mergeReturnedItem(rows, result.item, created.id)
-                    : rows,
+                  result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
               }).then((ok) => {
                 if (!ok) {
                   setExtraName(name);
@@ -1121,16 +1180,27 @@ function PlanCard({
 function PlanRows({
   items,
   currency,
+  timeZone,
   editingId,
   editName,
   editAmount,
   editExtra,
-  editExtraType,
   emptyHint = "Inget inlagt.",
-  locked = false,
   subtitle,
   pendingId = null,
   pendingAction = null,
+  matchedIds,
+  onSettle,
+  partialId,
+  partialAmount,
+  partialDate,
+  partialPrompt,
+  remainingDatePrompt,
+  onPartialAmount,
+  onPartialDate,
+  onStartPartial,
+  onCancelPartial,
+  onSavePartial,
   onEditName,
   onEditAmount,
   onEditExtra,
@@ -1141,16 +1211,27 @@ function PlanRows({
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
+  timeZone: string;
   editingId: string | null;
   editName: string;
   editAmount: string;
   editExtra: string;
-  editExtraType: "date" | "day";
   emptyHint?: string;
-  locked?: boolean;
   subtitle: (item: PlanItem) => string;
   pendingId?: string | null;
-  pendingAction?: "save" | "delete" | null;
+  pendingAction?: "save" | "delete" | "settle" | null;
+  matchedIds: Set<string>;
+  onSettle: (id: string, settled: boolean) => void;
+  partialId: string | null;
+  partialAmount: string;
+  partialDate: string;
+  partialPrompt: string;
+  remainingDatePrompt: string;
+  onPartialAmount: (v: string) => void;
+  onPartialDate: (v: string) => void;
+  onStartPartial: (item: PlanItem) => void;
+  onCancelPartial: () => void;
+  onSavePartial: (id: string) => void;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
   onEditExtra: (v: string) => void;
@@ -1167,85 +1248,205 @@ function PlanRows({
 
   return (
     <ul className="divide-y divide-[var(--numa-border)]">
-      {items.map((item) =>
-        editingId === item.id ? (
-          <li key={item.id} className="space-y-3 py-3 first:pt-0">
-            <input
-              value={editName}
-              onChange={(e) => onEditName(e.target.value)}
-              className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
-            />
-            <div className="grid gap-2 sm:grid-cols-2">
+      {items.map((item) => {
+        const rowCurrency = (item.currency || currency) as CurrencyCode;
+        const dateLabel = subtitle(item);
+        const restIso = remainingDueIso(item);
+        const restLabel = restIso ? formatListDateSv(restIso, timeZone) : null;
+        const settledLine = matchedIds.has(item.id) || isPlanSettled(item)
+          ? `${SV.klar} · ${dateLabel}`
+          : isPlanPartiallySettled(item)
+            ? `${SV.delvisKlar} · ${formatMoneyCompact({
+                amountMinor: settledAmountMinor(item),
+                currency: rowCurrency,
+              })} av ${formatMoneyCompact({
+                amountMinor: item.amountMinor,
+                currency: rowCurrency,
+              })}${restLabel ? ` · ${SV.resten} ${restLabel}` : ""}`
+            : dateLabel;
+
+        if (editingId === item.id) {
+          return (
+            <li key={item.id} className="space-y-3 py-3 first:pt-0">
               <input
-                inputMode="decimal"
-                value={editAmount}
-                onChange={(e) => onEditAmount(e.target.value)}
-                className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
+                value={editName}
+                onChange={(e) => onEditName(e.target.value)}
+                className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
               />
-              {editExtraType === "date" ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  inputMode="decimal"
+                  value={editAmount}
+                  onChange={(e) => onEditAmount(e.target.value)}
+                  className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
+                />
                 <PlanDateField
                   value={editExtra}
                   onChange={onEditExtra}
                   ariaLabel="Datum"
                 />
-              ) : (
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={pendingId === item.id && pendingAction === "save"}
+                  className="numa-btn numa-btn-accent min-h-10 flex-1"
+                  onClick={() => onSaveEdit(item.id)}
+                >
+                  {pendingId === item.id && pendingAction === "save" ? "Sparar…" : "Spara"}
+                </button>
+                <button
+                  type="button"
+                  disabled={pendingId === item.id}
+                  className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+                  onClick={onCancelEdit}
+                >
+                  Avbryt
+                </button>
+              </div>
+            </li>
+          );
+        }
+
+        if (partialId === item.id) {
+          return (
+            <li key={item.id} className="space-y-3 py-3 first:pt-0">
+              <div>
+                <p className="text-sm font-semibold tracking-tight">{item.name}</p>
+                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{SV.delvisKlar}</p>
+              </div>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--numa-muted)]">
+                  {partialPrompt}
+                </span>
                 <input
-                  type="number"
-                  min={1}
-                  max={31}
-                  value={editExtra}
-                  onChange={(e) => onEditExtra(e.target.value)}
-                  className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
-                  aria-label="Dag i månaden"
+                  inputMode="decimal"
+                  value={partialAmount}
+                  onChange={(e) => onPartialAmount(e.target.value)}
+                  placeholder={`Belopp (${rowCurrency})`}
+                  className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
                 />
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={pendingId === item.id && pendingAction === "save"}
-                className="numa-btn numa-btn-accent min-h-10 flex-1"
-                onClick={() => onSaveEdit(item.id)}
-              >
-                {pendingId === item.id && pendingAction === "save"
-                  ? "Sparar…"
-                  : "Spara"}
-              </button>
-              <button
-                type="button"
-                disabled={pendingId === item.id}
-                className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
-                onClick={onCancelEdit}
-              >
-                Avbryt
-              </button>
-            </div>
-          </li>
-        ) : (
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-[var(--numa-muted)]">
+                  {remainingDatePrompt}
+                </span>
+                <PlanDateField
+                  value={partialDate}
+                  onChange={onPartialDate}
+                  ariaLabel={remainingDatePrompt}
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={
+                    (pendingId === item.id && pendingAction === "settle") ||
+                    !partialAmount.trim() ||
+                    !partialDate.trim()
+                  }
+                  className="numa-btn numa-btn-accent min-h-10 flex-1"
+                  onClick={() => onSavePartial(item.id)}
+                >
+                  {pendingId === item.id && pendingAction === "settle"
+                    ? "Sparar…"
+                    : "Spara"}
+                </button>
+                <button
+                  type="button"
+                  disabled={pendingId === item.id}
+                  className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+                  onClick={onCancelPartial}
+                >
+                  Avbryt
+                </button>
+              </div>
+            </li>
+          );
+        }
+
+        const muted = matchedIds.has(item.id) || isPlanSettled(item);
+        const menuItems: OverflowMenuItem[] = [
+          {
+            label: "Redigera",
+            onSelect: () => {
+              setConfirmId(null);
+              onStartEdit(item);
+            },
+          },
+        ];
+        if (!matchedIds.has(item.id)) {
+          menuItems.push({
+            label: SV.delvisKlar,
+            onSelect: () => {
+              setConfirmId(null);
+              onStartPartial(item);
+            },
+          });
+        }
+        if (isPlanPartiallySettled(item) && !matchedIds.has(item.id)) {
+          menuItems.push({
+            label: SV.angraKlar,
+            onSelect: () => onSettle(item.id, false),
+          });
+        }
+        menuItems.push({
+          label: "Ta bort",
+          tone: "danger",
+          disabled: pendingId === item.id && pendingAction === "delete",
+          onSelect: () => setConfirmId(item.id),
+        });
+
+        return (
           <li
             key={item.id}
             className="flex items-start justify-between gap-x-3 gap-y-2 py-3 first:pt-0"
           >
             <div className="min-w-0 flex-1">
               <p
-                className="break-words font-medium leading-snug [overflow-wrap:anywhere]"
+                className={`leading-snug font-medium [overflow-wrap:anywhere] break-words ${
+                  muted ? "text-[var(--numa-muted)]" : ""
+                }`}
                 title={item.name}
               >
                 {item.name}
               </p>
-              <p className="text-xs text-[var(--numa-faint)]">{subtitle(item)}</p>
+              <p className="text-xs text-[var(--numa-faint)]">{settledLine}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <span className="mr-1 max-w-[9.5rem] text-[var(--numa-ink)] sm:max-w-none">
                 <MoneyDisplay
                   amountMinor={item.amountMinor}
-                  currency={(item.currency || currency) as CurrencyCode}
+                  currency={rowCurrency}
                   size="sm"
                   compact
                   align="end"
                 />
               </span>
-              {locked || isTempPlanId(item.id) ? null : confirmId === item.id ? (
+              {isTempPlanId(item.id) ? null : matchedIds.has(item.id) ? (
+                <span className="numa-chip numa-chip-mint">{SV.klar}</span>
+              ) : isPlanSettled(item) ? (
+                <button
+                  type="button"
+                  disabled={pendingId === item.id && pendingAction === "settle"}
+                  className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm font-medium text-[var(--numa-muted)] disabled:opacity-45"
+                  onClick={() => onSettle(item.id, false)}
+                >
+                  {pendingId === item.id && pendingAction === "settle"
+                    ? "…"
+                    : SV.angraKlar}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pendingId === item.id && pendingAction === "settle"}
+                  className="numa-press inline-flex min-h-11 items-center rounded-xl bg-[var(--numa-accent-soft)] px-2.5 text-sm font-semibold text-[var(--numa-accent-ink)] disabled:opacity-45"
+                  onClick={() => onSettle(item.id, true)}
+                >
+                  {pendingId === item.id && pendingAction === "settle" ? "…" : SV.klar}
+                </button>
+              )}
+              {isTempPlanId(item.id) ? null : confirmId === item.id ? (
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -1269,28 +1470,13 @@ function PlanRows({
               ) : (
                 <OverflowMenu
                   label={`Åtgärder för ${item.name}`}
-                  items={[
-                    {
-                      label: "Redigera",
-                      onSelect: () => {
-                        setConfirmId(null);
-                        onStartEdit(item);
-                      },
-                    },
-                    {
-                      label: "Ta bort",
-                      tone: "danger",
-                      disabled:
-                        pendingId === item.id && pendingAction === "delete",
-                      onSelect: () => setConfirmId(item.id),
-                    },
-                  ]}
+                  items={menuItems}
                 />
               )}
             </div>
           </li>
-        ),
-      )}
+        );
+      })}
     </ul>
   );
 }
@@ -1299,7 +1485,6 @@ function InlineAdd({
   name,
   amount,
   extra,
-  extraType,
   extraLabel,
   namePlaceholder,
   amountPlaceholder,
@@ -1318,7 +1503,6 @@ function InlineAdd({
   name: string;
   amount: string;
   extra: string;
-  extraType: "date" | "day";
   extraLabel: string;
   namePlaceholder: string;
   amountPlaceholder: string;
@@ -1372,76 +1556,55 @@ function InlineAdd({
       }`}
     >
       {showFields ? (
-      <div
-        className={`numa-expand ${open ? "is-open" : ""}`}
-        onTransitionEnd={(event) => {
-          if (event.propertyName !== "grid-template-rows") return;
-          if (!open) setFieldsMounted(false);
-        }}
-      >
-        <div className="numa-expand-inner space-y-2">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
-        <input
-          value={name}
-          onChange={(e) => onName(e.target.value)}
-          placeholder={namePlaceholder}
-          className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-        />
-        <input
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => onAmount(e.target.value)}
-          placeholder={amountPlaceholder}
-          className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-        />
-        {extraType === "date" ? (
-          <PlanDateField
-            value={extra}
-            onChange={onExtra}
-            ariaLabel={extraLabel}
-          />
-        ) : (
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={extra}
-            onChange={(e) => onExtra(e.target.value)}
-            aria-label={extraLabel}
-            placeholder="Dag"
-            className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-          />
-        )}
-      </div>
-      <div
-        ref={submitRowRef}
-        className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2 md:scroll-mb-0"
-      >
-        <button
-          type="button"
-          disabled={disabled}
-          className="numa-btn numa-btn-soft min-w-0 flex-1"
-          onClick={onSubmit}
+        <div
+          className={`numa-expand ${open ? "is-open" : ""}`}
+          onTransitionEnd={(event) => {
+            if (event.propertyName !== "grid-template-rows") return;
+            if (!open) setFieldsMounted(false);
+          }}
         >
-          {busy ? "Sparar…" : submitLabel}
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          className="numa-press min-h-12 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
-          onClick={onClose}
-        >
-          Avbryt
-        </button>
-      </div>
+          <div className="numa-expand-inner space-y-2">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_minmax(9.5rem,11rem)]">
+              <input
+                value={name}
+                onChange={(e) => onName(e.target.value)}
+                placeholder={namePlaceholder}
+                className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+              />
+              <input
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => onAmount(e.target.value)}
+                placeholder={amountPlaceholder}
+                className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+              />
+              <PlanDateField value={extra} onChange={onExtra} ariaLabel={extraLabel} />
+            </div>
+            <div
+              ref={submitRowRef}
+              className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2 md:scroll-mb-0"
+            >
+              <button
+                type="button"
+                disabled={disabled}
+                className="numa-btn numa-btn-soft min-w-0 flex-1"
+                onClick={onSubmit}
+              >
+                {busy ? "Sparar…" : submitLabel}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                className="numa-press min-h-12 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+                onClick={onClose}
+              >
+                Avbryt
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
       ) : (
-        <button
-          type="button"
-          className="numa-btn numa-btn-soft w-full"
-          onClick={onOpen}
-        >
+        <button type="button" className="numa-btn numa-btn-soft w-full" onClick={onOpen}>
           {collapsedLabel}
         </button>
       )}
@@ -1491,10 +1654,7 @@ function MonthChipStrip({ children }: { children: ReactNode }) {
           : "";
 
   return (
-    <div
-      ref={scrollerRef}
-      className={`numa-month-strip pb-1 ${fade}`.trim()}
-    >
+    <div ref={scrollerRef} className={`numa-month-strip pb-1 ${fade}`.trim()}>
       {children}
     </div>
   );

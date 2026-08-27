@@ -17,26 +17,31 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("ÅÅÅÅ-MM-DD");
   });
 
-  it("opens the picker from a button so a calendar tap can commit", () => {
+  it("opens the picker from the native date input so a calendar tap can commit", () => {
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
-    expect(src).toContain("className=\"numa-date-input\"");
-    expect(src).toContain("showPicker");
+    expect(src).toContain('className="numa-date-input"');
     expect(src).toContain("commitCalendarDate");
-    expect(src).toContain("onClick={() => openNativeDatePicker(inputRef.current)}");
+    expect(src).toContain("PlanDateField");
     expect(src).not.toContain("onPointerDown");
     expect(src).not.toContain("event.preventDefault");
     expect(src).not.toContain("preventDefault()");
+    expect(src).not.toContain("openNativeDatePicker");
+    expect(src).not.toContain("showPicker");
     expect(src).not.toContain("absolute inset-0 cursor-pointer opacity-0");
     expect(css).toContain(".numa-date-input");
-    expect(css).toContain("pointer-events: none");
     expect(css).not.toContain("::-webkit-calendar-picker-indicator");
+    const dateCss = css.slice(
+      css.indexOf(".numa-date-input"),
+      css.indexOf(".numa-overflow-menu"),
+    );
+    expect(dateCss).not.toContain("pointer-events: none");
     expect(css).toContain(".numa-expand.is-open");
     expect(css).toContain("overflow: visible");
   });
 
   it("scrolls the submit row into view and pads above the FAB when adding", () => {
     expect(src).toContain("scrollIntoView");
-    expect(src).toContain("block: \"nearest\"");
+    expect(src).toContain('block: "nearest"');
     expect(src).toContain(
       "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)] md:pb-0",
     );
@@ -62,7 +67,7 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("focusAdd");
     expect(src).toContain("stepHint");
     expect(src).toContain("scrollOnOpen");
-    expect(src).toContain("banner={focusAdd === \"income\" ? stepHint : null}");
+    expect(src).toContain('banner={focusAdd === "income" ? stepHint : null}');
     expect(src).toContain("setAddKind(focusAdd)");
   });
 
@@ -70,5 +75,32 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("projectCashCoverage");
     expect(src).toContain("ledgerTransactions");
     expect(src).toContain("coverage={coverage}");
+  });
+
+  it("lets every month tap Klar on incomes and expenses without deleting", () => {
+    expect(src).toContain("setPlanItemSettledAction");
+    expect(src).toContain("onSettle={settleRow}");
+    expect(src).toContain("SV.klar");
+    expect(src).toContain("SV.angraKlar");
+    expect(src).not.toContain("locked={isPastMonth}");
+  });
+
+  it("uses a calendar date on new and existing incomes and expenses", () => {
+    expect(src).not.toContain('editExtraType="day"');
+    expect(src).not.toContain('extraType="day"');
+    expect(src).toContain("expenseDate");
+    expect(src).not.toContain("Låst — passerad månad");
+    expect(src).toContain("createPlanItemAction");
+  });
+
+  it("lets Delvis klar take an amount and a date for the rest", () => {
+    expect(src).toContain("SV.delvisKlar");
+    expect(src).toContain("remainingDatePrompt");
+    expect(src).toContain("När kommer resten?");
+    expect(src).toContain("När ska resten betalas?");
+    expect(src).toContain("partialDate");
+    expect(src).toContain("remainingDate");
+    expect(src).toContain("applyPlanItemEdits");
+    expect(src).toContain("remainingDueIso(item)");
   });
 });

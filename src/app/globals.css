@@ -650,23 +650,22 @@ body {
 }
 
 /*
- * Hidden native date input used only as the showPicker() anchor.
- * pointer-events:none so it cannot steal the calendar tap; the visible
- * button opens the picker. Do not stretch the WebKit calendar indicator
- * over the field — that intercepts Chromium's day click so input.value
- * never changes.
+ * Invisible native date input is the hit target (iOS + desktop).
+ * Do not stretch the WebKit calendar indicator over the field — that
+ * intercepts Chromium's day click so input.value never changes.
  */
 .numa-date-input {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 2;
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 0.01;
+  cursor: pointer;
+  color-scheme: light;
 }
 
 .numa-overflow-menu {

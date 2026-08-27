@@ -285,6 +285,9 @@ type DbPlanItem = {
   cadence: string | null;
   next_due_at: string | null;
   is_active: boolean;
+  settled_at?: string | null;
+  settled_minor?: number | null;
+  remaining_due_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -300,6 +303,10 @@ export function mapPlanItem(row: DbPlanItem): PlanItem {
     cadence: row.cadence,
     nextDueAt: row.next_due_at,
     isActive: row.is_active,
+    settledAt: row.settled_at ?? null,
+    settledMinor:
+      row.settled_minor == null ? null : Number(row.settled_minor),
+    remainingDueAt: row.remaining_due_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

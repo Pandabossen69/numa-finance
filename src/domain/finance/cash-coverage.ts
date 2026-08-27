@@ -3,9 +3,13 @@ import { calendarDaysBetween } from "./datetime";
 import {
   addMonthsKey,
   isPlanIncome,
+  isPlanPartiallySettled,
   isPlanSavings,
+  isPlanSettled,
   monthKeyFromDate,
   projectPlanForMonth,
+  remainingDueIso,
+  remainingOpenMinor,
 } from "./plan-months";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
@@ -107,7 +111,7 @@ function remainingPlanAmount(
   let remaining = 0;
   for (const item of items) {
     if (matched.has(item.id)) continue;
-    remaining += item.amountMinor;
+    remaining += remainingOpenMinor(item);
   }
   return remaining;
 }
@@ -134,6 +138,7 @@ export function matchPlanItemsToLedger(params: {
   const pairs: Pair[] = [];
   for (const item of items) {
     if (isPlanSavings(item) || item.amountMinor <= 0) continue;
+    if (isPlanSettled(item) || isPlanPartiallySettled(item)) continue;
     if (kind === "income" && !isPlanIncome(item)) continue;
     if (kind === "expense" && isPlanIncome(item)) continue;
     for (const tx of eligibleTx) {
@@ -180,19 +185,15 @@ function amountToleranceMinor(planAmountMinor: number): number {
   );
 }
 
-function pairScore(
-  item: PlanItem,
-  tx: LedgerMatchTx,
-  timeZone: string,
-): number | null {
-  if (!item.nextDueAt) return null;
-  const dayDiff = Math.abs(
-    calendarDaysBetween(item.nextDueAt, tx.occurredAt, timeZone),
-  );
+function pairScore(item: PlanItem, tx: LedgerMatchTx, timeZone: string): number | null {
+  const dueIso = remainingDueIso(item);
+  if (!dueIso) return null;
+  const dayDiff = Math.abs(calendarDaysBetween(dueIso, tx.occurredAt, timeZone));
   if (dayDiff > DATE_WINDOW_DAYS) return null;
 
-  const amountDiff = Math.abs(item.amountMinor - tx.amountMinor);
-  const tolerance = amountToleranceMinor(item.amountMinor);
+  const planAmount = remainingOpenMinor(item) > 0 ? remainingOpenMinor(item) : item.amountMinor;
+  const amountDiff = Math.abs(planAmount - tx.amountMinor);
+  const tolerance = amountToleranceMinor(planAmount);
   if (amountDiff > tolerance) return null;
 
   const dateScore = 1 - dayDiff / (DATE_WINDOW_DAYS + 1);
