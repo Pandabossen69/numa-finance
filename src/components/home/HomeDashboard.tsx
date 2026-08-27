@@ -51,8 +51,8 @@ export function HomeDashboard({
   if (!view) {
     if (!error) return <HomeViewLoading />;
     return (
-      <div className="numa-panel-strong animate-rise space-y-3 p-5">
-        <p className="text-sm font-semibold">Kunde inte ladda</p>
+      <div className="numa-panel numa-error animate-rise space-y-3">
+        <p className="text-sm font-semibold">Kunde inte ladda Hem</p>
         <p className="text-sm text-[var(--numa-muted)]">{error}</p>
         <RetryLoadButton />
       </div>
@@ -107,9 +107,7 @@ export function HomeDashboard({
         ) : null}
       </header>
 
-      {gettingStarted?.visible ? (
-        <GettingStartedCard view={gettingStarted} />
-      ) : null}
+      {gettingStarted?.visible ? <GettingStartedCard view={gettingStarted} /> : null}
 
       {view.needsAvailableInput ? (
         <AvailableNowCard
@@ -123,8 +121,8 @@ export function HomeDashboard({
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
-              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5${
-                overToday ? " is-over" : ""
+              className={`numa-panel-strong numa-day-stage numa-hero animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-4${
+                overToday ? "is-over" : ""
               }`}
               aria-labelledby="spend-heading"
             >
@@ -256,35 +254,35 @@ export function HomeDashboard({
                   savingsMinor={view.savingsTotalMinor}
                   currency={currency}
                 />
-                {(view.extraCarriedInMinor > 0 ||
-                  view.extraSaldoMinor > 0 ||
-                  view.extraSaldoDrawnMinor > 0 ||
-                  (!isBridge && view.cycleSpendingMinor + deltaSpent > 0)) ? (
-                <div className="numa-panel-list animate-scale-in px-4 py-1">
-                  {view.extraCarriedInMinor > 0 ? (
-                    <MetricRow
-                      label={SV.extraMed}
-                      amountMinor={view.extraCarriedInMinor}
-                      currency={currency}
-                      tone="positive"
-                      hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
-                    />
-                  ) : (
-                    <ExtraSaldoRow
-                      extraSaldoMinor={view.extraSaldoMinor}
-                      drawnMinor={view.extraSaldoDrawnMinor}
-                      hint={view.extraSaldoHint}
-                      currency={currency}
-                    />
-                  )}
-                  {!isBridge && view.cycleSpendingMinor + deltaSpent > 0 ? (
-                    <MetricRow
-                      label={SV.spenderatIPerioden}
-                      amountMinor={view.cycleSpendingMinor + Math.max(0, deltaSpent)}
-                      currency={currency}
-                    />
-                  ) : null}
-                </div>
+                {view.extraCarriedInMinor > 0 ||
+                view.extraSaldoMinor > 0 ||
+                view.extraSaldoDrawnMinor > 0 ||
+                (!isBridge && view.cycleSpendingMinor + deltaSpent > 0) ? (
+                  <div className="numa-panel-list animate-scale-in px-4 py-1">
+                    {view.extraCarriedInMinor > 0 ? (
+                      <MetricRow
+                        label={SV.extraMed}
+                        amountMinor={view.extraCarriedInMinor}
+                        currency={currency}
+                        tone="positive"
+                        hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
+                      />
+                    ) : (
+                      <ExtraSaldoRow
+                        extraSaldoMinor={view.extraSaldoMinor}
+                        drawnMinor={view.extraSaldoDrawnMinor}
+                        hint={view.extraSaldoHint}
+                        currency={currency}
+                      />
+                    )}
+                    {!isBridge && view.cycleSpendingMinor + deltaSpent > 0 ? (
+                      <MetricRow
+                        label={SV.spenderatIPerioden}
+                        amountMinor={view.cycleSpendingMinor + Math.max(0, deltaSpent)}
+                        currency={currency}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
               </section>
 
@@ -336,7 +334,7 @@ function ActionLink({
     <Link
       href={href}
       prefetch
-      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5"
+      className="numa-panel numa-press group flex h-full min-h-[4.75rem] min-w-0 flex-col justify-center px-4 py-3.5"
     >
       <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
         {title}
@@ -363,7 +361,7 @@ function AvailableNowCard({
   const [busy, setBusy] = useState(false);
 
   return (
-    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
+    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5">
       <div>
         <p className="numa-section-title">{SV.komIgång}</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">{SV.hurMycketKvar}</h2>

@@ -10,7 +10,7 @@ export const CAPTURE_UI_COPY = {
     hint: "Fota SMS:et. Du bekräftar innan saldot sparas.",
     camera: "Fota skärmen nu",
     gallery: "Välj skärmdump",
-    footer: "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över",
+    footer: "3–6 bubblor i samma bild fungerar bäst. Samma SMS igen hoppas över.",
     scanning: "Läser SMS…",
     scanningHint: "Du behöver inte skriva något.",
   },
@@ -20,8 +20,7 @@ export const CAPTURE_UI_COPY = {
     hint: "Fota beloppet i bankappen. Du bekräftar innan det sparas.",
     camera: "Fota skärmen nu",
     gallery: "Välj skärmdump",
-    footer:
-      "Bäst: detalj eller lista · € postas på bunq-konto · samma köp hoppas över",
+    footer: "Bäst: detalj eller lista · € postas på bunq-konto · samma köp hoppas över",
     scanning: "Läser bankapp…",
     scanningHint: "Dubbelkolla beloppet innan du sparar.",
   },

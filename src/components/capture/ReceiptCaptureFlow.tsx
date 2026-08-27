@@ -3,10 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  QuickAddForms,
-  type ShellAccount,
-} from "@/components/add/QuickAddForms";
+import { QuickAddForms, type ShellAccount } from "@/components/add/QuickAddForms";
 import {
   confirmReceiptExpenseAction,
   uploadReceiptAction,
@@ -55,15 +52,13 @@ export function ReceiptCaptureFlow({
     }
     return initialMode;
   });
-  const [preview, setPreview] = useState<CapturePreview | null>(
-    initialPreview,
-  );
+  const [preview, setPreview] = useState<CapturePreview | null>(initialPreview);
   const [category, setCategory] = useState<string>("Mat");
   const [amountEditable, setAmountEditable] = useState(
     Boolean(
       initialPreview &&
-        initialPreview.importKind !== "bank_sms" &&
-        initialPreview.importKind !== "bank_app",
+      initialPreview.importKind !== "bank_sms" &&
+      initialPreview.importKind !== "bank_app",
     ),
   );
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +74,7 @@ export function ReceiptCaptureFlow({
     if (initialPreview) {
       setPreview(initialPreview);
       setMode(
-        initialPreview.importKind !== "unknown"
-          ? initialPreview.importKind
-          : initialMode,
+        initialPreview.importKind !== "unknown" ? initialPreview.importKind : initialMode,
       );
       setAmountEditable(
         initialPreview.importKind !== "bank_sms" &&
@@ -166,12 +159,9 @@ export function ReceiptCaptureFlow({
         amountMinor: e.amountMinor,
         labelSv: e.labelSv,
       }));
-      const hasAmount =
-        data.suggestedAmountMinor != null || events.length > 0;
+      const hasAmount = data.suggestedAmountMinor != null || events.length > 0;
       const major =
-        data.suggestedAmountMinor != null
-          ? minorToInput(data.suggestedAmountMinor)
-          : "";
+        data.suggestedAmountMinor != null ? minorToInput(data.suggestedAmountMinor) : "";
       const importKind: CapturePreview["importKind"] =
         data.importKind === "bank_sms"
           ? "bank_sms"
@@ -201,10 +191,7 @@ export function ReceiptCaptureFlow({
         return;
       }
 
-      setAmountEditable(
-        importKind !== "bank_sms" &&
-          importKind !== "bank_app",
-      );
+      setAmountEditable(importKind !== "bank_sms" && importKind !== "bank_app");
       setPreview({
         observationId: data.observation.id,
         candidateId: data.candidate?.id ?? events[0]?.candidateId ?? null,
@@ -231,8 +218,7 @@ export function ReceiptCaptureFlow({
     e.preventDefault();
     if (!preview || preview.alreadyKnown) return;
     if (
-      (preview.importKind === "bank_sms" ||
-        preview.importKind === "bank_app") &&
+      (preview.importKind === "bank_sms" || preview.importKind === "bank_app") &&
       preview.events.length === 0
     ) {
       setError("Bilden måste läsas automatiskt — ta en tydligare bild.");
@@ -241,11 +227,9 @@ export function ReceiptCaptureFlow({
     setError(null);
     startTransition(async () => {
       const isAutoImport =
-        preview.importKind === "bank_sms" ||
-        preview.importKind === "bank_app";
+        preview.importKind === "bank_sms" || preview.importKind === "bank_app";
       const result = await confirmReceiptExpenseAction({
-        accountId:
-          preview.importKind === "bank_app" ? null : accountId,
+        accountId: preview.importKind === "bank_app" ? null : accountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         confirmAllPending: isAutoImport,
@@ -287,11 +271,7 @@ export function ReceiptCaptureFlow({
 
   if (mode === "pick") {
     return (
-      <ModePicker
-        onChoose={setMode}
-        hasAccount={Boolean(accountId)}
-        variant={variant}
-      />
+      <ModePicker onChoose={setMode} hasAccount={Boolean(accountId)} variant={variant} />
     );
   }
 
@@ -317,7 +297,9 @@ export function ReceiptCaptureFlow({
       <div className="animate-rise space-y-6">
         <BackLink onClick={resetToPick} />
         <header>
-          <h2 className="text-2xl font-semibold tracking-tight">Manuellt</h2>
+          <h2 className="text-[1.5rem] leading-tight font-semibold tracking-tight">
+            Manuellt
+          </h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">
             Skriv belopp utan kamera.
           </p>
@@ -346,11 +328,11 @@ export function ReceiptCaptureFlow({
                 className="mx-auto max-h-72 min-h-56 w-full object-contain opacity-90"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/40" />
-              <div className="pointer-events-none absolute inset-x-4 top-0 h-16 numa-scan-line rounded-full bg-[linear-gradient(180deg,transparent,rgba(13,122,102,0.35),transparent)]" />
+              <div className="numa-scan-line pointer-events-none absolute inset-x-4 top-0 h-16 rounded-full bg-[linear-gradient(180deg,transparent,rgba(13,122,102,0.35),transparent)]" />
             </>
           ) : (
             <div className="flex min-h-56 items-center justify-center">
-              <div className="h-10 w-10 rounded-full border-2 border-[var(--numa-accent)] border-t-transparent numa-pulse-soft" />
+              <div className="numa-pulse-soft h-10 w-10 rounded-full border-2 border-[var(--numa-accent)] border-t-transparent" />
             </div>
           )}
         </div>
@@ -373,10 +355,10 @@ export function ReceiptCaptureFlow({
       <div className="animate-rise space-y-8">
         <BackLink onClick={resetToPick} />
         <header className="space-y-2">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+          <p className="text-[0.7rem] font-medium tracking-[0.16em] text-[var(--numa-faint)] uppercase">
             {copy.eyebrow}
           </p>
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-[1.5rem] leading-tight font-semibold tracking-tight">
             {bootstrapping && isSms && "titleBootstrap" in copy
               ? copy.titleBootstrap
               : copy.title}
@@ -386,39 +368,26 @@ export function ReceiptCaptureFlow({
           </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-3">
           <button
             type="button"
             disabled={pending}
             onClick={() => cameraInputRef.current?.click()}
-            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
+            className="numa-btn numa-btn-primary flex min-h-14 w-full flex-col gap-0.5 rounded-[var(--numa-radius-lg)] py-3 disabled:opacity-50"
           >
-            <span className="text-2xl font-light leading-none" aria-hidden>
-              ◉
-            </span>
-            <span className="text-sm font-semibold tracking-tight">Kamera</span>
-            <span className="text-center text-xs text-white/70">
-              {copy.camera}
-            </span>
+            <span>Kamera</span>
+            <span className="text-xs font-medium text-white/75">{copy.camera}</span>
           </button>
           <button
             type="button"
             disabled={pending}
             onClick={() => galleryInputRef.current?.click()}
-            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-white px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
+            className="numa-press flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-[var(--numa-radius-lg)] border border-[var(--numa-border)] bg-[var(--numa-surface-elevated)] px-3 py-3 disabled:opacity-50"
           >
-            <span
-              className="text-2xl font-light leading-none text-[var(--numa-ink)]"
-              aria-hidden
-            >
-              ▤
-            </span>
             <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
               Galleri
             </span>
-            <span className="text-center text-xs text-[var(--numa-muted)]">
-              {copy.gallery}
-            </span>
+            <span className="text-xs text-[var(--numa-muted)]">{copy.gallery}</span>
           </button>
         </div>
 
@@ -448,9 +417,7 @@ export function ReceiptCaptureFlow({
           }}
         />
 
-        <p className="text-center text-xs text-[var(--numa-faint)]">
-          {copy.footer}
-        </p>
+        <p className="numa-tip text-center">{copy.footer}</p>
 
         {error ? (
           <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
@@ -503,10 +470,8 @@ export function ReceiptCaptureFlow({
       ? "text-[var(--numa-alarm)]"
       : "text-[var(--numa-positive)]";
   const eventCount = preview.events.length;
-  const creditCount = preview.events.filter((e) => e.direction === "credit")
-    .length;
-  const debitCount = preview.events.filter((e) => e.direction === "debit")
-    .length;
+  const creditCount = preview.events.filter((e) => e.direction === "credit").length;
+  const debitCount = preview.events.filter((e) => e.direction === "debit").length;
 
   return (
     <form onSubmit={onConfirm} className="animate-rise space-y-7">
@@ -516,17 +481,15 @@ export function ReceiptCaptureFlow({
         <div className="animate-rise-delay-1 space-y-1 text-center">
           {isSms && preview.balanceAfterMinor != null ? (
             <>
-              <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+              <p className="text-[0.7rem] font-medium tracking-[0.16em] text-[var(--numa-faint)] uppercase">
                 Saldo på Hem
               </p>
               <p className="money-hero money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
-                {formatMoney(
-                  money(preview.balanceAfterMinor, preview.currency),
-                )}
+                {formatMoney(money(preview.balanceAfterMinor, preview.currency))}
               </p>
             </>
           ) : (
-            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+            <p className="text-[0.7rem] font-medium tracking-[0.16em] text-[var(--numa-faint)] uppercase">
               {isBankApp ? "Bankapp" : "Bank-SMS"}
             </p>
           )}
@@ -545,7 +508,7 @@ export function ReceiptCaptureFlow({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+          <p className="text-[0.7rem] font-medium tracking-[0.16em] text-[var(--numa-faint)] uppercase">
             Kvitto · totalsumma
           </p>
           {preview.message ? (
@@ -574,9 +537,7 @@ export function ReceiptCaptureFlow({
               >
                 <span
                   className={`min-w-0 text-sm font-semibold ${
-                    plus
-                      ? "text-[var(--numa-positive)]"
-                      : "text-[var(--numa-ink)]"
+                    plus ? "text-[var(--numa-positive)]" : "text-[var(--numa-ink)]"
                   }`}
                 >
                   {event.labelSv?.includes("·")
@@ -588,9 +549,7 @@ export function ReceiptCaptureFlow({
                 </span>
                 <span
                   className={`money shrink-0 text-lg font-semibold ${
-                    plus
-                      ? "text-[var(--numa-positive)]"
-                      : "text-[var(--numa-ink)]"
+                    plus ? "text-[var(--numa-positive)]" : "text-[var(--numa-ink)]"
                   }`}
                 >
                   {plus ? "+" : "−"}
@@ -602,7 +561,7 @@ export function ReceiptCaptureFlow({
         </ul>
       ) : (
         <div>
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+          <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[var(--numa-faint)] uppercase">
             Belopp
           </p>
           {amountEditable || needsManualAmount ? (
@@ -693,10 +652,7 @@ export function ReceiptCaptureFlow({
       <div className="space-y-3 pt-2">
         <button
           type="submit"
-          disabled={
-            pending ||
-            (isAutoImport ? eventCount === 0 : !preview.amount.trim())
-          }
+          disabled={pending || (isAutoImport ? eventCount === 0 : !preview.amount.trim())}
           className="numa-btn numa-btn-primary w-full rounded-full"
         >
           {pending
@@ -704,12 +660,12 @@ export function ReceiptCaptureFlow({
             : fromOnboarding || variant === "onboarding"
               ? "Spara saldo"
               : bootstrapping
-              ? "Spara saldo på Hem"
-              : isAutoImport && eventCount > 1
-                ? `Spara ${eventCount} rörelser`
-                : isAutoImport && isCredit
-                  ? "Spara insättning"
-                  : "Bekräfta"}
+                ? "Spara saldo på Hem"
+                : isAutoImport && eventCount > 1
+                  ? `Spara ${eventCount} rörelser`
+                  : isAutoImport && isCredit
+                    ? "Spara insättning"
+                    : "Bekräfta"}
         </button>
         <button
           type="button"
@@ -746,49 +702,47 @@ function ModePicker({
         {
           id: "bank_sms",
           title: "Bank-SMS",
-          hint: "Saldot i SMS:et.",
+          hint: "Saldo från SMS",
         },
         {
           id: "bank_app",
           title: "Bankapp",
-          hint: "Skärmdump från bankappen.",
+          hint: "Beloppet i bankappen",
         },
       ]
     : [
-    {
-      id: "bank_sms",
-      title: "Bank-SMS",
-      hint: "Saldot i SMS:et.",
-    },
-    {
-      id: "bank_app",
-      title: "Bankapp",
-      hint: hasAccount ? "Beloppet i bankappen." : "Sätt saldo först.",
-    },
-    {
-      id: "receipt",
-      title: "Kvitto",
-      hint: "Priset på kvittot.",
-    },
-    {
-      id: "manual",
-      title: "Manuellt",
-      hint: hasAccount ? "Skriv beloppet." : "Sätt saldo först.",
-    },
-  ];
+        {
+          id: "bank_sms",
+          title: "Bank-SMS",
+          hint: "Saldo från SMS",
+        },
+        {
+          id: "bank_app",
+          title: "Bankapp",
+          hint: hasAccount ? "Beloppet i bankappen" : "Sätt saldo först",
+        },
+        {
+          id: "receipt",
+          title: "Kvitto",
+          hint: "Priset på kvittot",
+        },
+        {
+          id: "manual",
+          title: "Manuellt",
+          hint: hasAccount ? "Skriv beloppet" : "Sätt saldo först",
+        },
+      ];
 
   return (
     <div className="animate-rise space-y-8">
       <header className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {onboarding ? "Fota saldot" : "Fota"}
-        </h2>
+        <h2 className="numa-page-title">{onboarding ? "Fota saldot" : "Fota"}</h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           {SV.fotaHint}
         </p>
       </header>
 
-      <nav className="grid gap-3">
+      <nav className="numa-panel-list" aria-label="Fotolägen">
         {items.map((item) => (
           <button
             key={item.id}
@@ -799,20 +753,13 @@ function ModePicker({
               !hasAccount
             }
             onClick={() => onChoose(item.id)}
-            className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
+            className="numa-action-row numa-press"
           >
-            <span>
-              <span className="block text-[15px] font-semibold tracking-tight">
-                {item.title}
-              </span>
-              <span className="mt-0.5 block text-sm text-[var(--numa-muted)]">
-                {item.hint}
-              </span>
+            <span className="min-w-0">
+              <span className="numa-action-title">{item.title}</span>
+              <span className="numa-action-hint">{item.hint}</span>
             </span>
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
-              aria-hidden
-            >
+            <span className="numa-action-chevron" aria-hidden>
               →
             </span>
           </button>
@@ -820,11 +767,11 @@ function ModePicker({
       </nav>
 
       {onboarding ? null : (
-      <p className="text-center text-xs text-[var(--numa-faint)]">
-        <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
-          Se rörelser
-        </Link>
-      </p>
+        <p className="text-center text-xs text-[var(--numa-faint)]">
+          <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
+            Se rörelser
+          </Link>
+        </p>
       )}
     </div>
   );

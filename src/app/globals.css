@@ -7,19 +7,20 @@
  */
 :root {
   --numa-bg: #e4efe8;
-  --numa-bg-deep: #d2e3d9;
+  --numa-bg-deep: #d5e4db;
   --numa-ink: #071511;
   --numa-muted: #3d524a;
   --numa-faint: #5c7369;
-  --numa-surface: rgba(252, 254, 253, 0.72);
-  --numa-surface-solid: #f8fcfa;
+  --numa-surface: #fbfdfc;
+  --numa-surface-solid: #fbfdfc;
+  --numa-surface-elevated: #ffffff;
   --numa-surface-strong: #ffffff;
-  --numa-border: rgba(7, 21, 17, 0.07);
-  --numa-border-strong: rgba(7, 21, 17, 0.11);
+  --numa-border: rgba(7, 21, 17, 0.08);
+  --numa-border-strong: rgba(7, 21, 17, 0.12);
   --numa-accent: #0c7d68;
-  --numa-accent-soft: #b6eadc;
+  --numa-accent-soft: #c8efe4;
   --numa-accent-ink: #04372f;
-  --numa-accent-glow: rgba(12, 125, 104, 0.18);
+  --numa-accent-glow: rgba(12, 125, 104, 0.14);
   --numa-danger: #b42318;
   --numa-danger-soft: #fde8e6;
   --numa-alarm: #a86b3a;
@@ -28,9 +29,19 @@
   --numa-positive-soft: #d4efdf;
   --numa-warning: #9a6700;
   --numa-warning-soft: #fef3c7;
-  --numa-shadow: 0 22px 48px rgba(7, 21, 17, 0.07);
-  --numa-shadow-sm: 0 8px 22px rgba(7, 21, 17, 0.045);
-  --numa-nav: #f3faf7;
+  --numa-radius-sm: 0.75rem;
+  --numa-radius-md: 1rem;
+  --numa-radius-lg: 1.25rem;
+  --numa-radius-xl: 1.5rem;
+  --numa-space-1: 0.25rem;
+  --numa-space-2: 0.5rem;
+  --numa-space-3: 0.75rem;
+  --numa-space-4: 1rem;
+  --numa-space-5: 1.25rem;
+  --numa-space-6: 1.5rem;
+  --numa-shadow: 0 8px 24px rgba(7, 21, 17, 0.045);
+  --numa-shadow-sm: 0 1px 2px rgba(7, 21, 17, 0.04);
+  --numa-nav: rgba(243, 250, 247, 0.92);
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
@@ -75,6 +86,15 @@ a,
 [role="button"],
 summary {
   touch-action: manipulation;
+}
+
+/* Focus for chrome controls — leave inputs alone (they use ring + outline-none). */
+a:focus-visible,
+button:focus-visible,
+[role="tab"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--numa-accent);
+  outline-offset: 2px;
 }
 
 html {
@@ -129,102 +149,50 @@ body {
 
 .numa-panel {
   position: relative;
-  background: linear-gradient(
-    168deg,
-    rgba(255, 255, 255, 0.94) 0%,
-    var(--numa-surface-solid) 52%,
-    rgba(244, 250, 247, 0.98) 100%
-  );
+  background: var(--numa-surface-elevated);
   border: 1px solid var(--numa-border);
-  border-radius: 1.45rem;
+  border-radius: var(--numa-radius-lg);
   box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
 
-.numa-panel::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(11, 111, 93, 0.2) 42%,
-    rgba(255, 255, 255, 0.75) 72%,
-    transparent 100%
-  );
-  pointer-events: none;
-}
-
 .numa-panel-strong {
   position: relative;
-  background:
-    radial-gradient(520px 280px at 100% 0%, rgba(11, 111, 93, 0.1), transparent 55%),
-    linear-gradient(165deg, #ffffff 0%, #f7fcf9 58%, #eef7f2 100%);
-  border: 1px solid var(--numa-border-strong);
-  border-radius: 1.75rem;
+  background: var(--numa-surface-elevated);
+  border: 1px solid var(--numa-border);
+  border-radius: var(--numa-radius-xl);
   box-shadow: var(--numa-shadow);
   overflow: hidden;
-}
-
-.numa-panel-strong::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 14%;
-  bottom: 14%;
-  width: 2px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--numa-accent) 0%, rgba(11, 111, 93, 0.2) 100%);
-  pointer-events: none;
 }
 
 .numa-panel-park {
   position: relative;
-  background:
-    radial-gradient(480px 240px at 0% 0%, rgba(7, 21, 17, 0.05), transparent 55%),
-    linear-gradient(165deg, #ffffff 0%, #f6f8f7 62%, #eef1ef 100%);
-  border: 1px solid var(--numa-border-strong);
-  border-radius: 1.75rem;
-  box-shadow: var(--numa-shadow);
+  background: #f4f7f5;
+  border: 1px solid var(--numa-border);
+  border-radius: var(--numa-radius-lg);
+  box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
 
-.numa-panel-park::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 14%;
-  bottom: 14%;
-  width: 2px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    var(--numa-ink) 0%,
-    rgba(7, 21, 17, 0.18) 100%
-  );
-  pointer-events: none;
-}
-
 .numa-panel-list {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--numa-surface-elevated);
   border: 1px solid var(--numa-border);
-  border-radius: 1.35rem;
+  border-radius: var(--numa-radius-lg);
   box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
 
 .numa-section-title {
-  font-size: 0.68rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--numa-muted);
+  color: var(--numa-faint);
 }
 
 .numa-page-title {
-  font-size: clamp(1.9rem, 5.2vw, 2.2rem);
-  line-height: 1.08;
+  font-size: clamp(1.75rem, 4.6vw, 2rem);
+  line-height: 1.1;
   font-weight: 600;
   letter-spacing: -0.04em;
   color: var(--numa-ink);
@@ -242,8 +210,8 @@ body {
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem 1rem;
-  padding: 0.9rem 0;
+  gap: 0.5rem 1rem;
+  padding: 0.8rem 0;
   border-bottom: 1px solid var(--numa-border);
   min-width: 0;
 }
@@ -276,11 +244,135 @@ body {
 }
 
 .numa-panel-list .numa-row:first-child {
-  padding-top: 1rem;
+  padding-top: 0.85rem;
 }
 
 .numa-panel-list .numa-row:last-child {
-  padding-bottom: 1rem;
+  padding-bottom: 0.85rem;
+}
+
+.numa-hero {
+  padding: 1.35rem 1.25rem 1.2rem;
+}
+
+.numa-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--numa-surface-elevated);
+  border: 1px solid var(--numa-border);
+  border-radius: var(--numa-radius-lg);
+  box-shadow: var(--numa-shadow-sm);
+  overflow: hidden;
+}
+
+.numa-metrics > div {
+  min-width: 0;
+  padding: 0.9rem 0.75rem 1rem;
+}
+
+.numa-metrics > div + div {
+  border-left: 1px solid var(--numa-border);
+}
+
+.numa-metrics-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--numa-faint);
+}
+
+.numa-metrics-value {
+  margin-top: 0.4rem;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.numa-metrics-value::-webkit-scrollbar {
+  display: none;
+}
+
+.numa-action-row {
+  display: flex;
+  width: 100%;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--numa-border);
+  background: transparent;
+}
+
+.numa-action-row:last-child {
+  border-bottom: none;
+}
+
+.numa-action-row:hover:not(:disabled) {
+  background: rgba(232, 246, 240, 0.65);
+}
+
+.numa-action-row:disabled {
+  opacity: 0.4;
+}
+
+.numa-action-title {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--numa-ink);
+}
+
+.numa-action-hint {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--numa-muted);
+}
+
+.numa-action-chevron {
+  display: flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--numa-accent-soft);
+  color: var(--numa-accent-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.numa-line-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  min-height: 3.25rem;
+  padding: 0.7rem 1rem;
+}
+
+.numa-empty {
+  padding: 1.1rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--numa-muted);
+}
+
+.numa-error {
+  padding: 1.15rem 1.2rem;
+}
+
+.numa-tip {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--numa-faint);
 }
 
 .numa-progress > span {
@@ -441,12 +533,7 @@ body {
 }
 
 .numa-month-strip.is-overflow-end {
-  mask-image: linear-gradient(
-    90deg,
-    #000 0,
-    #000 calc(100% - 1.5rem),
-    transparent 100%
-  );
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
   -webkit-mask-image: linear-gradient(
     90deg,
     #000 0,
@@ -523,10 +610,10 @@ body {
   align-items: flex-end;
   justify-content: space-between;
   gap: 0.45rem 0.7rem;
-  padding: 0.95rem 1.1rem;
-  background: rgba(255, 255, 255, 0.78);
+  padding: 0.85rem 1rem;
+  background: var(--numa-surface-elevated);
   border: 1px solid var(--numa-border);
-  border-radius: 1.25rem;
+  border-radius: var(--numa-radius-lg);
   box-shadow: var(--numa-shadow-sm);
 }
 
@@ -710,14 +797,14 @@ body {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 70ms ease,
-    background-color 70ms ease,
-    box-shadow 70ms ease,
-    color 70ms ease;
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
 }
 
 .numa-press:active {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 
 .numa-komigang-card {
@@ -750,7 +837,7 @@ body {
   justify-content: center;
   min-height: 3rem;
   padding: 0 1.1rem;
-  border-radius: 1rem;
+  border-radius: var(--numa-radius-md);
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -759,14 +846,14 @@ body {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 70ms ease,
-    background-color 70ms ease,
-    box-shadow 70ms ease,
-    opacity 70ms ease;
+    transform 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
 }
 
 .numa-btn:active:not(:disabled) {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 
 .numa-btn:disabled {
@@ -776,7 +863,7 @@ body {
 .numa-btn-primary {
   background: var(--numa-ink);
   color: #fff;
-  box-shadow: 0 8px 20px rgba(7, 21, 17, 0.16);
+  box-shadow: 0 4px 14px rgba(7, 21, 17, 0.12);
 }
 
 .numa-btn-primary:hover:not(:disabled) {
@@ -830,7 +917,30 @@ body {
 }
 
 .numa-cta-glow {
-  box-shadow: 0 10px 28px rgba(7, 21, 17, 0.18);
+  box-shadow: 0 6px 18px rgba(7, 21, 17, 0.14);
+}
+
+.numa-bottom-nav {
+  background: var(--numa-nav);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow:
+    0 -1px 0 var(--numa-border),
+    0 -12px 28px rgba(7, 21, 17, 0.045);
+}
+
+.numa-fab {
+  box-shadow: 0 8px 20px rgba(12, 125, 104, 0.28);
+}
+
+.numa-fab.is-active {
+  box-shadow: 0 8px 22px rgba(12, 125, 104, 0.34);
+}
+
+@media (max-width: 360px) {
+  .numa-metrics > div {
+    padding: 0.8rem 0.5rem 0.9rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

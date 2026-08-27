@@ -61,12 +61,12 @@ export function AnalysViewLoading() {
         <div className="numa-skel h-10 w-[5.5rem] rounded-full" />
         <div className="numa-skel h-10 w-[5.5rem] rounded-full" />
       </div>
-      <div className="numa-skel h-[10.5rem] w-full" />
+      <div className="numa-skel h-[8.5rem] w-full" />
       <div className="space-y-2">
-        <div className="numa-skel h-3 w-16" />
-        <div className="numa-skel h-36 w-full" />
+        <div className="numa-skel h-3 w-24" />
+        <div className="numa-skel h-[4.5rem] w-full" />
       </div>
-      <div className="numa-skel h-36 w-full" />
+      <div className="numa-skel h-28 w-full" />
     </div>
   );
 }

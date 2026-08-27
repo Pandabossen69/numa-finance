@@ -56,7 +56,7 @@ export default async function MerPage() {
       <MerPageHeader title="Mer" description={`Inloggad som ${displayName}`} />
 
       <div className="animate-rise-delay-1 space-y-6">
-        <MerSection title="På telefonen (alla konton)">
+        <MerSection title="På telefonen">
           <div className="md:hidden">
             <HomescreenInstallHint dismissible={false} />
           </div>
@@ -105,10 +105,7 @@ export default async function MerPage() {
                 <p className="text-[15px] font-semibold tracking-tight">{displayName}</p>
                 <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">Inloggad nu</p>
               </MerListRow>
-              <MerListRow className="py-3">
-                <p className="mb-2 text-[12px] leading-snug text-[var(--numa-faint)]">
-                  Avslutar sessionen på den här enheten
-                </p>
+              <MerListRow className="py-1">
                 <SignOutButton />
               </MerListRow>
             </MerListGroup>

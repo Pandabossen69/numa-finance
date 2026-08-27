@@ -9,6 +9,10 @@ export function BottomNav() {
 
   const left = PRIMARY_NAV.slice(0, 2);
   const right = PRIMARY_NAV.slice(2);
+  const fotaActive =
+    highlightPath === "/fota" ||
+    highlightPath.startsWith("/fota/") ||
+    highlightPath.startsWith("/lagg-till");
 
   function activeFor(href: string) {
     return isNavActive(highlightPath, href);
@@ -20,11 +24,11 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)] shadow-[0_-12px_32px_rgba(7,21,17,0.08)] md:hidden"
+      className="numa-bottom-nav fixed inset-x-0 bottom-0 z-50 md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1.5 pt-1.5">
+      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pt-1.5 pb-1.5">
         {left.map((tab) => (
           <NavItem
             key={tab.href}
@@ -40,12 +44,19 @@ export function BottomNav() {
             href="/fota"
             prefetch
             onClick={() => onIntent("/fota")}
-            className="numa-press relative -mt-7 flex h-[3.65rem] w-[3.65rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white ring-[5px] ring-[var(--numa-nav)] shadow-[0_12px_26px_rgba(12,125,104,0.38)]"
+            aria-current={fotaActive ? "page" : undefined}
+            className={`numa-press numa-fab relative -mt-7 flex h-[3.65rem] w-[3.65rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white ring-[5px] ring-[var(--numa-nav)] ${
+              fotaActive ? "is-active" : ""
+            }`}
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />
           </Link>
-          <span className="text-[10px] font-semibold tracking-wide text-[var(--numa-accent-ink)]">
+          <span
+            className={`text-[10px] font-semibold tracking-wide ${
+              fotaActive ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
+            }`}
+          >
             Fota
           </span>
         </div>
@@ -83,15 +94,13 @@ function NavItem({
       prefetch
       onClick={onIntent}
       aria-current={active ? "page" : undefined}
-      className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 ${
-        active
-          ? "text-[var(--numa-accent-ink)]"
-          : "text-[var(--numa-faint)]"
+      className={`numa-press relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 ${
+        active ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-faint)]"
       }`}
     >
       {active ? (
         <span
-          className="absolute inset-x-1 top-0.5 bottom-0.5 -z-10 rounded-[1.15rem] bg-[var(--numa-accent-soft)]"
+          className="absolute inset-x-1.5 top-1 bottom-1 -z-10 rounded-[1rem] bg-[var(--numa-accent-soft)]"
           aria-hidden
         />
       ) : null}

@@ -67,6 +67,7 @@ export const SV = {
   manad: "Månad",
   saRaknarNuma: "Så räknar NUMA",
   idag: "Idag",
+  dagensEkonomi: "Dagens ekonomi",
   appDescription:
     "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
   notFoundHint: "Gå tillbaka till Hem — där ser du hur mycket som är kvar idag.",
