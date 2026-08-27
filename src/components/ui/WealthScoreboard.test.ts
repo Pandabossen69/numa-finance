@@ -12,8 +12,11 @@ describe("CompactPiles cash stack", () => {
     expect(compact).toContain("numa-amt-out");
     expect(compact).toContain("SV.kvarAttBetala");
     expect(compact).toContain("SV.over");
-    expect(compact).toContain("wrap={false}");
-    expect(compact).toContain("overflow-hidden");
+    expect(compact).toContain("numa-piles-board");
+    expect(compact).toContain("is-live");
+    expect(compact).toContain("is-park");
+    expect(compact).not.toContain("numa-panel-strong");
+    expect(compact).not.toContain("numa-panel-park");
     expect(compact).not.toContain("Mer än planerat.");
     expect(compact).not.toContain("SV.motPlanen");
   });

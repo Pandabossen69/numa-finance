@@ -94,12 +94,21 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("is-partial");
     expect(src).toContain("numa-chip numa-chip-mint");
     expect(src).toContain("numa-chip numa-chip-spend");
+    expect(src).toContain("onClick={() => onSettle(item.id, false)}");
     expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(css).toContain(".numa-plan-row.is-settled");
     expect(css).toContain(".numa-plan-row.is-partial");
     expect(css).toContain("var(--numa-positive)");
     expect(css).toContain("var(--numa-spend)");
+  });
+
+  it("puts Betald last, Delvis just above, and lets Ångra undo both", () => {
+    expect(src).toContain("sortPlanRowsForList");
+    expect(src).toContain("canUndo");
+    expect(src).toContain("explicitSettled");
+    expect(src).toContain('aria-label={`Ångra ${doneLabel}`}');
+    expect(src).toContain("SV.angraKlar");
   });
 
   it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {

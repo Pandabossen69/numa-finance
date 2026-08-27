@@ -10,17 +10,18 @@ function token(name: string): string {
 }
 
 describe("NUMA vision palette", () => {
-  it("keeps the canvas sage, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#c8d6ce");
+  it("keeps the canvas limestone, never paper white", () => {
+    expect(token("--numa-bg")).toBe("#e6e4de");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
-    expect(token("--numa-card")).toBe("#eaf1ec");
+    expect(token("--numa-card")).toBe("#f7f6f2");
     expect(css).not.toMatch(/linear-gradient\(\s*165deg,\s*#ffffff/);
     expect(css).not.toContain("#f7fcf9");
+    expect(css).not.toContain("#c8d6ce");
   });
 
   it("tints living, park and income/spend as separate families", () => {
-    expect(token("--numa-spend")).toBe("#7a5c48");
+    expect(token("--numa-spend")).toBe("#7c5340");
     expect(token("--numa-spend")).not.toBe(token("--numa-alarm"));
     expect(token("--numa-spend")).not.toBe(token("--numa-danger"));
     expect(css).toContain(".numa-panel-strong");
@@ -28,8 +29,10 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-amt-in");
     expect(css).toContain(".numa-amt-out");
     expect(css).toContain(".numa-wealth-cell.is-live");
-    expect(css).toContain("#dff3ea");
-    expect(css).toContain("#efe8de");
+    expect(css).toContain(".numa-piles-board");
+    expect(css).toContain(".numa-day-metrics");
+    expect(css).not.toContain("rgba(255, 255, 255, 0.75)");
+    expect(token("--numa-accent")).toBe("#0c5c4a");
   });
 
   it("keeps over-budget clay alarm distinct from destroy red", () => {

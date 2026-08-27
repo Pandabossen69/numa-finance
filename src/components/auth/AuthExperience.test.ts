@@ -14,6 +14,8 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).toContain("Logga in");
     expect(src).toContain("Konto skapas av NUMA");
     expect(src).toContain("Logga in med e-post och lösenord.");
+    expect(src).toContain("auth-card");
+    expect(src).toContain("auth-mark");
     expect(src).not.toMatch(/välkommen/i);
     expect(src).toContain("result.nextPath");
     expect(src).not.toContain('router.replace("/idag")');

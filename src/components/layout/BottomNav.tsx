@@ -20,7 +20,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/92 shadow-[0_-12px_32px_rgba(7,21,17,0.1)] backdrop-blur-xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/88 shadow-[0_-1px_0_rgba(17,17,16,0.04)] backdrop-blur-2xl md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
@@ -40,12 +40,12 @@ export function BottomNav() {
             href="/fota"
             prefetch
             onClick={() => onIntent("/fota")}
-            className="numa-press relative -mt-7 flex h-[3.65rem] w-[3.65rem] items-center justify-center rounded-full bg-[var(--numa-accent)] text-white ring-[5px] ring-[var(--numa-nav)] shadow-[0_12px_26px_rgba(12,125,104,0.38)]"
+            className="numa-press relative -mt-7 flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full bg-[var(--numa-ink)] text-[#f7f6f2] ring-[4px] ring-[var(--numa-bg)]"
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />
           </Link>
-          <span className="text-[10px] font-semibold tracking-wide text-[var(--numa-accent-ink)]">
+          <span className="text-[10px] font-semibold tracking-wide text-[var(--numa-ink)]">
             Fota
           </span>
         </div>
@@ -85,20 +85,14 @@ function NavItem({
       aria-current={active ? "page" : undefined}
       className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 ${
         active
-          ? "text-[var(--numa-accent-ink)]"
+          ? "text-[var(--numa-ink)]"
           : "text-[var(--numa-faint)]"
       }`}
     >
-      {active ? (
-        <span
-          className="absolute inset-x-1 top-0.5 bottom-0.5 -z-10 rounded-[1.15rem] bg-[var(--numa-accent-soft)]"
-          aria-hidden
-        />
-      ) : null}
       <NavIcon name={icon} active={active} />
       <span
         className={`text-[10px] font-semibold tracking-wide ${
-          active ? "text-[var(--numa-accent-ink)]" : ""
+          active ? "text-[var(--numa-ink)]" : ""
         }`}
       >
         {label}
@@ -108,8 +102,8 @@ function NavItem({
 }
 
 function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
-  const stroke = active ? "var(--numa-accent)" : "currentColor";
-  const fill = active ? "var(--numa-accent-soft)" : "none";
+  const stroke = active ? "var(--numa-ink)" : "currentColor";
+  const fill = "none";
   const common = {
     width: 22,
     height: 22,

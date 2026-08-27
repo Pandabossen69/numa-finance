@@ -34,10 +34,10 @@ describe("Hem PWA hint and HIGH copy", () => {
   });
 
   it("lets Dagsbudget and Spenderat wrap at phone width", () => {
-    expect(src).toContain("SV.dagsbudget");
-    expect(src).toContain("SV.spenderatIdag");
-    expect(src).not.toMatch(/amountMinor=\{view\.dayBudgetMinor\}[\s\S]{0,120}size="md"/);
-    expect(src).not.toMatch(/amountMinor=\{todaySpendingMinor\}[\s\S]{0,120}size="md"/);
+    expect(src).toContain("numa-day-metrics");
+    expect(src).toContain("is-budget");
+    expect(src).toContain("is-spent");
+    expect(src).not.toContain('bg-[var(--numa-card)] pt-1');
   });
 
   it("labels QuickExpense amount and note for a11y", () => {

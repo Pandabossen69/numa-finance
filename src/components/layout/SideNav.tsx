@@ -32,9 +32,9 @@ export function SideNav({ displayName }: { displayName: string }) {
                 href={item.href}
                 prefetch
                 onClick={() => markIntent(item.href)}
-                className={`numa-press relative rounded-2xl px-1 py-3 ${
+                className={`numa-press relative rounded-xl px-1 py-3 ${
                   active
-                    ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(12,125,104,0.16)]"
+                    ? "text-[var(--numa-ink)]"
                     : "text-[var(--numa-muted)] hover:bg-[var(--numa-card)] hover:text-[var(--numa-ink)]"
                 }`}
               >

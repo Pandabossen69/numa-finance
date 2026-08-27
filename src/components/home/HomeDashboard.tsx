@@ -179,8 +179,8 @@ export function HomeDashboard({
                     </p>
                   ) : null}
 
-                  <div className="numa-split relative z-[1] border-t border-[var(--numa-border)] bg-[var(--numa-card)] pt-1">
-                    <div>
+                  <div className="numa-day-metrics">
+                    <div className="is-budget">
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.dagsbudget}
                       </p>
@@ -196,8 +196,7 @@ export function HomeDashboard({
                         Sätts på morgonen
                       </p>
                     </div>
-                    <div className="numa-split-rule" aria-hidden />
-                    <div>
+                    <div className="is-spent">
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.spenderatIdag}
                       </p>
@@ -363,7 +362,7 @@ function AvailableNowCard({
   const [busy, setBusy] = useState(false);
 
   return (
-    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5 pl-6">
+    <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5">
       <div>
         <p className="numa-section-title">{SV.komIgång}</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">{SV.hurMycketKvar}</h2>

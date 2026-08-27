@@ -39,7 +39,7 @@ export function AuthExperience() {
     <div className="auth-stage relative flex min-h-dvh flex-col overflow-x-hidden">
       <div className="auth-glow" aria-hidden />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col px-5 pt-[max(1.5rem,var(--numa-safe-top))] pb-[max(1.5rem,var(--numa-safe-bottom))] md:max-w-lg md:justify-center">
+      <div className="relative z-10 mx-auto flex w-full flex-1 flex-col justify-center px-4 py-[max(1.25rem,var(--numa-safe-top))] pb-[max(1.25rem,var(--numa-safe-bottom))] sm:px-6">
         {screen === "welcome" ? <WelcomeScreen onLogin={() => go("login")} /> : null}
 
         {screen === "login" ? (
@@ -63,36 +63,33 @@ export function AuthExperience() {
 
 function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
   return (
-    <div className="flex flex-1 flex-col md:flex-none md:rounded-[1.75rem] md:border md:border-[var(--numa-border-strong)] md:bg-[var(--numa-surface-solid)] md:p-10 md:shadow-[var(--numa-shadow)]">
-      <div className="flex flex-1 flex-col justify-end pb-10 md:flex-none md:justify-start md:pb-8">
-        <p className="text-[2.75rem] leading-none font-semibold tracking-[-0.05em]">
-          NUMA
-        </p>
-        <p className="mt-5 max-w-[18ch] text-[1.35rem] leading-snug font-medium tracking-tight text-[var(--numa-ink)]">
+    <div className="auth-card mx-auto w-full">
+      <div className="auth-card-copy">
+        <p className="auth-mark">NUMA</p>
+        <p className="mt-4 max-w-[16ch] text-[1.45rem] leading-snug font-medium tracking-tight text-[var(--numa-ink)] md:text-[1.7rem]">
           Håll koll på pengarna — enkelt varje dag.
         </p>
-        <p className="mt-3 max-w-[32ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
+        <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
           Se vad som är ledigt, vad som är reserverat och hur mycket du kan spendera idag.
         </p>
-        <p className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-[var(--numa-faint)]">
+      </div>
+      <div className="auth-card-action">
+        <button
+          type="button"
+          onClick={onLogin}
+          className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[#f7f6f2] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 active:scale-[0.99]"
+        >
+          Logga in
+        </button>
+        <p className="mt-3 text-center text-[13px] leading-relaxed text-[var(--numa-faint)] md:text-left">
+          Konto skapas av NUMA. Har du fått e-post och lösenord, logga in här.
+        </p>
+        <p className="mt-3 text-center text-[12px] leading-relaxed text-[var(--numa-faint)] md:text-left">
           Alla konton använder samma app-länk:{" "}
           <span className="font-semibold text-[var(--numa-muted)]">
             numa-finance.vercel.app
           </span>
           . Lägg till på hemskärmen därifrån.
-        </p>
-      </div>
-
-      <div className="space-y-3" style={{ animationDelay: "80ms" }}>
-        <button
-          type="button"
-          onClick={onLogin}
-          className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 active:scale-[0.99]"
-        >
-          Logga in
-        </button>
-        <p className="px-2 text-center text-[13px] leading-relaxed text-[var(--numa-faint)]">
-          Konto skapas av NUMA. Har du fått e-post och lösenord, logga in här.
         </p>
       </div>
     </div>
@@ -123,16 +120,19 @@ function LoginScreen({
   onSubmit: (e: React.FormEvent) => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col md:flex-none md:rounded-[1.75rem] md:border md:border-[var(--numa-border-strong)] md:bg-[var(--numa-surface-solid)] md:p-10 md:shadow-[var(--numa-shadow)]">
-      <BackButton onClick={onBack} />
-      <header className="mt-6 space-y-2">
-        <h1 className="text-[1.75rem] font-semibold tracking-tight">Logga in</h1>
-        <p className="text-[15px] text-[var(--numa-muted)]">
-          Logga in med e-post och lösenord.
-        </p>
-      </header>
+    <div className="auth-card mx-auto w-full">
+      <div className="auth-card-copy">
+        <BackButton onClick={onBack} />
+        <p className="auth-mark mt-6 md:mt-0">NUMA</p>
+        <header className="mt-4 space-y-2">
+          <h1 className="text-[1.65rem] font-semibold tracking-tight">Logga in</h1>
+          <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
+            Logga in med e-post och lösenord.
+          </p>
+        </header>
+      </div>
 
-      <form onSubmit={onSubmit} className="mt-8 flex flex-1 flex-col">
+      <form onSubmit={onSubmit} className="auth-card-action flex flex-col">
         <div className="space-y-5">
           <Field
             label="E-post"
@@ -153,7 +153,7 @@ function LoginScreen({
           {error ? <ErrorText>{error}</ErrorText> : null}
         </div>
 
-        <div className="mt-auto space-y-4 pt-10">
+        <div className="mt-8 space-y-4">
           <PrimaryButton disabled={pending || !email || !password}>
             {pending ? "Loggar in…" : "Logga in"}
           </PrimaryButton>
@@ -223,7 +223,7 @@ function Field({
         autoComplete={autoComplete}
         autoFocus={autoFocus}
         required
-        className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 text-[16px] transition outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+        className="min-h-14 w-full rounded-full border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] transition outline-none focus:border-[var(--numa-ink)] focus:ring-2 focus:ring-[var(--numa-ink)]/10"
       />
     </label>
   );
@@ -260,12 +260,12 @@ function PasswordField({
           autoFocus={autoFocus}
           required
           minLength={8}
-          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-surface)] px-4 pr-20 text-[16px] transition outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+          className="min-h-14 w-full rounded-full border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 pr-20 text-[16px] transition outline-none focus:border-[var(--numa-ink)] focus:ring-2 focus:ring-[var(--numa-ink)]/10"
         />
         <button
           type="button"
           onClick={onToggle}
-          className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm font-medium text-[var(--numa-accent)] transition hover:text-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
+          className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-2 text-sm font-medium text-[var(--numa-ink)] transition hover:text-[var(--numa-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)]"
         >
           {show ? "Dölj" : "Visa"}
         </button>
@@ -290,7 +290,7 @@ function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
+      className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[#f7f6f2] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
     >
       {children}
     </button>
