@@ -500,7 +500,7 @@ function PasswordField({
         <button
           type="button"
           onClick={onToggle}
-          className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg px-2 py-1.5 text-sm font-medium text-[var(--numa-accent)]"
+          className="absolute top-1/2 right-2 inline-flex min-h-11 -translate-y-1/2 items-center rounded-lg px-2 text-sm font-medium text-[var(--numa-accent)]"
         >
           {show ? "Dölj" : "Visa"}
         </button>

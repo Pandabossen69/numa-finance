@@ -82,6 +82,7 @@ function NavItem({
       href={href}
       prefetch
       onClick={onIntent}
+      aria-current={active ? "page" : undefined}
       className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 ${
         active
           ? "text-[var(--numa-accent-ink)]"

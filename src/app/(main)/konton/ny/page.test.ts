@@ -9,4 +9,14 @@ describe("/konton/ny", () => {
     expect(page).toContain("CreateAccountForm");
     expect(page).not.toContain("Ditt saldo i NUMA");
   });
+
+  it("passes the profile primary currency into the form", () => {
+    expect(page).toContain("getProfile");
+    expect(page).toContain("primaryCurrency={profile.primaryCurrency}");
+  });
+
+  it("uses MerBackLink instead of a raw Saldo chevron", () => {
+    expect(page).toContain("MerBackLink");
+    expect(page).not.toContain("← Saldo");
+  });
 });

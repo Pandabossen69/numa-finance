@@ -55,4 +55,17 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-shell-pad-bottom")).toContain("var(--numa-fab-overhang)");
     expect(token("--numa-shell-pad-bottom")).toContain("var(--numa-safe-bottom)");
   });
+
+  it("keeps the Hem/Plan split rule at 1px so it cannot cover the right amount", () => {
+    expect(css).toContain(".numa-split > div:not(.numa-split-rule)");
+    expect(css).toContain(".numa-split-rule {");
+    const rule = css.slice(
+      css.indexOf(".numa-split-rule {"),
+      css.indexOf("@keyframes numa-rise"),
+    );
+    expect(rule).toContain("width: 1px");
+    expect(rule).toContain("max-width: 1px");
+    expect(rule).toContain("padding: 0");
+    expect(rule).not.toContain("padding: 0.85rem");
+  });
 });

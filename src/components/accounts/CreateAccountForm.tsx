@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { createAccountAction } from "@/features/finance/actions";
 import { CURRENCIES, type CurrencyCode } from "@/domain/money";
 
-export function CreateAccountForm() {
+export function CreateAccountForm({
+  primaryCurrency,
+}: {
+  primaryCurrency: CurrencyCode;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +24,7 @@ export function CreateAccountForm() {
       | "credit"
       | "investment"
       | "other",
-    currency: "SEK" as CurrencyCode,
+    currency: primaryCurrency,
     maskedIdentifier: "",
     openingBalance: "",
   });
@@ -127,7 +131,7 @@ export function CreateAccountForm() {
           className="mt-1 h-4 w-4 accent-[var(--numa-accent)]"
         />
         <span className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Använd på Idag (gör detta till ditt primära saldo)
+          Använd på Hem (gör detta till ditt primära saldo)
         </span>
       </label>
 

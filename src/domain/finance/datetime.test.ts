@@ -3,6 +3,7 @@ import {
   calendarDaysBetween,
   earliestInstant,
   formatCountSv,
+  formatDaysUntilSv,
   formatIsoDateOnlySv,
   formatListDateSv,
   isCalendarDate,
@@ -99,6 +100,26 @@ describe("Swedish relative verification copy", () => {
     ).toBe("2 dagar sedan");
     expect(formatCountSv(1, "dag", "dagar")).toBe("1 dag");
     expect(formatCountSv(12, "dag", "dagar")).toBe("12 dagar");
+  });
+
+  it("counts verification days on Bangkok civil days, not raw UTC hours/24", () => {
+    // 27 Aug 10:00 Bangkok; last saldo 23 Aug 22:00 Bangkok = 4 civil days.
+    const now = new Date("2026-08-27T03:00:00.000Z");
+    expect(
+      formatRelativeVerificationSv("2026-08-23T15:00:00.000Z", now, tz),
+    ).toBe("4 dagar sedan");
+    expect(
+      formatRelativeVerificationSv("2026-08-27T02:00:00.000Z", now, tz),
+    ).toBe("1 timme sedan");
+  });
+});
+
+describe("formatDaysUntilSv", () => {
+  it("says idag when the horizon is today, and kvar otherwise", () => {
+    expect(formatDaysUntilSv(0)).toBe("idag");
+    expect(formatDaysUntilSv(-3)).toBe("idag");
+    expect(formatDaysUntilSv(1)).toBe("1 dag kvar");
+    expect(formatDaysUntilSv(4)).toBe("4 dagar kvar");
   });
 });
 

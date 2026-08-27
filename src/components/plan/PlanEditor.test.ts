@@ -38,9 +38,10 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("scrollIntoView");
     expect(src).toContain("block: \"nearest\"");
     expect(src).toContain(
-      "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)]",
+      "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)] md:pb-0",
     );
     expect(src).toContain("scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)");
+    expect(src).toContain("md:scroll-mb-0");
   });
 
   it("does not keep the add toggle over the fields while they expand", () => {

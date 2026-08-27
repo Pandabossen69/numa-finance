@@ -15,7 +15,7 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
-import { formatCountSv } from "@/domain/finance";
+import { formatDaysUntilSv } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
@@ -55,12 +55,12 @@ export function AnalysDashboard({
   const heroMinor = isBridge && !hasSaldo ? 0 : cycle.remainingFreeMinor;
   const heroOk = hasSaldo || isCycle ? heroMinor >= 0 : false;
   const cycleTitle =
-    isBridge && cycle.startLabelSv
-      ? `Fram till ${cycle.startLabelSv}`
+    isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
+      ? `Fram till ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
       : cycle.startLabelSv && cycle.endLabelSv
         ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
         : "Ingen period ännu";
-  const daysLeftLabel = formatCountSv(cycle.daysLeft, "dag", "dagar");
+  const daysLeftLabel = formatDaysUntilSv(cycle.daysLeft);
   const modeEyebrow = isBridge
     ? "Tills nästa intäkt"
     : isEmpty
@@ -89,7 +89,7 @@ export function AnalysDashboard({
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
-      <header className="animate-rise flex items-start justify-between gap-3">
+      <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
         <FormulaInfo steps={view.formula.steps} />
       </header>
@@ -356,14 +356,7 @@ export function AnalysDashboard({
         </div>
         {view.goals.length === 0 ? (
           <p className="text-sm text-[var(--numa-muted)]">
-            Inga mål ännu.{" "}
-            <Link
-              href="/plan"
-              prefetch
-              className="font-semibold text-[var(--numa-accent)]"
-            >
-              Lägg till →
-            </Link>
+            Inga mål ännu. Avsätt sparande under Plan.
           </p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
@@ -449,7 +442,7 @@ function ScopeChip({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`numa-press numa-scope-chip min-h-10 rounded-full px-4 text-sm font-semibold ${
+      className={`numa-press numa-scope-chip min-h-11 rounded-full px-4 text-sm font-semibold ${
         active
           ? "is-active bg-[var(--numa-ink)] text-white"
           : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"

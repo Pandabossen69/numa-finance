@@ -11,6 +11,7 @@ import {
   voidTransactionAction,
 } from "@/features/finance/actions";
 import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
+import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
@@ -56,7 +57,7 @@ function inMonthKey(iso: string, monthKey: string, timeZone: string): boolean {
 }
 
 function minorToUi(amountMinor: number): string {
-  return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
+  return minorToUiAmount(amountMinor);
 }
 
 export function MovementsScreen({
@@ -205,7 +206,7 @@ export function MovementsScreen({
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`numa-press min-h-10 rounded-full px-3.5 text-sm font-semibold ${
+            className={`numa-press min-h-11 rounded-full px-3.5 text-sm font-semibold ${
               filter === f.id
                 ? "bg-[var(--numa-ink)] text-white"
                 : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -433,7 +434,7 @@ function PeriodChip({
     <button
       type="button"
       onClick={onClick}
-      className={`numa-press min-h-10 rounded-full px-4 text-sm font-semibold ${
+      className={`numa-press min-h-11 rounded-full px-4 text-sm font-semibold ${
         active
           ? "bg-[var(--numa-ink)] text-white"
           : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"

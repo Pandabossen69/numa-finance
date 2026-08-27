@@ -26,4 +26,27 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain("SV.motPlanen");
     expect(src).not.toContain("livingVsPlanHintSv");
   });
+
+  it("says Sparar… while saldo buttons are busy, not Klart", () => {
+    expect(src).toContain('{busy ? "Sparar…" : SV.visaDagsbudget}');
+    expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
+    expect(src).not.toMatch(/busy \? "Klart"/);
+  });
+
+  it("lets Dagsbudget and Spenderat wrap at phone width", () => {
+    expect(src).toContain("SV.dagsbudget");
+    expect(src).toContain("SV.spenderatIdag");
+    expect(src).not.toMatch(/amountMinor=\{view\.dayBudgetMinor\}[\s\S]{0,120}size="md"/);
+    expect(src).not.toMatch(/amountMinor=\{todaySpendingMinor\}[\s\S]{0,120}size="md"/);
+  });
+
+  it("labels QuickExpense amount and note for a11y", () => {
+    expect(src).toContain('aria-label="Anteckning"');
+    expect(src).toContain('aria-label="Belopp"');
+  });
+
+  it("labels days until income as idag / N dagar kvar, not a bare 4 dagar", () => {
+    expect(src).toContain("formatDaysUntilSv");
+    expect(src).not.toContain('formatCountSv(view.spendDaysLeft, "dag", "dagar")');
+  });
 });

@@ -1330,7 +1330,7 @@ function InlineAdd({
     <div
       className={`mt-auto border-t border-[var(--numa-border)] pt-4 ${
         open
-          ? "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)]"
+          ? "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)] md:pb-0"
           : ""
       }`}
     >
@@ -1378,7 +1378,7 @@ function InlineAdd({
       </div>
       <div
         ref={submitRowRef}
-        className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2"
+        className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2 md:scroll-mb-0"
       >
         <button
           type="button"

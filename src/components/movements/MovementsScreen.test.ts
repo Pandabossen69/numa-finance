@@ -18,4 +18,14 @@ describe("Rörelser expense color", () => {
     expect(src).toContain('event.key === "Escape"');
     expect(src).toContain("confirmId == null || confirmId === tx.id");
   });
+
+  it("formats edit amounts with a Swedish comma", () => {
+    expect(src).toContain("minorToUiAmount");
+    expect(src).not.toContain("toFixed(2)");
+  });
+
+  it("gives Rörelser chips a 44px tap target", () => {
+    expect(src).toContain("min-h-11 rounded-full");
+    expect(src).not.toContain("min-h-10 rounded-full");
+  });
 });

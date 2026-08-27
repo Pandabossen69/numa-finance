@@ -92,7 +92,7 @@ export function CompactPiles({
     <div className="grid grid-cols-2 gap-3">
       <div className="numa-panel-strong min-w-0 px-3.5 py-3.5">
         <p className="numa-section-title">{SV.saldo}</p>
-        <div className="mt-1.5 text-[var(--numa-ink)]">
+        <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
           {saldoMinor == null ? (
             <span className="text-base font-medium text-[var(--numa-faint)]">—</span>
           ) : (
@@ -106,7 +106,7 @@ export function CompactPiles({
             />
           )}
         </div>
-        <p className="mt-2 flex items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
+        <p className="mt-2 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
           <span>{SV.kommerIn}</span>
           <MoneyDisplay
             amountMinor={incomingMinor}
@@ -117,7 +117,7 @@ export function CompactPiles({
             wrap={false}
           />
         </p>
-        <p className="mt-1 flex items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
+        <p className="mt-1 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
           <span>{SV.kvarAttBetala}</span>
           <MoneyDisplay
             amountMinor={unpaidMinor}
@@ -129,7 +129,7 @@ export function CompactPiles({
           />
         </p>
         <p
-          className={`mt-1.5 flex items-baseline justify-between gap-2 text-[11px] leading-snug ${
+          className={`mt-1.5 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug ${
             overOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
           }`}
         >
@@ -150,7 +150,7 @@ export function CompactPiles({
       </div>
       <div className="numa-panel-park min-w-0 px-3.5 py-3.5">
         <p className="numa-section-title">{SV.sparande}</p>
-        <div className="mt-1.5 text-[var(--numa-ink)]">
+        <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}

@@ -298,7 +298,7 @@ body {
   align-items: stretch;
 }
 
-.numa-split > div {
+.numa-split > div:not(.numa-split-rule) {
   min-width: 0;
   padding: 0.85rem 0.9rem;
 }
@@ -313,6 +313,12 @@ body {
 
 .numa-split-rule {
   width: 1px;
+  min-width: 1px;
+  max-width: 1px;
+  padding: 0;
+  justify-self: center;
+  align-self: stretch;
+  pointer-events: none;
   background: linear-gradient(
     180deg,
     transparent 8%,

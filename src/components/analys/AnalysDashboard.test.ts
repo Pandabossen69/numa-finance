@@ -20,4 +20,24 @@ describe("Analys month result color", () => {
     expect(src).toContain("lastAnalysScope");
     expect(src).toContain("rememberAnalysScope");
   });
+
+  it("gives Analys scope chips a 44px tap target", () => {
+    expect(src).toContain("min-h-11");
+    expect(src).not.toContain("min-h-10");
+  });
+
+  it("labels days until next income as idag / N dagar kvar", () => {
+    expect(src).toContain("formatDaysUntilSv");
+    expect(src).toContain("cycle.nextIncomeLabelSv");
+    expect(src).not.toContain('formatCountSv(cycle.daysLeft, "dag", "dagar")');
+  });
+
+  it("does not send empty Mål to a dead Lägg till on Plan", () => {
+    expect(src).toContain("Avsätt sparande under Plan");
+    expect(src).not.toContain("Lägg till →");
+  });
+
+  it("lets the Analys header wrap so the formula panel can sit above the tabs", () => {
+    expect(src).toContain("flex flex-wrap items-start justify-between");
+  });
 });
