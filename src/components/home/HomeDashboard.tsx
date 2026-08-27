@@ -179,8 +179,8 @@ export function HomeDashboard({
                     </p>
                   ) : null}
 
-                  <div className="numa-split relative z-[1] border-t border-[var(--numa-border)] bg-[var(--numa-card)] pt-1">
-                    <div>
+                  <div className="numa-day-metrics">
+                    <div className="is-budget">
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.dagsbudget}
                       </p>
@@ -196,8 +196,7 @@ export function HomeDashboard({
                         Sätts på morgonen
                       </p>
                     </div>
-                    <div className="numa-split-rule" aria-hidden />
-                    <div>
+                    <div className="is-spent">
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.spenderatIdag}
                       </p>

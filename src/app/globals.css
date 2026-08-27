@@ -157,8 +157,8 @@ body {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(11, 111, 93, 0.2) 42%,
-    rgba(255, 255, 255, 0.75) 72%,
+    rgba(11, 111, 93, 0.22) 42%,
+    rgba(214, 228, 220, 0.7) 72%,
     transparent 100%
   );
   pointer-events: none;
@@ -167,11 +167,11 @@ body {
 .numa-panel-strong {
   position: relative;
   background:
-    radial-gradient(560px 300px at 100% -10%, rgba(11, 122, 100, 0.22), transparent 58%),
-    linear-gradient(165deg, #dff3ea 0%, #d0e9dd 48%, #c3ddd1 100%);
-  border: 1px solid color-mix(in srgb, var(--numa-accent) 22%, var(--numa-border-strong));
+    radial-gradient(560px 300px at 100% -10%, rgba(11, 122, 100, 0.16), transparent 58%),
+    linear-gradient(165deg, #d4e6dc 0%, #c9dcd2 52%, #becfc6 100%);
+  border: 1px solid color-mix(in srgb, var(--numa-accent) 18%, var(--numa-border-strong));
   border-radius: 1.75rem;
-  box-shadow: var(--numa-shadow);
+  box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
 
@@ -190,11 +190,11 @@ body {
 .numa-panel-park {
   position: relative;
   background:
-    radial-gradient(480px 240px at 0% 0%, rgba(122, 92, 72, 0.12), transparent 55%),
-    linear-gradient(165deg, #efe8de 0%, #e4dbd0 58%, #d8cfc4 100%);
-  border: 1px solid color-mix(in srgb, var(--numa-spend) 22%, var(--numa-border-strong));
+    radial-gradient(480px 240px at 0% 0%, rgba(122, 92, 72, 0.1), transparent 55%),
+    linear-gradient(165deg, #e4dbd0 0%, #d8cfc4 58%, #cec4b8 100%);
+  border: 1px solid color-mix(in srgb, var(--numa-spend) 20%, var(--numa-border-strong));
   border-radius: 1.75rem;
-  box-shadow: var(--numa-shadow);
+  box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
 
@@ -215,10 +215,10 @@ body {
 }
 
 .numa-panel-list {
-  background: var(--numa-card);
+  background: color-mix(in srgb, var(--numa-surface-solid) 72%, var(--numa-bg));
   border: 1px solid var(--numa-border);
   border-radius: 1.35rem;
-  box-shadow: var(--numa-shadow-sm);
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -313,21 +313,13 @@ body {
 
 .numa-split > div:first-child {
   padding-left: 0.15rem;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--numa-positive-soft) 70%, transparent) 0%,
-    transparent 100%
-  );
+  background: color-mix(in srgb, var(--numa-positive-soft) 38%, transparent);
   border-radius: 1.15rem 0 0 1.15rem;
 }
 
 .numa-split > div:last-child {
   padding-right: 0.15rem;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--numa-spend-soft) 75%, transparent) 0%,
-    transparent 100%
-  );
+  background: color-mix(in srgb, var(--numa-spend-soft) 42%, transparent);
   border-radius: 0 1.15rem 1.15rem 0;
 }
 
@@ -395,6 +387,50 @@ body {
 
 .numa-day-stage.is-over::after {
   background: radial-gradient(circle, rgba(168, 107, 58, 0.18) 0%, transparent 68%);
+}
+
+.numa-day-metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+.numa-day-metrics > div {
+  min-width: 0;
+  padding: 0.85rem 0.9rem;
+  border-radius: 1.15rem;
+}
+
+.numa-day-metrics > .is-budget {
+  background: color-mix(in srgb, var(--numa-positive-soft) 42%, transparent);
+}
+
+.numa-day-metrics > .is-spent {
+  background: color-mix(in srgb, var(--numa-spend-soft) 48%, transparent);
+}
+
+.numa-piles-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.55rem;
+  padding: 0.55rem;
+  border-radius: 1.6rem;
+  border: 1px solid var(--numa-border);
+  background: color-mix(in srgb, var(--numa-surface-solid) 55%, var(--numa-bg));
+}
+
+.numa-piles-board > div {
+  min-width: 0;
+  padding: 0.9rem 0.95rem;
+  border-radius: 1.2rem;
+}
+
+.numa-piles-board > .is-live {
+  background: color-mix(in srgb, #d4e6dc 70%, transparent);
+}
+
+.numa-piles-board > .is-park {
+  background: color-mix(in srgb, #e4dbd0 72%, transparent);
 }
 
 .numa-day-dial-arc {
@@ -627,6 +663,19 @@ body {
 .numa-chip-ink {
   background: rgba(7, 21, 17, 0.06);
   color: var(--numa-ink);
+}
+
+button.numa-chip {
+  margin: 0;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+button.numa-chip:disabled {
+  opacity: 0.45;
 }
 
 .numa-plan-row {
@@ -1012,4 +1061,35 @@ body {
     radial-gradient(900px 520px at 50% -8%, rgba(11, 111, 93, 0.18), transparent 58%),
     radial-gradient(700px 420px at 100% 85%, rgba(11, 111, 93, 0.08), transparent 50%),
     radial-gradient(600px 380px at 0% 70%, rgba(7, 21, 17, 0.04), transparent 45%);
+}
+
+.auth-mark {
+  font-size: 1.85rem;
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.65rem;
+  width: 100%;
+  max-width: 26.5rem;
+  padding: 1.55rem 1.35rem 1.45rem;
+  border: 1px solid var(--numa-border);
+  border-radius: 1.75rem;
+  background: color-mix(in srgb, var(--numa-surface-solid) 78%, var(--numa-bg));
+  box-shadow: var(--numa-shadow-sm);
+}
+
+@media (min-width: 768px) {
+  .auth-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 2.4rem 2.6rem;
+    max-width: 52rem;
+    align-items: center;
+    padding: 2.4rem 2.3rem;
+  }
 }

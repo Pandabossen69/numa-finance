@@ -7,9 +7,11 @@ import {
   isPlanPartiallySettled,
   isPlanSettled,
   isRecurringMonthly,
+  planListStatus,
   planPartialBreakdown,
   planRowHeroMinor,
   previewPartialRemaining,
+  sortPlanRowsForList,
   remainingDueIso,
   remainingOpenMinor,
   settledAmountMinor,
@@ -345,6 +347,57 @@ describe("plan-months", () => {
     ]);
     expect(visibleMonthKeysForYear(2027)[0]).toBe("2027-01");
     expect(visibleMonthKeysForYear(2027)).toHaveLength(12);
+  });
+
+  it("sorts open, then Delvis, then Betald — paid always last", () => {
+    const paid = item({
+      name: "GHK-Cu",
+      kind: "mandatory",
+      amountMinor: 1290_00,
+      settledAt: "2026-08-27T12:00:00.000Z",
+    });
+    const openA = item({
+      name: "Chatgpt",
+      kind: "mandatory",
+      amountMinor: 650_00,
+    });
+    const openB = item({
+      name: "Cursor",
+      kind: "mandatory",
+      amountMinor: 3500_00,
+    });
+    const partial = item({
+      name: "Aylis/Unseen",
+      kind: "mandatory",
+      amountMinor: 26000_00,
+      settledMinor: 2000_00,
+    });
+    const sorted = sortPlanRowsForList([paid, openA, openB, partial]);
+    expect(sorted.map((row) => row.name)).toEqual([
+      "Chatgpt",
+      "Cursor",
+      "Aylis/Unseen",
+      "GHK-Cu",
+    ]);
+    expect(planListStatus(partial)).toBe("partial");
+    expect(planListStatus(paid)).toBe("settled");
+  });
+
+  it("treats a ledger match as Betald when sorting", () => {
+    const matched = item({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+    });
+    const open = item({
+      name: "El",
+      kind: "mandatory",
+      amountMinor: 800_00,
+    });
+    expect(sortPlanRowsForList([matched, open], new Set([matched.id])).map((row) => row.name)).toEqual([
+      "El",
+      "Hyra",
+    ]);
   });
 
   it("treats Delvis klar as remaining amount with a rest date", () => {

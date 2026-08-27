@@ -28,6 +28,7 @@ import {
   projectPlanForMonth,
   remainingDueIso,
   settledAmountMinor,
+  sortPlanRowsForList,
   sumCountsTowardCashMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
@@ -1287,17 +1288,21 @@ function PlanRows({
     return <p className="py-4 text-sm text-[var(--numa-muted)]">{emptyHint}</p>;
   }
 
+  const rows = sortPlanRowsForList(items, matchedIds);
+
   return (
     <ul className="divide-y divide-[var(--numa-border)]">
-      {items.map((item) => {
+      {rows.map((item) => {
         const rowCurrency = (item.currency || currency) as CurrencyCode;
         const dateLabel = subtitle(item);
         const restIso = remainingDueIso(item);
         const restLabel = restIso ? formatListDateSv(restIso, timeZone) : null;
         const breakdown = planPartialBreakdown(item);
         const matched = matchedIds.has(item.id);
-        const settled = matched || isPlanSettled(item);
+        const explicitSettled = isPlanSettled(item);
         const partial = !matched && isPlanPartiallySettled(item);
+        const settled = explicitSettled || (matched && !partial);
+        const canUndo = explicitSettled || partial;
 
         if (editingId === item.id) {
           return (
@@ -1434,8 +1439,6 @@ function PlanRows({
             disabled: pendingId === item.id && pendingAction === "settle",
             onSelect: () => onSettle(item.id, true),
           });
-        }
-        if (!matched) {
           menuItems.push({
             label: partialLabel,
             onSelect: () => {
@@ -1451,7 +1454,7 @@ function PlanRows({
             onStartEdit(item);
           },
         });
-        if ((settled && !matched) || partial) {
+        if (canUndo) {
           menuItems.push({
             label: SV.angraKlar,
             disabled: pendingId === item.id && pendingAction === "settle",
@@ -1500,9 +1503,29 @@ function PlanRows({
                   align="end"
                 />
                 {settled ? (
-                  <span className="numa-chip numa-chip-mint">{doneLabel}</span>
+                  canUndo ? (
+                    <button
+                      type="button"
+                      className="numa-chip numa-chip-mint"
+                      disabled={pendingId === item.id && pendingAction === "settle"}
+                      aria-label={`Ångra ${doneLabel}`}
+                      onClick={() => onSettle(item.id, false)}
+                    >
+                      {doneLabel}
+                    </button>
+                  ) : (
+                    <span className="numa-chip numa-chip-mint">{doneLabel}</span>
+                  )
                 ) : partial ? (
-                  <span className="numa-chip numa-chip-spend">{SV.delvis}</span>
+                  <button
+                    type="button"
+                    className="numa-chip numa-chip-spend"
+                    disabled={pendingId === item.id && pendingAction === "settle"}
+                    aria-label={`Ångra ${partialLabel}`}
+                    onClick={() => onSettle(item.id, false)}
+                  >
+                    {SV.delvis}
+                  </button>
                 ) : null}
               </div>
               {isTempPlanId(item.id) ? null : confirmId === item.id ? (

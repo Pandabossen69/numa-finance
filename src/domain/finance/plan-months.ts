@@ -102,6 +102,42 @@ export function isPlanPartiallySettled(item: PlanItem): boolean {
   return settled > 0 && settled < item.amountMinor;
 }
 
+export type PlanListStatus = "open" | "partial" | "settled";
+
+/** Visual / sort status: Delvis, then clicked or ledger-matched Betald/Mottagen. */
+export function planListStatus(
+  item: PlanItem,
+  ledgerMatched = false,
+): PlanListStatus {
+  if (isPlanPartiallySettled(item)) return "partial";
+  if (isPlanSettled(item) || ledgerMatched) return "settled";
+  return "open";
+}
+
+const PLAN_LIST_RANK: Record<PlanListStatus, number> = {
+  open: 0,
+  partial: 1,
+  settled: 2,
+};
+
+/** Open rows first, Delvis just above Betald/Mottagen, paid last. Stable otherwise. */
+export function sortPlanRowsForList(
+  items: readonly PlanItem[],
+  matchedIds: ReadonlySet<string> = new Set(),
+): PlanItem[] {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const rankA =
+        PLAN_LIST_RANK[planListStatus(a.item, matchedIds.has(a.item.id))];
+      const rankB =
+        PLAN_LIST_RANK[planListStatus(b.item, matchedIds.has(b.item.id))];
+      if (rankA !== rankB) return rankA - rankB;
+      return a.index - b.index;
+    })
+    .map((row) => row.item);
+}
+
 /** Date used for the open remainder (Delvis klar) or the original due date. */
 export function remainingDueIso(item: PlanItem): string | null {
   if (isPlanPartiallySettled(item) && item.remainingDueAt) {

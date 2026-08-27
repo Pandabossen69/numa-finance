@@ -28,8 +28,11 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-amt-in");
     expect(css).toContain(".numa-amt-out");
     expect(css).toContain(".numa-wealth-cell.is-live");
-    expect(css).toContain("#dff3ea");
-    expect(css).toContain("#efe8de");
+    expect(css).toContain(".numa-piles-board");
+    expect(css).toContain(".numa-day-metrics");
+    expect(css).toContain("#d4e6dc");
+    expect(css).toContain("#e4dbd0");
+    expect(css).not.toContain("rgba(255, 255, 255, 0.75)");
   });
 
   it("keeps over-budget clay alarm distinct from destroy red", () => {
