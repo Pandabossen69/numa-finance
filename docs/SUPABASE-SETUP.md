@@ -52,9 +52,10 @@ NUMA uses Supabase Auth. **Public self-signup is off** in the app. New accounts 
 Do this in the dashboard as well (closing the UI is not enough — the anon key can still call Auth `signUp` until this is off):
 
 1. Authentication → Providers → Email
-2. Turn **off** “Allow new users to sign up”
-3. Keep **Confirm email** off so admin-created users can log in immediately (the app also sets `email_confirm: true` on create). If Confirm email must stay on, admin create still confirms the address.
-4. Save
+2. Keep the **Email provider enabled** (otherwise nobody can log in)
+3. Turn **off** “Allow new users to sign up” (global signup). Do **not** turn off the email provider itself.
+4. Keep **Confirm email** off so admin-created users can log in immediately (the app also sets `email_confirm: true` on create). If Confirm email must stay on, admin create still confirms the address.
+5. Save
 
 Users log in at `/logga-in` with the e-post + lösenord Hugo set. Each user only sees their own plan, accounts, and transactions (RLS `auth.uid()`).
 
