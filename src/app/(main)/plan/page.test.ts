@@ -11,6 +11,7 @@ describe("/plan getting-started hints", () => {
     expect(page).toContain("Här lägger du in det som måste betalas.");
     expect(page).toContain("Vad som kommer in och vad som måste ut.");
     expect(page).toContain("focusAdd={focusAdd}");
+    expect(page).toContain("stepHint={hint}");
     expect(page).not.toMatch(/välkommen/i);
   });
 });

@@ -64,6 +64,7 @@ export default async function PlanPage({
             spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
             ledgerTransactions={snap?.ledgerTransactions ?? []}
             focusAdd={focusAdd}
+            stepHint={hint}
           />
         </section>
       )}
