@@ -1,13 +1,14 @@
-import Link from "next/link";
 import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
+import { MerBackLink } from "@/components/mer/MerHub";
+import { getProfile } from "@/lib/store/repository";
 
-export default function NyttKontoPage() {
+export default async function NyttKontoPage() {
+  const profile = await getProfile();
+
   return (
     <div className="numa-page numa-page-wide space-y-6 pt-2 text-[var(--numa-ink)]">
       <header className="space-y-2">
-        <Link href="/konton" className="text-sm font-medium text-[var(--numa-muted)]">
-          ← Saldo
-        </Link>
+        <MerBackLink href="/konton" label="Saldo" />
         <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
           Nytt saldo
         </h1>
@@ -16,7 +17,7 @@ export default function NyttKontoPage() {
           startpunkten tills nästa intäkt.
         </p>
       </header>
-      <CreateAccountForm />
+      <CreateAccountForm primaryCurrency={profile.primaryCurrency} />
     </div>
   );
 }
