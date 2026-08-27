@@ -218,10 +218,9 @@ export function PlanEditor({
   const focusCardRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!focusAdd) return;
-    const node = focusCardRef.current;
-    if (!node) return;
+    setAddKind(focusAdd);
     const id = window.setTimeout(() => {
-      node.scrollIntoView({
+      focusCardRef.current?.scrollIntoView({
         block: "start",
         inline: "nearest",
         behavior: "smooth",
