@@ -129,7 +129,7 @@ export function CompactPiles({
           />
         </p>
         <p
-          className={`mt-1.5 flex items-baseline justify-between gap-2 text-[11px] leading-snug ${
+          className={`mt-1.5 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug ${
             overOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
           }`}
         >
