@@ -20,15 +20,19 @@ import {
   applyPlanItemEdits,
   isPlanPartiallySettled,
   isPlanSettled,
+  planPartialBreakdown,
+  planRowHeroMinor,
+  previewPartialRemaining,
   projectCashCoverage,
   projectExtraSaldoSeries,
   projectPlanForMonth,
   remainingDueIso,
   settledAmountMinor,
+  sumCountsTowardCashMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
 } from "@/domain/finance";
-import { formatMoneyCompact, parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
+import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/OverflowMenu";
@@ -77,6 +81,37 @@ type BusyKey =
 
 function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
+}
+
+function formatPlanFigure(amountMinor: number): string {
+  const hasFraction = Math.abs(amountMinor) % 100 !== 0;
+  return new Intl.NumberFormat("sv-SE", {
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
+  }).format(amountMinor / 100);
+}
+
+function PlanEquation({
+  breakdown,
+  restLabel,
+}: {
+  breakdown: { totalMinor: number; settledMinor: number; remainingMinor: number };
+  restLabel?: string | null;
+}) {
+  return (
+    <p className="numa-settle-eq">
+      <span className="money">{formatPlanFigure(breakdown.totalMinor)}</span>
+      <span aria-hidden>−</span>
+      <span className="money">{formatPlanFigure(breakdown.settledMinor)}</span>
+      <span aria-hidden>=</span>
+      <span className="money is-remain">{formatPlanFigure(breakdown.remainingMinor)}</span>
+      {restLabel ? (
+        <span className="numa-settle-rest">
+          · {SV.resten} {restLabel}
+        </span>
+      ) : null}
+    </p>
+  );
 }
 
 function labelIncomeDateSv(iso: string | null, timeZone: string): string {
@@ -657,7 +692,7 @@ export function PlanEditor({
             </p>
             <div className="mt-1.5 text-[var(--numa-positive)]">
               <MoneyDisplay
-                amountMinor={projection.incomeMinor}
+                amountMinor={coverage.incomingMinor}
                 currency={currency}
                 size="md"
                 compact
@@ -672,7 +707,7 @@ export function PlanEditor({
             </p>
             <div className="mt-1.5 text-[var(--numa-ink)]">
               <MoneyDisplay
-                amountMinor={projection.fixedMinor + projection.extraMinor}
+                amountMinor={coverage.unpaidMinor}
                 currency={currency}
                 size="md"
                 compact
@@ -693,7 +728,7 @@ export function PlanEditor({
         <PlanCard
           title="Intäkter"
           totalLabel="Summa"
-          totalMinor={projection.incomeMinor}
+          totalMinor={sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)}
           currency={currency}
           banner={focusAdd === "income" ? stepHint : null}
           cardRef={focusAdd === "income" ? focusCardRef : undefined}
@@ -823,7 +858,7 @@ export function PlanEditor({
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."
           totalLabel="Summa"
-          totalMinor={projection.fixedMinor}
+          totalMinor={sumCountsTowardCashMinor(projection.fixedItems, matchedExpenseIds)}
           currency={currency}
           banner={focusAdd === "fixed" ? stepHint : null}
           cardRef={focusAdd === "fixed" ? focusCardRef : undefined}
@@ -998,7 +1033,7 @@ export function PlanEditor({
         <PlanCard
           title="Extra utgifter"
           totalLabel="Summa"
-          totalMinor={projection.extraMinor}
+          totalMinor={sumCountsTowardCashMinor(projection.extraItems, matchedExpenseIds)}
           currency={currency}
         >
           <PlanRows
@@ -1253,17 +1288,10 @@ function PlanRows({
         const dateLabel = subtitle(item);
         const restIso = remainingDueIso(item);
         const restLabel = restIso ? formatListDateSv(restIso, timeZone) : null;
-        const settledLine = matchedIds.has(item.id) || isPlanSettled(item)
-          ? `${SV.klar} · ${dateLabel}`
-          : isPlanPartiallySettled(item)
-            ? `${SV.delvisKlar} · ${formatMoneyCompact({
-                amountMinor: settledAmountMinor(item),
-                currency: rowCurrency,
-              })} av ${formatMoneyCompact({
-                amountMinor: item.amountMinor,
-                currency: rowCurrency,
-              })}${restLabel ? ` · ${SV.resten} ${restLabel}` : ""}`
-            : dateLabel;
+        const breakdown = planPartialBreakdown(item);
+        const matched = matchedIds.has(item.id);
+        const settled = matched || isPlanSettled(item);
+        const partial = !matched && isPlanPartiallySettled(item);
 
         if (editingId === item.id) {
           return (
@@ -1309,10 +1337,21 @@ function PlanRows({
         }
 
         if (partialId === item.id) {
+          let typedMinor: number | null = null;
+          if (partialAmount.trim()) {
+            try {
+              typedMinor = parseUiAmountToMinor(partialAmount);
+            } catch {
+              typedMinor = null;
+            }
+          }
+          const preview = previewPartialRemaining(item.amountMinor, typedMinor);
           return (
-            <li key={item.id} className="space-y-3 py-3 first:pt-0">
+            <li key={item.id} className="numa-plan-row is-partial space-y-3 py-3 first:pt-0">
               <div>
-                <p className="text-sm font-semibold tracking-tight">{item.name}</p>
+                <p className="numa-plan-name text-sm font-semibold tracking-tight">
+                  {item.name}
+                </p>
                 <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{SV.delvisKlar}</p>
               </div>
               <label className="block space-y-1.5">
@@ -1327,6 +1366,19 @@ function PlanRows({
                   className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
                 />
               </label>
+              {preview ? (
+                <div className="numa-partial-preview">
+                  <p className="numa-section-title">Kvar</p>
+                  <MoneyDisplay
+                    amountMinor={preview.remainingMinor}
+                    currency={rowCurrency}
+                    size="md"
+                    compact
+                    align="start"
+                  />
+                  <PlanEquation breakdown={preview} />
+                </div>
+              ) : null}
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-[var(--numa-muted)]">
                   {remainingDatePrompt}
@@ -1365,17 +1417,15 @@ function PlanRows({
           );
         }
 
-        const muted = matchedIds.has(item.id) || isPlanSettled(item);
-        const menuItems: OverflowMenuItem[] = [
-          {
-            label: "Redigera",
-            onSelect: () => {
-              setConfirmId(null);
-              onStartEdit(item);
-            },
-          },
-        ];
-        if (!matchedIds.has(item.id)) {
+        const menuItems: OverflowMenuItem[] = [];
+        if (!matched && !settled) {
+          menuItems.push({
+            label: SV.klar,
+            disabled: pendingId === item.id && pendingAction === "settle",
+            onSelect: () => onSettle(item.id, true),
+          });
+        }
+        if (!matched) {
           menuItems.push({
             label: SV.delvisKlar,
             onSelect: () => {
@@ -1384,9 +1434,17 @@ function PlanRows({
             },
           });
         }
-        if (isPlanPartiallySettled(item) && !matchedIds.has(item.id)) {
+        menuItems.push({
+          label: "Redigera",
+          onSelect: () => {
+            setConfirmId(null);
+            onStartEdit(item);
+          },
+        });
+        if ((settled && !matched) || partial) {
           menuItems.push({
             label: SV.angraKlar,
+            disabled: pendingId === item.id && pendingAction === "settle",
             onSelect: () => onSettle(item.id, false),
           });
         }
@@ -1397,55 +1455,36 @@ function PlanRows({
           onSelect: () => setConfirmId(item.id),
         });
 
+        const rowState = settled ? "is-settled" : partial ? "is-partial" : "";
+
         return (
           <li
             key={item.id}
-            className="flex items-start justify-between gap-x-3 gap-y-2 py-3 first:pt-0"
+            className={`numa-plan-row flex items-start justify-between gap-x-3 gap-y-2 py-3 first:pt-0 ${rowState}`.trim()}
           >
             <div className="min-w-0 flex-1">
               <p
-                className={`leading-snug font-medium [overflow-wrap:anywhere] break-words ${
-                  muted ? "text-[var(--numa-muted)]" : ""
-                }`}
+                className="numa-plan-name leading-snug font-medium [overflow-wrap:anywhere] break-words"
                 title={item.name}
               >
                 {item.name}
               </p>
-              <p className="text-xs text-[var(--numa-faint)]">{settledLine}</p>
+              {breakdown ? (
+                <PlanEquation breakdown={breakdown} restLabel={restLabel} />
+              ) : (
+                <p className="text-xs text-[var(--numa-faint)]">{dateLabel}</p>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <span className="mr-1 max-w-[9.5rem] text-[var(--numa-ink)] sm:max-w-none">
+              <span className="mr-1 max-w-[9.5rem] sm:max-w-none">
                 <MoneyDisplay
-                  amountMinor={item.amountMinor}
+                  amountMinor={planRowHeroMinor(item)}
                   currency={rowCurrency}
                   size="sm"
                   compact
                   align="end"
                 />
               </span>
-              {isTempPlanId(item.id) ? null : matchedIds.has(item.id) ? (
-                <span className="numa-chip numa-chip-mint">{SV.klar}</span>
-              ) : isPlanSettled(item) ? (
-                <button
-                  type="button"
-                  disabled={pendingId === item.id && pendingAction === "settle"}
-                  className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm font-medium text-[var(--numa-muted)] disabled:opacity-45"
-                  onClick={() => onSettle(item.id, false)}
-                >
-                  {pendingId === item.id && pendingAction === "settle"
-                    ? "…"
-                    : SV.angraKlar}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={pendingId === item.id && pendingAction === "settle"}
-                  className="numa-press inline-flex min-h-11 items-center rounded-xl bg-[var(--numa-accent-soft)] px-2.5 text-sm font-semibold text-[var(--numa-accent-ink)] disabled:opacity-45"
-                  onClick={() => onSettle(item.id, true)}
-                >
-                  {pendingId === item.id && pendingAction === "settle" ? "…" : SV.klar}
-                </button>
-              )}
               {isTempPlanId(item.id) ? null : confirmId === item.id ? (
                 <div className="flex items-center gap-1">
                   <button

@@ -10,6 +10,7 @@ import {
   projectPlanForMonth,
   remainingDueIso,
   remainingOpenMinor,
+  sumCountsTowardCashMinor,
 } from "./plan-months";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
@@ -108,12 +109,7 @@ function remainingPlanAmount(
     monthKey,
     timeZone,
   });
-  let remaining = 0;
-  for (const item of items) {
-    if (matched.has(item.id)) continue;
-    remaining += remainingOpenMinor(item);
-  }
-  return remaining;
+  return sumCountsTowardCashMinor(items, matched);
 }
 
 /**

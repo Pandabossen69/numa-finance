@@ -487,6 +487,30 @@ describe("projectCashCoverage", () => {
     expect(view.overMinor).toBe(32_000_00);
   });
 
+  it("counts 51 000 − 22 000 as 29 000 kommer in", () => {
+    const items = [
+      item({
+        id: "trukks",
+        name: "Trukks",
+        kind: "expected",
+        amountMinor: 51_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-27T05:00:00.000Z",
+        settledMinor: 22_000_00,
+        remainingDueAt: "2026-08-31T12:00:00.000Z",
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 10_000_00,
+    });
+    expect(view.incomingMinor).toBe(29_000_00);
+    expect(view.overMinor).toBe(39_000_00);
+  });
+
   it("does not auto-Klar a Delvis klar row from a nearby ledger hit", () => {
     const items = [
       item({

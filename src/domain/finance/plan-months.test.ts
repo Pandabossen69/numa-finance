@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
   applyPlanItemEdits,
+  countsTowardCashMinor,
   importableFixedExpenses,
   isPlanPartiallySettled,
   isPlanSettled,
   isRecurringMonthly,
+  planPartialBreakdown,
+  planRowHeroMinor,
+  previewPartialRemaining,
   remainingDueIso,
   remainingOpenMinor,
   settledAmountMinor,
+  sumCountsTowardCashMinor,
   perDayBudgetMinor,
   projectPlanForMonth,
   cumulativePlanSavingsMinor,
@@ -357,6 +362,52 @@ describe("plan-months", () => {
     expect(settledAmountMinor(salary)).toBe(20_000_00);
     expect(remainingOpenMinor(salary)).toBe(31_000_00);
     expect(remainingDueIso(salary)).toBe("2026-08-29T12:00:00.000Z");
+  });
+
+  it("shows 51 000 − 22 000 = 29 000 as the open remainder", () => {
+    const trukks = item({
+      name: "Trukks",
+      kind: "expected",
+      amountMinor: 51_000_00,
+      cadence: "income",
+      nextDueAt: "2026-08-27T05:00:00.000Z",
+      settledMinor: 22_000_00,
+      remainingDueAt: "2026-08-31T12:00:00.000Z",
+    });
+    expect(planPartialBreakdown(trukks)).toEqual({
+      totalMinor: 51_000_00,
+      settledMinor: 22_000_00,
+      remainingMinor: 29_000_00,
+    });
+    expect(planRowHeroMinor(trukks)).toBe(29_000_00);
+    expect(countsTowardCashMinor(trukks)).toBe(29_000_00);
+    expect(previewPartialRemaining(51_000_00, 22_000_00)).toEqual({
+      totalMinor: 51_000_00,
+      settledMinor: 22_000_00,
+      remainingMinor: 29_000_00,
+    });
+  });
+
+  it("sums only open remainders into Kommer in / Kvar att betala", () => {
+    const csn = item({
+      name: "CSN",
+      kind: "expected",
+      amountMinor: 57_500_00,
+      cadence: "income",
+      nextDueAt: "2026-08-31T12:00:00.000Z",
+      settledAt: "2026-08-31T12:00:00.000Z",
+      settledMinor: 57_500_00,
+    });
+    const trukks = item({
+      name: "Trukks",
+      kind: "expected",
+      amountMinor: 51_000_00,
+      cadence: "income",
+      nextDueAt: "2026-08-27T05:00:00.000Z",
+      settledMinor: 22_000_00,
+    });
+    expect(sumCountsTowardCashMinor([csn, trukks])).toBe(29_000_00);
+    expect(sumCountsTowardCashMinor([csn, trukks], new Set([trukks.id]))).toBe(0);
   });
 
   it("treats settledAt without settledMinor as fully Klar", () => {
