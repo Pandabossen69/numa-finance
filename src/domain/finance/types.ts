@@ -89,6 +89,12 @@ export type Profile = {
   referenceCurrency: CurrencyCode;
   createdAt: string;
   updatedAt: string;
+  /** First-run: starting saldo saved. Null for existing ledgers and Hugo. */
+  onboardingSaldoAt: string | null;
+  /** First-run finished (starting saldo saved). */
+  onboardingCompletedAt: string | null;
+  gettingStartedCompletedAt: string | null;
+  gettingStartedCollapsed: boolean;
 };
 
 export type Account = {

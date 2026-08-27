@@ -2,19 +2,17 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import {
-  createSupabaseServerClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { loadOnboardingState } from "@/features/onboarding/load";
+import type { AuthResult } from "./result";
+import { rejectPublicSignup } from "./signup-policy";
+
+export type { AuthResult };
 
 const authSchema = z.object({
   email: z.string().email("Ogiltig e-postadress"),
   password: z.string().min(8, "Lösenordet måste vara minst 8 tecken"),
 });
-
-export type AuthResult =
-  | { ok: true }
-  | { ok: false; error: string };
 
 export async function signInAction(raw: {
   email: string;
@@ -30,7 +28,8 @@ export async function signInAction(raw: {
     if (error) {
       return { ok: false, error: swedishAuthError(error.message) };
     }
-    return { ok: true };
+    const state = await loadOnboardingState();
+    return { ok: true, nextPath: state.nextPath };
   } catch (error) {
     return {
       ok: false,
@@ -39,37 +38,12 @@ export async function signInAction(raw: {
   }
 }
 
-export async function signUpAction(raw: {
+/** Public self-signup is closed. New accounts are created by the NUMA admin. */
+export async function signUpAction(_raw?: {
   email: string;
   password: string;
 }): Promise<AuthResult> {
-  try {
-    const input = authSchema.parse(raw);
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        data: { display_name: "Användare", app: "numa" },
-      },
-    });
-    if (error) {
-      return { ok: false, error: swedishAuthError(error.message) };
-    }
-    if (!data.session) {
-      return {
-        ok: false,
-        error:
-          "Kontot skapades, men e-postbekräftelse är fortfarande på. Bekräfta mailet, eller stäng av “Confirm email” under Authentication → Providers → Email i Supabase. Därefter kan du logga in.",
-      };
-    }
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte skapa konto",
-    };
-  }
+  return rejectPublicSignup();
 }
 
 export async function signOutAction(): Promise<void> {
@@ -90,6 +64,9 @@ function swedishAuthError(message: string): string {
   if (lower.includes("already registered")) return "E-postadressen finns redan";
   if (lower.includes("email not confirmed")) {
     return "E-postadressen är inte bekräftad ännu";
+  }
+  if (lower.includes("signups not allowed") || lower.includes("signup is disabled")) {
+    return "Nya konton skapas bara av NUMA. Logga in om du redan har konto.";
   }
   return message;
 }

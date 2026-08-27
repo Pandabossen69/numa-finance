@@ -3,6 +3,7 @@ import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { getProfile } from "@/lib/store/repository";
 import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
 import { SV } from "@/features/copy/labels-sv";
+import { currentUserIsNumaAdmin } from "@/features/auth/session";
 import {
   MerListGroup,
   MerListLink,
@@ -28,7 +29,7 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
   {
     title: "Lägg till",
     items: [
-      { href: "/fota", label: "Fota", hint: "SMS eller kvitto" },
+      { href: "/fota", label: "Fota", hint: "Saldo eller kvitto" },
       { href: "/importera", label: "Tidigare bilder" },
     ],
   },
@@ -48,6 +49,7 @@ export default async function MerPage() {
   } catch (error) {
     console.error("[numa] mer profile failed", error);
   }
+  const isAdmin = await currentUserIsNumaAdmin();
 
   return (
     <div className="numa-page numa-page-wide space-y-7">
@@ -85,15 +87,23 @@ export default async function MerPage() {
             </MerSection>
           ))}
 
+          {isAdmin ? (
+            <MerSection title="Administration">
+              <MerListGroup>
+                <MerListLink
+                  href="/installningar/ny-anvandare"
+                  label="Ny användare"
+                  hint="Skapa inloggning. Börjar tomt."
+                />
+              </MerListGroup>
+            </MerSection>
+          ) : null}
+
           <MerSection title="Konto">
             <MerListGroup>
               <MerListRow>
-                <p className="text-[15px] font-semibold tracking-tight">
-                  {displayName}
-                </p>
-                <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
-                  Inloggad nu
-                </p>
+                <p className="text-[15px] font-semibold tracking-tight">{displayName}</p>
+                <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">Inloggad nu</p>
               </MerListRow>
               <MerListRow className="py-3">
                 <p className="mb-2 text-[12px] leading-snug text-[var(--numa-faint)]">

@@ -10,4 +10,9 @@ describe("/idag first paint", () => {
     expect(page).toContain("HomeDashboard");
     expect(loading).toContain("HomeViewLoading");
   });
+
+  it("shows Kom igång on Hem for new users", () => {
+    expect(page).toContain("loadGettingStartedView");
+    expect(page).toContain("gettingStarted");
+  });
 });

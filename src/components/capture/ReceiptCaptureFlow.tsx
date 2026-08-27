@@ -18,6 +18,7 @@ import { goHomeInstant } from "@/lib/nav/instant";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
 import { CAPTURE_UI_COPY } from "@/features/imports/capture-ui-copy";
+import { SV } from "@/features/copy/labels-sv";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 
@@ -33,6 +34,9 @@ export function ReceiptCaptureFlow({
   bootstrapping = false,
   initialMode = "pick",
   initialPreview = null,
+  variant = "default",
+  successHref,
+  fromOnboarding = false,
 }: {
   accountId: string | null;
   accounts: ShellAccount[];
@@ -41,6 +45,9 @@ export function ReceiptCaptureFlow({
   bootstrapping?: boolean;
   initialMode?: CaptureMode;
   initialPreview?: CapturePreview | null;
+  variant?: "default" | "onboarding";
+  successHref?: string;
+  fromOnboarding?: boolean;
 }) {
   const [mode, setMode] = useState<CaptureMode>(() => {
     if (initialPreview && initialPreview.importKind !== "unknown") {
@@ -262,12 +269,18 @@ export function ReceiptCaptureFlow({
               ? "screenshot"
               : "receipt_camera",
         direction: preview.direction,
+        fromOnboarding,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       URL.revokeObjectURL(preview.previewUrl);
+      if (successHref) {
+        router.push(successHref);
+        router.refresh();
+        return;
+      }
       goHomeInstant(router);
     });
   }
@@ -275,9 +288,9 @@ export function ReceiptCaptureFlow({
   if (mode === "pick") {
     return (
       <ModePicker
-        bootstrapping={bootstrapping}
         onChoose={setMode}
         hasAccount={Boolean(accountId)}
+        variant={variant}
       />
     );
   }
@@ -688,7 +701,9 @@ export function ReceiptCaptureFlow({
         >
           {pending
             ? "Sparar…"
-            : bootstrapping
+            : fromOnboarding || variant === "onboarding"
+              ? "Spara saldo"
+              : bootstrapping
               ? "Spara saldo på Hem"
               : isAutoImport && eventCount > 1
                 ? `Spara ${eventCount} rörelser`
@@ -713,44 +728,52 @@ export function ReceiptCaptureFlow({
 }
 
 function ModePicker({
-  bootstrapping,
   onChoose,
   hasAccount,
+  variant = "default",
 }: {
-  bootstrapping: boolean;
   onChoose: (mode: CaptureMode) => void;
   hasAccount: boolean;
+  variant?: "default" | "onboarding";
 }) {
+  const onboarding = variant === "onboarding";
   const items: Array<{
     id: CaptureMode;
     title: string;
     hint: string;
-  }> = [
+  }> = onboarding
+    ? [
+        {
+          id: "bank_sms",
+          title: "Bank-SMS",
+          hint: "Saldot i SMS:et.",
+        },
+        {
+          id: "bank_app",
+          title: "Bankapp",
+          hint: "Skärmdump från bankappen.",
+        },
+      ]
+    : [
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: bootstrapping
-        ? "Börja här — saldot i SMS:et blir Hem"
-        : "Skärmdump → allt läses in",
+      hint: "Saldot i SMS:et.",
     },
     {
       id: "bank_app",
       title: "Bankapp",
-      hint: hasAccount
-        ? "bunq / Revolut — utgift utan dubblett"
-        : "Kräver saldo först via SMS",
+      hint: hasAccount ? "Beloppet i bankappen." : "Sätt saldo först.",
     },
     {
       id: "receipt",
       title: "Kvitto",
-      hint: "Fota priset — ändra belopp om det behövs",
+      hint: "Priset på kvittot.",
     },
     {
       id: "manual",
       title: "Manuellt",
-      hint: hasAccount
-        ? "Skriv belopp utan kamera"
-        : "Bäst efter första bank-SMS",
+      hint: hasAccount ? "Skriv beloppet." : "Sätt saldo först.",
     },
   ];
 
@@ -758,12 +781,10 @@ function ModePicker({
     <div className="animate-rise space-y-8">
       <header className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">
-          {bootstrapping ? "Kom igång" : "Vad vill du lägga till?"}
+          {onboarding ? "Fota saldot" : "Fota"}
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {bootstrapping
-            ? "Fota senaste bank-SMS först så Hem får rätt saldo. Du kan alltid välja kvitto eller manuellt."
-            : "Ett steg. Vi läser bilden och du bekräftar."}
+          {SV.fotaHint}
         </p>
       </header>
 
@@ -773,10 +794,12 @@ function ModePicker({
             key={item.id}
             type="button"
             disabled={
-              (item.id === "bank_app" || item.id === "manual") && !hasAccount
+              !onboarding &&
+              (item.id === "bank_app" || item.id === "manual") &&
+              !hasAccount
             }
             onClick={() => onChoose(item.id)}
-            className="numa-panel numa-press flex w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
+            className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
           >
             <span>
               <span className="block text-[15px] font-semibold tracking-tight">
@@ -796,11 +819,13 @@ function ModePicker({
         ))}
       </nav>
 
+      {onboarding ? null : (
       <p className="text-center text-xs text-[var(--numa-faint)]">
         <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
           Se rörelser
         </Link>
       </p>
+      )}
     </div>
   );
 }
@@ -810,7 +835,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
+      className="numa-press inline-flex min-h-11 items-center text-sm font-semibold text-[var(--numa-accent)]"
     >
       ← Tillbaka
     </button>

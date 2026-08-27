@@ -54,6 +54,7 @@ import {
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import type { TodaySnapshot } from "./types-snapshot";
+import { emptyTodaySnapshot } from "./empty-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
@@ -124,6 +125,67 @@ async function ensureProfile(_userId?: string): Promise<Profile> {
 export const getProfile = cache(async (): Promise<Profile> => {
   return ensureProfile();
 });
+
+export async function stampOnboardingSaldoAt(): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_saldo_at: now,
+      updated_at: now,
+    })
+    .eq("id", userId)
+    .is("onboarding_saldo_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function stampOnboardingCompletedAt(): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_completed_at: now,
+      updated_at: now,
+    })
+    .eq("id", userId)
+    .is("onboarding_completed_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function stampGettingStartedCompletedAt(): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      getting_started_completed_at: now,
+      getting_started_collapsed: false,
+      updated_at: now,
+    })
+    .eq("id", userId)
+    .is("getting_started_completed_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function setGettingStartedCollapsed(
+  collapsed: boolean,
+): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      getting_started_collapsed: collapsed,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+  if (error) throw new Error(error.message);
+}
 
 export const listAccounts = cache(async (): Promise<Account[]> => {
   const userId = await requireUserId();
@@ -1030,7 +1092,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
 
   if (!primary) {
-    return emptySnapshot(profile, accounts, progress, planItems);
+    return emptyTodaySnapshot(profile, accounts, progress, planItems);
   }
 
   const timezone = profile.timezone;
@@ -1152,40 +1214,6 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     planItems,
     currency,
     progress,
-  };
-}
-
-function emptySnapshot(
-  profile: Profile,
-  accounts: Account[],
-  progress: UserProgress | null,
-  planItems: PlanItem[] = [],
-): TodaySnapshot {
-  return {
-    profile,
-    accounts,
-    primaryAccount: null,
-    checkpoint: null,
-    calculatedBalanceMinor: null,
-    balanceKind: "unknown",
-    verificationLabel: null,
-    todaySpendingMinor: 0,
-    monthSpendingMinor: 0,
-    cycleSpendingMinor: 0,
-    monthSpendingByKey: {},
-    fundingConfirmed: false,
-    safeToSpendTodayMinor: 0,
-    safeToSpendWeekMinor: 0,
-    freeMinor: 0,
-    reservedMinor: 0,
-    bufferMinor: 0,
-    flexibleMinor: 0,
-    daysUntilIncome: 0,
-    recentTransactions: [],
-    ledgerTransactions: [],
-    planItems,
-    currency: profile.primaryCurrency,
-    progress: progress ?? emptyUserProgress(profile.id),
   };
 }
 

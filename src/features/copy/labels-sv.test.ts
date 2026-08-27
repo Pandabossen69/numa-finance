@@ -33,4 +33,13 @@ describe("Swedish money labels", () => {
     expect(SV.merPathSaldo).not.toMatch(/Mina saldon/i);
     expect(SV.saldo).toBe("Saldo");
   });
+
+  it("teaches Hem, Plan and Fota in short Swedish", () => {
+    expect(SV.fotaHint).toBe("Fånga saldo eller kvitto så du slipper skriva.");
+    expect(SV.planHint).toBe("Vad som kommer in och vad som måste ut.");
+    expect(SV.fotaHint).not.toMatch(/[A-Za-z]*welcome/i);
+    expect(SV.planHint).not.toMatch(/journey/i);
+    expect(SV.fotaHint).not.toMatch(/välkommen/i);
+    expect(SV.planHint).not.toMatch(/välkommen/i);
+  });
 });

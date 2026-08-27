@@ -8,6 +8,8 @@ import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
   confirmReceiptExpense,
   getTodaySnapshot,
+  stampOnboardingCompletedAt,
+  stampOnboardingSaldoAt,
   uploadReceiptAndExtract,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
@@ -82,6 +84,7 @@ const confirmSchema = z.object({
   source: z.enum(["receipt_camera", "screenshot", "bank_import"]).optional(),
   maskedAccount: z.string().trim().max(32).optional().nullable(),
   direction: z.enum(["debit", "credit"]).optional().nullable(),
+  fromOnboarding: z.boolean().optional(),
 });
 
 export async function confirmReceiptExpenseAction(
@@ -124,6 +127,11 @@ export async function confirmReceiptExpenseAction(
       direction: input.direction,
     });
 
+    if (input.fromOnboarding) {
+      await stampOnboardingSaldoAt();
+      await stampOnboardingCompletedAt();
+    }
+
     const snap = await getTodaySnapshot();
     const timeZone = snap.profile.timezone || "Asia/Bangkok";
     const now = new Date();
@@ -150,6 +158,8 @@ export async function confirmReceiptExpenseAction(
     revalidatePath("/mer");
     revalidatePath("/konton");
     revalidatePath("/fota");
+    revalidatePath("/kom-igang");
+    revalidatePath("/kom-igang/plan");
     revalidatePath("/", "layout");
 
     return {

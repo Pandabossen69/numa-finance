@@ -37,6 +37,10 @@ export function createEmptyStore(): NumaStoreData {
       referenceCurrency: "SEK",
       createdAt: now,
       updatedAt: now,
+      onboardingSaldoAt: null,
+      onboardingCompletedAt: null,
+      gettingStartedCompletedAt: null,
+      gettingStartedCollapsed: false,
     },
     accounts: [],
     checkpoints: [],
@@ -49,10 +53,17 @@ export function createEmptyStore(): NumaStoreData {
   };
 }
 
-/** Normalize older local JSON that predates planItems. */
+/** Normalize older local JSON that predates planItems / onboarding flags. */
 export function normalizeStore(data: NumaStoreData): NumaStoreData {
   return {
     ...data,
     planItems: Array.isArray(data.planItems) ? data.planItems : [],
+    profile: {
+      ...data.profile,
+      onboardingSaldoAt: data.profile.onboardingSaldoAt ?? null,
+      onboardingCompletedAt: data.profile.onboardingCompletedAt ?? null,
+      gettingStartedCompletedAt: data.profile.gettingStartedCompletedAt ?? null,
+      gettingStartedCollapsed: Boolean(data.profile.gettingStartedCollapsed),
+    },
   };
 }

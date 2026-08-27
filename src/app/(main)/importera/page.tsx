@@ -20,7 +20,7 @@ export default async function ImporteraPage() {
       <div className="animate-rise-delay-1 space-y-6">
         <MerSection>
           <MerListGroup>
-            <MerListLink href="/fota" label="Lägg till SMS eller kvitto" />
+            <MerListLink href="/fota" label="Fota saldo eller kvitto" />
           </MerListGroup>
         </MerSection>
 

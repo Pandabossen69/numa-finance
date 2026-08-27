@@ -1,5 +1,6 @@
 import {
   MerListGroup,
+  MerListLink,
   MerListRow,
   MerMetaRow,
   MerPageHeader,
@@ -9,6 +10,7 @@ import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { currentUserIsNumaAdmin } from "@/features/auth/session";
 
 export default async function InstallningarPage() {
   let profile: Awaited<ReturnType<typeof getProfile>> | null = null;
@@ -18,6 +20,7 @@ export default async function InstallningarPage() {
     console.error("[numa] installningar failed", error);
   }
   const supabaseReady = isSupabaseConfigured();
+  const isAdmin = await currentUserIsNumaAdmin();
 
   return (
     <div className="numa-page numa-page-wide space-y-7 text-[var(--numa-ink)]">
@@ -46,6 +49,18 @@ export default async function InstallningarPage() {
           </MerListGroup>
         </MerSection>
 
+        {isAdmin ? (
+          <MerSection title="Administration">
+            <MerListGroup>
+              <MerListLink
+                href="/installningar/ny-anvandare"
+                label="Ny användare"
+                hint="Skapa inloggning. Börjar tomt."
+              />
+            </MerListGroup>
+          </MerSection>
+        ) : null}
+
         <MerSection title="Profil">
           {profile ? (
             <MerListGroup>
@@ -69,7 +84,6 @@ export default async function InstallningarPage() {
             </MerListGroup>
           )}
         </MerSection>
-
       </div>
     </div>
   );

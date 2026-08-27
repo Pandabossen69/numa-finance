@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
 export default async function MainLayout({
@@ -6,6 +7,8 @@ export default async function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await redirectIfOnboardingIncomplete();
+
   let displayName = "Användare";
   try {
     const profile = await getProfile();

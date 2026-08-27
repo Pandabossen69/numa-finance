@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
@@ -164,6 +164,8 @@ export function PlanEditor({
   bankBalanceMinor = null,
   spendingByMonthKey = EMPTY_MONTH_SPEND,
   ledgerTransactions = EMPTY_LEDGER,
+  focusAdd = null,
+  stepHint = null,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
@@ -171,6 +173,8 @@ export function PlanEditor({
   bankBalanceMinor?: number | null;
   spendingByMonthKey?: Record<string, number>;
   ledgerTransactions?: CanonicalTransaction[];
+  focusAdd?: null | "income" | "fixed";
+  stepHint?: string | null;
 }) {
   const router = useRouter();
   const currentMonthKey = useMemo(
@@ -209,8 +213,22 @@ export function PlanEditor({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
-    null,
+    focusAdd,
   );
+  const focusCardRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!focusAdd) return;
+    const node = focusCardRef.current;
+    if (!node) return;
+    const id = window.setTimeout(() => {
+      node.scrollIntoView({
+        block: "start",
+        inline: "nearest",
+        behavior: "smooth",
+      });
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [focusAdd]);
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);
     if (items.length > 0 || localItems.length === 0) {
@@ -611,6 +629,8 @@ export function PlanEditor({
           totalLabel="Summa"
           totalMinor={projection.incomeMinor}
           currency={currency}
+          banner={focusAdd === "income" ? stepHint : null}
+          cardRef={focusAdd === "income" ? focusCardRef : undefined}
         >
           <PlanRows
             items={projection.incomes}
@@ -620,7 +640,7 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             editExtraType="date"
-            emptyHint="Lägg till lön eller CSN med datum."
+            emptyHint="Lägg in lön eller CSN."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             pendingId={
               busy?.startsWith("edit:") || busy?.startsWith("delete:")
@@ -674,6 +694,7 @@ export function PlanEditor({
             submitLabel="Lägg till intäkt"
             collapsedLabel="Lägg till intäkt"
             open={addKind === "income"}
+            scrollOnOpen={focusAdd !== "income"}
             onOpen={() => setAddKind("income")}
             onClose={() => setAddKind(null)}
             busy={busy === "add-income"}
@@ -738,6 +759,8 @@ export function PlanEditor({
           totalLabel="Summa"
           totalMinor={projection.fixedMinor}
           currency={currency}
+          banner={focusAdd === "fixed" ? stepHint : null}
+          cardRef={focusAdd === "fixed" ? focusCardRef : undefined}
         >
           {canImportFixed ? (
             <button
@@ -795,7 +818,7 @@ export function PlanEditor({
                 ? "Inga fasta utgifter den här månaden."
                 : canImportFixed
                   ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
-                  : "Hyra, el, Netflix…"
+                  : "Hyra och räkningar du måste betala."
             }
             subtitle={(item) =>
               item.nextDueAt
@@ -859,6 +882,7 @@ export function PlanEditor({
               submitLabel="Lägg till fast utgift"
               collapsedLabel="Lägg till fast utgift"
               open={addKind === "fixed"}
+              scrollOnOpen={focusAdd !== "fixed"}
               onOpen={() => setAddKind("fixed")}
               onClose={() => setAddKind(null)}
               busy={busy === "add-fixed"}
@@ -931,7 +955,7 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             editExtraType="date"
-            emptyHint="Engångskostnader med datum."
+            emptyHint="En räkning som bara kommer en gång."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             pendingId={
               busy?.startsWith("edit:") || busy?.startsWith("delete:")
@@ -1044,20 +1068,32 @@ export function PlanEditor({
 function PlanCard({
   title,
   hint,
+  banner,
   totalLabel,
   totalMinor,
   currency,
   children,
+  cardRef,
 }: {
   title: string;
   hint?: string;
+  banner?: string | null;
   totalLabel: string;
   totalMinor: number;
   currency: CurrencyCode;
   children: ReactNode;
+  cardRef?: Ref<HTMLElement>;
 }) {
   return (
-    <section className="numa-panel flex flex-col gap-4 p-5">
+    <section
+      ref={cardRef}
+      className="numa-panel flex scroll-mt-[5.5rem] flex-col gap-4 p-5"
+    >
+      {banner ? (
+        <p className="rounded-[1.15rem] bg-[var(--numa-accent-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--numa-accent-ink)]">
+          {banner}
+        </p>
+      ) : null}
       <header className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold tracking-tight">{title}</h2>
@@ -1091,7 +1127,7 @@ function PlanRows({
   editAmount,
   editExtra,
   editExtraType,
-  emptyHint = "Inget här ännu.",
+  emptyHint = "Inget inlagt.",
   locked = false,
   subtitle,
   pendingId = null,
@@ -1271,6 +1307,7 @@ function InlineAdd({
   submitLabel,
   collapsedLabel,
   open,
+  scrollOnOpen = true,
   onOpen,
   onClose,
   busy = false,
@@ -1289,6 +1326,7 @@ function InlineAdd({
   submitLabel: string;
   collapsedLabel: string;
   open: boolean;
+  scrollOnOpen?: boolean;
   onOpen: () => void;
   onClose: () => void;
   busy?: boolean;
@@ -1307,7 +1345,7 @@ function InlineAdd({
   const showFields = open || fieldsMounted;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !scrollOnOpen) return;
     const node = submitRowRef.current;
     if (!node) return;
     const id = window.setTimeout(() => {
@@ -1318,7 +1356,7 @@ function InlineAdd({
       });
     }, 220);
     return () => window.clearTimeout(id);
-  }, [open]);
+  }, [open, scrollOnOpen]);
 
   useEffect(() => {
     if (open || !fieldsMounted) return;

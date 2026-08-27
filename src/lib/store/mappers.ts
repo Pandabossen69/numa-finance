@@ -19,6 +19,10 @@ type DbProfile = {
   reference_currency: CurrencyCode;
   created_at: string;
   updated_at: string;
+  onboarding_saldo_at?: string | null;
+  onboarding_completed_at?: string | null;
+  getting_started_completed_at?: string | null;
+  getting_started_collapsed?: boolean | null;
 };
 
 type DbAccount = {
@@ -95,6 +99,10 @@ export function mapProfile(row: DbProfile): Profile {
     referenceCurrency: row.reference_currency,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    onboardingSaldoAt: row.onboarding_saldo_at ?? null,
+    onboardingCompletedAt: row.onboarding_completed_at ?? null,
+    gettingStartedCompletedAt: row.getting_started_completed_at ?? null,
+    gettingStartedCollapsed: Boolean(row.getting_started_collapsed),
   };
 }
 
