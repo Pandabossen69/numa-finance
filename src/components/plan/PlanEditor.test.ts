@@ -17,16 +17,19 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("ÅÅÅÅ-MM-DD");
   });
 
-  it("opens and commits the native date picker instead of an opacity-0 overlay", () => {
+  it("opens the picker from a button so a calendar tap can commit", () => {
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(src).toContain("className=\"numa-date-input\"");
     expect(src).toContain("showPicker");
     expect(src).toContain("commitCalendarDate");
-    expect(src).toContain("onInput");
-    expect(src).toContain("onPointerDown");
+    expect(src).toContain("onClick={() => openNativeDatePicker(inputRef.current)}");
+    expect(src).not.toContain("onPointerDown");
+    expect(src).not.toContain("event.preventDefault");
+    expect(src).not.toContain("preventDefault()");
     expect(src).not.toContain("absolute inset-0 cursor-pointer opacity-0");
     expect(css).toContain(".numa-date-input");
-    expect(css).toContain("::-webkit-calendar-picker-indicator");
+    expect(css).toContain("pointer-events: none");
+    expect(css).not.toContain("::-webkit-calendar-picker-indicator");
     expect(css).toContain(".numa-expand.is-open");
     expect(css).toContain("overflow: visible");
   });
