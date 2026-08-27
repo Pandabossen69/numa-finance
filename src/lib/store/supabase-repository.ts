@@ -126,6 +126,67 @@ export const getProfile = cache(async (): Promise<Profile> => {
   return ensureProfile();
 });
 
+export async function stampOnboardingSaldoAt(): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_saldo_at: now,
+      updated_at: now,
+    })
+    .eq("id", userId)
+    .is("onboarding_saldo_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function stampOnboardingCompletedAt(): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_completed_at: now,
+      updated_at: now,
+    })
+    .eq("id", userId)
+    .is("onboarding_completed_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function stampGettingStartedCompletedAt(): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      getting_started_completed_at: now,
+      getting_started_collapsed: false,
+      updated_at: now,
+    })
+    .eq("id", userId)
+    .is("getting_started_completed_at", null);
+  if (error) throw new Error(error.message);
+}
+
+export async function setGettingStartedCollapsed(
+  collapsed: boolean,
+): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      getting_started_collapsed: collapsed,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+  if (error) throw new Error(error.message);
+}
+
 export const listAccounts = cache(async (): Promise<Account[]> => {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();

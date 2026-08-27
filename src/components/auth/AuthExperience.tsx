@@ -30,7 +30,7 @@ export function AuthExperience() {
         setError(result.error);
         return;
       }
-      router.replace("/idag");
+      router.replace(result.nextPath);
       router.refresh();
     });
   }

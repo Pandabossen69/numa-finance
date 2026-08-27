@@ -8,11 +8,11 @@ export default async function NyAnvandarePage() {
   await requireNumaAdminOrNotFound();
 
   return (
-    <div className="numa-page numa-page-wide space-y-6 text-[var(--numa-ink)]">
+    <div className="numa-page mx-auto w-full max-w-lg space-y-6 text-[var(--numa-ink)] md:pt-4">
       <MerPageHeader
         back
         title="Ny användare"
-        description="Skapa ett konto. Personen loggar in med e-post och lösenord. Allt börjar tomt — ingen plan, inga konton, inga transaktioner."
+        description="Personen loggar in med e-post och lösenord. Första gången sätter hen saldo — inte en tom Hem."
       />
       <CreateUserForm />
     </div>

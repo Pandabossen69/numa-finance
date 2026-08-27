@@ -8,7 +8,7 @@ export const SERVICE_ROLE_MISSING_SV =
 export const ADMIN_NOT_FOUND_SV = "Sidan finns inte";
 
 export const CREATE_USER_SUCCESS_SV =
-  "Kontot skapades. Personen kan logga in på /logga-in med e-post och lösenord.";
+  "Kontot skapades. Personen loggar in på /logga-in och börjar med att sätta saldo.";
 
 const createUserSchema = z.object({
   email: z

@@ -720,6 +720,10 @@ body {
   transform: scale(0.96);
 }
 
+.numa-komigang-card {
+  animation: numa-rise 200ms ease-out;
+}
+
 .numa-btn {
   display: inline-flex;
   align-items: center;

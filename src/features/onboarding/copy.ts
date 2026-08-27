@@ -1,0 +1,23 @@
+/** First-run copy — one question per screen, no feature tour. */
+export const ONBOARDING_SV = {
+  saldoEyebrow: "Saldo nu",
+  saldoTitle: "Vad har du på kontot just nu?",
+  saldoHint: "Utan ett startsaldo kan NUMA inte räkna Över.",
+  fotaTitle: "Fota / skärmdump",
+  fotaHint: "Bank-SMS, bankapp eller lapp — du bekräftar innan det sparas.",
+  manualTitle: "Manuellt",
+  manualHint: "Skriv beloppet. Kontonamn är valfritt.",
+  amountLabel: "Belopp",
+  accountNameLabel: "Kontonamn (valfritt)",
+  accountNamePlaceholder: "t.ex. Bangkok Bank",
+  saveSaldo: "Spara saldo",
+  fotaPickTitle: "Fota saldot",
+  fotaPickHint: "Bank-SMS eller skärmdump från bankappen.",
+  planEyebrow: "Planera",
+  planTitle: "Vad kommer in — och vad måste betalas?",
+  planHint: "Lön, CSN, hyra. Du kan göra det sen.",
+  addToPlan: "Lägg till i planen",
+  skipPlan: "Hoppa över, gör sen",
+  planDone: "Klar — visa Hem",
+  back: "Tillbaka",
+} as const;

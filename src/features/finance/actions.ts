@@ -10,6 +10,8 @@ import {
   createManualIncome,
   createTransfer,
   ensureDefaultBankAccount,
+  stampOnboardingCompletedAt,
+  stampOnboardingSaldoAt,
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
@@ -139,6 +141,8 @@ function revalidateMoneyPaths() {
   revalidatePath("/lagg-till");
   revalidatePath("/fota");
   revalidatePath("/mer");
+  revalidatePath("/kom-igang");
+  revalidatePath("/kom-igang/plan");
 }
 
 export async function updateTransactionAction(raw: {
@@ -294,6 +298,8 @@ export async function setAvailableNowAction(raw: {
   balance: string;
   accountId?: string | null;
   currency?: CurrencyCode;
+  accountName?: string | null;
+  fromOnboarding?: boolean;
 }): Promise<ActionResult> {
   try {
     const balanceMinor = parseUiAmountToMinor(raw.balance);
@@ -305,10 +311,20 @@ export async function setAvailableNowAction(raw: {
     if (accountId) {
       z.string().uuid().parse(accountId);
     } else {
-      const account = await ensureDefaultBankAccount({
-        currency: raw.currency ?? "THB",
-      });
-      accountId = account.id;
+      const currency = raw.currency ?? "THB";
+      const accountName = raw.accountName?.trim() || null;
+      if (accountName) {
+        const account = await createAccount({
+          name: accountName.slice(0, 80),
+          accountType: "checking",
+          currency,
+          makeDefault: true,
+        });
+        accountId = account.id;
+      } else {
+        const account = await ensureDefaultBankAccount({ currency });
+        accountId = account.id;
+      }
     }
 
     await createCheckpoint({
@@ -317,6 +333,11 @@ export async function setAvailableNowAction(raw: {
       source: "manual_available_now",
       note: "Tillgängligt tills nästa intäkt",
     });
+
+    if (raw.fromOnboarding) {
+      await stampOnboardingSaldoAt();
+      await stampOnboardingCompletedAt();
+    }
 
     revalidateMoneyPaths();
     return { ok: true };

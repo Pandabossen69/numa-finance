@@ -24,6 +24,8 @@ Do **not** put NUMA tables in `public`.
    - `supabase/migrations/20260811135906_candidate_fingerprint_unique.sql` (unique candidate fingerprints)
    - `supabase/migrations/20260814141040_transfer_group.sql` (pair transfer / cash legs)
    - `supabase/migrations/20260827104139_admin_only_user_lockdown.sql` (admin-only signup lock, private `handle_new_user`)
+   - `supabase/migrations/20260827115205_profile_onboarding.sql` (first-run `onboarding_saldo_at` / `onboarding_completed_at` on `numa.profiles`)
+   - `supabase/migrations/20260827120238_getting_started_checklist.sql` (Kom igång checklist flags on `numa.profiles`)
 3. Confirm success (no errors).
 
 ## Expose schema to the Data API

@@ -10,6 +10,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
   formatMoney,
@@ -20,6 +21,7 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { GettingStartedView } from "@/features/getting-started/progress";
 import { lastHomeSnapshot, rememberHomeSnapshot } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
 import { HomeViewLoading } from "@/components/layout/ViewLoading";
@@ -33,9 +35,11 @@ function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
 export function HomeDashboard({
   snap,
   error,
+  gettingStarted = null,
 }: {
   snap: HomeSnapshot | null;
   error?: string | null;
+  gettingStarted?: GettingStartedView | null;
 }) {
   if (snap) rememberHomeSnapshot(snap);
   const view = snap ?? lastHomeSnapshot();
@@ -97,11 +101,13 @@ export function HomeDashboard({
           <>
             <h1 className="numa-page-title">Hem</h1>
             <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
-              Lägg in intäkter under Plan — då får du en dagsbudget här.
+              Saldo, det som kommer in och det som måste betalas — läget just nu.
             </p>
           </>
         ) : null}
       </header>
+
+      {gettingStarted ? <GettingStartedCard view={gettingStarted} /> : null}
 
       {view.needsAvailableInput ? (
         <AvailableNowCard

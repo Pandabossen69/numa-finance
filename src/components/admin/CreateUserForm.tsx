@@ -74,8 +74,8 @@ export function CreateUserForm() {
         onToggle={() => setShowPassword((v) => !v)}
       />
       <p className="text-[12px] leading-relaxed text-[var(--numa-faint)]">
-        Du sätter lösenordet och skickar inloggningen till personen. Plan, saldo och
-        transaktioner börjar tomma.
+        Du sätter lösenordet och skickar inloggningen till personen. Första
+        inloggningen börjar med saldo — inte en tom Hem.
       </p>
       {error ? (
         <p

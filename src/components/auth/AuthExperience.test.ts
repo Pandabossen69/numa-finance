@@ -13,5 +13,18 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toContain("onCreateAccount");
     expect(src).toContain("Logga in");
     expect(src).toContain("Konto skapas av NUMA");
+    expect(src).toContain("result.nextPath");
+    expect(src).not.toContain('router.replace("/idag")');
+  });
+});
+
+describe("sign-in next path", () => {
+  it("routes new users into onboarding from the login action", () => {
+    const actions = readFileSync(
+      new URL("../../features/auth/actions.ts", import.meta.url),
+      "utf8",
+    );
+    expect(actions).toContain("loadOnboardingState");
+    expect(actions).toContain("nextPath: state.nextPath");
   });
 });

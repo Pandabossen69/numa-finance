@@ -39,6 +39,22 @@ async function ensurePlanDuesRolled(): Promise<void> {
 /** Request-scoped: layout + Hem/Analys share one profile round-trip. */
 export const getProfile = cache(async () => api().getProfile());
 
+export async function stampOnboardingSaldoAt() {
+  return api().stampOnboardingSaldoAt();
+}
+
+export async function stampOnboardingCompletedAt() {
+  return api().stampOnboardingCompletedAt();
+}
+
+export async function stampGettingStartedCompletedAt() {
+  return api().stampGettingStartedCompletedAt();
+}
+
+export async function setGettingStartedCollapsed(collapsed: boolean) {
+  return api().setGettingStartedCollapsed(collapsed);
+}
+
 export async function listAccounts() {
   return api().listAccounts();
 }

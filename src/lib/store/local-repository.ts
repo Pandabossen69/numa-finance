@@ -59,6 +59,48 @@ export async function getProfile(): Promise<Profile> {
   return store.profile;
 }
 
+export async function stampOnboardingSaldoAt(): Promise<void> {
+  await updateStore((s) => {
+    if (s.profile.onboardingSaldoAt) return;
+    const ts = nowIso();
+    s.profile = { ...s.profile, onboardingSaldoAt: ts, updatedAt: ts };
+  });
+}
+
+export async function stampOnboardingCompletedAt(): Promise<void> {
+  await updateStore((s) => {
+    if (s.profile.onboardingCompletedAt) return;
+    const ts = nowIso();
+    s.profile = { ...s.profile, onboardingCompletedAt: ts, updatedAt: ts };
+  });
+}
+
+export async function stampGettingStartedCompletedAt(): Promise<void> {
+  await updateStore((s) => {
+    if (s.profile.gettingStartedCompletedAt) return;
+    const ts = nowIso();
+    s.profile = {
+      ...s.profile,
+      gettingStartedCompletedAt: ts,
+      gettingStartedCollapsed: false,
+      updatedAt: ts,
+    };
+  });
+}
+
+export async function setGettingStartedCollapsed(
+  collapsed: boolean,
+): Promise<void> {
+  await updateStore((s) => {
+    const ts = nowIso();
+    s.profile = {
+      ...s.profile,
+      gettingStartedCollapsed: collapsed,
+      updatedAt: ts,
+    };
+  });
+}
+
 export async function listAccounts(): Promise<Account[]> {
   const store = await readStore();
   return store.accounts.filter((a) => a.isActive);

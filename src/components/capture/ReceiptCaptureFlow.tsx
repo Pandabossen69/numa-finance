@@ -33,6 +33,9 @@ export function ReceiptCaptureFlow({
   bootstrapping = false,
   initialMode = "pick",
   initialPreview = null,
+  variant = "default",
+  successHref,
+  fromOnboarding = false,
 }: {
   accountId: string | null;
   accounts: ShellAccount[];
@@ -41,6 +44,9 @@ export function ReceiptCaptureFlow({
   bootstrapping?: boolean;
   initialMode?: CaptureMode;
   initialPreview?: CapturePreview | null;
+  variant?: "default" | "onboarding";
+  successHref?: string;
+  fromOnboarding?: boolean;
 }) {
   const [mode, setMode] = useState<CaptureMode>(() => {
     if (initialPreview && initialPreview.importKind !== "unknown") {
@@ -262,12 +268,18 @@ export function ReceiptCaptureFlow({
               ? "screenshot"
               : "receipt_camera",
         direction: preview.direction,
+        fromOnboarding,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       URL.revokeObjectURL(preview.previewUrl);
+      if (successHref) {
+        router.push(successHref);
+        router.refresh();
+        return;
+      }
       goHomeInstant(router);
     });
   }
@@ -278,6 +290,7 @@ export function ReceiptCaptureFlow({
         bootstrapping={bootstrapping}
         onChoose={setMode}
         hasAccount={Boolean(accountId)}
+        variant={variant}
       />
     );
   }
@@ -688,7 +701,9 @@ export function ReceiptCaptureFlow({
         >
           {pending
             ? "Sparar…"
-            : bootstrapping
+            : fromOnboarding || variant === "onboarding"
+              ? "Spara saldo"
+              : bootstrapping
               ? "Spara saldo på Hem"
               : isAutoImport && eventCount > 1
                 ? `Spara ${eventCount} rörelser`
@@ -716,16 +731,32 @@ function ModePicker({
   bootstrapping,
   onChoose,
   hasAccount,
+  variant = "default",
 }: {
   bootstrapping: boolean;
   onChoose: (mode: CaptureMode) => void;
   hasAccount: boolean;
+  variant?: "default" | "onboarding";
 }) {
+  const onboarding = variant === "onboarding";
   const items: Array<{
     id: CaptureMode;
     title: string;
     hint: string;
-  }> = [
+  }> = onboarding
+    ? [
+        {
+          id: "bank_sms",
+          title: "Bank-SMS",
+          hint: "Börja här — saldot i SMS:et sparas",
+        },
+        {
+          id: "bank_app",
+          title: "Bankapp",
+          hint: "Skärmdump från bunq / Revolut",
+        },
+      ]
+    : [
     {
       id: "bank_sms",
       title: "Bank-SMS",
@@ -758,12 +789,18 @@ function ModePicker({
     <div className="animate-rise space-y-8">
       <header className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">
-          {bootstrapping ? "Kom igång" : "Vad vill du lägga till?"}
+          {onboarding
+            ? "Fota saldot"
+            : bootstrapping
+              ? "Kom igång"
+              : "Vad vill du lägga till?"}
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {bootstrapping
-            ? "Fota senaste bank-SMS först så Hem får rätt saldo. Du kan alltid välja kvitto eller manuellt."
-            : "Ett steg. Vi läser bilden och du bekräftar."}
+          {onboarding
+            ? "Bank-SMS eller skärmdump från bankappen. Du bekräftar innan det sparas."
+            : bootstrapping
+              ? "Fota senaste bank-SMS först så Hem får rätt saldo. Du kan alltid välja kvitto eller manuellt."
+              : "Ett steg. Vi läser bilden och du bekräftar."}
         </p>
       </header>
 
@@ -773,7 +810,9 @@ function ModePicker({
             key={item.id}
             type="button"
             disabled={
-              (item.id === "bank_app" || item.id === "manual") && !hasAccount
+              !onboarding &&
+              (item.id === "bank_app" || item.id === "manual") &&
+              !hasAccount
             }
             onClick={() => onChoose(item.id)}
             className="numa-panel numa-press flex w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
@@ -796,11 +835,13 @@ function ModePicker({
         ))}
       </nav>
 
+      {onboarding ? null : (
       <p className="text-center text-xs text-[var(--numa-faint)]">
         <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
           Se rörelser
         </Link>
       </p>
+      )}
     </div>
   );
 }

@@ -49,4 +49,10 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("formatDaysUntilSv");
     expect(src).not.toContain('formatCountSv(view.spendDaysLeft, "dag", "dagar")');
   });
+
+  it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
+    expect(src).toContain("GettingStartedCard");
+    expect(src).toContain("läget just nu");
+    expect(src).not.toMatch(/välkommen till din resa/i);
+  });
 });

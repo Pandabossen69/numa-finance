@@ -620,7 +620,7 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             editExtraType="date"
-            emptyHint="Lägg till lön eller CSN med datum."
+            emptyHint="Lägg in lön eller CSN."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             pendingId={
               busy?.startsWith("edit:") || busy?.startsWith("delete:")
@@ -795,7 +795,7 @@ export function PlanEditor({
                 ? "Inga fasta utgifter den här månaden."
                 : canImportFixed
                   ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
-                  : "Hyra, el, Netflix…"
+                  : "Hyra och räkningar du måste betala."
             }
             subtitle={(item) =>
               item.nextDueAt
@@ -931,7 +931,7 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             editExtraType="date"
-            emptyHint="Engångskostnader med datum."
+            emptyHint="En räkning som bara kommer en gång."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             pendingId={
               busy?.startsWith("edit:") || busy?.startsWith("delete:")

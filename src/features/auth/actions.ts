@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { loadOnboardingState } from "@/features/onboarding/load";
 import type { AuthResult } from "./result";
 import { rejectPublicSignup } from "./signup-policy";
 
@@ -27,7 +28,8 @@ export async function signInAction(raw: {
     if (error) {
       return { ok: false, error: swedishAuthError(error.message) };
     }
-    return { ok: true };
+    const state = await loadOnboardingState();
+    return { ok: true, nextPath: state.nextPath };
   } catch (error) {
     return {
       ok: false,

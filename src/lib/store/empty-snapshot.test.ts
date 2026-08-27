@@ -9,8 +9,10 @@ describe("new user empty snapshot", () => {
     expect(store.accounts).toEqual([]);
     expect(store.planItems).toEqual([]);
     expect(store.transactions).toEqual([]);
-    expect(store.profile.timezone).toBe("Asia/Bangkok");
-    expect(store.profile.primaryCurrency).toBe("THB");
+    expect(store.profile.onboardingSaldoAt).toBeNull();
+    expect(store.profile.onboardingCompletedAt).toBeNull();
+    expect(store.profile.gettingStartedCompletedAt).toBeNull();
+    expect(store.profile.gettingStartedCollapsed).toBe(false);
 
     const snap = emptyTodaySnapshot(store.profile);
     expect(snap.accounts).toEqual([]);
