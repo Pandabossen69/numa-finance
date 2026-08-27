@@ -90,7 +90,7 @@ export function CompactPiles({
   const overOk = overMinor >= 0;
   return (
     <div className="grid grid-cols-2 gap-3">
-      <div className="numa-panel-strong min-w-0 px-3.5 py-3.5">
+      <div className="numa-panel min-w-0 px-3.5 py-3.5">
         <p className="numa-section-title">{SV.saldo}</p>
         <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
           {saldoMinor == null ? (

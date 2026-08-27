@@ -14,7 +14,8 @@ import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { MetricRow } from "@/components/ui/MetricRow";
+import { CompactMetricGrid, MetricRow } from "@/components/ui/MetricRow";
+import { TxnLine } from "@/components/ui/TxnLine";
 import { formatDaysUntilSv } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
@@ -29,9 +30,7 @@ export function AnalysDashboard({
   data: AnalysSnapshot | null;
   error?: string | null;
 }) {
-  const [scope, setScope] = useState<AnalysScope>(
-    () => lastAnalysScope() ?? "period",
-  );
+  const [scope, setScope] = useState<AnalysScope>(() => lastAnalysScope() ?? "period");
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
   const view = data ?? lastAnalysSnapshot();
@@ -39,8 +38,8 @@ export function AnalysDashboard({
   if (!view) {
     if (!error) return <AnalysViewLoading />;
     return (
-      <div className="numa-panel-strong animate-rise space-y-3 p-5">
-        <p className="text-sm font-semibold">Kunde inte ladda</p>
+      <div className="numa-panel numa-error animate-rise space-y-3">
+        <p className="text-sm font-semibold">Kunde inte ladda Analys</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
         <RetryLoadButton />
       </div>
@@ -114,58 +113,71 @@ export function AnalysDashboard({
       {scope === "period" ? (
         <div key="period" className="numa-scope-panel space-y-6">
           <section
-            className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
+            className="numa-panel-strong numa-hero animate-rise-delay-1 space-y-3"
             aria-labelledby="analys-hero"
           >
             <p className="numa-section-title">{modeEyebrow}</p>
-            <h2
-              id="analys-hero"
-              className="text-base font-semibold tracking-tight text-[var(--numa-ink)]"
-            >
-              {cycleTitle}
-            </h2>
-            <p className="text-xs font-medium text-[var(--numa-faint)]">{heroLabel}</p>
             {isBridge && !hasSaldo ? (
-              <p className="text-base font-medium text-[var(--numa-muted)]">
+              <h2
+                id="analys-hero"
+                className="text-lg font-semibold tracking-tight text-[var(--numa-muted)]"
+              >
                 Ange saldo på Hem
-              </p>
+              </h2>
             ) : (
               <div
+                id="analys-hero"
                 className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}
               >
-                <MoneyDisplay amountMinor={heroMinor} currency={currency} size="xl" />
+                <p className="sr-only">{heroLabel}</p>
+                <MoneyDisplay
+                  amountMinor={heroMinor}
+                  currency={currency}
+                  size="display"
+                  align="start"
+                />
               </div>
             )}
             {!(isBridge && !hasSaldo) ? (
+              <p className="text-[15px] font-medium text-[var(--numa-muted)]">
+                {heroMeta}
+              </p>
+            ) : (
               <p className="text-sm text-[var(--numa-muted)]">{heroMeta}</p>
+            )}
+            {cycleTitle !== "Ingen period ännu" ? (
+              <p className="text-xs text-[var(--numa-faint)]">{cycleTitle}</p>
             ) : null}
           </section>
 
           {!isEmpty ? (
             <section className="animate-rise-delay-2 space-y-2">
-              <p className="numa-section-title px-1">{SV.idag}</p>
-              <div className="numa-panel-list px-4 py-1">
-                <MetricRow
-                  label={SV.kvarIdag}
-                  amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
-                  currency={currency}
-                  tone={
-                    (!isBridge || hasSaldo) && cycle.remainingTodayMinor > 0
-                      ? "positive"
-                      : undefined
-                  }
-                />
-                <MetricRow
-                  label={SV.dagsbudget}
-                  amountMinor={isBridge && !hasSaldo ? 0 : cycle.dayBudgetMinor}
-                  currency={currency}
-                />
-                <MetricRow
-                  label={SV.spenderatIdag}
-                  amountMinor={view.todaySpendingMinor}
-                  currency={currency}
-                />
-              </div>
+              <p className="numa-section-title px-1">{SV.dagensEkonomi}</p>
+              <CompactMetricGrid
+                items={[
+                  {
+                    label: SV.kvarIdag,
+                    amountMinor: isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor,
+                    currency,
+                    tone:
+                      (!isBridge || hasSaldo) && cycle.remainingTodayMinor > 0
+                        ? "positive"
+                        : (!isBridge || hasSaldo) && cycle.remainingTodayMinor < 0
+                          ? "alarm"
+                          : undefined,
+                  },
+                  {
+                    label: SV.dagsbudget,
+                    amountMinor: isBridge && !hasSaldo ? 0 : cycle.dayBudgetMinor,
+                    currency,
+                  },
+                  {
+                    label: SV.spenderatIdag,
+                    amountMinor: view.todaySpendingMinor,
+                    currency,
+                  },
+                ]}
+              />
             </section>
           ) : null}
 
@@ -226,18 +238,24 @@ export function AnalysDashboard({
                 <LineList
                   title={isBridge ? "Kommande intäkter" : "Intäkter i perioden"}
                   subtitle={cycleRange}
-                  empty={isBridge ? "Inga kommande." : "Inga i perioden."}
+                  empty={
+                    isBridge ? "Inga kommande intäkter." : "Inga intäkter i perioden."
+                  }
                   lines={cycle.incomes}
                   currency={currency}
                   totalMinor={cycle.incomeMinor}
+                  sign="income"
                 />
                 <LineList
                   title={isBridge ? "Kommande utgifter" : "Utgifter i perioden"}
                   subtitle={cycleRange}
-                  empty={isBridge ? "Inga kommande." : "Inga i perioden."}
+                  empty={
+                    isBridge ? "Inga kommande utgifter." : "Inga utgifter i perioden."
+                  }
                   lines={cycle.expenses}
                   currency={currency}
                   totalMinor={cycle.expenseMinor}
+                  sign="expense"
                 />
               </div>
             </section>
@@ -310,7 +328,9 @@ export function AnalysDashboard({
               currency={currency}
             />
             <MetricRow
-              label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
+              label={
+                month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen
+              }
               amountMinor={month.monthResultMinor}
               currency={currency}
               tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
@@ -330,6 +350,7 @@ export function AnalysDashboard({
               lines={month.incomes}
               currency={currency}
               totalMinor={month.incomeMinor}
+              sign="income"
             />
             <LineList
               title="Utgifter"
@@ -338,6 +359,7 @@ export function AnalysDashboard({
               lines={month.expenses}
               currency={currency}
               totalMinor={month.expenseMinor}
+              sign="expense"
             />
           </div>
         </section>
@@ -355,23 +377,18 @@ export function AnalysDashboard({
           </Link>
         </div>
         {view.goals.length === 0 ? (
-          <p className="text-sm text-[var(--numa-muted)]">
-            Inga mål ännu. Avsätt sparande under Plan.
+          <p className="numa-panel numa-empty">
+            Inga mål ännu. Lägg till ditt första sparmål från Plan.
           </p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {view.goals.map((goal) => (
-              <li
-                key={goal.id}
-                className="flex items-center justify-between gap-3 px-4 py-3.5"
-              >
-                <span className="truncate text-sm text-[var(--numa-muted)]">
-                  {goal.name}
-                </span>
-                <MoneyDisplay
+              <li key={goal.id}>
+                <TxnLine
+                  title={goal.name}
                   amountMinor={goal.amountMinor}
                   currency={currency}
-                  size="sm"
+                  signed={false}
                 />
               </li>
             ))}
@@ -391,31 +408,23 @@ export function AnalysDashboard({
           </Link>
         </div>
         {view.recent.length === 0 ? (
-          <p className="text-sm text-[var(--numa-faint)]">Inga rörelser ännu</p>
+          <p className="numa-panel numa-empty">Inga rörelser ännu.</p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {view.recent.map((tx) => {
               const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              const category = tx.category?.trim() || null;
+              const description = sanitizeMoneyDescription(tx.description);
+              const title = category || description || "Rörelse";
+              const meta =
+                category && description && description !== category ? description : null;
               return (
-                <li
-                  key={tx.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                      {sanitizeMoneyDescription(tx.description)}
-                    </p>
-                    {tx.category ? (
-                      <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                        {tx.category}
-                      </p>
-                    ) : null}
-                  </div>
-                  <MoneyDisplay
+                <li key={tx.id}>
+                  <TxnLine
+                    title={title}
+                    meta={meta}
                     amountMinor={signed}
                     currency={tx.currency}
-                    size="sm"
-                    tone="signed"
                   />
                 </li>
               );
@@ -460,6 +469,7 @@ function LineList({
   lines,
   currency,
   totalMinor,
+  sign,
 }: {
   title: string;
   subtitle?: string;
@@ -467,7 +477,9 @@ function LineList({
   lines: AnalysLine[];
   currency: CurrencyCode;
   totalMinor: number;
+  sign: "income" | "expense";
 }) {
+  const signedTotal = sign === "expense" ? -Math.abs(totalMinor) : totalMinor;
   return (
     <div className="min-w-0 space-y-2">
       <div className="flex items-baseline justify-between gap-3 px-0.5">
@@ -479,31 +491,30 @@ function LineList({
             <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{subtitle}</p>
           ) : null}
         </div>
-        <div className="shrink-0 text-[var(--numa-muted)]">
-          <MoneyDisplay amountMinor={totalMinor} currency={currency} size="sm" />
+        <div className="min-w-0 shrink-0">
+          <MoneyDisplay
+            amountMinor={signedTotal}
+            currency={currency}
+            size="md"
+            compact
+            align="end"
+            wrap={false}
+            tone="signed"
+          />
         </div>
       </div>
       {lines.length === 0 ? (
-        <p className="px-0.5 text-sm text-[var(--numa-faint)]">{empty}</p>
+        <p className="numa-empty px-0.5">{empty}</p>
       ) : (
         <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
           {lines.map((line) => (
-            <li
-              key={line.id}
-              className="flex items-center justify-between gap-3 px-4 py-3.5"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                  {sanitizeMoneyDescription(line.name)}
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                  {sanitizeMoneyDescription(line.detail)}
-                </p>
-              </div>
-              <MoneyDisplay
+            <li key={line.id}>
+              <TxnLine
+                title={sanitizeMoneyDescription(line.name)}
+                meta={sanitizeMoneyDescription(line.detail) || null}
                 amountMinor={line.amountMinor}
                 currency={currency}
-                size="sm"
+                signed={false}
               />
             </li>
           ))}

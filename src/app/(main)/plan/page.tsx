@@ -19,8 +19,7 @@ export default async function PlanPage({
       : steg === "utgift"
         ? "Här lägger du in det som måste betalas."
         : null;
-  const focusAdd =
-    steg === "inkomst" ? "income" : steg === "utgift" ? "fixed" : null;
+  const focusAdd = steg === "inkomst" ? "income" : steg === "utgift" ? "fixed" : null;
   let error: string | null = null;
   let snap = null;
   try {
@@ -49,8 +48,8 @@ export default async function PlanPage({
         <GettingStartedCard view={gettingStarted} />
       ) : null}
       {error ? (
-        <div className="numa-panel-strong space-y-3 p-5">
-          <p className="text-sm font-semibold">Kunde inte ladda</p>
+        <div className="numa-panel numa-error space-y-3">
+          <p className="text-sm font-semibold">Kunde inte ladda Plan</p>
           <p className="text-sm text-[var(--numa-muted)]">{error}</p>
           <RetryLoadButton />
         </div>

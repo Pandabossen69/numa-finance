@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { TxnLine } from "@/components/ui/TxnLine";
 import {
   updateTransactionAction,
   voidTransactionAction,
@@ -42,10 +43,7 @@ function typeLabel(type: string): string {
   }
 }
 
-function matchesFilter(
-  tx: MovementsSnapshot["items"][number],
-  filter: Filter,
-): boolean {
+function matchesFilter(tx: MovementsSnapshot["items"][number], filter: Filter): boolean {
   if (filter === "all") return true;
   if (filter === "expense") return tx.transactionType === "expense";
   if (filter === "income") return tx.transactionType === "income";
@@ -102,18 +100,16 @@ export function MovementsScreen({
 
   if (error || !data) {
     return (
-      <div className="space-y-2">
-        <p className="font-semibold">Kunde inte ladda</p>
+      <div className="numa-panel numa-error space-y-2">
+        <p className="font-semibold">Kunde inte ladda rörelser</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
         <RetryLoadButton />
       </div>
     );
   }
 
-  const income =
-    period === "month" ? data.monthIncomeMinor : data.allIncomeMinor;
-  const expense =
-    period === "month" ? data.monthExpenseMinor : data.allExpenseMinor;
+  const income = period === "month" ? data.monthIncomeMinor : data.allIncomeMinor;
+  const expense = period === "month" ? data.monthExpenseMinor : data.allExpenseMinor;
   const net = period === "month" ? data.monthNetMinor : data.allNetMinor;
   const maxCategory = data.monthCategories[0]?.amountMinor || 1;
 
@@ -136,18 +132,20 @@ export function MovementsScreen({
         />
       </div>
 
-      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 pl-6 sm:grid-cols-3">
+      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-3">
         <SummaryStat
           label="Intäkter"
           amountMinor={income}
           currency={data.currency}
           tone="positive"
+          signed
         />
         <SummaryStat
           label="Utgifter"
-          amountMinor={expense}
+          amountMinor={-expense}
           currency={data.currency}
           tone="alarm"
+          signed
         />
         <SummaryStat
           label="Netto"
@@ -236,22 +234,18 @@ export function MovementsScreen({
         ) : null}
 
         {filtered.length === 0 ? (
-          <div className="numa-panel space-y-3 p-5">
+          <div className="numa-panel numa-empty space-y-3">
             {(data?.items.length ?? 0) > 0 ? (
-              <p className="text-sm text-[var(--numa-muted)]">
-                Inga träffar för filtret — prova Alla eller All tid.
-              </p>
+              <p>Inga träffar för filtret — prova Alla eller All tid.</p>
             ) : (
               <>
-                <p className="text-sm text-[var(--numa-muted)]">
-                  Inga rörelser här ännu.
-                </p>
+                <p>Inga rörelser ännu. Lägg till från Fota.</p>
                 <Link
                   href="/fota"
                   prefetch
                   className="numa-btn numa-btn-accent inline-flex min-h-11 px-4"
                 >
-                  Lägg till
+                  Fota
                 </Link>
               </>
             )}
@@ -259,11 +253,21 @@ export function MovementsScreen({
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {filtered.map((tx) => {
-              const signed =
-                tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
               const canEdit =
-                tx.transactionType === "expense" ||
-                tx.transactionType === "income";
+                tx.transactionType === "expense" || tx.transactionType === "income";
+              const category = tx.category?.trim() || null;
+              const description = sanitizeMoneyDescription(tx.description);
+              const title = category || description || typeLabel(tx.transactionType);
+              const meta = [
+                filter === "all" ? typeLabel(tx.transactionType) : null,
+                description && description !== title ? description : null,
+                formatListDateSv(tx.occurredAt, data.timeZone, {
+                  withTime: true,
+                }),
+              ]
+                .filter(Boolean)
+                .join(" · ");
 
               if (editingId === tx.id) {
                 return (
@@ -328,30 +332,17 @@ export function MovementsScreen({
               }
 
               return (
-                <li
-                  key={tx.id}
-                  className="flex items-start justify-between gap-3 px-4 py-3.5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                      {sanitizeMoneyDescription(tx.description)}
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                      {[
-                        filter === "all" ? typeLabel(tx.transactionType) : null,
-                        filter === "all" || filter === "expense"
-                          ? tx.category
-                          : null,
-                        formatListDateSv(tx.occurredAt, data.timeZone, {
-                          withTime: true,
-                        }),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
+                <li key={tx.id}>
+                  <div className="px-0">
+                    <TxnLine
+                      title={title}
+                      meta={meta}
+                      amountMinor={signed}
+                      currency={tx.currency}
+                    />
                     {canEdit && (confirmId == null || confirmId === tx.id) ? (
                       confirmId === tx.id ? (
-                        <div className="mt-1.5 flex gap-3">
+                        <div className="flex gap-3 px-4 pb-3">
                           <button
                             type="button"
                             className="numa-press text-xs font-semibold text-[var(--numa-danger)]"
@@ -379,7 +370,7 @@ export function MovementsScreen({
                           </button>
                         </div>
                       ) : (
-                        <div className="mt-1.5 flex gap-3">
+                        <div className="flex gap-3 px-4 pb-3">
                           <button
                             type="button"
                             className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
@@ -405,12 +396,6 @@ export function MovementsScreen({
                       )
                     ) : null}
                   </div>
-                  <MoneyDisplay
-                    amountMinor={signed}
-                    currency={tx.currency}
-                    size="sm"
-                    tone="signed"
-                  />
                 </li>
               );
             })}

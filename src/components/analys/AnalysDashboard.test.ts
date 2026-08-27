@@ -33,7 +33,7 @@ describe("Analys month result color", () => {
   });
 
   it("does not send empty Mål to a dead Lägg till on Plan", () => {
-    expect(src).toContain("Avsätt sparande under Plan");
+    expect(src).toContain("Lägg till ditt första sparmål från Plan");
     expect(src).not.toContain("Lägg till →");
   });
 

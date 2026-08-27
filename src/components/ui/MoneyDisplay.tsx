@@ -18,7 +18,7 @@ export function MoneyDisplay({
   currency: CurrencyCode;
   size?: "sm" | "md" | "lg" | "xl" | "display";
   compact?: boolean;
-  /** Color negative amounts as clay alarm when "signed" — not destroy red. */
+  /** Color and sign prefix when "signed" — minus/plus, not color alone. */
   tone?: "neutral" | "signed";
   align?: "start" | "center" | "end";
   wrap?: boolean;
@@ -28,23 +28,26 @@ export function MoneyDisplay({
     : Math.round(Number.isFinite(amountMinor) ? amountMinor : 0);
   const value = money(safeMinor, currency);
   const showFraction = compact ? Math.abs(safeMinor) % 100 !== 0 : true;
+  const major = toMajorUnits(value);
   const amountText = new Intl.NumberFormat("sv-SE", {
     minimumFractionDigits: showFraction ? 2 : 0,
     maximumFractionDigits: showFraction ? 2 : 0,
     useGrouping: true,
-  }).format(toMajorUnits(value));
+  }).format(tone === "signed" ? Math.abs(major) : major);
+  const signPrefix =
+    tone === "signed" ? (safeMinor < 0 ? "−" : safeMinor > 0 ? "+" : "") : "";
   const currencyText = CURRENCY_META[currency].symbol;
 
   const sizeClass =
     size === "display"
-      ? "text-[clamp(1.35rem,4.8vw,2.35rem)] leading-[1.08] font-semibold tracking-[-0.04em]"
+      ? "text-[clamp(1.85rem,5.2vw,2.25rem)] leading-[1.08] font-semibold tracking-[-0.04em]"
       : size === "xl"
-        ? "text-[clamp(1.75rem,5vw,2.55rem)] leading-[1.08] font-semibold tracking-tight"
+        ? "text-[clamp(1.7rem,4.6vw,2.15rem)] leading-[1.08] font-semibold tracking-tight"
         : size === "lg"
-          ? "text-3xl font-semibold tracking-tight"
+          ? "text-[1.5rem] font-semibold tracking-tight"
           : size === "md"
-            ? "text-xl font-semibold"
-            : "text-base font-medium";
+            ? "text-[1.25rem] font-semibold tracking-tight"
+            : "text-[0.9375rem] font-medium";
 
   const codeSize =
     size === "display"
@@ -74,12 +77,13 @@ export function MoneyDisplay({
   return (
     <span
       className={`inline-flex max-w-full items-baseline gap-x-1.5 gap-y-0 ${wrap ? "flex-wrap" : "flex-nowrap"} ${alignClass} ${toneClass}`.trim()}
-      aria-label={`${amountText} ${currencyText}`}
+      aria-label={`${signPrefix}${amountText} ${currencyText}`}
     >
-      <span className={`money ${sizeClass}`}>{amountText}</span>
-      <span
-        className={`money-currency ${codeSize} text-[var(--numa-muted)]`}
-      >
+      <span className={`money ${sizeClass}`}>
+        {signPrefix}
+        {amountText}
+      </span>
+      <span className={`money-currency ${codeSize} text-[var(--numa-muted)]`}>
         {currencyText}
       </span>
     </span>
