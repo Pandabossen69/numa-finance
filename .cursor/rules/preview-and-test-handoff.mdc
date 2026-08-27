@@ -1,6 +1,6 @@
 # NUMA delivery workflow
 
-Hugo does not run SQL, Vercel, or git himself. The agent does.
+Hugo does not run SQL, Vercel, GitHub, or git himself. The agent does.
 
 After finishing a set of product changes:
 
@@ -8,12 +8,17 @@ After finishing a set of product changes:
    - NUMA SQL/migrations: apply via Supabase MCP to project `hadrtlancgopyyshwhyd` (schema `numa`). Do not ask Hugo to paste SQL unless MCP failed.
    - Vercel env/domains: use Vercel MCP. Do not ask Hugo to click around unless a secret only he has is missing.
 2. **Always push** the current feature branch so Vercel builds a preview. Do not wait for Hugo to say “pusha”.
-3. **Ask once: Preview eller produktion?**
+3. **GitHub is the agent’s job**
+   - Create/update the PR. Do not ask Hugo to open GitHub, click Approve, or press Merge.
+   - Cursor’s GitHub App cannot submit `APPROVE` reviews (403). That is fine unless branch protection *requires* a human review. Only then put it in “Du behöver göra detta”.
+   - Merge to `main` yourself after he picks **produktion** (git merge/push). After **preview**, leave the branch unmerged.
+4. **Ask once: Preview eller produktion?**
    - **Preview** = leave the work on the feature branch / preview URL. Do **not** merge to `main`.
    - **Produktion** = merge to `main` so `https://numa-finance.vercel.app` updates. Only merge after he explicitly picks production.
    - Always ask. Never assume. Never merge to production without that answer.
-4. **Test plan** — Before suggesting the next step, list concrete things Hugo should verify (screens, flows, edge cases).
-5. **Next step** — Briefly explain what the next recommended step is and why.
+5. **Test plan** — Before suggesting the next step, list concrete things Hugo should verify (screens, flows, edge cases).
+6. **Next step** — Briefly explain what the next recommended step is and why.
 
 Never skip the test plan + next step when wrapping up UI/product work.
 Never skip the preview-vs-produktion question.
+Never ask Hugo to approve a PR on GitHub.
