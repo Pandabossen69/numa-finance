@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,10 +18,6 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(!view.collapsed);
   const [hiding, setHiding] = useState(false);
-
-  useEffect(() => {
-    setOpen(!view.collapsed);
-  }, [view.collapsed]);
 
   if (!view.visible) return null;
 
