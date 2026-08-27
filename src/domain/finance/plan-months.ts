@@ -27,6 +27,67 @@ export function remainingOpenMinor(item: PlanItem): number {
   return Math.max(0, item.amountMinor - settledAmountMinor(item));
 }
 
+/**
+ * Amount that still counts in Kommer in / Kvar att betala.
+ * Ledger-matched rows are already in saldo and must not be counted again.
+ */
+export function countsTowardCashMinor(
+  item: PlanItem,
+  ledgerMatched = false,
+): number {
+  if (ledgerMatched) return 0;
+  return remainingOpenMinor(item);
+}
+
+export function sumCountsTowardCashMinor(
+  items: readonly PlanItem[],
+  matchedIds: ReadonlySet<string> = new Set(),
+): number {
+  let sum = 0;
+  for (const item of items) {
+    sum += countsTowardCashMinor(item, matchedIds.has(item.id));
+  }
+  return sum;
+}
+
+/** Hero number on a Plan row: remaining after Delvis klar, otherwise the planned amount. */
+export function planRowHeroMinor(item: PlanItem): number {
+  if (isPlanPartiallySettled(item)) return remainingOpenMinor(item);
+  return item.amountMinor;
+}
+
+export type PlanPartialBreakdown = {
+  totalMinor: number;
+  settledMinor: number;
+  remainingMinor: number;
+};
+
+/** 51 000 − 22 000 = 29 000 while a row is Delvis klar. */
+export function planPartialBreakdown(item: PlanItem): PlanPartialBreakdown | null {
+  if (!isPlanPartiallySettled(item)) return null;
+  const settledMinor = settledAmountMinor(item);
+  return {
+    totalMinor: item.amountMinor,
+    settledMinor,
+    remainingMinor: item.amountMinor - settledMinor,
+  };
+}
+
+/** Live remainder while typing Delvis klar. */
+export function previewPartialRemaining(
+  amountMinor: number,
+  typedSettledMinor: number | null,
+): PlanPartialBreakdown | null {
+  if (typedSettledMinor == null || !Number.isFinite(typedSettledMinor)) return null;
+  const totalMinor = Math.max(0, Math.round(amountMinor));
+  const settledMinor = Math.min(totalMinor, Math.max(0, Math.round(typedSettledMinor)));
+  return {
+    totalMinor,
+    settledMinor,
+    remainingMinor: totalMinor - settledMinor,
+  };
+}
+
 /** True when this occurrence was marked fully Klar (paid/received). */
 export function isPlanSettled(item: PlanItem): boolean {
   if (item.amountMinor > 0) {

@@ -77,12 +77,33 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("coverage={coverage}");
   });
 
-  it("lets every month tap Klar on incomes and expenses without deleting", () => {
+  it("lets every month mark Klar on incomes and expenses without deleting", () => {
     expect(src).toContain("setPlanItemSettledAction");
     expect(src).toContain("onSettle={settleRow}");
     expect(src).toContain("SV.klar");
     expect(src).toContain("SV.angraKlar");
     expect(src).not.toContain("locked={isPastMonth}");
+  });
+
+  it("hides the Klar button and shows settled rows with a green wash", () => {
+    expect(src).toContain("numa-plan-row");
+    expect(src).toContain("is-settled");
+    expect(src).toContain("is-partial");
+    expect(src).not.toContain("numa-chip numa-chip-mint");
+    expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(css).toContain(".numa-plan-row.is-settled");
+    expect(css).toContain("rgba(12, 125, 104");
+  });
+
+  it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {
+    expect(src).toContain("planRowHeroMinor");
+    expect(src).toContain("planPartialBreakdown");
+    expect(src).toContain("previewPartialRemaining");
+    expect(src).toContain("PlanEquation");
+    expect(src).toContain("coverage.incomingMinor");
+    expect(src).toContain("coverage.unpaidMinor");
+    expect(src).toContain("sumCountsTowardCashMinor");
   });
 
   it("uses a calendar date on new and existing incomes and expenses", () => {

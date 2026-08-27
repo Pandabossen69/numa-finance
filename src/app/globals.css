@@ -577,6 +577,78 @@ body {
   color: var(--numa-ink);
 }
 
+.numa-plan-row {
+  margin-inline: -0.55rem;
+  padding-inline: 0.55rem;
+  border-radius: 1.05rem;
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
+}
+
+.numa-plan-row.is-settled {
+  background: linear-gradient(
+    165deg,
+    rgba(198, 232, 216, 0.7) 0%,
+    rgba(236, 244, 239, 0.42) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 10px 22px rgba(12, 125, 104, 0.11);
+}
+
+.numa-plan-row.is-settled .numa-plan-name,
+.numa-plan-row.is-settled .money {
+  color: var(--numa-muted);
+}
+
+.numa-plan-row.is-settled .money-currency {
+  color: var(--numa-faint);
+}
+
+.numa-plan-row.is-partial {
+  background: linear-gradient(
+    165deg,
+    rgba(182, 234, 220, 0.48) 0%,
+    rgba(248, 252, 250, 0.28) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 8px 18px rgba(12, 125, 104, 0.08);
+}
+
+.numa-settle-eq {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.22rem 0.35rem;
+  margin-top: 0.2rem;
+  color: var(--numa-faint);
+  font-size: 0.72rem;
+  letter-spacing: -0.02em;
+}
+
+.numa-settle-eq .is-remain {
+  color: var(--numa-accent-ink);
+  font-weight: 650;
+}
+
+.numa-settle-rest {
+  color: var(--numa-faint);
+}
+
+.numa-partial-preview {
+  border-radius: 1.15rem;
+  background: linear-gradient(
+    165deg,
+    rgba(182, 234, 220, 0.55),
+    rgba(248, 252, 250, 0.92)
+  );
+  box-shadow: 0 10px 22px rgba(12, 125, 104, 0.08);
+  padding: 0.9rem 1rem;
+}
+
 .numa-pile-meter {
   height: 0.42rem;
   overflow: hidden;
