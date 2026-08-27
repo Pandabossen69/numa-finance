@@ -5,6 +5,9 @@ import {
   formatCountSv,
   formatIsoDateOnlySv,
   formatListDateSv,
+  isCalendarDate,
+  isoToDateInput,
+  nextCommittedCalendarDate,
   formatRelativeVerificationSv,
   isSameZonedDay,
   snapshotLedgerWindow,
@@ -161,5 +164,32 @@ describe("formatIsoDateOnlySv", () => {
     expect(formatIsoDateOnlySv("2026-08-28").toLowerCase()).toMatch(/28/);
     expect(formatIsoDateOnlySv("2026-08-28").toLowerCase()).toMatch(/aug/);
     expect(formatIsoDateOnlySv("2026-08-28")).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{4}/);
+  });
+});
+
+describe("isoToDateInput (Asia/Bangkok)", () => {
+  it("keeps a date-only value as the calendar day", () => {
+    expect(isoToDateInput("2026-08-27", tz)).toBe("2026-08-27");
+    expect(isCalendarDate("2026-08-27")).toBe(true);
+    expect(isCalendarDate("")).toBe(false);
+  });
+
+  it("uses the Bangkok civil day, not the UTC ISO slice", () => {
+    // 00:30 Bangkok Aug 27 = Aug 26 17:30 UTC
+    expect(isoToDateInput("2026-08-26T17:30:00.000Z", tz)).toBe("2026-08-27");
+    expect("2026-08-26T17:30:00.000Z".slice(0, 10)).toBe("2026-08-26");
+  });
+
+  it("keeps noon-UTC anchors on the same Bangkok day", () => {
+    expect(isoToDateInput("2026-08-27T12:00:00.000Z", tz)).toBe("2026-08-27");
+  });
+
+  it("commits a new calendar date and ignores empty or unchanged values", () => {
+    expect(nextCommittedCalendarDate("2026-08-10", "2026-08-25")).toBe(
+      "2026-08-10",
+    );
+    expect(nextCommittedCalendarDate("2026-08-25", "2026-08-25")).toBe(null);
+    expect(nextCommittedCalendarDate("", "2026-08-25")).toBe(null);
+    expect(nextCommittedCalendarDate("2026-08", "2026-08-25")).toBe(null);
   });
 });
