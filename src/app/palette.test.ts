@@ -19,6 +19,19 @@ describe("NUMA vision palette", () => {
     expect(css).not.toContain("#f7fcf9");
   });
 
+  it("tints living, park and income/spend as separate families", () => {
+    expect(token("--numa-spend")).toBe("#7a5c48");
+    expect(token("--numa-spend")).not.toBe(token("--numa-alarm"));
+    expect(token("--numa-spend")).not.toBe(token("--numa-danger"));
+    expect(css).toContain(".numa-panel-strong");
+    expect(css).toContain(".numa-panel-park");
+    expect(css).toContain(".numa-amt-in");
+    expect(css).toContain(".numa-amt-out");
+    expect(css).toContain(".numa-wealth-cell.is-live");
+    expect(css).toContain("#dff3ea");
+    expect(css).toContain("#efe8de");
+  });
+
   it("keeps over-budget clay alarm distinct from destroy red", () => {
     expect(token("--numa-alarm")).toBe("#a86b3a");
     expect(token("--numa-danger")).toBe("#b42318");

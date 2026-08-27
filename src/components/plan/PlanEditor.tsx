@@ -705,7 +705,7 @@ export function PlanEditor({
             <p className="text-[11px] font-medium text-[var(--numa-faint)]">
               {SV.utgifter}
             </p>
-            <div className="mt-1.5 text-[var(--numa-ink)]">
+            <div className="mt-1.5 numa-amt-out">
               <MoneyDisplay
                 amountMinor={coverage.unpaidMinor}
                 currency={currency}

@@ -87,12 +87,13 @@ export function PlanPiles({
               label={SV.kommerIn}
               amountMinor={coverage.incomingMinor}
               currency={currency}
-              accent
+              tone="in"
             />
             <PileLine
               label={SV.kvarAttBetala}
               amountMinor={coverage.unpaidMinor}
               currency={currency}
+              tone="out"
             />
           </div>
 
@@ -224,14 +225,12 @@ function PileLine({
   label,
   amountMinor,
   currency,
-  accent = false,
-  danger = false,
+  tone = "plain",
 }: {
   label: string;
   amountMinor: number | null;
   currency: CurrencyCode;
-  accent?: boolean;
-  danger?: boolean;
+  tone?: "plain" | "in" | "out";
 }) {
   const missing = amountMinor == null;
   return (
@@ -241,10 +240,10 @@ function PileLine({
         className={
           missing
             ? "text-[var(--numa-faint)]"
-            : danger
-              ? "text-[var(--numa-alarm)]"
-              : accent
-                ? "text-[var(--numa-accent-ink)]"
+            : tone === "out"
+              ? "numa-amt-out"
+              : tone === "in"
+                ? "numa-amt-in"
                 : "text-[var(--numa-ink)]"
         }
       >
