@@ -36,7 +36,7 @@ import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/OverflowMenu";
-import { SV } from "@/features/copy/labels-sv";
+import { SV, planDoneLabel, planPartialLabel } from "@/features/copy/labels-sv";
 import { lastPlanView, rememberPlanView } from "@/features/home/last-snapshot";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
@@ -735,6 +735,7 @@ export function PlanEditor({
         >
           <PlanRows
             items={projection.incomes}
+            settleKind="income"
             currency={currency}
             editingId={editingId}
             editName={editName}
@@ -905,6 +906,7 @@ export function PlanEditor({
 
           <PlanRows
             items={projection.fixedItems}
+            settleKind="expense"
             currency={currency}
             editingId={editingId}
             editName={editName}
@@ -1038,6 +1040,7 @@ export function PlanEditor({
         >
           <PlanRows
             items={projection.extraItems}
+            settleKind="expense"
             currency={currency}
             editingId={editingId}
             editName={editName}
@@ -1214,6 +1217,7 @@ function PlanCard({
 
 function PlanRows({
   items,
+  settleKind,
   currency,
   timeZone,
   editingId,
@@ -1245,6 +1249,7 @@ function PlanRows({
   onDelete,
 }: {
   items: PlanItem[];
+  settleKind: "income" | "expense";
   currency: CurrencyCode;
   timeZone: string;
   editingId: string | null;
@@ -1352,7 +1357,9 @@ function PlanRows({
                 <p className="numa-plan-name text-sm font-semibold tracking-tight">
                   {item.name}
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{SV.delvisKlar}</p>
+                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                  {planPartialLabel(settleKind)}
+                </p>
               </div>
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-[var(--numa-muted)]">
@@ -1417,17 +1424,19 @@ function PlanRows({
           );
         }
 
+        const doneLabel = planDoneLabel(settleKind);
+        const partialLabel = planPartialLabel(settleKind);
         const menuItems: OverflowMenuItem[] = [];
         if (!matched && !settled) {
           menuItems.push({
-            label: SV.klar,
+            label: doneLabel,
             disabled: pendingId === item.id && pendingAction === "settle",
             onSelect: () => onSettle(item.id, true),
           });
         }
         if (!matched) {
           menuItems.push({
-            label: SV.delvisKlar,
+            label: partialLabel,
             onSelect: () => {
               setConfirmId(null);
               onStartPartial(item);
@@ -1475,8 +1484,8 @@ function PlanRows({
                 <p className="text-xs text-[var(--numa-faint)]">{dateLabel}</p>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <span className="mr-1 max-w-[9.5rem] sm:max-w-none">
+            <div className="flex shrink-0 items-start gap-1">
+              <div className="mr-1 flex max-w-[9.5rem] flex-col items-end gap-1 sm:max-w-none">
                 <MoneyDisplay
                   amountMinor={planRowHeroMinor(item)}
                   currency={rowCurrency}
@@ -1484,7 +1493,12 @@ function PlanRows({
                   compact
                   align="end"
                 />
-              </span>
+                {settled ? (
+                  <span className="numa-chip numa-chip-mint">{doneLabel}</span>
+                ) : partial ? (
+                  <span className="numa-chip numa-chip-spend">{SV.delvis}</span>
+                ) : null}
+              </div>
               {isTempPlanId(item.id) ? null : confirmId === item.id ? (
                 <div className="flex items-center gap-1">
                   <button
