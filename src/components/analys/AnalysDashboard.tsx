@@ -263,10 +263,14 @@ export function AnalysDashboard({
 
           <WealthScoreboard
             livingMinor={month.livingSaldoMinor}
+            livingLabel={SV.motPlanen}
             savingsMinor={month.savingsTotalMinor}
             totalMinor={month.wealthTotalMinor}
             currency={currency}
           />
+          <p className="px-1 text-xs leading-snug text-[var(--numa-muted)]">
+            Mot planen är inte kontanter — planerat kvar minus spenderat i månaden.
+          </p>
 
           <div className="numa-panel-list px-4 py-1">
             <MetricRow

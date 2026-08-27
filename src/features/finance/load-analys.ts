@@ -69,7 +69,7 @@ export type AnalysSnapshot = {
     extraSaldoDrawnMinor: number;
     extraSaldoHint: string | null;
     extraCarriedInMinor: number;
-    /** Calendar-month plan leftover minus spent (+ extra). Not bank cash. */
+    /** Calendar-month leftover vs plan (not cash). Analys only — Plan/Hem use Över. */
     livingSaldoMinor: number;
     savingsTotalMinor: number;
     wealthTotalMinor: number;

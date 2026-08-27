@@ -35,6 +35,11 @@ export type TodaySnapshot = {
   flexibleMinor: number;
   daysUntilIncome: number;
   recentTransactions: CanonicalTransaction[];
+  /**
+   * Ledger rows in the snapshot window — used to match plan items as
+   * received/paid so Plan/Hem remaining figures are not double-counted.
+   */
+  ledgerTransactions: CanonicalTransaction[];
   planItems: PlanItem[];
   currency: CurrencyCode;
   /** Personal game progress — never includes balances. */

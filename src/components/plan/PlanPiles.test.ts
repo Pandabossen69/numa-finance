@@ -12,3 +12,16 @@ describe("Sparande empty state and Avsätt", () => {
     expect(src).not.toContain("Inget avsatt än");
   });
 });
+
+describe("Plan cash coverage stack", () => {
+  it("leads with Saldo / Kommer in / Kvar att betala / Över, not Mot planen", () => {
+    expect(src).toContain("SV.saldo");
+    expect(src).toContain("SV.kommerIn");
+    expect(src).toContain("SV.kvarAttBetala");
+    expect(src).toContain("SV.over");
+    expect(src).toContain("CASH_COVERAGE_HINT_SV");
+    expect(src).not.toContain("SV.motPlanen");
+    expect(src).not.toContain("monthLivingSaldoMinor");
+    expect(src).not.toContain("livingVsPlanHintSv");
+  });
+});

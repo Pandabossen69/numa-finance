@@ -4,8 +4,8 @@ import {
   cumulativePlanSavingsMinor,
   labelMonthSv,
   monthKeyFromDate,
-  monthLivingSaldoMinor,
   planWealthTotalMinor,
+  projectCashCoverage,
   projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
@@ -54,11 +54,15 @@ export type HomeSnapshot = {
   extraSaldoDrawnMinor: number;
   extraSaldoHint: string | null;
   extraCarriedInMinor: number;
-  /** Calendar-month plan leftover minus spent (+ extra). Not bank cash. */
-  livingSaldoMinor: number;
   savingsTotalMinor: number;
   wealthTotalMinor: number;
   monthResultMinor: number;
+  /** Remaining planned income not yet in the ledger. */
+  incomingMinor: number;
+  /** Remaining planned expenses not yet in the ledger (not savings). */
+  unpaidMinor: number;
+  /** Saldo + kommer in − kvar att betala. */
+  overMinor: number;
 };
 
 export type HomeSnapshotResult =
@@ -91,7 +95,13 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       currentMonthKey: monthKey,
       timeZone,
     });
-    const livingSaldoMinor = monthLivingSaldoMinor(extra);
+    const coverage = projectCashCoverage({
+      planItems: snap.planItems ?? [],
+      transactions: snap.ledgerTransactions ?? [],
+      monthKey,
+      timeZone,
+      saldoMinor: snap.calculatedBalanceMinor,
+    });
     const savingsTotalMinor = cumulativePlanSavingsMinor(
       snap.planItems ?? [],
       monthKey,
@@ -136,10 +146,12 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         extraSaldoDrawnMinor: extra.drawnMinor,
         extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
         extraCarriedInMinor: extra.carriedInMinor,
-        livingSaldoMinor,
         savingsTotalMinor,
-        wealthTotalMinor: planWealthTotalMinor(livingSaldoMinor, savingsTotalMinor),
+        wealthTotalMinor: planWealthTotalMinor(coverage.overMinor, savingsTotalMinor),
         monthResultMinor: extra.monthResultMinor,
+        incomingMinor: coverage.incomingMinor,
+        unpaidMinor: coverage.unpaidMinor,
+        overMinor: coverage.overMinor,
       },
     };
   } catch (error) {

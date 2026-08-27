@@ -10,7 +10,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
-import { formatCountSv, livingVsPlanHintSv } from "@/domain/finance";
+import { formatCountSv } from "@/domain/finance";
 import {
   formatMoney,
   money,
@@ -57,15 +57,10 @@ export function HomeDashboard({
 
   const remainingTodayMinor = view.remainingTodayMinor - deltaSpent;
   const todaySpendingMinor = view.todaySpendingMinor + deltaSpent;
-  const remainingFreeMinor =
-    view.livingMode === "cycle"
-      ? view.remainingFreeMinor - deltaSpent
-      : view.remainingFreeMinor;
   const currency = view.currency;
   const greeting = homeGreeting(view.displayName, new Date(), view.timeZone);
   const isBridge = view.livingMode === "bridge";
   const isEmpty = view.livingMode === "empty";
-  const remainingOk = remainingFreeMinor >= 0;
   const dayOk = remainingTodayMinor > 0;
   const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
@@ -246,40 +241,20 @@ export function HomeDashboard({
 
             <div className="flex h-full min-w-0 flex-col gap-6">
               <section className="animate-rise-delay-2 space-y-2">
-                <p className="numa-section-title px-1">{SV.planOchSparande}</p>
+                <p className="numa-section-title px-1">{SV.saldoOchSparande}</p>
                 <CompactPiles
-                  livingMinor={view.livingSaldoMinor}
+                  saldoMinor={view.calculatedBalanceMinor}
+                  incomingMinor={view.incomingMinor}
+                  unpaidMinor={view.unpaidMinor}
+                  overMinor={view.overMinor}
                   savingsMinor={view.savingsTotalMinor}
                   currency={currency}
-                  livingHint={livingVsPlanHintSv({
-                    carriedInMinor: view.extraCarriedInMinor,
-                  })}
                 />
-                <p className="px-1 text-xs font-medium text-[var(--numa-muted)]">
-                  {SV.alltINuma}{" "}
-                  <span className="text-[var(--numa-accent-ink)]">
-                    <MoneyDisplay
-                      amountMinor={view.wealthTotalMinor}
-                      currency={currency}
-                      size="sm"
-                      compact
-                    />
-                  </span>
-                </p>
+                {(view.extraCarriedInMinor > 0 ||
+                  view.extraSaldoMinor > 0 ||
+                  view.extraSaldoDrawnMinor > 0 ||
+                  (!isBridge && view.cycleSpendingMinor + deltaSpent > 0)) ? (
                 <div className="numa-panel-list animate-scale-in px-4 py-1">
-                  <MetricRow
-                    label={isBridge ? SV.saldo : SV.kvarIPerioden}
-                    amountMinor={remainingFreeMinor}
-                    currency={currency}
-                    tone={remainingOk ? "positive" : "alarm"}
-                    hint={
-                      isBridge && view.verificationLabel
-                        ? view.verificationLabel
-                        : !isBridge
-                          ? "I löneperioden, efter planerade utgifter och det du redan spenderat"
-                          : undefined
-                    }
-                  />
                   {view.extraCarriedInMinor > 0 ? (
                     <MetricRow
                       label={SV.extraMed}
@@ -296,16 +271,6 @@ export function HomeDashboard({
                       currency={currency}
                     />
                   )}
-                  {view.hasBankTruth &&
-                  view.calculatedBalanceMinor != null &&
-                  !isBridge ? (
-                    <MetricRow
-                      label={SV.paKontot}
-                      amountMinor={view.calculatedBalanceMinor}
-                      currency={currency}
-                      hint={view.verificationLabel ?? undefined}
-                    />
-                  ) : null}
                   {!isBridge && view.cycleSpendingMinor + deltaSpent > 0 ? (
                     <MetricRow
                       label={SV.spenderatIPerioden}
@@ -314,6 +279,7 @@ export function HomeDashboard({
                     />
                   ) : null}
                 </div>
+                ) : null}
               </section>
 
               {isBridge ? (

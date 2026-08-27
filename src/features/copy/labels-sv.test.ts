@@ -18,9 +18,13 @@ describe("Swedish money labels", () => {
     expect(SV.saRaknarNuma).toBe("Så räknar NUMA");
   });
 
-  it("keeps Mot planen as the plan leftover label", () => {
+  it("keeps Mot planen as the Analys leftover label, not the Plan/Hem cash hero", () => {
     expect(SV.motPlanen).toBe("Mot planen");
     expect(SV.minusMotPlanen).toBe("Minus mot planen");
+    expect(SV.over).toBe("Över");
+    expect(SV.kommerIn).toBe("Kommer in");
+    expect(SV.kvarAttBetala).toBe("Kvar att betala");
+    expect(SV.over).not.toBe(SV.motPlanen);
     expect(SV.overDagsbudget).toBe("Över dagsbudgeten");
   });
 

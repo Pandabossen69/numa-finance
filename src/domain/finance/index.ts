@@ -12,3 +12,4 @@ export * from "./sms-batch-confirm";
 export * from "./transfer-pair";
 export * from "./import-occurred-at";
 export * from "./month-carryover";
+export * from "./cash-coverage";
