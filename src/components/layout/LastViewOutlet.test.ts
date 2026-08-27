@@ -10,5 +10,7 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("numa-view-park");
     expect(src).toContain("ViewLoading");
     expect(src).toContain("inert");
+    expect(src).toContain("sameTabRefresh");
+    expect(src).toContain("liveByTabRef");
   });
 });

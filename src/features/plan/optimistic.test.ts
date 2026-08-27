@@ -7,6 +7,7 @@ import {
 import {
   applyMonthSavings,
   isTempPlanId,
+  adoptServerPlanItems,
   mergeReturnedItem,
   mergeReturnedItems,
   optimisticPlanItem,
@@ -174,6 +175,45 @@ describe("plan optimistic helpers", () => {
         "Asia/Bangkok",
       ),
     ).toEqual([rent, existing]);
+  });
+
+  it("keeps a just-saved row when the server snapshot is still the old list", () => {
+    const existing = item({
+      id: "keep",
+      kind: "mandatory",
+      amountMinor: 800_00,
+    });
+    const saved = item({
+      id: "new",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      name: "Hyra",
+    });
+    const adopted = adoptServerPlanItems([existing, saved], [existing]);
+    expect(adopted.map((row) => row.id)).toEqual(["keep", "new"]);
+  });
+
+  it("keeps local rows when refresh briefly sends an empty list", () => {
+    const existing = item({ kind: "mandatory", amountMinor: 800_00 });
+    expect(adoptServerPlanItems([existing], [])).toEqual([existing]);
+  });
+
+  it("keeps an in-flight temp row on top of a fresh server list", () => {
+    const existing = item({
+      id: "keep",
+      kind: "mandatory",
+      amountMinor: 800_00,
+    });
+    const temp = optimisticPlanItem({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    const adopted = adoptServerPlanItems([existing, temp], [existing]);
+    expect(adopted.map((row) => row.id)).toEqual(["keep", temp.id]);
   });
 
   it("stamps items so an unchanged server list does not reset local edits", () => {

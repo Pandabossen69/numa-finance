@@ -99,6 +99,28 @@ export function mergeReturnedItems(
   return [...kept, ...extra];
 }
 
+/**
+ * Keep optimistic rows when a stale or empty server snapshot arrives
+ * (router.refresh can briefly replay the previous payload).
+ */
+export function adoptServerPlanItems(
+  local: PlanItem[],
+  incoming: PlanItem[],
+): PlanItem[] {
+  if (incoming.length === 0) return local.length > 0 ? local : incoming;
+  const incomingById = new Map(incoming.map((row) => [row.id, row]));
+  const temps = local.filter((row) => isTempPlanId(row.id));
+  const localReals = local.filter((row) => !isTempPlanId(row.id));
+  const extraLocal = localReals.filter((row) => !incomingById.has(row.id));
+  const incomingHasNew = incoming.some(
+    (row) => !localReals.some((localRow) => localRow.id === row.id),
+  );
+  if (extraLocal.length > 0 && !incomingHasNew) {
+    return [...localReals.map((row) => incomingById.get(row.id) ?? row), ...temps];
+  }
+  return [...incoming, ...temps];
+}
+
 export function findMonthSavings(
   items: PlanItem[],
   monthKey: string,

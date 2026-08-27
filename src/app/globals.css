@@ -639,6 +639,21 @@ body {
     color 180ms ease;
 }
 
+.numa-plan-row.is-fresh {
+  animation: numa-row-in 280ms ease;
+}
+
+@keyframes numa-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .numa-plan-row.is-settled {
   background: linear-gradient(165deg, #c4ead6 0%, #d9f0e4 100%);
   box-shadow:
@@ -962,7 +977,8 @@ body {
   .numa-nav-progress,
   .numa-day-dial-arc,
   .numa-komigang-card,
-  .numa-step-check {
+  .numa-step-check,
+  .numa-plan-row.is-fresh {
     animation: none !important;
   }
 

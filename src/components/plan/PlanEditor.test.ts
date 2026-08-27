@@ -130,4 +130,19 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("applyPlanItemEdits");
     expect(src).toContain("remainingDueIso(item)");
   });
+
+  it("lands a new row immediately and closes add without emptying the form first", () => {
+    expect(src).toContain("function commitAdd");
+    expect(src).toContain("setAddKind(null)");
+    expect(src).toContain("adoptServerPlanItems");
+    expect(src).toContain("is-fresh");
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(css).toContain(".numa-plan-row.is-fresh");
+    expect(css).toContain("numa-row-in");
+    const commit = src.slice(src.indexOf("function commitAdd"), src.indexOf("function settleRow"));
+    expect(commit).toContain("setAddKind(null)");
+    expect(commit).toContain("runMutation");
+    expect(commit.indexOf("setAddKind(null)")).toBeLessThan(commit.indexOf("void runMutation"));
+    expect(commit).not.toContain("} else {\n                  setAddKind(null);");
+  });
 });

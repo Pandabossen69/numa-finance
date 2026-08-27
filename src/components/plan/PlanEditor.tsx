@@ -41,6 +41,7 @@ import { lastPlanView, rememberPlanView } from "@/features/home/last-snapshot";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import { refreshQuiet } from "@/lib/nav/instant";
 import {
+  adoptServerPlanItems,
   applyMonthSavings,
   isTempPlanId,
   stampPlanItems,
@@ -249,9 +250,7 @@ export function PlanEditor({
   }, [focusAdd]);
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);
-    if (items.length > 0 || localItems.length === 0) {
-      setLocalItems(items);
-    }
+    setLocalItems((current) => adoptServerPlanItems(current, items));
   }
 
   const isPastMonth = monthKey < currentMonthKey;
@@ -420,6 +419,55 @@ export function PlanEditor({
     } finally {
       setBusy((current) => (current === opts.busy ? null : current));
     }
+  }
+
+  function commitAdd(opts: {
+    busy: Extract<BusyKey, "add-income" | "add-fixed" | "add-extra">;
+    addKind: "income" | "fixed" | "extra";
+    name: string;
+    amount: string;
+    date: string;
+    item: {
+      kind: "expected" | "mandatory";
+      cadence: string;
+      nextDueAt: string;
+    };
+    clear: () => void;
+    restore: (name: string, amount: string) => void;
+    action: (name: string, amount: string, date: string) => Promise<ActionResult>;
+  }) {
+    const parsed = parsePlanAmount(opts.amount);
+    if (typeof parsed !== "number") {
+      setError(parsed.error);
+      return;
+    }
+    const created = optimisticPlanItem({
+      name: opts.name,
+      kind: opts.item.kind,
+      amountMinor: parsed,
+      currency,
+      cadence: opts.item.cadence,
+      nextDueAt: opts.item.nextDueAt,
+      userId: ownerId,
+    });
+    const name = opts.name;
+    const amount = opts.amount;
+    const date = opts.date;
+    opts.clear();
+    setAddKind(null);
+    void runMutation({
+      busy: opts.busy,
+      apply: (rows) => [...rows, created],
+      revert: (rows) => removeItemById(rows, created.id),
+      action: () => opts.action(name, amount, date),
+      reconcile: (rows, result) =>
+        result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
+    }).then((ok) => {
+      if (!ok) {
+        opts.restore(name, amount);
+        setAddKind(opts.addKind);
+      }
+    });
   }
 
   function settleRow(
@@ -810,44 +858,27 @@ export function PlanEditor({
             onAmount={setIncomeAmount}
             onExtra={setIncomeDate}
             onSubmit={() => {
-              const parsed = parsePlanAmount(incomeAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              const created = optimisticPlanItem({
-                name: incomeName,
-                kind: "expected",
-                amountMinor: parsed,
-                currency,
-                cadence: "income",
-                nextDueAt: `${incomeDate}T12:00:00.000Z`,
-                userId: ownerId,
-              });
-              const name = incomeName;
-              const amount = incomeAmount;
-              const date = incomeDate;
-              setIncomeName("");
-              setIncomeAmount("");
-              void runMutation({
+              commitAdd({
                 busy: "add-income",
-                apply: (rows) => [...rows, created],
-                revert: (rows) => removeItemById(rows, created.id),
-                action: () =>
-                  createPlanIncomeAction({
-                    name,
-                    amount,
-                    date,
-                  }),
-                reconcile: (rows, result) =>
-                  result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
-              }).then((ok) => {
-                if (!ok) {
+                addKind: "income",
+                name: incomeName,
+                amount: incomeAmount,
+                date: incomeDate,
+                item: {
+                  kind: "expected",
+                  cadence: "income",
+                  nextDueAt: `${incomeDate}T12:00:00.000Z`,
+                },
+                clear: () => {
+                  setIncomeName("");
+                  setIncomeAmount("");
+                },
+                restore: (name, amount) => {
                   setIncomeName(name);
                   setIncomeAmount(amount);
-                } else {
-                  setAddKind(null);
-                }
+                },
+                action: (name, amount, date) =>
+                  createPlanIncomeAction({ name, amount, date }),
               });
             }}
           />
@@ -987,30 +1018,26 @@ export function PlanEditor({
               onAmount={setExpenseAmount}
               onExtra={setExpenseDate}
               onSubmit={() => {
-                const parsed = parsePlanAmount(expenseAmount);
-                if (typeof parsed !== "number") {
-                  setError(parsed.error);
-                  return;
-                }
-                const created = optimisticPlanItem({
-                  name: expenseName,
-                  kind: "mandatory",
-                  amountMinor: parsed,
-                  currency,
-                  cadence: "monthly",
-                  nextDueAt: `${expenseDate}T12:00:00.000Z`,
-                  userId: ownerId,
-                });
-                const name = expenseName;
-                const amount = expenseAmount;
-                const date = expenseDate;
-                setExpenseName("");
-                setExpenseAmount("");
-                void runMutation({
+                commitAdd({
                   busy: "add-fixed",
-                  apply: (rows) => [...rows, created],
-                  revert: (rows) => removeItemById(rows, created.id),
-                  action: () =>
+                  addKind: "fixed",
+                  name: expenseName,
+                  amount: expenseAmount,
+                  date: expenseDate,
+                  item: {
+                    kind: "mandatory",
+                    cadence: "monthly",
+                    nextDueAt: `${expenseDate}T12:00:00.000Z`,
+                  },
+                  clear: () => {
+                    setExpenseName("");
+                    setExpenseAmount("");
+                  },
+                  restore: (name, amount) => {
+                    setExpenseName(name);
+                    setExpenseAmount(amount);
+                  },
+                  action: (name, amount, date) =>
                     createPlanItemAction({
                       name,
                       kind: "mandatory",
@@ -1018,15 +1045,6 @@ export function PlanEditor({
                       date,
                       monthKey,
                     }),
-                  reconcile: (rows, result) =>
-                    result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
-                }).then((ok) => {
-                  if (!ok) {
-                    setExpenseName(name);
-                    setExpenseAmount(amount);
-                  } else {
-                    setAddKind(null);
-                  }
                 });
               }}
             />
@@ -1114,44 +1132,27 @@ export function PlanEditor({
             onAmount={setExtraAmount}
             onExtra={setExtraDate}
             onSubmit={() => {
-              const parsed = parsePlanAmount(extraAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              const created = optimisticPlanItem({
-                name: extraName,
-                kind: "expected",
-                amountMinor: parsed,
-                currency,
-                cadence: "once",
-                nextDueAt: `${extraDate}T12:00:00.000Z`,
-                userId: ownerId,
-              });
-              const name = extraName;
-              const amount = extraAmount;
-              const date = extraDate;
-              setExtraName("");
-              setExtraAmount("");
-              void runMutation({
+              commitAdd({
                 busy: "add-extra",
-                apply: (rows) => [...rows, created],
-                revert: (rows) => removeItemById(rows, created.id),
-                action: () =>
-                  createPlanExtraAction({
-                    name,
-                    amount,
-                    date,
-                  }),
-                reconcile: (rows, result) =>
-                  result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
-              }).then((ok) => {
-                if (!ok) {
+                addKind: "extra",
+                name: extraName,
+                amount: extraAmount,
+                date: extraDate,
+                item: {
+                  kind: "expected",
+                  cadence: "once",
+                  nextDueAt: `${extraDate}T12:00:00.000Z`,
+                },
+                clear: () => {
+                  setExtraName("");
+                  setExtraAmount("");
+                },
+                restore: (name, amount) => {
                   setExtraName(name);
                   setExtraAmount(amount);
-                } else {
-                  setAddKind(null);
-                }
+                },
+                action: (name, amount, date) =>
+                  createPlanExtraAction({ name, amount, date }),
               });
             }}
           />
@@ -1464,7 +1465,12 @@ function PlanRows({
           onSelect: () => setConfirmId(item.id),
         });
 
-        const rowState = settled ? "is-settled" : partial ? "is-partial" : "";
+        const rowState = [
+          settled ? "is-settled" : partial ? "is-partial" : "",
+          isTempPlanId(item.id) ? "is-fresh" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
 
         return (
           <li
