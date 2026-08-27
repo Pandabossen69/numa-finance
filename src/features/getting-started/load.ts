@@ -19,6 +19,7 @@ export const loadGettingStartedView = cache(
       gettingStartedCollapsed: snap.profile.gettingStartedCollapsed,
       hasSaldo: snap.checkpoint != null,
       planItems: snap.planItems ?? [],
+      onboardingSaldoAt: snap.profile.onboardingSaldoAt,
     });
   },
 );

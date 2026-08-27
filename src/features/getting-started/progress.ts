@@ -58,6 +58,8 @@ export function buildGettingStartedView(input: {
   gettingStartedCollapsed: boolean;
   hasSaldo: boolean;
   planItems: PlanItem[];
+  /** Set when the user saved the required first-login saldo. */
+  onboardingSaldoAt?: string | null;
 }): GettingStartedView {
   const hasIncome = input.planItems.some(
     (item) => item.isActive && isPlanIncome(item),
@@ -75,8 +77,13 @@ export function buildGettingStartedView(input: {
   }));
   const doneCount = steps.filter((step) => step.done).length;
   const allDone = doneCount === GETTING_STARTED_TOTAL;
+  const fromFirstRun = Boolean(input.onboardingSaldoAt);
+  const alreadyHadData =
+    !fromFirstRun && (input.hasSaldo || hasIncome || hasBills);
   const skip =
-    isNumaAdminEmail(input.email) || Boolean(input.gettingStartedCompletedAt);
+    isNumaAdminEmail(input.email) ||
+    Boolean(input.gettingStartedCompletedAt) ||
+    alreadyHadData;
   return {
     visible: !skip,
     collapsed: input.gettingStartedCollapsed,

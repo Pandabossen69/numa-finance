@@ -28,6 +28,7 @@ const emptyUser = {
   gettingStartedCollapsed: false,
   hasSaldo: false,
   planItems: [] as PlanItem[],
+  onboardingSaldoAt: null as string | null,
 };
 
 describe("buildGettingStartedView", () => {
@@ -48,10 +49,23 @@ describe("buildGettingStartedView", () => {
     expect(view.visible).toBe(false);
   });
 
+  it("hides the card for an existing ledger that never did first-run", () => {
+    const view = buildGettingStartedView({
+      ...emptyUser,
+      hasSaldo: true,
+      planItems: [
+        item({ name: "Lön", kind: "expected", cadence: "income" }),
+        item({ name: "Hyra", kind: "mandatory", cadence: "monthly" }),
+      ],
+    });
+    expect(view.visible).toBe(false);
+  });
+
   it("counts saldo, income, and bills and keeps the card reachable", () => {
     const view = buildGettingStartedView({
       ...emptyUser,
       hasSaldo: true,
+      onboardingSaldoAt: "2026-08-27T12:00:00.000Z",
       planItems: [
         item({ name: "Lön", kind: "expected", cadence: "income" }),
       ],
