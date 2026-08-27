@@ -59,7 +59,7 @@ export function PlanPiles({
 
       <div className="grid items-stretch gap-4 md:grid-cols-2">
         <section
-          className="numa-panel-strong numa-pile flex h-full min-w-0 flex-col gap-3 p-5"
+          className="numa-panel-strong flex h-full min-w-0 flex-col gap-3 p-5"
           aria-labelledby="plan-over-heading"
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -117,7 +117,7 @@ export function PlanPiles({
         </section>
 
         <section
-          className="numa-panel-park numa-pile flex h-full min-w-0 flex-col gap-3 p-5"
+          className="numa-panel-park flex h-full min-w-0 flex-col gap-3 p-5"
           aria-labelledby="plan-sparande-heading"
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">

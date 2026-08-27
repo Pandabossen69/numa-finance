@@ -20,11 +20,16 @@ export function TxnLine({
   return (
     <div className="numa-line-row">
       <div className="min-w-0">
-        <p className="truncate text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
+        <p
+          className="truncate text-[15px] font-medium tracking-tight text-[var(--numa-ink)]"
+          title={title}
+        >
           {title}
         </p>
         {meta ? (
-          <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">{meta}</p>
+          <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]" title={meta}>
+            {meta}
+          </p>
         ) : null}
       </div>
       <div className="min-w-0 shrink-0">

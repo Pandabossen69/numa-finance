@@ -88,11 +88,9 @@ summary {
   touch-action: manipulation;
 }
 
+/* Focus for chrome controls — leave inputs alone (they use ring + outline-none). */
 a:focus-visible,
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
 [role="tab"]:focus-visible,
 [role="button"]:focus-visible {
   outline: 2px solid var(--numa-accent);
@@ -287,7 +285,13 @@ body {
 .numa-metrics-value {
   margin-top: 0.4rem;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.numa-metrics-value::-webkit-scrollbar {
+  display: none;
 }
 
 .numa-action-row {

@@ -742,7 +742,7 @@ function ModePicker({
         </p>
       </header>
 
-      <nav className="numa-panel-list">
+      <nav className="numa-panel-list" aria-label="Fotolägen">
         {items.map((item) => (
           <button
             key={item.id}

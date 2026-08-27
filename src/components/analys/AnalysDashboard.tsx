@@ -99,11 +99,15 @@ export function AnalysDashboard({
         aria-label="Analysvy"
       >
         <ScopeChip
+          id="analys-tab-period"
+          controls="analys-panel-period"
           active={scope === "period"}
           onClick={() => setScope("period")}
           label={SV.perioden}
         />
         <ScopeChip
+          id="analys-tab-month"
+          controls="analys-panel-month"
           active={scope === "month"}
           onClick={() => setScope("month")}
           label={SV.manad}
@@ -111,7 +115,13 @@ export function AnalysDashboard({
       </div>
 
       {scope === "period" ? (
-        <div key="period" className="numa-scope-panel space-y-6">
+        <div
+          key="period"
+          id="analys-panel-period"
+          role="tabpanel"
+          aria-labelledby="analys-tab-period"
+          className="numa-scope-panel space-y-6"
+        >
           <section
             className="numa-panel-strong numa-hero animate-rise-delay-1 space-y-3"
             aria-labelledby="analys-hero"
@@ -262,7 +272,12 @@ export function AnalysDashboard({
           ) : null}
         </div>
       ) : (
-        <section className="numa-scope-panel space-y-5">
+        <section
+          id="analys-panel-month"
+          role="tabpanel"
+          aria-labelledby="analys-tab-month"
+          className="numa-scope-panel space-y-5"
+        >
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="numa-section-title">{SV.manad}</p>
@@ -437,10 +452,14 @@ export function AnalysDashboard({
 }
 
 function ScopeChip({
+  id,
+  controls,
   active,
   onClick,
   label,
 }: {
+  id: string;
+  controls: string;
   active: boolean;
   onClick: () => void;
   label: string;
@@ -448,8 +467,11 @@ function ScopeChip({
   return (
     <button
       type="button"
+      id={id}
       role="tab"
       aria-selected={active}
+      aria-controls={controls}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`numa-press numa-scope-chip min-h-11 rounded-full px-4 text-sm font-semibold ${
         active
