@@ -64,6 +64,7 @@ describe("admin-only user creation security", () => {
     expect(adminClient).toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(adminClient).toContain("persistSession: false");
     expect(adminClient).toContain('import "server-only"');
+    expect(adminAction).not.toContain("export { CREATE_USER_SUCCESS_SV }");
   });
 
   it("locks down handle_new_user and keeps owner RLS", () => {

@@ -5,7 +5,6 @@ import "server-only";
 import { getSessionUser } from "@/features/auth/session";
 import {
   authorizeAdminCreateUser,
-  CREATE_USER_SUCCESS_SV,
   parseCreateUserInput,
   SERVICE_ROLE_MISSING_SV,
   swedishCreateUserError,
@@ -99,5 +98,3 @@ export async function createUserAction(raw: {
     };
   }
 }
-
-export { CREATE_USER_SUCCESS_SV };
