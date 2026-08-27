@@ -63,6 +63,7 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("stepHint");
     expect(src).toContain("scrollOnOpen");
     expect(src).toContain("banner={focusAdd === \"income\" ? stepHint : null}");
+    expect(src).toContain("setAddKind(focusAdd)");
   });
 
   it("computes Över from cash coverage, not Mot planen leftover", () => {
