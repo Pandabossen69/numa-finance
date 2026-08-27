@@ -1440,7 +1440,7 @@ function PlanRows({
                 <button
                   type="button"
                   disabled={pendingId === item.id && pendingAction === "settle"}
-                  className="numa-press inline-flex min-h-11 items-center rounded-xl bg-[var(--numa-accent-soft)] px-2.5 text-sm font-semibold text-[var(--numa-accent-ink)] disabled:opacity-45"
+                  className="numa-press inline-flex min-h-11 items-center rounded-full bg-[var(--numa-accent)] px-3 text-sm font-semibold text-white shadow-[0_6px_14px_rgba(12,125,104,0.28)] disabled:opacity-45"
                   onClick={() => onSettle(item.id, true)}
                 >
                   {pendingId === item.id && pendingAction === "settle" ? "…" : SV.klar}

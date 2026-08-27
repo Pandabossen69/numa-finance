@@ -89,81 +89,86 @@ export function CompactPiles({
 }) {
   const overOk = overMinor >= 0;
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <div className="numa-panel-strong min-w-0 px-3.5 py-3.5">
-        <p className="numa-section-title">{SV.saldo}</p>
-        <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
-          {saldoMinor == null ? (
-            <span className="text-base font-medium text-[var(--numa-faint)]">—</span>
-          ) : (
-            <MoneyDisplay
-              amountMinor={saldoMinor}
-              currency={currency}
-              size="sm"
-              compact
-              align="start"
-              wrap={false}
-            />
-          )}
-        </div>
-        <p className="mt-2 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
-          <span>{SV.kommerIn}</span>
-          <MoneyDisplay
-            amountMinor={incomingMinor}
-            currency={currency}
-            size="sm"
-            compact
-            align="end"
-            wrap={false}
-          />
-        </p>
-        <p className="mt-1 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
-          <span>{SV.kvarAttBetala}</span>
-          <MoneyDisplay
-            amountMinor={unpaidMinor}
-            currency={currency}
-            size="sm"
-            compact
-            align="end"
-            wrap={false}
-          />
-        </p>
-        <p
-          className={`mt-1.5 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug ${
+    <div className="grid gap-3">
+      <div className="numa-panel-strong numa-cash-board min-w-0 px-4 py-4">
+        <p className="numa-section-title">{SV.over}</p>
+        <div
+          className={`mt-1 min-w-0 overflow-hidden ${
             overOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
           }`}
         >
-          <span>{SV.over}</span>
           <MoneyDisplay
             amountMinor={overMinor}
             currency={currency}
-            size="sm"
+            size="lg"
             compact
-            align="end"
+            align="start"
             wrap={false}
             tone="signed"
           />
-        </p>
-        <p className="mt-1.5 text-[11px] leading-snug text-[var(--numa-faint)]">
+        </div>
+        <p className="mt-1.5 text-[12px] leading-snug text-[var(--numa-faint)]">
           {CASH_COVERAGE_HINT_SV}
         </p>
+        <div className="mt-4 space-y-2.5 border-t border-[var(--numa-border)] pt-3">
+          <p className="flex min-w-0 items-baseline justify-between gap-2 text-sm leading-snug">
+            <span className="text-[var(--numa-muted)]">{SV.saldo}</span>
+            <span className="min-w-0 overflow-hidden text-[var(--numa-ink)]">
+              {saldoMinor == null ? (
+                <span className="text-base font-medium text-[var(--numa-faint)]">—</span>
+              ) : (
+                <MoneyDisplay
+                  amountMinor={saldoMinor}
+                  currency={currency}
+                  size="sm"
+                  compact
+                  align="end"
+                  wrap={false}
+                />
+              )}
+            </span>
+          </p>
+          <p className="flex min-w-0 items-baseline justify-between gap-2 text-sm leading-snug">
+            <span className="text-[var(--numa-muted)]">{SV.kommerIn}</span>
+            <span className="min-w-0 overflow-hidden text-[var(--numa-accent-ink)]">
+              <MoneyDisplay
+                amountMinor={incomingMinor}
+                currency={currency}
+                size="sm"
+                compact
+                align="end"
+                wrap={false}
+              />
+            </span>
+          </p>
+          <p className="flex min-w-0 items-baseline justify-between gap-2 text-sm leading-snug">
+            <span className="text-[var(--numa-muted)]">{SV.kvarAttBetala}</span>
+            <span className="min-w-0 overflow-hidden text-[var(--numa-ink)]">
+              <MoneyDisplay
+                amountMinor={unpaidMinor}
+                currency={currency}
+                size="sm"
+                compact
+                align="end"
+                wrap={false}
+              />
+            </span>
+          </p>
+        </div>
       </div>
-      <div className="numa-panel-park min-w-0 px-3.5 py-3.5">
+      <div className="numa-panel-park min-w-0 px-4 py-3.5">
         <p className="numa-section-title">{SV.sparande}</p>
         <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
             wrap={false}
           />
         </div>
-        <p className="mt-1 min-h-[1.15rem] text-[11px] text-[var(--numa-faint)]">
-          {SV.sparandeTotalt}
-        </p>
-        <p className="mt-1 min-h-[2.5rem]" aria-hidden />
+        <p className="mt-1 text-[12px] text-[var(--numa-faint)]">{SV.sparandeTotalt}</p>
       </div>
     </div>
   );

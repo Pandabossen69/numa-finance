@@ -154,7 +154,7 @@ export function HomeDashboard({
                         overToday
                           ? "text-[var(--numa-ink)]"
                           : dayOk
-                            ? "text-[var(--numa-ink)]"
+                            ? "text-[var(--numa-accent-ink)]"
                             : "text-[var(--numa-muted)]"
                       }`}
                     >
@@ -225,7 +225,7 @@ export function HomeDashboard({
                 <div className="space-y-3 py-6 text-center">
                   <div
                     className={`money-hero mx-auto ${
-                      dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
+                      dayOk ? "text-[var(--numa-accent-ink)]" : "text-[var(--numa-muted)]"
                     }`}
                   >
                     <MoneyDisplay
