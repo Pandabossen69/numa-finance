@@ -176,13 +176,12 @@ export function HomeDashboard({
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.dagsbudget}
                       </p>
-                      <div className="mt-1.5 min-h-[1.75rem] text-[var(--numa-ink)]">
+                      <div className="mt-1.5 min-h-[1.75rem] min-w-0 overflow-hidden text-[var(--numa-ink)]">
                         <MoneyDisplay
                           amountMinor={view.dayBudgetMinor}
                           currency={currency}
-                          size="md"
+                          size="sm"
                           compact
-                          wrap={false}
                         />
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
@@ -195,7 +194,7 @@ export function HomeDashboard({
                         {SV.spenderatIdag}
                       </p>
                       <div
-                        className={`mt-1.5 min-h-[1.75rem] ${
+                        className={`mt-1.5 min-h-[1.75rem] min-w-0 overflow-hidden ${
                           overToday
                             ? "text-[var(--numa-alarm)]"
                             : "text-[var(--numa-ink)]"
@@ -204,9 +203,8 @@ export function HomeDashboard({
                         <MoneyDisplay
                           amountMinor={todaySpendingMinor}
                           currency={currency}
-                          size="md"
+                          size="sm"
                           compact
-                          wrap={false}
                         />
                       </div>
                       <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
@@ -398,7 +396,7 @@ function AvailableNowCard({
             })();
           }}
         >
-          {busy ? "Klart" : SV.visaDagsbudget}
+          {busy ? "Sparar…" : SV.visaDagsbudget}
         </button>
       </div>
       {error ? (
@@ -477,7 +475,7 @@ function UpdateBalanceLink({
             })();
           }}
         >
-          {busy ? "Klart" : "Spara"}
+          {busy ? "Sparar…" : "Spara"}
         </button>
         <button
           type="button"
@@ -560,6 +558,7 @@ function QuickExpense({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Vad? t.ex. Lunch"
+              aria-label="Anteckning"
               className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
@@ -567,6 +566,7 @@ function QuickExpense({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
+              aria-label="Belopp"
               className="money min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
             <button

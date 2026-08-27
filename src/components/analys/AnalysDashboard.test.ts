@@ -20,4 +20,9 @@ describe("Analys month result color", () => {
     expect(src).toContain("lastAnalysScope");
     expect(src).toContain("rememberAnalysScope");
   });
+
+  it("gives Analys scope chips a 44px tap target", () => {
+    expect(src).toContain("min-h-11");
+    expect(src).not.toContain("min-h-10");
+  });
 });

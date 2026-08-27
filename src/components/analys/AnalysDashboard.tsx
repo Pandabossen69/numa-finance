@@ -449,7 +449,7 @@ function ScopeChip({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`numa-press numa-scope-chip min-h-10 rounded-full px-4 text-sm font-semibold ${
+      className={`numa-press numa-scope-chip min-h-11 rounded-full px-4 text-sm font-semibold ${
         active
           ? "is-active bg-[var(--numa-ink)] text-white"
           : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"

@@ -12,7 +12,7 @@ export function MerBackLink({
     <Link
       href={href}
       prefetch
-      className="inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)]"
+      className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)]"
     >
       <ChevronLeft className="opacity-70" />
       {label}

@@ -11,6 +11,13 @@ describe("Sparande empty state and Avsätt", () => {
     expect(src).not.toContain('placeholder="0"');
     expect(src).not.toContain("Inget avsatt än");
   });
+
+  it("labels Över with a matching aria heading id", () => {
+    expect(src).toContain('aria-labelledby="plan-over-heading"');
+    expect(src).toContain('id="plan-over-heading"');
+    expect(src).not.toContain("plan-mot-planen-heading");
+    expect(src).not.toContain("plan-saldo-heading");
+  });
 });
 
 describe("Plan cash coverage stack", () => {
