@@ -125,5 +125,6 @@ describe("first-run onboarding", () => {
   it("keeps Ny användare as a centered card", () => {
     expect(adminPage).toContain("max-w-lg");
     expect(adminPage).toContain("CreateUserForm");
+    expect(adminPage).toContain("numa-panel-strong");
   });
 });

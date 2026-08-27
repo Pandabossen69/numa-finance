@@ -8,6 +8,8 @@ describe("/installningar/ny-anvandare", () => {
     expect(page).toContain("requireNumaAdminOrNotFound");
     expect(page).toContain("Ny användare");
     expect(page).toContain("CreateUserForm");
+    expect(page).toContain("max-w-lg");
+    expect(page).toContain("numa-panel-strong");
     expect(page).not.toContain("user_metadata");
   });
 });

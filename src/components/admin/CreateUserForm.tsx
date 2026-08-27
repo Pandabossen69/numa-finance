@@ -44,11 +44,7 @@ export function CreateUserForm() {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-4 rounded-[1.5rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] p-4 shadow-[var(--numa-shadow-sm)] md:p-6"
-      noValidate
-    >
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <Field
         label="E-post"
         type="email"
@@ -96,7 +92,7 @@ export function CreateUserForm() {
       <button
         type="submit"
         disabled={pending || !form.email.trim() || form.password.length < 8}
-        className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--numa-accent)] enabled:active:scale-[0.99] disabled:opacity-45"
+        className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
       >
         {pending ? "Skapar…" : "Skapa användare"}
       </button>
@@ -184,7 +180,7 @@ function PasswordField({
         <button
           type="button"
           onClick={onToggle}
-          className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg px-2 py-1.5 text-sm font-medium text-[var(--numa-accent)]"
+          className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm font-medium text-[var(--numa-accent)] transition hover:text-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
         >
           {show ? "Dölj" : "Visa"}
         </button>

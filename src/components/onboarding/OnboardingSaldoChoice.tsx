@@ -9,8 +9,8 @@ import {
 
 export function OnboardingSaldoChoice() {
   return (
-    <div className="numa-page animate-rise space-y-8">
-      <header className="space-y-2">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 animate-rise md:flex-none md:w-full">
+      <header className="space-y-2 px-0.5">
         <p className="numa-section-title">{C.saldoEyebrow}</p>
         <h1 className="numa-page-title">{C.saldoTitle}</h1>
         <p className="max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
@@ -18,7 +18,7 @@ export function OnboardingSaldoChoice() {
         </p>
       </header>
 
-      <nav className="grid gap-3 md:grid-cols-2">
+      <nav className="mt-auto grid min-w-0 gap-3 pb-1 md:mt-8 md:grid-cols-2 md:gap-4">
         <ChoiceLink
           href={ONBOARDING_FOTA_PATH}
           title={C.fotaTitle}
@@ -46,9 +46,9 @@ function ChoiceLink({
   return (
     <Link
       href={href}
-      className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:border-[var(--numa-border-strong)] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--numa-accent)]"
+      className="numa-panel numa-press flex min-h-[4.5rem] w-full min-w-0 items-center justify-between gap-4 overflow-hidden px-4 py-4 text-left transition hover:border-[var(--numa-border-strong)] hover:bg-white hover:shadow-[var(--numa-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 md:min-h-32 md:px-5"
     >
-      <span>
+      <span className="min-w-0">
         <span className="block text-[15px] font-semibold tracking-tight">
           {title}
         </span>
@@ -57,7 +57,7 @@ function ChoiceLink({
         </span>
       </span>
       <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
         aria-hidden
       >
         →

@@ -7,13 +7,16 @@ const src = readFileSync(
 );
 
 describe("GettingStartedCard", () => {
-  it("minimizes to a Kom igång chip and can restore", () => {
+  it("minimizes in place to a Kom igång chip and can restore", () => {
     expect(src).toContain("Kom igång");
     expect(src).toContain("collapseGettingStartedAction");
     expect(src).toContain("expandGettingStartedAction");
     expect(src).toContain("completeGettingStartedAction");
     expect(src).toContain("gettingStartedProgressLabel");
-    expect(src).toContain("max-w-xl");
+    expect(src).toContain("numa-komigang-body");
+    expect(src).toContain("w-full min-w-0");
+    expect(src).toContain("md:grid-cols-3");
+    expect(src).not.toContain("max-w-xl");
     expect(src).not.toMatch(/spotlight/i);
     expect(src).not.toMatch(/välkommen/i);
   });

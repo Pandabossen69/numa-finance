@@ -724,6 +724,26 @@ body {
   animation: numa-rise 200ms ease-out;
 }
 
+.numa-komigang-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows 180ms ease;
+}
+
+.numa-komigang-body.is-open {
+  grid-template-rows: 1fr;
+}
+
+.numa-komigang-body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.numa-step-check {
+  animation: numa-scale-in 180ms ease-out;
+}
+
 .numa-btn {
   display: inline-flex;
   align-items: center;
@@ -757,6 +777,15 @@ body {
   background: var(--numa-ink);
   color: #fff;
   box-shadow: 0 8px 20px rgba(7, 21, 17, 0.16);
+}
+
+.numa-btn-primary:hover:not(:disabled) {
+  background: var(--numa-accent);
+}
+
+.numa-btn-primary:focus-visible {
+  outline: 2px solid var(--numa-accent);
+  outline-offset: 2px;
 }
 
 .numa-btn-primary:active:not(:disabled) {
@@ -816,7 +845,9 @@ body {
   .numa-scan-line,
   .numa-pulse-soft,
   .numa-nav-progress,
-  .numa-day-dial-arc {
+  .numa-day-dial-arc,
+  .numa-komigang-card,
+  .numa-step-check {
     animation: none !important;
   }
 
@@ -825,6 +856,7 @@ body {
   }
 
   .numa-expand,
+  .numa-komigang-body,
   .numa-scope-chip {
     transition: none;
   }

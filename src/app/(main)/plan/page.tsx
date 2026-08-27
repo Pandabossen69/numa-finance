@@ -42,10 +42,10 @@ export default async function PlanPage({
         </p>
       </header>
       {hint ? (
-        <p className="max-w-xl rounded-[1.15rem] bg-[var(--numa-accent-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--numa-accent-ink)]">
+        <p className="w-full rounded-[1.15rem] bg-[var(--numa-accent-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--numa-accent-ink)]">
           {hint}
         </p>
-      ) : gettingStarted ? (
+      ) : gettingStarted?.visible ? (
         <GettingStartedCard view={gettingStarted} />
       ) : null}
       {error ? (

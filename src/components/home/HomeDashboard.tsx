@@ -107,7 +107,9 @@ export function HomeDashboard({
         ) : null}
       </header>
 
-      {gettingStarted ? <GettingStartedCard view={gettingStarted} /> : null}
+      {gettingStarted?.visible ? (
+        <GettingStartedCard view={gettingStarted} />
+      ) : null}
 
       {view.needsAvailableInput ? (
         <AvailableNowCard

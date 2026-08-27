@@ -43,66 +43,73 @@ export function OnboardingManualSaldo({
   }
 
   return (
-    <form onSubmit={onSubmit} className="numa-page animate-rise space-y-8">
-      <div className="space-y-3">
-        <Link
-          href={ONBOARDING_SALDO_PATH}
-          className="numa-press inline-flex min-h-11 items-center text-sm font-semibold text-[var(--numa-accent)]"
+    <form
+      onSubmit={onSubmit}
+      className="flex min-h-0 flex-1 flex-col animate-rise md:mx-auto md:w-full md:max-w-lg md:flex-none"
+    >
+      <div className="space-y-6 md:rounded-[1.75rem] md:border md:border-[var(--numa-border-strong)] md:bg-[var(--numa-surface-solid)] md:p-8 md:shadow-[var(--numa-shadow)]">
+        <div className="space-y-3">
+          <Link
+            href={ONBOARDING_SALDO_PATH}
+            className="numa-press inline-flex min-h-11 items-center text-sm font-semibold text-[var(--numa-accent)] transition hover:text-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
+          >
+            ← {C.back}
+          </Link>
+          <header className="space-y-2">
+            <p className="numa-section-title">{C.saldoEyebrow}</p>
+            <h1 className="numa-page-title">{C.saldoTitle}</h1>
+          </header>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
+              {C.amountLabel}
+            </span>
+            <input
+              inputMode="decimal"
+              autoFocus
+              required
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setError(null);
+              }}
+              placeholder={currency}
+              className="money min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-white/90 px-4 text-lg font-semibold outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
+              {C.accountNameLabel}
+            </span>
+            <input
+              type="text"
+              maxLength={80}
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              placeholder={C.accountNamePlaceholder}
+              className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-white/90 px-4 text-base outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+            />
+          </label>
+        </div>
+
+        {error ? (
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="mt-auto pt-6 md:mt-6 md:pt-0">
+        <button
+          type="submit"
+          disabled={pending || !amount.trim()}
+          className="numa-btn numa-btn-primary min-h-14 w-full rounded-[1.25rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
         >
-          ← {C.back}
-        </Link>
-        <header className="space-y-2">
-          <p className="numa-section-title">{C.saldoEyebrow}</p>
-          <h1 className="numa-page-title">{C.saldoTitle}</h1>
-        </header>
+          {pending ? "Sparar…" : C.saveSaldo}
+        </button>
       </div>
-
-      <div className="space-y-4">
-        <label className="block">
-          <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
-            {C.amountLabel}
-          </span>
-          <input
-            inputMode="decimal"
-            autoFocus
-            required
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              setError(null);
-            }}
-            placeholder={currency}
-            className="money min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-white/90 px-4 text-lg font-semibold outline-none focus:border-[var(--numa-accent)]"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
-            {C.accountNameLabel}
-          </span>
-          <input
-            type="text"
-            maxLength={80}
-            value={accountName}
-            onChange={(e) => setAccountName(e.target.value)}
-            placeholder={C.accountNamePlaceholder}
-            className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-white/90 px-4 text-base outline-none focus:border-[var(--numa-accent)]"
-          />
-        </label>
-      </div>
-
-      {error ? (
-        <p className="text-sm text-[var(--numa-danger)]" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={pending || !amount.trim()}
-        className="numa-btn numa-btn-primary min-h-14 w-full rounded-[1.25rem]"
-      >
-        {pending ? "Sparar…" : C.saveSaldo}
-      </button>
     </form>
   );
 }

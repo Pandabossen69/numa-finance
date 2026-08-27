@@ -36,10 +36,10 @@ export function AuthExperience() {
   }
 
   return (
-    <div className="auth-stage relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="auth-stage relative flex min-h-dvh flex-col overflow-x-hidden">
       <div className="auth-glow" aria-hidden />
 
-      <div className="numa-shell relative z-10 flex flex-1 flex-col px-5 pt-[max(1.5rem,var(--numa-safe-top))] pb-[max(1.5rem,var(--numa-safe-bottom))]">
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col px-5 pt-[max(1.5rem,var(--numa-safe-top))] pb-[max(1.5rem,var(--numa-safe-bottom))] md:max-w-lg md:justify-center">
         {screen === "welcome" ? <WelcomeScreen onLogin={() => go("login")} /> : null}
 
         {screen === "login" ? (
@@ -63,8 +63,8 @@ export function AuthExperience() {
 
 function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex flex-1 flex-col justify-end pb-10">
+    <div className="flex flex-1 flex-col md:flex-none md:rounded-[1.75rem] md:border md:border-[var(--numa-border-strong)] md:bg-[var(--numa-surface-solid)] md:p-10 md:shadow-[var(--numa-shadow)]">
+      <div className="flex flex-1 flex-col justify-end pb-10 md:flex-none md:justify-start md:pb-8">
         <p className="text-[2.75rem] leading-none font-semibold tracking-[-0.05em]">
           NUMA
         </p>
@@ -87,7 +87,7 @@ function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
         <button
           type="button"
           onClick={onLogin}
-          className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition active:scale-[0.99]"
+          className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 active:scale-[0.99]"
         >
           Logga in
         </button>
@@ -123,7 +123,7 @@ function LoginScreen({
   onSubmit: (e: React.FormEvent) => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col md:flex-none md:rounded-[1.75rem] md:border md:border-[var(--numa-border-strong)] md:bg-[var(--numa-surface-solid)] md:p-10 md:shadow-[var(--numa-shadow)]">
       <BackButton onClick={onBack} />
       <header className="mt-6 space-y-2">
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Logga in</h1>
@@ -168,7 +168,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-11 w-fit items-center gap-1 text-sm font-medium text-[var(--numa-muted)]"
+      className="inline-flex min-h-11 w-fit items-center gap-1 text-sm font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
       aria-label="Tillbaka"
     >
       <span aria-hidden className="text-lg leading-none">
@@ -265,7 +265,7 @@ function PasswordField({
         <button
           type="button"
           onClick={onToggle}
-          className="absolute top-1/2 right-2 inline-flex min-h-11 -translate-y-1/2 items-center rounded-lg px-2 text-sm font-medium text-[var(--numa-accent)]"
+          className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-sm font-medium text-[var(--numa-accent)] transition hover:text-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
         >
           {show ? "Dölj" : "Visa"}
         </button>
@@ -290,7 +290,7 @@ function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition enabled:active:scale-[0.99] disabled:opacity-45"
+      className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
     >
       {children}
     </button>
