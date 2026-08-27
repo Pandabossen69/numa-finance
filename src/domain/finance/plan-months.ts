@@ -10,9 +10,43 @@ export function isPlanIncome(item: PlanItem): boolean {
   return (item.cadence ?? "").toLowerCase() === "income";
 }
 
-/** True when this occurrence was marked Klar (paid/received). */
+/** Amount already marked received/paid. Legacy `settledAt` counts as the full amount. */
+export function settledAmountMinor(item: PlanItem): number {
+  const amount = Math.max(0, item.amountMinor);
+  if (typeof item.settledMinor === "number" && Number.isFinite(item.settledMinor)) {
+    return Math.min(amount, Math.max(0, Math.round(item.settledMinor)));
+  }
+  if (typeof item.settledAt === "string" && item.settledAt.length > 0) {
+    return amount;
+  }
+  return 0;
+}
+
+/** Still open after Klar / Delvis klar. */
+export function remainingOpenMinor(item: PlanItem): number {
+  return Math.max(0, item.amountMinor - settledAmountMinor(item));
+}
+
+/** True when this occurrence was marked fully Klar (paid/received). */
 export function isPlanSettled(item: PlanItem): boolean {
+  if (item.amountMinor > 0) {
+    return settledAmountMinor(item) >= item.amountMinor;
+  }
   return typeof item.settledAt === "string" && item.settledAt.length > 0;
+}
+
+/** True when some but not all of the amount is marked received/paid. */
+export function isPlanPartiallySettled(item: PlanItem): boolean {
+  const settled = settledAmountMinor(item);
+  return settled > 0 && settled < item.amountMinor;
+}
+
+/** Date used for the open remainder (Delvis klar) or the original due date. */
+export function remainingDueIso(item: PlanItem): string | null {
+  if (isPlanPartiallySettled(item) && item.remainingDueAt) {
+    return item.remainingDueAt;
+  }
+  return item.nextDueAt;
 }
 
 /** Planned savings target for one month only. */

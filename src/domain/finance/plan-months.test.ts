@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
   importableFixedExpenses,
+  isPlanPartiallySettled,
+  isPlanSettled,
   isRecurringMonthly,
+  remainingDueIso,
+  remainingOpenMinor,
+  settledAmountMinor,
   perDayBudgetMinor,
   projectPlanForMonth,
   cumulativePlanSavingsMinor,
@@ -27,6 +32,9 @@ function item(
     cadence: partial.cadence ?? "monthly",
     nextDueAt: partial.nextDueAt ?? null,
     isActive: partial.isActive ?? true,
+    settledAt: partial.settledAt ?? null,
+    settledMinor: partial.settledMinor ?? null,
+    remainingDueAt: partial.remainingDueAt ?? null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
   };
@@ -331,5 +339,34 @@ describe("plan-months", () => {
     ]);
     expect(visibleMonthKeysForYear(2027)[0]).toBe("2027-01");
     expect(visibleMonthKeysForYear(2027)).toHaveLength(12);
+  });
+
+  it("treats Delvis klar as remaining amount with a rest date", () => {
+    const salary = item({
+      name: "Trukks",
+      kind: "expected",
+      amountMinor: 51_000_00,
+      cadence: "income",
+      nextDueAt: "2026-08-27T12:00:00.000Z",
+      settledMinor: 20_000_00,
+      remainingDueAt: "2026-08-29T12:00:00.000Z",
+    });
+    expect(isPlanPartiallySettled(salary)).toBe(true);
+    expect(isPlanSettled(salary)).toBe(false);
+    expect(settledAmountMinor(salary)).toBe(20_000_00);
+    expect(remainingOpenMinor(salary)).toBe(31_000_00);
+    expect(remainingDueIso(salary)).toBe("2026-08-29T12:00:00.000Z");
+  });
+
+  it("treats settledAt without settledMinor as fully Klar", () => {
+    const bill = item({
+      name: "El",
+      kind: "mandatory",
+      amountMinor: 1_400_00,
+      settledAt: "2026-08-10T10:00:00.000Z",
+    });
+    expect(isPlanSettled(bill)).toBe(true);
+    expect(isPlanPartiallySettled(bill)).toBe(false);
+    expect(remainingOpenMinor(bill)).toBe(0);
   });
 });

@@ -1018,6 +1018,8 @@ export async function updatePlanItem(input: {
   nextDueAt?: string | null;
   isActive?: boolean;
   settledAt?: string | null;
+  settledMinor?: number | null;
+  remainingDueAt?: string | null;
 }): Promise<PlanItem> {
   const userId = await requireUserId();
   const patch: Record<string, unknown> = {
@@ -1032,6 +1034,10 @@ export async function updatePlanItem(input: {
   if (input.nextDueAt !== undefined) patch.next_due_at = input.nextDueAt;
   if (input.isActive != null) patch.is_active = input.isActive;
   if (input.settledAt !== undefined) patch.settled_at = input.settledAt;
+  if (input.settledMinor !== undefined) patch.settled_minor = input.settledMinor;
+  if (input.remainingDueAt !== undefined) {
+    patch.remaining_due_at = input.remainingDueAt;
+  }
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

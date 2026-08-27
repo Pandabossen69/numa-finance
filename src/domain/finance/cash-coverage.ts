@@ -7,6 +7,8 @@ import {
   isPlanSettled,
   monthKeyFromDate,
   projectPlanForMonth,
+  remainingDueIso,
+  remainingOpenMinor,
 } from "./plan-months";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
@@ -107,8 +109,8 @@ function remainingPlanAmount(
   });
   let remaining = 0;
   for (const item of items) {
-    if (matched.has(item.id) || isPlanSettled(item)) continue;
-    remaining += item.amountMinor;
+    if (matched.has(item.id)) continue;
+    remaining += remainingOpenMinor(item);
   }
   return remaining;
 }
@@ -183,12 +185,14 @@ function amountToleranceMinor(planAmountMinor: number): number {
 }
 
 function pairScore(item: PlanItem, tx: LedgerMatchTx, timeZone: string): number | null {
-  if (!item.nextDueAt) return null;
-  const dayDiff = Math.abs(calendarDaysBetween(item.nextDueAt, tx.occurredAt, timeZone));
+  const dueIso = remainingDueIso(item);
+  if (!dueIso) return null;
+  const dayDiff = Math.abs(calendarDaysBetween(dueIso, tx.occurredAt, timeZone));
   if (dayDiff > DATE_WINDOW_DAYS) return null;
 
-  const amountDiff = Math.abs(item.amountMinor - tx.amountMinor);
-  const tolerance = amountToleranceMinor(item.amountMinor);
+  const planAmount = remainingOpenMinor(item) > 0 ? remainingOpenMinor(item) : item.amountMinor;
+  const amountDiff = Math.abs(planAmount - tx.amountMinor);
+  const tolerance = amountToleranceMinor(planAmount);
   if (amountDiff > tolerance) return null;
 
   const dateScore = 1 - dayDiff / (DATE_WINDOW_DAYS + 1);

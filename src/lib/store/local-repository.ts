@@ -1496,6 +1496,8 @@ export async function createPlanItem(input: {
       nextDueAt: input.nextDueAt ?? null,
       isActive: true,
       settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -1513,6 +1515,8 @@ export async function updatePlanItem(input: {
   nextDueAt?: string | null;
   isActive?: boolean;
   settledAt?: string | null;
+  settledMinor?: number | null;
+  remainingDueAt?: string | null;
 }): Promise<PlanItem> {
   let found: PlanItem | null = null;
   await updateStore((s) => {
@@ -1527,6 +1531,8 @@ export async function updatePlanItem(input: {
     if (input.nextDueAt !== undefined) item.nextDueAt = input.nextDueAt;
     if (input.isActive != null) item.isActive = input.isActive;
     if (input.settledAt !== undefined) item.settledAt = input.settledAt;
+    if (input.settledMinor !== undefined) item.settledMinor = input.settledMinor;
+    if (input.remainingDueAt !== undefined) item.remainingDueAt = input.remainingDueAt;
     item.updatedAt = nowIso();
     found = item;
   });

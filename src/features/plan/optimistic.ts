@@ -22,7 +22,7 @@ export function stampPlanItems(items: PlanItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.id}:${item.updatedAt}:${item.amountMinor}:${item.name}:${item.nextDueAt ?? ""}:${item.isActive}:${item.settledAt ?? ""}`,
+        `${item.id}:${item.updatedAt}:${item.amountMinor}:${item.name}:${item.nextDueAt ?? ""}:${item.isActive}:${item.settledAt ?? ""}:${item.settledMinor ?? ""}:${item.remainingDueAt ?? ""}`,
     )
     .sort()
     .join("|");
@@ -49,6 +49,8 @@ export function optimisticPlanItem(input: {
     nextDueAt: input.nextDueAt,
     isActive: true,
     settledAt: null,
+    settledMinor: null,
+    remainingDueAt: null,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -167,10 +169,37 @@ export function revertMonthSavings(
 export function settlePlanItem(
   items: PlanItem[],
   id: string,
-  settled: boolean,
+  patch: {
+    settled: boolean;
+    settledMinor?: number | null;
+    remainingDueAt?: string | null;
+  },
 ): PlanItem[] {
   const ts = new Date().toISOString();
-  return items.map((item) =>
-    item.id === id ? { ...item, settledAt: settled ? ts : null, updatedAt: ts } : item,
-  );
+  return items.map((item) => {
+    if (item.id !== id) return item;
+    if (!patch.settled) {
+      return {
+        ...item,
+        settledAt: null,
+        settledMinor: null,
+        remainingDueAt: null,
+        updatedAt: ts,
+      };
+    }
+    const requested =
+      patch.settledMinor != null
+        ? Math.min(item.amountMinor, Math.max(0, Math.round(patch.settledMinor)))
+        : item.amountMinor;
+    const full = requested >= item.amountMinor && item.amountMinor > 0;
+    return {
+      ...item,
+      settledAt: full ? ts : null,
+      settledMinor: full ? item.amountMinor : requested > 0 ? requested : null,
+      remainingDueAt: full
+        ? null
+        : (patch.remainingDueAt ?? item.remainingDueAt ?? item.nextDueAt),
+      updatedAt: ts,
+    };
+  });
 }

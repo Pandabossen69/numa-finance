@@ -10,8 +10,8 @@
  *
  * Vocabulary (cash vs plan — do not mix):
  * - Saldo / På kontot: verified bank / calculated account balance
- * - Kommer in: planned income not yet received in the ledger (or marked Klar)
- * - Kvar att betala: planned expenses not yet paid in the ledger (or marked Klar; not savings)
+ * - Kommer in: planned income not yet received in the ledger (minus Klar / Delvis klar)
+ * - Kvar att betala: planned expenses not yet paid in the ledger (minus Klar / Delvis klar; not savings)
  * - Över: saldo + kommer in − kvar att betala (Plan/Hem hero)
  * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
  * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
@@ -68,6 +68,8 @@ export const SV = {
   saRaknarNuma: "Så räknar NUMA",
   idag: "Idag",
   klar: "Klar",
+  delvisKlar: "Delvis klar",
+  resten: "Resten",
   angraKlar: "Ångra",
   appDescription:
     "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",

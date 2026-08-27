@@ -23,6 +23,8 @@ function item(
     nextDueAt: partial.nextDueAt ?? null,
     isActive: partial.isActive ?? true,
     settledAt: partial.settledAt ?? null,
+    settledMinor: partial.settledMinor ?? null,
+    remainingDueAt: partial.remainingDueAt ?? null,
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
   };
@@ -436,5 +438,52 @@ describe("projectCashCoverage", () => {
     });
     expect(view.incomingMinor).toBe(10_000_00);
     expect(view.overMinor).toBe(11_000_00);
+  });
+
+  it("keeps the unpaid remainder after Delvis klar", () => {
+    const items = [
+      item({
+        id: "hyra",
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 15_000_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
+        settledMinor: 5_000_00,
+        remainingDueAt: "2026-08-29T12:00:00.000Z",
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 20_000_00,
+    });
+    expect(view.unpaidMinor).toBe(10_000_00);
+    expect(view.overMinor).toBe(10_000_00);
+  });
+
+  it("keeps remaining income after Delvis klar", () => {
+    const items = [
+      item({
+        id: "trukks",
+        name: "Trukks",
+        kind: "expected",
+        amountMinor: 51_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-27T05:00:00.000Z",
+        settledMinor: 20_000_00,
+        remainingDueAt: "2026-08-29T12:00:00.000Z",
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 1_000_00,
+    });
+    expect(view.incomingMinor).toBe(31_000_00);
+    expect(view.overMinor).toBe(32_000_00);
   });
 });

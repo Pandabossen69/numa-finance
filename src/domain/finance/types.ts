@@ -52,10 +52,20 @@ export type PlanItem = {
   nextDueAt: string | null;
   isActive: boolean;
   /**
-   * ISO time when this occurrence was marked Klar (paid/received).
-   * Null/absent = still open. Independent of ledger matching.
+   * ISO time when this occurrence was marked fully Klar (paid/received).
+   * Null/absent = still open or only partially settled. Independent of ledger matching.
    */
   settledAt?: string | null;
+  /**
+   * Amount already received/paid on this occurrence (minor units).
+   * Null/absent = nothing marked, unless `settledAt` is set (legacy full Klar).
+   */
+  settledMinor?: number | null;
+  /**
+   * When the remaining amount after Delvis klar is expected.
+   * Null = keep using `nextDueAt`. Does not move the row to another month.
+   */
+  remainingDueAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

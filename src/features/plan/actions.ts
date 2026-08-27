@@ -9,11 +9,9 @@ import {
   importableFixedExpenses,
   isPlanIncome,
   isPlanSavings,
-  isRecurringMonthly,
   monthAnchorIso,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
-  planItemMonthKey,
   type PlanItem,
 } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
@@ -35,7 +33,11 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   kind: kindSchema,
   amount: z.string().trim().min(1),
-  dayOfMonth: z.coerce.number().int().min(1).max(31),
+  dayOfMonth: z.coerce.number().int().min(1).max(31).optional(),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   monthKey: z
     .string()
     .regex(/^\d{4}-\d{2}$/)
@@ -54,19 +56,8 @@ function revalidatePlanPaths() {
   revalidatePath("/analys");
 }
 
-const PAST_FIXED_LOCKED = "Fasta utgifter i passerade månader är låsta.";
-
 function profileTimeZone(timezone: string | null | undefined): string {
   return timezone || "Asia/Bangkok";
-}
-
-function isPastMonth(monthKey: string | null, currentMonthKey: string): boolean {
-  return monthKey != null && monthKey < currentMonthKey;
-}
-
-function isLockedPastFixed(item: PlanItem, timeZone: string, currentMonthKey: string) {
-  if (!isRecurringMonthly(item)) return false;
-  return isPastMonth(planItemMonthKey(item, timeZone), currentMonthKey);
 }
 
 /** Profile + plan rows only — never the full Hem snapshot. */
@@ -93,11 +84,9 @@ export async function createPlanItemAction(
     }
     const ctx = await planWriteContext();
     const monthKey = input.monthKey ?? ctx.currentMonthKey;
-    if (isPastMonth(monthKey, ctx.currentMonthKey)) {
-      return { ok: false, error: PAST_FIXED_LOCKED };
-    }
-    // Pin to the viewed month — never roll into a later month.
-    const nextDueAt = dueDateInMonth(monthKey, input.dayOfMonth);
+    const nextDueAt = input.date
+      ? `${input.date}T12:00:00.000Z`
+      : dueDateInMonth(monthKey, input.dayOfMonth ?? 1);
     const item = await createPlanItem({
       name: input.name,
       kind: input.kind,
@@ -233,11 +222,6 @@ export async function setMonthSavingsAction(
 export async function deletePlanItemAction(id: string): Promise<ActionResult> {
   try {
     const parsedId = z.string().uuid().parse(id);
-    const ctx = await planWriteContext();
-    const existing = ctx.planItems.find((p) => p.id === parsedId);
-    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
-      return { ok: false, error: PAST_FIXED_LOCKED };
-    }
     await deletePlanItem(parsedId);
     revalidatePlanPaths();
     return { ok: true };
@@ -252,10 +236,17 @@ export async function deletePlanItemAction(id: string): Promise<ActionResult> {
 const settleSchema = z.object({
   id: z.string().uuid(),
   settled: z.boolean(),
+  /** Partial amount already received/paid. Omit for full Klar. */
+  amount: z.string().trim().min(1).optional(),
+  /** Calendar date for the remaining amount after Delvis klar. */
+  remainingDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 /**
- * Mark a plan income/expense occurrence Klar (received/paid) without deleting it.
+ * Mark a plan income/expense occurrence Klar or Delvis klar without deleting it.
  * Allowed in every month — dates vary, so remaining figures should follow taps.
  */
 export async function setPlanItemSettledAction(
@@ -275,9 +266,40 @@ export async function setPlanItemSettledAction(
     ) {
       return { ok: false, error: "Den här posten kan inte markeras Klar." };
     }
+
+    let settledAt: string | null = null;
+    let settledMinor: number | null = null;
+    let remainingDueAt: string | null = null;
+    if (input.settled) {
+      let minor = existing.amountMinor;
+      if (input.amount != null) {
+        minor = parseUiAmountToMinor(input.amount);
+        if (minor < 0) {
+          return { ok: false, error: "Belopp kan inte vara negativt" };
+        }
+      }
+      if (minor <= 0) {
+        settledAt = null;
+        settledMinor = null;
+        remainingDueAt = null;
+      } else if (minor >= existing.amountMinor) {
+        settledAt = new Date().toISOString();
+        settledMinor = existing.amountMinor;
+        remainingDueAt = null;
+      } else {
+        settledAt = null;
+        settledMinor = minor;
+        remainingDueAt = input.remainingDate
+          ? `${input.remainingDate}T12:00:00.000Z`
+          : (existing.remainingDueAt ?? existing.nextDueAt);
+      }
+    }
+
     const item = await updatePlanItem({
       id: input.id,
-      settledAt: input.settled ? new Date().toISOString() : null,
+      settledAt,
+      settledMinor,
+      remainingDueAt,
     });
     revalidatePlanPaths();
     return { ok: true, item };
@@ -316,11 +338,6 @@ export async function updatePlanItemAmountAction(raw: {
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const ctx = await planWriteContext();
-    const existing = ctx.planItems.find((p) => p.id === id);
-    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
-      return { ok: false, error: PAST_FIXED_LOCKED };
-    }
     const item = await updatePlanItem({ id, amountMinor });
     revalidatePlanPaths();
     return { ok: true, item };
@@ -337,7 +354,7 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   kind: kindSchema.optional(),
   amount: z.string().trim().min(1).optional(),
-  /** Full date for income rows (`YYYY-MM-DD`). */
+  /** Full calendar date (`YYYY-MM-DD`) for incomes, extras, and fixed. */
   date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -362,19 +379,12 @@ export async function updatePlanItemAction(
     }
 
     const ctx = await planWriteContext();
-    const existing = ctx.planItems.find((p) => p.id === input.id);
-    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
-      return { ok: false, error: PAST_FIXED_LOCKED };
-    }
 
     let nextDueAt: string | undefined;
     if (input.date) {
       nextDueAt = `${input.date}T12:00:00.000Z`;
     } else if (input.dayOfMonth != null) {
       const monthKey = input.monthKey ?? ctx.currentMonthKey;
-      if (isPastMonth(monthKey, ctx.currentMonthKey)) {
-        return { ok: false, error: PAST_FIXED_LOCKED };
-      }
       nextDueAt = dueDateInMonth(monthKey, input.dayOfMonth);
     }
 
@@ -406,7 +416,7 @@ export async function importFixedExpensesFromPreviousMonthAction(
   try {
     const input = importFixedSchema.parse(raw);
     const ctx = await planWriteContext();
-    if (isPastMonth(input.monthKey, ctx.currentMonthKey)) {
+    if (input.monthKey < ctx.currentMonthKey) {
       return {
         ok: false,
         error: "Du kan bara läsa in fasta utgifter i den här månaden och framåt.",
