@@ -10,8 +10,11 @@
  *
  * Vocabulary (cash vs plan — do not mix):
  * - Saldo / På kontot: verified bank / calculated account balance
- * - Mot planen: calendar-month plan leftover minus actual spend (+ extra)
- * - Plan + sparande: mot planen + avsatt sparande (not cash on hand)
+ * - Kommer in: planned income not yet received in the ledger
+ * - Kvar att betala: planned expenses not yet paid in the ledger (not savings)
+ * - Över: saldo + kommer in − kvar att betala (Plan/Hem hero)
+ * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
+ * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
  */
 export const SV = {
@@ -28,6 +31,12 @@ export const SV = {
   overskottHittills: "Överskott mot planen",
   minusMotPlanen: "Minus mot planen",
   motPlanen: "Mot planen",
+  kommerIn: "Kommer in",
+  kvarAttBetala: "Kvar att betala",
+  over: "Över",
+  pengarOver: "Pengar över",
+  rackerInte: "Räcker inte",
+  saldoOchSparande: "Saldo och sparande",
   kvarIManadenPlan: "Kvar i månaden (plan)",
   planOchSparande: "Plan och sparande",
   spenderatIManaden: "Spenderat i månaden",

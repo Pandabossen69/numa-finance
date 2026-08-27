@@ -18,4 +18,12 @@ describe("Hem PWA hint and HIGH copy", () => {
   it("shows the Hem-shaped skeleton while snapshot is empty", () => {
     expect(src).toContain("HomeViewLoading");
   });
+
+  it("does not show Mot planen as the Hem pile", () => {
+    expect(src).toContain("CompactPiles");
+    expect(src).toContain("overMinor");
+    expect(src).not.toContain("livingSaldoMinor");
+    expect(src).not.toContain("SV.motPlanen");
+    expect(src).not.toContain("livingVsPlanHintSv");
+  });
 });

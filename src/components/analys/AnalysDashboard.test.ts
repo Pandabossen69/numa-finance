@@ -11,6 +11,11 @@ describe("Analys month result color", () => {
     expect(src).not.toMatch(/freeToSpendMinor >= 0 \? "positive" : "danger"/);
   });
 
+  it("labels month leftover as Mot planen, not cash", () => {
+    expect(src).toContain("livingLabel={SV.motPlanen}");
+    expect(src).toContain("inte kontanter");
+  });
+
   it("restores Perioden/Månad when the dashboard remounts", () => {
     expect(src).toContain("lastAnalysScope");
     expect(src).toContain("rememberAnalysScope");

@@ -1610,6 +1610,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       flexibleMinor: 0,
       daysUntilIncome: 0,
       recentTransactions: [],
+      ledgerTransactions: [],
       planItems,
       currency: profile.primaryCurrency,
       progress: await getUserProgress(),
@@ -1713,6 +1714,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     recentTransactions: [...accountTx]
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
       .slice(0, 8),
+    ledgerTransactions: accountTx,
     planItems,
     currency,
     progress: await getUserProgress(),

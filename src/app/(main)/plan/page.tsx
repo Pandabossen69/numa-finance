@@ -22,7 +22,7 @@ export default async function PlanPage() {
       <header>
         <h1 className="numa-page-title">Plan</h1>
         <p className="mt-1 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          Två högar som växer. Följ månad för månad — även år framåt.
+          Saldo nu, det som kommer in och det som är kvar att betala.
         </p>
       </header>
       {error ? (
@@ -41,6 +41,7 @@ export default async function PlanPage() {
             cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
             todaySpendingMinor={snap?.todaySpendingMinor ?? 0}
             spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
+            ledgerTransactions={snap?.ledgerTransactions ?? []}
           />
         </section>
       )}

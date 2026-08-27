@@ -3,11 +3,22 @@ import { describe, expect, it } from "vitest";
 
 const src = readFileSync(new URL("./WealthScoreboard.tsx", import.meta.url), "utf8");
 
-describe("CompactPiles Mot planen", () => {
-  it("keeps amount and THB on one line and does not clip long overspend copy", () => {
-    expect(src).toContain("wrap={false}");
-    expect(src).toContain("Mer än planerat.");
-    expect(src).not.toContain("Du har handlat mer än månaden planerat.");
-    expect(src).toContain("min-h-[2.5rem]");
+describe("CompactPiles cash stack", () => {
+  it("shows Saldo as the Hem pile and Över in the breakdown, not Mot planen", () => {
+    const compact = src.slice(src.indexOf("export function CompactPiles"));
+    expect(compact).toContain("SV.saldo");
+    expect(compact).toContain("SV.kommerIn");
+    expect(compact).toContain("SV.kvarAttBetala");
+    expect(compact).toContain("SV.over");
+    expect(compact).toContain("wrap={false}");
+    expect(compact).not.toContain("Mer än planerat.");
+    expect(compact).not.toContain("SV.motPlanen");
+  });
+});
+
+describe("WealthScoreboard Analys leftover", () => {
+  it("defaults the leftover cell to Mot planen so Analys can keep vs-plan math", () => {
+    expect(src).toContain("livingLabel = SV.motPlanen");
+    expect(src).toContain('livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"');
   });
 });

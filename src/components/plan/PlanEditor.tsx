@@ -3,7 +3,7 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import type { PlanItem } from "@/domain/finance";
+import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
   dayOfMonthFromIso,
@@ -16,7 +16,7 @@ import {
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
-  projectExtraSaldo,
+  projectCashCoverage,
   projectExtraSaldoSeries,
   projectLivingBudget,
   projectPayCycle,
@@ -55,6 +55,7 @@ import {
 } from "@/features/plan/actions";
 
 const EMPTY_MONTH_SPEND: Record<string, number> = {};
+const EMPTY_LEDGER: CanonicalTransaction[] = [];
 
 type BusyKey =
   | null
@@ -166,6 +167,7 @@ export function PlanEditor({
   cycleSpendingMinor = 0,
   todaySpendingMinor = 0,
   spendingByMonthKey = EMPTY_MONTH_SPEND,
+  ledgerTransactions = EMPTY_LEDGER,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
@@ -174,6 +176,7 @@ export function PlanEditor({
   cycleSpendingMinor?: number;
   todaySpendingMinor?: number;
   spendingByMonthKey?: Record<string, number>;
+  ledgerTransactions?: CanonicalTransaction[];
 }) {
   const router = useRouter();
   const currentMonthKey = useMemo(
@@ -240,16 +243,16 @@ export function PlanEditor({
     [localItems, monthKey, timeZone],
   );
 
-  const extra = useMemo(
+  const coverage = useMemo(
     () =>
-      projectExtraSaldo({
+      projectCashCoverage({
         planItems: localItems,
-        spendingByMonthKey,
+        transactions: ledgerTransactions,
         monthKey,
-        currentMonthKey,
         timeZone,
+        saldoMinor: bankBalanceMinor,
       }),
-    [localItems, spendingByMonthKey, monthKey, currentMonthKey, timeZone],
+    [localItems, ledgerTransactions, monthKey, timeZone, bankBalanceMinor],
   );
   const savingsTotalMinor = useMemo(
     () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
@@ -511,8 +514,7 @@ export function PlanEditor({
         </MonthChipStrip>
 
         <PlanPiles
-          extra={extra}
-          currentMonthKey={currentMonthKey}
+          coverage={coverage}
           monthName={monthName}
           currency={currency}
           savingsTotalMinor={savingsTotalMinor}
@@ -586,7 +588,6 @@ export function PlanEditor({
               if (ok) setSavingsAmount("");
             });
           }}
-          showSpent={monthKey <= currentMonthKey}
           dayBudgetMinor={
             cycle.startAt &&
             monthKey === (cycle.fundingMonthKey ?? currentMonthKey) &&

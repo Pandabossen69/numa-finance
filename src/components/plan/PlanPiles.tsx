@@ -1,21 +1,14 @@
 "use client";
 
-import type { ExtraSaldoView } from "@/domain/finance";
-import {
-  extraSaldoHintSv,
-  livingVsPlanHintSv,
-  monthLeftoverHintSv,
-  monthPileBreakdown,
-  planWealthTotalMinor,
-} from "@/domain/finance";
+import type { CashCoverageView } from "@/domain/finance";
+import { CASH_COVERAGE_HINT_SV, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { SV } from "@/features/copy/labels-sv";
 
 export function PlanPiles({
-  extra,
-  currentMonthKey,
+  coverage,
   monthName,
   currency,
   savingsTotalMinor,
@@ -26,13 +19,11 @@ export function PlanPiles({
   onSavingsAmount,
   onSaveSavings,
   onClearSavings,
-  showSpent,
   dayBudgetMinor,
   savingsBusy = false,
   clearBusy = false,
 }: {
-  extra: ExtraSaldoView;
-  currentMonthKey: string;
+  coverage: CashCoverageView;
   monthName: string;
   currency: CurrencyCode;
   savingsTotalMinor: number;
@@ -43,35 +34,18 @@ export function PlanPiles({
   onSavingsAmount: (value: string) => void;
   onSaveSavings: () => void;
   onClearSavings: () => void;
-  showSpent: boolean;
   dayBudgetMinor: number | null;
   savingsBusy?: boolean;
   clearBusy?: boolean;
 }) {
-  const piles = monthPileBreakdown(extra);
-  const leftoverHint = monthLeftoverHintSv(extra, currentMonthKey);
-  const extraHint = extraSaldoHintSv(extra, currentMonthKey);
-  const livingOk = piles.livingMinor >= 0;
-  const totalMinor = planWealthTotalMinor(piles.livingMinor, savingsTotalMinor);
-  const remainRatio =
-    piles.poolMinor > 0 && livingOk
-      ? Math.min(1, Math.max(0, piles.livingMinor / piles.poolMinor))
-      : livingOk
-        ? 1
-        : 0;
+  const overOk = coverage.overMinor >= 0;
+  const totalMinor = planWealthTotalMinor(coverage.overMinor, savingsTotalMinor);
   const monthsWithSavings = monthKeys.filter(
     (key) => (savingsByMonth[key] ?? 0) > 0,
   ).length;
   const savingsFill = monthKeys.length > 0 ? monthsWithSavings / monthKeys.length : 0;
 
-  const saldoChip = !livingOk
-    ? SV.minusMotPlanen
-    : extra.monthResultMinor > 0
-      ? SV.vaxer
-      : piles.extraInMinor > 0
-        ? SV.extraMed
-        : SV.saldoLevaFor;
-
+  const overChip = overOk ? SV.pengarOver : SV.rackerInte;
   const savingsChip =
     savingsThisMonthMinor > 0
       ? SV.vaxer
@@ -82,7 +56,8 @@ export function PlanPiles({
   return (
     <div className="space-y-4">
       <WealthScoreboard
-        livingMinor={piles.livingMinor}
+        livingMinor={coverage.overMinor}
+        livingLabel={SV.over}
         savingsMinor={savingsTotalMinor}
         totalMinor={totalMinor}
         currency={currency}
@@ -91,96 +66,73 @@ export function PlanPiles({
       <div className="grid items-stretch gap-4 md:grid-cols-2">
         <section
           className="numa-panel-strong numa-pile flex h-full min-w-0 flex-col gap-3 p-5 pl-6"
-          aria-labelledby="plan-saldo-heading"
+          aria-labelledby="plan-over-heading"
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <p id="plan-saldo-heading" className="numa-section-title min-w-0">
-              {SV.motPlanen} · {monthName}
+            <p id="plan-over-heading" className="numa-section-title min-w-0">
+              {monthName}
             </p>
             <span
-              className={`numa-chip shrink-0 ${livingOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
+              className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
             >
-              {saldoChip}
+              {overChip}
             </span>
           </div>
+
+          <div className="space-y-2">
+            <PileLine
+              label={SV.saldo}
+              amountMinor={coverage.saldoMinor}
+              currency={currency}
+            />
+            <PileLine
+              label={SV.kommerIn}
+              amountMinor={coverage.incomingMinor}
+              currency={currency}
+              accent
+            />
+            <PileLine
+              label={SV.kvarAttBetala}
+              amountMinor={coverage.unpaidMinor}
+              currency={currency}
+            />
+          </div>
+
           <div
             className={
-              livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
+              overOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
             }
           >
+            <p className="text-xs font-semibold tracking-[0.12em] text-[var(--numa-faint)] uppercase">
+              {SV.over}
+            </p>
             <MoneyDisplay
-              amountMinor={piles.livingMinor}
+              amountMinor={coverage.overMinor}
               currency={currency}
               size="md"
               compact
               align="start"
               wrap={false}
+              tone="signed"
             />
           </div>
           <p className="min-h-[2.5rem] text-sm leading-snug text-[var(--numa-muted)]">
-            {livingOk
-              ? SV.saldoLevaFor
-              : `Mer än ${monthName} planerat.`}
+            {CASH_COVERAGE_HINT_SV}
+            {coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
           </p>
-          {showSpent ? (
-            <p className="text-xs leading-snug text-[var(--numa-faint)]">
-              {livingVsPlanHintSv(extra)}
+
+          {dayBudgetMinor != null && dayBudgetMinor > 0 ? (
+            <p className="mt-auto text-sm text-[var(--numa-muted)]">
+              <MoneyDisplay
+                amountMinor={dayBudgetMinor}
+                currency={currency}
+                size="sm"
+                compact
+                align="start"
+              />{" "}
+              / dag
             </p>
           ) : null}
-
-          <div className="numa-pile-meter" aria-hidden>
-            <i
-              className={livingOk ? "" : "is-alarm"}
-              style={{ transform: `scaleX(${Math.max(0.04, remainRatio)})` }}
-            />
-          </div>
-
-          <div className="mt-auto space-y-2 pt-1">
-            {piles.showBreakdown ? (
-              <>
-                <PileLine
-                  label={SV.iManaden}
-                  amountMinor={piles.monthSliceMinor}
-                  currency={currency}
-                  danger={piles.monthSliceMinor < 0}
-                />
-                <PileLine
-                  label={SV.extraMed}
-                  amountMinor={piles.extraInMinor}
-                  currency={currency}
-                  accent
-                />
-              </>
-            ) : extra.drawnMinor > 0 ? (
-              <p className="text-sm text-[var(--numa-alarm)]">{extraHint}</p>
-            ) : null}
-            {showSpent && extra.spentMinor > 0 ? (
-              <PileLine
-                label={SV.spenderatIManaden}
-                amountMinor={extra.spentMinor}
-                currency={currency}
-              />
-            ) : null}
-            {leftoverHint ? (
-              <p className="text-sm text-[var(--numa-muted)]">{leftoverHint}</p>
-            ) : extraHint &&
-              piles.extraInMinor > 0 &&
-              extra.monthKey > currentMonthKey ? (
-              <p className="text-sm text-[var(--numa-muted)]">{extraHint}</p>
-            ) : null}
-            {dayBudgetMinor != null && dayBudgetMinor > 0 ? (
-              <p className="text-sm text-[var(--numa-muted)]">
-                <MoneyDisplay
-                  amountMinor={dayBudgetMinor}
-                  currency={currency}
-                  size="sm"
-                  compact
-                  align="start"
-                />{" "}
-                / dag
-              </p>
-            ) : null}
-          </div>
         </section>
 
         <section
@@ -291,30 +243,37 @@ function PileLine({
   danger = false,
 }: {
   label: string;
-  amountMinor: number;
+  amountMinor: number | null;
   currency: CurrencyCode;
   accent?: boolean;
   danger?: boolean;
 }) {
+  const missing = amountMinor == null;
   return (
     <p className="flex items-baseline justify-between gap-3 text-sm">
       <span className="text-[var(--numa-muted)]">{label}</span>
       <span
         className={
-          danger
-            ? "text-[var(--numa-alarm)]"
-            : accent
-              ? "text-[var(--numa-accent-ink)]"
-              : "text-[var(--numa-ink)]"
+          missing
+            ? "text-[var(--numa-faint)]"
+            : danger
+              ? "text-[var(--numa-alarm)]"
+              : accent
+                ? "text-[var(--numa-accent-ink)]"
+                : "text-[var(--numa-ink)]"
         }
       >
-        <MoneyDisplay
-          amountMinor={amountMinor}
-          currency={currency}
-          size="sm"
-          compact
-          align="end"
-        />
+        {missing ? (
+          "—"
+        ) : (
+          <MoneyDisplay
+            amountMinor={amountMinor}
+            currency={currency}
+            size="sm"
+            compact
+            align="end"
+          />
+        )}
       </span>
     </p>
   );

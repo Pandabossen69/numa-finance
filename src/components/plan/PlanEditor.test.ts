@@ -56,4 +56,10 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("is-overflow-start");
     expect(src).not.toContain("numa-month-strip -mx-1");
   });
+
+  it("computes Över from cash coverage, not Mot planen leftover", () => {
+    expect(src).toContain("projectCashCoverage");
+    expect(src).toContain("ledgerTransactions");
+    expect(src).toContain("coverage={coverage}");
+  });
 });
