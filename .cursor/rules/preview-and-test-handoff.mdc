@@ -9,9 +9,10 @@ After finishing a set of product changes:
    - Vercel env/domains: use Vercel MCP. Do not ask Hugo to click around unless a secret only he has is missing.
 2. **Always push** the current feature branch so Vercel builds a preview. Do not wait for Hugo to say “pusha”.
 3. **GitHub is the agent’s job**
-   - Create/update the PR. Do not ask Hugo to open GitHub, click Approve, or press Merge.
+   - Create/update the PR. Do not ask Hugo to open GitHub, click Approve, Squash and merge, or Merge.
    - Cursor’s GitHub App cannot submit `APPROVE` reviews (403). That is fine unless branch protection *requires* a human review. Only then put it in “Du behöver göra detta”.
-   - Merge to `main` yourself after he picks **produktion** (git merge/push). After **preview**, leave the branch unmerged.
+   - Merge to `main` yourself after he picks **produktion** (`git fetch` + merge + `git push origin main`). Never tell him to squash-merge in the GitHub UI.
+   - After **preview**, leave the branch unmerged.
 4. **Ask once: Preview eller produktion?**
    - **Preview** = leave the work on the feature branch / preview URL. Do **not** merge to `main`.
    - **Produktion** = merge to `main` so `https://numa-finance.vercel.app` updates. Only merge after he explicitly picks production.
@@ -21,4 +22,4 @@ After finishing a set of product changes:
 
 Never skip the test plan + next step when wrapping up UI/product work.
 Never skip the preview-vs-produktion question.
-Never ask Hugo to approve a PR on GitHub.
+Never ask Hugo to approve or squash-merge a PR on GitHub.
