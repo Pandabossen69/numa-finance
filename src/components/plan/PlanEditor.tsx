@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import type { PointerEvent, ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
@@ -11,6 +11,8 @@ import {
   importableFixedExpenses,
   formatIsoDateOnlySv,
   formatListDateSv,
+  isoToDateInput,
+  nextCommittedCalendarDate,
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
@@ -69,14 +71,33 @@ function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
 }
 
-function isoToDateInput(iso: string | null): string {
-  if (!iso) return "";
-  return iso.slice(0, 10);
-}
-
 function labelIncomeDateSv(iso: string | null, timeZone: string): string {
   if (!iso) return "Datum saknas";
   return formatListDateSv(iso, timeZone);
+}
+
+function commitCalendarDate(
+  raw: string,
+  current: string,
+  onChange: (value: string) => void,
+) {
+  const next = nextCommittedCalendarDate(raw, current);
+  if (next) onChange(next);
+}
+
+function openNativeDatePicker(
+  event: PointerEvent<HTMLInputElement>,
+) {
+  const input = event.currentTarget;
+  try {
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      // Stop the following click from immediately closing Chromium's picker.
+      event.preventDefault();
+    }
+  } catch {
+    // NotAllowedError / no picker (older WebKit) — indicator click still works.
+  }
 }
 
 function PlanDateField({
@@ -102,9 +123,18 @@ function PlanDateField({
         type="date"
         lang="sv-SE"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => commitCalendarDate(e.target.value, value, onChange)}
+        onInput={(e) =>
+          commitCalendarDate(
+            (e.target as HTMLInputElement).value,
+            value,
+            onChange,
+          )
+        }
+        onBlur={(e) => commitCalendarDate(e.currentTarget.value, value, onChange)}
+        onPointerDown={openNativeDatePicker}
         aria-label={ariaLabel}
-        className="absolute inset-0 cursor-pointer opacity-0"
+        className="numa-date-input"
       />
     </div>
   );
@@ -350,7 +380,7 @@ export function PlanEditor({
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(item.nextDueAt));
+    setEditDate(isoToDateInput(item.nextDueAt, timeZone));
   }
 
   function startEditExpense(item: PlanItem) {
@@ -368,7 +398,7 @@ export function PlanEditor({
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(item.nextDueAt));
+    setEditDate(isoToDateInput(item.nextDueAt, timeZone));
   }
 
   function saveEditedItem(id: string, patch: Partial<PlanItem>) {
@@ -389,7 +419,7 @@ export function PlanEditor({
           name: next.name,
           amount: editAmount,
           date: next.nextDueAt
-            ? isoToDateInput(next.nextDueAt) || undefined
+            ? isoToDateInput(next.nextDueAt, timeZone) || undefined
             : undefined,
         }),
       reconcile: (rows, result) =>

@@ -631,10 +631,59 @@ body {
 .numa-expand.is-open {
   grid-template-rows: 1fr;
   opacity: 1;
+  /* Native date popovers are clipped when the add-row stays overflow:hidden. */
+  overflow: visible;
 }
 
 .numa-expand-inner {
   overflow: hidden;
+}
+
+.numa-expand.is-open > .numa-expand-inner {
+  overflow: visible;
+}
+
+/*
+ * Swedish date overlay + native picker. Do not use opacity:0 on the input —
+ * Chrome only opens the calendar from the indicator, and iOS ignores fully
+ * transparent date fields. Stretch the indicator so a tap anywhere commits.
+ */
+.numa-date-input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  outline: none;
+  font-size: 1rem;
+}
+
+.numa-date-input::-webkit-datetime-edit,
+.numa-date-input::-webkit-datetime-edit-fields-wrapper,
+.numa-date-input::-webkit-datetime-edit-text,
+.numa-date-input::-webkit-datetime-edit-month-field,
+.numa-date-input::-webkit-datetime-edit-day-field,
+.numa-date-input::-webkit-datetime-edit-year-field {
+  color: transparent;
+}
+
+.numa-date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  /* 0.01 stays hittable on iOS; 0 can drop taps on the stretched indicator. */
+  opacity: 0.01;
+  cursor: pointer;
 }
 
 .numa-overflow-menu {

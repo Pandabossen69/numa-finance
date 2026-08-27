@@ -246,6 +246,43 @@ export function formatListDateSv(
   });
 }
 
+const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True for a committed `<input type="date">` value (`YYYY-MM-DD`). */
+export function isCalendarDate(value: string): boolean {
+  return CALENDAR_DATE_RE.test(value.trim());
+}
+
+/**
+ * Next `YYYY-MM-DD` to store from a date input. Ignores empty, partial, and
+ * unchanged values so the field cannot snap back or clear while picking.
+ */
+export function nextCommittedCalendarDate(
+  raw: string,
+  current: string,
+): string | null {
+  const next = raw.trim();
+  if (!isCalendarDate(next) || next === current) return null;
+  return next;
+}
+
+/**
+ * `YYYY-MM-DD` for `<input type="date">` from a stored ISO instant or date-only.
+ * Uses the civil day in `timeZone` — never `toISOString().slice(0, 10)`, which
+ * is the previous UTC date for most of a Bangkok morning.
+ */
+export function isoToDateInput(
+  iso: string | null | undefined,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  if (!iso) return "";
+  const trimmed = iso.trim();
+  if (isCalendarDate(trimmed)) return trimmed;
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) return "";
+  return zonedDayKey(trimmed, timeZone);
+}
+
 /** Calendar `YYYY-MM-DD` as `28 aug.` — no US locale, no timezone shift. */
 export function formatIsoDateOnlySv(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate.trim());
