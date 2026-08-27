@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { PointerEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
@@ -85,19 +85,17 @@ function commitCalendarDate(
   if (next) onChange(next);
 }
 
-function openNativeDatePicker(
-  event: PointerEvent<HTMLInputElement>,
-) {
-  const input = event.currentTarget;
+function openNativeDatePicker(input: HTMLInputElement | null) {
+  if (!input) return;
   try {
     if (typeof input.showPicker === "function") {
       input.showPicker();
-      // Stop the following click from immediately closing Chromium's picker.
-      event.preventDefault();
+      return;
     }
   } catch {
-    // NotAllowedError / no picker (older WebKit) — indicator click still works.
+    // InvalidStateError when the input is not rendered — fall through.
   }
+  input.focus();
 }
 
 function PlanDateField({
@@ -109,20 +107,23 @@ function PlanDateField({
   onChange: (value: string) => void;
   ariaLabel: string;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="relative min-h-11 min-w-0">
-      <div
-        aria-hidden
-        className="pointer-events-none flex min-h-11 items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-sm"
-      >
-        <span className={value ? "font-medium" : "text-[var(--numa-faint)]"}>
-          {value ? formatIsoDateOnlySv(value) : "ÅÅÅÅ-MM-DD"}
-        </span>
-      </div>
+      {/*
+        The native input sits behind the button (pointer-events: none) so it can
+        still anchor showPicker. Do not call preventDefault or stretch the
+        calendar-picker-indicator — both stop Chromium from writing the clicked
+        day back to input.value (keyboard still worked; tap did not).
+      */}
       <input
+        ref={inputRef}
         type="date"
         lang="sv-SE"
         value={value}
+        tabIndex={-1}
+        aria-hidden
         onChange={(e) => commitCalendarDate(e.target.value, value, onChange)}
         onInput={(e) =>
           commitCalendarDate(
@@ -131,11 +132,18 @@ function PlanDateField({
             onChange,
           )
         }
-        onBlur={(e) => commitCalendarDate(e.currentTarget.value, value, onChange)}
-        onPointerDown={openNativeDatePicker}
-        aria-label={ariaLabel}
         className="numa-date-input"
       />
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={() => openNativeDatePicker(inputRef.current)}
+        className="relative z-10 flex min-h-11 w-full cursor-pointer items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-left text-sm"
+      >
+        <span className={value ? "font-medium" : "text-[var(--numa-faint)]"}>
+          {value ? formatIsoDateOnlySv(value) : "ÅÅÅÅ-MM-DD"}
+        </span>
+      </button>
     </div>
   );
 }
