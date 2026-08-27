@@ -13,8 +13,8 @@ describe("MoneyDisplay signed tone", () => {
       }),
     );
     expect(html).toMatch(/aria-label="−123,45 kr"/);
-    expect(html).not.toContain("--");
-    expect(html.match(/−/g)?.length).toBe(1);
+    expect(html).toMatch(/>−123,45</);
+    expect(html.match(/aria-label="[^"]*"/)?.[0].match(/−/g)?.length).toBe(1);
   });
 
   it("shows a plus for positive amounts", () => {
