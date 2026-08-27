@@ -138,6 +138,8 @@ export function matchPlanItemsToLedger(params: {
   const pairs: Pair[] = [];
   for (const item of items) {
     if (isPlanSavings(item) || item.amountMinor <= 0) continue;
+    // Delvis klar already tracks remainingOpenMinor — do not let a partial
+    // bank hit greedily wipe the whole remainder via loose amount tolerance.
     if (isPlanSettled(item) || isPlanPartiallySettled(item)) continue;
     if (kind === "income" && !isPlanIncome(item)) continue;
     if (kind === "expense" && isPlanIncome(item)) continue;

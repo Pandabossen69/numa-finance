@@ -10,9 +10,11 @@ import {
   importableFixedExpenses,
   isPlanIncome,
   isPlanSavings,
+  isRecurringMonthly,
   monthAnchorIso,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
+  planItemMonthKey,
   type PlanItem,
 } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
@@ -29,6 +31,22 @@ export type ActionResult =
   { ok: true; item?: PlanItem; items?: PlanItem[] } | { ok: false; error: string };
 
 const kindSchema = z.enum(["mandatory", "expected", "flexible", "goal", "buffer"]);
+
+const PAST_FIXED_LOCKED =
+  "Fasta utgifter i passerade månader är låsta. Använd Klar om den redan är betald.";
+
+function isPastMonth(monthKey: string | null, currentMonthKey: string): boolean {
+  return monthKey != null && monthKey < currentMonthKey;
+}
+
+function isLockedPastFixed(
+  item: PlanItem,
+  timeZone: string,
+  currentMonthKey: string,
+) {
+  if (!isRecurringMonthly(item)) return false;
+  return isPastMonth(planItemMonthKey(item, timeZone), currentMonthKey);
+}
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -85,6 +103,9 @@ export async function createPlanItemAction(
     }
     const ctx = await planWriteContext();
     const monthKey = input.monthKey ?? ctx.currentMonthKey;
+    if (isPastMonth(monthKey, ctx.currentMonthKey)) {
+      return { ok: false, error: PAST_FIXED_LOCKED };
+    }
     const nextDueAt = input.date
       ? `${input.date}T12:00:00.000Z`
       : dueDateInMonth(monthKey, input.dayOfMonth ?? 1);
@@ -223,6 +244,11 @@ export async function setMonthSavingsAction(
 export async function deletePlanItemAction(id: string): Promise<ActionResult> {
   try {
     const parsedId = z.string().uuid().parse(id);
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === parsedId);
+    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
+      return { ok: false, error: PAST_FIXED_LOCKED };
+    }
     await deletePlanItem(parsedId);
     revalidatePlanPaths();
     return { ok: true };
@@ -341,6 +367,9 @@ export async function updatePlanItemAmountAction(raw: {
     }
     const ctx = await planWriteContext();
     const existing = ctx.planItems.find((p) => p.id === id);
+    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
+      return { ok: false, error: PAST_FIXED_LOCKED };
+    }
     const edited = existing
       ? applyPlanItemEdits(existing, { amountMinor })
       : null;
@@ -392,12 +421,18 @@ export async function updatePlanItemAction(
 
     const ctx = await planWriteContext();
     const existing = ctx.planItems.find((p) => p.id === input.id);
+    if (existing && isLockedPastFixed(existing, ctx.timeZone, ctx.currentMonthKey)) {
+      return { ok: false, error: PAST_FIXED_LOCKED };
+    }
 
     let proposedDue: string | null | undefined;
     if (input.date) {
       proposedDue = `${input.date}T12:00:00.000Z`;
     } else if (input.dayOfMonth != null) {
       const monthKey = input.monthKey ?? ctx.currentMonthKey;
+      if (isPastMonth(monthKey, ctx.currentMonthKey)) {
+        return { ok: false, error: PAST_FIXED_LOCKED };
+      }
       proposedDue = dueDateInMonth(monthKey, input.dayOfMonth);
     }
 
