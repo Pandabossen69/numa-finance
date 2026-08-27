@@ -6,7 +6,7 @@ Hugo must never discover missing setup after the fact. If a change depends on an
 
 1. **NUMA SQL / migrations** — apply via Supabase MCP to `hadrtlancgopyyshwhyd`, schema `numa`. File in `supabase/migrations/`. Local `supabase db push` is only if he tests locally and MCP already applied remote.
 2. **Vercel** — preview deploy happens on push. Env vars, domains, canonical URL: Vercel MCP. Redeploy if env changed.
-3. **Git + GitHub** — always commit + push the feature branch and keep the PR updated. Ask **Preview eller produktion?** before merging to `main`. Merge to production yourself when he says produktion. Do not ask him to Approve or Merge on GitHub. (The Cursor GitHub App cannot click Approve; merge via git instead. Only ping him if GitHub requires *his* personal review.)
+3. **Git + GitHub** — always commit + push the feature branch and keep the PR updated. Ask **Preview eller produktion?** before merging to `main`. Merge to production yourself with git when he says produktion. Do not ask him to Approve or Squash and merge on GitHub. (The Cursor GitHub App cannot click Approve; merge via git instead. Only ping him if GitHub requires *his* personal review.)
 
 ## Tell Hugo only when it actually blocks him
 
@@ -17,4 +17,4 @@ Hugo must never discover missing setup after the fact. If a change depends on an
 
 Put a short **“Du behöver göra detta”** block **only** in those cases. Prefer checklist. Blocking = say it with the preview-vs-produktion question, not after he tries and fails.
 
-If nothing blocks him, do **not** invent a “kör denna SQL” or “godkänn PR:en på GitHub” checklist.
+If nothing blocks him, do **not** invent a “kör denna SQL”, “godkänn PR:en” or “squash merge” checklist.
