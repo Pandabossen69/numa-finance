@@ -944,10 +944,13 @@ export function PlanEditor({
             editAmount={editAmount}
             editExtra={editDate}
             timeZone={timeZone}
+            structureEditable={!isPastMonth}
             emptyHint={
               canImportFixed
                 ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
-                : "Hyra och räkningar du måste betala."
+                : isPastMonth
+                  ? "Fasta utgifter i passerade månader — markera Betald om de är betalda."
+                  : "Hyra och räkningar du måste betala."
             }
             subtitle={(item) =>
               item.nextDueAt ? formatListDateSv(item.nextDueAt, timeZone) : "Datum saknas"
@@ -1000,6 +1003,7 @@ export function PlanEditor({
             }}
           />
 
+          {isPastMonth ? null : (
           <InlineAdd
               name={expenseName}
               amount={expenseAmount}
@@ -1048,6 +1052,7 @@ export function PlanEditor({
                 });
               }}
             />
+          )}
         </PlanCard>
 
         <PlanCard
@@ -1227,6 +1232,7 @@ function PlanRows({
   editExtra,
   emptyHint = "Inget inlagt.",
   subtitle,
+  structureEditable = true,
   pendingId = null,
   pendingAction = null,
   matchedIds,
@@ -1259,6 +1265,8 @@ function PlanRows({
   editExtra: string;
   emptyHint?: string;
   subtitle: (item: PlanItem) => string;
+  /** When false, hide Redigera/Ta bort — Betald/Delvis still allowed. */
+  structureEditable?: boolean;
   pendingId?: string | null;
   pendingAction?: "save" | "delete" | "settle" | null;
   matchedIds: Set<string>;
@@ -1444,13 +1452,15 @@ function PlanRows({
             },
           });
         }
-        menuItems.push({
-          label: "Redigera",
-          onSelect: () => {
-            setConfirmId(null);
-            onStartEdit(item);
-          },
-        });
+        if (structureEditable) {
+          menuItems.push({
+            label: "Redigera",
+            onSelect: () => {
+              setConfirmId(null);
+              onStartEdit(item);
+            },
+          });
+        }
         if ((settled && !matched) || partial) {
           menuItems.push({
             label: SV.angraKlar,
@@ -1458,13 +1468,14 @@ function PlanRows({
             onSelect: () => onSettle(item.id, false),
           });
         }
-        menuItems.push({
-          label: "Ta bort",
-          tone: "danger",
-          disabled: pendingId === item.id && pendingAction === "delete",
-          onSelect: () => setConfirmId(item.id),
-        });
-
+        if (structureEditable) {
+          menuItems.push({
+            label: "Ta bort",
+            tone: "danger",
+            disabled: pendingId === item.id && pendingAction === "delete",
+            onSelect: () => setConfirmId(item.id),
+          });
+        }
         const rowState = [
           settled ? "is-settled" : partial ? "is-partial" : "",
           isTempPlanId(item.id) ? "is-fresh" : "",

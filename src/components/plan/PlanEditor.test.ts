@@ -85,6 +85,8 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain('settleKind="income"');
     expect(src).toContain('settleKind="expense"');
     expect(src).toContain("SV.angraKlar");
+    // Past fixed: structure locked, settle still open — never lock the whole row.
+    expect(src).toContain("structureEditable={!isPastMonth}");
     expect(src).not.toContain("locked={isPastMonth}");
   });
 
