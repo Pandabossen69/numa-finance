@@ -1127,7 +1127,7 @@ function PlanRows({
   editAmount,
   editExtra,
   editExtraType,
-  emptyHint = "Inget här ännu.",
+  emptyHint = "Inget inlagt.",
   locked = false,
   subtitle,
   pendingId = null,

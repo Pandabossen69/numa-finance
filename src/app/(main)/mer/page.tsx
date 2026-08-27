@@ -29,7 +29,7 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
   {
     title: "Lägg till",
     items: [
-      { href: "/fota", label: "Fota", hint: "SMS eller kvitto" },
+      { href: "/fota", label: "Fota", hint: "Saldo eller kvitto" },
       { href: "/importera", label: "Tidigare bilder" },
     ],
   },

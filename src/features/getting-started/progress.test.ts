@@ -79,6 +79,9 @@ describe("buildGettingStartedView", () => {
     expect(view.steps[1]?.done).toBe(true);
     expect(view.steps[2]?.done).toBe(false);
     expect(view.steps[1]?.href).toBe("/plan?steg=inkomst");
+    expect(view.steps[0]?.why).toBe("Så Hem visar läget just nu.");
+    expect(view.steps[1]?.why).toBe("Lön eller CSN hör hemma i Plan.");
+    expect(view.steps[2]?.why).toBe("Hyra och räkningar lägger du i Plan.");
   });
 
   it("treats non-savings plan rows as bills", () => {

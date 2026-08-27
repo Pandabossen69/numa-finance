@@ -31,7 +31,7 @@ const STEPS: Array<{
   {
     id: "saldo",
     label: "Saldo just nu",
-    why: "Så Över på Hem stämmer.",
+    why: "Så Hem visar läget just nu.",
     href: "/kom-igang",
   },
   {

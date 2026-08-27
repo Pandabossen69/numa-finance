@@ -2,7 +2,7 @@
 export const ONBOARDING_SV = {
   saldoEyebrow: "Saldo nu",
   saldoTitle: "Vad har du på kontot just nu?",
-  saldoHint: "Utan ett startsaldo kan NUMA inte räkna Över.",
+  saldoHint: "Hem behöver det för att visa läget just nu.",
   fotaTitle: "Fota / skärmdump",
   fotaHint: "Bank-SMS, bankapp eller lapp — du bekräftar innan det sparas.",
   manualTitle: "Manuellt",

@@ -20,6 +20,13 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).toContain("Spara saldo");
   });
 
+  it("teaches Fota in one spoken Swedish sentence, never as a Kom igång tour", () => {
+    expect(src).toContain("SV.fotaHint");
+    expect(src).not.toContain('"Kom igång"');
+    expect(src).not.toContain("Börja här");
+    expect(src).not.toMatch(/välkommen/i);
+  });
+
   it("paints remaining-overspend in clay alarm, not destroy red", () => {
     expect(src).toContain('text-[var(--numa-alarm)]');
     expect(src).not.toMatch(/impact\.remaining < 0[\s\S]{0,80}numa-danger/);

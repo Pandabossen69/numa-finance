@@ -18,6 +18,7 @@ import { goHomeInstant } from "@/lib/nav/instant";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
 import { CAPTURE_UI_COPY } from "@/features/imports/capture-ui-copy";
+import { SV } from "@/features/copy/labels-sv";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 
@@ -287,7 +288,6 @@ export function ReceiptCaptureFlow({
   if (mode === "pick") {
     return (
       <ModePicker
-        bootstrapping={bootstrapping}
         onChoose={setMode}
         hasAccount={Boolean(accountId)}
         variant={variant}
@@ -728,12 +728,10 @@ export function ReceiptCaptureFlow({
 }
 
 function ModePicker({
-  bootstrapping,
   onChoose,
   hasAccount,
   variant = "default",
 }: {
-  bootstrapping: boolean;
   onChoose: (mode: CaptureMode) => void;
   hasAccount: boolean;
   variant?: "default" | "onboarding";
@@ -748,40 +746,34 @@ function ModePicker({
         {
           id: "bank_sms",
           title: "Bank-SMS",
-          hint: "Börja här — saldot i SMS:et sparas",
+          hint: "Saldot i SMS:et.",
         },
         {
           id: "bank_app",
           title: "Bankapp",
-          hint: "Skärmdump från bunq / Revolut",
+          hint: "Skärmdump från bankappen.",
         },
       ]
     : [
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: bootstrapping
-        ? "Börja här — saldot i SMS:et blir Hem"
-        : "Skärmdump → allt läses in",
+      hint: "Saldot i SMS:et.",
     },
     {
       id: "bank_app",
       title: "Bankapp",
-      hint: hasAccount
-        ? "bunq / Revolut — utgift utan dubblett"
-        : "Kräver saldo först via SMS",
+      hint: hasAccount ? "Beloppet i bankappen." : "Sätt saldo först.",
     },
     {
       id: "receipt",
       title: "Kvitto",
-      hint: "Fota priset — ändra belopp om det behövs",
+      hint: "Priset på kvittot.",
     },
     {
       id: "manual",
       title: "Manuellt",
-      hint: hasAccount
-        ? "Skriv belopp utan kamera"
-        : "Bäst efter första bank-SMS",
+      hint: hasAccount ? "Skriv beloppet." : "Sätt saldo först.",
     },
   ];
 
@@ -789,18 +781,10 @@ function ModePicker({
     <div className="animate-rise space-y-8">
       <header className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">
-          {onboarding
-            ? "Fota saldot"
-            : bootstrapping
-              ? "Kom igång"
-              : "Vad vill du lägga till?"}
+          {onboarding ? "Fota saldot" : "Fota"}
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {onboarding
-            ? "Bank-SMS eller skärmdump från bankappen. Du bekräftar innan det sparas."
-            : bootstrapping
-              ? "Fota senaste bank-SMS först så Hem får rätt saldo. Du kan alltid välja kvitto eller manuellt."
-              : "Ett steg. Vi läser bilden och du bekräftar."}
+          {SV.fotaHint}
         </p>
       </header>
 
@@ -815,7 +799,7 @@ function ModePicker({
               !hasAccount
             }
             onClick={() => onChoose(item.id)}
-            className="numa-panel numa-press flex w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
+            className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
           >
             <span>
               <span className="block text-[15px] font-semibold tracking-tight">
@@ -851,7 +835,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
+      className="numa-press inline-flex min-h-11 items-center text-sm font-semibold text-[var(--numa-accent)]"
     >
       ← Tillbaka
     </button>

@@ -128,7 +128,7 @@ function LoginScreen({
       <header className="mt-6 space-y-2">
         <h1 className="text-[1.75rem] font-semibold tracking-tight">Logga in</h1>
         <p className="text-[15px] text-[var(--numa-muted)]">
-          Välkommen tillbaka till NUMA.
+          Logga in med e-post och lösenord.
         </p>
       </header>
 
