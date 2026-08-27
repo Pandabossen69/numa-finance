@@ -89,7 +89,7 @@ export function AnalysDashboard({
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
-      <header className="animate-rise flex items-start justify-between gap-3">
+      <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
         <FormulaInfo steps={view.formula.steps} />
       </header>

@@ -36,4 +36,8 @@ describe("Analys month result color", () => {
     expect(src).toContain("Avsätt sparande under Plan");
     expect(src).not.toContain("Lägg till →");
   });
+
+  it("lets the Analys header wrap so the formula panel can sit above the tabs", () => {
+    expect(src).toContain("flex flex-wrap items-start justify-between");
+  });
 });

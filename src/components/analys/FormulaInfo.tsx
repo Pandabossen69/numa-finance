@@ -27,7 +27,14 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
   if (steps.length === 0) return null;
 
   return (
-    <div ref={rootRef} className="relative shrink-0">
+    <div
+      ref={rootRef}
+      className={
+        open
+          ? "relative shrink-0 max-md:flex max-md:w-full max-md:basis-full max-md:flex-col max-md:items-end"
+          : "relative shrink-0"
+      }
+    >
       <button
         type="button"
         className="numa-press inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)] hover:bg-white/80 hover:text-[var(--numa-ink)]"
@@ -41,7 +48,7 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
       {open ? (
         <div
           id={panelId}
-          className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2.5rem))] rounded-2xl border border-[var(--numa-border)] bg-white p-4 shadow-[var(--numa-shadow)]"
+          className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2.5rem))] rounded-2xl border border-[var(--numa-border)] bg-white p-4 shadow-[var(--numa-shadow)] max-md:relative max-md:right-auto max-md:z-10 max-md:mt-3 max-md:w-full"
         >
           <p className="numa-section-title">{SV.saRaknarNuma}</p>
           <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm leading-snug text-[var(--numa-muted)]">
