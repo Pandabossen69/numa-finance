@@ -99,7 +99,7 @@ export function MerListLink({
     <Link
       href={href}
       prefetch
-      className="group flex min-h-[3.25rem] items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3.5 last:border-b-0 numa-press hover:bg-white/70 active:bg-[var(--numa-accent-soft)]"
+      className="group numa-press flex min-h-[3.25rem] items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3.5 last:border-b-0 hover:bg-white/70 active:bg-[var(--numa-accent-soft)] [&:last-child]:border-b-0"
     >
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">

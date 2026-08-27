@@ -373,7 +373,7 @@ export function ReceiptCaptureFlow({
             type="button"
             disabled={pending}
             onClick={() => cameraInputRef.current?.click()}
-            className="numa-btn numa-btn-primary numa-press flex min-h-14 w-full flex-col gap-0.5 rounded-[var(--numa-radius-lg)] py-3 disabled:opacity-50"
+            className="numa-btn numa-btn-primary flex min-h-14 w-full flex-col gap-0.5 rounded-[var(--numa-radius-lg)] py-3 disabled:opacity-50"
           >
             <span>Kamera</span>
             <span className="text-xs font-medium text-white/75">{copy.camera}</span>
