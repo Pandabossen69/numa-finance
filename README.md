@@ -45,6 +45,8 @@ Utan Supabase-nycklar kör appen i **lokalt läge** (en användare) och sparar d
 
 När `NEXT_PUBLIC_SUPABASE_URL` och `NEXT_PUBLIC_SUPABASE_ANON_KEY` är satta aktiveras Supabase-klienterna.
 
+`SUPABASE_SERVICE_ROLE_KEY` (server only) krävs för att skapa nya användare under Mer → Ny användare. Utan den nyckeln är skapandet avstängt.
+
 Valfritt: `OPENAI_API_KEY` (server-only) för autoläsning av kvitton. Utan nyckel funkar `/fota` med manuell beloppsinmatning.
 
 Delat projekt: NUMA bor i schema `numa` + bucket `numa-source-media`. Se `docs/SUPABASE-SETUP.md`.

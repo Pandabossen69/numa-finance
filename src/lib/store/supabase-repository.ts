@@ -54,6 +54,7 @@ import {
 } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import type { TodaySnapshot } from "./types-snapshot";
+import { emptyTodaySnapshot } from "./empty-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
@@ -1030,7 +1031,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
 
   if (!primary) {
-    return emptySnapshot(profile, accounts, progress, planItems);
+    return emptyTodaySnapshot(profile, accounts, progress, planItems);
   }
 
   const timezone = profile.timezone;
@@ -1152,40 +1153,6 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     planItems,
     currency,
     progress,
-  };
-}
-
-function emptySnapshot(
-  profile: Profile,
-  accounts: Account[],
-  progress: UserProgress | null,
-  planItems: PlanItem[] = [],
-): TodaySnapshot {
-  return {
-    profile,
-    accounts,
-    primaryAccount: null,
-    checkpoint: null,
-    calculatedBalanceMinor: null,
-    balanceKind: "unknown",
-    verificationLabel: null,
-    todaySpendingMinor: 0,
-    monthSpendingMinor: 0,
-    cycleSpendingMinor: 0,
-    monthSpendingByKey: {},
-    fundingConfirmed: false,
-    safeToSpendTodayMinor: 0,
-    safeToSpendWeekMinor: 0,
-    freeMinor: 0,
-    reservedMinor: 0,
-    bufferMinor: 0,
-    flexibleMinor: 0,
-    daysUntilIncome: 0,
-    recentTransactions: [],
-    ledgerTransactions: [],
-    planItems,
-    currency: profile.primaryCurrency,
-    progress: progress ?? emptyUserProgress(profile.id),
   };
 }
 
