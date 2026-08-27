@@ -24,6 +24,8 @@ describe("Plan cash coverage stack", () => {
   it("leads with Saldo / Kommer in / Kvar att betala / Över, not Mot planen", () => {
     expect(src).toContain("SV.saldo");
     expect(src).toContain("SV.kommerIn");
+    expect(src).toContain("tone=\"in\"");
+    expect(src).toContain("tone=\"out\"");
     expect(src).toContain("SV.kvarAttBetala");
     expect(src).toContain("SV.over");
     expect(src).toContain("CASH_COVERAGE_HINT_SV");

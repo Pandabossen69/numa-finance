@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SV } from "./labels-sv";
+import { planDoneLabel, planPartialLabel, SV } from "./labels-sv";
 
 describe("Swedish money labels", () => {
   it("never calls the plan leftover pile Saldo or Allt i NUMA", () => {
@@ -41,5 +41,16 @@ describe("Swedish money labels", () => {
     expect(SV.planHint).not.toMatch(/journey/i);
     expect(SV.fotaHint).not.toMatch(/välkommen/i);
     expect(SV.planHint).not.toMatch(/välkommen/i);
+  });
+
+  it("marks plan incomes Mottagen and expenses Betald", () => {
+    expect(SV.betald).toBe("Betald");
+    expect(SV.mottagen).toBe("Mottagen");
+    expect(SV.delvisBetald).toBe("Delvis betald");
+    expect(SV.delvisMottagen).toBe("Delvis mottagen");
+    expect(planDoneLabel("expense")).toBe("Betald");
+    expect(planDoneLabel("income")).toBe("Mottagen");
+    expect(planPartialLabel("expense")).toBe("Delvis betald");
+    expect(planPartialLabel("income")).toBe("Delvis mottagen");
   });
 });

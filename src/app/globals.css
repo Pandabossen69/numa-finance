@@ -1,36 +1,40 @@
 @import "tailwindcss";
 
 /*
- * NUMA visual foundation — light only.
+ * NUMA visual foundation — light only, evening-comfortable.
+ * Quiet-luxury sage canvas (2026 fintech): cream cards, never paper white.
  * Perspective: sticky day envelope as a dial.
  * Atmosphere: layered mint mesh + fine grain; money in tabular mono.
  */
 :root {
-  --numa-bg: #e4efe8;
-  --numa-bg-deep: #d2e3d9;
+  --numa-bg: #c8d6ce;
+  --numa-bg-deep: #b3c4ba;
   --numa-ink: #071511;
-  --numa-muted: #3d524a;
-  --numa-faint: #5c7369;
-  --numa-surface: rgba(252, 254, 253, 0.72);
-  --numa-surface-solid: #f8fcfa;
-  --numa-surface-strong: #ffffff;
-  --numa-border: rgba(7, 21, 17, 0.07);
-  --numa-border-strong: rgba(7, 21, 17, 0.11);
-  --numa-accent: #0c7d68;
-  --numa-accent-soft: #b6eadc;
+  --numa-muted: #3a4e46;
+  --numa-faint: #567066;
+  --numa-surface: rgba(232, 239, 234, 0.86);
+  --numa-surface-solid: #e4ece7;
+  --numa-surface-strong: #eaf1ec;
+  --numa-card: #eaf1ec;
+  --numa-border: rgba(7, 21, 17, 0.1);
+  --numa-border-strong: rgba(7, 21, 17, 0.16);
+  --numa-accent: #0b7a64;
+  --numa-accent-soft: #8ed4c0;
   --numa-accent-ink: #04372f;
-  --numa-accent-glow: rgba(12, 125, 104, 0.18);
+  --numa-accent-glow: rgba(11, 122, 100, 0.26);
   --numa-danger: #b42318;
   --numa-danger-soft: #fde8e6;
   --numa-alarm: #a86b3a;
-  --numa-alarm-soft: #f6e7d4;
-  --numa-positive: #146b42;
-  --numa-positive-soft: #d4efdf;
+  --numa-alarm-soft: #f3ddc8;
+  --numa-positive: #0f6a40;
+  --numa-positive-soft: #bfe8d0;
+  --numa-spend: #7a5c48;
+  --numa-spend-soft: #ead9cc;
   --numa-warning: #9a6700;
   --numa-warning-soft: #fef3c7;
-  --numa-shadow: 0 22px 48px rgba(7, 21, 17, 0.07);
-  --numa-shadow-sm: 0 8px 22px rgba(7, 21, 17, 0.045);
-  --numa-nav: #f3faf7;
+  --numa-shadow: 0 22px 48px rgba(7, 21, 17, 0.1);
+  --numa-shadow-sm: 0 8px 22px rgba(7, 21, 17, 0.07);
+  --numa-nav: #d0ddd5;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
@@ -56,12 +60,14 @@
   --color-numa-muted: var(--numa-muted);
   --color-numa-faint: var(--numa-faint);
   --color-numa-surface: var(--numa-surface-solid);
+  --color-numa-card: var(--numa-card);
   --color-numa-border: var(--numa-border);
   --color-numa-accent: var(--numa-accent);
   --color-numa-accent-soft: var(--numa-accent-soft);
   --color-numa-danger: var(--numa-danger);
   --color-numa-alarm: var(--numa-alarm);
   --color-numa-positive: var(--numa-positive);
+  --color-numa-spend: var(--numa-spend);
   --font-sans: var(--font-numa-sans);
   --font-mono: var(--font-numa-mono);
 }
@@ -87,10 +93,12 @@ body {
   min-height: 100dvh;
   background-color: var(--numa-bg);
   background-image:
-    radial-gradient(1200px 640px at 12% -18%, #f7fcf9 0%, transparent 55%),
-    radial-gradient(900px 520px at 100% -4%, rgba(11, 111, 93, 0.16) 0%, transparent 48%),
-    radial-gradient(700px 480px at 80% 110%, rgba(7, 21, 17, 0.05) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E"),
+    radial-gradient(980px 560px at 8% -22%, rgba(159, 220, 203, 0.35) 0%, transparent 58%),
+    radial-gradient(820px 480px at 100% 0%, rgba(11, 111, 93, 0.18) 0%, transparent 50%),
+    radial-gradient(640px 420px at 78% 108%, rgba(7, 21, 17, 0.08) 0%, transparent 52%),
     linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
+  background-size: 180px 180px, auto, auto, auto, auto;
   background-attachment: scroll;
   color: var(--numa-ink);
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
@@ -131,9 +139,9 @@ body {
   position: relative;
   background: linear-gradient(
     168deg,
-    rgba(255, 255, 255, 0.94) 0%,
+    rgba(234, 241, 236, 0.96) 0%,
     var(--numa-surface-solid) 52%,
-    rgba(244, 250, 247, 0.98) 100%
+    rgba(214, 228, 220, 0.96) 100%
   );
   border: 1px solid var(--numa-border);
   border-radius: 1.45rem;
@@ -159,9 +167,9 @@ body {
 .numa-panel-strong {
   position: relative;
   background:
-    radial-gradient(520px 280px at 100% 0%, rgba(11, 111, 93, 0.1), transparent 55%),
-    linear-gradient(165deg, #ffffff 0%, #f7fcf9 58%, #eef7f2 100%);
-  border: 1px solid var(--numa-border-strong);
+    radial-gradient(560px 300px at 100% -10%, rgba(11, 122, 100, 0.22), transparent 58%),
+    linear-gradient(165deg, #dff3ea 0%, #d0e9dd 48%, #c3ddd1 100%);
+  border: 1px solid color-mix(in srgb, var(--numa-accent) 22%, var(--numa-border-strong));
   border-radius: 1.75rem;
   box-shadow: var(--numa-shadow);
   overflow: hidden;
@@ -182,9 +190,9 @@ body {
 .numa-panel-park {
   position: relative;
   background:
-    radial-gradient(480px 240px at 0% 0%, rgba(7, 21, 17, 0.05), transparent 55%),
-    linear-gradient(165deg, #ffffff 0%, #f6f8f7 62%, #eef1ef 100%);
-  border: 1px solid var(--numa-border-strong);
+    radial-gradient(480px 240px at 0% 0%, rgba(122, 92, 72, 0.12), transparent 55%),
+    linear-gradient(165deg, #efe8de 0%, #e4dbd0 58%, #d8cfc4 100%);
+  border: 1px solid color-mix(in srgb, var(--numa-spend) 22%, var(--numa-border-strong));
   border-radius: 1.75rem;
   box-shadow: var(--numa-shadow);
   overflow: hidden;
@@ -200,14 +208,14 @@ body {
   border-radius: 999px;
   background: linear-gradient(
     180deg,
-    var(--numa-ink) 0%,
-    rgba(7, 21, 17, 0.18) 100%
+    var(--numa-spend) 0%,
+    rgba(122, 92, 72, 0.22) 100%
   );
   pointer-events: none;
 }
 
 .numa-panel-list {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--numa-card);
   border: 1px solid var(--numa-border);
   border-radius: 1.35rem;
   box-shadow: var(--numa-shadow-sm);
@@ -305,10 +313,22 @@ body {
 
 .numa-split > div:first-child {
   padding-left: 0.15rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--numa-positive-soft) 70%, transparent) 0%,
+    transparent 100%
+  );
+  border-radius: 1.15rem 0 0 1.15rem;
 }
 
 .numa-split > div:last-child {
   padding-right: 0.15rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--numa-spend-soft) 75%, transparent) 0%,
+    transparent 100%
+  );
+  border-radius: 0 1.15rem 1.15rem 0;
 }
 
 .numa-split-rule {
@@ -520,23 +540,50 @@ body {
 .numa-wealth-score {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: space-between;
-  gap: 0.45rem 0.7rem;
-  padding: 0.95rem 1.1rem;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid var(--numa-border);
-  border-radius: 1.25rem;
-  box-shadow: var(--numa-shadow-sm);
+  gap: 0.45rem 0.55rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.numa-wealth-score > div {
+.numa-wealth-cell {
   flex: 1 1 5.5rem;
   min-width: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--numa-border);
+  border-radius: 1.15rem;
+}
+
+.numa-wealth-cell.is-live {
+  background: linear-gradient(165deg, #d8f3e6 0%, #eaf1ec 100%);
+  border-color: color-mix(in srgb, var(--numa-positive) 22%, var(--numa-border));
+}
+
+.numa-wealth-cell.is-park {
+  background: linear-gradient(165deg, #efe8de 0%, #eaf1ec 100%);
+  border-color: color-mix(in srgb, var(--numa-spend) 22%, var(--numa-border));
+}
+
+.numa-wealth-cell.is-all {
+  background: linear-gradient(165deg, #cfe8dc 0%, #eaf1ec 100%);
+  border-color: color-mix(in srgb, var(--numa-accent) 24%, var(--numa-border));
+}
+
+.numa-amt-in {
+  color: var(--numa-positive);
+}
+
+.numa-amt-out {
+  color: var(--numa-spend);
 }
 
 .numa-wealth-op {
-  padding-bottom: 0.15rem;
+  align-self: center;
+  padding-bottom: 0;
   color: var(--numa-faint);
   font-size: 0.95rem;
   font-weight: 600;
@@ -560,6 +607,11 @@ body {
 .numa-chip-mint {
   background: var(--numa-positive-soft);
   color: var(--numa-positive);
+}
+
+.numa-chip-spend {
+  background: var(--numa-spend-soft);
+  color: var(--numa-spend);
 }
 
 .numa-chip-danger {
@@ -587,15 +639,26 @@ body {
     color 180ms ease;
 }
 
+.numa-plan-row.is-fresh {
+  animation: numa-row-in 280ms ease;
+}
+
+@keyframes numa-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .numa-plan-row.is-settled {
-  background: linear-gradient(
-    165deg,
-    rgba(198, 232, 216, 0.7) 0%,
-    rgba(236, 244, 239, 0.42) 100%
-  );
+  background: linear-gradient(165deg, #c4ead6 0%, #d9f0e4 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 10px 22px rgba(12, 125, 104, 0.11);
+    inset 3px 0 0 var(--numa-positive),
+    0 8px 18px rgba(15, 106, 64, 0.12);
 }
 
 .numa-plan-row.is-settled .numa-plan-name,
@@ -608,14 +671,10 @@ body {
 }
 
 .numa-plan-row.is-partial {
-  background: linear-gradient(
-    165deg,
-    rgba(182, 234, 220, 0.48) 0%,
-    rgba(248, 252, 250, 0.28) 100%
-  );
+  background: linear-gradient(165deg, #f0dfd0 0%, #f7ece4 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 8px 18px rgba(12, 125, 104, 0.08);
+    inset 3px 0 0 var(--numa-spend),
+    0 8px 18px rgba(122, 92, 72, 0.12);
 }
 
 .numa-settle-eq {
@@ -692,7 +751,7 @@ body {
 
 .numa-skel {
   border-radius: 1.25rem;
-  background: rgba(255, 255, 255, 0.52);
+  background: color-mix(in srgb, var(--numa-card) 72%, var(--numa-bg));
   box-shadow: inset 0 0 0 1px var(--numa-border);
 }
 
@@ -918,7 +977,8 @@ body {
   .numa-nav-progress,
   .numa-day-dial-arc,
   .numa-komigang-card,
-  .numa-step-check {
+  .numa-step-check,
+  .numa-plan-row.is-fresh {
     animation: none !important;
   }
 

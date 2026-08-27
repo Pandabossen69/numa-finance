@@ -46,7 +46,7 @@ function ChoiceLink({
   return (
     <Link
       href={href}
-      className="numa-panel numa-press flex min-h-[4.5rem] w-full min-w-0 items-center justify-between gap-4 overflow-hidden px-4 py-4 text-left transition hover:border-[var(--numa-border-strong)] hover:bg-white hover:shadow-[var(--numa-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 md:min-h-32 md:px-5"
+      className="numa-panel numa-press flex min-h-[4.5rem] w-full min-w-0 items-center justify-between gap-4 overflow-hidden px-4 py-4 text-left transition hover:border-[var(--numa-border-strong)] hover:bg-[var(--numa-card)] hover:shadow-[var(--numa-shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 md:min-h-32 md:px-5"
     >
       <span className="min-w-0">
         <span className="block text-[15px] font-semibold tracking-tight">

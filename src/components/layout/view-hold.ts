@@ -20,7 +20,7 @@ export function shouldHoldPreviousView(input: {
 
 /**
  * What to paint while a tab transition is in flight.
- * - dest: cached destination (revisit — keep the heavy dashboard mounted)
+ * - dest: cached destination (revisit or same-tab refresh — keep the view mounted)
  * - held: previous tab (first visit to dest)
  * - children: show the incoming tree (drill-in, first load, soft fallback)
  */
@@ -37,7 +37,11 @@ export function resolveVisibleTab(input: {
   const crossTab = Boolean(
     input.destTab && input.heldTab && input.destTab !== input.heldTab,
   );
-  if (!crossTab) return "children";
+  if (!crossTab) {
+    // router.refresh() on Plan/Hem still swaps in loading.tsx. Keep the live tab.
+    if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
+    return "children";
+  }
   if (input.destIsTabRoot && input.hasDestCache) return "dest";
   return "held";
 }

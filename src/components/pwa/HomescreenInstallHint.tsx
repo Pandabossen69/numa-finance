@@ -99,7 +99,7 @@ export function HomescreenInstallHint({
   if (variant === "bar") {
     return (
       <aside
-        className="flex items-center gap-2 rounded-full border border-[var(--numa-border)] bg-white/70 px-3 py-1.5"
+        className="flex items-center gap-2 rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 py-1.5"
         aria-label="Lägg till på hemskärmen"
       >
         <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--numa-muted)]">
@@ -129,7 +129,7 @@ export function HomescreenInstallHint({
 
   return (
     <aside
-      className="animate-rise space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-white/70 px-4 py-4"
+      className="animate-rise space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
       aria-label="Lägg till på hemskärmen"
     >
       <div className="space-y-1">

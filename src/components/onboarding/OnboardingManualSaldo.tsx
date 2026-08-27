@@ -76,7 +76,7 @@ export function OnboardingManualSaldo({
                 setError(null);
               }}
               placeholder={currency}
-              className="money min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-white/90 px-4 text-lg font-semibold outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+              className="money min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-lg font-semibold outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
             />
           </label>
           <label className="block">
@@ -89,7 +89,7 @@ export function OnboardingManualSaldo({
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
               placeholder={C.accountNamePlaceholder}
-              className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-white/90 px-4 text-base outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+              className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-base outline-none transition focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
             />
           </label>
         </div>

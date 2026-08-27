@@ -77,23 +77,29 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("coverage={coverage}");
   });
 
-  it("lets every month mark Klar on incomes and expenses without deleting", () => {
+  it("lets every month mark Betald or Mottagen without deleting", () => {
     expect(src).toContain("setPlanItemSettledAction");
     expect(src).toContain("onSettle={settleRow}");
-    expect(src).toContain("SV.klar");
+    expect(src).toContain("planDoneLabel");
+    expect(src).toContain("planPartialLabel");
+    expect(src).toContain('settleKind="income"');
+    expect(src).toContain('settleKind="expense"');
     expect(src).toContain("SV.angraKlar");
     expect(src).not.toContain("locked={isPastMonth}");
   });
 
-  it("hides the Klar button and shows settled rows with a green wash", () => {
+  it("shows Betald/Mottagen in mint and Delvis in clay, without a Klar button", () => {
     expect(src).toContain("numa-plan-row");
     expect(src).toContain("is-settled");
     expect(src).toContain("is-partial");
-    expect(src).not.toContain("numa-chip numa-chip-mint");
+    expect(src).toContain("numa-chip numa-chip-mint");
+    expect(src).toContain("numa-chip numa-chip-spend");
     expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(css).toContain(".numa-plan-row.is-settled");
-    expect(css).toContain("rgba(12, 125, 104");
+    expect(css).toContain(".numa-plan-row.is-partial");
+    expect(css).toContain("var(--numa-positive)");
+    expect(css).toContain("var(--numa-spend)");
   });
 
   it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {
@@ -114,8 +120,8 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("createPlanItemAction");
   });
 
-  it("lets Delvis klar take an amount and a date for the rest", () => {
-    expect(src).toContain("SV.delvisKlar");
+  it("lets Delvis betald / mottagen take an amount and a date for the rest", () => {
+    expect(src).toContain("planPartialLabel");
     expect(src).toContain("remainingDatePrompt");
     expect(src).toContain("När kommer resten?");
     expect(src).toContain("När ska resten betalas?");
@@ -123,5 +129,20 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("remainingDate");
     expect(src).toContain("applyPlanItemEdits");
     expect(src).toContain("remainingDueIso(item)");
+  });
+
+  it("lands a new row immediately and closes add without emptying the form first", () => {
+    expect(src).toContain("function commitAdd");
+    expect(src).toContain("setAddKind(null)");
+    expect(src).toContain("adoptServerPlanItems");
+    expect(src).toContain("is-fresh");
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(css).toContain(".numa-plan-row.is-fresh");
+    expect(css).toContain("numa-row-in");
+    const commit = src.slice(src.indexOf("function commitAdd"), src.indexOf("function settleRow"));
+    expect(commit).toContain("setAddKind(null)");
+    expect(commit).toContain("runMutation");
+    expect(commit.indexOf("setAddKind(null)")).toBeLessThan(commit.indexOf("void runMutation"));
+    expect(commit).not.toContain("} else {\n                  setAddKind(null);");
   });
 });

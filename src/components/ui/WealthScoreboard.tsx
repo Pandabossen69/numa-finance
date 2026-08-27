@@ -23,7 +23,7 @@ export function WealthScoreboard({
   const livingOk = livingMinor >= 0;
   return (
     <div className="numa-wealth-score" aria-label={SV.alltINuma}>
-      <div className="min-w-0">
+      <div className="numa-wealth-cell is-live min-w-0">
         <p className="numa-section-title">{livingLabel}</p>
         <div
           className={`mt-1 ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
@@ -41,7 +41,7 @@ export function WealthScoreboard({
       <p className="numa-wealth-op" aria-hidden>
         +
       </p>
-      <div className="min-w-0">
+      <div className="numa-wealth-cell is-park min-w-0">
         <p className="numa-section-title">{SV.sparande}</p>
         <div className="mt-1 text-[var(--numa-ink)]">
           <MoneyDisplay
@@ -56,7 +56,7 @@ export function WealthScoreboard({
       <p className="numa-wealth-op" aria-hidden>
         =
       </p>
-      <div className="min-w-0 text-right sm:text-left">
+      <div className="numa-wealth-cell is-all min-w-0 text-right sm:text-left">
         <p className="numa-section-title">{SV.alltINuma}</p>
         <div className="mt-1 text-[var(--numa-accent-ink)]">
           <MoneyDisplay
@@ -106,7 +106,7 @@ export function CompactPiles({
             />
           )}
         </div>
-        <p className="mt-2 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
+        <p className="mt-2 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug numa-amt-in">
           <span>{SV.kommerIn}</span>
           <MoneyDisplay
             amountMinor={incomingMinor}
@@ -117,7 +117,7 @@ export function CompactPiles({
             wrap={false}
           />
         </p>
-        <p className="mt-1 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug text-[var(--numa-muted)]">
+        <p className="mt-1 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug numa-amt-out">
           <span>{SV.kvarAttBetala}</span>
           <MoneyDisplay
             amountMinor={unpaidMinor}

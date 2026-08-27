@@ -10,8 +10,8 @@
  *
  * Vocabulary (cash vs plan — do not mix):
  * - Saldo / På kontot: verified bank / calculated account balance
- * - Kommer in: planned income not yet received in the ledger (minus Klar / Delvis klar)
- * - Kvar att betala: planned expenses not yet paid in the ledger (minus Klar / Delvis klar; not savings)
+ * - Kommer in: planned income not yet received (minus Mottagen / Delvis mottagen)
+ * - Kvar att betala: planned expenses not yet paid (minus Betald / Delvis betald; not savings)
  * - Över: saldo + kommer in − kvar att betala (Plan/Hem hero)
  * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
  * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
@@ -67,11 +67,24 @@ export const SV = {
   manad: "Månad",
   saRaknarNuma: "Så räknar NUMA",
   idag: "Idag",
-  klar: "Klar",
-  delvisKlar: "Delvis klar",
+  betald: "Betald",
+  mottagen: "Mottagen",
+  delvis: "Delvis",
+  delvisBetald: "Delvis betald",
+  delvisMottagen: "Delvis mottagen",
   resten: "Resten",
   angraKlar: "Ångra",
   appDescription:
     "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
   notFoundHint: "Gå tillbaka till Hem — där ser du hur mycket som är kvar idag.",
 } as const;
+
+export type PlanSettleKind = "income" | "expense";
+
+export function planDoneLabel(kind: PlanSettleKind): string {
+  return kind === "income" ? SV.mottagen : SV.betald;
+}
+
+export function planPartialLabel(kind: PlanSettleKind): string {
+  return kind === "income" ? SV.delvisMottagen : SV.delvisBetald;
+}

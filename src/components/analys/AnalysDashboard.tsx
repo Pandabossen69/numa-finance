@@ -445,7 +445,7 @@ function ScopeChip({
       className={`numa-press numa-scope-chip min-h-11 rounded-full px-4 text-sm font-semibold ${
         active
           ? "is-active bg-[var(--numa-ink)] text-white"
-          : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+          : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >
       {label}

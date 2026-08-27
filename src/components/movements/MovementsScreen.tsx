@@ -209,7 +209,7 @@ export function MovementsScreen({
             className={`numa-press min-h-11 rounded-full px-3.5 text-sm font-semibold ${
               filter === f.id
                 ? "bg-[var(--numa-ink)] text-white"
-                : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+                : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {f.label}
@@ -278,7 +278,7 @@ export function MovementsScreen({
                       inputMode="decimal"
                       value={editAmount}
                       onChange={(e) => setEditAmount(e.target.value)}
-                      className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-white/70 px-3 text-lg font-semibold"
+                      className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-lg font-semibold"
                     />
                     {tx.transactionType === "expense" ? (
                       <input
@@ -437,7 +437,7 @@ function PeriodChip({
       className={`numa-press min-h-11 rounded-full px-4 text-sm font-semibold ${
         active
           ? "bg-[var(--numa-ink)] text-white"
-          : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+          : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >
       {label}

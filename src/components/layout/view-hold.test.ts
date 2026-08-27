@@ -107,4 +107,17 @@ describe("resolveVisibleTab", () => {
       }),
     ).toBe("children");
   });
+
+  it("keeps Plan mounted on same-tab refresh instead of flashing loading.tsx", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/plan",
+        heldTab: "/plan",
+        destIsTabRoot: true,
+        hasDestCache: true,
+      }),
+    ).toBe("dest");
+  });
 });

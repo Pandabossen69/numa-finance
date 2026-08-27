@@ -35,7 +35,7 @@ export function SideNav({ displayName }: { displayName: string }) {
                 className={`numa-press relative rounded-2xl px-1 py-3 ${
                   active
                     ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)] shadow-[inset_0_0_0_1px_rgba(12,125,104,0.16)]"
-                    : "text-[var(--numa-muted)] hover:bg-white/70 hover:text-[var(--numa-ink)]"
+                    : "text-[var(--numa-muted)] hover:bg-[var(--numa-card)] hover:text-[var(--numa-ink)]"
                 }`}
               >
                 {active ? (
