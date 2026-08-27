@@ -18,8 +18,6 @@ import {
   cumulativePlanSavingsMinor,
   projectCashCoverage,
   projectExtraSaldoSeries,
-  projectLivingBudget,
-  projectPayCycle,
   projectPlanForMonth,
   yearFromMonthKey,
   visibleMonthKeysForYear,
@@ -164,8 +162,6 @@ export function PlanEditor({
   currency,
   timeZone,
   bankBalanceMinor = null,
-  cycleSpendingMinor = 0,
-  todaySpendingMinor = 0,
   spendingByMonthKey = EMPTY_MONTH_SPEND,
   ledgerTransactions = EMPTY_LEDGER,
 }: {
@@ -173,8 +169,6 @@ export function PlanEditor({
   currency: CurrencyCode;
   timeZone: string;
   bankBalanceMinor?: number | null;
-  cycleSpendingMinor?: number;
-  todaySpendingMinor?: number;
   spendingByMonthKey?: Record<string, number>;
   ledgerTransactions?: CanonicalTransaction[];
 }) {
@@ -302,24 +296,6 @@ export function PlanEditor({
       prev.startsWith(monthKey) ? prev : `${monthKey}-15`,
     );
   }
-
-  const cycle = useMemo(
-    () => projectPayCycle(localItems, new Date(), timeZone),
-    [localItems, timeZone],
-  );
-
-  const living = useMemo(
-    () =>
-      projectLivingBudget({
-        cycle,
-        now: new Date(),
-        timeZone,
-        bankBalanceMinor,
-        cycleSpendingMinor,
-        todaySpendingMinor,
-      }),
-    [cycle, timeZone, bankBalanceMinor, cycleSpendingMinor, todaySpendingMinor],
-  );
 
   useEffect(() => {
     monthChipRefs.current[monthKey]?.scrollIntoView({
@@ -588,13 +564,6 @@ export function PlanEditor({
               if (ok) setSavingsAmount("");
             });
           }}
-          dayBudgetMinor={
-            cycle.startAt &&
-            monthKey === (cycle.fundingMonthKey ?? currentMonthKey) &&
-            living.mode !== "bridge"
-              ? living.dayBudgetMinor
-              : null
-          }
         />
 
         <div className="numa-panel numa-split">

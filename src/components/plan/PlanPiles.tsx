@@ -19,7 +19,6 @@ export function PlanPiles({
   onSavingsAmount,
   onSaveSavings,
   onClearSavings,
-  dayBudgetMinor,
   savingsBusy = false,
   clearBusy = false,
 }: {
@@ -34,7 +33,6 @@ export function PlanPiles({
   onSavingsAmount: (value: string) => void;
   onSaveSavings: () => void;
   onClearSavings: () => void;
-  dayBudgetMinor: number | null;
   savingsBusy?: boolean;
   clearBusy?: boolean;
 }) {
@@ -120,19 +118,6 @@ export function PlanPiles({
             {CASH_COVERAGE_HINT_SV}
             {coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
           </p>
-
-          {dayBudgetMinor != null && dayBudgetMinor > 0 ? (
-            <p className="mt-auto text-sm text-[var(--numa-muted)]">
-              <MoneyDisplay
-                amountMinor={dayBudgetMinor}
-                currency={currency}
-                size="sm"
-                compact
-                align="start"
-              />{" "}
-              / dag
-            </p>
-          ) : null}
         </section>
 
         <section

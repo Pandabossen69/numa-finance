@@ -38,8 +38,6 @@ export default async function PlanPage() {
             currency={currency}
             timeZone={timeZone}
             bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
-            cycleSpendingMinor={snap?.cycleSpendingMinor ?? 0}
-            todaySpendingMinor={snap?.todaySpendingMinor ?? 0}
             spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
             ledgerTransactions={snap?.ledgerTransactions ?? []}
           />
