@@ -517,4 +517,36 @@ describe("projectCashCoverage", () => {
     });
     expect(view.incomingMinor).toBe(31_000_00);
   });
+
+  it("does not wipe Delvis klar remainder when a partial ledger hit matches loosely", () => {
+    const items = [
+      item({
+        id: "hyra",
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 15_000_00,
+        nextDueAt: "2026-08-01T12:00:00.000Z",
+        settledMinor: 5_000_00,
+        remainingDueAt: "2026-08-29T12:00:00.000Z",
+      }),
+    ];
+    // Half payment on the bank — must NOT zero the remaining 10k via greedy match.
+    const halfPaid = tx({
+      id: "tx-hyra-half",
+      amountMinor: 5_000_00,
+      occurredAt: "2026-08-28T10:00:00.000Z",
+      description: "Hyra",
+      direction: "debit",
+      transactionType: "expense",
+    });
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [halfPaid],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 20_000_00,
+    });
+    expect(view.unpaidMinor).toBe(10_000_00);
+    expect(view.overMinor).toBe(10_000_00);
+  });
 });

@@ -24,6 +24,7 @@ import {
   projectExtraSaldoSeries,
   projectPlanForMonth,
   remainingDueIso,
+  remainingOpenMinor,
   settledAmountMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
@@ -1253,7 +1254,10 @@ function PlanRows({
         const dateLabel = subtitle(item);
         const restIso = remainingDueIso(item);
         const restLabel = restIso ? formatListDateSv(restIso, timeZone) : null;
-        const settledLine = matchedIds.has(item.id) || isPlanSettled(item)
+        const ledgerMatched = matchedIds.has(item.id);
+        const fullyKlar =
+          isPlanSettled(item) || (ledgerMatched && !isPlanPartiallySettled(item));
+        const settledLine = fullyKlar
           ? `${SV.klar} · ${dateLabel}`
           : isPlanPartiallySettled(item)
             ? `${SV.delvisKlar} · ${formatMoneyCompact({
@@ -1365,7 +1369,7 @@ function PlanRows({
           );
         }
 
-        const muted = matchedIds.has(item.id) || isPlanSettled(item);
+        const muted = fullyKlar;
         const menuItems: OverflowMenuItem[] = [
           {
             label: "Redigera",
@@ -1375,7 +1379,7 @@ function PlanRows({
             },
           },
         ];
-        if (!matchedIds.has(item.id)) {
+        if (!fullyKlar) {
           menuItems.push({
             label: SV.delvisKlar,
             onSelect: () => {
@@ -1384,7 +1388,7 @@ function PlanRows({
             },
           });
         }
-        if (isPlanPartiallySettled(item) && !matchedIds.has(item.id)) {
+        if (isPlanPartiallySettled(item) && !fullyKlar) {
           menuItems.push({
             label: SV.angraKlar,
             onSelect: () => onSettle(item.id, false),
@@ -1416,16 +1420,20 @@ function PlanRows({
             <div className="flex shrink-0 items-center gap-1">
               <span className="mr-1 max-w-[9.5rem] text-[var(--numa-ink)] sm:max-w-none">
                 <MoneyDisplay
-                  amountMinor={item.amountMinor}
+                  amountMinor={
+                    isPlanPartiallySettled(item)
+                      ? remainingOpenMinor(item)
+                      : item.amountMinor
+                  }
                   currency={rowCurrency}
                   size="sm"
                   compact
                   align="end"
                 />
               </span>
-              {isTempPlanId(item.id) ? null : matchedIds.has(item.id) ? (
+              {isTempPlanId(item.id) ? null : fullyKlar && ledgerMatched && !isPlanSettled(item) ? (
                 <span className="numa-chip numa-chip-mint">{SV.klar}</span>
-              ) : isPlanSettled(item) ? (
+              ) : fullyKlar && isPlanSettled(item) ? (
                 <button
                   type="button"
                   disabled={pendingId === item.id && pendingAction === "settle"}
@@ -1436,6 +1444,8 @@ function PlanRows({
                     ? "…"
                     : SV.angraKlar}
                 </button>
+              ) : fullyKlar ? (
+                <span className="numa-chip numa-chip-mint">{SV.klar}</span>
               ) : (
                 <button
                   type="button"
