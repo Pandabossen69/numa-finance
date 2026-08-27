@@ -88,7 +88,7 @@ body {
   background-color: var(--numa-bg);
   background-image:
     radial-gradient(1200px 640px at 12% -18%, #f7fcf9 0%, transparent 55%),
-    radial-gradient(900px 520px at 100% -4%, rgba(11, 111, 93, 0.16) 0%, transparent 48%),
+    radial-gradient(980px 560px at 100% -8%, rgba(12, 125, 104, 0.22) 0%, transparent 50%),
     radial-gradient(700px 480px at 80% 110%, rgba(7, 21, 17, 0.05) 0%, transparent 50%),
     linear-gradient(180deg, var(--numa-bg) 0%, var(--numa-bg-deep) 100%);
   background-attachment: scroll;
@@ -364,11 +364,11 @@ body {
 .numa-day-stage::after {
   content: "";
   position: absolute;
-  inset: -12% -8% auto auto;
-  width: min(58%, 14rem);
-  height: min(42%, 11rem);
+  inset: -18% -12% auto auto;
+  width: min(72%, 17rem);
+  height: min(52%, 13rem);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(11, 111, 93, 0.12) 0%, transparent 68%);
+  background: radial-gradient(circle, rgba(12, 125, 104, 0.2) 0%, transparent 70%);
   z-index: -1;
   pointer-events: none;
 }
@@ -540,6 +540,12 @@ body {
   color: var(--numa-faint);
   font-size: 0.95rem;
   font-weight: 600;
+}
+
+.numa-cash-board {
+  background:
+    radial-gradient(420px 220px at 100% 0%, rgba(12, 125, 104, 0.12), transparent 58%),
+    linear-gradient(165deg, #ffffff 0%, #f7fcf9 58%, #eef7f2 100%);
 }
 
 .numa-chip {

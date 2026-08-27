@@ -107,7 +107,7 @@ export function PlanPiles({
             <MoneyDisplay
               amountMinor={coverage.overMinor}
               currency={currency}
-              size="md"
+              size="lg"
               compact
               align="start"
               wrap={false}

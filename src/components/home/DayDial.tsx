@@ -13,8 +13,8 @@ export function DayDial({
   children: React.ReactNode;
 }) {
   const size = 220;
-  const stroke = 7;
-  const usedStroke = over ? 4.5 : 7;
+  const stroke = 9;
+  const usedStroke = over ? 5.5 : 9;
   const r = (size - stroke) / 2 - 2;
   const c = 2 * Math.PI * r;
   const clamped = Math.min(1.08, Math.max(0, usedRatio));

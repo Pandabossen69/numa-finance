@@ -10,6 +10,8 @@ describe("CompactPiles cash stack", () => {
     expect(compact).toContain("SV.kommerIn");
     expect(compact).toContain("SV.kvarAttBetala");
     expect(compact).toContain("SV.over");
+    expect(compact).toContain('size="lg"');
+    expect(compact).toContain("numa-cash-board");
     expect(compact).toContain("wrap={false}");
     expect(compact).toContain("overflow-hidden");
     expect(compact).not.toContain("Mer än planerat.");
