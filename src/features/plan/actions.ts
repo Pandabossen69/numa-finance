@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   addMonthsKey,
+  applyPlanItemEdits,
   dayOfMonthFromIso,
   dueDateInMonth,
   importableFixedExpenses,
@@ -338,7 +339,18 @@ export async function updatePlanItemAmountAction(raw: {
     if (amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
-    const item = await updatePlanItem({ id, amountMinor });
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === id);
+    const edited = existing
+      ? applyPlanItemEdits(existing, { amountMinor })
+      : null;
+    const item = await updatePlanItem({
+      id,
+      amountMinor: edited?.amountMinor ?? amountMinor,
+      settledAt: edited?.settledAt,
+      settledMinor: edited?.settledMinor,
+      remainingDueAt: edited?.remainingDueAt,
+    });
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
@@ -379,21 +391,33 @@ export async function updatePlanItemAction(
     }
 
     const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === input.id);
 
-    let nextDueAt: string | undefined;
+    let proposedDue: string | null | undefined;
     if (input.date) {
-      nextDueAt = `${input.date}T12:00:00.000Z`;
+      proposedDue = `${input.date}T12:00:00.000Z`;
     } else if (input.dayOfMonth != null) {
       const monthKey = input.monthKey ?? ctx.currentMonthKey;
-      nextDueAt = dueDateInMonth(monthKey, input.dayOfMonth);
+      proposedDue = dueDateInMonth(monthKey, input.dayOfMonth);
     }
+
+    const edited = existing
+      ? applyPlanItemEdits(existing, {
+          name: input.name,
+          amountMinor,
+          nextDueAt: proposedDue,
+        })
+      : null;
 
     const item = await updatePlanItem({
       id: input.id,
-      name: input.name,
+      name: edited?.name ?? input.name,
       kind: input.kind,
-      amountMinor,
-      nextDueAt,
+      amountMinor: edited?.amountMinor ?? amountMinor,
+      nextDueAt: edited ? edited.nextDueAt : proposedDue,
+      settledAt: edited?.settledAt,
+      settledMinor: edited?.settledMinor,
+      remainingDueAt: edited?.remainingDueAt,
     });
     revalidatePlanPaths();
     return { ok: true, item };

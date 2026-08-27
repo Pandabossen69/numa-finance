@@ -486,4 +486,35 @@ describe("projectCashCoverage", () => {
     expect(view.incomingMinor).toBe(31_000_00);
     expect(view.overMinor).toBe(32_000_00);
   });
+
+  it("does not auto-Klar a Delvis klar row from a nearby ledger hit", () => {
+    const items = [
+      item({
+        id: "trukks",
+        name: "Trukks",
+        kind: "expected",
+        amountMinor: 51_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-27T05:00:00.000Z",
+        settledMinor: 20_000_00,
+        remainingDueAt: "2026-08-29T12:00:00.000Z",
+      }),
+    ];
+    const landed = tx({
+      id: "tx-rest",
+      amountMinor: 31_000_00,
+      occurredAt: "2026-08-29T08:00:00.000Z",
+      description: "Trukks",
+      direction: "credit",
+      transactionType: "income",
+    });
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [landed],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 21_000_00,
+    });
+    expect(view.incomingMinor).toBe(31_000_00);
+  });
 });

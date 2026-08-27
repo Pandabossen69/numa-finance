@@ -3,6 +3,7 @@ import { calendarDaysBetween } from "./datetime";
 import {
   addMonthsKey,
   isPlanIncome,
+  isPlanPartiallySettled,
   isPlanSavings,
   isPlanSettled,
   monthKeyFromDate,
@@ -137,7 +138,7 @@ export function matchPlanItemsToLedger(params: {
   const pairs: Pair[] = [];
   for (const item of items) {
     if (isPlanSavings(item) || item.amountMinor <= 0) continue;
-    if (isPlanSettled(item)) continue;
+    if (isPlanSettled(item) || isPlanPartiallySettled(item)) continue;
     if (kind === "income" && !isPlanIncome(item)) continue;
     if (kind === "expense" && isPlanIncome(item)) continue;
     for (const tx of eligibleTx) {

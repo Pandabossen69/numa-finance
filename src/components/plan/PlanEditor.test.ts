@@ -100,5 +100,7 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("När ska resten betalas?");
     expect(src).toContain("partialDate");
     expect(src).toContain("remainingDate");
+    expect(src).toContain("applyPlanItemEdits");
+    expect(src).toContain("remainingDueIso(item)");
   });
 });

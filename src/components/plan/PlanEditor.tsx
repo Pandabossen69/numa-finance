@@ -17,6 +17,7 @@ import {
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
   matchPlanItemsToLedger,
+  applyPlanItemEdits,
   isPlanPartiallySettled,
   isPlanSettled,
   projectCashCoverage,
@@ -467,7 +468,7 @@ export function PlanEditor({
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(item.nextDueAt, timeZone));
+    setEditDate(isoToDateInput(remainingDueIso(item), timeZone));
   }
 
   function startEditExpense(item: PlanItem) {
@@ -481,11 +482,14 @@ export function PlanEditor({
   function saveEditedItem(id: string, patch: Partial<PlanItem>) {
     const previous = localItems.find((row) => row.id === id);
     if (!previous) return;
-    const next: PlanItem = {
-      ...previous,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
+    const next = applyPlanItemEdits(previous, {
+      name: patch.name,
+      amountMinor: patch.amountMinor,
+      nextDueAt: patch.nextDueAt,
+    });
+    const pickedDate = patch.nextDueAt
+      ? isoToDateInput(patch.nextDueAt, timeZone) || undefined
+      : undefined;
     void runMutation({
       busy: `edit:${id}`,
       apply: (rows) => replaceItemById(rows, id, next),
@@ -495,9 +499,7 @@ export function PlanEditor({
           id,
           name: next.name,
           amount: editAmount,
-          date: next.nextDueAt
-            ? isoToDateInput(next.nextDueAt, timeZone) || undefined
-            : undefined,
+          date: pickedDate,
         }),
       reconcile: (rows, result) =>
         result.item ? mergeReturnedItem(rows, result.item) : rows,

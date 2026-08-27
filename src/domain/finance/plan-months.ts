@@ -49,6 +49,77 @@ export function remainingDueIso(item: PlanItem): string | null {
   return item.nextDueAt;
 }
 
+/**
+ * Apply name/amount/date from Plan edit without breaking Klar / Delvis klar.
+ * - Fully Klar stays Klar at the new amount (row can still move date).
+ * - Delvis klar keeps the original month (`nextDueAt`); the date field is the rest.
+ * - If the new amount is covered by what is already marked, it becomes fully Klar.
+ */
+export function applyPlanItemEdits(
+  item: PlanItem,
+  patch: {
+    name?: string;
+    amountMinor?: number;
+    nextDueAt?: string | null;
+  },
+  now: Date = new Date(),
+): PlanItem {
+  const name = patch.name ?? item.name;
+  const amountMinor = patch.amountMinor ?? item.amountMinor;
+  const dateTouched = patch.nextDueAt !== undefined;
+  const pickedDue = dateTouched ? patch.nextDueAt : item.nextDueAt;
+  const ts = now.toISOString();
+
+  if (isPlanSettled(item)) {
+    return {
+      ...item,
+      name,
+      amountMinor,
+      nextDueAt: pickedDue ?? item.nextDueAt,
+      settledAt: item.settledAt ?? ts,
+      settledMinor: amountMinor,
+      remainingDueAt: null,
+      updatedAt: ts,
+    };
+  }
+
+  if (isPlanPartiallySettled(item)) {
+    const settled = settledAmountMinor(item);
+    if (settled >= amountMinor) {
+      return {
+        ...item,
+        name,
+        amountMinor,
+        nextDueAt: item.nextDueAt,
+        settledAt: item.settledAt ?? ts,
+        settledMinor: amountMinor,
+        remainingDueAt: null,
+        updatedAt: ts,
+      };
+    }
+    return {
+      ...item,
+      name,
+      amountMinor,
+      nextDueAt: item.nextDueAt,
+      settledAt: null,
+      settledMinor: settled,
+      remainingDueAt: dateTouched
+        ? (pickedDue ?? item.remainingDueAt ?? item.nextDueAt)
+        : (item.remainingDueAt ?? item.nextDueAt),
+      updatedAt: ts,
+    };
+  }
+
+  return {
+    ...item,
+    name,
+    amountMinor,
+    nextDueAt: pickedDue ?? item.nextDueAt,
+    updatedAt: ts,
+  };
+}
+
 /** Planned savings target for one month only. */
 export function isPlanSavings(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
