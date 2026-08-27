@@ -310,6 +310,40 @@ describe("projectLivingBudget", () => {
     expect(living.remainingFreeMinor).toBe(12_000_00);
   });
 
+  it("counts 0 display days when next income is today, not later cycle end", () => {
+    const payday = [
+      item({
+        name: "Trukks",
+        kind: "expected",
+        amountMinor: 52_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-27T00:00:00.000+07:00",
+      }),
+      item({
+        name: "CSN",
+        kind: "expected",
+        amountMinor: 58_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-31T12:00:00.000Z",
+      }),
+    ];
+    const now = new Date("2026-08-27T03:00:00.000Z");
+    const cycle = projectPayCycle(payday, now, tz);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 10_033_04,
+      fundingConfirmed: false,
+    });
+    expect(living.mode).toBe("bridge");
+    expect(living.nextIncomeAt).toBe("2026-08-27T00:00:00.000+07:00");
+    expect(living.nextIncomeLabelSv?.toLowerCase()).toMatch(/27/);
+    expect(living.daysUntilHorizon).toBe(0);
+    expect(living.daysLeft).toBe(1);
+    expect(living.daysUntilHorizon).not.toBe(4);
+  });
+
   it("falls back to bridge after the cycle window ends", () => {
     const cycle = projectPayCycle(
       items,

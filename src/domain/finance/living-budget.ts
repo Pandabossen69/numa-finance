@@ -1,4 +1,4 @@
-import { calendarDaysBetween, zonedDayAnchorMs } from "./datetime";
+import { calendarDaysBetween, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
 import type { PayCycleProjection } from "./pay-cycle";
 import { perDayBudgetMinor } from "./plan-months";
 import { isBankSmsLedgerRow } from "./balance";
@@ -26,7 +26,10 @@ export type LivingBudget = {
   usesBankBalance: boolean;
   availableMinor: number;
   remainingFreeMinor: number;
+  /** Inclusive spend days for dagsbudget math — never 0. */
   daysLeft: number;
+  /** Calendar days until next-income / cycle-end horizon (0 = today). Display only. */
+  daysUntilHorizon: number;
   /**
    * Sticky morning dagsbudget for this calendar day.
    * Does not shrink when you spend today.
@@ -54,10 +57,18 @@ export function remainingTodayOf(
 
 function bridgeHorizonIso(
   cycle: PayCycleProjection,
-  todayMs: number,
+  now: Date,
+  timeZone: string,
 ): string | null {
-  const startMs = cycle.startAt ? Date.parse(cycle.startAt) : NaN;
-  if (Number.isFinite(startMs) && todayMs < startMs) return cycle.startAt;
+  if (!cycle.startAt) return cycle.endAt;
+  const startDay = zonedDayAnchorMs(cycle.startAt, timeZone);
+  const todayDay = zonedDayAnchorMs(now, timeZone);
+  if (
+    todayDay < startDay ||
+    isSameZonedDay(now, cycle.startAt, timeZone)
+  ) {
+    return cycle.startAt;
+  }
   return cycle.endAt;
 }
 
@@ -77,9 +88,11 @@ function projectBridge(input: {
     ? Math.max(0, availableMinor + spentToday)
     : 0;
   const horizon = input.nextIncomeAt;
-  const daysLeft = horizon
-    ? Math.max(1, calendarDaysBetween(now, horizon, timeZone))
-    : 1;
+  const calendarDays = horizon
+    ? calendarDaysBetween(now, horizon, timeZone)
+    : 0;
+  const daysUntilHorizon = Math.max(0, calendarDays);
+  const daysLeft = Math.max(1, calendarDays);
   const dayBudgetMinor = perDayBudgetMinor(morningAvailable, daysLeft);
   const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
   return {
@@ -89,6 +102,7 @@ function projectBridge(input: {
     availableMinor,
     remainingFreeMinor: availableMinor,
     daysLeft,
+    daysUntilHorizon,
     dayBudgetMinor,
     remainingTodayMinor: remainingToday,
     nextIncomeAt: input.nextIncomeAt,
@@ -194,6 +208,7 @@ export function projectLivingBudget(input: {
       availableMinor: 0,
       remainingFreeMinor: 0,
       daysLeft: 1,
+      daysUntilHorizon: 0,
       dayBudgetMinor: 0,
       remainingTodayMinor: 0,
       nextIncomeAt: null,
@@ -216,7 +231,7 @@ export function projectLivingBudget(input: {
 
   // Bridge: before first paycheck, after cycle end, or payday without bank proof.
   if (calendarWaiting || cycleClosed || waitingForBankEvidence) {
-    const horizon = bridgeHorizonIso(cycle, todayMs);
+    const horizon = bridgeHorizonIso(cycle, now, timeZone);
     return projectBridge({
       cycle,
       now,
@@ -232,10 +247,9 @@ export function projectLivingBudget(input: {
   const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
   const poolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
-  const daysLeft = Math.max(
-    1,
-    calendarDaysBetween(now, cycle.endAt, timeZone),
-  );
+  const calendarDays = calendarDaysBetween(now, cycle.endAt, timeZone);
+  const daysUntilHorizon = Math.max(0, calendarDays);
+  const daysLeft = Math.max(1, calendarDays);
   const dayBudgetMinor = perDayBudgetMinor(poolAtMorning, daysLeft);
   const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
 
@@ -246,6 +260,7 @@ export function projectLivingBudget(input: {
     availableMinor: remainingFree,
     remainingFreeMinor: remainingFree,
     daysLeft,
+    daysUntilHorizon,
     dayBudgetMinor,
     remainingTodayMinor: remainingToday,
     nextIncomeAt: cycle.endAt,

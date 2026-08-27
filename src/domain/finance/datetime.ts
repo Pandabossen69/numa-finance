@@ -156,24 +156,32 @@ function pluralSv(n: number, one: string, many: string): string {
 export function formatRelativeVerificationSv(
   verifiedAt: string,
   now = new Date(),
+  timeZone: string = DEFAULT_TIMEZONE,
 ): string {
   const hours = (now.getTime() - Date.parse(verifiedAt)) / (1000 * 60 * 60);
-  if (hours < 1) {
-    const minutes = Math.max(1, Math.round(hours * 60));
-    return `${minutes} ${pluralSv(minutes, "minut", "minuter")} sedan`;
-  }
-  if (hours < 24) {
-    const h = Math.round(hours);
+  const civilDays = calendarDaysBetween(verifiedAt, now, timeZone);
+  if (civilDays <= 0 || hours < 24) {
+    if (hours < 1) {
+      const minutes = Math.max(1, Math.round(hours * 60));
+      return `${minutes} ${pluralSv(minutes, "minut", "minuter")} sedan`;
+    }
+    const h = Math.max(1, Math.round(hours));
     return `${h} ${pluralSv(h, "timme", "timmar")} sedan`;
   }
-  const days = Math.round(hours / 24);
-  return `${days} ${pluralSv(days, "dag", "dagar")} sedan`;
+  return `${civilDays} ${pluralSv(civilDays, "dag", "dagar")} sedan`;
 }
 
 /** Swedish count label, e.g. `1 dag` / `12 dagar`. */
 export function formatCountSv(n: number, one: string, many: string): string {
   const count = Math.max(0, Math.floor(n));
   return `${count} ${pluralSv(count, one, many)}`;
+}
+
+/** Days until a horizon: `idag` / `1 dag kvar` / `4 dagar kvar`. */
+export function formatDaysUntilSv(days: number): string {
+  const count = Math.max(0, Math.floor(days));
+  if (count <= 0) return "idag";
+  return `${formatCountSv(count, "dag", "dagar")} kvar`;
 }
 
 /** Earliest valid instant among ISO strings / Dates. */

@@ -10,7 +10,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
-import { formatCountSv } from "@/domain/finance";
+import { formatDaysUntilSv } from "@/domain/finance";
 import {
   formatMoney,
   money,
@@ -74,7 +74,7 @@ export function HomeDashboard({
 
   const dayUsedRatio =
     view.dayBudgetMinor > 0 ? todaySpendingMinor / view.dayBudgetMinor : 0;
-  const daysWord = formatCountSv(view.spendDaysLeft, "dag", "dagar");
+  const daysWord = formatDaysUntilSv(view.spendDaysLeft);
 
   const statusLine = overToday
     ? SV.overDagsbudget

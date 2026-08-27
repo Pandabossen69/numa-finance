@@ -44,4 +44,9 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain('aria-label="Anteckning"');
     expect(src).toContain('aria-label="Belopp"');
   });
+
+  it("labels days until income as idag / N dagar kvar, not a bare 4 dagar", () => {
+    expect(src).toContain("formatDaysUntilSv");
+    expect(src).not.toContain('formatCountSv(view.spendDaysLeft, "dag", "dagar")');
+  });
 });

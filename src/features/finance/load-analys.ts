@@ -55,6 +55,7 @@ export type AnalysSnapshot = {
     freeToSpendMinor: number;
     remainingFreeMinor: number;
     daysLeft: number;
+    nextIncomeLabelSv: string | null;
     dayBudgetMinor: number;
     remainingTodayMinor: number;
     incomes: AnalysLine[];
@@ -262,7 +263,8 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           savingsMinor: cycle.savingsMinor,
           freeToSpendMinor: cycle.freeToSpendMinor,
           remainingFreeMinor,
-          daysLeft: living.daysLeft,
+          daysLeft: living.daysUntilHorizon,
+          nextIncomeLabelSv: living.nextIncomeLabelSv,
           dayBudgetMinor,
           remainingTodayMinor,
           incomes: cycleIncomes,
