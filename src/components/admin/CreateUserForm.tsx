@@ -46,7 +46,7 @@ export function CreateUserForm() {
   return (
     <form
       onSubmit={onSubmit}
-      className="space-y-4 rounded-[1.5rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] p-4"
+      className="space-y-4 rounded-[1.5rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] p-4 shadow-[var(--numa-shadow-sm)] md:p-6"
       noValidate
     >
       <Field
@@ -96,7 +96,7 @@ export function CreateUserForm() {
       <button
         type="submit"
         disabled={pending || !form.email.trim() || form.password.length < 8}
-        className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition enabled:active:scale-[0.99] disabled:opacity-45"
+        className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--numa-accent)] enabled:active:scale-[0.99] disabled:opacity-45"
       >
         {pending ? "Skapar…" : "Skapa användare"}
       </button>

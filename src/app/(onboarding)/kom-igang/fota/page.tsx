@@ -36,7 +36,7 @@ export default async function OnboardingFotaPage() {
     <div className="numa-page numa-page-wide space-y-6">
       <Link
         href={ONBOARDING_SALDO_PATH}
-        className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
+        className="numa-press inline-flex min-h-11 items-center text-sm font-semibold text-[var(--numa-accent)]"
       >
         ← {C.back}
       </Link>

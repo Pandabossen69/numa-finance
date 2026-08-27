@@ -164,6 +164,7 @@ export function PlanEditor({
   bankBalanceMinor = null,
   spendingByMonthKey = EMPTY_MONTH_SPEND,
   ledgerTransactions = EMPTY_LEDGER,
+  focusAdd = null,
 }: {
   items: PlanItem[];
   currency: CurrencyCode;
@@ -171,6 +172,7 @@ export function PlanEditor({
   bankBalanceMinor?: number | null;
   spendingByMonthKey?: Record<string, number>;
   ledgerTransactions?: CanonicalTransaction[];
+  focusAdd?: null | "income" | "fixed";
 }) {
   const router = useRouter();
   const currentMonthKey = useMemo(
@@ -209,7 +211,7 @@ export function PlanEditor({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
-    null,
+    focusAdd,
   );
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);

@@ -86,6 +86,7 @@ describe("first-run onboarding", () => {
     expect(choiceUi).toContain("C.manualTitle");
     expect(choiceUi).not.toContain("Hoppa över");
     expect(choiceUi).not.toContain("Analys");
+    expect(choiceUi).toContain("md:grid-cols-2");
   });
 
   it("reuses Fota capture and the Hem saldo write, then lands on Hem", () => {

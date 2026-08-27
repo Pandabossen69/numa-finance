@@ -19,6 +19,8 @@ export default async function PlanPage({
       : steg === "utgift"
         ? "Här lägger du in det som måste betalas."
         : null;
+  const focusAdd =
+    steg === "inkomst" ? "income" : steg === "utgift" ? "fixed" : null;
   let error: string | null = null;
   let snap = null;
   try {
@@ -61,6 +63,7 @@ export default async function PlanPage({
             bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
             spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
             ledgerTransactions={snap?.ledgerTransactions ?? []}
+            focusAdd={focusAdd}
           />
         </section>
       )}

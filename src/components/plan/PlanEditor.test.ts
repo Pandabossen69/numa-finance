@@ -58,6 +58,11 @@ describe("Plan dates and add-form", () => {
     expect(src).not.toContain("numa-month-strip -mx-1");
   });
 
+  it("opens the matching add form when Kom igång sends steg", () => {
+    expect(src).toContain("focusAdd");
+    expect(src).toContain('useState<null | "income" | "fixed" | "extra">(\n    focusAdd,\n  )');
+  });
+
   it("computes Över from cash coverage, not Mot planen leftover", () => {
     expect(src).toContain("projectCashCoverage");
     expect(src).toContain("ledgerTransactions");

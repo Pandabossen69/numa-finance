@@ -49,7 +49,7 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
 
   return (
     <section
-      className="numa-panel-strong numa-komigang-card mx-auto w-full max-w-xl space-y-4 p-5 md:mx-0"
+      className="numa-panel-strong numa-komigang-card mx-auto w-full max-w-xl space-y-4 p-5 md:mx-0 md:p-6"
       aria-labelledby="kom-igang-title"
     >
       <div className="flex items-start justify-between gap-3">

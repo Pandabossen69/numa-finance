@@ -18,7 +18,7 @@ export function OnboardingSaldoChoice() {
         </p>
       </header>
 
-      <nav className="grid gap-3">
+      <nav className="grid gap-3 md:grid-cols-2">
         <ChoiceLink
           href={ONBOARDING_FOTA_PATH}
           title={C.fotaTitle}
@@ -46,7 +46,7 @@ function ChoiceLink({
   return (
     <Link
       href={href}
-      className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left"
+      className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:border-[var(--numa-border-strong)] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--numa-accent)]"
     >
       <span>
         <span className="block text-[15px] font-semibold tracking-tight">
