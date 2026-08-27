@@ -551,7 +551,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => shiftYear(-1)}
-              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-white"
+              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
               aria-label="Föregående år"
             >
               ← {viewYear - 1}
@@ -562,7 +562,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => shiftYear(1)}
-              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-white"
+              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
               aria-label="Nästa år"
             >
               {viewYear + 1} →
@@ -601,7 +601,7 @@ export function PlanEditor({
                     ? "is-active bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(7,21,17,0.18)]"
                     : key === currentMonthKey
                       ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)] ring-1 ring-[var(--numa-accent)]/35"
-                      : "bg-white text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"
+                      : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"
                 }`}
               >
                 {labelMonthNameSv(key)}

@@ -4,12 +4,21 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
 
 function token(name: string): string {
-  const match = css.match(new RegExp(`${name}:\\s*([^;]+);`));
+  const match = css.match(new RegExp(`(?:^|[\\s{;])${name}:\\s*([^;]+);`, "m"));
   expect(match?.[1], `missing ${name}`).toBeTruthy();
   return match![1].trim();
 }
 
 describe("NUMA vision palette", () => {
+  it("keeps the canvas sage, never paper white", () => {
+    expect(token("--numa-bg")).toBe("#c8d6ce");
+    expect(token("--numa-surface-strong")).not.toBe("#ffffff");
+    expect(token("--numa-surface-solid")).not.toBe("#ffffff");
+    expect(token("--numa-card")).toBe("#eaf1ec");
+    expect(css).not.toMatch(/linear-gradient\(\s*165deg,\s*#ffffff/);
+    expect(css).not.toContain("#f7fcf9");
+  });
+
   it("keeps over-budget clay alarm distinct from destroy red", () => {
     expect(token("--numa-alarm")).toBe("#a86b3a");
     expect(token("--numa-danger")).toBe("#b42318");

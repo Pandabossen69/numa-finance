@@ -192,7 +192,7 @@ export function PlanPiles({
                 onChange={(e) => onSavingsAmount(e.target.value)}
                 placeholder="t.ex. 2 000"
                 aria-label={`Sparande i ${monthName}`}
-                className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-white px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+                className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
               />
               <button
                 type="button"

@@ -67,7 +67,7 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
               disabled={pending}
               aria-label={view.allDone ? "Dölj Kom igång" : "Minimera Kom igång"}
               onClick={() => (view.allDone ? dismiss() : persistCollapsed(true))}
-              className="numa-press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-[var(--numa-muted)] transition hover:bg-white/80 hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
+              className="numa-press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-[var(--numa-muted)] transition hover:bg-[var(--numa-card)] hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
             >
               ×
             </button>
@@ -136,7 +136,7 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
                   ) : (
                     <Link
                       href={step.href}
-                      className="numa-press flex min-h-14 items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--numa-accent)] md:min-h-[5.5rem] md:items-start md:px-4 md:py-4"
+                      className="numa-press flex min-h-14 items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[var(--numa-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--numa-accent)] md:min-h-[5.5rem] md:items-start md:px-4 md:py-4"
                     >
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold tracking-tight">

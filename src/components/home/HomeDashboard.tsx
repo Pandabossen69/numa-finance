@@ -179,7 +179,7 @@ export function HomeDashboard({
                     </p>
                   ) : null}
 
-                  <div className="numa-split relative z-[1] border-t border-[var(--numa-border)] bg-white/55 pt-1">
+                  <div className="numa-split relative z-[1] border-t border-[var(--numa-border)] bg-[var(--numa-card)] pt-1">
                     <div>
                       <p className="text-[11px] font-medium text-[var(--numa-faint)]">
                         {SV.dagsbudget}
@@ -379,7 +379,7 @@ function AvailableNowCard({
           value={balance}
           onChange={(e) => setBalance(e.target.value)}
           placeholder={`Belopp (${currency})`}
-          className="money min-h-12 flex-1 rounded-xl border border-[var(--numa-border)] bg-white/90 px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+          className="money min-h-12 flex-1 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
         />
         <button
           type="button"
@@ -455,7 +455,7 @@ function UpdateBalanceLink({
             setError(null);
           }}
           placeholder={currency}
-          className="money min-h-11 w-32 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3 text-base font-semibold"
+          className="money min-h-11 w-32 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold"
         />
         <button
           type="button"
@@ -567,7 +567,7 @@ function QuickExpense({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Vad? t.ex. Lunch"
               aria-label="Anteckning"
-              className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
+              className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
               inputMode="decimal"
@@ -575,7 +575,7 @@ function QuickExpense({
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
               aria-label="Belopp"
-              className="money min-h-12 rounded-xl border border-[var(--numa-border)] bg-white/90 px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-12 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
             <button
               type="button"

@@ -336,7 +336,7 @@ export function ReceiptCaptureFlow({
   if (scanning || (pending && !preview)) {
     return (
       <div className="animate-rise space-y-6">
-        <div className="relative min-h-56 overflow-hidden rounded-2xl bg-white/50">
+        <div className="relative min-h-56 overflow-hidden rounded-2xl bg-[var(--numa-card)]">
           {scanPreviewUrl ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -405,7 +405,7 @@ export function ReceiptCaptureFlow({
             type="button"
             disabled={pending}
             onClick={() => galleryInputRef.current?.click()}
-            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-white px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
+            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-[var(--numa-card)] px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
           >
             <span
               className="text-2xl font-light leading-none text-[var(--numa-ink)]"
@@ -674,7 +674,7 @@ export function ReceiptCaptureFlow({
                 className={`numa-press min-h-11 shrink-0 rounded-full px-4 text-sm ${
                   category === c
                     ? "bg-[var(--numa-ink)] font-semibold text-white"
-                    : "bg-white font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+                    : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
                 }`}
               >
                 {c}
@@ -850,7 +850,7 @@ function captureCopy(mode: CaptureMode) {
 
 function PreviewThumb({ src }: { src: string }) {
   return (
-    <div className="min-h-48 overflow-hidden rounded-2xl bg-white/60 shadow-[var(--numa-shadow-sm)]">
+    <div className="min-h-48 overflow-hidden rounded-2xl bg-[var(--numa-card)] shadow-[var(--numa-shadow-sm)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}

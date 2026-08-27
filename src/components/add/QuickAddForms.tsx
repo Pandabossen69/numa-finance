@@ -77,7 +77,7 @@ export function QuickAddForms({
             className={`numa-press min-h-11 shrink-0 rounded-full px-3.5 text-sm ${
               mode === m.id
                 ? "bg-[var(--numa-ink)] font-semibold text-white"
-                : "bg-white font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+                : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {m.label}
@@ -175,7 +175,7 @@ function ExpenseForm({
             className={`numa-press min-h-10 rounded-full px-3 text-sm ${
               category === c
                 ? "bg-[var(--numa-ink)] font-semibold text-white"
-                : "bg-white font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+                : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {c}
@@ -448,7 +448,7 @@ function AmountField({
         placeholder="0"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="money w-full rounded-2xl border border-[var(--numa-border)] bg-white/70 px-4 py-4 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
+        className="money w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
         aria-label="Belopp"
       />
     </label>

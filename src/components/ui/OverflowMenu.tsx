@@ -40,7 +40,7 @@ export function OverflowMenu({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[var(--numa-muted)] hover:bg-white/80"
+        className="numa-press inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
         aria-label={label}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -55,7 +55,7 @@ export function OverflowMenu({
         <div
           id={menuId}
           role="menu"
-          className="numa-overflow-menu absolute right-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-2xl border border-[var(--numa-border)] bg-white py-1 shadow-[var(--numa-shadow-sm)]"
+          className="numa-overflow-menu absolute right-0 z-30 mt-1 min-w-[10rem] overflow-hidden rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] py-1 shadow-[var(--numa-shadow-sm)]"
         >
           {items.map((item) => (
             <button
