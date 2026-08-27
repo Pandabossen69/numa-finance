@@ -4,6 +4,7 @@ import {
   addMonthsKey,
   isPlanIncome,
   isPlanSavings,
+  isPlanSettled,
   monthKeyFromDate,
   projectPlanForMonth,
 } from "./plan-months";
@@ -106,7 +107,7 @@ function remainingPlanAmount(
   });
   let remaining = 0;
   for (const item of items) {
-    if (matched.has(item.id)) continue;
+    if (matched.has(item.id) || isPlanSettled(item)) continue;
     remaining += item.amountMinor;
   }
   return remaining;
@@ -134,6 +135,7 @@ export function matchPlanItemsToLedger(params: {
   const pairs: Pair[] = [];
   for (const item of items) {
     if (isPlanSavings(item) || item.amountMinor <= 0) continue;
+    if (isPlanSettled(item)) continue;
     if (kind === "income" && !isPlanIncome(item)) continue;
     if (kind === "expense" && isPlanIncome(item)) continue;
     for (const tx of eligibleTx) {
@@ -180,15 +182,9 @@ function amountToleranceMinor(planAmountMinor: number): number {
   );
 }
 
-function pairScore(
-  item: PlanItem,
-  tx: LedgerMatchTx,
-  timeZone: string,
-): number | null {
+function pairScore(item: PlanItem, tx: LedgerMatchTx, timeZone: string): number | null {
   if (!item.nextDueAt) return null;
-  const dayDiff = Math.abs(
-    calendarDaysBetween(item.nextDueAt, tx.occurredAt, timeZone),
-  );
+  const dayDiff = Math.abs(calendarDaysBetween(item.nextDueAt, tx.occurredAt, timeZone));
   if (dayDiff > DATE_WINDOW_DAYS) return null;
 
   const amountDiff = Math.abs(item.amountMinor - tx.amountMinor);

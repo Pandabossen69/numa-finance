@@ -22,6 +22,7 @@ function item(
     cadence: partial.cadence ?? "monthly",
     nextDueAt: partial.nextDueAt ?? null,
     isActive: partial.isActive ?? true,
+    settledAt: partial.settledAt ?? null,
     createdAt: "2026-08-01T00:00:00.000Z",
     updatedAt: "2026-08-01T00:00:00.000Z",
   };
@@ -374,5 +375,66 @@ describe("projectCashCoverage", () => {
     });
     expect(view.saldoMinor).toBeNull();
     expect(view.overMinor).toBe(40_000_00);
+  });
+
+  it("drops a plan expense marked Klar even without a ledger row", () => {
+    const items = [
+      item({
+        id: "oscar",
+        name: "Oscar",
+        kind: "expected",
+        amountMinor: 3_000_00,
+        cadence: "once",
+        nextDueAt: "2026-08-20T05:00:00.000Z",
+        settledAt: "2026-08-20T10:00:00.000Z",
+      }),
+      item({
+        id: "gym",
+        name: "Gym",
+        kind: "mandatory",
+        amountMinor: 1_400_00,
+        nextDueAt: "2026-08-28T05:00:00.000Z",
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 10_000_00,
+    });
+    expect(view.unpaidMinor).toBe(1_400_00);
+    expect(view.overMinor).toBe(8_600_00);
+  });
+
+  it("drops a plan income marked Klar from Kommer in", () => {
+    const items = [
+      item({
+        id: "trukks",
+        name: "Trukks",
+        kind: "expected",
+        amountMinor: 51_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-27T05:00:00.000Z",
+        settledAt: "2026-08-27T08:00:00.000Z",
+      }),
+      item({
+        id: "csn",
+        name: "CSN",
+        kind: "expected",
+        amountMinor: 10_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-30T05:00:00.000Z",
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 1_000_00,
+    });
+    expect(view.incomingMinor).toBe(10_000_00);
+    expect(view.overMinor).toBe(11_000_00);
   });
 });

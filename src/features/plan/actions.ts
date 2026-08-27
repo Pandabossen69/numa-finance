@@ -7,10 +7,12 @@ import {
   dayOfMonthFromIso,
   dueDateInMonth,
   importableFixedExpenses,
+  isPlanIncome,
   isPlanSavings,
   isRecurringMonthly,
   monthAnchorIso,
   monthKeyFromDate,
+  NEXT_INCOME_NAME,
   planItemMonthKey,
   type PlanItem,
 } from "@/domain/finance";
@@ -25,23 +27,19 @@ import {
 } from "@/lib/store/repository";
 
 export type ActionResult =
-  | { ok: true; item?: PlanItem; items?: PlanItem[] }
-  | { ok: false; error: string };
+  { ok: true; item?: PlanItem; items?: PlanItem[] } | { ok: false; error: string };
 
-const kindSchema = z.enum([
-  "mandatory",
-  "expected",
-  "flexible",
-  "goal",
-  "buffer",
-]);
+const kindSchema = z.enum(["mandatory", "expected", "flexible", "goal", "buffer"]);
 
 const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   kind: kindSchema,
   amount: z.string().trim().min(1),
   dayOfMonth: z.coerce.number().int().min(1).max(31),
-  monthKey: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+  monthKey: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
 });
 
 const createIncomeSchema = z.object({
@@ -56,8 +54,7 @@ function revalidatePlanPaths() {
   revalidatePath("/analys");
 }
 
-const PAST_FIXED_LOCKED =
-  "Fasta utgifter i passerade månader är låsta.";
+const PAST_FIXED_LOCKED = "Fasta utgifter i passerade månader är låsta.";
 
 function profileTimeZone(timezone: string | null | undefined): string {
   return timezone || "Asia/Bangkok";
@@ -74,10 +71,7 @@ function isLockedPastFixed(item: PlanItem, timeZone: string, currentMonthKey: st
 
 /** Profile + plan rows only — never the full Hem snapshot. */
 async function planWriteContext() {
-  const [profile, planItems] = await Promise.all([
-    getProfile(),
-    listPlanItems(),
-  ]);
+  const [profile, planItems] = await Promise.all([getProfile(), listPlanItems()]);
   const timeZone = profileTimeZone(profile.timezone);
   return {
     profile,
@@ -146,8 +140,7 @@ export async function createPlanIncomeAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte spara intäkten",
+      error: error instanceof Error ? error.message : "Kunde inte spara intäkten",
     };
   }
 }
@@ -185,10 +178,7 @@ export async function createPlanExtraAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Kunde inte spara extra utgiften",
+      error: error instanceof Error ? error.message : "Kunde inte spara extra utgiften",
     };
   }
 }
@@ -211,9 +201,7 @@ export async function setMonthSavingsAction(
     const ctx = await planWriteContext();
     const existing = ctx.planItems.find((p) => {
       if (!p.isActive || !isPlanSavings(p) || !p.nextDueAt) return false;
-      return (
-        monthKeyFromDate(new Date(p.nextDueAt), ctx.timeZone) === input.monthKey
-      );
+      return monthKeyFromDate(new Date(p.nextDueAt), ctx.timeZone) === input.monthKey;
     });
 
     if (amountMinor === 0) {
@@ -237,8 +225,7 @@ export async function setMonthSavingsAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte spara sparmålet",
+      error: error instanceof Error ? error.message : "Kunde inte spara sparmålet",
     };
   }
 }
@@ -262,9 +249,47 @@ export async function deletePlanItemAction(id: string): Promise<ActionResult> {
   }
 }
 
-export async function setNextIncomeDateAction(
-  date: string,
+const settleSchema = z.object({
+  id: z.string().uuid(),
+  settled: z.boolean(),
+});
+
+/**
+ * Mark a plan income/expense occurrence Klar (received/paid) without deleting it.
+ * Allowed in every month — dates vary, so remaining figures should follow taps.
+ */
+export async function setPlanItemSettledAction(
+  raw: z.infer<typeof settleSchema>,
 ): Promise<ActionResult> {
+  try {
+    const input = settleSchema.parse(raw);
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === input.id);
+    if (!existing) {
+      return { ok: false, error: "Planposten hittades inte" };
+    }
+    if (
+      isPlanSavings(existing) ||
+      existing.name === NEXT_INCOME_NAME ||
+      (!isPlanIncome(existing) && existing.amountMinor <= 0)
+    ) {
+      return { ok: false, error: "Den här posten kan inte markeras Klar." };
+    }
+    const item = await updatePlanItem({
+      id: input.id,
+      settledAt: input.settled ? new Date().toISOString() : null,
+    });
+    revalidatePlanPaths();
+    return { ok: true, item };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte uppdatera Klar",
+    };
+  }
+}
+
+export async function setNextIncomeDateAction(date: string): Promise<ActionResult> {
   try {
     const parsed = z
       .string()
@@ -276,8 +301,7 @@ export async function setNextIncomeDateAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte spara inkomstdatum",
+      error: error instanceof Error ? error.message : "Kunde inte spara inkomstdatum",
     };
   }
 }
@@ -416,10 +440,7 @@ export async function importFixedExpensesFromPreviousMonthAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Kunde inte läsa in fasta utgifter",
+      error: error instanceof Error ? error.message : "Kunde inte läsa in fasta utgifter",
     };
   }
 }

@@ -22,7 +22,7 @@ export function stampPlanItems(items: PlanItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.id}:${item.updatedAt}:${item.amountMinor}:${item.name}:${item.nextDueAt ?? ""}:${item.isActive}`,
+        `${item.id}:${item.updatedAt}:${item.amountMinor}:${item.name}:${item.nextDueAt ?? ""}:${item.isActive}:${item.settledAt ?? ""}`,
     )
     .sort()
     .join("|");
@@ -48,6 +48,7 @@ export function optimisticPlanItem(input: {
     cadence: input.cadence,
     nextDueAt: input.nextDueAt,
     isActive: true,
+    settledAt: null,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -161,4 +162,15 @@ export function revertMonthSavings(
     return removeItemById(next, current.id);
   }
   return next;
+}
+
+export function settlePlanItem(
+  items: PlanItem[],
+  id: string,
+  settled: boolean,
+): PlanItem[] {
+  const ts = new Date().toISOString();
+  return items.map((item) =>
+    item.id === id ? { ...item, settledAt: settled ? ts : null, updatedAt: ts } : item,
+  );
 }

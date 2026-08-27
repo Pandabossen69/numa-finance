@@ -57,7 +57,10 @@ export function createEmptyStore(): NumaStoreData {
 export function normalizeStore(data: NumaStoreData): NumaStoreData {
   return {
     ...data,
-    planItems: Array.isArray(data.planItems) ? data.planItems : [],
+    planItems: (Array.isArray(data.planItems) ? data.planItems : []).map((item) => ({
+      ...item,
+      settledAt: item.settledAt ?? null,
+    })),
     profile: {
       ...data.profile,
       onboardingSaldoAt: data.profile.onboardingSaldoAt ?? null,

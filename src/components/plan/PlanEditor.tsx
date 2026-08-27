@@ -16,6 +16,8 @@ import {
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
+  matchPlanItemsToLedger,
+  isPlanSettled,
   projectCashCoverage,
   projectExtraSaldoSeries,
   projectPlanForMonth,
@@ -40,6 +42,7 @@ import {
   removeItemById,
   replaceItemById,
   revertMonthSavings,
+  settlePlanItem,
 } from "@/features/plan/optimistic";
 import type { ActionResult } from "@/features/plan/actions";
 import {
@@ -49,6 +52,7 @@ import {
   deletePlanItemAction,
   importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
+  setPlanItemSettledAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
 
@@ -64,7 +68,8 @@ type BusyKey =
   | "add-fixed"
   | "add-extra"
   | `edit:${string}`
-  | `delete:${string}`;
+  | `delete:${string}`
+  | `settle:${string}`;
 
 function minorToUi(amountMinor: number): string {
   return (amountMinor / 100).toFixed(2).replace(/\.00$/, "");
@@ -125,11 +130,7 @@ function PlanDateField({
         aria-hidden
         onChange={(e) => commitCalendarDate(e.target.value, value, onChange)}
         onInput={(e) =>
-          commitCalendarDate(
-            (e.target as HTMLInputElement).value,
-            value,
-            onChange,
-          )
+          commitCalendarDate((e.target as HTMLInputElement).value, value, onChange)
         }
         className="numa-date-input"
       />
@@ -212,9 +213,7 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
-  const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(
-    focusAdd,
-  );
+  const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
   const focusCardRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!focusAdd) return;
@@ -265,6 +264,28 @@ export function PlanEditor({
       }),
     [localItems, ledgerTransactions, monthKey, timeZone, bankBalanceMinor],
   );
+  const matchedIncomeIds = useMemo(
+    () =>
+      matchPlanItemsToLedger({
+        items: projection.incomes,
+        transactions: ledgerTransactions,
+        kind: "income",
+        monthKey,
+        timeZone,
+      }),
+    [projection.incomes, ledgerTransactions, monthKey, timeZone],
+  );
+  const matchedExpenseIds = useMemo(
+    () =>
+      matchPlanItemsToLedger({
+        items: projection.items,
+        transactions: ledgerTransactions,
+        kind: "expense",
+        monthKey,
+        timeZone,
+      }),
+    [projection.items, ledgerTransactions, monthKey, timeZone],
+  );
   const savingsTotalMinor = useMemo(
     () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
     [localItems, monthKey, timeZone],
@@ -306,12 +327,8 @@ export function PlanEditor({
   const [dateMonthKey, setDateMonthKey] = useState(monthKey);
   if (dateMonthKey !== monthKey) {
     setDateMonthKey(monthKey);
-    setIncomeDate((prev) =>
-      prev.startsWith(monthKey) ? prev : `${monthKey}-25`,
-    );
-    setExtraDate((prev) =>
-      prev.startsWith(monthKey) ? prev : `${monthKey}-15`,
-    );
+    setIncomeDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-25`));
+    setExtraDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-15`));
   }
 
   useEffect(() => {
@@ -345,7 +362,10 @@ export function PlanEditor({
     apply: (items: PlanItem[]) => PlanItem[];
     revert: (items: PlanItem[]) => PlanItem[];
     action: () => Promise<ActionResult>;
-    reconcile?: (items: PlanItem[], result: Extract<ActionResult, { ok: true }>) => PlanItem[];
+    reconcile?: (
+      items: PlanItem[],
+      result: Extract<ActionResult, { ok: true }>,
+    ) => PlanItem[];
   }): Promise<boolean> {
     setError(null);
     setBusy(opts.busy);
@@ -376,6 +396,33 @@ export function PlanEditor({
     } finally {
       setBusy((current) => (current === opts.busy ? null : current));
     }
+  }
+
+  function settleRow(id: string, settled: boolean) {
+    if (isTempPlanId(id)) return;
+    const previous = localItems.find((row) => row.id === id);
+    void runMutation({
+      busy: `settle:${id}`,
+      apply: (rows) => settlePlanItem(rows, id, settled),
+      revert: (rows) => (previous ? replaceItemById(rows, id, previous) : rows),
+      action: () => setPlanItemSettledAction({ id, settled }),
+      reconcile: (rows, result) =>
+        result.item ? mergeReturnedItem(rows, result.item) : rows,
+    });
+  }
+
+  function rowBusy(): {
+    pendingId: string | null;
+    pendingAction: "save" | "delete" | "settle" | null;
+  } {
+    if (!busy || !busy.includes(":")) {
+      return { pendingId: null, pendingAction: null };
+    }
+    const id = busy.slice(busy.indexOf(":") + 1);
+    if (busy.startsWith("edit:")) return { pendingId: id, pendingAction: "save" };
+    if (busy.startsWith("delete:")) return { pendingId: id, pendingAction: "delete" };
+    if (busy.startsWith("settle:")) return { pendingId: id, pendingAction: "settle" };
+    return { pendingId: null, pendingAction: null };
   }
 
   function startEditIncome(item: PlanItem) {
@@ -550,9 +597,7 @@ export function PlanEditor({
                   amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
                 }),
               reconcile: (rows, result) =>
-                result.item
-                  ? mergeReturnedItem(rows, result.item, tempId)
-                  : rows,
+                result.item ? mergeReturnedItem(rows, result.item, tempId) : rows,
             });
           }}
           onClearSavings={() => {
@@ -560,13 +605,7 @@ export function PlanEditor({
             void runMutation({
               busy: "savings-clear",
               apply: (rows) => {
-                const applied = applyMonthSavings(
-                  rows,
-                  monthKey,
-                  0,
-                  currency,
-                  timeZone,
-                );
+                const applied = applyMonthSavings(rows, monthKey, 0, currency, timeZone);
                 previous = applied.previous;
                 return applied.items;
               },
@@ -641,18 +680,10 @@ export function PlanEditor({
             editExtraType="date"
             emptyHint="Lägg in lön eller CSN."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
-            pendingId={
-              busy?.startsWith("edit:") || busy?.startsWith("delete:")
-                ? busy.slice(busy.indexOf(":") + 1)
-                : null
-            }
-            pendingAction={
-              busy?.startsWith("edit:")
-                ? "save"
-                : busy?.startsWith("delete:")
-                  ? "delete"
-                  : null
-            }
+            pendingId={rowBusy().pendingId}
+            pendingAction={rowBusy().pendingAction}
+            matchedIds={matchedIncomeIds}
+            onSettle={settleRow}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -731,9 +762,7 @@ export function PlanEditor({
                     date,
                   }),
                 reconcile: (rows, result) =>
-                  result.item
-                    ? mergeReturnedItem(rows, result.item, created.id)
-                    : rows,
+                  result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
               }).then((ok) => {
                 if (!ok) {
                   setIncomeName(name);
@@ -791,9 +820,7 @@ export function PlanEditor({
                       monthKey,
                     }),
                   reconcile: (rows, result) =>
-                    result.items
-                      ? mergeReturnedItems(rows, result.items, tempIds)
-                      : rows,
+                    result.items ? mergeReturnedItems(rows, result.items, tempIds) : rows,
                 });
               }}
             >
@@ -820,22 +847,12 @@ export function PlanEditor({
                   : "Hyra och räkningar du måste betala."
             }
             subtitle={(item) =>
-              item.nextDueAt
-                ? formatListDateSv(item.nextDueAt, timeZone)
-                : "Datum saknas"
+              item.nextDueAt ? formatListDateSv(item.nextDueAt, timeZone) : "Datum saknas"
             }
-            pendingId={
-              busy?.startsWith("edit:") || busy?.startsWith("delete:")
-                ? busy.slice(busy.indexOf(":") + 1)
-                : null
-            }
-            pendingAction={
-              busy?.startsWith("edit:")
-                ? "save"
-                : busy?.startsWith("delete:")
-                  ? "delete"
-                  : null
-            }
+            pendingId={rowBusy().pendingId}
+            pendingAction={rowBusy().pendingAction}
+            matchedIds={matchedExpenseIds}
+            onSettle={settleRow}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDay}
@@ -851,10 +868,7 @@ export function PlanEditor({
               saveEditedItem(id, {
                 name: editName.trim(),
                 amountMinor: parsed,
-                nextDueAt: dueDateInMonth(
-                  monthKey,
-                  Number.isFinite(day) ? day : 1,
-                ),
+                nextDueAt: dueDateInMonth(monthKey, Number.isFinite(day) ? day : 1),
               });
             }}
             onDelete={(id) => {
@@ -901,10 +915,7 @@ export function PlanEditor({
                   amountMinor: parsed,
                   currency,
                   cadence: "monthly",
-                  nextDueAt: dueDateInMonth(
-                    monthKey,
-                    Number.isFinite(day) ? day : 1,
-                  ),
+                  nextDueAt: dueDateInMonth(monthKey, Number.isFinite(day) ? day : 1),
                   userId: ownerId,
                 });
                 const name = expenseName;
@@ -924,9 +935,7 @@ export function PlanEditor({
                       monthKey,
                     }),
                   reconcile: (rows, result) =>
-                    result.item
-                      ? mergeReturnedItem(rows, result.item, created.id)
-                      : rows,
+                    result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
                 }).then((ok) => {
                   if (!ok) {
                     setExpenseName(name);
@@ -956,18 +965,10 @@ export function PlanEditor({
             editExtraType="date"
             emptyHint="En räkning som bara kommer en gång."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
-            pendingId={
-              busy?.startsWith("edit:") || busy?.startsWith("delete:")
-                ? busy.slice(busy.indexOf(":") + 1)
-                : null
-            }
-            pendingAction={
-              busy?.startsWith("edit:")
-                ? "save"
-                : busy?.startsWith("delete:")
-                  ? "delete"
-                  : null
-            }
+            pendingId={rowBusy().pendingId}
+            pendingAction={rowBusy().pendingAction}
+            matchedIds={matchedExpenseIds}
+            onSettle={settleRow}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1045,9 +1046,7 @@ export function PlanEditor({
                     date,
                   }),
                 reconcile: (rows, result) =>
-                  result.item
-                    ? mergeReturnedItem(rows, result.item, created.id)
-                    : rows,
+                  result.item ? mergeReturnedItem(rows, result.item, created.id) : rows,
               }).then((ok) => {
                 if (!ok) {
                   setExtraName(name);
@@ -1131,6 +1130,8 @@ function PlanRows({
   subtitle,
   pendingId = null,
   pendingAction = null,
+  matchedIds,
+  onSettle,
   onEditName,
   onEditAmount,
   onEditExtra,
@@ -1150,7 +1151,9 @@ function PlanRows({
   locked?: boolean;
   subtitle: (item: PlanItem) => string;
   pendingId?: string | null;
-  pendingAction?: "save" | "delete" | null;
+  pendingAction?: "save" | "delete" | "settle" | null;
+  matchedIds: Set<string>;
+  onSettle: (id: string, settled: boolean) => void;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
   onEditExtra: (v: string) => void;
@@ -1207,9 +1210,7 @@ function PlanRows({
                 className="numa-btn numa-btn-accent min-h-10 flex-1"
                 onClick={() => onSaveEdit(item.id)}
               >
-                {pendingId === item.id && pendingAction === "save"
-                  ? "Sparar…"
-                  : "Spara"}
+                {pendingId === item.id && pendingAction === "save" ? "Sparar…" : "Spara"}
               </button>
               <button
                 type="button"
@@ -1228,12 +1229,20 @@ function PlanRows({
           >
             <div className="min-w-0 flex-1">
               <p
-                className="break-words font-medium leading-snug [overflow-wrap:anywhere]"
+                className={`leading-snug font-medium [overflow-wrap:anywhere] break-words ${
+                  matchedIds.has(item.id) || isPlanSettled(item)
+                    ? "text-[var(--numa-muted)]"
+                    : ""
+                }`}
                 title={item.name}
               >
                 {item.name}
               </p>
-              <p className="text-xs text-[var(--numa-faint)]">{subtitle(item)}</p>
+              <p className="text-xs text-[var(--numa-faint)]">
+                {matchedIds.has(item.id) || isPlanSettled(item)
+                  ? `${SV.klar} · ${subtitle(item)}`
+                  : subtitle(item)}
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <span className="mr-1 max-w-[9.5rem] text-[var(--numa-ink)] sm:max-w-none">
@@ -1245,6 +1254,29 @@ function PlanRows({
                   align="end"
                 />
               </span>
+              {isTempPlanId(item.id) ? null : matchedIds.has(item.id) ? (
+                <span className="numa-chip numa-chip-mint">{SV.klar}</span>
+              ) : isPlanSettled(item) ? (
+                <button
+                  type="button"
+                  disabled={pendingId === item.id && pendingAction === "settle"}
+                  className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm font-medium text-[var(--numa-muted)] disabled:opacity-45"
+                  onClick={() => onSettle(item.id, false)}
+                >
+                  {pendingId === item.id && pendingAction === "settle"
+                    ? "…"
+                    : SV.angraKlar}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pendingId === item.id && pendingAction === "settle"}
+                  className="numa-press inline-flex min-h-11 items-center rounded-xl bg-[var(--numa-accent-soft)] px-2.5 text-sm font-semibold text-[var(--numa-accent-ink)] disabled:opacity-45"
+                  onClick={() => onSettle(item.id, true)}
+                >
+                  {pendingId === item.id && pendingAction === "settle" ? "…" : SV.klar}
+                </button>
+              )}
               {locked || isTempPlanId(item.id) ? null : confirmId === item.id ? (
                 <div className="flex items-center gap-1">
                   <button
@@ -1280,8 +1312,7 @@ function PlanRows({
                     {
                       label: "Ta bort",
                       tone: "danger",
-                      disabled:
-                        pendingId === item.id && pendingAction === "delete",
+                      disabled: pendingId === item.id && pendingAction === "delete",
                       onSelect: () => setConfirmId(item.id),
                     },
                   ]}
@@ -1372,76 +1403,68 @@ function InlineAdd({
       }`}
     >
       {showFields ? (
-      <div
-        className={`numa-expand ${open ? "is-open" : ""}`}
-        onTransitionEnd={(event) => {
-          if (event.propertyName !== "grid-template-rows") return;
-          if (!open) setFieldsMounted(false);
-        }}
-      >
-        <div className="numa-expand-inner space-y-2">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
-        <input
-          value={name}
-          onChange={(e) => onName(e.target.value)}
-          placeholder={namePlaceholder}
-          className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-        />
-        <input
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => onAmount(e.target.value)}
-          placeholder={amountPlaceholder}
-          className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-        />
-        {extraType === "date" ? (
-          <PlanDateField
-            value={extra}
-            onChange={onExtra}
-            ariaLabel={extraLabel}
-          />
-        ) : (
-          <input
-            type="number"
-            min={1}
-            max={31}
-            value={extra}
-            onChange={(e) => onExtra(e.target.value)}
-            aria-label={extraLabel}
-            placeholder="Dag"
-            className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
-          />
-        )}
-      </div>
-      <div
-        ref={submitRowRef}
-        className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2 md:scroll-mb-0"
-      >
-        <button
-          type="button"
-          disabled={disabled}
-          className="numa-btn numa-btn-soft min-w-0 flex-1"
-          onClick={onSubmit}
+        <div
+          className={`numa-expand ${open ? "is-open" : ""}`}
+          onTransitionEnd={(event) => {
+            if (event.propertyName !== "grid-template-rows") return;
+            if (!open) setFieldsMounted(false);
+          }}
         >
-          {busy ? "Sparar…" : submitLabel}
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          className="numa-press min-h-12 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
-          onClick={onClose}
-        >
-          Avbryt
-        </button>
-      </div>
+          <div className="numa-expand-inner space-y-2">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem]">
+              <input
+                value={name}
+                onChange={(e) => onName(e.target.value)}
+                placeholder={namePlaceholder}
+                className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+              />
+              <input
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => onAmount(e.target.value)}
+                placeholder={amountPlaceholder}
+                className="money min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+              />
+              {extraType === "date" ? (
+                <PlanDateField value={extra} onChange={onExtra} ariaLabel={extraLabel} />
+              ) : (
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={extra}
+                  onChange={(e) => onExtra(e.target.value)}
+                  aria-label={extraLabel}
+                  placeholder="Dag"
+                  className="min-h-11 min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)]/80 px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+                />
+              )}
+            </div>
+            <div
+              ref={submitRowRef}
+              className="flex scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+var(--numa-safe-bottom)+0.75rem)] gap-2 md:scroll-mb-0"
+            >
+              <button
+                type="button"
+                disabled={disabled}
+                className="numa-btn numa-btn-soft min-w-0 flex-1"
+                onClick={onSubmit}
+              >
+                {busy ? "Sparar…" : submitLabel}
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                className="numa-press min-h-12 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+                onClick={onClose}
+              >
+                Avbryt
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
       ) : (
-        <button
-          type="button"
-          className="numa-btn numa-btn-soft w-full"
-          onClick={onOpen}
-        >
+        <button type="button" className="numa-btn numa-btn-soft w-full" onClick={onOpen}>
           {collapsedLabel}
         </button>
       )}
@@ -1491,10 +1514,7 @@ function MonthChipStrip({ children }: { children: ReactNode }) {
           : "";
 
   return (
-    <div
-      ref={scrollerRef}
-      className={`numa-month-strip pb-1 ${fade}`.trim()}
-    >
+    <div ref={scrollerRef} className={`numa-month-strip pb-1 ${fade}`.trim()}>
       {children}
     </div>
   );

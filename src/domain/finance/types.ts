@@ -1,12 +1,7 @@
 import type { CurrencyCode } from "@/domain/money";
 
 export type AccountType =
-  | "checking"
-  | "savings"
-  | "cash"
-  | "credit"
-  | "investment"
-  | "other";
+  "checking" | "savings" | "cash" | "credit" | "investment" | "other";
 
 export type TransactionType =
   | "expense"
@@ -29,27 +24,13 @@ export type TransactionSource =
   | "api"
   | "adjustment";
 
-export type TransactionStatus =
-  | "pending_sync"
-  | "confirmed"
-  | "needs_review"
-  | "voided";
+export type TransactionStatus = "pending_sync" | "confirmed" | "needs_review" | "voided";
 
 export type ObservationStatus =
-  | "uploaded"
-  | "extracting"
-  | "extracted"
-  | "needs_review"
-  | "processed"
-  | "failed";
+  "uploaded" | "extracting" | "extracted" | "needs_review" | "processed" | "failed";
 
 export type CandidateStatus =
-  | "pending"
-  | "validated"
-  | "duplicate"
-  | "needs_review"
-  | "confirmed"
-  | "rejected";
+  "pending" | "validated" | "duplicate" | "needs_review" | "confirmed" | "rejected";
 
 export type ReconciliationState =
   | "reconciled"
@@ -58,12 +39,7 @@ export type ReconciliationState =
   | "discrepancy"
   | "stale_verification";
 
-export type PlanCategoryKind =
-  | "mandatory"
-  | "expected"
-  | "flexible"
-  | "goal"
-  | "buffer";
+export type PlanCategoryKind = "mandatory" | "expected" | "flexible" | "goal" | "buffer";
 
 export type PlanItem = {
   id: string;
@@ -75,6 +51,11 @@ export type PlanItem = {
   cadence: string | null;
   nextDueAt: string | null;
   isActive: boolean;
+  /**
+   * ISO time when this occurrence was marked Klar (paid/received).
+   * Null/absent = still open. Independent of ledger matching.
+   */
+  settledAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -19,7 +19,7 @@ describe("Plan dates and add-form", () => {
 
   it("opens the picker from a button so a calendar tap can commit", () => {
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
-    expect(src).toContain("className=\"numa-date-input\"");
+    expect(src).toContain('className="numa-date-input"');
     expect(src).toContain("showPicker");
     expect(src).toContain("commitCalendarDate");
     expect(src).toContain("onClick={() => openNativeDatePicker(inputRef.current)}");
@@ -36,7 +36,7 @@ describe("Plan dates and add-form", () => {
 
   it("scrolls the submit row into view and pads above the FAB when adding", () => {
     expect(src).toContain("scrollIntoView");
-    expect(src).toContain("block: \"nearest\"");
+    expect(src).toContain('block: "nearest"');
     expect(src).toContain(
       "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)] md:pb-0",
     );
@@ -62,7 +62,7 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("focusAdd");
     expect(src).toContain("stepHint");
     expect(src).toContain("scrollOnOpen");
-    expect(src).toContain("banner={focusAdd === \"income\" ? stepHint : null}");
+    expect(src).toContain('banner={focusAdd === "income" ? stepHint : null}');
     expect(src).toContain("setAddKind(focusAdd)");
   });
 
@@ -70,5 +70,13 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("projectCashCoverage");
     expect(src).toContain("ledgerTransactions");
     expect(src).toContain("coverage={coverage}");
+  });
+
+  it("lets every month tap Klar on incomes and expenses without deleting", () => {
+    expect(src).toContain("setPlanItemSettledAction");
+    expect(src).toContain("onSettle={settleRow}");
+    expect(src).toContain("SV.klar");
+    expect(src).toContain("SV.angraKlar");
+    expect(src).not.toContain("locked={isPastMonth} && !onSettle");
   });
 });

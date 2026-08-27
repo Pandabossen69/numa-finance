@@ -10,12 +10,16 @@ export function isPlanIncome(item: PlanItem): boolean {
   return (item.cadence ?? "").toLowerCase() === "income";
 }
 
+/** True when this occurrence was marked Klar (paid/received). */
+export function isPlanSettled(item: PlanItem): boolean {
+  return typeof item.settledAt === "string" && item.settledAt.length > 0;
+}
+
 /** Planned savings target for one month only. */
 export function isPlanSavings(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
   return (
-    (item.cadence ?? "").toLowerCase() === "savings" ||
-    item.name === MONTHLY_SAVE_NAME
+    (item.cadence ?? "").toLowerCase() === "savings" || item.name === MONTHLY_SAVE_NAME
   );
 }
 
@@ -32,21 +36,14 @@ export function isRecurringMonthly(item: PlanItem): boolean {
   if (item.name === NEXT_INCOME_NAME) return false;
   if (isPlanIncome(item) || isPlanSavings(item)) return false;
   const cadence = (item.cadence ?? "monthly").toLowerCase();
-  if (
-    cadence === "once" ||
-    cadence === "one_off" ||
-    cadence === "extra"
-  ) {
+  if (cadence === "once" || cadence === "one_off" || cadence === "extra") {
     return false;
   }
   return cadence === "monthly" || item.kind === "mandatory";
 }
 
 /** Calendar month a plan row belongs to, from `nextDueAt`. */
-export function planItemMonthKey(
-  item: PlanItem,
-  timeZone: string,
-): string | null {
+export function planItemMonthKey(item: PlanItem, timeZone: string): string | null {
   if (!item.nextDueAt) return null;
   const t = Date.parse(item.nextDueAt);
   if (!Number.isFinite(t)) return null;
@@ -67,16 +64,8 @@ export function importableFixedExpenses(params: {
   toMonthKey: string;
   timeZone: string;
 }): PlanItem[] {
-  const from = projectPlanForMonth(
-    params.items,
-    params.fromMonthKey,
-    params.timeZone,
-  );
-  const to = projectPlanForMonth(
-    params.items,
-    params.toMonthKey,
-    params.timeZone,
-  );
+  const from = projectPlanForMonth(params.items, params.fromMonthKey, params.timeZone);
+  const to = projectPlanForMonth(params.items, params.toMonthKey, params.timeZone);
   const taken = new Set(
     to.fixedItems.map((item) => normalizeFixedExpenseName(item.name)),
   );
@@ -96,10 +85,7 @@ export function isPlanExtraExpense(item: PlanItem): boolean {
  * Advance a due date forward one calendar month at a time until it is
  * on/after `now`, preserving day-of-month (clamped for short months).
  */
-export function rollDueDateForward(
-  iso: string,
-  now: Date = new Date(),
-): string {
+export function rollDueDateForward(iso: string, now: Date = new Date()): string {
   const due = new Date(iso);
   if (!Number.isFinite(due.getTime())) return iso;
 
@@ -186,8 +172,7 @@ export function cumulativePlanSavingsMinor(
   timeZone: string,
   startMonthKey: string = APP_PLAN_START_MONTH,
 ): number {
-  const fromKey =
-    startMonthKey > throughMonthKey ? throughMonthKey : startMonthKey;
+  const fromKey = startMonthKey > throughMonthKey ? throughMonthKey : startMonthKey;
   let sum = 0;
   let cursor = fromKey;
   let guard = 0;
@@ -209,9 +194,7 @@ export function projectPlanForMonth(
   monthKey: string,
   timeZone: string,
 ): MonthPlanProjection {
-  const active = items.filter(
-    (i) => i.isActive && i.name !== NEXT_INCOME_NAME,
-  );
+  const active = items.filter((i) => i.isActive && i.name !== NEXT_INCOME_NAME);
 
   const fixedItems: PlanItem[] = [];
   const extraItems: PlanItem[] = [];
@@ -294,11 +277,7 @@ export function daysInMonthKey(monthKey: string): number {
  * Days left to spend in a month (inclusive of today when current month).
  * Future months: full month length. Past months: 1 (avoid div/0).
  */
-export function spendDaysForMonth(
-  monthKey: string,
-  now: Date,
-  timeZone: string,
-): number {
+export function spendDaysForMonth(monthKey: string, now: Date, timeZone: string): number {
   const total = daysInMonthKey(monthKey);
   const currentKey = monthKeyFromDate(now, timeZone);
   if (monthKey > currentKey) return total;
@@ -308,19 +287,12 @@ export function spendDaysForMonth(
   return Math.max(1, total - day + 1);
 }
 
-export function perDayBudgetMinor(
-  freeToSpendMinor: number,
-  days: number,
-): number {
+export function perDayBudgetMinor(freeToSpendMinor: number, days: number): number {
   if (freeToSpendMinor <= 0) return 0;
   return Math.floor(freeToSpendMinor / Math.max(1, days));
 }
 
-export function upcomingMonthKeys(
-  now: Date,
-  timeZone: string,
-  count = 4,
-): string[] {
+export function upcomingMonthKeys(now: Date, timeZone: string, count = 4): string[] {
   const base = monthKeyFromDate(now, timeZone);
   return Array.from({ length: count }, (_, i) => addMonthsKey(base, i));
 }
