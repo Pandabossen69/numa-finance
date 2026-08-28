@@ -6,21 +6,22 @@ import { createSupabaseServerClient } from "./server";
 export type AuthUser = { id: string; email: string };
 
 /**
- * One Auth getUser() per request. Layout, onboarding, and snapshot
- * used to each call it — that serial RTT made the first Hem paint stall.
+ * One session read per request. Proxy already verified the JWT with
+ * auth.getUser(); RSC uses the local cookie session so Hem/Plan/Analys
+ * do not pay a second Auth round-trip on every tab switch.
  */
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createSupabaseServerClient();
   const {
-    data: { user },
-    error,
+    data: { session },
   } = await withTimeoutRetry(
-    () => supabase.auth.getUser(),
-    8_000,
+    () => supabase.auth.getSession(),
+    2_000,
     "getAuthUser",
-    1,
+    0,
   );
-  if (error || !user) return null;
+  const user = session?.user;
+  if (!user) return null;
   return { id: user.id, email: user.email ?? "" };
 });
