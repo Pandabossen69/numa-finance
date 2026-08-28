@@ -228,7 +228,7 @@ body {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: baseline;
-  column-gap: 0.17em;
+  column-gap: 0.2em;
   row-gap: 0;
   min-width: min-content;
 }
