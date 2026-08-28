@@ -23,7 +23,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="numa-bottom-nav fixed inset-x-0 bottom-0 z-50 overflow-x-clip rounded-t-[1.7rem] border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/88 shadow-[0_-8px_28px_rgba(120,88,48,0.07),inset_0_1px_0_rgba(255,255,255,0.55)] backdrop-blur-2xl md:hidden"
+      className="numa-bottom-nav fixed z-50 overflow-x-clip md:hidden"
       aria-label="Huvudnavigering"
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1.5 pt-1.5">
@@ -45,7 +45,7 @@ export function BottomNav() {
             onMouseEnter={() => prefetch("/fota")}
             onFocus={() => prefetch("/fota")}
             onClick={() => onIntent("/fota")}
-            className="numa-press numa-fab relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full text-[var(--numa-card)] ring-4 ring-[var(--numa-bg)]"
+            className="numa-press numa-fab relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full text-[var(--numa-card)]"
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />

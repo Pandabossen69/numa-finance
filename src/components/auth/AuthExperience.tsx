@@ -71,9 +71,7 @@ function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
     <div className="auth-card auth-welcome mx-auto w-full">
       <div className="auth-card-copy auth-welcome-copy">
         <p className="auth-mark">NUMA</p>
-        <p className="auth-welcome-line">
-          Se vad du kan använda idag — och vad som behöver ligga kvar.
-        </p>
+        <p className="auth-welcome-line">Vad du kan använda idag.</p>
       </div>
       <div className="auth-card-action">
         <button
