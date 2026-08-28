@@ -61,6 +61,34 @@ describe("NUMA vision palette", () => {
     const chip = css.slice(css.indexOf(".numa-chip {"), css.indexOf(".numa-chip-mint"));
     expect(chip).toContain("white-space: nowrap");
     expect(chip).toContain("flex-shrink: 0");
+    expect(chip).toContain("font-size: 0.625rem");
+    expect(chip).toContain("font-weight: 650");
+    expect(chip).toContain("letter-spacing: 0.08em");
+    expect(chip).toContain("height: 1.4rem");
+    expect(chip).toContain("min-height: 1.4rem");
+    expect(chip).toContain("max-height: 1.4rem");
+  });
+
+  it("locks button chips to the same type as span chips", () => {
+    const buttonChip = css.slice(
+      css.indexOf("button.numa-chip {"),
+      css.indexOf("button.numa-chip:disabled"),
+    );
+    expect(buttonChip).not.toContain("font: inherit");
+    expect(buttonChip).not.toContain("letter-spacing: inherit");
+    expect(buttonChip).not.toContain("text-transform: inherit");
+    expect(buttonChip).toContain("font-size: 0.625rem");
+    expect(buttonChip).toContain("font-weight: 650");
+    expect(buttonChip).toContain("letter-spacing: 0.08em");
+    expect(buttonChip).toContain("text-transform: uppercase");
+    expect(buttonChip).toContain("line-height: 1");
+    const planChip = css.slice(
+      css.indexOf(".numa-plan-figures .numa-chip {"),
+      css.indexOf(".numa-plan-menu"),
+    );
+    expect(planChip).toContain("min-width: 4.75rem");
+    expect(planChip).toContain("font-size: 0.625rem");
+    expect(planChip).toContain("height: 1.4rem");
   });
 
   it("keeps pile meters for overspend on clay, not destroy red", () => {
@@ -105,6 +133,17 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-plan-meta");
     expect(css).toContain(".numa-metric-value");
     expect(css).not.toMatch(/\.numa-metric-value \{[^}]*overflow: hidden/);
+    expect(css).toContain("white-space: nowrap");
+    expect(css).toContain("min-width: min-content");
+    expect(css).toContain("lining-nums");
+    expect(css).toContain('"tnum" 1');
+    expect(css).toContain('"lnum" 1');
+    expect(css).toContain(".numa-pile-line {");
+    expect(css).toContain(".numa-pile-line .money.numa-money-amt");
+    expect(css).toContain("font-size: 0.9375rem");
+    expect(css).not.toContain(
+      "grid-template-columns: minmax(0, 1fr) var(--numa-money-unit)",
+    );
   });
 
   it("gives Hem a living wash login does not use", () => {
@@ -119,6 +158,10 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-radius-sm")).toBe("1.4rem");
     expect(css).toContain("border-radius: var(--numa-radius)");
     expect(css).toContain(".numa-money-unit");
-    expect(css).toContain("font-variant-numeric: tabular-nums");
+    expect(css).toContain("font-variant-numeric: tabular-nums lining-nums");
+    expect(css).toContain(".numa-piles-board {");
+    expect(css).toContain("grid-template-columns: minmax(0, 1fr);");
+    expect(css).toContain(".numa-wealth-score {");
+    expect(css).toContain("flex-direction: column");
   });
 });

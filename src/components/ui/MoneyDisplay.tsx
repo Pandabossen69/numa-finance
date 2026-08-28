@@ -1,6 +1,22 @@
 import { toMajorUnits, money, type CurrencyCode } from "@/domain/money";
 import { CURRENCY_META } from "@/domain/money/currency";
 
+const GROUPING_SPACE = /[\u0020\u00A0\u202F\u2009]/g;
+
+/**
+ * Swedish-grouped amount with non-breaking grouping so "12 450" cannot wrap
+ * between thousands. Currency is not part of this string.
+ */
+export function formatSvGroupedNumber(majorUnits: number, fractionDigits: 0 | 2): string {
+  return new Intl.NumberFormat("sv-SE", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+    useGrouping: true,
+  })
+    .format(majorUnits)
+    .replace(GROUPING_SPACE, "\u00A0");
+}
+
 /**
  * Money display: amount in tabular mono, currency code in a fixed unit column.
  * THB shows as "10 108,04 THB" — never the ฿ glyph (reads as $ in many fonts).
@@ -12,7 +28,7 @@ export function MoneyDisplay({
   compact = false,
   tone = "neutral",
   align = "center",
-  wrap = true,
+  wrap = false,
 }: {
   amountMinor: number;
   currency: CurrencyCode;
@@ -21,6 +37,7 @@ export function MoneyDisplay({
   /** Color negative amounts as clay alarm when "signed" — not destroy red. */
   tone?: "neutral" | "signed";
   align?: "start" | "center" | "end";
+  /** When true, the unit may wrap under the amount. Digits never wrap. */
   wrap?: boolean;
 }) {
   const safeMinor = Number.isInteger(amountMinor)
@@ -28,11 +45,7 @@ export function MoneyDisplay({
     : Math.round(Number.isFinite(amountMinor) ? amountMinor : 0);
   const value = money(safeMinor, currency);
   const showFraction = compact ? Math.abs(safeMinor) % 100 !== 0 : true;
-  const amountText = new Intl.NumberFormat("sv-SE", {
-    minimumFractionDigits: showFraction ? 2 : 0,
-    maximumFractionDigits: showFraction ? 2 : 0,
-    useGrouping: true,
-  }).format(toMajorUnits(value));
+  const amountText = formatSvGroupedNumber(toMajorUnits(value), showFraction ? 2 : 0);
   const currencyText = CURRENCY_META[currency].symbol;
 
   const sizeClass =
@@ -73,13 +86,11 @@ export function MoneyDisplay({
 
   return (
     <span
-      className={`numa-money ${alignClass}${wrap ? "" : " is-nowrap"} ${toneClass}`.trim()}
+      className={`numa-money ${alignClass}${wrap ? "" : "is-nowrap"} ${toneClass}`.trim()}
       aria-label={`${amountText} ${currencyText}`}
     >
       <span className={`money numa-money-amt ${sizeClass}`}>{amountText}</span>
-      <span className={`money-currency numa-money-unit ${codeSize}`}>
-        {currencyText}
-      </span>
+      <span className={`money-currency numa-money-unit ${codeSize}`}>{currencyText}</span>
     </span>
   );
 }
