@@ -424,7 +424,7 @@ body {
 @keyframes numa-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -435,22 +435,11 @@ body {
 @keyframes numa-scale-in {
   from {
     opacity: 0;
-    transform: scale(0.975);
+    transform: scale(0.965);
   }
   to {
     opacity: 1;
     transform: scale(1);
-  }
-}
-
-@keyframes numa-page-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -737,11 +726,11 @@ body {
 }
 
 .animate-scale-in {
-  animation: numa-scale-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-scale-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-page-in {
-  animation: numa-page-in 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .numa-month-strip {
@@ -1459,75 +1448,10 @@ button.numa-chip:disabled {
   padding-left: var(--numa-safe-left);
   padding-right: var(--numa-safe-right);
   padding-bottom: var(--numa-safe-bottom);
-  -webkit-backdrop-filter: blur(24px) saturate(1.15);
-  backdrop-filter: blur(24px) saturate(1.15);
-}
-
-.numa-bottom-nav-item {
-  transition:
-    color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.numa-bottom-nav-item.is-active {
-  background: linear-gradient(
-    180deg,
-    rgba(252, 251, 247, 0.96) 0%,
-    var(--numa-accent-soft) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    inset 0 -1px 0 rgba(48, 40, 28, 0.05),
-    0 1px 3px rgba(120, 88, 48, 0.07);
-  color: var(--numa-ink);
-}
-
-.numa-fab {
-  background: linear-gradient(155deg, #2e2d2a 0%, var(--numa-ink) 42%, #0e0d0c 100%);
-  box-shadow:
-    0 10px 24px rgba(22, 21, 19, 0.24),
-    0 2px 6px rgba(22, 21, 19, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.18);
-  transition:
-    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
-    box-shadow 80ms cubic-bezier(0.34, 1.15, 0.64, 1);
-}
-
-.numa-fab:active {
-  box-shadow:
-    0 6px 16px rgba(22, 21, 19, 0.2),
-    0 1px 4px rgba(22, 21, 19, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.numa-side-nav-item {
-  transition:
-    color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.numa-side-nav-item.is-active {
-  background: linear-gradient(
-    180deg,
-    rgba(252, 251, 247, 0.92) 0%,
-    rgba(237, 232, 224, 0.88) 100%
-  );
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.65),
-    inset 0 -1px 0 rgba(48, 40, 28, 0.04),
-    0 1px 2px rgba(120, 88, 48, 0.05);
 }
 
 .numa-view {
   min-height: 24vh;
-}
-
-.numa-view-hold {
-  transition: opacity 80ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .numa-view-park {
@@ -1544,16 +1468,14 @@ button.numa-chip:disabled {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
-    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    color 100ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
+    transform 90ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    color 120ms ease;
 }
 
 .numa-press:active {
   transform: scale(0.98);
-  transition-duration: 50ms;
 }
 
 .numa-komigang-card {
@@ -1595,16 +1517,13 @@ button.numa-chip:disabled {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
-    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 80ms ease;
-  will-change: transform;
+    transform 70ms ease,
+    background-color 70ms ease,
+    opacity 70ms ease;
 }
 
 .numa-btn:active:not(:disabled) {
   transform: scale(0.98);
-  transition-duration: 50ms;
 }
 
 .numa-btn:disabled {
@@ -1612,15 +1531,13 @@ button.numa-chip:disabled {
 }
 
 .numa-btn-primary {
-  background: linear-gradient(180deg, #2a2a28 0%, var(--numa-ink) 100%);
+  background: var(--numa-ink);
   color: var(--numa-card);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 4px 14px rgba(22, 21, 19, 0.18);
+  box-shadow: none;
 }
 
 .numa-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #323230 0%, #2a2a28 100%);
+  background: #2a2a28;
 }
 
 .numa-btn-primary:focus-visible {
@@ -1629,25 +1546,16 @@ button.numa-chip:disabled {
 }
 
 .numa-btn-primary:active:not(:disabled) {
-  background: linear-gradient(180deg, #252523 0%, #1e1e1c 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 2px 8px rgba(22, 21, 19, 0.14);
+  background: #2a2a28;
 }
 
 .numa-btn-accent {
-  background: linear-gradient(180deg, #15906f 0%, var(--numa-accent) 100%);
+  background: var(--numa-accent);
   color: var(--numa-card);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 4px 14px var(--numa-accent-glow);
 }
 
 .numa-btn-accent:active:not(:disabled) {
-  background: linear-gradient(180deg, var(--numa-accent) 0%, var(--numa-accent-ink) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 2px 8px rgba(18, 122, 98, 0.16);
+  background: var(--numa-accent-ink);
 }
 
 .numa-btn-soft {
@@ -1679,17 +1587,7 @@ button.numa-chip:disabled {
 }
 
 .numa-cta-glow {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 4px 18px rgba(22, 21, 19, 0.2),
-    0 0 0 1px rgba(22, 21, 19, 0.04);
-}
-
-.numa-cta-glow.numa-btn-accent {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 4px 18px var(--numa-accent-glow),
-    0 0 0 1px rgba(18, 122, 98, 0.08);
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1728,21 +1626,6 @@ button.numa-chip:disabled {
   .numa-overflow-menu,
   .numa-scope-panel {
     animation: none !important;
-  }
-
-  .numa-press,
-  .numa-btn,
-  .numa-fab,
-  .numa-bottom-nav-item,
-  .numa-side-nav-item,
-  .numa-view-hold {
-    transition: none !important;
-  }
-
-  .numa-press:active,
-  .numa-btn:active:not(:disabled),
-  .numa-fab:active {
-    transform: none !important;
   }
 }
 
