@@ -30,8 +30,19 @@ describe("WealthScoreboard Analys leftover", () => {
   it("defaults the leftover cell to Mot planen so Analys can keep vs-plan math", () => {
     expect(src).toContain("livingLabel = SV.motPlanen");
     expect(src).toContain("numa-wealth-cell");
+    expect(src).toContain("numa-wealth-value");
     expect(src).toContain(
       'livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"',
     );
+    const board = src.slice(
+      src.indexOf("export function WealthScoreboard"),
+      src.indexOf("export function CompactPiles"),
+    );
+    const compact = src.slice(src.indexOf("export function CompactPiles"));
+    expect(board).toContain('size="md"');
+    expect(board.match(/size="md"/g)?.length).toBe(3);
+    expect(board).not.toContain('size="sm"');
+    expect(board).not.toContain('size="xs"');
+    expect(compact).not.toContain("numa-wealth-value");
   });
 });

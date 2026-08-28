@@ -166,6 +166,10 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-piles-board {");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr);");
     expect(css).toContain(".numa-wealth-score {");
-    expect(css).toContain("flex-direction: column");
+    expect(css).toContain(".numa-wealth-value");
+    expect(css).toContain(".numa-money-sep");
+    expect(css).toContain("font-synthesis: none");
+    expect(css).toContain("@media (min-width: 1024px)");
+    expect(css).toContain("letter-spacing: 0");
   });
 });

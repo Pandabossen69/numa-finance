@@ -130,7 +130,9 @@ body {
   font-feature-settings:
     "tnum" 1,
     "lnum" 1;
-  letter-spacing: -0.03em;
+  font-synthesis: none;
+  letter-spacing: 0;
+  word-spacing: 0;
 }
 
 .money-currency {
@@ -180,6 +182,21 @@ body {
   font-feature-settings:
     "tnum" 1,
     "lnum" 1;
+  font-synthesis: none;
+  letter-spacing: 0;
+  word-spacing: 0;
+}
+
+.numa-money-run {
+  display: inline;
+  white-space: nowrap;
+}
+
+.numa-money-sep {
+  display: inline-block;
+  width: 0.2em;
+  height: 0.65em;
+  vertical-align: baseline;
 }
 
 .numa-money.is-end .numa-money-amt {
@@ -672,8 +689,8 @@ body {
 }
 
 .numa-wealth-score {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 0.5rem;
   padding: 0;
@@ -685,7 +702,7 @@ body {
 
 .numa-wealth-cell {
   min-width: 0;
-  padding: 1rem 1.05rem;
+  padding: 0.95rem 1.05rem;
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius-sm);
   background: var(--numa-card);
@@ -693,15 +710,43 @@ body {
   overflow: visible;
 }
 
+.numa-wealth-cell .numa-section-title {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.numa-wealth-value {
+  margin-top: 0.35rem;
+  min-width: 0;
+  overflow: visible;
+}
+
+.numa-wealth-value .numa-money {
+  max-width: none;
+}
+
+.numa-wealth-value .money.numa-money-amt {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.numa-wealth-value .numa-money-unit {
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
 .numa-wealth-score .numa-wealth-op {
   display: none;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .numa-wealth-score {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: stretch;
     gap: 0.45rem 0.55rem;
   }
 
@@ -777,7 +822,7 @@ body {
 .numa-pile-line .money.numa-money-amt {
   font-size: 0.9375rem;
   font-weight: 650;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .numa-pile-line .numa-money-unit {
@@ -790,7 +835,7 @@ body {
 .numa-pile .money.numa-money-amt {
   font-size: 0.9375rem;
   font-weight: 650;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
 }
 
 .numa-piles-board .is-park .numa-money-unit,
