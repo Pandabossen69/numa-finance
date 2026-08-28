@@ -17,7 +17,16 @@ export function PileLine({
   tone?: "plain" | "in" | "out" | "over" | "short";
 }) {
   const missing = amountMinor == null;
-  const rowTone = tone === "over" ? " is-over" : tone === "short" ? " is-short" : "";
+  const rowTone =
+    tone === "over"
+      ? " is-over"
+      : tone === "short"
+        ? " is-short"
+        : tone === "in"
+          ? " is-in"
+          : tone === "out"
+            ? " is-out"
+            : "";
   const valueTone = missing
     ? "text-[var(--numa-faint)]"
     : tone === "out"
