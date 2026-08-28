@@ -477,10 +477,30 @@ body {
 
 .numa-day-stage {
   position: relative;
+  isolation: isolate;
   background:
-    radial-gradient(ellipse 110% 72% at 50% -12%, var(--numa-sun), transparent 58%),
-    radial-gradient(ellipse 92% 64% at 50% 22%, var(--numa-accent-glow), transparent 70%),
+    radial-gradient(ellipse 105% 68% at 50% -10%, var(--numa-sun), transparent 62%),
+    radial-gradient(ellipse 86% 56% at 50% 24%, var(--numa-accent-glow), transparent 72%),
     var(--numa-card);
+  box-shadow:
+    0 22px 54px rgba(78, 57, 29, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.numa-day-stage::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.52),
+    transparent 34%,
+    transparent 72%,
+    rgba(18, 122, 98, 0.035)
+  );
+  content: "";
+  pointer-events: none;
 }
 
 .numa-panel-strong.numa-day-stage {
@@ -491,53 +511,101 @@ body {
   background:
     radial-gradient(
       ellipse 110% 72% at 50% -12%,
-      rgba(232, 176, 110, 0.35),
-      transparent 58%
+      rgba(232, 176, 110, 0.28),
+      transparent 62%
     ),
     radial-gradient(
-      ellipse 92% 64% at 50% 22%,
-      rgba(168, 107, 58, 0.18),
-      transparent 70%
+      ellipse 86% 56% at 50% 24%,
+      rgba(168, 107, 58, 0.13),
+      transparent 72%
     ),
     var(--numa-card);
+}
+
+.numa-day-dial {
+  isolation: isolate;
+  border-radius: 999px;
+}
+
+.numa-day-dial::before {
+  position: absolute;
+  inset: 4%;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.82), transparent 30%),
+    radial-gradient(circle at 50% 62%, rgba(18, 122, 98, 0.1), transparent 68%);
+  box-shadow:
+    0 18px 44px rgba(18, 122, 98, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.58);
+  content: "";
+}
+
+.numa-day-dial.is-over::before {
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.76), transparent 30%),
+    radial-gradient(circle at 50% 62%, rgba(168, 107, 58, 0.1), transparent 68%);
+  box-shadow:
+    0 18px 42px rgba(124, 77, 42, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+}
+
+.numa-day-dial svg {
+  overflow: visible;
+}
+
+.numa-day-dial .is-core {
+  filter: drop-shadow(0 10px 20px rgba(42, 81, 67, 0.08));
+}
+
+.numa-day-dial.is-over .is-core {
+  filter: drop-shadow(0 10px 20px rgba(108, 72, 45, 0.07));
+}
+
+.numa-day-dial .is-track {
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.72));
+}
+
+.numa-day-dial .is-arc-halo {
+  filter: blur(1.5px);
 }
 
 .numa-day-metrics {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.65rem;
+  gap: 0;
   margin: 0;
   padding: 0;
-  border-top: 0;
+  border: 1px solid var(--numa-border);
+  border-radius: var(--numa-radius-sm);
+  background: color-mix(in srgb, var(--numa-card) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
 }
 
 .numa-day-metrics > div {
   min-width: 0;
-  padding: 0.85rem 0.75rem 0.8rem;
-  border-radius: var(--numa-radius-sm);
-  border: 1px solid var(--numa-border);
+  padding: 0.78rem 0.75rem 0.74rem;
+  border: 0;
+  border-radius: 0;
+}
+
+.numa-day-metrics > div + div {
+  border-left: 1px solid var(--numa-border);
 }
 
 @media (min-width: 768px) {
   .numa-day-metrics > div {
-    padding: 1rem 1rem 0.95rem;
+    padding: 0.9rem 1rem 0.85rem;
   }
 }
 
 .numa-day-metrics > .is-budget {
-  background: linear-gradient(
-    180deg,
-    rgba(18, 122, 98, 0.04) 0%,
-    rgba(18, 122, 98, 0.1) 100%
-  );
+  background: linear-gradient(180deg, rgba(18, 122, 98, 0.025), rgba(18, 122, 98, 0.055));
 }
 
 .numa-day-metrics > .is-spent {
-  background: linear-gradient(
-    180deg,
-    rgba(138, 88, 68, 0.04) 0%,
-    rgba(138, 88, 68, 0.1) 100%
-  );
+  background: linear-gradient(180deg, rgba(138, 88, 68, 0.018), rgba(138, 88, 68, 0.045));
 }
 
 .numa-metric-label {
@@ -565,39 +633,74 @@ body {
 .numa-piles-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.65rem;
+  gap: 0;
   padding: 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow: visible;
+  border-radius: var(--numa-radius);
+  border: 1px solid var(--numa-border);
+  background: var(--numa-card);
+  box-shadow:
+    var(--numa-shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  overflow: hidden;
 }
 
 .numa-piles-board > div {
   min-width: 0;
-  padding: 1.15rem 1.15rem 1.1rem;
-  border-radius: var(--numa-radius);
-  border: 1px solid var(--numa-border);
-  box-shadow: var(--numa-shadow-sm);
+  padding: 1rem 1.05rem;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .numa-piles-board > .is-live {
-  background: linear-gradient(165deg, rgba(18, 122, 98, 0.1) 0%, var(--numa-card) 62%);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(18, 122, 98, 0.1), transparent 38%),
+    linear-gradient(165deg, rgba(18, 122, 98, 0.045), var(--numa-card) 68%);
 }
 
 .numa-piles-board > .is-park {
-  background: var(--numa-card);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 0.85rem;
+  padding-block: 0.85rem;
+  border-top: 1px solid var(--numa-border);
+  background: color-mix(in srgb, var(--numa-bg) 34%, var(--numa-card));
 }
 
 .numa-day-dial-arc {
   animation: none;
+  filter: drop-shadow(0 2px 3px rgba(10, 83, 68, 0.2));
+  transition: stroke-dasharray 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .money-hero {
   animation: none;
   width: 100%;
   max-width: 100%;
+}
+
+.money-hero .numa-money {
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  justify-content: center;
+}
+
+.money-hero .money.numa-money-amt,
+.money-hero .numa-money-groups,
+.money-hero .numa-money-run {
+  font-size: clamp(2.15rem, 9.5vw, 3.1rem);
+  font-weight: 720;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.money-hero .numa-money-unit {
+  align-self: flex-end;
+  padding-bottom: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 @keyframes numa-scan {
@@ -749,11 +852,13 @@ body {
   gap: 0;
   width: 100%;
   max-width: 100%;
-  padding: 0.15rem 0;
+  padding: 0;
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
-  border-radius: var(--numa-radius-sm);
-  box-shadow: var(--numa-shadow-sm);
+  border-radius: var(--numa-radius);
+  box-shadow:
+    var(--numa-shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
   overflow: hidden;
 }
 
@@ -803,9 +908,9 @@ body {
 .numa-wealth-value .money.numa-money-amt,
 .numa-wealth-value .numa-money-groups,
 .numa-wealth-value .numa-money-run {
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-size: 1.16rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
   line-height: 1.25;
 }
 
@@ -888,7 +993,7 @@ body {
 .numa-pile-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0;
   min-width: 0;
 }
 
@@ -899,14 +1004,20 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   min-width: 0;
+  min-height: 2.2rem;
   margin: 0;
+  padding: 0.38rem 0;
+}
+
+.numa-pile-line + .numa-pile-line {
+  border-top: 1px solid color-mix(in srgb, var(--numa-border) 66%, transparent);
 }
 
 .numa-pile-line-label {
   flex: 0 1 auto;
   min-width: min-content;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 520;
   line-height: 1.35;
   letter-spacing: 0;
   text-transform: none;
@@ -919,6 +1030,7 @@ body {
   flex: 0 0 auto;
   min-width: min-content;
   margin-left: auto;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .numa-pile-line .numa-money,
@@ -930,9 +1042,9 @@ body {
 .numa-pile-line .money.numa-money-amt,
 .numa-pile-line .numa-money-groups,
 .numa-pile-line .numa-money-run {
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
 }
 
 .numa-pile-line .numa-money-unit {
@@ -947,9 +1059,9 @@ body {
 .numa-pile .money.numa-money-amt,
 .numa-pile .numa-money-groups,
 .numa-pile .numa-money-run {
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
 }
 
 .numa-piles-board .is-park .numa-money-unit,
@@ -960,17 +1072,53 @@ body {
 
 .numa-pile-line.is-over .numa-pile-line-label {
   color: var(--numa-positive);
-  font-weight: 650;
+  font-weight: 680;
 }
 
 .numa-pile-line.is-short .numa-pile-line-label {
   color: var(--numa-alarm);
-  font-weight: 650;
+  font-weight: 680;
+}
+
+.numa-pile-line.is-in .numa-pile-line-value {
+  color: color-mix(in srgb, var(--numa-positive) 82%, var(--numa-ink));
+}
+
+.numa-pile-line.is-out .numa-pile-line-value {
+  color: color-mix(in srgb, var(--numa-spend) 82%, var(--numa-ink));
+}
+
+.numa-pile-line.is-over,
+.numa-pile-line.is-short {
+  min-height: 2.55rem;
+  margin-top: 0.22rem;
+  padding-top: 0.68rem;
+  border-top-color: var(--numa-border-strong);
+}
+
+.numa-pile-save-copy {
+  min-width: 0;
+}
+
+.numa-pile-save-copy .numa-pile-hint {
+  margin-top: 0.14rem;
+}
+
+.numa-pile-save-value {
+  min-width: min-content;
+  justify-self: end;
+}
+
+.numa-pile-save-value .numa-money,
+.numa-pile-save-value .numa-money.is-end {
+  width: max-content;
+  max-width: none;
+  justify-content: flex-end;
 }
 
 .numa-pile-hint {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.4;
   color: var(--numa-muted);
 }
@@ -1024,8 +1172,11 @@ body {
 }
 
 .numa-chip-alarm {
-  background: var(--numa-alarm-soft);
-  color: var(--numa-alarm);
+  background: color-mix(in srgb, var(--numa-alarm-soft) 86%, var(--numa-card));
+  color: color-mix(in srgb, var(--numa-alarm) 88%, var(--numa-ink));
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 107, 58, 0.09),
+    0 4px 12px rgba(119, 72, 39, 0.06);
 }
 
 .numa-chip-ink {
@@ -1485,6 +1636,10 @@ button.numa-chip:disabled {
   }
 
   .numa-pile-meter > i {
+    transition: none;
+  }
+
+  .numa-day-dial-arc {
     transition: none;
   }
 

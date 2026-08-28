@@ -119,18 +119,20 @@ export function CompactPiles({
         <p className="numa-pile-hint mt-3">{CASH_COVERAGE_HINT_SV}</p>
       </div>
       <div className="is-park min-w-0">
-        <p className="numa-section-title">{SV.sparande}</p>
-        <div className="mt-1.5 min-w-0 text-[var(--numa-ink)]">
+        <div className="numa-pile-save-copy">
+          <p className="numa-section-title">{SV.sparande}</p>
+          <p className="numa-pile-hint">{SV.sparandeTotalt}</p>
+        </div>
+        <div className="numa-pile-save-value min-w-0 text-[var(--numa-ink)]">
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
             size="sm"
             compact
-            align="start"
+            align="end"
             wrap={false}
           />
         </div>
-        <p className="numa-pile-hint mt-1">{SV.sparandeTotalt}</p>
       </div>
     </div>
   );
