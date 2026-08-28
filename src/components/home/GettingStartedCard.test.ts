@@ -21,6 +21,12 @@ describe("GettingStartedCard", () => {
     expect(src).not.toMatch(/välkommen/i);
   });
 
+  it("hides Kom igång without refreshing the page", () => {
+    expect(src).toContain("rememberGettingStarted");
+    expect(src).not.toContain("router.refresh");
+    expect(src).not.toContain("useRouter");
+  });
+
   it("keeps Kom igång chrome at 44px on the phone", () => {
     expect(src).toContain("flex min-h-11 items-center");
     expect(src).toContain("flex h-11 w-11 shrink-0");

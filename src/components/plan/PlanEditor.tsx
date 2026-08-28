@@ -1,7 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
@@ -39,8 +38,8 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { OverflowMenu, type OverflowMenuItem } from "@/components/ui/OverflowMenu";
 import { SV, planDoneLabel, planPartialLabel } from "@/features/copy/labels-sv";
 import { lastPlanView, rememberPlanView } from "@/features/home/last-snapshot";
+import { rememberLivePlan } from "@/components/plan/plan-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
-import { refreshQuiet } from "@/lib/nav/instant";
 import {
   adoptServerPlanItems,
   applyMonthSavings,
@@ -200,7 +199,6 @@ export function PlanEditor({
   focusAdd?: null | "income" | "fixed";
   stepHint?: string | null;
 }) {
-  const router = useRouter();
   const currentMonthKey = useMemo(
     () => monthKeyFromDate(new Date(), timeZone),
     [timeZone],
@@ -251,9 +249,24 @@ export function PlanEditor({
     }, 80);
     return () => window.clearTimeout(id);
   }, [focusAdd]);
+  function publishItems(next: PlanItem[]) {
+    rememberLivePlan({
+      items: next,
+      currency,
+      timeZone,
+      bankBalanceMinor,
+      spendingByMonthKey,
+      ledgerTransactions,
+    });
+  }
+
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);
-    setLocalItems((current) => adoptServerPlanItems(current, items));
+    setLocalItems((current) => {
+      const next = adoptServerPlanItems(current, items);
+      publishItems(next);
+      return next;
+    });
   }
 
   const isPastMonth = monthKey < currentMonthKey;
@@ -395,28 +408,40 @@ export function PlanEditor({
   }): Promise<boolean> {
     setError(null);
     setBusy(opts.busy);
-    setLocalItems(opts.apply);
+    setLocalItems((current) => {
+      const next = opts.apply(current);
+      publishItems(next);
+      return next;
+    });
     try {
       const result = await opts.action();
       if (!result.ok) {
-        setLocalItems(opts.revert);
+        setLocalItems((current) => {
+          const next = opts.revert(current);
+          publishItems(next);
+          return next;
+        });
         setError(result.error);
         return false;
       }
       setLocalItems((current) => {
-        if (opts.reconcile) return opts.reconcile(current, result);
-        if (result.item) return mergeReturnedItem(current, result.item);
-        if (result.items) {
-          return mergeReturnedItems(current, result.items, new Set());
-        }
-        return current;
-      });
-      startTransition(() => {
-        refreshQuiet(router);
+        const next = opts.reconcile
+          ? opts.reconcile(current, result)
+          : result.item
+            ? mergeReturnedItem(current, result.item)
+            : result.items
+              ? mergeReturnedItems(current, result.items, new Set())
+              : current;
+        publishItems(next);
+        return next;
       });
       return true;
     } catch (err) {
-      setLocalItems(opts.revert);
+      setLocalItems((current) => {
+        const next = opts.revert(current);
+        publishItems(next);
+        return next;
+      });
       setError(err instanceof Error ? err.message : "Något gick fel");
       return false;
     } finally {

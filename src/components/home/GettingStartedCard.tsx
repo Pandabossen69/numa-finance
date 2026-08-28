@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   collapseGettingStartedAction,
   completeGettingStartedAction,
@@ -12,9 +11,9 @@ import {
   gettingStartedProgressLabel,
   type GettingStartedView,
 } from "@/features/getting-started/progress";
+import { lastGettingStarted, rememberGettingStarted } from "@/features/home/last-snapshot";
 
 export function GettingStartedCard({ view }: { view: GettingStartedView }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(!view.collapsed);
   const [hiding, setHiding] = useState(false);
@@ -36,8 +35,10 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
     setHiding(true);
     startTransition(async () => {
       const result = await completeGettingStartedAction();
-      if (result.ok) router.refresh();
-      else setHiding(false);
+      if (result.ok) {
+        const current = lastGettingStarted() ?? view;
+        rememberGettingStarted({ ...current, visible: false, allDone: true });
+      } else setHiding(false);
     });
   }
 

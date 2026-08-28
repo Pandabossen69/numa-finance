@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
@@ -11,6 +10,7 @@ import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
+import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
   formatMoney,
@@ -20,13 +20,20 @@ import {
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
+import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { GettingStartedView } from "@/features/getting-started/progress";
-import { lastHomeSnapshot, rememberHomeSnapshot } from "@/features/home/last-snapshot";
+import {
+  applyOptimisticHomeSpend,
+  lastGettingStarted,
+  lastHomeSnapshot,
+  rememberGettingStarted,
+  rememberHomeSnapshot,
+  revertOptimisticHomeSpend,
+  subscribeHomeSnapshot,
+} from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
 import { HomeViewLoading } from "@/components/layout/ViewLoading";
-import { useValueForKey } from "@/lib/hooks/use-value-for-key";
-import { refreshQuiet } from "@/lib/nav/instant";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
   return formatMoney(money(Math.max(0, amountMinor), currency));
@@ -41,12 +48,32 @@ export function HomeDashboard({
   error?: string | null;
   gettingStarted?: GettingStartedView | null;
 }) {
-  if (snap) rememberHomeSnapshot(snap);
-  const view = snap ?? lastHomeSnapshot();
-  const snapResetKey = view
-    ? `${view.todaySpendingMinor}:${view.remainingTodayMinor}:${view.remainingFreeMinor}`
-    : "none";
-  const [deltaSpent, setDeltaSpent] = useValueForKey(0, snapResetKey);
+  const stored = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    lastHomeSnapshot,
+  );
+  const view = stored ?? snap ?? lastHomeSnapshot();
+
+  useEffect(() => {
+    if (snap && lastHomeSnapshot() == null) rememberHomeSnapshot(snap);
+    if (gettingStarted && lastGettingStarted() == null) {
+      rememberGettingStarted(gettingStarted);
+    }
+    void warmupPlanPageData();
+  }, [snap, gettingStarted]);
+
+  useEffect(() => {
+    if (stored || snap) return;
+    let cancelled = false;
+    void getHomeSnapshotAction().then((result) => {
+      if (cancelled || !result.ok) return;
+      rememberHomeSnapshot(result.data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stored, snap]);
 
   if (!view) {
     if (!error) return <HomeViewLoading />;
@@ -59,8 +86,8 @@ export function HomeDashboard({
     );
   }
 
-  const remainingTodayMinor = view.remainingTodayMinor - deltaSpent;
-  const todaySpendingMinor = view.todaySpendingMinor + deltaSpent;
+  const remainingTodayMinor = view.remainingTodayMinor;
+  const todaySpendingMinor = view.todaySpendingMinor;
   const currency = view.currency;
   const greeting = homeGreeting(view.displayName, new Date(), view.timeZone);
   const isBridge = view.livingMode === "bridge";
@@ -254,7 +281,7 @@ export function HomeDashboard({
                 {(view.extraCarriedInMinor > 0 ||
                   view.extraSaldoMinor > 0 ||
                   view.extraSaldoDrawnMinor > 0 ||
-                  (!isBridge && view.cycleSpendingMinor + deltaSpent > 0)) ? (
+                  (!isBridge && view.cycleSpendingMinor > 0)) ? (
                 <div className="numa-panel-list animate-scale-in px-4 py-1">
                   {view.extraCarriedInMinor > 0 ? (
                     <MetricRow
@@ -272,10 +299,10 @@ export function HomeDashboard({
                       currency={currency}
                     />
                   )}
-                  {!isBridge && view.cycleSpendingMinor + deltaSpent > 0 ? (
+                  {!isBridge && view.cycleSpendingMinor > 0 ? (
                     <MetricRow
                       label={SV.spenderatIPerioden}
-                      amountMinor={view.cycleSpendingMinor + Math.max(0, deltaSpent)}
+                      amountMinor={view.cycleSpendingMinor}
                       currency={currency}
                     />
                   ) : null}
@@ -309,8 +336,8 @@ export function HomeDashboard({
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
-            onOptimisticSpend={(amountMinor) => setDeltaSpent((n) => n + amountMinor)}
-            onSpendFailed={(amountMinor) => setDeltaSpent((n) => n - amountMinor)}
+            onOptimisticSpend={(amountMinor) => applyOptimisticHomeSpend(amountMinor)}
+            onSpendFailed={(amountMinor) => revertOptimisticHomeSpend(amountMinor)}
           />
         </>
       ) : null}
@@ -352,7 +379,6 @@ function AvailableNowCard({
   currency: CurrencyCode;
   nextIncomeLabel: string | null;
 }) {
-  const router = useRouter();
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -395,7 +421,10 @@ function AvailableNowCard({
                 setError(result.error);
                 return;
               }
-              refreshQuiet(router);
+              const next = await getHomeSnapshotAction();
+              if (next.ok) rememberHomeSnapshot(next.data);
+              void warmupPlanPageData();
+              setBusy(false);
             })();
           }}
         >
@@ -418,7 +447,6 @@ function UpdateBalanceLink({
   accountId: string | null;
   currency: CurrencyCode;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -471,10 +499,12 @@ function UpdateBalanceLink({
                 setError(result.error);
                 return;
               }
+              const next = await getHomeSnapshotAction();
+              if (next.ok) rememberHomeSnapshot(next.data);
+              void warmupPlanPageData();
               setOpen(false);
               setBalance("");
               setBusy(false);
-              refreshQuiet(router);
             })();
           }}
         >
@@ -517,7 +547,6 @@ function QuickExpense({
   onOptimisticSpend: (amountMinor: number) => void;
   onSpendFailed: (amountMinor: number) => void;
 }) {
-  const router = useRouter();
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -606,7 +635,9 @@ function QuickExpense({
                     setError(result.error);
                     return;
                   }
-                  refreshQuiet(router);
+                  const next = await getHomeSnapshotAction();
+                  if (next.ok) rememberHomeSnapshot(next.data);
+                  void warmupPlanPageData();
                 })();
               }}
             >

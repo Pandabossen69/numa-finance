@@ -145,6 +145,14 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("remainingDueIso(item)");
   });
 
+  it("reconciles mutations locally and does not refresh the whole page", () => {
+    expect(src).toContain("rememberLivePlan");
+    expect(src).toContain("publishItems");
+    expect(src).not.toContain("refreshQuiet");
+    expect(src).not.toContain("router.refresh");
+    expect(src).not.toContain("useRouter");
+  });
+
   it("lands a new row immediately and closes add without emptying the form first", () => {
     expect(src).toContain("function commitAdd");
     expect(src).toContain("setAddKind(null)");
