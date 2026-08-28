@@ -175,7 +175,8 @@ body {
 
 .numa-money-amt {
   display: inline-flex;
-  flex-flow: row nowrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
   flex: 0 0 auto;
   min-width: min-content;
   overflow: visible;
@@ -193,9 +194,11 @@ body {
 
 .numa-money-groups {
   display: inline-flex;
-  flex-flow: row nowrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: baseline;
-  gap: 0.2em;
+  column-gap: 0.2em;
+  row-gap: 0;
   min-width: min-content;
 }
 
@@ -733,11 +736,6 @@ body {
   background: transparent;
 }
 
-.numa-wealth-cell.is-park,
-.numa-wealth-cell.is-all {
-  border-top: 1px solid var(--numa-border);
-}
-
 .numa-wealth-cell .numa-section-title {
   font-size: 0.72rem;
   font-weight: 650;
@@ -776,7 +774,15 @@ body {
 }
 
 .numa-wealth-score .numa-wealth-op {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 0.85rem;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--numa-faint);
 }
 
 @media (min-width: 1024px) {

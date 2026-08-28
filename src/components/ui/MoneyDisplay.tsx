@@ -26,9 +26,7 @@ function AmountRuns({ text }: { text: string }) {
   return (
     <span className="numa-money-groups">
       {parts.map((part, index) => (
-        <span key={`${index}-${part}`} className="numa-money-run">
-          {part}
-        </span>
+        <span key={`${index}-${part}`} className="numa-money-run">{part}</span>
       ))}
     </span>
   );

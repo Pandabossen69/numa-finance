@@ -176,7 +176,8 @@ describe("NUMA vision palette", () => {
     expect(wealth).not.toContain("flex: 1 1");
     expect(wealth).not.toContain("flex-wrap: wrap");
     expect(css).toContain(".numa-money-groups");
-    expect(css).toContain("flex-flow: row nowrap");
+    expect(css).toContain("flex-wrap: nowrap");
+    expect(css).toContain("column-gap: 0.2em");
     expect(css).toContain("font-synthesis: none");
     expect(css).toContain("letter-spacing: 0");
     expect(css).not.toContain("flex: 1 1 5.5rem");
