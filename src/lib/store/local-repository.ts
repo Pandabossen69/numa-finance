@@ -30,7 +30,16 @@ import {
   type TransactionSource,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
-import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import {
+  createExtractionProvider,
+  resolveScreenshotImport,
+  OCR_EXTRACT_TIMEOUT_MS,
+  OCR_EXTRACT_TIMEOUT_SV,
+  OCR_RATE_LIMIT_SV,
+  isOcrOverLimit,
+  ocrWindowStartIso,
+} from "@/domain/imports";
+import { isTimeoutError, withTimeout } from "@/lib/async";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 import { readStore, updateStore } from "./local-store";
@@ -747,6 +756,13 @@ export async function uploadReceiptAndExtract(input: {
   preferBankSms?: boolean;
   preferBankApp?: boolean;
 }): Promise<ReceiptUploadResult> {
+  const existing = await readStore();
+  const windowStart = Date.parse(ocrWindowStartIso());
+  const recent = existing.observations.filter(
+    (row) => Date.parse(row.createdAt) >= windowStart,
+  ).length;
+  if (isOcrOverLimit(recent)) throw new Error(OCR_RATE_LIMIT_SV);
+
   const storagePath = buildUserStoragePath(LOCAL_DEMO_USER_ID, input.fileName);
   assertUserOwnsStoragePath(LOCAL_DEMO_USER_ID, storagePath);
 
@@ -767,13 +783,23 @@ export async function uploadReceiptAndExtract(input: {
     : input.preferBankApp
       ? "bank_app"
       : null;
-  const extraction = await provider.extract({
-    observationId,
-    storagePath,
-    imageBase64,
-    mimeType: input.mimeType,
-    institutionHint,
-  });
+  let extraction;
+  try {
+    extraction = await withTimeout(
+      provider.extract({
+        observationId,
+        storagePath,
+        imageBase64,
+        mimeType: input.mimeType,
+        institutionHint,
+      }),
+      OCR_EXTRACT_TIMEOUT_MS,
+      "ocr extract",
+    );
+  } catch (error) {
+    if (isTimeoutError(error)) throw new Error(OCR_EXTRACT_TIMEOUT_SV);
+    throw error;
+  }
 
   const known = await listConfirmedFingerprints();
   const resolved = resolveScreenshotImport(extraction, known, {
