@@ -47,10 +47,7 @@ export function CreateAccountForm({
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-4 rounded-[1.5rem] border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] p-4"
-    >
+    <form onSubmit={onSubmit} className="numa-panel-strong space-y-4 p-5">
       <Field
         label="Namn (t.ex. Bangkok Bank eller Kontanter)"
         value={form.name}
@@ -69,7 +66,7 @@ export function CreateAccountForm({
       />
 
       <label className="block">
-        <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
           Valuta
         </span>
         <select
@@ -80,7 +77,7 @@ export function CreateAccountForm({
               currency: e.target.value as CurrencyCode,
             }))
           }
-          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none"
+          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)]"
         >
           {CURRENCIES.map((code) => (
             <option key={code} value={code}>
@@ -95,7 +92,7 @@ export function CreateAccountForm({
       </label>
 
       <label className="block">
-        <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
           Typ
         </span>
         <select
@@ -106,7 +103,7 @@ export function CreateAccountForm({
               accountType: e.target.value as typeof form.accountType,
             }))
           }
-          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none"
+          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)]"
         >
           <option value="checking">Löpande konto</option>
           <option value="savings">Sparkonto</option>
@@ -123,7 +120,7 @@ export function CreateAccountForm({
         inputMode="decimal"
       />
 
-      <label className="flex min-h-11 items-start gap-3 rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3">
+      <label className="numa-press flex min-h-11 items-start gap-3 rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3 transition hover:border-[var(--numa-border-strong)]">
         <input
           type="checkbox"
           checked={useOnIdag}
@@ -147,7 +144,7 @@ export function CreateAccountForm({
       <button
         type="submit"
         disabled={pending || !form.name.trim() || !form.openingBalance.trim()}
-        className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white disabled:opacity-45"
+        className="numa-btn numa-btn-accent numa-cta-glow min-h-14 w-full text-[15px]"
       >
         {pending ? "Sparar…" : "Spara saldo och fortsätt"}
       </button>
@@ -173,7 +170,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
+      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
         {label}
       </span>
       <input

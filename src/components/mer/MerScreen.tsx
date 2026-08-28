@@ -1,12 +1,23 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
+  IconCamera,
+  IconGear,
+  IconImages,
+  IconLink,
+  IconPersonPlus,
+  IconRorelser,
+  IconWallet,
+  IconWrench,
+  MerAvatar,
   MerListGroup,
   MerListLink,
   MerListRow,
   MerPageHeader,
   MerSection,
+  type MerIconTone,
 } from "@/components/mer/MerHub";
 import { MerViewLoading } from "@/components/mer/MerViewLoading";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -22,28 +33,64 @@ type MerItem = {
   href: string;
   label: string;
   hint?: string;
+  icon: ReactNode;
+  tone: MerIconTone;
 };
 
 const sections: Array<{ title: string; items: MerItem[] }> = [
   {
     title: "Pengar",
     items: [
-      { href: "/transaktioner", label: "Rörelser", hint: "Historik" },
-      { href: "/konton", label: SV.saldo, hint: "Uppdatera belopp" },
+      {
+        href: "/transaktioner",
+        label: "Rörelser",
+        hint: "Historik",
+        icon: <IconRorelser />,
+        tone: "spend",
+      },
+      {
+        href: "/konton",
+        label: SV.saldo,
+        hint: "Uppdatera belopp",
+        icon: <IconWallet />,
+        tone: "positive",
+      },
     ],
   },
   {
     title: "Lägg till",
     items: [
-      { href: "/fota", label: "Fota", hint: "Saldo eller kvitto" },
-      { href: "/importera", label: "Tidigare bilder" },
+      {
+        href: "/fota",
+        label: "Fota",
+        hint: "Saldo eller kvitto",
+        icon: <IconCamera />,
+        tone: "accent",
+      },
+      {
+        href: "/importera",
+        label: "Tidigare bilder",
+        icon: <IconImages />,
+        tone: "accent",
+      },
     ],
   },
   {
     title: "App",
     items: [
-      { href: "/installningar", label: "Inställningar" },
-      { href: "/laga", label: "Laga appen", hint: "Om något strular" },
+      {
+        href: "/installningar",
+        label: "Inställningar",
+        icon: <IconGear />,
+        tone: "neutral",
+      },
+      {
+        href: "/laga",
+        label: "Laga appen",
+        hint: "Om något strular",
+        icon: <IconWrench />,
+        tone: "alarm",
+      },
     ],
   },
 ];
@@ -87,6 +134,8 @@ export function MerScreen({
                 href={PRODUCTION_ORIGIN}
                 label={PRODUCTION_HOST}
                 hint="Samma länk för dig, familj och vänner"
+                icon={<IconLink />}
+                tone="accent"
               />
             </MerListGroup>
           </div>
@@ -102,6 +151,8 @@ export function MerScreen({
                     href={item.href}
                     label={item.label}
                     hint={item.hint}
+                    icon={item.icon}
+                    tone={item.tone}
                   />
                 ))}
               </MerListGroup>
@@ -115,6 +166,8 @@ export function MerScreen({
                   href="/installningar/ny-anvandare"
                   label="Ny användare"
                   hint="Skapa inloggning. Börjar tomt."
+                  icon={<IconPersonPlus />}
+                  tone="accent"
                 />
               </MerListGroup>
             </MerSection>
@@ -122,13 +175,16 @@ export function MerScreen({
 
           <MerSection title="Konto">
             <MerListGroup>
-              <MerListRow>
-                <p className="text-[15px] font-semibold tracking-tight">
-                  {view.displayName}
-                </p>
-                <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
-                  Inloggad nu
-                </p>
+              <MerListRow className="flex items-center gap-3">
+                <MerAvatar initial={view.displayName.charAt(0).toUpperCase()} />
+                <span className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-semibold tracking-tight">
+                    {view.displayName}
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
+                    Inloggad nu
+                  </p>
+                </span>
               </MerListRow>
               <MerListRow className="py-3">
                 <p className="mb-2 text-[12px] leading-snug text-[var(--numa-faint)]">

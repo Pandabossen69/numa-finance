@@ -46,7 +46,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
           onChange={(e) => setBalance(e.target.value)}
           inputMode="decimal"
           placeholder="t.ex. 10058,04"
-          className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] px-3.5 text-base font-semibold outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+          className="money min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         />
       </label>
       {error ? (
@@ -57,7 +57,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
       <button
         type="submit"
         disabled={pending || !balance.trim()}
-        className="flex min-h-11 w-full items-center justify-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-surface-solid)] text-sm font-medium transition hover:border-[var(--numa-border-strong)] disabled:opacity-50"
+        className="numa-btn numa-btn-soft w-full"
       >
         {pending ? "Sparar…" : "Spara saldo"}
       </button>
