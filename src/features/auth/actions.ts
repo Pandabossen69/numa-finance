@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { loadOnboardingState } from "@/features/onboarding/load";
+import {
+  clearOnboardingCookie,
+  persistOnboardingPhaseCookie,
+} from "@/features/onboarding/persist-cookie";
 import type { AuthResult } from "./result";
 import { rejectPublicSignup } from "./signup-policy";
 
@@ -29,6 +33,7 @@ export async function signInAction(raw: {
       return { ok: false, error: swedishAuthError(error.message) };
     }
     const state = await loadOnboardingState();
+    await persistOnboardingPhaseCookie(state.phase);
     return { ok: true, nextPath: state.nextPath };
   } catch (error) {
     return {
@@ -55,6 +60,7 @@ export async function signOutAction(): Promise<void> {
       console.error("[numa] signOut failed", error);
     }
   }
+  await clearOnboardingCookie();
   redirect("/logga-in");
 }
 

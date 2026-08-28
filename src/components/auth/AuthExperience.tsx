@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signInAction } from "@/features/auth/actions";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
@@ -15,6 +15,11 @@ export function AuthExperience() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    router.prefetch("/kom-igang");
+    router.prefetch("/idag");
+  }, [router]);
 
   function go(next: Screen) {
     setError(null);

@@ -96,6 +96,10 @@ describe("first-run onboarding", () => {
     expect(fota).toContain('variant="onboarding"');
     expect(fota).toContain("fromOnboarding");
     expect(fota).toContain("successHref={HOME_PATH}");
+    expect(fota).not.toContain("loadHomeSnapshot");
+    expect(fota).not.toContain("getCachedTodaySnapshot");
+    expect(choice).toContain("export default function KomIgangPage");
+    expect(choice).not.toContain("export default async function KomIgangPage");
     expect(manual).toContain("OnboardingManualSaldo");
     expect(manualUi).toContain("setAvailableNowAction");
     expect(manualUi).toContain("fromOnboarding: true");

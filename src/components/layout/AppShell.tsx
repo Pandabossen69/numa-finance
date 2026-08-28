@@ -15,7 +15,7 @@ export function AppShell({
   displayName,
 }: {
   children: React.ReactNode;
-  displayName: string;
+  displayName: React.ReactNode;
 }) {
   return (
     <NavIntentProvider>
@@ -29,7 +29,7 @@ export function AppShell({
                 <span className="numa-brand-mark">NUMA</span>
                 <span
                   className="mt-0.5 block truncate text-[13px] font-semibold tracking-tight text-[var(--numa-ink)]"
-                  title={displayName}
+                  title={typeof displayName === "string" ? displayName : undefined}
                 >
                   {displayName}
                 </span>

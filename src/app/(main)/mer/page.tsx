@@ -43,13 +43,16 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
 ];
 
 export default async function MerPage() {
-  let displayName = "Användare";
-  try {
-    displayName = (await getProfile()).displayName;
-  } catch (error) {
-    console.error("[numa] mer profile failed", error);
-  }
-  const isAdmin = await currentUserIsNumaAdmin();
+  const [profileResult, isAdmin] = await Promise.all([
+    getProfile()
+      .then((profile) => ({ ok: true as const, profile }))
+      .catch((error) => {
+        console.error("[numa] mer profile failed", error);
+        return { ok: false as const, profile: null };
+      }),
+    currentUserIsNumaAdmin(),
+  ]);
+  const displayName = profileResult.profile?.displayName ?? "Användare";
 
   return (
     <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">

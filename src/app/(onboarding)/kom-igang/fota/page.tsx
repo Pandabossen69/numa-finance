@@ -1,9 +1,4 @@
 import Link from "next/link";
-import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
-import {
-  getCachedTodaySnapshot,
-  loadHomeSnapshot,
-} from "@/features/finance/load-home";
 import { ONBOARDING_SV as C } from "@/features/onboarding/copy";
 import {
   HOME_PATH,
@@ -15,22 +10,16 @@ import { ReceiptCaptureFlow } from "@/lib/route-islands";
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingFotaPage() {
-  await requireSaldoOnboardingPage();
-
-  const [home, snap] = await Promise.all([
-    loadHomeSnapshot(),
-    getCachedTodaySnapshot().catch(() => null),
-  ]);
-  const data = home.ok ? home.data : null;
-  const accounts =
-    snap?.accounts
-      .filter((a) => a.isActive)
-      .map((a) => ({
-        id: a.id,
-        name: a.name,
-        accountType: a.accountType,
-        currency: a.currency,
-      })) ?? [];
+  const state = await requireSaldoOnboardingPage();
+  const currency = state.profile?.primaryCurrency ?? "THB";
+  const accounts = state.accounts
+    .filter((account) => account.isActive)
+    .map((account) => ({
+      id: account.id,
+      name: account.name,
+      accountType: account.accountType,
+      currency: account.currency,
+    }));
 
   return (
     <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col space-y-6 md:mx-auto md:max-w-lg md:flex-none">
@@ -40,29 +29,17 @@ export default async function OnboardingFotaPage() {
       >
         ← {C.back}
       </Link>
-      {home.ok === false || !data ? (
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {C.fotaTitle}
-          </h1>
-          <p className="text-sm text-[var(--numa-danger)]">
-            {home.ok === false ? home.error : "Kunde inte ladda."}
-          </p>
-          <RetryLoadButton />
-        </div>
-      ) : (
-        <ReceiptCaptureFlow
-          accountId={data.primaryAccountId}
-          accounts={accounts}
-          remainingTodayMinor={data.remainingTodayMinor}
-          currency={data.currency}
-          bootstrapping
-          initialMode="pick"
-          variant="onboarding"
-          fromOnboarding
-          successHref={HOME_PATH}
-        />
-      )}
+      <ReceiptCaptureFlow
+        accountId={accounts[0]?.id ?? null}
+        accounts={accounts}
+        remainingTodayMinor={0}
+        currency={currency}
+        bootstrapping
+        initialMode="pick"
+        variant="onboarding"
+        fromOnboarding
+        successHref={HOME_PATH}
+      />
     </div>
   );
 }
