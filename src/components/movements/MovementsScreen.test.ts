@@ -28,4 +28,14 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("min-h-11 rounded-full");
     expect(src).not.toContain("min-h-10 rounded-full");
   });
+
+  it("keeps period and filter chips equal and stats off a phone 3-up", () => {
+    expect(src).toContain("numa-equal-chips");
+    expect(src).toContain("is-quad");
+    expect(src).toContain("numa-stat-trio");
+    expect(src).toContain("numa-money-line");
+    expect(src).toContain("wrap={false}");
+    expect(src).not.toContain("sm:grid-cols-3");
+    expect(src).toContain("overflow-x-hidden");
+  });
 });

@@ -12,4 +12,9 @@ describe("/installningar/ny-anvandare", () => {
     expect(page).toContain("numa-panel-strong");
     expect(page).not.toContain("user_metadata");
   });
+
+  it("clips the admin card so long emails cannot overflow 375px", () => {
+    expect(page).toContain("overflow-x-hidden");
+    expect(page).toContain("min-w-0");
+  });
 });

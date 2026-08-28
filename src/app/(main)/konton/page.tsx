@@ -21,14 +21,14 @@ export default async function KontonPage() {
   const accounts = await listAccounts();
 
   return (
-    <div className="numa-page numa-page-wide space-y-7">
+    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
       <MerPageHeader
         back
         title="Saldo"
         action={
           <Link
             href="/konton/ny"
-            className="text-[13px] font-semibold text-[var(--numa-accent)]"
+            className="numa-tap text-[13px] font-semibold text-[var(--numa-accent)]"
           >
             Nytt konto
           </Link>
@@ -45,11 +45,11 @@ export default async function KontonPage() {
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold">
                 <Link
                   href="/fota?mode=sms"
-                  className="text-[var(--numa-accent)]"
+                  className="numa-tap text-[var(--numa-accent)]"
                 >
                   Fota bank-SMS →
                 </Link>
-                <Link href="/konton/ny" className="text-[var(--numa-accent)]">
+                <Link href="/konton/ny" className="numa-tap text-[var(--numa-accent)]">
                   Ange manuellt →
                 </Link>
               </div>
@@ -72,31 +72,34 @@ export default async function KontonPage() {
                 <MerSection key={account.id}>
                   <MerListGroup>
                     <MerListRow>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h2 className="text-[15px] font-semibold tracking-tight">
+                      <div className="numa-money-line items-start">
+                        <div className="numa-money-line-label">
+                          <h2 className="truncate text-[15px] font-semibold tracking-tight">
                             {account.name}
                             {account.maskedIdentifier
                               ? ` ·${account.maskedIdentifier}`
                               : ""}
                           </h2>
-                          <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
+                          <p className="mt-0.5 truncate text-[12px] text-[var(--numa-faint)]">
                             {account.institution ?? "Eget konto"} ·{" "}
                             {account.currency}
                             {account.isDefault ? " · Standard" : ""}
                           </p>
                         </div>
-                        {calculated ? (
-                          <MoneyDisplay
-                            amountMinor={calculated.amountMinor}
-                            currency={calculated.currency}
-                            size="md"
-                          />
-                        ) : (
-                          <span className="text-sm text-[var(--numa-faint)]">
-                            —
-                          </span>
-                        )}
+                        <div className="numa-money-line-amt">
+                          {calculated ? (
+                            <MoneyDisplay
+                              amountMinor={calculated.amountMinor}
+                              currency={calculated.currency}
+                              size="md"
+                              wrap={false}
+                            />
+                          ) : (
+                            <span className="text-sm text-[var(--numa-faint)]">
+                              —
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </MerListRow>
                     <MerListRow className="bg-[var(--numa-bg)]/35">

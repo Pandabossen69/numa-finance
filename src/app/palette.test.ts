@@ -202,4 +202,45 @@ describe("NUMA vision palette", () => {
     expect(css).not.toContain("flex: 1 1 5.5rem");
     expect(css).not.toContain(".numa-money-sep");
   });
+
+  it("locks remaining-screen chips equal and money on one line", () => {
+    const chips = css.slice(
+      css.indexOf(".numa-equal-chips {"),
+      css.indexOf(".numa-chip-scroll {"),
+    );
+    expect(chips).toContain("repeat(2, minmax(0, 1fr))");
+    expect(chips).toContain("white-space: nowrap");
+    expect(chips).toContain(".numa-equal-chips.is-quad");
+
+    const trio = css.slice(
+      css.indexOf(".numa-stat-trio {"),
+      css.indexOf(".numa-money-line {"),
+    );
+    expect(trio).toContain("grid-template-columns: minmax(0, 1fr)");
+    expect(trio).toContain("repeat(3, minmax(0, 1fr))");
+
+    const moneyLine = css.slice(
+      css.indexOf(".numa-money-line {"),
+      css.indexOf(".numa-hero-money {"),
+    );
+    expect(moneyLine).toContain("white-space: nowrap");
+    expect(moneyLine).toContain("flex-shrink: 0");
+    expect(moneyLine).toContain(".numa-money-stack .numa-row");
+    expect(moneyLine).toContain("flex-wrap: nowrap");
+
+    const wealth = css.slice(
+      css.indexOf(".numa-analys-wealth .numa-wealth-score {"),
+      css.indexOf(".numa-status-chip {"),
+    );
+    expect(wealth).toContain("grid-template-columns: minmax(0, 1fr)");
+    expect(wealth).toContain(".numa-wealth-op");
+    expect(wealth).toContain("display: none");
+
+    const tap = css.slice(
+      css.indexOf(".numa-tap {"),
+      css.indexOf(".auth-card {"),
+    );
+    expect(tap).toContain("min-height: 2.75rem");
+    expect(tap).toContain(".numa-tap-icon");
+  });
 });

@@ -34,6 +34,7 @@ describe("Mer HIGH regress", () => {
 
   it("uses the same desktop width as Hem and Plan", () => {
     expect(mer).toContain("numa-page-wide");
+    expect(mer).toContain("overflow-x-hidden");
   });
 
   it("keeps SignOut on Mer and not on Inställningar", () => {

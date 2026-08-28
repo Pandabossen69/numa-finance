@@ -14,5 +14,6 @@ describe("/fota resume", () => {
 
   it("uses the same desktop width as Hem and Plan", () => {
     expect(src).toContain("numa-page-wide");
+    expect(src).toContain("overflow-x-hidden");
   });
 });

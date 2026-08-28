@@ -88,14 +88,14 @@ export function AnalysDashboard({
       : null;
 
   return (
-    <div className="numa-page numa-page-wide space-y-6">
+    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
       <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
         <FormulaInfo steps={view.formula.steps} />
       </header>
 
       <div
-        className="animate-rise-delay-1 flex gap-2"
+        className="numa-equal-chips animate-rise-delay-1"
         role="tablist"
         aria-label="Analysvy"
       >
@@ -131,9 +131,14 @@ export function AnalysDashboard({
               </p>
             ) : (
               <div
-                className={heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}
+                className={`numa-hero-money ${heroOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"}`}
               >
-                <MoneyDisplay amountMinor={heroMinor} currency={currency} size="xl" />
+                <MoneyDisplay
+                  amountMinor={heroMinor}
+                  currency={currency}
+                  size="xl"
+                  wrap={false}
+                />
               </div>
             )}
             {!(isBridge && !hasSaldo) ? (
@@ -144,7 +149,7 @@ export function AnalysDashboard({
           {!isEmpty ? (
             <section className="animate-rise-delay-2 space-y-2">
               <p className="numa-section-title px-1">{SV.idag}</p>
-              <div className="numa-panel-list px-4 py-1">
+              <div className="numa-panel-list numa-money-stack px-4 py-1">
                 <MetricRow
                   label={SV.kvarIdag}
                   amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
@@ -174,7 +179,7 @@ export function AnalysDashboard({
               className="animate-rise-delay-2 min-w-0 space-y-2"
               aria-label="Periodens siffror"
             >
-              <div className="numa-panel-list px-4 py-1">
+              <div className="numa-panel-list numa-money-stack px-4 py-1">
                 {isBridge ? (
                   hasSaldo ? null : (
                     <MetricRow
@@ -255,24 +260,26 @@ export function AnalysDashboard({
             <Link
               href="/plan"
               prefetch
-              className="shrink-0 pb-0.5 text-xs font-semibold text-[var(--numa-accent)]"
+              className="numa-tap shrink-0 text-xs font-semibold text-[var(--numa-accent)]"
             >
               Plan →
             </Link>
           </div>
 
-          <WealthScoreboard
-            livingMinor={month.livingSaldoMinor}
-            livingLabel={SV.motPlanen}
-            savingsMinor={month.savingsTotalMinor}
-            totalMinor={month.wealthTotalMinor}
-            currency={currency}
-          />
+          <div className="numa-analys-wealth">
+            <WealthScoreboard
+              livingMinor={month.livingSaldoMinor}
+              livingLabel={SV.motPlanen}
+              savingsMinor={month.savingsTotalMinor}
+              totalMinor={month.wealthTotalMinor}
+              currency={currency}
+            />
+          </div>
           <p className="px-1 text-xs leading-snug text-[var(--numa-muted)]">
             Mot planen är inte kontanter — planerat kvar minus spenderat i månaden.
           </p>
 
-          <div className="numa-panel-list px-4 py-1">
+          <div className="numa-panel-list numa-money-stack px-4 py-1">
             <MetricRow
               label={SV.intakter}
               amountMinor={month.incomeMinor}
@@ -349,7 +356,7 @@ export function AnalysDashboard({
           <Link
             href="/plan"
             prefetch
-            className="text-xs font-semibold text-[var(--numa-accent)]"
+            className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             Plan →
           </Link>
@@ -363,16 +370,19 @@ export function AnalysDashboard({
             {view.goals.map((goal) => (
               <li
                 key={goal.id}
-                className="flex items-center justify-between gap-3 px-4 py-3.5"
+                className="numa-money-line px-4 py-3.5"
               >
-                <span className="truncate text-sm text-[var(--numa-muted)]">
+                <span className="numa-money-line-label text-sm text-[var(--numa-muted)]">
                   {goal.name}
                 </span>
-                <MoneyDisplay
-                  amountMinor={goal.amountMinor}
-                  currency={currency}
-                  size="sm"
-                />
+                <span className="numa-money-line-amt">
+                  <MoneyDisplay
+                    amountMinor={goal.amountMinor}
+                    currency={currency}
+                    size="sm"
+                    wrap={false}
+                  />
+                </span>
               </li>
             ))}
           </ul>
@@ -385,7 +395,7 @@ export function AnalysDashboard({
           <Link
             href="/transaktioner"
             prefetch
-            className="text-xs font-semibold text-[var(--numa-accent)]"
+            className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             Alla →
           </Link>
@@ -399,24 +409,27 @@ export function AnalysDashboard({
               return (
                 <li
                   key={tx.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3.5"
+                  className="numa-money-line items-center px-4 py-3.5"
                 >
-                  <div className="min-w-0">
+                  <div className="numa-money-line-label">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
                       {sanitizeMoneyDescription(tx.description)}
                     </p>
                     {tx.category ? (
-                      <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                      <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
                         {tx.category}
                       </p>
                     ) : null}
                   </div>
-                  <MoneyDisplay
-                    amountMinor={signed}
-                    currency={tx.currency}
-                    size="sm"
-                    tone="signed"
-                  />
+                  <span className="numa-money-line-amt">
+                    <MoneyDisplay
+                      amountMinor={signed}
+                      currency={tx.currency}
+                      size="sm"
+                      tone="signed"
+                      wrap={false}
+                    />
+                  </span>
                 </li>
               );
             })}
@@ -442,7 +455,7 @@ function ScopeChip({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`numa-press numa-scope-chip min-h-11 rounded-full px-4 text-sm font-semibold ${
+      className={`numa-press numa-scope-chip min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
           ? "is-active bg-[var(--numa-ink)] text-white"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -470,17 +483,22 @@ function LineList({
 }) {
   return (
     <div className="min-w-0 space-y-2">
-      <div className="flex items-baseline justify-between gap-3 px-0.5">
-        <div className="min-w-0">
+      <div className="numa-money-line px-0.5">
+        <div className="numa-money-line-label">
           <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
             {title}
           </h3>
           {subtitle ? (
-            <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{subtitle}</p>
+            <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">{subtitle}</p>
           ) : null}
         </div>
-        <div className="shrink-0 text-[var(--numa-muted)]">
-          <MoneyDisplay amountMinor={totalMinor} currency={currency} size="sm" />
+        <div className="numa-money-line-amt text-[var(--numa-muted)]">
+          <MoneyDisplay
+            amountMinor={totalMinor}
+            currency={currency}
+            size="sm"
+            wrap={false}
+          />
         </div>
       </div>
       {lines.length === 0 ? (
@@ -490,21 +508,24 @@ function LineList({
           {lines.map((line) => (
             <li
               key={line.id}
-              className="flex items-center justify-between gap-3 px-4 py-3.5"
+              className="numa-money-line items-center px-4 py-3.5"
             >
-              <div className="min-w-0">
+              <div className="numa-money-line-label">
                 <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
                   {sanitizeMoneyDescription(line.name)}
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
                   {sanitizeMoneyDescription(line.detail)}
                 </p>
               </div>
-              <MoneyDisplay
-                amountMinor={line.amountMinor}
-                currency={currency}
-                size="sm"
-              />
+              <span className="numa-money-line-amt">
+                <MoneyDisplay
+                  amountMinor={line.amountMinor}
+                  currency={currency}
+                  size="sm"
+                  wrap={false}
+                />
+              </span>
             </li>
           ))}
         </ul>

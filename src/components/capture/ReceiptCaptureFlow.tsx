@@ -305,7 +305,7 @@ export function ReceiptCaptureFlow({
           </p>
           <button
             type="button"
-            className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
+            className="numa-press numa-tap text-sm font-semibold text-[var(--numa-accent)]"
             onClick={() => setMode("bank_sms")}
           >
             Fota bank-SMS →
@@ -386,12 +386,12 @@ export function ReceiptCaptureFlow({
           </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 items-stretch gap-3">
           <button
             type="button"
             disabled={pending}
             onClick={() => cameraInputRef.current?.click()}
-            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
+            className="numa-press group flex min-h-[9.5rem] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
           >
             <span className="text-2xl font-light leading-none" aria-hidden>
               ◉
@@ -405,7 +405,7 @@ export function ReceiptCaptureFlow({
             type="button"
             disabled={pending}
             onClick={() => galleryInputRef.current?.click()}
-            className="numa-press group flex min-h-[9.5rem] flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-[var(--numa-card)] px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
+            className="numa-press group flex min-h-[9.5rem] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-[var(--numa-card)] px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
           >
             <span
               className="text-2xl font-light leading-none text-[var(--numa-ink)]"
@@ -474,7 +474,7 @@ export function ReceiptCaptureFlow({
         </div>
         <button
           type="button"
-          className="mx-auto block text-sm font-semibold text-[var(--numa-accent)]"
+          className="numa-tap mx-auto block text-sm font-semibold text-[var(--numa-accent)]"
           onClick={() => {
             URL.revokeObjectURL(preview.previewUrl);
             setPreview(null);
@@ -519,7 +519,7 @@ export function ReceiptCaptureFlow({
               <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
                 Saldo på Hem
               </p>
-              <p className="money-hero money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
+              <p className="numa-hero-money money-hero money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
                 {formatMoney(
                   money(preview.balanceAfterMinor, preview.currency),
                 )}
@@ -570,10 +570,10 @@ export function ReceiptCaptureFlow({
             return (
               <li
                 key={event.candidateId}
-                className="flex items-baseline justify-between gap-4 py-3.5"
+                className="numa-money-line py-3.5"
               >
                 <span
-                  className={`min-w-0 text-sm font-semibold ${
+                  className={`numa-money-line-label text-sm font-semibold ${
                     plus
                       ? "text-[var(--numa-positive)]"
                       : "text-[var(--numa-ink)]"
@@ -587,7 +587,7 @@ export function ReceiptCaptureFlow({
                       : "Utgift"}
                 </span>
                 <span
-                  className={`money shrink-0 text-lg font-semibold ${
+                  className={`numa-money-line-amt money text-lg font-semibold ${
                     plus
                       ? "text-[var(--numa-positive)]"
                       : "text-[var(--numa-ink)]"
@@ -614,12 +614,12 @@ export function ReceiptCaptureFlow({
                 setPreview((p) => (p ? { ...p, amount: e.target.value } : p))
               }
               placeholder="0,00"
-              className="money mt-2 w-full border-0 bg-transparent p-0 text-[2rem] font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
+              className="money mt-2 min-h-11 w-full border-0 bg-transparent p-0 text-[2rem] font-semibold tracking-tight outline-none placeholder:text-[var(--numa-faint)]"
               aria-label="Belopp från kvittot"
               required
             />
           ) : (
-            <p className="money mt-2 text-4xl font-semibold tracking-tight">
+            <p className="numa-hero-money money mt-2 text-4xl font-semibold tracking-tight">
               {preview.amount || "—"}
               <span className="ml-2 text-base font-medium text-[var(--numa-faint)]">
                 {preview.currency}
@@ -642,8 +642,12 @@ export function ReceiptCaptureFlow({
 
       {impact ? (
         <p className={`text-sm ${remainingTone}`}>
-          {impact.canAfford ? "Inom dagsbudgeten" : "Över dagsbudgeten"} ·{" "}
-          {formatMoney(money(Math.max(0, impact.remaining), currency))} kvar idag
+          {impact.canAfford ? "Inom dagsbudgeten" : "Över dagsbudgeten"}
+          {" · "}
+          <span className="numa-money-line-amt money">
+            {formatMoney(money(Math.max(0, impact.remaining), currency))}
+          </span>{" "}
+          kvar idag
         </p>
       ) : null}
 
@@ -654,7 +658,7 @@ export function ReceiptCaptureFlow({
             setPreview((p) => (p ? { ...p, description: e.target.value } : p))
           }
           placeholder="Butik eller notis"
-          className="w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
+          className="min-h-11 w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
         />
       ) : null}
 
@@ -665,7 +669,7 @@ export function ReceiptCaptureFlow({
               Kategori gäller utgifterna i bilden.
             </p>
           ) : null}
-          <div className="-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1">
+          <div className="numa-chip-scroll -mx-1 px-1 pb-1">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
@@ -799,18 +803,18 @@ function ModePicker({
               !hasAccount
             }
             onClick={() => onChoose(item.id)}
-            className="numa-panel numa-press flex min-h-20 w-full items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
+            className="numa-panel numa-press flex min-h-20 w-full min-w-0 items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
           >
-            <span>
+            <span className="min-w-0">
               <span className="block text-[15px] font-semibold tracking-tight">
                 {item.title}
               </span>
-              <span className="mt-0.5 block text-sm text-[var(--numa-muted)]">
+              <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
                 {item.hint}
               </span>
             </span>
             <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
               aria-hidden
             >
               →
@@ -821,7 +825,7 @@ function ModePicker({
 
       {onboarding ? null : (
       <p className="text-center text-xs text-[var(--numa-faint)]">
-        <Link href="/transaktioner" className="font-semibold text-[var(--numa-accent)]">
+        <Link href="/transaktioner" className="numa-tap font-semibold text-[var(--numa-accent)]">
           Se rörelser
         </Link>
       </p>

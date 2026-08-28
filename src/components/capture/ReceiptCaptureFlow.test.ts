@@ -31,4 +31,13 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).toContain('text-[var(--numa-alarm)]');
     expect(src).not.toMatch(/impact\.remaining < 0[\s\S]{0,80}numa-danger/);
   });
+
+  it("keeps Fota amounts and category chips from wrapping or shrinking unequally", () => {
+    expect(src).toContain("numa-hero-money");
+    expect(src).toContain("numa-money-line");
+    expect(src).toContain("numa-chip-scroll");
+    expect(src).toContain("numa-tap");
+    expect(src).toContain("h-11 w-11");
+    expect(src).not.toContain("h-8 w-8");
+  });
 });

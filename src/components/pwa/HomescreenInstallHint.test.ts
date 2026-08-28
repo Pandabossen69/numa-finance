@@ -29,4 +29,8 @@ describe("HomescreenInstallHint bar", () => {
       "inline-flex min-h-11 shrink-0 items-center px-2 text-[12px] font-medium",
     );
   });
+
+  it("gives the card dismiss a 44px tap target", () => {
+    expect(src).toContain("numa-tap");
+  });
 });

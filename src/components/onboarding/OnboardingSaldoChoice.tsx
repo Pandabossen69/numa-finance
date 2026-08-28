@@ -18,7 +18,7 @@ export function OnboardingSaldoChoice() {
         </p>
       </header>
 
-      <nav className="mt-auto grid min-w-0 gap-3 pb-1 md:mt-8 md:grid-cols-2 md:gap-4">
+      <nav className="mt-auto grid min-w-0 gap-3 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] md:mt-8 md:grid-cols-2 md:gap-4">
         <ChoiceLink
           href={ONBOARDING_FOTA_PATH}
           title={C.fotaTitle}

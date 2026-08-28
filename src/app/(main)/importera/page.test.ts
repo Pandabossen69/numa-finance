@@ -17,4 +17,11 @@ describe("/importera Fortsätt", () => {
     expect(loading).toContain("ImporteraRowSkel");
     expect(loading).not.toMatch(/numa-skel h-\[1[0-9]{2}/);
   });
+
+  it("keeps status chips one size and resume links 44px", () => {
+    expect(src).toContain("numa-status-chip");
+    expect(src).toContain("numa-money-line");
+    expect(src).toContain("numa-tap");
+    expect(src).toContain("overflow-x-hidden");
+  });
 });
