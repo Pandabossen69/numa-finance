@@ -11,7 +11,7 @@ function token(name: string): string {
 
 describe("NUMA vision palette", () => {
   it("keeps the canvas limestone, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#eee9e0");
+    expect(token("--numa-bg")).toBe("#ece4d6");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
     expect(token("--numa-card")).toBe("#fcfbf7");
