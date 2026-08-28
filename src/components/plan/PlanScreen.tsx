@@ -52,10 +52,11 @@ export function PlanScreen({
   }, [initial, initialGettingStarted]);
 
   useEffect(() => {
+    if (initial) return;
     let cancelled = false;
     void warmupPlanPageData().then((result) => {
       if (cancelled) return;
-      if (!result.ok && !lastPlanSnapshot() && !initial) setError(result.error);
+      if (!result.ok && !lastPlanSnapshot()) setError(result.error);
       else setError(null);
     });
     return () => {

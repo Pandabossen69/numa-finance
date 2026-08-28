@@ -607,19 +607,19 @@ body {
 }
 
 .animate-rise {
-  animation: numa-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-1 {
-  animation: numa-rise 300ms 40ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 140ms 12ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-2 {
-  animation: numa-rise 320ms 80ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 150ms 20ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-3 {
-  animation: numa-rise 340ms 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 160ms 28ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-scale-in {

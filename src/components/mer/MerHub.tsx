@@ -16,6 +16,7 @@ export function MerBackLink({
     <Link
       href={href}
       prefetch
+      onPointerDown={() => prefetchHref(href)}
       onMouseEnter={() => prefetchHref(href)}
       onFocus={() => prefetchHref(href)}
       className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
@@ -106,6 +107,7 @@ export function MerListLink({
     <Link
       href={href}
       prefetch
+      onPointerDown={() => prefetchHref(href)}
       onMouseEnter={() => prefetchHref(href)}
       onFocus={() => prefetchHref(href)}
       className="group flex min-h-[3.25rem] items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3.5 last:border-b-0 numa-press hover:bg-[var(--numa-card)] active:bg-[var(--numa-accent-soft)]"

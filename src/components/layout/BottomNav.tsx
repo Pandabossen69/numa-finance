@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
+import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function BottomNav() {
   const { highlightPath, markIntent } = useNavIntent();
+  const { prefetch } = usePrefetchOnIntent();
 
   const left = PRIMARY_NAV.slice(0, 2);
   const right = PRIMARY_NAV.slice(2);
@@ -15,6 +17,7 @@ export function BottomNav() {
   }
 
   function onIntent(href: string) {
+    prefetch(href);
     markIntent(href);
   }
 
@@ -38,6 +41,9 @@ export function BottomNav() {
           <Link
             href="/fota"
             prefetch
+            onPointerDown={() => onIntent("/fota")}
+            onMouseEnter={() => prefetch("/fota")}
+            onFocus={() => prefetch("/fota")}
             onClick={() => onIntent("/fota")}
             className="numa-press relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_10px_24px_rgba(22,21,19,0.22)] ring-4 ring-[var(--numa-bg)]"
             aria-label="Fota eller lägg till"
@@ -78,9 +84,12 @@ function NavItem({
 }) {
   return (
     <Link
-      href={href}
-      prefetch
-      onClick={onIntent}
+            href={href}
+            prefetch
+            onPointerDown={onIntent}
+            onMouseEnter={onIntent}
+            onFocus={onIntent}
+            onClick={onIntent}
       aria-current={active ? "page" : undefined}
       className={`numa-press relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
         active
