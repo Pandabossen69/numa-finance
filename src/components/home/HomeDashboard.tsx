@@ -91,7 +91,7 @@ export function HomeDashboard({
   return (
     <div className="numa-page numa-page-wide space-y-6">
       <header className="animate-rise space-y-1 px-0.5">
-        <p className="text-[13px] font-medium text-[var(--numa-muted)]">
+        <p className="text-[14px] leading-relaxed font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
@@ -123,7 +123,7 @@ export function HomeDashboard({
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
-              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5${
+              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-6${
                 overToday ? " is-over" : ""
               }`}
               aria-labelledby="spend-heading"
@@ -145,7 +145,7 @@ export function HomeDashboard({
                     {overToday ? (
                       <p className="numa-chip numa-chip-alarm mb-2">Över</p>
                     ) : (
-                      <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
+                      <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[var(--numa-accent)] uppercase">
                         Kvar
                       </p>
                     )}
@@ -181,27 +181,23 @@ export function HomeDashboard({
 
                   <div className="numa-day-metrics">
                     <div className="is-budget">
-                      <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-                        {SV.dagsbudget}
-                      </p>
-                      <div className="mt-1.5 min-h-[1.75rem] min-w-0 overflow-hidden text-[var(--numa-ink)]">
+                      <p className="numa-metric-label">{SV.dagsbudget}</p>
+                      <div className="numa-metric-value text-[var(--numa-ink)]">
                         <MoneyDisplay
                           amountMinor={view.dayBudgetMinor}
                           currency={currency}
-                          size="sm"
+                          size="md"
                           compact
+                          align="start"
+                          wrap={false}
                         />
                       </div>
-                      <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
-                        Sätts på morgonen
-                      </p>
+                      <p className="numa-metric-hint">Sätts på morgonen</p>
                     </div>
                     <div className="is-spent">
-                      <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-                        {SV.spenderatIdag}
-                      </p>
+                      <p className="numa-metric-label">{SV.spenderatIdag}</p>
                       <div
-                        className={`mt-1.5 min-h-[1.75rem] min-w-0 overflow-hidden ${
+                        className={`numa-metric-value ${
                           overToday
                             ? "text-[var(--numa-alarm)]"
                             : "text-[var(--numa-ink)]"
@@ -210,13 +206,13 @@ export function HomeDashboard({
                         <MoneyDisplay
                           amountMinor={todaySpendingMinor}
                           currency={currency}
-                          size="sm"
+                          size="md"
                           compact
+                          align="start"
+                          wrap={false}
                         />
                       </div>
-                      <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
-                        Sänker bara idag
-                      </p>
+                      <p className="numa-metric-hint">Sänker bara idag</p>
                     </div>
                   </div>
                 </>
@@ -335,7 +331,7 @@ function ActionLink({
     <Link
       href={href}
       prefetch
-      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5"
+      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5 transition hover:bg-[var(--numa-accent-soft)]"
     >
       <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
         {title}
@@ -378,7 +374,7 @@ function AvailableNowCard({
           value={balance}
           onChange={(e) => setBalance(e.target.value)}
           placeholder={`Belopp (${currency})`}
-          className="money min-h-12 flex-1 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+          className="money min-h-12 flex-1 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
         />
         <button
           type="button"
@@ -566,7 +562,7 @@ function QuickExpense({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Vad? t.ex. Lunch"
               aria-label="Anteckning"
-              className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
+              className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
               inputMode="decimal"
@@ -574,7 +570,7 @@ function QuickExpense({
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
               aria-label="Belopp"
-              className="money min-h-12 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
             <button
               type="button"

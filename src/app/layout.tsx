@@ -39,7 +39,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Allow pinch-zoom; inputs use 16px so iOS won't auto-zoom on focus.
   viewportFit: "cover",
-  themeColor: "#e6e4de",
+  themeColor: "#eee9e0",
   colorScheme: "light",
 };
 

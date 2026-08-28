@@ -11,17 +11,17 @@ function token(name: string): string {
 
 describe("NUMA vision palette", () => {
   it("keeps the canvas limestone, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#e6e4de");
+    expect(token("--numa-bg")).toBe("#eee9e0");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
-    expect(token("--numa-card")).toBe("#f7f6f2");
+    expect(token("--numa-card")).toBe("#fcfbf7");
     expect(css).not.toMatch(/linear-gradient\(\s*165deg,\s*#ffffff/);
     expect(css).not.toContain("#f7fcf9");
     expect(css).not.toContain("#c8d6ce");
   });
 
   it("tints living, park and income/spend as separate families", () => {
-    expect(token("--numa-spend")).toBe("#7c5340");
+    expect(token("--numa-spend")).toBe("#8a5844");
     expect(token("--numa-spend")).not.toBe(token("--numa-alarm"));
     expect(token("--numa-spend")).not.toBe(token("--numa-danger"));
     expect(css).toContain(".numa-panel-strong");
@@ -32,7 +32,7 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-piles-board");
     expect(css).toContain(".numa-day-metrics");
     expect(css).not.toContain("rgba(255, 255, 255, 0.75)");
-    expect(token("--numa-accent")).toBe("#0c5c4a");
+    expect(token("--numa-accent")).toBe("#127a62");
   });
 
   it("keeps over-budget clay alarm distinct from destroy red", () => {
@@ -92,5 +92,33 @@ describe("NUMA vision palette", () => {
     expect(rule).toContain("max-width: 1px");
     expect(rule).toContain("padding: 0");
     expect(rule).not.toContain("padding: 0.85rem");
+  });
+
+  it("locks Plan money to a unit column so THB lines up", () => {
+    expect(css).toContain("--numa-money-unit");
+    expect(css).toContain(".numa-money.is-end");
+    expect(css).toContain(".numa-plan-list");
+    expect(css).toContain(
+      "grid-template-columns: minmax(0, 1fr) minmax(8.6rem, auto) 2.75rem",
+    );
+    expect(css).toContain(".numa-plan-name");
+    expect(css).toContain(".numa-plan-meta");
+    expect(css).toContain(".numa-metric-value");
+    expect(css).not.toMatch(/\.numa-metric-value \{[^}]*overflow: hidden/);
+  });
+
+  it("gives Hem a living wash login does not use", () => {
+    expect(css).toContain(".numa-day-stage");
+    expect(css).toContain("var(--numa-accent-glow)");
+    expect(css).toContain("var(--numa-sun)");
+    expect(css).toContain(".auth-mark::after");
+  });
+
+  it("keeps cards round and cream so numbers sit on a clear sheet", () => {
+    expect(token("--numa-radius")).toBe("1.85rem");
+    expect(token("--numa-radius-sm")).toBe("1.4rem");
+    expect(css).toContain("border-radius: var(--numa-radius)");
+    expect(css).toContain(".numa-money-unit");
+    expect(css).toContain("font-variant-numeric: tabular-nums");
   });
 });

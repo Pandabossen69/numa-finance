@@ -647,7 +647,7 @@ export function PlanEditor({
                 onClick={() => selectMonth(key)}
                 className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize ${
                   monthKey === key
-                    ? "is-active bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(7,21,17,0.18)]"
+                    ? "is-active bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_8px_20px_rgba(22,21,19,0.16)]"
                     : key === currentMonthKey
                       ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)] ring-1 ring-[var(--numa-accent)]/35"
                       : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"
@@ -1185,7 +1185,7 @@ function PlanCard({
   return (
     <section
       ref={cardRef}
-      className="numa-panel flex scroll-mt-[5.5rem] flex-col gap-4 p-5"
+      className="numa-panel flex scroll-mt-[5.5rem] flex-col gap-4 p-6"
     >
       {banner ? (
         <p className="rounded-[1.15rem] bg-[var(--numa-accent-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--numa-accent-ink)]">
@@ -1205,9 +1205,10 @@ function PlanCard({
             <MoneyDisplay
               amountMinor={totalMinor}
               currency={currency}
-              size="sm"
+              size="md"
               compact
               align="end"
+              wrap={false}
             />
           </div>
         </div>
@@ -1291,7 +1292,7 @@ function PlanRows({
   const rows = sortPlanRowsForList(items, matchedIds);
 
   return (
-    <ul className="divide-y divide-[var(--numa-border)]">
+    <ul className="numa-plan-list">
       {rows.map((item) => {
         const rowCurrency = (item.currency || currency) as CurrencyCode;
         const dateLabel = subtitle(item);
@@ -1306,7 +1307,7 @@ function PlanRows({
 
         if (editingId === item.id) {
           return (
-            <li key={item.id} className="space-y-3 py-3 first:pt-0">
+            <li key={item.id} className="numa-plan-row is-form space-y-3">
               <input
                 value={editName}
                 onChange={(e) => onEditName(e.target.value)}
@@ -1358,14 +1359,10 @@ function PlanRows({
           }
           const preview = previewPartialRemaining(item.amountMinor, typedMinor);
           return (
-            <li key={item.id} className="numa-plan-row is-partial space-y-3 py-3 first:pt-0">
+            <li key={item.id} className="numa-plan-row is-form is-partial space-y-3">
               <div>
-                <p className="numa-plan-name text-sm font-semibold tracking-tight">
-                  {item.name}
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-                  {planPartialLabel(settleKind)}
-                </p>
+                <p className="numa-plan-name">{item.name}</p>
+                <p className="numa-plan-meta">{planPartialLabel(settleKind)}</p>
               </div>
               <label className="block space-y-1.5">
                 <span className="text-xs font-medium text-[var(--numa-muted)]">
@@ -1478,84 +1475,95 @@ function PlanRows({
         return (
           <li
             key={item.id}
-            className={`numa-plan-row flex items-start justify-between gap-x-3 gap-y-2 py-3 first:pt-0 ${rowState}`.trim()}
+            className={`numa-plan-row ${rowState}`.trim()}
           >
-            <div className="min-w-0 flex-1">
-              <p
-                className="numa-plan-name leading-snug font-medium [overflow-wrap:anywhere] break-words"
-                title={item.name}
-              >
+            <div className="numa-plan-copy">
+              <p className="numa-plan-name" title={item.name}>
                 {item.name}
               </p>
               {breakdown ? (
                 <PlanEquation breakdown={breakdown} restLabel={restLabel} />
               ) : (
-                <p className="text-xs text-[var(--numa-faint)]">{dateLabel}</p>
+                <p className="numa-plan-meta">{dateLabel}</p>
               )}
             </div>
-            <div className="flex shrink-0 items-start gap-1">
-              <div className="mr-1 flex max-w-[9.5rem] flex-col items-end gap-1 sm:max-w-none">
+            {isTempPlanId(item.id) ? (
+              <div className="numa-plan-figures">
                 <MoneyDisplay
                   amountMinor={planRowHeroMinor(item)}
                   currency={rowCurrency}
-                  size="sm"
+                  size="md"
                   compact
                   align="end"
+                  wrap={false}
                 />
-                {settled ? (
-                  canUndo ? (
+              </div>
+            ) : confirmId === item.id ? (
+              <div className="numa-plan-confirm">
+                <button
+                  type="button"
+                  disabled={pendingId === item.id && pendingAction === "delete"}
+                  className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm font-semibold text-[var(--numa-danger)] hover:bg-[var(--numa-danger-soft)]/70 disabled:opacity-45"
+                  onClick={() => {
+                    onDelete(item.id);
+                    setConfirmId(null);
+                  }}
+                >
+                  Ta bort
+                </button>
+                <button
+                  type="button"
+                  className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm text-[var(--numa-muted)]"
+                  onClick={() => setConfirmId(null)}
+                >
+                  Avbryt
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="numa-plan-figures">
+                  <MoneyDisplay
+                    amountMinor={planRowHeroMinor(item)}
+                    currency={rowCurrency}
+                    size="md"
+                    compact
+                    align="end"
+                    wrap={false}
+                  />
+                  {settled ? (
+                    canUndo ? (
+                      <button
+                        type="button"
+                        className="numa-chip numa-chip-mint self-end"
+                        disabled={pendingId === item.id && pendingAction === "settle"}
+                        aria-label={`Ångra ${doneLabel}`}
+                        onClick={() => onSettle(item.id, false)}
+                      >
+                        {doneLabel}
+                      </button>
+                    ) : (
+                      <span className="numa-chip numa-chip-mint self-end">{doneLabel}</span>
+                    )
+                  ) : partial ? (
                     <button
                       type="button"
-                      className="numa-chip numa-chip-mint"
+                      className="numa-chip numa-chip-spend self-end"
                       disabled={pendingId === item.id && pendingAction === "settle"}
-                      aria-label={`Ångra ${doneLabel}`}
+                      aria-label={`Ångra ${partialLabel}`}
                       onClick={() => onSettle(item.id, false)}
                     >
-                      {doneLabel}
+                      {SV.delvis}
                     </button>
-                  ) : (
-                    <span className="numa-chip numa-chip-mint">{doneLabel}</span>
-                  )
-                ) : partial ? (
-                  <button
-                    type="button"
-                    className="numa-chip numa-chip-spend"
-                    disabled={pendingId === item.id && pendingAction === "settle"}
-                    aria-label={`Ångra ${partialLabel}`}
-                    onClick={() => onSettle(item.id, false)}
-                  >
-                    {SV.delvis}
-                  </button>
-                ) : null}
-              </div>
-              {isTempPlanId(item.id) ? null : confirmId === item.id ? (
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={pendingId === item.id && pendingAction === "delete"}
-                    className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm font-semibold text-[var(--numa-danger)] hover:bg-[var(--numa-danger-soft)]/70 disabled:opacity-45"
-                    onClick={() => {
-                      onDelete(item.id);
-                      setConfirmId(null);
-                    }}
-                  >
-                    Ta bort
-                  </button>
-                  <button
-                    type="button"
-                    className="numa-press inline-flex min-h-11 items-center rounded-xl px-2.5 text-sm text-[var(--numa-muted)]"
-                    onClick={() => setConfirmId(null)}
-                  >
-                    Avbryt
-                  </button>
+                  ) : null}
                 </div>
-              ) : (
-                <OverflowMenu
-                  label={`Åtgärder för ${item.name}`}
-                  items={menuItems}
-                />
-              )}
-            </div>
+                <div className="numa-plan-menu">
+                  <OverflowMenu
+                    label={`Åtgärder för ${item.name}`}
+                    items={menuItems}
+                  />
+                </div>
+              </>
+            )}
           </li>
         );
       })}

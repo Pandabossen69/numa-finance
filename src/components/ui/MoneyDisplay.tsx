@@ -2,7 +2,7 @@ import { toMajorUnits, money, type CurrencyCode } from "@/domain/money";
 import { CURRENCY_META } from "@/domain/money/currency";
 
 /**
- * Money display: amount in tabular mono, currency code in soft sans.
+ * Money display: amount in tabular mono, currency code in a fixed unit column.
  * THB shows as "10 108,04 THB" — never the ฿ glyph (reads as $ in many fonts).
  */
 export function MoneyDisplay({
@@ -16,7 +16,7 @@ export function MoneyDisplay({
 }: {
   amountMinor: number;
   currency: CurrencyCode;
-  size?: "sm" | "md" | "lg" | "xl" | "display";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "display";
   compact?: boolean;
   /** Color negative amounts as clay alarm when "signed" — not destroy red. */
   tone?: "neutral" | "signed";
@@ -37,25 +37,29 @@ export function MoneyDisplay({
 
   const sizeClass =
     size === "display"
-      ? "text-[clamp(1.35rem,4.8vw,2.35rem)] leading-[1.08] font-semibold tracking-[-0.04em]"
+      ? "text-[clamp(1.7rem,6.2vw,2.7rem)] leading-[1.05] font-bold tracking-[-0.045em]"
       : size === "xl"
-        ? "text-[clamp(1.75rem,5vw,2.55rem)] leading-[1.08] font-semibold tracking-tight"
+        ? "text-[clamp(1.95rem,5.5vw,2.75rem)] leading-[1.05] font-bold tracking-tight"
         : size === "lg"
-          ? "text-3xl font-semibold tracking-tight"
+          ? "text-3xl font-bold tracking-tight"
           : size === "md"
-            ? "text-xl font-semibold"
-            : "text-base font-medium";
+            ? "text-[1.2rem] font-bold tracking-tight"
+            : size === "sm"
+              ? "text-[1.0625rem] font-bold tracking-tight"
+              : "text-[0.875rem] font-semibold tracking-tight";
 
   const codeSize =
     size === "display"
-      ? "text-[0.78rem] font-semibold tracking-[0.08em]"
+      ? "text-[0.9rem] font-bold tracking-[0.06em]"
       : size === "xl"
-        ? "text-[1.05rem] font-semibold tracking-[0.04em]"
+        ? "text-[1.05rem] font-bold tracking-[0.04em]"
         : size === "lg"
-          ? "text-sm font-semibold tracking-[0.04em]"
+          ? "text-sm font-bold tracking-[0.04em]"
           : size === "md"
-            ? "text-xs font-semibold tracking-[0.06em]"
-            : "text-[0.65rem] font-semibold tracking-[0.06em]";
+            ? "text-[0.8rem] font-bold tracking-[0.05em]"
+            : size === "sm"
+              ? "text-[0.72rem] font-bold tracking-[0.06em]"
+              : "text-[0.68rem] font-semibold tracking-[0.06em]";
 
   const toneClass =
     tone === "signed" && safeMinor < 0
@@ -65,21 +69,15 @@ export function MoneyDisplay({
         : "";
 
   const alignClass =
-    align === "start"
-      ? "justify-start"
-      : align === "end"
-        ? "justify-end"
-        : "justify-center";
+    align === "start" ? "is-start" : align === "end" ? "is-end" : "is-center";
 
   return (
     <span
-      className={`inline-flex max-w-full items-baseline gap-x-1.5 gap-y-0 ${wrap ? "flex-wrap" : "flex-nowrap"} ${alignClass} ${toneClass}`.trim()}
+      className={`numa-money ${alignClass}${wrap ? "" : " is-nowrap"} ${toneClass}`.trim()}
       aria-label={`${amountText} ${currencyText}`}
     >
-      <span className={`money ${sizeClass}`}>{amountText}</span>
-      <span
-        className={`money-currency ${codeSize} text-[var(--numa-muted)]`}
-      >
+      <span className={`money numa-money-amt ${sizeClass}`}>{amountText}</span>
+      <span className={`money-currency numa-money-unit ${codeSize}`}>
         {currencyText}
       </span>
     </span>

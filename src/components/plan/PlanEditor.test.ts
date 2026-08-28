@@ -96,6 +96,9 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("numa-chip numa-chip-spend");
     expect(src).toContain("onClick={() => onSettle(item.id, false)}");
     expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
+    expect(src).toContain("numa-plan-list");
+    expect(src).toContain("numa-plan-figures");
+    expect(src).toContain("wrap={false}");
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(css).toContain(".numa-plan-row.is-settled");
     expect(css).toContain(".numa-plan-row.is-partial");

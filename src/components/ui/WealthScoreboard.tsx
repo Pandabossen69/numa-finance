@@ -31,10 +31,11 @@ export function WealthScoreboard({
           <MoneyDisplay
             amountMinor={livingMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             tone="signed"
             align="start"
+            wrap={false}
           />
         </div>
       </div>
@@ -47,9 +48,10 @@ export function WealthScoreboard({
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
+            wrap={false}
           />
         </div>
       </div>
@@ -62,9 +64,10 @@ export function WealthScoreboard({
           <MoneyDisplay
             amountMinor={totalMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
+            wrap={false}
           />
         </div>
       </div>
@@ -92,14 +95,14 @@ export function CompactPiles({
     <div className="numa-piles-board">
       <div className="is-live min-w-0">
         <p className="numa-section-title">{SV.saldo}</p>
-        <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
+        <div className="mt-1.5 min-w-0 text-[var(--numa-ink)]">
           {saldoMinor == null ? (
             <span className="text-base font-medium text-[var(--numa-faint)]">—</span>
           ) : (
             <MoneyDisplay
               amountMinor={saldoMinor}
               currency={currency}
-              size="sm"
+              size="md"
               compact
               align="start"
               wrap={false}
@@ -111,7 +114,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={incomingMinor}
             currency={currency}
-            size="sm"
+            size="xs"
             compact
             align="end"
             wrap={false}
@@ -122,7 +125,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={unpaidMinor}
             currency={currency}
-            size="sm"
+            size="xs"
             compact
             align="end"
             wrap={false}
@@ -150,11 +153,11 @@ export function CompactPiles({
       </div>
       <div className="is-park min-w-0">
         <p className="numa-section-title">{SV.sparande}</p>
-        <div className="mt-1.5 min-w-0 overflow-hidden text-[var(--numa-ink)]">
+        <div className="mt-1.5 min-w-0 text-[var(--numa-ink)]">
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
             wrap={false}
