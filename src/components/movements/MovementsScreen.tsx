@@ -247,9 +247,9 @@ export function MovementsScreen({
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`numa-press min-h-11 rounded-full px-2.5 text-sm font-semibold ${
+            className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
               filter === f.id
-                ? "bg-[var(--numa-ink)] text-white"
+                ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
                 : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
@@ -400,7 +400,7 @@ export function MovementsScreen({
               return (
                 <li
                   key={tx.id}
-                  className="numa-money-line items-start px-4 py-3.5"
+                  className="numa-money-line items-start px-4 py-3.5 transition-colors hover:bg-[var(--numa-bg)]/30"
                 >
                   <div className="numa-money-line-label">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
@@ -524,7 +524,7 @@ function PeriodChip({
       onClick={onClick}
       className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
-          ? "bg-[var(--numa-ink)] text-white"
+          ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >

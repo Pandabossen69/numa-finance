@@ -72,7 +72,7 @@ export function PlanScreen({
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
-      <header className="min-w-0">
+      <header className="animate-rise min-w-0">
         <h1 className="numa-page-title">Plan</h1>
         <p className="mt-1 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Vad som kommer in och vad som måste ut.
