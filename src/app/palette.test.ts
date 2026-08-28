@@ -70,18 +70,20 @@ describe("NUMA vision palette", () => {
   });
 
   it("locks button chips to the same type as span chips", () => {
-    const buttonChip = css.slice(
-      css.indexOf("button.numa-chip {"),
+    const chipType = css.slice(
+      css.indexOf("button.numa-chip,"),
       css.indexOf("button.numa-chip:disabled"),
     );
-    expect(buttonChip).not.toContain("font: inherit");
-    expect(buttonChip).not.toContain("letter-spacing: inherit");
-    expect(buttonChip).not.toContain("text-transform: inherit");
-    expect(buttonChip).toContain("font-size: 0.625rem");
-    expect(buttonChip).toContain("font-weight: 650");
-    expect(buttonChip).toContain("letter-spacing: 0.08em");
-    expect(buttonChip).toContain("text-transform: uppercase");
-    expect(buttonChip).toContain("line-height: 1");
+    expect(chipType).not.toContain("font: inherit");
+    expect(chipType).not.toContain("letter-spacing: inherit");
+    expect(chipType).not.toContain("text-transform: inherit");
+    expect(chipType).toContain("span.numa-chip");
+    expect(chipType).toContain("p.numa-chip");
+    expect(chipType).toContain("font-size: 0.625rem");
+    expect(chipType).toContain("font-weight: 650");
+    expect(chipType).toContain("letter-spacing: 0.08em");
+    expect(chipType).toContain("text-transform: uppercase");
+    expect(chipType).toContain("line-height: 1");
     const planChip = css.slice(
       css.indexOf(".numa-plan-figures .numa-chip {"),
       css.indexOf(".numa-plan-menu"),
@@ -141,6 +143,8 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-pile-line {");
     expect(css).toContain(".numa-pile-line .money.numa-money-amt");
     expect(css).toContain("font-size: 0.9375rem");
+    expect(css).toContain("overflow-wrap: break-word");
+    expect(css).not.toContain("overflow-wrap: anywhere");
     expect(css).not.toContain(
       "grid-template-columns: minmax(0, 1fr) var(--numa-money-unit)",
     );

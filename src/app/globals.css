@@ -505,12 +505,6 @@ body {
   overflow: visible;
 }
 
-@media (min-width: 768px) {
-  .numa-piles-board {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-}
-
 .numa-piles-board > div {
   min-width: 0;
   padding: 1.15rem 1.15rem 1.1rem;
@@ -747,6 +741,7 @@ body {
 
 .numa-pile-line {
   display: flex;
+  flex-wrap: nowrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
@@ -755,8 +750,8 @@ body {
 }
 
 .numa-pile-line-label {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: min-content;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.35;
@@ -770,6 +765,7 @@ body {
 .numa-pile-line-value {
   flex: 0 0 auto;
   min-width: min-content;
+  margin-left: auto;
 }
 
 .numa-pile-line .numa-money,
@@ -878,11 +874,9 @@ body {
   color: var(--numa-ink);
 }
 
-button.numa-chip {
-  appearance: none;
-  margin: 0;
-  border: 0;
-  cursor: pointer;
+button.numa-chip,
+span.numa-chip,
+p.numa-chip {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.625rem;
   font-weight: 650;
@@ -890,6 +884,13 @@ button.numa-chip {
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
+}
+
+button.numa-chip {
+  appearance: none;
+  margin: 0;
+  border: 0;
+  cursor: pointer;
 }
 
 button.numa-chip:disabled {
@@ -935,7 +936,9 @@ button.numa-chip:disabled {
   letter-spacing: -0.02em;
   line-height: 1.3;
   color: var(--numa-ink);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .numa-plan-meta {
