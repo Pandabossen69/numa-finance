@@ -161,8 +161,8 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   // Do not await due-rolling on the login path — it was an extra plan-items
   // round-trip before the timed snapshot even started.
   void ensurePlanDuesRolled();
-  // Warm getUser/profile outside the timer so login auth cannot eat the budget.
-  await api().getProfile();
+  // Auth/profile are request-cached; do not serialize them in front of the
+  // parallel menu reads (accounts / plan items / checkpoint / ledger).
   try {
     return await withTimeoutRetry(
       () => api().getTodaySnapshot(),

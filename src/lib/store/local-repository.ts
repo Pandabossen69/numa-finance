@@ -1606,7 +1606,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       ledgerTransactions: [],
       planItems,
       currency: profile.primaryCurrency,
-      progress: await getUserProgress(),
+      progress: null,
     };
   }
 
@@ -1711,7 +1711,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     ledgerTransactions: accountTx,
     planItems,
     currency,
-    progress: await getUserProgress(),
+    progress: null,
   };
 }
 

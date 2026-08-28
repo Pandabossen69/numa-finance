@@ -1,24 +1,8 @@
-import { cache } from "react";
 import { notFound } from "next/navigation";
 import { isNumaAdminEmail } from "@/domain/identity/admin";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 
-export const getSessionUser = cache(
-  async (): Promise<{
-    id: string;
-    email: string;
-  } | null> => {
-    if (!isSupabaseConfigured()) return null;
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return null;
-    return { id: user.id, email: user.email ?? "" };
-  },
-);
+export const getSessionUser = getAuthUser;
 
 export async function currentUserIsNumaAdmin(): Promise<boolean> {
   const user = await getSessionUser();
