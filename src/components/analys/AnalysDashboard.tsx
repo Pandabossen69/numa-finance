@@ -3,6 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AnalysViewLoading } from "@/components/layout/ViewLoading";
+import {
+  DestinationWarmup,
+  usePrefetchOnIntent,
+} from "@/lib/nav/prefetch-intent";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
 import {
   lastAnalysScope,
@@ -29,6 +33,7 @@ export function AnalysDashboard({
   data: AnalysSnapshot | null;
   error?: string | null;
 }) {
+  const { prefetch } = usePrefetchOnIntent();
   const [scope, setScope] = useState<AnalysScope>(
     () => lastAnalysScope() ?? "period",
   );
@@ -89,6 +94,7 @@ export function AnalysDashboard({
 
   return (
     <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
+      <DestinationWarmup hrefs={["/transaktioner", "/plan"]} />
       <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
         <FormulaInfo steps={view.formula.steps} />
@@ -260,6 +266,8 @@ export function AnalysDashboard({
             <Link
               href="/plan"
               prefetch
+              onMouseEnter={() => prefetch("/plan")}
+              onFocus={() => prefetch("/plan")}
               className="numa-tap shrink-0 text-xs font-semibold text-[var(--numa-accent)]"
             >
               Plan →
@@ -356,6 +364,8 @@ export function AnalysDashboard({
           <Link
             href="/plan"
             prefetch
+            onMouseEnter={() => prefetch("/plan")}
+            onFocus={() => prefetch("/plan")}
             className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             Plan →
@@ -395,6 +405,8 @@ export function AnalysDashboard({
           <Link
             href="/transaktioner"
             prefetch
+            onMouseEnter={() => prefetch("/transaktioner")}
+            onFocus={() => prefetch("/transaktioner")}
             className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             Alla →

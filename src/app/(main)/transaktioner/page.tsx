@@ -1,7 +1,16 @@
+import { Suspense } from "react";
 import { MovementsScreen } from "@/lib/route-islands";
 import { loadMovementsSnapshot } from "@/features/finance/load-movements";
 
-export default async function TransaktionerPage() {
+export default function TransaktionerPage() {
+  return (
+    <Suspense fallback={<MovementsScreen data={null} />}>
+      <TransaktionerBody />
+    </Suspense>
+  );
+}
+
+async function TransaktionerBody() {
   const result = await loadMovementsSnapshot();
   return (
     <MovementsScreen

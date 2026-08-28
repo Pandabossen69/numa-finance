@@ -1,8 +1,16 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const mer = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+const merPage = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+const mer = readFileSync(
+  new URL("../../../components/mer/MerScreen.tsx", import.meta.url),
+  "utf8",
+);
 const settings = readFileSync(
+  new URL("../../../components/mer/InstallningarScreen.tsx", import.meta.url),
+  "utf8",
+);
+const settingsPage = readFileSync(
   new URL("../installningar/page.tsx", import.meta.url),
   "utf8",
 );
@@ -43,10 +51,18 @@ describe("Mer HIGH regress", () => {
   });
 
   it("gates Ny användare on the admin email check", () => {
-    expect(mer).toContain("currentUserIsNumaAdmin");
+    expect(merPage).toContain("currentUserIsNumaAdmin");
     expect(mer).toContain("Ny användare");
-    expect(settings).toContain("currentUserIsNumaAdmin");
+    expect(settingsPage).toContain("currentUserIsNumaAdmin");
     expect(settings).toContain("/installningar/ny-anvandare");
+  });
+
+  it("shows last-known Mer and prefetches drill-ins", () => {
+    expect(mer).toContain("lastMerSnapshot");
+    expect(mer).toContain("DestinationWarmup");
+    expect(mer).toContain("/transaktioner");
+    expect(mer).toContain("/konton");
+    expect(merPage).toContain("Suspense");
   });
 });
 

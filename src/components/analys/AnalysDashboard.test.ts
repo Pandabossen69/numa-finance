@@ -50,4 +50,13 @@ describe("Analys month result color", () => {
   it("lets the Analys header wrap so the formula panel can sit above the tabs", () => {
     expect(src).toContain("flex flex-wrap items-start justify-between");
   });
+
+  it("shows last-known Analys while a remount has no snapshot", () => {
+    expect(src).toContain("lastAnalysSnapshot");
+    expect(src).toContain("rememberAnalysSnapshot");
+    expect(src).toContain("AnalysViewLoading");
+    expect(src).toContain("onMouseEnter");
+    expect(src).toContain("onFocus");
+    expect(src).toContain("DestinationWarmup");
+  });
 });

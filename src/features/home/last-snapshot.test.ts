@@ -1,19 +1,50 @@
 import { describe, expect, it } from "vitest";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyOptimisticHomeSpend,
+  lastAccountsSnapshot,
   lastAnalysScope,
+  lastFotaBoot,
   lastHomeSnapshot,
+  lastImporteraRows,
+  lastMerSnapshot,
+  lastMovementsSnapshot,
+  lastMovementsView,
   lastPlanSnapshot,
   lastPlanView,
+  lastSettingsSnapshot,
+  rememberAccountsSnapshot,
   rememberAnalysScope,
+  rememberFotaBoot,
   rememberHomeSnapshot,
+  rememberImporteraRows,
+  rememberMerSnapshot,
+  rememberMovementsSnapshot,
+  rememberMovementsView,
   rememberPlanSnapshot,
   rememberPlanView,
+  rememberSettingsSnapshot,
   revertOptimisticHomeSpend,
   subscribeHomeSnapshot,
   syncHomeCoverageFromPlan,
 } from "./last-snapshot";
+
+const sampleMovements: MovementsSnapshot = {
+  currency: "THB",
+  hasBankTruth: true,
+  balanceMinor: 100_00,
+  monthIncomeMinor: 0,
+  monthExpenseMinor: 0,
+  monthNetMinor: 0,
+  allIncomeMinor: 0,
+  allExpenseMinor: 0,
+  allNetMinor: 0,
+  monthCategories: [],
+  items: [],
+  timeZone: "Asia/Bangkok",
+  monthKey: "2026-08",
+};
 
 function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
   return {
@@ -138,5 +169,55 @@ describe("last view memory", () => {
     });
     expect(lastPlanSnapshot()?.bankBalanceMinor).toBe(10_000_00);
     expect(lastPlanSnapshot()?.currency).toBe("THB");
+  });
+
+  it("keeps Rörelser, Saldo, Mer, Fota, Importera and Inställningar", () => {
+    rememberMovementsSnapshot(sampleMovements);
+    rememberMovementsView({ filter: "expense", period: "all" });
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          id: "a1",
+          name: "Bangkok Bank",
+          institution: "Bangkok Bank",
+          maskedIdentifier: "6591",
+          currency: "THB",
+          isDefault: true,
+          calculatedMinor: 100_00,
+        },
+      ],
+    });
+    rememberMerSnapshot({ displayName: "Christian", isAdmin: false });
+    rememberFotaBoot({
+      accountId: "a1",
+      accounts: [{ id: "a1", name: "Bangkok Bank", accountType: "checking" }],
+      remainingTodayMinor: 250_00,
+      currency: "THB",
+      bootstrapping: false,
+    });
+    rememberImporteraRows([
+      {
+        id: "obs-1",
+        kind: "receipt",
+        status: "processed",
+        createdAt: "2026-08-01T00:00:00.000Z",
+        notes: null,
+      },
+    ]);
+    rememberSettingsSnapshot({
+      displayName: "Christian",
+      timezone: "Asia/Bangkok",
+      primaryCurrency: "THB",
+      supabaseReady: true,
+      isAdmin: false,
+    });
+
+    expect(lastMovementsSnapshot()?.balanceMinor).toBe(100_00);
+    expect(lastMovementsView()).toEqual({ filter: "expense", period: "all" });
+    expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Bangkok Bank");
+    expect(lastMerSnapshot()?.displayName).toBe("Christian");
+    expect(lastFotaBoot()?.remainingTodayMinor).toBe(250_00);
+    expect(lastImporteraRows()?.[0]?.id).toBe("obs-1");
+    expect(lastSettingsSnapshot()?.timezone).toBe("Asia/Bangkok");
   });
 });

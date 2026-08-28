@@ -1,4 +1,6 @@
-import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { Suspense } from "react";
+import { FotaScreen } from "@/components/capture/FotaScreen";
+import { FotaViewLoading } from "@/components/capture/FotaViewLoading";
 import {
   isObservationId,
   parseFotaMode,
@@ -8,7 +10,7 @@ import {
   getCachedTodaySnapshot,
   loadHomeSnapshot,
 } from "@/features/finance/load-home";
-import { ReceiptCaptureFlow } from "@/lib/route-islands";
+import type { FotaBootSnapshot } from "@/features/home/last-snapshot";
 
 export default async function FotaPage({
   searchParams,
@@ -16,6 +18,24 @@ export default async function FotaPage({
   searchParams?: Promise<{ mode?: string; observation?: string }>;
 }) {
   const params = (await searchParams) ?? {};
+  const observationId = isObservationId(params.observation)
+    ? params.observation
+    : null;
+
+  return (
+    <Suspense
+      fallback={observationId ? <FotaViewLoading /> : <FotaScreen data={null} />}
+    >
+      <FotaBody params={params} />
+    </Suspense>
+  );
+}
+
+async function FotaBody({
+  params,
+}: {
+  params: { mode?: string; observation?: string };
+}) {
   const modeParam = params.mode;
   const observationId = isObservationId(params.observation)
     ? params.observation
@@ -54,32 +74,23 @@ export default async function FotaPage({
     data?.primaryAccountId ??
     thbAccountId;
 
+  const boot: FotaBootSnapshot | null = data
+    ? {
+        accountId: preferredAccountId,
+        accounts,
+        remainingTodayMinor: data.remainingTodayMinor,
+        currency: data.currency,
+        bootstrapping,
+      }
+    : null;
+
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
-      {home.ok === false || !data ? (
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold tracking-tight">Lägg till</h1>
-          <p className="text-sm text-[var(--numa-danger)]">
-            {home.ok === false ? home.error : "Kunde inte ladda."}
-          </p>
-          <RetryLoadButton />
-        </div>
-      ) : (
-        <ReceiptCaptureFlow
-          key={
-            observationId
-              ? `obs:${observationId}`
-              : `mode:${initialMode}`
-          }
-          accountId={preferredAccountId}
-          accounts={accounts}
-          remainingTodayMinor={data.remainingTodayMinor}
-          currency={data.currency}
-          bootstrapping={bootstrapping}
-          initialMode={initialMode}
-          initialPreview={resume?.preview ?? null}
-        />
-      )}
-    </div>
+    <FotaScreen
+      data={boot}
+      error={home.ok === false ? home.error : boot ? null : "Kunde inte ladda."}
+      initialMode={initialMode}
+      initialPreview={resume?.preview ?? null}
+      observationId={observationId}
+    />
   );
 }
