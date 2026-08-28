@@ -123,7 +123,7 @@ export function HomeDashboard({
         <>
           <div className="grid items-stretch gap-6 md:grid-cols-2">
             <section
-              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-5${
+              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-6${
                 overToday ? " is-over" : ""
               }`}
               aria-labelledby="spend-heading"
@@ -186,7 +186,7 @@ export function HomeDashboard({
                         <MoneyDisplay
                           amountMinor={view.dayBudgetMinor}
                           currency={currency}
-                          size="sm"
+                          size="md"
                           compact
                           align="start"
                           wrap={false}
@@ -206,7 +206,7 @@ export function HomeDashboard({
                         <MoneyDisplay
                           amountMinor={todaySpendingMinor}
                           currency={currency}
-                          size="sm"
+                          size="md"
                           compact
                           align="start"
                           wrap={false}
@@ -374,7 +374,7 @@ function AvailableNowCard({
           value={balance}
           onChange={(e) => setBalance(e.target.value)}
           placeholder={`Belopp (${currency})`}
-          className="money min-h-12 flex-1 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+          className="money min-h-12 flex-1 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
         />
         <button
           type="button"
@@ -562,7 +562,7 @@ function QuickExpense({
               onChange={(e) => setNote(e.target.value)}
               placeholder="Vad? t.ex. Lunch"
               aria-label="Anteckning"
-              className="min-h-12 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
+              className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
             <input
               inputMode="decimal"
@@ -570,7 +570,7 @@ function QuickExpense({
               onChange={(e) => setAmount(e.target.value)}
               placeholder={currency}
               aria-label="Belopp"
-              className="money min-h-12 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+              className="money min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
             />
             <button
               type="button"

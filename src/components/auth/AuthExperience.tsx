@@ -77,7 +77,7 @@ function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
         <button
           type="button"
           onClick={onLogin}
-          className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[#f7f6f2] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 active:scale-[0.99]"
+          className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[var(--numa-card)] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 active:scale-[0.99]"
         >
           Logga in
         </button>
@@ -290,7 +290,7 @@ function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[#f7f6f2] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
+      className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[var(--numa-card)] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
     >
       {children}
     </button>

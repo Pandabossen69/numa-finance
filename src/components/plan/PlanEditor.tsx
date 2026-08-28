@@ -1185,7 +1185,7 @@ function PlanCard({
   return (
     <section
       ref={cardRef}
-      className="numa-panel flex scroll-mt-[5.5rem] flex-col gap-4 p-5"
+      className="numa-panel flex scroll-mt-[5.5rem] flex-col gap-4 p-6"
     >
       {banner ? (
         <p className="rounded-[1.15rem] bg-[var(--numa-accent-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--numa-accent-ink)]">
@@ -1205,9 +1205,10 @@ function PlanCard({
             <MoneyDisplay
               amountMinor={totalMinor}
               currency={currency}
-              size="sm"
+              size="md"
               compact
               align="end"
+              wrap={false}
             />
           </div>
         </div>
@@ -1491,7 +1492,7 @@ function PlanRows({
                 <MoneyDisplay
                   amountMinor={planRowHeroMinor(item)}
                   currency={rowCurrency}
-                  size="sm"
+                  size="md"
                   compact
                   align="end"
                   wrap={false}
@@ -1524,7 +1525,7 @@ function PlanRows({
                   <MoneyDisplay
                     amountMinor={planRowHeroMinor(item)}
                     currency={rowCurrency}
-                    size="sm"
+                    size="md"
                     compact
                     align="end"
                     wrap={false}

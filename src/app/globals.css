@@ -2,39 +2,42 @@
 
 /*
  * NUMA visual system — light only.
- * Limestone canvas, ivory sheets, ink type, one money-green.
- * Like X / Linear / new iOS: hairline, no grain, no mint soup.
+ * Sun-washed stone, cream sheets, round corners, loud money.
+ * Warm beige / modern gray / cream-white — never paper #fff, never mint soup.
  */
 :root {
-  --numa-bg: #e6e4de;
-  --numa-bg-deep: #dcd9d2;
-  --numa-ink: #111110;
-  --numa-muted: #5f5e59;
-  --numa-faint: #8a8983;
-  --numa-surface: rgba(247, 246, 242, 0.92);
-  --numa-surface-solid: #f4f3ef;
-  --numa-surface-strong: #f7f6f2;
-  --numa-card: #f7f6f2;
-  --numa-border: rgba(17, 17, 16, 0.08);
-  --numa-border-strong: rgba(17, 17, 16, 0.14);
+  --numa-bg: #eee9e0;
+  --numa-bg-deep: #e5ddd0;
+  --numa-ink: #161513;
+  --numa-muted: #5a5750;
+  --numa-faint: #8a857c;
+  --numa-surface: rgba(252, 251, 247, 0.94);
+  --numa-surface-solid: #f7f4ee;
+  --numa-surface-strong: #fcfbf7;
+  --numa-card: #fcfbf7;
+  --numa-border: rgba(48, 40, 28, 0.08);
+  --numa-border-strong: rgba(48, 40, 28, 0.13);
   --numa-accent: #127a62;
-  --numa-accent-soft: #cfeee3;
+  --numa-accent-soft: #d5f0e6;
   --numa-accent-ink: #0a5344;
-  --numa-accent-glow: rgba(18, 122, 98, 0.22);
+  --numa-accent-glow: rgba(18, 122, 98, 0.2);
+  --numa-sun: rgba(255, 214, 140, 0.42);
   --numa-danger: #b42318;
   --numa-danger-soft: #fde8e6;
   --numa-alarm: #a86b3a;
-  --numa-alarm-soft: #f3ddc8;
+  --numa-alarm-soft: #f6e4d0;
   --numa-positive: #127a62;
-  --numa-positive-soft: #cfeee3;
+  --numa-positive-soft: #d5f0e6;
   --numa-spend: #8a5844;
-  --numa-spend-soft: #f4e2d6;
-  --numa-money-unit: 2.35rem;
+  --numa-spend-soft: #f6e6d8;
+  --numa-money-unit: 2.55rem;
+  --numa-radius: 1.85rem;
+  --numa-radius-sm: 1.4rem;
   --numa-warning: #9a6700;
   --numa-warning-soft: #fef3c7;
-  --numa-shadow: 0 1px 0 rgba(17, 17, 16, 0.04), 0 18px 40px rgba(17, 17, 16, 0.05);
-  --numa-shadow-sm: 0 1px 0 rgba(17, 17, 16, 0.05);
-  --numa-nav: #f7f6f2;
+  --numa-shadow: 0 1px 0 rgba(48, 40, 28, 0.04), 0 22px 50px rgba(120, 88, 48, 0.1);
+  --numa-shadow-sm: 0 10px 28px rgba(120, 88, 48, 0.08);
+  --numa-nav: #fcfbf7;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
@@ -92,12 +95,14 @@ html {
 body {
   min-height: 100dvh;
   background-color: var(--numa-bg);
-  background-image: linear-gradient(
-    180deg,
-    #ebe9e3 0%,
-    var(--numa-bg) 38%,
-    var(--numa-bg-deep) 100%
-  );
+  background-image:
+    radial-gradient(ellipse 120% 55% at 50% -12%, var(--numa-sun), transparent 58%),
+    linear-gradient(
+      180deg,
+      #f4efe6 0%,
+      var(--numa-bg) 42%,
+      var(--numa-bg-deep) 100%
+    );
   color: var(--numa-ink);
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
@@ -176,6 +181,7 @@ body {
 .numa-money-unit {
   flex-shrink: 0;
   white-space: nowrap;
+  color: color-mix(in srgb, var(--numa-ink) 62%, transparent);
 }
 
 .numa-money.is-end .numa-money-unit {
@@ -190,7 +196,7 @@ body {
   position: relative;
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
-  border-radius: 1.25rem;
+  border-radius: var(--numa-radius);
   box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
@@ -199,8 +205,8 @@ body {
   position: relative;
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
-  border-radius: 1.35rem;
-  box-shadow: var(--numa-shadow-sm);
+  border-radius: var(--numa-radius);
+  box-shadow: var(--numa-shadow);
   overflow: hidden;
 }
 
@@ -208,7 +214,7 @@ body {
   position: relative;
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
-  border-radius: 1.35rem;
+  border-radius: var(--numa-radius);
   box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
@@ -216,7 +222,7 @@ body {
 .numa-panel-list {
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
-  border-radius: 1.25rem;
+  border-radius: var(--numa-radius);
   box-shadow: var(--numa-shadow-sm);
   overflow: hidden;
 }
@@ -382,8 +388,9 @@ body {
 .numa-day-stage {
   position: relative;
   background:
+    radial-gradient(ellipse 110% 72% at 50% -12%, var(--numa-sun), transparent 58%),
     radial-gradient(
-      ellipse 92% 64% at 50% 18%,
+      ellipse 92% 64% at 50% 22%,
       var(--numa-accent-glow),
       transparent 70%
     ),
@@ -392,9 +399,10 @@ body {
 
 .numa-day-stage.is-over {
   background:
+    radial-gradient(ellipse 110% 72% at 50% -12%, rgba(232, 176, 110, 0.35), transparent 58%),
     radial-gradient(
-      ellipse 92% 64% at 50% 18%,
-      rgba(168, 107, 58, 0.2),
+      ellipse 92% 64% at 50% 22%,
+      rgba(168, 107, 58, 0.18),
       transparent 70%
     ),
     var(--numa-card);
@@ -403,33 +411,32 @@ body {
 .numa-day-metrics {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0;
-  border-top: 1px solid var(--numa-border);
-  margin: 0.35rem -1.25rem -1.25rem;
+  gap: 0.65rem;
+  margin: 0;
   padding: 0;
+  border-top: 0;
 }
 
 .numa-day-metrics > div {
   min-width: 0;
-  padding: 1rem 1.15rem 1.05rem;
+  padding: 1rem 1rem 0.95rem;
+  border-radius: var(--numa-radius-sm);
+  border: 1px solid var(--numa-border);
 }
 
 .numa-day-metrics > .is-budget {
-  padding-right: 1rem;
-  border-right: 1px solid var(--numa-border);
   background: linear-gradient(
     180deg,
-    transparent 0%,
-    rgba(18, 122, 98, 0.08) 100%
+    rgba(18, 122, 98, 0.04) 0%,
+    rgba(18, 122, 98, 0.1) 100%
   );
 }
 
 .numa-day-metrics > .is-spent {
-  padding-left: 1rem;
   background: linear-gradient(
     180deg,
-    transparent 0%,
-    rgba(138, 88, 68, 0.09) 100%
+    rgba(138, 88, 68, 0.04) 0%,
+    rgba(138, 88, 68, 0.1) 100%
   );
 }
 
@@ -458,35 +465,34 @@ body {
 .numa-piles-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0;
+  gap: 0.65rem;
   padding: 0;
-  border-radius: 1.25rem;
-  border: 1px solid var(--numa-border);
-  background: var(--numa-card);
-  box-shadow: var(--numa-shadow-sm);
-  overflow: hidden;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .numa-piles-board > div {
   min-width: 0;
-  padding: 1.05rem 1.1rem;
+  padding: 1.15rem 1.15rem 1.1rem;
+  border-radius: var(--numa-radius);
+  border: 1px solid var(--numa-border);
+  box-shadow: var(--numa-shadow-sm);
 }
 
 .numa-piles-board > .is-live {
-  border-right: 1px solid var(--numa-border);
-  background: linear-gradient(
-    165deg,
-    rgba(18, 122, 98, 0.08) 0%,
-    transparent 62%
-  );
+  background:
+    linear-gradient(
+      165deg,
+      rgba(18, 122, 98, 0.1) 0%,
+      var(--numa-card) 62%
+    );
 }
 
 .numa-piles-board > .is-park {
-  background: linear-gradient(
-    165deg,
-    rgba(17, 17, 16, 0.035) 0%,
-    transparent 62%
-  );
+  background: var(--numa-card);
 }
 
 .numa-day-dial-arc {
@@ -626,7 +632,7 @@ body {
 }
 
 .numa-month-chip.is-active .numa-month-dots i.is-save {
-  background: #f7f6f2;
+  background: var(--numa-card);
 }
 
 .numa-wealth-score {
@@ -645,10 +651,11 @@ body {
 .numa-wealth-cell {
   flex: 1 1 5.5rem;
   min-width: 0;
-  padding: 0.85rem 0.95rem;
+  padding: 1rem 1.05rem;
   border: 1px solid var(--numa-border);
-  border-radius: 1.05rem;
+  border-radius: var(--numa-radius-sm);
   background: var(--numa-card);
+  box-shadow: var(--numa-shadow-sm);
 }
 
 .numa-wealth-cell.is-live {
@@ -745,17 +752,19 @@ button.numa-chip:disabled {
 .numa-plan-list {
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 0.5rem;
 }
 
 .numa-plan-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(7.4rem, auto) 2.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(8.1rem, auto) 2.75rem;
   align-items: start;
-  column-gap: 0.45rem;
-  margin-inline: -0.55rem;
-  padding: 0.8rem 0.55rem;
-  border-radius: 1.05rem;
+  column-gap: 0.5rem;
+  margin-inline: 0;
+  padding: 0.95rem 1rem;
+  border-radius: var(--numa-radius-sm);
+  border: 1px solid var(--numa-border);
+  background: color-mix(in srgb, var(--numa-bg) 42%, var(--numa-card));
   transition:
     background-color 180ms ease,
     box-shadow 180ms ease,
@@ -775,7 +784,7 @@ button.numa-chip:disabled {
 
 .numa-plan-name {
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.3;
   color: var(--numa-ink);
@@ -794,8 +803,8 @@ button.numa-chip:disabled {
   flex-direction: column;
   align-items: stretch;
   gap: 0.35rem;
-  min-width: 7.4rem;
-  padding-top: 0.08rem;
+  min-width: 8.1rem;
+  padding-top: 0.02rem;
 }
 
 .numa-plan-menu {
@@ -1071,7 +1080,7 @@ button.numa-chip:disabled {
 
 .numa-btn-primary {
   background: var(--numa-ink);
-  color: #f7f6f2;
+  color: var(--numa-card);
   box-shadow: none;
 }
 
@@ -1090,7 +1099,7 @@ button.numa-chip:disabled {
 
 .numa-btn-accent {
   background: var(--numa-accent);
-  color: #f7f6f2;
+  color: var(--numa-card);
 }
 
 .numa-btn-accent:active:not(:disabled) {
@@ -1174,7 +1183,9 @@ button.numa-chip:disabled {
   pointer-events: none;
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #ebe9e3 0%, var(--numa-bg) 42%, var(--numa-bg-deep) 100%);
+  background:
+    radial-gradient(ellipse 100% 48% at 50% -8%, var(--numa-sun), transparent 60%),
+    linear-gradient(180deg, #f4efe6 0%, var(--numa-bg) 42%, var(--numa-bg-deep) 100%);
 }
 
 .auth-mark {
@@ -1200,9 +1211,9 @@ button.numa-chip:disabled {
   gap: 1.65rem;
   width: 100%;
   max-width: 26.5rem;
-  padding: 1.7rem 1.45rem 1.55rem;
+  padding: 1.85rem 1.55rem 1.65rem;
   border: 1px solid var(--numa-border);
-  border-radius: 1.35rem;
+  border-radius: var(--numa-radius);
   background: var(--numa-card);
   box-shadow: var(--numa-shadow);
 }

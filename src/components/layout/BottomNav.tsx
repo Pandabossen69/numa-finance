@@ -40,7 +40,7 @@ export function BottomNav() {
             href="/fota"
             prefetch
             onClick={() => onIntent("/fota")}
-            className="numa-press relative -mt-7 flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full bg-[var(--numa-ink)] text-[#f7f6f2] ring-[4px] ring-[var(--numa-bg)]"
+            className="numa-press relative -mt-7 flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] ring-[4px] ring-[var(--numa-bg)]"
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />

@@ -31,7 +31,7 @@ export function WealthScoreboard({
           <MoneyDisplay
             amountMinor={livingMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             tone="signed"
             align="start"
@@ -48,7 +48,7 @@ export function WealthScoreboard({
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
             wrap={false}
@@ -64,7 +64,7 @@ export function WealthScoreboard({
           <MoneyDisplay
             amountMinor={totalMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
             wrap={false}
@@ -102,7 +102,7 @@ export function CompactPiles({
             <MoneyDisplay
               amountMinor={saldoMinor}
               currency={currency}
-              size="sm"
+              size="md"
               compact
               align="start"
               wrap={false}
@@ -140,7 +140,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={overMinor}
             currency={currency}
-            size="xs"
+            size="sm"
             compact
             align="end"
             wrap={false}
@@ -157,7 +157,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="sm"
+            size="md"
             compact
             align="start"
             wrap={false}

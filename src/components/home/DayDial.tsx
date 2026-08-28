@@ -31,7 +31,7 @@ export function DayDial({
           cx={size / 2}
           cy={size / 2}
           r={r - 10}
-          fill={over ? "rgba(168,107,58,0.08)" : "rgba(18,122,98,0.08)"}
+          fill={over ? "rgba(168,107,58,0.1)" : "rgba(255,214,140,0.18)"}
         />
         <circle
           cx={size / 2}

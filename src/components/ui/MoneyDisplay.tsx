@@ -37,29 +37,29 @@ export function MoneyDisplay({
 
   const sizeClass =
     size === "display"
-      ? "text-[clamp(1.35rem,4.8vw,2.35rem)] leading-[1.08] font-semibold tracking-[-0.04em]"
+      ? "text-[clamp(1.7rem,6.2vw,2.7rem)] leading-[1.05] font-bold tracking-[-0.045em]"
       : size === "xl"
-        ? "text-[clamp(1.75rem,5vw,2.55rem)] leading-[1.08] font-semibold tracking-tight"
+        ? "text-[clamp(1.95rem,5.5vw,2.75rem)] leading-[1.05] font-bold tracking-tight"
         : size === "lg"
-          ? "text-3xl font-semibold tracking-tight"
+          ? "text-3xl font-bold tracking-tight"
           : size === "md"
-            ? "text-[1.125rem] font-semibold tracking-tight"
+            ? "text-[1.2rem] font-bold tracking-tight"
             : size === "sm"
-              ? "text-[0.9375rem] font-semibold tracking-tight"
-              : "text-[0.8125rem] font-medium tracking-tight";
+              ? "text-[1.0625rem] font-bold tracking-tight"
+              : "text-[0.875rem] font-semibold tracking-tight";
 
   const codeSize =
     size === "display"
-      ? "text-[0.78rem] font-semibold tracking-[0.08em]"
+      ? "text-[0.9rem] font-bold tracking-[0.06em]"
       : size === "xl"
-        ? "text-[1.05rem] font-semibold tracking-[0.04em]"
+        ? "text-[1.05rem] font-bold tracking-[0.04em]"
         : size === "lg"
-          ? "text-sm font-semibold tracking-[0.04em]"
+          ? "text-sm font-bold tracking-[0.04em]"
           : size === "md"
-            ? "text-[0.75rem] font-semibold tracking-[0.06em]"
+            ? "text-[0.8rem] font-bold tracking-[0.05em]"
             : size === "sm"
-              ? "text-[0.6875rem] font-semibold tracking-[0.07em]"
-              : "text-[0.625rem] font-semibold tracking-[0.07em]";
+              ? "text-[0.72rem] font-bold tracking-[0.06em]"
+              : "text-[0.68rem] font-semibold tracking-[0.06em]";
 
   const toneClass =
     tone === "signed" && safeMinor < 0
@@ -77,7 +77,7 @@ export function MoneyDisplay({
       aria-label={`${amountText} ${currencyText}`}
     >
       <span className={`money numa-money-amt ${sizeClass}`}>{amountText}</span>
-      <span className={`money-currency numa-money-unit ${codeSize} text-[var(--numa-muted)]`}>
+      <span className={`money-currency numa-money-unit ${codeSize}`}>
         {currencyText}
       </span>
     </span>

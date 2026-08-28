@@ -11,10 +11,10 @@ function token(name: string): string {
 
 describe("NUMA vision palette", () => {
   it("keeps the canvas limestone, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#e6e4de");
+    expect(token("--numa-bg")).toBe("#eee9e0");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
-    expect(token("--numa-card")).toBe("#f7f6f2");
+    expect(token("--numa-card")).toBe("#fcfbf7");
     expect(css).not.toMatch(/linear-gradient\(\s*165deg,\s*#ffffff/);
     expect(css).not.toContain("#f7fcf9");
     expect(css).not.toContain("#c8d6ce");
@@ -99,7 +99,7 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-money.is-end");
     expect(css).toContain(".numa-plan-list");
     expect(css).toContain(
-      "grid-template-columns: minmax(0, 1fr) minmax(7.4rem, auto) 2.75rem",
+      "grid-template-columns: minmax(0, 1fr) minmax(8.1rem, auto) 2.75rem",
     );
     expect(css).toContain(".numa-plan-name");
     expect(css).toContain(".numa-plan-meta");
@@ -109,6 +109,15 @@ describe("NUMA vision palette", () => {
   it("gives Hem a living wash login does not use", () => {
     expect(css).toContain(".numa-day-stage");
     expect(css).toContain("var(--numa-accent-glow)");
+    expect(css).toContain("var(--numa-sun)");
     expect(css).toContain(".auth-mark::after");
+  });
+
+  it("keeps cards round and cream so numbers sit on a clear sheet", () => {
+    expect(token("--numa-radius")).toBe("1.85rem");
+    expect(token("--numa-radius-sm")).toBe("1.4rem");
+    expect(css).toContain("border-radius: var(--numa-radius)");
+    expect(css).toContain(".numa-money-unit");
+    expect(css).toContain("font-variant-numeric: tabular-nums");
   });
 });
