@@ -29,6 +29,7 @@ describe("Analys month result color", () => {
   it("keeps Perioden/Månad as equal chips and money on one line", () => {
     expect(src).toContain("numa-equal-chips");
     expect(src).toContain("numa-money-line");
+    expect(src).toContain("numa-money-stack");
     expect(src).toContain("numa-hero-money");
     expect(src).toContain("numa-analys-wealth");
     expect(src).toContain("wrap={false}");

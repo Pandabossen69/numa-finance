@@ -149,7 +149,7 @@ export function AnalysDashboard({
           {!isEmpty ? (
             <section className="animate-rise-delay-2 space-y-2">
               <p className="numa-section-title px-1">{SV.idag}</p>
-              <div className="numa-panel-list px-4 py-1">
+              <div className="numa-panel-list numa-money-stack px-4 py-1">
                 <MetricRow
                   label={SV.kvarIdag}
                   amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
@@ -179,7 +179,7 @@ export function AnalysDashboard({
               className="animate-rise-delay-2 min-w-0 space-y-2"
               aria-label="Periodens siffror"
             >
-              <div className="numa-panel-list px-4 py-1">
+              <div className="numa-panel-list numa-money-stack px-4 py-1">
                 {isBridge ? (
                   hasSaldo ? null : (
                     <MetricRow
@@ -279,7 +279,7 @@ export function AnalysDashboard({
             Mot planen är inte kontanter — planerat kvar minus spenderat i månaden.
           </p>
 
-          <div className="numa-panel-list px-4 py-1">
+          <div className="numa-panel-list numa-money-stack px-4 py-1">
             <MetricRow
               label={SV.intakter}
               amountMinor={month.incomeMinor}

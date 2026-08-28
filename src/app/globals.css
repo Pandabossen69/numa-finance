@@ -1587,6 +1587,11 @@ button.numa-chip:disabled {
   white-space: nowrap;
 }
 
+.numa-money-stack .numa-row {
+  flex-wrap: nowrap;
+  align-items: baseline;
+}
+
 .numa-hero-money {
   overflow-wrap: normal;
   word-break: keep-all;

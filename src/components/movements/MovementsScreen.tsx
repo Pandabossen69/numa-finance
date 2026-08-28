@@ -159,7 +159,7 @@ export function MovementsScreen({
       </section>
 
       {data.hasBankTruth && data.balanceMinor != null ? (
-        <section className="animate-rise-delay-2 animate-scale-in">
+        <section className="numa-money-stack animate-rise-delay-2 animate-scale-in">
           <MetricRow
             label="Saldo"
             amountMinor={data.balanceMinor}

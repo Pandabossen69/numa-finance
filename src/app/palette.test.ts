@@ -225,6 +225,8 @@ describe("NUMA vision palette", () => {
     );
     expect(moneyLine).toContain("white-space: nowrap");
     expect(moneyLine).toContain("flex-shrink: 0");
+    expect(moneyLine).toContain(".numa-money-stack .numa-row");
+    expect(moneyLine).toContain("flex-wrap: nowrap");
 
     const wealth = css.slice(
       css.indexOf(".numa-analys-wealth .numa-wealth-score {"),
