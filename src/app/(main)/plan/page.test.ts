@@ -14,6 +14,7 @@ describe("/plan getting-started hints", () => {
     expect(page).toContain("stepHint={hint}");
     expect(page).toContain("loadPlanSnapshot");
     expect(page).toContain("Promise.all");
+    expect(page).toContain("next/dynamic");
     expect(page).not.toMatch(/välkommen/i);
   });
 });

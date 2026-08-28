@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
+import nextDynamic from "next/dynamic";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
   getCachedTodaySnapshot,
@@ -11,6 +11,12 @@ import {
   ONBOARDING_SALDO_PATH,
 } from "@/features/onboarding/paths";
 import { requireSaldoOnboardingPage } from "@/features/onboarding/redirect";
+
+const ReceiptCaptureFlow = nextDynamic(() =>
+  import("@/components/capture/ReceiptCaptureFlow").then(
+    (mod) => mod.ReceiptCaptureFlow,
+  ),
+);
 
 export const dynamic = "force-dynamic";
 

@@ -1,8 +1,12 @@
-import { HomeDashboard } from "@/components/home/HomeDashboard";
+import nextDynamic from "next/dynamic";
 import { loadHomeSnapshot } from "@/features/finance/load-home";
 import { loadGettingStartedView } from "@/features/getting-started/load";
 
 export const dynamic = "force-dynamic";
+
+const HomeDashboard = nextDynamic(() =>
+  import("@/components/home/HomeDashboard").then((mod) => mod.HomeDashboard),
+);
 
 export default async function IdagPage() {
   const [result, gettingStarted] = await Promise.all([
