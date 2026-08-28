@@ -106,7 +106,9 @@ function PlanEquation({
       <span aria-hidden>−</span>
       <span className="money">{formatPlanFigure(breakdown.settledMinor)}</span>
       <span aria-hidden>=</span>
-      <span className="money is-remain">{formatPlanFigure(breakdown.remainingMinor)}</span>
+      <span className="money is-remain">
+        {formatPlanFigure(breakdown.remainingMinor)}
+      </span>
       {restLabel ? (
         <span className="numa-settle-rest">
           · {SV.resten} {restLabel}
@@ -736,9 +738,7 @@ export function PlanEditor({
 
         <div className="numa-panel numa-split">
           <div>
-            <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-              {SV.intakter}
-            </p>
+            <p className="numa-section-title">{SV.intakter}</p>
             <div className="mt-1.5 text-[var(--numa-positive)]">
               <MoneyDisplay
                 amountMinor={coverage.incomingMinor}
@@ -746,21 +746,21 @@ export function PlanEditor({
                 size="md"
                 compact
                 align="start"
+                wrap={false}
               />
             </div>
           </div>
           <div className="numa-split-rule" aria-hidden />
           <div>
-            <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-              {SV.utgifter}
-            </p>
-            <div className="mt-1.5 numa-amt-out">
+            <p className="numa-section-title">{SV.utgifter}</p>
+            <div className="numa-amt-out mt-1.5">
               <MoneyDisplay
                 amountMinor={coverage.unpaidMinor}
                 currency={currency}
                 size="md"
                 compact
                 align="start"
+                wrap={false}
               />
             </div>
           </div>
@@ -806,9 +806,7 @@ export function PlanEditor({
             onPartialDate={setPartialDate}
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) =>
-              settleRow(id, true, partialAmount, partialDate)
-            }
+            onSavePartial={(id) => settleRow(id, true, partialAmount, partialDate)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -966,9 +964,7 @@ export function PlanEditor({
             onPartialDate={setPartialDate}
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) =>
-              settleRow(id, true, partialAmount, partialDate)
-            }
+            onSavePartial={(id) => settleRow(id, true, partialAmount, partialDate)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1002,53 +998,53 @@ export function PlanEditor({
           />
 
           <InlineAdd
-              name={expenseName}
-              amount={expenseAmount}
+            name={expenseName}
+            amount={expenseAmount}
             extra={expenseDate}
             extraLabel="Datum"
-              namePlaceholder="t.ex. Hyra, El, Netflix"
-              amountPlaceholder={`Belopp (${currency})`}
-              submitLabel="Lägg till fast utgift"
-              collapsedLabel="Lägg till fast utgift"
-              open={addKind === "fixed"}
-              scrollOnOpen={focusAdd !== "fixed"}
-              onOpen={() => setAddKind("fixed")}
-              onClose={() => setAddKind(null)}
-              busy={busy === "add-fixed"}
-              onName={setExpenseName}
-              onAmount={setExpenseAmount}
-              onExtra={setExpenseDate}
-              onSubmit={() => {
-                commitAdd({
-                  busy: "add-fixed",
-                  addKind: "fixed",
-                  name: expenseName,
-                  amount: expenseAmount,
-                  date: expenseDate,
-                  item: {
+            namePlaceholder="t.ex. Hyra, El, Netflix"
+            amountPlaceholder={`Belopp (${currency})`}
+            submitLabel="Lägg till fast utgift"
+            collapsedLabel="Lägg till fast utgift"
+            open={addKind === "fixed"}
+            scrollOnOpen={focusAdd !== "fixed"}
+            onOpen={() => setAddKind("fixed")}
+            onClose={() => setAddKind(null)}
+            busy={busy === "add-fixed"}
+            onName={setExpenseName}
+            onAmount={setExpenseAmount}
+            onExtra={setExpenseDate}
+            onSubmit={() => {
+              commitAdd({
+                busy: "add-fixed",
+                addKind: "fixed",
+                name: expenseName,
+                amount: expenseAmount,
+                date: expenseDate,
+                item: {
+                  kind: "mandatory",
+                  cadence: "monthly",
+                  nextDueAt: `${expenseDate}T12:00:00.000Z`,
+                },
+                clear: () => {
+                  setExpenseName("");
+                  setExpenseAmount("");
+                },
+                restore: (name, amount) => {
+                  setExpenseName(name);
+                  setExpenseAmount(amount);
+                },
+                action: (name, amount, date) =>
+                  createPlanItemAction({
+                    name,
                     kind: "mandatory",
-                    cadence: "monthly",
-                    nextDueAt: `${expenseDate}T12:00:00.000Z`,
-                  },
-                  clear: () => {
-                    setExpenseName("");
-                    setExpenseAmount("");
-                  },
-                  restore: (name, amount) => {
-                    setExpenseName(name);
-                    setExpenseAmount(amount);
-                  },
-                  action: (name, amount, date) =>
-                    createPlanItemAction({
-                      name,
-                      kind: "mandatory",
-                      amount,
-                      date,
-                      monthKey,
-                    }),
-                });
-              }}
-            />
+                    amount,
+                    date,
+                    monthKey,
+                  }),
+              });
+            }}
+          />
         </PlanCard>
 
         <PlanCard
@@ -1081,9 +1077,7 @@ export function PlanEditor({
             onPartialDate={setPartialDate}
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) =>
-              settleRow(id, true, partialAmount, partialDate)
-            }
+            onSavePartial={(id) => settleRow(id, true, partialAmount, partialDate)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1333,7 +1327,9 @@ function PlanRows({
                   className="numa-btn numa-btn-accent min-h-10 flex-1"
                   onClick={() => onSaveEdit(item.id)}
                 >
-                  {pendingId === item.id && pendingAction === "save" ? "Sparar…" : "Spara"}
+                  {pendingId === item.id && pendingAction === "save"
+                    ? "Sparar…"
+                    : "Spara"}
                 </button>
                 <button
                   type="button"
@@ -1473,10 +1469,7 @@ function PlanRows({
           .join(" ");
 
         return (
-          <li
-            key={item.id}
-            className={`numa-plan-row ${rowState}`.trim()}
-          >
+          <li key={item.id} className={`numa-plan-row ${rowState}`.trim()}>
             <div className="numa-plan-copy">
               <p className="numa-plan-name" title={item.name}>
                 {item.name}
@@ -1542,7 +1535,9 @@ function PlanRows({
                         {doneLabel}
                       </button>
                     ) : (
-                      <span className="numa-chip numa-chip-mint self-end">{doneLabel}</span>
+                      <span className="numa-chip numa-chip-mint self-end">
+                        {doneLabel}
+                      </span>
                     )
                   ) : partial ? (
                     <button
@@ -1557,10 +1552,7 @@ function PlanRows({
                   ) : null}
                 </div>
                 <div className="numa-plan-menu">
-                  <OverflowMenu
-                    label={`Åtgärder för ${item.name}`}
-                    items={menuItems}
-                  />
+                  <OverflowMenu label={`Åtgärder för ${item.name}`} items={menuItems} />
                 </div>
               </>
             )}

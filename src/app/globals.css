@@ -97,12 +97,7 @@ body {
   background-color: var(--numa-bg);
   background-image:
     radial-gradient(ellipse 120% 55% at 50% -12%, var(--numa-sun), transparent 58%),
-    linear-gradient(
-      180deg,
-      #f4efe6 0%,
-      var(--numa-bg) 42%,
-      var(--numa-bg-deep) 100%
-    );
+    linear-gradient(180deg, #f4efe6 0%, var(--numa-bg) 42%, var(--numa-bg-deep) 100%);
   color: var(--numa-ink);
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 1rem;
@@ -131,19 +126,25 @@ body {
 
 .money {
   font-family: var(--font-numa-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-synthesis: none;
+  letter-spacing: 0;
+  word-spacing: 0;
 }
 
 .money-currency {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
-  font-variant-numeric: normal;
+  font-variant-numeric: lining-nums;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .numa-money {
   display: inline-flex;
+  flex-wrap: nowrap;
   align-items: baseline;
   gap: 0.35rem;
   max-width: 100%;
@@ -166,22 +167,56 @@ body {
 }
 
 .numa-plan-figures .numa-money.is-end {
-  width: 100%;
-  grid-template-columns: minmax(0, 1fr) var(--numa-money-unit);
+  width: max-content;
+  max-width: none;
+  margin-left: auto;
+  grid-template-columns: max-content var(--numa-money-unit);
 }
 
 .numa-money-amt {
-  min-width: 0;
-  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  min-width: min-content;
+  overflow: visible;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-synthesis: none;
+  letter-spacing: 0;
+  word-spacing: 0;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
+
+.numa-money-groups {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  column-gap: 0.2em;
+  row-gap: 0;
+  min-width: min-content;
+}
+
+.numa-money-run {
+  flex: 0 0 auto;
+  display: block;
+  white-space: nowrap;
+  letter-spacing: 0;
+  word-spacing: 0;
 }
 
 .numa-money.is-end .numa-money-amt {
   justify-self: end;
   text-align: right;
-  white-space: nowrap;
 }
 
 .numa-money-unit {
+  flex: 0 0 auto;
   flex-shrink: 0;
   white-space: nowrap;
   color: color-mix(in srgb, var(--numa-ink) 62%, transparent);
@@ -191,8 +226,17 @@ body {
   justify-self: start;
 }
 
+.numa-money.is-nowrap {
+  flex-wrap: nowrap;
+}
+
 .numa-money.is-nowrap .numa-money-amt {
   white-space: nowrap;
+}
+
+.money-hero .numa-money {
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .numa-panel {
@@ -222,6 +266,11 @@ body {
   overflow: hidden;
 }
 
+.numa-panel-strong.numa-pile,
+.numa-panel-park.numa-pile {
+  overflow: visible;
+}
+
 .numa-panel-list {
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
@@ -233,9 +282,12 @@ body {
 .numa-section-title {
   font-size: 0.72rem;
   font-weight: 650;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
   text-transform: uppercase;
   color: var(--numa-muted);
+  padding-inline-end: 0.08em;
+  overflow: visible;
 }
 
 .numa-page-title {
@@ -392,11 +444,7 @@ body {
   position: relative;
   background:
     radial-gradient(ellipse 110% 72% at 50% -12%, var(--numa-sun), transparent 58%),
-    radial-gradient(
-      ellipse 92% 64% at 50% 22%,
-      var(--numa-accent-glow),
-      transparent 70%
-    ),
+    radial-gradient(ellipse 92% 64% at 50% 22%, var(--numa-accent-glow), transparent 70%),
     var(--numa-card);
 }
 
@@ -406,7 +454,11 @@ body {
 
 .numa-day-stage.is-over {
   background:
-    radial-gradient(ellipse 110% 72% at 50% -12%, rgba(232, 176, 110, 0.35), transparent 58%),
+    radial-gradient(
+      ellipse 110% 72% at 50% -12%,
+      rgba(232, 176, 110, 0.35),
+      transparent 58%
+    ),
     radial-gradient(
       ellipse 92% 64% at 50% 22%,
       rgba(168, 107, 58, 0.18),
@@ -471,7 +523,7 @@ body {
 
 .numa-piles-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.65rem;
   padding: 0;
   border-radius: 0;
@@ -490,12 +542,7 @@ body {
 }
 
 .numa-piles-board > .is-live {
-  background:
-    linear-gradient(
-      165deg,
-      rgba(18, 122, 98, 0.1) 0%,
-      var(--numa-card) 62%
-    );
+  background: linear-gradient(165deg, rgba(18, 122, 98, 0.1) 0%, var(--numa-card) 62%);
 }
 
 .numa-piles-board > .is-park {
@@ -581,12 +628,7 @@ body {
 }
 
 .numa-month-strip.is-overflow-end {
-  mask-image: linear-gradient(
-    90deg,
-    #000 0,
-    #000 calc(100% - 1.5rem),
-    transparent 100%
-  );
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
   -webkit-mask-image: linear-gradient(
     90deg,
     #000 0,
@@ -659,45 +701,138 @@ body {
 
 .numa-wealth-score {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   align-items: stretch;
-  justify-content: space-between;
-  gap: 0.45rem 0.55rem;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  gap: 0;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.15rem 0;
+  background: var(--numa-card);
+  border: 1px solid var(--numa-border);
+  border-radius: var(--numa-radius-sm);
+  box-shadow: var(--numa-shadow-sm);
+  overflow: hidden;
 }
 
 .numa-wealth-cell {
-  flex: 1 1 5.5rem;
+  display: grid;
+  grid-template-columns: minmax(7.25rem, 1fr) max-content;
+  align-items: baseline;
+  column-gap: 0.85rem;
+  width: 100%;
   min-width: 0;
-  padding: 1rem 1.05rem;
-  border: 1px solid var(--numa-border);
-  border-radius: var(--numa-radius-sm);
-  background: var(--numa-card);
-  box-shadow: var(--numa-shadow-sm);
+  padding: 0.85rem 1.1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 
-.numa-wealth-cell.is-live {
-  background: linear-gradient(
-    165deg,
-    rgba(18, 122, 98, 0.09) 0%,
-    var(--numa-card) 68%
-  );
-}
-
-.numa-wealth-cell.is-park {
-  background: var(--numa-card);
-}
-
+.numa-wealth-cell.is-live,
+.numa-wealth-cell.is-park,
 .numa-wealth-cell.is-all {
-  background: linear-gradient(
-    165deg,
-    rgba(18, 122, 98, 0.06) 0%,
-    var(--numa-card) 70%
-  );
+  background: transparent;
+}
+
+.numa-wealth-cell .numa-section-title {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  margin: 0;
+  min-width: 0;
+}
+
+.numa-wealth-value {
+  margin-top: 0;
+  min-width: min-content;
+  justify-self: end;
+  overflow: visible;
+}
+
+.numa-wealth-value .numa-money,
+.numa-wealth-value .numa-money.is-start {
+  justify-content: flex-end;
+  max-width: none;
+}
+
+.numa-wealth-value .money.numa-money-amt,
+.numa-wealth-value .numa-money-groups,
+.numa-wealth-value .numa-money-run {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.numa-wealth-value .numa-money-unit {
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.numa-wealth-score .numa-wealth-op {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 0.85rem;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--numa-faint);
+}
+
+@media (min-width: 1024px) {
+  .numa-wealth-score {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) auto minmax(9rem, 1fr) auto minmax(9rem, 1fr);
+    gap: 0.45rem 0.55rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .numa-wealth-cell {
+    display: block;
+    padding: 0.95rem 1.05rem;
+    border: 1px solid var(--numa-border);
+    border-radius: var(--numa-radius-sm);
+    box-shadow: var(--numa-shadow-sm);
+  }
+
+  .numa-wealth-cell.is-live {
+    background: linear-gradient(165deg, rgba(18, 122, 98, 0.09) 0%, var(--numa-card) 68%);
+  }
+
+  .numa-wealth-cell.is-park {
+    background: var(--numa-card);
+  }
+
+  .numa-wealth-cell.is-all {
+    background: linear-gradient(165deg, rgba(18, 122, 98, 0.06) 0%, var(--numa-card) 70%);
+  }
+
+  .numa-wealth-value {
+    margin-top: 0.35rem;
+    justify-self: auto;
+  }
+
+  .numa-wealth-value .numa-money,
+  .numa-wealth-value .numa-money.is-start {
+    justify-content: flex-start;
+  }
+
+  .numa-wealth-score .numa-wealth-op {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .numa-amt-in {
@@ -706,6 +841,96 @@ body {
 
 .numa-amt-out {
   color: var(--numa-spend);
+}
+
+.numa-pile-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.numa-pile-line {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.numa-pile-line-label {
+  flex: 0 1 auto;
+  min-width: min-content;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--numa-muted);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.numa-pile-line-value {
+  flex: 0 0 auto;
+  min-width: min-content;
+  margin-left: auto;
+}
+
+.numa-pile-line .numa-money,
+.numa-pile-line .numa-money.is-end {
+  width: max-content;
+  max-width: none;
+}
+
+.numa-pile-line .money.numa-money-amt,
+.numa-pile-line .numa-money-groups,
+.numa-pile-line .numa-money-run {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.numa-pile-line .numa-money-unit {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+.numa-piles-board .is-park .money.numa-money-amt,
+.numa-piles-board .is-park .numa-money-groups,
+.numa-piles-board .is-park .numa-money-run,
+.numa-pile .money.numa-money-amt,
+.numa-pile .numa-money-groups,
+.numa-pile .numa-money-run {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.numa-piles-board .is-park .numa-money-unit,
+.numa-pile .numa-money-unit {
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.numa-pile-line.is-over .numa-pile-line-label {
+  color: var(--numa-positive);
+  font-weight: 650;
+}
+
+.numa-pile-line.is-short .numa-pile-line-label {
+  color: var(--numa-alarm);
+  font-weight: 650;
+}
+
+.numa-pile-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--numa-muted);
 }
 
 .numa-wealth-op {
@@ -718,19 +943,27 @@ body {
 
 .numa-chip {
   display: inline-flex;
+  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  height: 1.4rem;
   min-height: 1.4rem;
+  max-height: 1.4rem;
   max-width: 100%;
   padding: 0 0.55rem;
+  border: 0;
   border-radius: 999px;
+  font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 0.625rem;
   font-weight: 650;
+  font-style: normal;
+  font-variant: normal;
   letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
+  overflow: visible;
 }
 
 .numa-chip-mint {
@@ -758,13 +991,23 @@ body {
   color: var(--numa-ink);
 }
 
+button.numa-chip,
+span.numa-chip,
+p.numa-chip {
+  font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.625rem;
+  font-weight: 650;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
 button.numa-chip {
+  appearance: none;
   margin: 0;
   border: 0;
   cursor: pointer;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
 }
 
 button.numa-chip:disabled {
@@ -810,7 +1053,9 @@ button.numa-chip:disabled {
   letter-spacing: -0.02em;
   line-height: 1.3;
   color: var(--numa-ink);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .numa-plan-meta {
@@ -827,6 +1072,17 @@ button.numa-chip:disabled {
   gap: 0.35rem;
   min-width: 8.6rem;
   padding-top: 0.02rem;
+}
+
+.numa-plan-figures .numa-chip {
+  min-width: 4.75rem;
+  height: 1.4rem;
+  min-height: 1.4rem;
+  max-height: 1.4rem;
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1;
 }
 
 .numa-plan-menu {

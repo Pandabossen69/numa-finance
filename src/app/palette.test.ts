@@ -61,6 +61,36 @@ describe("NUMA vision palette", () => {
     const chip = css.slice(css.indexOf(".numa-chip {"), css.indexOf(".numa-chip-mint"));
     expect(chip).toContain("white-space: nowrap");
     expect(chip).toContain("flex-shrink: 0");
+    expect(chip).toContain("font-size: 0.625rem");
+    expect(chip).toContain("font-weight: 650");
+    expect(chip).toContain("letter-spacing: 0.08em");
+    expect(chip).toContain("height: 1.4rem");
+    expect(chip).toContain("min-height: 1.4rem");
+    expect(chip).toContain("max-height: 1.4rem");
+  });
+
+  it("locks button chips to the same type as span chips", () => {
+    const chipType = css.slice(
+      css.indexOf("button.numa-chip,"),
+      css.indexOf("button.numa-chip:disabled"),
+    );
+    expect(chipType).not.toContain("font: inherit");
+    expect(chipType).not.toContain("letter-spacing: inherit");
+    expect(chipType).not.toContain("text-transform: inherit");
+    expect(chipType).toContain("span.numa-chip");
+    expect(chipType).toContain("p.numa-chip");
+    expect(chipType).toContain("font-size: 0.625rem");
+    expect(chipType).toContain("font-weight: 650");
+    expect(chipType).toContain("letter-spacing: 0.08em");
+    expect(chipType).toContain("text-transform: uppercase");
+    expect(chipType).toContain("line-height: 1");
+    const planChip = css.slice(
+      css.indexOf(".numa-plan-figures .numa-chip {"),
+      css.indexOf(".numa-plan-menu"),
+    );
+    expect(planChip).toContain("min-width: 4.75rem");
+    expect(planChip).toContain("font-size: 0.625rem");
+    expect(planChip).toContain("height: 1.4rem");
   });
 
   it("keeps pile meters for overspend on clay, not destroy red", () => {
@@ -105,6 +135,19 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-plan-meta");
     expect(css).toContain(".numa-metric-value");
     expect(css).not.toMatch(/\.numa-metric-value \{[^}]*overflow: hidden/);
+    expect(css).toContain("white-space: nowrap");
+    expect(css).toContain("min-width: min-content");
+    expect(css).toContain("lining-nums");
+    expect(css).toContain('"tnum" 1');
+    expect(css).toContain('"lnum" 1');
+    expect(css).toContain(".numa-pile-line {");
+    expect(css).toContain(".numa-pile-line .money.numa-money-amt");
+    expect(css).toContain("font-size: 0.9375rem");
+    expect(css).toContain("overflow-wrap: break-word");
+    expect(css).not.toContain("overflow-wrap: anywhere");
+    expect(css).not.toContain(
+      "grid-template-columns: minmax(0, 1fr) var(--numa-money-unit)",
+    );
   });
 
   it("gives Hem a living wash login does not use", () => {
@@ -119,6 +162,25 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-radius-sm")).toBe("1.4rem");
     expect(css).toContain("border-radius: var(--numa-radius)");
     expect(css).toContain(".numa-money-unit");
-    expect(css).toContain("font-variant-numeric: tabular-nums");
+    expect(css).toContain("font-variant-numeric: tabular-nums lining-nums");
+    expect(css).toContain(".numa-piles-board {");
+    expect(css).toContain("grid-template-columns: minmax(0, 1fr);");
+    const wealth = css.slice(
+      css.indexOf(".numa-wealth-score {"),
+      css.indexOf(".numa-amt-in"),
+    );
+    expect(wealth).toContain("flex-direction: column");
+    expect(wealth).toContain("flex-wrap: nowrap");
+    expect(wealth).toContain(".numa-wealth-value");
+    expect(wealth).toContain("@media (min-width: 1024px)");
+    expect(wealth).not.toContain("flex: 1 1");
+    expect(wealth).not.toContain("flex-wrap: wrap");
+    expect(css).toContain(".numa-money-groups");
+    expect(css).toContain("flex-wrap: nowrap");
+    expect(css).toContain("column-gap: 0.2em");
+    expect(css).toContain("font-synthesis: none");
+    expect(css).toContain("letter-spacing: 0");
+    expect(css).not.toContain("flex: 1 1 5.5rem");
+    expect(css).not.toContain(".numa-money-sep");
   });
 });

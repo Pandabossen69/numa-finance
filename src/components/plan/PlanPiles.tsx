@@ -4,6 +4,7 @@ import type { CashCoverageView } from "@/domain/finance";
 import { CASH_COVERAGE_HINT_SV, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { PileLine } from "@/components/ui/PileLine";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { SV } from "@/features/copy/labels-sv";
 
@@ -45,11 +46,7 @@ export function PlanPiles({
 
   const overChip = overOk ? SV.pengarOver : SV.rackerInte;
   const savingsChip =
-    savingsThisMonthMinor > 0
-      ? SV.vaxer
-      : savingsTotalMinor > 0
-        ? "Avsatt"
-        : "Inte ännu";
+    savingsThisMonthMinor > 0 ? SV.vaxer : savingsTotalMinor > 0 ? "Avsatt" : "Inte ännu";
 
   return (
     <div className="space-y-4">
@@ -77,7 +74,7 @@ export function PlanPiles({
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="numa-pile-stack">
             <PileLine
               label={SV.saldo}
               amountMinor={coverage.saldoMinor}
@@ -95,27 +92,14 @@ export function PlanPiles({
               currency={currency}
               tone="out"
             />
-          </div>
-
-          <div
-            className={
-              overOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
-            }
-          >
-            <p className="text-xs font-semibold tracking-[0.12em] text-[var(--numa-faint)] uppercase">
-              {SV.over}
-            </p>
-            <MoneyDisplay
+            <PileLine
+              label={SV.over}
               amountMinor={coverage.overMinor}
               currency={currency}
-              size="md"
-              compact
-              align="start"
-              wrap={false}
-              tone="signed"
+              tone={overOk ? "over" : "short"}
             />
           </div>
-          <p className="min-h-[2.5rem] text-sm leading-snug text-[var(--numa-muted)]">
+          <p className="numa-pile-hint">
             {CASH_COVERAGE_HINT_SV}
             {coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
           </p>
@@ -135,13 +119,13 @@ export function PlanPiles({
             <MoneyDisplay
               amountMinor={savingsTotalMinor}
               currency={currency}
-              size="md"
+              size="sm"
               compact
               align="start"
               wrap={false}
             />
           </div>
-          <p className="text-sm leading-snug text-[var(--numa-muted)]">
+          <p className="numa-pile-hint">
             {savingsTotalMinor <= 0
               ? "Sätt av det som inte ska levas upp."
               : savingsThisMonthMinor <= 0
@@ -163,9 +147,7 @@ export function PlanPiles({
             <i
               style={{
                 transform: `scaleX(${
-                  savingsTotalMinor > 0
-                    ? Math.max(0.08, savingsFill || 0.22)
-                    : 0
+                  savingsTotalMinor > 0 ? Math.max(0.08, savingsFill || 0.22) : 0
                 })`,
               }}
             />
@@ -182,9 +164,7 @@ export function PlanPiles({
           ) : null}
 
           <div className="mt-auto space-y-2 pt-1">
-            <p className="text-xs font-semibold tracking-[0.12em] text-[var(--numa-faint)] uppercase">
-              Avsätt i {monthName}
-            </p>
+            <p className="numa-section-title">Avsätt i {monthName}</p>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="text"
@@ -218,48 +198,5 @@ export function PlanPiles({
         </section>
       </div>
     </div>
-  );
-}
-
-function PileLine({
-  label,
-  amountMinor,
-  currency,
-  tone = "plain",
-}: {
-  label: string;
-  amountMinor: number | null;
-  currency: CurrencyCode;
-  tone?: "plain" | "in" | "out";
-}) {
-  const missing = amountMinor == null;
-  return (
-    <p className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-[var(--numa-muted)]">{label}</span>
-      <span
-        className={
-          missing
-            ? "text-[var(--numa-faint)]"
-            : tone === "out"
-              ? "numa-amt-out"
-              : tone === "in"
-                ? "numa-amt-in"
-                : "text-[var(--numa-ink)]"
-        }
-      >
-        {missing ? (
-          "—"
-        ) : (
-          <MoneyDisplay
-            amountMinor={amountMinor}
-            currency={currency}
-            size="sm"
-            compact
-            align="end"
-            wrap={false}
-          />
-        )}
-      </span>
-    </p>
   );
 }

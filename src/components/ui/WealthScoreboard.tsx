@@ -1,5 +1,6 @@
 import { CASH_COVERAGE_HINT_SV } from "@/domain/finance";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { PileLine } from "@/components/ui/PileLine";
 import type { CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 
@@ -23,10 +24,10 @@ export function WealthScoreboard({
   const livingOk = livingMinor >= 0;
   return (
     <div className="numa-wealth-score" aria-label={SV.alltINuma}>
-      <div className="numa-wealth-cell is-live min-w-0">
+      <div className="numa-wealth-cell is-live">
         <p className="numa-section-title">{livingLabel}</p>
         <div
-          className={`mt-1 ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
+          className={`numa-wealth-value ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
         >
           <MoneyDisplay
             amountMinor={livingMinor}
@@ -42,9 +43,9 @@ export function WealthScoreboard({
       <p className="numa-wealth-op" aria-hidden>
         +
       </p>
-      <div className="numa-wealth-cell is-park min-w-0">
+      <div className="numa-wealth-cell is-park">
         <p className="numa-section-title">{SV.sparande}</p>
-        <div className="mt-1 text-[var(--numa-ink)]">
+        <div className="numa-wealth-value text-[var(--numa-ink)]">
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
@@ -58,9 +59,9 @@ export function WealthScoreboard({
       <p className="numa-wealth-op" aria-hidden>
         =
       </p>
-      <div className="numa-wealth-cell is-all min-w-0 text-right sm:text-left">
+      <div className="numa-wealth-cell is-all">
         <p className="numa-section-title">{SV.alltINuma}</p>
-        <div className="mt-1 text-[var(--numa-accent-ink)]">
+        <div className="numa-wealth-value text-[var(--numa-accent-ink)]">
           <MoneyDisplay
             amountMinor={totalMinor}
             currency={currency}
@@ -94,62 +95,28 @@ export function CompactPiles({
   return (
     <div className="numa-piles-board">
       <div className="is-live min-w-0">
-        <p className="numa-section-title">{SV.saldo}</p>
-        <div className="mt-1.5 min-w-0 text-[var(--numa-ink)]">
-          {saldoMinor == null ? (
-            <span className="text-base font-medium text-[var(--numa-faint)]">—</span>
-          ) : (
-            <MoneyDisplay
-              amountMinor={saldoMinor}
-              currency={currency}
-              size="md"
-              compact
-              align="start"
-              wrap={false}
-            />
-          )}
-        </div>
-        <p className="mt-2 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug numa-amt-in">
-          <span>{SV.kommerIn}</span>
-          <MoneyDisplay
+        <div className="numa-pile-stack">
+          <PileLine label={SV.saldo} amountMinor={saldoMinor} currency={currency} />
+          <PileLine
+            label={SV.kommerIn}
             amountMinor={incomingMinor}
             currency={currency}
-            size="xs"
-            compact
-            align="end"
-            wrap={false}
+            tone="in"
           />
-        </p>
-        <p className="mt-1 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug numa-amt-out">
-          <span>{SV.kvarAttBetala}</span>
-          <MoneyDisplay
+          <PileLine
+            label={SV.kvarAttBetala}
             amountMinor={unpaidMinor}
             currency={currency}
-            size="xs"
-            compact
-            align="end"
-            wrap={false}
+            tone="out"
           />
-        </p>
-        <p
-          className={`mt-1.5 flex min-w-0 items-baseline justify-between gap-2 text-[11px] leading-snug ${
-            overOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"
-          }`}
-        >
-          <span>{SV.over}</span>
-          <MoneyDisplay
+          <PileLine
+            label={SV.over}
             amountMinor={overMinor}
             currency={currency}
-            size="sm"
-            compact
-            align="end"
-            wrap={false}
-            tone="signed"
+            tone={overOk ? "over" : "short"}
           />
-        </p>
-        <p className="mt-1.5 text-[11px] leading-snug text-[var(--numa-faint)]">
-          {CASH_COVERAGE_HINT_SV}
-        </p>
+        </div>
+        <p className="numa-pile-hint mt-3">{CASH_COVERAGE_HINT_SV}</p>
       </div>
       <div className="is-park min-w-0">
         <p className="numa-section-title">{SV.sparande}</p>
@@ -157,16 +124,13 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={savingsMinor}
             currency={currency}
-            size="md"
+            size="sm"
             compact
             align="start"
             wrap={false}
           />
         </div>
-        <p className="mt-1 min-h-[1.15rem] text-[11px] text-[var(--numa-faint)]">
-          {SV.sparandeTotalt}
-        </p>
-        <p className="mt-1 min-h-[2.5rem]" aria-hidden />
+        <p className="numa-pile-hint mt-1">{SV.sparandeTotalt}</p>
       </div>
     </div>
   );

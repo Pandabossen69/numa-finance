@@ -94,6 +94,8 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("is-partial");
     expect(src).toContain("numa-chip numa-chip-mint");
     expect(src).toContain("numa-chip numa-chip-spend");
+    expect(src).toContain("<button");
+    expect(src).toContain('<span className="numa-chip numa-chip-mint self-end">');
     expect(src).toContain("onClick={() => onSettle(item.id, false)}");
     expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
     expect(src).toContain("numa-plan-list");
@@ -110,7 +112,7 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("sortPlanRowsForList");
     expect(src).toContain("canUndo");
     expect(src).toContain("explicitSettled");
-    expect(src).toContain('aria-label={`Ångra ${doneLabel}`}');
+    expect(src).toContain("aria-label={`Ångra ${doneLabel}`}");
     expect(src).toContain("SV.angraKlar");
   });
 
@@ -151,10 +153,15 @@ describe("Plan dates and add-form", () => {
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(css).toContain(".numa-plan-row.is-fresh");
     expect(css).toContain("numa-row-in");
-    const commit = src.slice(src.indexOf("function commitAdd"), src.indexOf("function settleRow"));
+    const commit = src.slice(
+      src.indexOf("function commitAdd"),
+      src.indexOf("function settleRow"),
+    );
     expect(commit).toContain("setAddKind(null)");
     expect(commit).toContain("runMutation");
-    expect(commit.indexOf("setAddKind(null)")).toBeLessThan(commit.indexOf("void runMutation"));
+    expect(commit.indexOf("setAddKind(null)")).toBeLessThan(
+      commit.indexOf("void runMutation"),
+    );
     expect(commit).not.toContain("} else {\n                  setAddKind(null);");
   });
 });
