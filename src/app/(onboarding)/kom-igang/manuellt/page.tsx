@@ -1,4 +1,4 @@
-import { OnboardingManualSaldo } from "@/components/onboarding/OnboardingManualSaldo";
+import { OnboardingManualSaldo } from "@/lib/route-islands";
 import { requireSaldoOnboardingPage } from "@/features/onboarding/redirect";
 
 export const dynamic = "force-dynamic";

@@ -1,4 +1,4 @@
-import { HomeDashboard } from "@/components/home/HomeDashboard";
+import { HomeDashboard } from "@/lib/route-islands";
 import { loadHomeSnapshot } from "@/features/finance/load-home";
 import { loadGettingStartedView } from "@/features/getting-started/load";
 

@@ -1,8 +1,8 @@
-import { PlanEditor } from "@/components/plan/PlanEditor";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { loadPlanSnapshot } from "@/features/finance/load-plan";
 import { loadGettingStartedView } from "@/features/getting-started/load";
+import { PlanEditor } from "@/lib/route-islands";
 
 export const dynamic = "force-dynamic";
 

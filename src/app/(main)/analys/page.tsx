@@ -1,4 +1,4 @@
-import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
+import { AnalysDashboard } from "@/lib/route-islands";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 
 export const dynamic = "force-dynamic";

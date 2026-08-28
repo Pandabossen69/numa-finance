@@ -8,6 +8,7 @@ describe("/idag first paint", () => {
   it("lets loading.tsx stream a Hem-shaped skeleton so LastViewOutlet can hold", () => {
     expect(page).not.toContain("Suspense");
     expect(page).toContain("HomeDashboard");
+    expect(page).toContain("route-islands");
     expect(loading).toContain("HomeViewLoading");
   });
 

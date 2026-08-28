@@ -1,4 +1,4 @@
-import { MovementsScreen } from "@/components/movements/MovementsScreen";
+import { MovementsScreen } from "@/lib/route-islands";
 import { loadMovementsSnapshot } from "@/features/finance/load-movements";
 
 export default async function TransaktionerPage() {

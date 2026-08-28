@@ -1,4 +1,4 @@
-import { OnboardingSaldoChoice } from "@/components/onboarding/OnboardingSaldoChoice";
+import { OnboardingSaldoChoice } from "@/lib/route-islands";
 import { requireSaldoOnboardingPage } from "@/features/onboarding/redirect";
 
 export const dynamic = "force-dynamic";

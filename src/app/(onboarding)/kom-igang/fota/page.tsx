@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
   getCachedTodaySnapshot,
@@ -11,6 +10,7 @@ import {
   ONBOARDING_SALDO_PATH,
 } from "@/features/onboarding/paths";
 import { requireSaldoOnboardingPage } from "@/features/onboarding/redirect";
+import { ReceiptCaptureFlow } from "@/lib/route-islands";
 
 export const dynamic = "force-dynamic";
 

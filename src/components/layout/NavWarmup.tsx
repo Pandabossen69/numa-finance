@@ -14,6 +14,8 @@ const WARM_HREFS = [
 /**
  * Prefetch primary destinations as soon as the shell mounts so tab switches
  * hit the client router cache instead of waiting on a cold server round-trip.
+ * `kind: "full"` is required for force-dynamic Hem/Plan/Analys — default
+ * prefetch would only warm loading.tsx.
  */
 export function NavWarmup() {
   const router = useRouter();
@@ -25,7 +27,9 @@ export function NavWarmup() {
       if (cancelled) return;
       for (const href of WARM_HREFS) {
         try {
-          router.prefetch(href);
+          router.prefetch(href, {
+            kind: "full",
+          } as Parameters<typeof router.prefetch>[1]);
         } catch {
           // Prefetch is best-effort.
         }

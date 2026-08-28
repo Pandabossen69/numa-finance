@@ -1,4 +1,3 @@
-import { ReceiptCaptureFlow } from "@/components/capture/ReceiptCaptureFlow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
   isObservationId,
@@ -9,6 +8,7 @@ import {
   getCachedTodaySnapshot,
   loadHomeSnapshot,
 } from "@/features/finance/load-home";
+import { ReceiptCaptureFlow } from "@/lib/route-islands";
 
 export default async function FotaPage({
   searchParams,
