@@ -99,16 +99,16 @@ export function HomescreenInstallHint({
   if (variant === "bar") {
     return (
       <aside
-        className="flex items-center gap-2 rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 py-1.5"
+        className="flex min-h-11 min-w-0 items-center gap-1 rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-2"
         aria-label="Lägg till på hemskärmen"
       >
-        <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--numa-muted)]">
+        <p className="min-w-0 flex-1 truncate px-1 text-[12px] font-medium text-[var(--numa-muted)]">
           Hemskärmen · {PRODUCTION_HOST}
         </p>
         {alreadyOnProduction ? null : (
           <a
             href={PRODUCTION_ORIGIN}
-            className="shrink-0 text-[12px] font-semibold text-[var(--numa-accent)]"
+            className="inline-flex min-h-11 shrink-0 items-center px-2 text-[12px] font-semibold text-[var(--numa-accent)]"
           >
             Öppna
           </a>
@@ -117,7 +117,7 @@ export function HomescreenInstallHint({
           <button
             type="button"
             onClick={dismiss}
-            className="shrink-0 text-[12px] font-medium text-[var(--numa-faint)]"
+            className="inline-flex min-h-11 shrink-0 items-center px-2 text-[12px] font-medium text-[var(--numa-faint)]"
             aria-label="Dölj hemskärmstips"
           >
             Stäng

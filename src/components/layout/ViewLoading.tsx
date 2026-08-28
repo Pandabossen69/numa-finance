@@ -31,15 +31,15 @@ export function HomeViewLoading() {
       aria-label="Laddar Hem"
     >
       <div className="space-y-2">
-        <div className="numa-skel h-4 w-40" />
-        <div className="numa-skel h-8 w-24" />
+        <div className="numa-skel h-4 w-48" />
       </div>
-      <div className="numa-skel h-[16.5rem] w-full" />
-      <div className="grid grid-cols-2 gap-3">
-        <div className="numa-skel h-28 w-full" />
-        <div className="numa-skel h-28 w-full" />
+      <div className="numa-skel h-[22rem] w-full" />
+      <div className="numa-skel h-40 w-full" />
+      <div className="grid min-w-0 grid-cols-2 gap-3">
+        <div className="numa-skel h-[5.25rem] w-full" />
+        <div className="numa-skel h-[5.25rem] w-full" />
       </div>
-      <div className="numa-skel h-20 w-full" />
+      <div className="numa-skel h-24 w-full" />
     </div>
   );
 }

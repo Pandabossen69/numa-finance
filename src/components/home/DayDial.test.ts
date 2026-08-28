@@ -9,4 +9,10 @@ describe("DayDial remaining ring", () => {
     expect(src).toContain("1 - Math.min(1, usedRatio)");
     expect(src).not.toContain("usedStroke");
   });
+
+  it("never grows wider than its Hem card on a 375px phone", () => {
+    expect(src).toContain("max-w-[min(15.5rem,100%)]");
+    expect(src).toContain("overflow-visible");
+    expect(src).toContain("min-w-0");
+  });
 });

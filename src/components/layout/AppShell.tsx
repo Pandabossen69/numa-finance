@@ -19,13 +19,13 @@ export function AppShell({
 }) {
   return (
     <NavIntentProvider>
-      <div className="mx-auto min-h-dvh w-full max-w-[var(--numa-shell-max)] pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] md:px-8">
+      <div className="mx-auto min-h-dvh w-full max-w-[var(--numa-shell-max)] overflow-x-clip pl-[max(1rem,var(--numa-safe-left))] pr-[max(1rem,var(--numa-safe-right))] md:px-8">
         <NavWarmup />
         <div className="flex gap-8 md:gap-12">
           <SideNav displayName={displayName} />
           <div className="min-w-0 flex-1">
-            <header className="pb-3 pt-[max(0.95rem,var(--numa-safe-top))] md:hidden">
-              <Link href="/idag" prefetch className="numa-press block min-w-0">
+            <header className="min-w-0 pb-3 pt-[max(0.95rem,var(--numa-safe-top))] md:hidden">
+              <Link href="/idag" prefetch className="numa-press block min-h-11 min-w-0">
                 <span className="numa-brand-mark">NUMA</span>
                 <span
                   className="mt-0.5 block truncate text-[13px] font-semibold tracking-tight text-[var(--numa-ink)]"
@@ -36,7 +36,7 @@ export function AppShell({
               </Link>
             </header>
 
-            <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">
+            <main className="mx-auto w-full min-w-0 max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">
               <LastViewOutlet>{children}</LastViewOutlet>
             </main>
           </div>

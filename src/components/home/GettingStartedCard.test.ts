@@ -20,4 +20,11 @@ describe("GettingStartedCard", () => {
     expect(src).not.toMatch(/spotlight/i);
     expect(src).not.toMatch(/välkommen/i);
   });
+
+  it("keeps Kom igång chrome at 44px on the phone", () => {
+    expect(src).toContain("flex min-h-11 items-center");
+    expect(src).toContain("flex h-11 w-11 shrink-0");
+    expect(src).toContain("flex min-h-11 w-full min-w-0");
+    expect(src).toContain("min-h-14");
+  });
 });
