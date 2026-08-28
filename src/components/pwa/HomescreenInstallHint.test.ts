@@ -19,4 +19,14 @@ describe("HomescreenInstallHint bar", () => {
     expect(src).toContain("1800");
     expect(src).toContain("setBarReady");
   });
+
+  it("keeps Öppna and Stäng at a 44px tap target", () => {
+    expect(src).toContain("flex min-h-11 min-w-0 items-center");
+    expect(src).toContain(
+      "inline-flex min-h-11 shrink-0 items-center px-2 text-[12px] font-semibold",
+    );
+    expect(src).toContain(
+      "inline-flex min-h-11 shrink-0 items-center px-2 text-[12px] font-medium",
+    );
+  });
 });

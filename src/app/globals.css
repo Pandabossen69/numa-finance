@@ -40,10 +40,14 @@
   --numa-nav: #fcfbf7;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
+  --numa-safe-left: env(safe-area-inset-left, 0px);
+  --numa-safe-right: env(safe-area-inset-right, 0px);
+  /* 44px — iPhone HIG minimum. Nav, chips, and chrome tap targets. */
+  --numa-touch: 2.75rem;
   /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
   --numa-nav-bar: 4.25rem;
   --numa-fab-overhang: 2.25rem;
-  --numa-shell-breathing: 5.75rem;
+  --numa-shell-breathing: 2rem;
   --numa-shell-pad-bottom: calc(
     var(--numa-nav-bar) + var(--numa-fab-overhang) + var(--numa-shell-breathing) +
       var(--numa-safe-bottom)
@@ -90,10 +94,12 @@ html {
   scroll-behavior: auto;
   color-scheme: light;
   background: var(--numa-bg);
+  overflow-x: clip;
 }
 
 body {
   min-height: 100dvh;
+  overflow-x: clip;
   background-color: var(--numa-bg);
   background-image:
     radial-gradient(ellipse 120% 55% at 50% -12%, var(--numa-sun), transparent 58%),
@@ -110,7 +116,9 @@ body {
 .numa-page {
   margin-inline: auto;
   width: 100%;
+  min-width: 0;
   max-width: 32rem;
+  overflow-x: clip;
 }
 
 .numa-page-wide {
@@ -478,9 +486,15 @@ body {
 
 .numa-day-metrics > div {
   min-width: 0;
-  padding: 1rem 1rem 0.95rem;
+  padding: 0.85rem 0.75rem 0.8rem;
   border-radius: var(--numa-radius-sm);
   border: 1px solid var(--numa-border);
+}
+
+@media (min-width: 768px) {
+  .numa-day-metrics > div {
+    padding: 1rem 1rem 0.95rem;
+  }
 }
 
 .numa-day-metrics > .is-budget {
@@ -668,6 +682,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  min-height: var(--numa-touch);
   white-space: nowrap;
 }
 
@@ -1270,10 +1285,17 @@ button.numa-chip:disabled {
 }
 
 .numa-scope-chip {
+  min-height: var(--numa-touch);
   transition:
     background-color 180ms ease,
     color 180ms ease,
     box-shadow 180ms ease;
+}
+
+.numa-bottom-nav {
+  padding-left: var(--numa-safe-left);
+  padding-right: var(--numa-safe-right);
+  padding-bottom: var(--numa-safe-bottom);
 }
 
 .numa-view {

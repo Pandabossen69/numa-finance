@@ -1,14 +1,16 @@
 import type { MetadataRoute } from "next";
-import { PRODUCTION_ORIGIN } from "@/lib/site";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    id: `${PRODUCTION_ORIGIN}/`,
+    // Same-origin paths so Safari / Chrome accept the PWA on localhost,
+    // preview, and production. CanonicalHostRedirect still sends preview
+    // hosts to numa-finance.vercel.app.
+    id: "/",
     name: "NUMA",
     short_name: "NUMA",
     description: "Personlig ekonomisk kontroll",
-    start_url: `${PRODUCTION_ORIGIN}/idag`,
-    scope: `${PRODUCTION_ORIGIN}/`,
+    start_url: "/idag",
+    scope: "/",
     display: "standalone",
     background_color: "#eee9e0",
     theme_color: "#eee9e0",

@@ -86,7 +86,7 @@ export function PwaRegister() {
         <button
           type="button"
           onClick={reloadFresh}
-          className="numa-press shrink-0 text-[12px] font-semibold text-[var(--numa-accent)]"
+          className="numa-press inline-flex min-h-11 shrink-0 items-center px-1 text-[12px] font-semibold text-[var(--numa-accent)]"
         >
           Uppdatera
         </button>

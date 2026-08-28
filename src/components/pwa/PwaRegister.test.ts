@@ -11,4 +11,9 @@ describe("PWA version nudge", () => {
     expect(src).toContain("SKIP_WAITING");
     expect(src).not.toContain("location.replace");
   });
+
+  it("clears the notch and keeps Uppdatera at 44px", () => {
+    expect(src).toContain("pt-[max(0.6rem,var(--numa-safe-top))]");
+    expect(src).toContain("inline-flex min-h-11 shrink-0 items-center");
+  });
 });

@@ -21,7 +21,7 @@ export function DayDial({
   const track = c;
 
   return (
-    <div className="numa-day-dial relative mx-auto aspect-square w-full max-w-[15.5rem] md:max-w-[17.5rem]">
+    <div className="numa-day-dial relative mx-auto aspect-square w-full max-w-[min(15.5rem,100%)] md:max-w-[17.5rem]">
       <svg
         className="absolute inset-0 h-full w-full -rotate-90"
         viewBox={`0 0 ${size} ${size}`}
@@ -61,7 +61,7 @@ export function DayDial({
           />
         ) : null}
       </svg>
-      <div className="absolute inset-[10%] flex flex-col items-center justify-center overflow-visible px-2 text-center">
+      <div className="absolute inset-[10%] flex min-w-0 flex-col items-center justify-center overflow-visible px-2 text-center">
         {children}
       </div>
     </div>

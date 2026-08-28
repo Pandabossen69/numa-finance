@@ -57,4 +57,26 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("läget just nu");
     expect(src).not.toMatch(/välkommen till din resa/i);
   });
+
+  it("stacks the dial above piles on the phone and splits them only at md", () => {
+    expect(src).toContain("grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6");
+    expect(src).toContain("grid min-w-0 grid-cols-2 gap-3");
+    expect(src).not.toContain("grid-cols-2 md:grid-cols-2");
+    expect(src).toContain("min-w-0 space-y-6");
+  });
+
+  it("keeps QuickExpense remaining off the title row on a 375px phone", () => {
+    expect(src).toContain(
+      "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3",
+    );
+    expect(src).not.toContain("flex items-end justify-between gap-3");
+  });
+
+  it("keeps Hem chrome tap targets at least 44px", () => {
+    expect(src).toContain("min-h-[5.25rem]");
+    expect(src).toContain("min-h-12");
+    expect(src).toContain(
+      "numa-press inline-flex min-h-11 items-center font-semibold text-[var(--numa-accent)]",
+    );
+  });
 });

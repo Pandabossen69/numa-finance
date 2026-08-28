@@ -89,9 +89,9 @@ export function HomeDashboard({
         : null;
 
   return (
-    <div className="numa-page numa-page-wide space-y-6">
-      <header className="animate-rise space-y-1 px-0.5">
-        <p className="text-[14px] leading-relaxed font-medium text-[var(--numa-muted)]">
+    <div className="numa-page numa-page-wide min-w-0 space-y-6">
+      <header className="animate-rise min-w-0 space-y-1 px-0.5">
+        <p className="min-w-0 text-[14px] leading-relaxed font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>
@@ -121,19 +121,19 @@ export function HomeDashboard({
 
       {!view.needsAvailableInput ? (
         <>
-          <div className="grid items-stretch gap-6 md:grid-cols-2">
+          <div className="grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6">
             <section
-              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-5 pt-6 pb-6${
+              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-4 pt-5 pb-5 md:px-5 md:pt-6 md:pb-6${
                 overToday ? " is-over" : ""
               }`}
               aria-labelledby="spend-heading"
             >
-              <div className="flex items-center justify-between gap-3 px-0.5">
-                <p id="spend-heading" className="numa-section-title">
+              <div className="flex min-w-0 items-center justify-between gap-3 px-0.5">
+                <p id="spend-heading" className="min-w-0 numa-section-title">
                   {SV.kvarIdag}
                 </p>
                 {!isEmpty ? (
-                  <p className="text-[12px] font-medium text-[var(--numa-muted)]">
+                  <p className="shrink-0 text-[12px] font-medium text-[var(--numa-muted)]">
                     {daysWord}
                   </p>
                 ) : null}
@@ -169,7 +169,7 @@ export function HomeDashboard({
 
                   {statusLine ? (
                     <p
-                      className={`text-center text-sm leading-snug ${
+                      className={`min-w-0 px-1 text-center text-sm leading-snug ${
                         overToday
                           ? "font-medium text-[var(--numa-muted)]"
                           : "text-[var(--numa-muted)]"
@@ -240,8 +240,8 @@ export function HomeDashboard({
               )}
             </section>
 
-            <div className="flex h-full min-w-0 flex-col gap-6">
-              <section className="animate-rise-delay-2 space-y-2">
+            <div className="flex h-full min-w-0 flex-col gap-5 md:gap-6">
+              <section className="animate-rise-delay-2 min-w-0 space-y-2">
                 <p className="numa-section-title px-1">{SV.saldoOchSparande}</p>
                 <CompactPiles
                   saldoMinor={view.calculatedBalanceMinor}
@@ -292,7 +292,7 @@ export function HomeDashboard({
                 </div>
               ) : null}
 
-              <section className="animate-rise-delay-2 mt-auto grid grid-cols-2 gap-3">
+              <section className="animate-rise-delay-2 mt-auto grid min-w-0 grid-cols-2 gap-3">
                 <ActionLink href="/fota" title={SV.fota} subtitle={SV.fotaHint} />
                 <ActionLink href="/plan" title={SV.plan} subtitle={SV.planHint} />
               </section>
@@ -336,7 +336,7 @@ function ActionLink({
       <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
         {title}
       </span>
-      <span className="mt-0.5 text-xs leading-snug text-[var(--numa-muted)]">
+      <span className="mt-0.5 text-xs leading-snug break-words text-[var(--numa-muted)]">
         {subtitle}
       </span>
     </Link>
@@ -428,7 +428,7 @@ function UpdateBalanceLink({
     return (
       <button
         type="button"
-        className="numa-press font-semibold text-[var(--numa-accent)]"
+        className="numa-press inline-flex min-h-11 items-center font-semibold text-[var(--numa-accent)]"
         onClick={() => {
           setError(null);
           setOpen(true);
@@ -524,13 +524,13 @@ function QuickExpense({
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+        <div className="min-w-0">
           <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">{SV.laggtillUtgiftHint}</p>
         </div>
         {!disabled ? (
-          <p className="shrink-0 text-right text-[11px] text-[var(--numa-faint)]">
+          <p className="min-w-0 text-[11px] text-[var(--numa-faint)] sm:shrink-0 sm:text-right">
             {overToday || remainingTodayMinor < 0 ? SV.overDagsbudget : SV.kvarIdag}
             <br />
             <span

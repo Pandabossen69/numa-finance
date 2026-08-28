@@ -6,7 +6,7 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[var(--numa-shell-max)] flex-col overflow-x-hidden pl-[max(1rem,env(safe-area-inset-left,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))]">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[var(--numa-shell-max)] flex-col overflow-x-clip pl-[max(1rem,var(--numa-safe-left))] pr-[max(1rem,var(--numa-safe-right))]">
       <header className="mx-auto flex w-full max-w-lg shrink-0 items-center justify-between gap-3 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:max-w-2xl md:pt-8">
         <span className="numa-brand-mark">NUMA</span>
         <form action={signOutAction}>
@@ -18,7 +18,7 @@ export default function OnboardingLayout({
           </button>
         </form>
       </header>
-      <main className="mx-auto flex w-full min-h-0 max-w-lg flex-1 flex-col overflow-x-hidden pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] pt-2 md:max-w-2xl md:justify-center md:pb-12 md:pt-4">
+      <main className="mx-auto flex w-full min-h-0 max-w-lg flex-1 flex-col overflow-x-clip pb-[max(1.25rem,var(--numa-safe-bottom))] pt-2 md:max-w-2xl md:justify-center md:pb-12 md:pt-4">
         {children}
       </main>
     </div>

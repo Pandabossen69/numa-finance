@@ -26,7 +26,9 @@ export const metadata: Metadata = {
   applicationName: "NUMA",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    // Translucent so cream canvas + --numa-safe-top cover the notch in
+    // Safari and home-screen PWA the same way (opaque "default" double-pads).
+    statusBarStyle: "black-translucent",
     title: "NUMA",
   },
   formatDetection: {

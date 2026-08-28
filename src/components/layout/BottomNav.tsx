@@ -20,8 +20,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 rounded-t-[1.7rem] border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/92 shadow-[0_-12px_32px_rgba(120,88,48,0.08)] backdrop-blur-2xl md:hidden"
-      style={{ paddingBottom: "var(--numa-safe-bottom)" }}
+      className="numa-bottom-nav fixed inset-x-0 bottom-0 z-50 overflow-x-clip rounded-t-[1.7rem] border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/92 shadow-[0_-12px_32px_rgba(120,88,48,0.08)] backdrop-blur-2xl md:hidden"
       aria-label="Huvudnavigering"
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1.5 pt-1.5">
@@ -40,12 +39,12 @@ export function BottomNav() {
             href="/fota"
             prefetch
             onClick={() => onIntent("/fota")}
-            className="numa-press relative -mt-7 flex h-[3.6rem] w-[3.6rem] items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_10px_24px_rgba(22,21,19,0.22)] ring-[5px] ring-[var(--numa-bg)]"
+            className="numa-press relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_10px_24px_rgba(22,21,19,0.22)] ring-4 ring-[var(--numa-bg)]"
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />
           </Link>
-          <span className="text-[10px] font-semibold tracking-wide text-[var(--numa-ink)]">
+          <span className="whitespace-nowrap text-[10px] font-semibold tracking-wide text-[var(--numa-ink)]">
             Fota
           </span>
         </div>
@@ -83,7 +82,7 @@ function NavItem({
       prefetch
       onClick={onIntent}
       aria-current={active ? "page" : undefined}
-      className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-1 ${
+      className={`numa-press relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
         active
           ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]"
           : "text-[var(--numa-faint)]"
@@ -91,7 +90,7 @@ function NavItem({
     >
       <NavIcon name={icon} active={active} />
       <span
-        className={`text-[10px] font-semibold tracking-wide ${
+        className={`whitespace-nowrap text-[10px] font-semibold tracking-wide ${
           active ? "text-[var(--numa-ink)]" : ""
         }`}
       >

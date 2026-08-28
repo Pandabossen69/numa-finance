@@ -34,7 +34,7 @@ export function MerPageHeader({
   return (
     <header className="animate-rise space-y-3">
       {back ? <MerBackLink /> : null}
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex min-w-0 flex-wrap items-end justify-between gap-3 md:gap-4">
         <div className="min-w-0">
           <h1 className="numa-page-title">{title}</h1>
           {description ? (

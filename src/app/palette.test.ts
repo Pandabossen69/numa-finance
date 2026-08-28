@@ -106,9 +106,28 @@ describe("NUMA vision palette", () => {
     expect(css).toContain("--numa-nav-bar");
     expect(css).toContain("--numa-fab-overhang");
     expect(css).toContain("--numa-safe-bottom");
+    expect(css).toContain("--numa-safe-left");
+    expect(css).toContain("--numa-safe-right");
     expect(token("--numa-shell-pad-bottom")).toContain("var(--numa-nav-bar)");
     expect(token("--numa-shell-pad-bottom")).toContain("var(--numa-fab-overhang)");
     expect(token("--numa-shell-pad-bottom")).toContain("var(--numa-safe-bottom)");
+  });
+
+  it("locks chrome tap targets at 44px and clips horizontal overflow", () => {
+    expect(token("--numa-touch")).toBe("2.75rem");
+    const monthChip = css.slice(
+      css.indexOf(".numa-month-chip {"),
+      css.indexOf(".numa-month-dots {"),
+    );
+    expect(monthChip).toContain("min-height: var(--numa-touch)");
+    expect(css).toContain(".numa-scope-chip {");
+    expect(css).toContain(".numa-bottom-nav {");
+    expect(css).toContain("padding-left: var(--numa-safe-left)");
+    expect(css).toContain("padding-bottom: var(--numa-safe-bottom)");
+    expect(css).toMatch(/html \{[^}]*overflow-x:\s*clip/);
+    expect(css).toMatch(/body \{[^}]*overflow-x:\s*clip/);
+    expect(css).toContain(".numa-page {");
+    expect(css).toMatch(/\.numa-page \{[^}]*overflow-x:\s*clip/);
   });
 
   it("keeps the Hem/Plan split rule at 1px so it cannot cover the right amount", () => {
