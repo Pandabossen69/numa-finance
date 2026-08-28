@@ -6,7 +6,6 @@ import {
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { loadErrorMessageSv } from "@/lib/async";
-import { listTransactions } from "@/lib/store/repository";
 
 export type MovementRow = {
   id: string;
@@ -51,10 +50,7 @@ export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> 
   try {
     const snap = await getCachedTodaySnapshot();
     const primaryId = snap.primaryAccount?.id ?? null;
-    const transactions = await listTransactions(
-      primaryId ?? undefined,
-      primaryId ? undefined : { limit: 200 },
-    );
+    const transactions = snap.ledgerTransactions ?? [];
 
     const timezone = snap.profile.timezone || "Asia/Bangkok";
     const thisMonth = monthKeyFromDate(new Date(), timezone);

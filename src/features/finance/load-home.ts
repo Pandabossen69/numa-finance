@@ -68,6 +68,12 @@ export type HomeSnapshot = {
 export type HomeSnapshotResult =
   { ok: true; data: HomeSnapshot } | { ok: false; error: string };
 
+/**
+ * Request-scoped snapshot for Hem / Plan / Analys / Rörelser.
+ * Cross-request `unstable_cache` cannot wrap the RLS client (cookies()).
+ * Layout + loaders share this via React `cache()` so navigation does not
+ * repeat the same numa reads inside one render.
+ */
 export const getCachedTodaySnapshot = cache(getTodaySnapshot);
 
 export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {

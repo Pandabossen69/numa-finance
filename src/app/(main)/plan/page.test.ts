@@ -12,6 +12,8 @@ describe("/plan getting-started hints", () => {
     expect(page).toContain("Vad som kommer in och vad som måste ut.");
     expect(page).toContain("focusAdd={focusAdd}");
     expect(page).toContain("stepHint={hint}");
+    expect(page).toContain("loadPlanSnapshot");
+    expect(page).toContain("Promise.all");
     expect(page).not.toMatch(/välkommen/i);
   });
 });

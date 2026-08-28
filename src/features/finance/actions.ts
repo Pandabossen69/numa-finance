@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { z } from "zod";
 import {
   createAccount,
@@ -71,6 +72,7 @@ export async function createAccountAction(
       note: "Ingående / verifierat saldo",
     });
 
+    revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
     revalidatePath("/idag");
     revalidatePath("/konton");
     revalidatePath("/transaktioner");
@@ -132,6 +134,7 @@ const cashSchema = z.object({
 });
 
 function revalidateMoneyPaths() {
+  revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
   revalidatePath("/", "layout");
   revalidatePath("/idag");
   revalidatePath("/transaktioner");

@@ -1,9 +1,8 @@
 import { PlanEditor } from "@/components/plan/PlanEditor";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
-import { getCachedTodaySnapshot } from "@/features/finance/load-home";
+import { loadPlanSnapshot } from "@/features/finance/load-plan";
 import { loadGettingStartedView } from "@/features/getting-started/load";
-import { loadErrorMessageSv } from "@/lib/async";
 
 export const dynamic = "force-dynamic";
 
@@ -21,17 +20,15 @@ export default async function PlanPage({
         : null;
   const focusAdd =
     steg === "inkomst" ? "income" : steg === "utgift" ? "fixed" : null;
-  let error: string | null = null;
-  let snap = null;
-  try {
-    snap = await getCachedTodaySnapshot();
-  } catch (e) {
-    error = loadErrorMessageSv(e, "Kunde inte ladda planen");
-  }
-  const gettingStarted = await loadGettingStartedView();
+  const [result, gettingStarted] = await Promise.all([
+    loadPlanSnapshot(),
+    loadGettingStartedView(),
+  ]);
+  const snap = result.ok ? result.data : null;
+  const error = result.ok ? null : result.error;
 
   const currency = snap?.currency ?? "THB";
-  const timeZone = snap?.profile.timezone || "Asia/Bangkok";
+  const timeZone = snap?.timeZone ?? "Asia/Bangkok";
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
@@ -57,11 +54,11 @@ export default async function PlanPage({
       ) : (
         <section>
           <PlanEditor
-            items={snap?.planItems ?? []}
+            items={snap?.items ?? []}
             currency={currency}
             timeZone={timeZone}
-            bankBalanceMinor={snap?.calculatedBalanceMinor ?? null}
-            spendingByMonthKey={snap?.monthSpendingByKey ?? {}}
+            bankBalanceMinor={snap?.bankBalanceMinor ?? null}
+            spendingByMonthKey={snap?.spendingByMonthKey ?? {}}
             ledgerTransactions={snap?.ledgerTransactions ?? []}
             focusAdd={focusAdd}
             stepHint={hint}

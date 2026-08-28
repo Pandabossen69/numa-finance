@@ -7,15 +7,12 @@ import {
   formatRelativeVerificationSv,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
-  APP_PLAN_START_MONTH,
   projectPayCycle,
   projectPlanForMonth,
   resolveSmsTipBalanceMinor,
   shouldWriteSmsTipCheckpoint,
-  snapshotLedgerWindow,
   spendingByMonthKey,
   startOfZonedDay,
-  startOfZonedMonth,
   decideSmsBatchConfirm,
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
@@ -36,7 +33,17 @@ import {
 import { money, type CurrencyCode } from "@/domain/money";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
+import { getAuthUser } from "@/lib/supabase/auth-user";
+import {
+  ACCOUNT_SELECT,
+  CHECKPOINT_SELECT,
+  LEDGER_TRANSACTION_SELECT,
+  PLAN_ITEM_SELECT,
+  PROFILE_SELECT,
+  numaSelect,
+} from "@/lib/supabase/selects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { fetchMenuSnapshotBundle } from "./menu-snapshot-fetch";
 import {
   mapAccount,
   mapCandidate,
@@ -55,25 +62,15 @@ import { emptyTodaySnapshot } from "./empty-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
-import { withTimeout, withTimeoutRetry } from "@/lib/async";
 import { knownDisplayNameForEmail } from "@/domain/identity/display-name";
 
-/** One auth lookup per request — repeated getUser() made Idag feel stuck. */
+/** One auth lookup per request — shared with layout / onboarding getSessionUser. */
 const requireAuthUser = cache(async (): Promise<{ id: string; email: string }> => {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-    error,
-  } = await withTimeoutRetry(
-    () => supabase.auth.getUser(),
-    8_000,
-    "requireUserId getUser",
-    1,
-  );
-  if (error || !user) {
+  const user = await getAuthUser();
+  if (!user) {
     throw new Error("Du måste vara inloggad");
   }
-  return { id: user.id, email: user.email ?? "" };
+  return user;
 });
 
 const requireUserId = cache(async (): Promise<string> => {
@@ -86,7 +83,7 @@ async function ensureProfile(_userId?: string): Promise<Profile> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(numaSelect(PROFILE_SELECT))
     .eq("id", userId)
     .maybeSingle();
 
@@ -109,7 +106,7 @@ async function ensureProfile(_userId?: string): Promise<Profile> {
       primary_currency: "THB",
       reference_currency: "SEK",
     })
-    .select("*")
+    .select(numaSelect(PROFILE_SELECT))
     .single();
 
   if (insertError) throw new Error(insertError.message);
@@ -184,7 +181,7 @@ export const listAccounts = cache(async (): Promise<Account[]> => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("accounts")
-    .select("*")
+    .select(numaSelect(ACCOUNT_SELECT))
     .eq("user_id", userId)
     .eq("is_active", true)
     .order("created_at", { ascending: true });
@@ -198,7 +195,7 @@ export async function getAccount(accountId: string): Promise<Account | null> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("accounts")
-    .select("*")
+    .select(numaSelect(ACCOUNT_SELECT))
     .eq("user_id", userId)
     .eq("id", accountId)
     .maybeSingle();
@@ -667,7 +664,7 @@ export async function listTransactions(
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("transactions")
-    .select("*")
+    .select(numaSelect(LEDGER_TRANSACTION_SELECT))
     .eq("user_id", userId)
     .order("occurred_at", { ascending: false });
 
@@ -956,7 +953,7 @@ export async function latestCheckpointForAccount(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("balance_checkpoints")
-    .select("*")
+    .select(numaSelect(CHECKPOINT_SELECT))
     .eq("user_id", userId)
     .eq("account_id", accountId)
     .order("verified_at", { ascending: false })
@@ -972,7 +969,7 @@ export const listPlanItems = cache(async (): Promise<PlanItem[]> => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("plan_items")
-    .select("*")
+    .select(numaSelect(PLAN_ITEM_SELECT))
     .eq("user_id", userId)
     .eq("is_active", true)
     .order("name", { ascending: true });
@@ -1077,48 +1074,26 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
   });
 }
 
-export async function getTodaySnapshot(): Promise<TodaySnapshot> {
-  const [profile, accounts, planItems, progress] = await Promise.all([
-    getProfile(),
-    listAccounts(),
-    listPlanItems().catch(() => [] as PlanItem[]),
-    withTimeout(getUserProgress(), 1_500, "getUserProgress").catch(() => null),
-  ]);
-  const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
+export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
+  const bundle = await fetchMenuSnapshotBundle({
+    loadProfile: getProfile,
+    loadAccounts: listAccounts,
+    loadPlanItems: () => listPlanItems().catch(() => [] as PlanItem[]),
+    loadCheckpoint: latestCheckpointForAccount,
+    loadTransactions: (accountId, options) =>
+      listTransactions(accountId, options),
+  });
+  const { profile, accounts, planItems, primary, checkpoint } = bundle;
+  const accountTx = bundle.transactions;
 
   if (!primary) {
-    return emptyTodaySnapshot(profile, accounts, progress, planItems);
+    return emptyTodaySnapshot(profile, accounts, null, planItems);
   }
 
   const timezone = profile.timezone;
   const now = new Date();
-  const monthStart = startOfZonedMonth(now, timezone);
   const monthKey = monthKeyFromDate(now, timezone);
   const cycle = projectPayCycle(planItems, now, timezone);
-
-  const spendWindow = snapshotLedgerWindow({
-    monthStart,
-    cycleStartAt: cycle.startAt,
-    historySince: startOfZonedMonth(
-      new Date(`${APP_PLAN_START_MONTH}-15T12:00:00.000Z`),
-      timezone,
-    ),
-  });
-  const checkpoint = await latestCheckpointForAccount(primary.id);
-  const ledger = snapshotLedgerWindow({
-    monthStart,
-    cycleStartAt: cycle.startAt,
-    checkpointVerifiedAt: checkpoint?.verifiedAt,
-    historySince: startOfZonedMonth(
-      new Date(`${APP_PLAN_START_MONTH}-15T12:00:00.000Z`),
-      timezone,
-    ),
-  });
-  const accountTx = await listTransactions(primary.id, {
-    sinceIso: ledger.refetchFromCheckpoint
-      ? ledger.saldoSinceIso
-      : spendWindow.spendSinceIso,
-  });
 
   const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
   let calculated = null;
@@ -1209,9 +1184,9 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     ledgerTransactions: accountTx,
     planItems,
     currency,
-    progress,
+    progress: null,
   };
-}
+});
 
 export async function getUserProgress(): Promise<UserProgress | null> {
   const userId = await requireUserId();
