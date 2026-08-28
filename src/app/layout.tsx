@@ -16,7 +16,7 @@ const sans = Sora({
 const mono = JetBrains_Mono({
   variable: "--font-numa-mono",
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: "variable",
   display: "swap",
   preload: false,
 });

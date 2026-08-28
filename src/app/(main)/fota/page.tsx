@@ -1,4 +1,3 @@
-import nextDynamic from "next/dynamic";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
   isObservationId,
@@ -9,12 +8,7 @@ import {
   getCachedTodaySnapshot,
   loadHomeSnapshot,
 } from "@/features/finance/load-home";
-
-const ReceiptCaptureFlow = nextDynamic(() =>
-  import("@/components/capture/ReceiptCaptureFlow").then(
-    (mod) => mod.ReceiptCaptureFlow,
-  ),
-);
+import { ReceiptCaptureFlow } from "@/lib/route-islands";
 
 export default async function FotaPage({
   searchParams,

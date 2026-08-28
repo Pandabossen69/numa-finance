@@ -1,14 +1,10 @@
-import nextDynamic from "next/dynamic";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { loadPlanSnapshot } from "@/features/finance/load-plan";
 import { loadGettingStartedView } from "@/features/getting-started/load";
+import { PlanEditor } from "@/lib/route-islands";
 
 export const dynamic = "force-dynamic";
-
-const PlanEditor = nextDynamic(() =>
-  import("@/components/plan/PlanEditor").then((mod) => mod.PlanEditor),
-);
 
 export default async function PlanPage({
   searchParams,

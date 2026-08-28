@@ -1,11 +1,7 @@
-import nextDynamic from "next/dynamic";
+import { AnalysDashboard } from "@/lib/route-islands";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 
 export const dynamic = "force-dynamic";
-
-const AnalysDashboard = nextDynamic(() =>
-  import("@/components/analys/AnalysDashboard").then((mod) => mod.AnalysDashboard),
-);
 
 export default async function AnalysPage() {
   const result = await loadAnalysSnapshot();

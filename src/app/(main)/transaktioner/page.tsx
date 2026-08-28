@@ -1,11 +1,5 @@
-import nextDynamic from "next/dynamic";
+import { MovementsScreen } from "@/lib/route-islands";
 import { loadMovementsSnapshot } from "@/features/finance/load-movements";
-
-const MovementsScreen = nextDynamic(() =>
-  import("@/components/movements/MovementsScreen").then(
-    (mod) => mod.MovementsScreen,
-  ),
-);
 
 export default async function TransaktionerPage() {
   const result = await loadMovementsSnapshot();
