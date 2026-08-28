@@ -158,7 +158,7 @@ export function HomescreenInstallHint({
           <button
             type="button"
             onClick={dismiss}
-            className="text-sm font-medium text-[var(--numa-muted)]"
+            className="numa-tap text-sm font-medium text-[var(--numa-muted)]"
           >
             Jag har redan det
           </button>

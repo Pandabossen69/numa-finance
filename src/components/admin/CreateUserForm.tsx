@@ -83,7 +83,7 @@ export function CreateUserForm() {
       ) : null}
       {success ? (
         <p
-          className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-positive)_14%,transparent)] px-3 py-2.5 text-sm leading-relaxed text-[var(--numa-positive)]"
+          className="break-words rounded-2xl bg-[color-mix(in_srgb,var(--numa-positive)_14%,transparent)] px-3 py-2.5 text-sm leading-relaxed text-[var(--numa-positive)]"
           role="status"
         >
           {success}

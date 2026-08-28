@@ -118,12 +118,12 @@ export function MovementsScreen({
   const maxCategory = data.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="numa-page numa-page-wide space-y-7">
+    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
       <header className="animate-rise">
         <h1 className="numa-page-title">Rörelser</h1>
       </header>
 
-      <div className="animate-rise-delay-1 flex gap-2">
+      <div className="numa-equal-chips animate-rise-delay-1">
         <PeriodChip
           active={period === "month"}
           onClick={() => setPeriod("month")}
@@ -136,7 +136,7 @@ export function MovementsScreen({
         />
       </div>
 
-      <section className="numa-panel-strong animate-rise-delay-1 grid gap-4 p-5 sm:grid-cols-3">
+      <section className="numa-panel-strong numa-stat-trio animate-rise-delay-1 p-5">
         <SummaryStat
           label="Intäkter"
           amountMinor={income}
@@ -174,18 +174,21 @@ export function MovementsScreen({
           <ul className="mt-4 space-y-3">
             {data.monthCategories.map((cat) => (
               <li key={cat.name}>
-                <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
-                  <span className="text-[var(--numa-muted)]">
+                <div className="numa-money-line mb-1.5 text-sm">
+                  <span className="numa-money-line-label text-[var(--numa-muted)]">
                     {cat.name}
                     <span className="ml-2 text-xs text-[var(--numa-faint)]">
                       {cat.count}×
                     </span>
                   </span>
-                  <MoneyDisplay
-                    amountMinor={cat.amountMinor}
-                    currency={data.currency}
-                    size="sm"
-                  />
+                  <span className="numa-money-line-amt">
+                    <MoneyDisplay
+                      amountMinor={cat.amountMinor}
+                      currency={data.currency}
+                      size="sm"
+                      wrap={false}
+                    />
+                  </span>
                 </div>
                 <div className="numa-progress animate-bar">
                   <span
@@ -200,13 +203,13 @@ export function MovementsScreen({
         </section>
       ) : null}
 
-      <div className="animate-rise-delay-3 flex flex-wrap gap-2">
+      <div className="numa-equal-chips is-quad animate-rise-delay-3">
         {FILTERS.map((f) => (
           <button
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`numa-press min-h-11 rounded-full px-3.5 text-sm font-semibold ${
+            className={`numa-press min-h-11 rounded-full px-2.5 text-sm font-semibold ${
               filter === f.id
                 ? "bg-[var(--numa-ink)] text-white"
                 : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -223,7 +226,7 @@ export function MovementsScreen({
           <Link
             href="/fota"
             prefetch
-            className="text-xs font-semibold text-[var(--numa-accent)]"
+            className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             + Lägg till
           </Link>
@@ -291,7 +294,7 @@ export function MovementsScreen({
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        className="numa-btn numa-btn-accent min-h-10 flex-1"
+                        className="numa-btn numa-btn-accent flex-1"
                         onClick={() => {
                           setActionError(null);
                           void (async () => {
@@ -317,7 +320,7 @@ export function MovementsScreen({
                       </button>
                       <button
                         type="button"
-                        className="min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
+                        className="numa-tap min-h-11 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
                         onClick={() => setEditingId(null)}
                       >
                         Avbryt
@@ -330,13 +333,13 @@ export function MovementsScreen({
               return (
                 <li
                   key={tx.id}
-                  className="flex items-start justify-between gap-3 px-4 py-3.5"
+                  className="numa-money-line items-start px-4 py-3.5"
                 >
-                  <div className="min-w-0">
+                  <div className="numa-money-line-label">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
                       {sanitizeMoneyDescription(tx.description)}
                     </p>
-                    <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+                    <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
                       {[
                         filter === "all" ? typeLabel(tx.transactionType) : null,
                         filter === "all" || filter === "expense"
@@ -351,10 +354,10 @@ export function MovementsScreen({
                     </p>
                     {canEdit && (confirmId == null || confirmId === tx.id) ? (
                       confirmId === tx.id ? (
-                        <div className="mt-1.5 flex gap-3">
+                        <div className="mt-1.5 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            className="numa-press text-xs font-semibold text-[var(--numa-danger)]"
+                            className="numa-press numa-tap px-1 text-xs font-semibold text-[var(--numa-danger)]"
                             onClick={() => {
                               setActionError(null);
                               setConfirmId(null);
@@ -372,17 +375,17 @@ export function MovementsScreen({
                           </button>
                           <button
                             type="button"
-                            className="numa-press text-xs text-[var(--numa-muted)]"
+                            className="numa-press numa-tap px-1 text-xs text-[var(--numa-muted)]"
                             onClick={() => setConfirmId(null)}
                           >
                             Avbryt
                           </button>
                         </div>
                       ) : (
-                        <div className="mt-1.5 flex gap-3">
+                        <div className="mt-1.5 flex flex-wrap gap-2">
                           <button
                             type="button"
-                            className="numa-press text-xs font-semibold text-[var(--numa-accent)]"
+                            className="numa-press numa-tap px-1 text-xs font-semibold text-[var(--numa-accent)]"
                             onClick={() => {
                               setEditingId(tx.id);
                               setConfirmId(null);
@@ -396,7 +399,7 @@ export function MovementsScreen({
                           </button>
                           <button
                             type="button"
-                            className="numa-press text-xs text-[var(--numa-muted)]"
+                            className="numa-press numa-tap px-1 text-xs text-[var(--numa-muted)]"
                             onClick={() => setConfirmId(tx.id)}
                           >
                             Ta bort
@@ -405,12 +408,15 @@ export function MovementsScreen({
                       )
                     ) : null}
                   </div>
-                  <MoneyDisplay
-                    amountMinor={signed}
-                    currency={tx.currency}
-                    size="sm"
-                    tone="signed"
-                  />
+                  <span className="numa-money-line-amt">
+                    <MoneyDisplay
+                      amountMinor={signed}
+                      currency={tx.currency}
+                      size="sm"
+                      tone="signed"
+                      wrap={false}
+                    />
+                  </span>
                 </li>
               );
             })}
@@ -434,7 +440,7 @@ function PeriodChip({
     <button
       type="button"
       onClick={onClick}
-      className={`numa-press min-h-11 rounded-full px-4 text-sm font-semibold ${
+      className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
           ? "bg-[var(--numa-ink)] text-white"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -466,14 +472,15 @@ function SummaryStat({
         : "text-[var(--numa-ink)]";
 
   return (
-    <div>
+    <div className="min-w-0">
       <p className="numa-section-title">{label}</p>
-      <div className={`mt-2 ${color}`}>
+      <div className={`numa-hero-money mt-2 ${color}`}>
         <MoneyDisplay
           amountMinor={amountMinor}
           currency={currency}
           size="md"
           tone={signed ? "signed" : "neutral"}
+          wrap={false}
         />
       </div>
     </div>

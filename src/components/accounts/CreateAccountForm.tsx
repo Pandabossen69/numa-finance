@@ -123,7 +123,7 @@ export function CreateAccountForm({
         inputMode="decimal"
       />
 
-      <label className="flex items-start gap-3 rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3">
+      <label className="flex min-h-11 items-start gap-3 rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3">
         <input
           type="checkbox"
           checked={useOnIdag}

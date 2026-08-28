@@ -37,7 +37,7 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
     >
       <button
         type="button"
-        className="numa-press inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)] hover:bg-[var(--numa-card)] hover:text-[var(--numa-ink)]"
+        className="numa-press numa-tap-icon rounded-full text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)] hover:bg-[var(--numa-card)] hover:text-[var(--numa-ink)]"
         aria-label={SV.saRaknarNuma}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}

@@ -1505,6 +1505,151 @@ button.numa-chip:disabled {
   background: var(--numa-accent);
 }
 
+/*
+ * Remaining screens (Analys, Rörelser, Konton, Fota, Mer, onboarding).
+ * Page-local — do not reuse on Plan/Hem scoreboards.
+ * Phone 375px + desktop: equal chips, no mid-number wrap, no cramped 3-up.
+ */
+.numa-equal-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.numa-equal-chips.is-quad {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 768px) {
+  .numa-equal-chips.is-quad {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.numa-equal-chips > * {
+  min-width: 0;
+  width: 100%;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.numa-chip-scroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.numa-chip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.numa-chip-scroll > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.numa-stat-trio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .numa-stat-trio {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.numa-stat-trio > * {
+  min-width: 0;
+}
+
+.numa-money-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.numa-money-line-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.numa-money-line-amt {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.numa-hero-money {
+  overflow-wrap: normal;
+  word-break: keep-all;
+  max-width: 100%;
+}
+
+.numa-hero-money .money,
+.numa-hero-money .numa-money,
+.numa-hero-money .numa-money-amt {
+  white-space: nowrap;
+}
+
+.numa-analys-wealth .numa-wealth-score {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.65rem;
+}
+
+.numa-analys-wealth .numa-wealth-op {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .numa-analys-wealth .numa-wealth-score {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  .numa-analys-wealth .numa-wealth-cell {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .numa-analys-wealth .numa-wealth-op {
+    display: flex;
+  }
+}
+
+.numa-status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 1.75rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.numa-tap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.numa-tap-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+}
+
 .auth-card {
   display: flex;
   flex-direction: column;

@@ -68,13 +68,13 @@ export function QuickAddForms({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+      <div className="numa-equal-chips is-quad">
         {modes.map((m) => (
           <button
             key={m.id}
             type="button"
             onClick={() => setMode(m.id)}
-            className={`numa-press min-h-11 shrink-0 rounded-full px-3.5 text-sm ${
+            className={`numa-press min-h-11 rounded-full px-2.5 text-sm ${
               mode === m.id
                 ? "bg-[var(--numa-ink)] font-semibold text-white"
                 : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -166,13 +166,13 @@ function ExpenseForm({
       }}
     >
       <AmountField value={amount} onChange={setAmount} />
-      <div className="flex flex-wrap gap-2">
+      <div className="numa-chip-scroll">
         {CATEGORIES.map((c) => (
           <button
             key={c}
             type="button"
             onClick={() => setCategoryOverride(c)}
-            className={`numa-press min-h-10 rounded-full px-3 text-sm ${
+            className={`numa-press min-h-11 rounded-full px-3 text-sm ${
               category === c
                 ? "bg-[var(--numa-ink)] font-semibold text-white"
                 : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -469,7 +469,7 @@ function TextField({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 py-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+      className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 py-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
     />
   );
 }
@@ -493,7 +493,7 @@ function AccountSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+        className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
       >
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>

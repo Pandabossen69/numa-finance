@@ -14,7 +14,7 @@ export default async function ImporteraPage() {
   const observations = await listObservations();
 
   return (
-    <div className="numa-page numa-page-wide space-y-7">
+    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
       <MerPageHeader back title="Tidigare bilder" />
 
       <div className="animate-rise-delay-1 space-y-6">
@@ -39,12 +39,12 @@ export default async function ImporteraPage() {
                 const status = statusMeta(o.status);
                 return (
                   <MerListRow key={o.id} className="space-y-1.5 py-3.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
+                    <div className="numa-money-line items-start">
+                      <p className="numa-money-line-label text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
                         {kindLabel(o.kind)}
                       </p>
                       <span
-                        className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-medium ${status.className}`}
+                        className={`numa-status-chip text-[11px] font-medium ${status.className}`}
                       >
                         {status.label}
                       </span>
@@ -64,7 +64,7 @@ export default async function ImporteraPage() {
                         <Link
                           href={fotaHrefForObservation(o)}
                           prefetch
-                          className="text-sm font-semibold text-[var(--numa-accent)]"
+                          className="numa-tap text-sm font-semibold text-[var(--numa-accent)]"
                         >
                           {o.status === "failed"
                             ? "Fota igen →"

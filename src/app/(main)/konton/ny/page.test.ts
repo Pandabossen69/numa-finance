@@ -19,4 +19,9 @@ describe("/konton/ny", () => {
     expect(page).toContain("MerBackLink");
     expect(page).not.toContain("← Saldo");
   });
+
+  it("clips the form at 375px instead of letting labels overflow", () => {
+    expect(page).toContain("overflow-x-hidden");
+    expect(page).toContain("min-w-0");
+  });
 });

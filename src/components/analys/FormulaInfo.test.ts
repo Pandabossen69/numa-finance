@@ -10,4 +10,9 @@ describe("FormulaInfo popover", () => {
     expect(src).toContain("max-md:w-full");
     expect(src).toContain('event.key === "Escape"');
   });
+
+  it("gives the formula toggle a 44px tap target", () => {
+    expect(src).toContain("numa-tap-icon");
+    expect(src).not.toContain("h-10 w-10");
+  });
 });

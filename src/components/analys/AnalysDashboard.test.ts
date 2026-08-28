@@ -26,6 +26,15 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("min-h-10");
   });
 
+  it("keeps Perioden/Månad as equal chips and money on one line", () => {
+    expect(src).toContain("numa-equal-chips");
+    expect(src).toContain("numa-money-line");
+    expect(src).toContain("numa-hero-money");
+    expect(src).toContain("numa-analys-wealth");
+    expect(src).toContain("wrap={false}");
+    expect(src).toContain("overflow-x-hidden");
+  });
+
   it("labels days until next income as idag / N dagar kvar", () => {
     expect(src).toContain("formatDaysUntilSv");
     expect(src).toContain("cycle.nextIncomeLabelSv");

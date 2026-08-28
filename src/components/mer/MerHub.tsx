@@ -43,7 +43,7 @@ export function MerPageHeader({
             </p>
           ) : null}
         </div>
-        {action ? <div className="shrink-0 pb-0.5">{action}</div> : null}
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
     </header>
   );
@@ -102,7 +102,7 @@ export function MerListLink({
       className="group flex min-h-[3.25rem] items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3.5 last:border-b-0 numa-press hover:bg-[var(--numa-card)] active:bg-[var(--numa-accent-soft)]"
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
+        <span className="block truncate text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
           {label}
         </span>
         {hint ? (
@@ -141,9 +141,11 @@ export function MerMetaRow({
   value: string;
 }) {
   return (
-    <div className="flex min-h-[3rem] items-center justify-between gap-4 border-b border-[var(--numa-border)] px-4 py-3 last:border-b-0">
-      <dt className="text-[13px] text-[var(--numa-muted)]">{label}</dt>
-      <dd className="text-right text-[13px] font-medium tracking-tight text-[var(--numa-ink)]">
+    <div className="numa-money-line min-h-[3rem] items-center border-b border-[var(--numa-border)] px-4 py-3 last:border-b-0">
+      <dt className="numa-money-line-label text-[13px] text-[var(--numa-muted)]">
+        {label}
+      </dt>
+      <dd className="numa-money-line-amt text-right text-[13px] font-medium tracking-tight text-[var(--numa-ink)]">
         {value}
       </dd>
     </div>
