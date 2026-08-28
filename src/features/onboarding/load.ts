@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { isNumaAdminEmail } from "@/domain/identity/admin";
 import { getSessionUser } from "@/features/auth/session";
 import { getProfile, listAccounts } from "@/lib/store/repository";
 import {
@@ -18,9 +19,36 @@ export type OnboardingState = {
   accounts: Account[];
 };
 
+function stateFromGate(
+  gate: OnboardingGateInput,
+  profile: Profile | null,
+  accounts: Account[],
+): OnboardingState {
+  const phase = resolveOnboardingPhase(gate);
+  return {
+    phase,
+    nextPath: pathForOnboardingPhase(phase),
+    gate,
+    profile,
+    accounts,
+  };
+}
+
 export const loadOnboardingState = cache(
   async (): Promise<OnboardingState> => {
-    const user = await getSessionUser();
+    // Kick profile + accounts with the session so we never wait
+    // session → profile → accounts on the first-login path.
+    const userPromise = getSessionUser();
+    const profilePromise = getProfile().catch((error) => {
+      console.error("[numa] onboarding profile failed", error);
+      return null;
+    });
+    const accountsPromise = listAccounts().catch((error) => {
+      console.error("[numa] onboarding accounts failed", error);
+      return [] as Account[];
+    });
+
+    const user = await userPromise;
     if (!user) {
       const gate: OnboardingGateInput = {
         email: "",
@@ -38,16 +66,30 @@ export const loadOnboardingState = cache(
       };
     }
 
-    let profile: Profile | null = null;
-    let accounts: Account[] = [];
-    try {
-      const loaded = await Promise.all([getProfile(), listAccounts()]);
-      profile = loaded[0];
-      accounts = loaded[1];
-    } catch (error) {
-      console.error("[numa] onboarding state failed", error);
+    if (isNumaAdminEmail(user.email)) {
+      const gate: OnboardingGateInput = {
+        email: user.email,
+        onboardingCompletedAt: null,
+        onboardingSaldoAt: null,
+        hasAccounts: false,
+        hasSaldo: false,
+      };
+      return stateFromGate(gate, null, []);
     }
 
+    const profile = await profilePromise;
+    if (profile?.onboardingCompletedAt || profile?.onboardingSaldoAt) {
+      const gate: OnboardingGateInput = {
+        email: user.email,
+        onboardingCompletedAt: profile.onboardingCompletedAt,
+        onboardingSaldoAt: profile.onboardingSaldoAt,
+        hasAccounts: true,
+        hasSaldo: true,
+      };
+      return stateFromGate(gate, profile, []);
+    }
+
+    const accounts = await accountsPromise;
     const hasAccounts = accounts.length > 0;
     const gate: OnboardingGateInput = {
       email: user.email,
@@ -56,13 +98,6 @@ export const loadOnboardingState = cache(
       hasAccounts,
       hasSaldo: hasAccounts,
     };
-    const phase = resolveOnboardingPhase(gate);
-    return {
-      phase,
-      nextPath: pathForOnboardingPhase(phase),
-      gate,
-      profile,
-      accounts,
-    };
+    return stateFromGate(gate, profile, accounts);
   },
 );

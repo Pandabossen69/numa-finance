@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import * as local from "./local-repository";
 import * as remote from "./supabase-repository";
 import { assertMultiUserSafeBackend } from "./isolation";
+import { emptyTodaySnapshot } from "./empty-snapshot";
 import type { TodaySnapshot } from "./types-snapshot";
 
 export type { TodaySnapshot };
@@ -39,12 +40,25 @@ async function ensurePlanDuesRolled(): Promise<void> {
 /** Request-scoped: layout + Hem/Analys share one profile round-trip. */
 export const getProfile = cache(async () => api().getProfile());
 
+async function markOnboardingCookieDone() {
+  try {
+    const { persistOnboardingPhaseCookie } = await import(
+      "@/features/onboarding/persist-cookie"
+    );
+    await persistOnboardingPhaseCookie("done");
+  } catch {
+    // Cookie write is best-effort — login also persists the phase.
+  }
+}
+
 export async function stampOnboardingSaldoAt() {
-  return api().stampOnboardingSaldoAt();
+  await api().stampOnboardingSaldoAt();
+  await markOnboardingCookieDone();
 }
 
 export async function stampOnboardingCompletedAt() {
-  return api().stampOnboardingCompletedAt();
+  await api().stampOnboardingCompletedAt();
+  await markOnboardingCookieDone();
 }
 
 export async function stampGettingStartedCompletedAt() {
@@ -158,6 +172,14 @@ export async function getObservationMediaUrl(storagePath: string) {
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
+  const [profile, accounts] = await Promise.all([
+    api().getProfile(),
+    api().listAccounts(),
+  ]);
+  // Brand-new users have no ledger — skip plan roll, progress, and tx windows.
+  if (accounts.length === 0) {
+    return emptyTodaySnapshot(profile, accounts);
+  }
   // Do not await due-rolling on the login path — it was an extra plan-items
   // round-trip before the timed snapshot even started.
   void ensurePlanDuesRolled();

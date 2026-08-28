@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import {
   stampOnboardingCompletedAt,
 } from "@/lib/store/repository";
+import { persistOnboardingPhaseCookie } from "./persist-cookie";
 
 export type OnboardingActionResult =
   | { ok: true }
@@ -14,6 +15,7 @@ export type OnboardingActionResult =
 export async function completeOnboardingAction(): Promise<OnboardingActionResult> {
   try {
     await stampOnboardingCompletedAt();
+    await persistOnboardingPhaseCookie("done");
     revalidatePath("/", "layout");
     revalidatePath("/idag");
     revalidatePath("/kom-igang");

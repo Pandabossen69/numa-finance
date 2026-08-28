@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 
-export function SideNav({ displayName }: { displayName: string }) {
+export function SideNav({ displayName }: { displayName: React.ReactNode }) {
   const { highlightPath, markIntent } = useNavIntent();
 
   return (
@@ -17,7 +17,7 @@ export function SideNav({ displayName }: { displayName: string }) {
           </p>
           <p
             className="mt-1 truncate text-sm font-semibold tracking-tight text-[var(--numa-accent-ink)]"
-            title={displayName}
+            title={typeof displayName === "string" ? displayName : undefined}
           >
             {displayName}
           </p>

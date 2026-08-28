@@ -1,21 +1,43 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
-export default async function MainLayout({
+/**
+ * Sync shell — never await session/profile here. An async layout blocked
+ * Hem/Plan chrome (and every tab prefetch) until onboarding + profile settled.
+ */
+export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await redirectIfOnboardingIncomplete();
+  return (
+    <AppShell
+      displayName={
+        <Suspense fallback="Användare">
+          <ShellDisplayName />
+        </Suspense>
+      }
+    >
+      <Suspense fallback={null}>
+        <OnboardingRedirect />
+      </Suspense>
+      {children}
+    </AppShell>
+  );
+}
 
-  let displayName = "Användare";
+async function OnboardingRedirect() {
+  await redirectIfOnboardingIncomplete();
+  return null;
+}
+
+async function ShellDisplayName() {
   try {
-    const profile = await getProfile();
-    displayName = profile.displayName;
+    return (await getProfile()).displayName;
   } catch (error) {
     console.error("[numa] layout profile failed", error);
+    return "Användare";
   }
-
-  return <AppShell displayName={displayName}>{children}</AppShell>;
 }

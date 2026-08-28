@@ -3,7 +3,17 @@ import { requireSaldoOnboardingPage } from "@/features/onboarding/redirect";
 
 export const dynamic = "force-dynamic";
 
-export default async function KomIgangPage() {
+/** Choice UI is static — do not await the gate before first paint. */
+export default function KomIgangPage() {
+  return (
+    <>
+      <SaldoOnboardingGuard />
+      <OnboardingSaldoChoice />
+    </>
+  );
+}
+
+async function SaldoOnboardingGuard() {
   await requireSaldoOnboardingPage();
-  return <OnboardingSaldoChoice />;
+  return null;
 }

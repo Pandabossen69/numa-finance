@@ -19,6 +19,8 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toMatch(/välkommen/i);
     expect(src).toContain("result.nextPath");
     expect(src).not.toContain('router.replace("/idag")');
+    expect(src).toContain('router.prefetch("/kom-igang")');
+    expect(src).toContain('router.prefetch("/idag")');
   });
 });
 
@@ -29,6 +31,8 @@ describe("sign-in next path", () => {
       "utf8",
     );
     expect(actions).toContain("loadOnboardingState");
+    expect(actions).toContain("persistOnboardingPhaseCookie");
     expect(actions).toContain("nextPath: state.nextPath");
+    expect(actions).toContain("clearOnboardingCookie");
   });
 });
