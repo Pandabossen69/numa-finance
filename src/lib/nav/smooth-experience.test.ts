@@ -38,6 +38,7 @@ describe("smooth nav and saves", () => {
     expect(saldo).not.toContain("router.refresh");
     expect(saldo).toContain("applyAccountBalance");
     expect(goHome).toContain('router.push("/idag")');
+    expect(goHome).not.toContain("refreshQuiet");
     expect(goHome).not.toContain("router.refresh");
   });
 

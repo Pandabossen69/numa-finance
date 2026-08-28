@@ -4,7 +4,3 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 export function goHomeInstant(router: AppRouterInstance) {
   router.push("/idag");
 }
-
-export function refreshQuiet(router: AppRouterInstance) {
-  router.refresh();
-}

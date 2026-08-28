@@ -1,5 +1,6 @@
 import {
   cumulativePlanSavingsMinor,
+  isSameZonedDay,
   monthKeyFromDate,
   planWealthTotalMinor,
   projectCashCoverage,
@@ -400,6 +401,15 @@ function recomputeMovements(
   };
 }
 
+function applyHomeForExpenseDelta(item: MovementRow, amountDelta: number) {
+  const timeZone = home?.timeZone ?? movements?.timeZone ?? "Asia/Bangkok";
+  if (isSameZonedDay(item.occurredAt, new Date(), timeZone)) {
+    applyOptimisticHomeSpend(amountDelta);
+    return;
+  }
+  applyOptimisticHomeIncome(-amountDelta);
+}
+
 export function applyOptimisticHomeIncome(
   amountMinor: number,
 ): HomeSnapshot | null {
@@ -525,7 +535,7 @@ export function applyMovementsVoid(id: string): MovementsSnapshot | null {
   );
   applyAccountDelta(-movementBalanceDelta(item));
   if (item.transactionType === "expense") {
-    applyOptimisticHomeSpend(-item.amountMinor);
+    applyHomeForExpenseDelta(item, -item.amountMinor);
   } else if (item.transactionType === "income") {
     applyOptimisticHomeIncome(-item.amountMinor);
   }
@@ -561,7 +571,7 @@ export function applyMovementsEdit(
   );
   applyAccountDelta(balanceDelta);
   if (item.transactionType === "expense") {
-    applyOptimisticHomeSpend(nextItem.amountMinor - item.amountMinor);
+    applyHomeForExpenseDelta(item, nextItem.amountMinor - item.amountMinor);
   } else if (item.transactionType === "income") {
     applyOptimisticHomeIncome(nextItem.amountMinor - item.amountMinor);
   }

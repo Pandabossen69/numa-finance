@@ -269,6 +269,38 @@ describe("last view memory", () => {
     expect(lastMovementsSnapshot()?.balanceMinor).toBe(120_00);
     expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(120_00);
     expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(120_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(200_00);
+  });
+
+  it("moves kvar idag only when the voided expense is from today", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 100_00 }));
+    rememberMovementsSnapshot({
+      ...sampleMovements,
+      balanceMinor: 100_00,
+      monthExpenseMinor: 20_00,
+      monthNetMinor: -20_00,
+      allExpenseMinor: 20_00,
+      allNetMinor: -20_00,
+      items: [
+        {
+          id: "tx-today",
+          description: "Fika",
+          category: "Mat",
+          transactionType: "expense",
+          direction: "debit",
+          amountMinor: 20_00,
+          currency: "THB",
+          occurredAt: new Date().toISOString(),
+          source: "manual",
+        },
+      ],
+    });
+
+    applyMovementsVoid("tx-today");
+
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(120_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(180_00);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(820_00);
   });
 
   it("edits a Rörelser expense amount and description locally", () => {
