@@ -24,14 +24,13 @@ export function svAmountGroups(majorUnits: number, fractionDigits: 0 | 2): strin
 function AmountRuns({ text }: { text: string }) {
   const parts = text.split(GROUPING_SPACE).filter((part) => part.length > 0);
   return (
-    <>
+    <span className="numa-money-groups">
       {parts.map((part, index) => (
         <span key={`${index}-${part}`} className="numa-money-run">
-          {index > 0 ? <span className="numa-money-sep" aria-hidden="true" /> : null}
           {part}
         </span>
       ))}
-    </>
+    </span>
   );
 }
 

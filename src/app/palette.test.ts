@@ -165,11 +165,21 @@ describe("NUMA vision palette", () => {
     expect(css).toContain("font-variant-numeric: tabular-nums lining-nums");
     expect(css).toContain(".numa-piles-board {");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr);");
-    expect(css).toContain(".numa-wealth-score {");
-    expect(css).toContain(".numa-wealth-value");
-    expect(css).toContain(".numa-money-sep");
+    const wealth = css.slice(
+      css.indexOf(".numa-wealth-score {"),
+      css.indexOf(".numa-amt-in"),
+    );
+    expect(wealth).toContain("flex-direction: column");
+    expect(wealth).toContain("flex-wrap: nowrap");
+    expect(wealth).toContain(".numa-wealth-value");
+    expect(wealth).toContain("@media (min-width: 1024px)");
+    expect(wealth).not.toContain("flex: 1 1");
+    expect(wealth).not.toContain("flex-wrap: wrap");
+    expect(css).toContain(".numa-money-groups");
+    expect(css).toContain("flex-flow: row nowrap");
     expect(css).toContain("font-synthesis: none");
-    expect(css).toContain("@media (min-width: 1024px)");
     expect(css).toContain("letter-spacing: 0");
+    expect(css).not.toContain("flex: 1 1 5.5rem");
+    expect(css).not.toContain(".numa-money-sep");
   });
 });

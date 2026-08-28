@@ -16,6 +16,9 @@ describe("formatSvGroupedNumber", () => {
     expect(text).not.toMatch(/\d \d/);
     expect(normalizeSpaces(text)).toBe("1 234 567,89");
     expect(svAmountGroups(29274.79, 2)).toEqual(["29", "274,79"]);
+    expect(svAmountGroups(15674.79, 2)).toEqual(["15", "674,79"]);
+    expect(svAmountGroups(110200, 0)).toEqual(["110", "200"]);
+    expect(svAmountGroups(96600, 0)).toEqual(["96", "600"]);
   });
 
   it("keeps compact whole amounts grouped without a wrapping space", () => {
@@ -26,12 +29,13 @@ describe("formatSvGroupedNumber", () => {
 });
 
 describe("MoneyDisplay wrapping contract", () => {
-  it("joins nowrap as its own class and paints grouping as a thin sep, not a second number", () => {
+  it("joins nowrap as its own class and paints grouping as flex groups, not a second number", () => {
     expect(src).toContain("wrap = false");
     expect(src).toContain('"is-nowrap"');
     expect(src).toContain('.join(" ")');
-    expect(src).toContain("numa-money-sep");
+    expect(src).toContain("numa-money-groups");
     expect(src).toContain("AmountRuns");
+    expect(src).not.toContain("numa-money-sep");
     expect(src).not.toContain("${alignClass}${wrap");
   });
 });

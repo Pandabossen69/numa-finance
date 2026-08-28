@@ -43,6 +43,7 @@ describe("WealthScoreboard Analys leftover", () => {
     expect(board.match(/size="md"/g)?.length).toBe(3);
     expect(board).not.toContain('size="sm"');
     expect(board).not.toContain('size="xs"');
+    expect(board).not.toContain("min-w-0");
     expect(compact).not.toContain("numa-wealth-value");
   });
 });

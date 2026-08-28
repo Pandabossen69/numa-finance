@@ -24,7 +24,7 @@ export function WealthScoreboard({
   const livingOk = livingMinor >= 0;
   return (
     <div className="numa-wealth-score" aria-label={SV.alltINuma}>
-      <div className="numa-wealth-cell is-live min-w-0">
+      <div className="numa-wealth-cell is-live">
         <p className="numa-section-title">{livingLabel}</p>
         <div
           className={`numa-wealth-value ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
@@ -43,7 +43,7 @@ export function WealthScoreboard({
       <p className="numa-wealth-op" aria-hidden>
         +
       </p>
-      <div className="numa-wealth-cell is-park min-w-0">
+      <div className="numa-wealth-cell is-park">
         <p className="numa-section-title">{SV.sparande}</p>
         <div className="numa-wealth-value text-[var(--numa-ink)]">
           <MoneyDisplay
@@ -59,7 +59,7 @@ export function WealthScoreboard({
       <p className="numa-wealth-op" aria-hidden>
         =
       </p>
-      <div className="numa-wealth-cell is-all min-w-0">
+      <div className="numa-wealth-cell is-all">
         <p className="numa-section-title">{SV.alltINuma}</p>
         <div className="numa-wealth-value text-[var(--numa-accent-ink)]">
           <MoneyDisplay
