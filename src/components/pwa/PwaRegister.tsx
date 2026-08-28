@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 
 /**
- * Register the inert worker at the stable /sw.js URL so deploys replace the
+ * Register the worker at the stable /sw.js URL so deploys replace the
  * existing registration (a ?v= query would leave the old worker in control).
+ * Wait until after first paint so a cold visit is not competing with SW install.
  * When a new build is waiting, offer a soft reload — never wipe user data.
  */
 export function PwaRegister() {
@@ -13,6 +14,25 @@ export function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
     let cancelled = false;
+    let idleId = 0;
+    let timeoutId = 0;
+    let onLoad: (() => void) | null = null;
+
+    function afterFirstPaint(fn: () => void) {
+      const run = () => {
+        if (typeof requestIdleCallback === "function") {
+          idleId = requestIdleCallback(fn, { timeout: 2500 });
+        } else {
+          timeoutId = window.setTimeout(fn, 1);
+        }
+      };
+      if (document.readyState === "complete") {
+        run();
+      } else {
+        onLoad = run;
+        window.addEventListener("load", run, { once: true });
+      }
+    }
 
     async function setup() {
       try {
@@ -59,9 +79,16 @@ export function PwaRegister() {
       }
     }
 
-    void setup();
+    afterFirstPaint(() => {
+      void setup();
+    });
     return () => {
       cancelled = true;
+      if (onLoad) window.removeEventListener("load", onLoad);
+      if (idleId && typeof cancelIdleCallback === "function") {
+        cancelIdleCallback(idleId);
+      }
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, []);
 

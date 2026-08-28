@@ -7,6 +7,8 @@ describe("PWA version nudge", () => {
   it("registers sw.js with a build id and offers a soft reload", () => {
     expect(src).toContain('serviceWorker.register("/sw.js"');
     expect(src).not.toContain("/sw.js?v=");
+    expect(src).toContain("requestIdleCallback");
+    expect(src).toContain("afterFirstPaint");
     expect(src).toContain("Ny version — uppdatera");
     expect(src).toContain("SKIP_WAITING");
     expect(src).not.toContain("location.replace");
