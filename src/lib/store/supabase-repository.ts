@@ -31,7 +31,17 @@ import {
   type TransactionSource,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
-import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import {
+  createExtractionProvider,
+  resolveScreenshotImport,
+  OCR_EXTRACT_TIMEOUT_MS,
+  OCR_EXTRACT_TIMEOUT_SV,
+  OCR_RATE_CHECK_FAILED_SV,
+  OCR_RATE_LIMIT_SV,
+  isOcrOverLimit,
+  ocrWindowStartIso,
+} from "@/domain/imports";
+import { isTimeoutError, withTimeout } from "@/lib/async";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import {
@@ -656,31 +666,58 @@ export async function createCashWithdrawal(input: {
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
 }
 
+/** PostgREST silently caps each response at max_rows (1000). Page past that. */
+const LEDGER_PAGE_SIZE = 1000;
+const LEDGER_ROW_CAP = 100_000;
+
 export async function listTransactions(
   accountId?: string,
   options?: { sinceIso?: string; limit?: number },
 ): Promise<CanonicalTransaction[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  let query = supabase
-    .from("transactions")
-    .select(numaSelect(LEDGER_TRANSACTION_SELECT))
-    .eq("user_id", userId)
-    .order("occurred_at", { ascending: false });
 
-  if (accountId) {
-    query = query.eq("account_id", accountId);
+  function ledgerQuery() {
+    let query = supabase
+      .from("transactions")
+      .select(numaSelect(LEDGER_TRANSACTION_SELECT))
+      .eq("user_id", userId)
+      .order("occurred_at", { ascending: false });
+
+    if (accountId) {
+      query = query.eq("account_id", accountId);
+    }
+    if (options?.sinceIso) {
+      query = query.gte("occurred_at", options.sinceIso);
+    }
+    return query;
   }
-  if (options?.sinceIso) {
-    query = query.gte("occurred_at", options.sinceIso);
-  }
+
   if (options?.limit != null) {
-    query = query.limit(options.limit);
+    const { data, error } = await ledgerQuery().limit(options.limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(mapTransaction);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapTransaction);
+  const collected: Array<Parameters<typeof mapTransaction>[0]> = [];
+
+  let from = 0;
+  for (;;) {
+    const { data, error } = await ledgerQuery().range(
+      from,
+      from + LEDGER_PAGE_SIZE - 1,
+    );
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    collected.push(...page);
+    if (page.length < LEDGER_PAGE_SIZE) break;
+    from += LEDGER_PAGE_SIZE;
+    if (from >= LEDGER_ROW_CAP) {
+      console.error("[numa] listTransactions hit row cap", LEDGER_ROW_CAP);
+      break;
+    }
+  }
+  return collected.map(mapTransaction);
 }
 
 export async function updateTransaction(input: {
@@ -1285,6 +1322,19 @@ export async function recordOnTrackDayIfNeeded(
   return mapUserProgress(updated);
 }
 
+async function assertOcrRateAllowed(
+  userId: string,
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+) {
+  const { count, error } = await supabase
+    .from("source_observations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", ocrWindowStartIso());
+  if (error) throw new Error(OCR_RATE_CHECK_FAILED_SV);
+  if (isOcrOverLimit(count ?? 0)) throw new Error(OCR_RATE_LIMIT_SV);
+}
+
 export async function uploadReceiptAndExtract(input: {
   fileName: string;
   mimeType: string;
@@ -1295,6 +1345,7 @@ export async function uploadReceiptAndExtract(input: {
   const userId = await requireUserId();
   await ensureProfile(userId);
   const supabase = await createSupabaseServerClient();
+  await assertOcrRateAllowed(userId, supabase);
   const storagePath = buildUserStoragePath(userId, input.fileName);
   assertUserOwnsStoragePath(userId, storagePath);
 
@@ -1314,13 +1365,23 @@ export async function uploadReceiptAndExtract(input: {
 
   const provider = createExtractionProvider();
   const imageBase64 = Buffer.from(input.bytes).toString("base64");
-  const extraction = await provider.extract({
-    observationId: "pending",
-    storagePath,
-    imageBase64,
-    mimeType: input.mimeType,
-    institutionHint,
-  });
+  let extraction;
+  try {
+    extraction = await withTimeout(
+      provider.extract({
+        observationId: "pending",
+        storagePath,
+        imageBase64,
+        mimeType: input.mimeType,
+        institutionHint,
+      }),
+      OCR_EXTRACT_TIMEOUT_MS,
+      "ocr extract",
+    );
+  } catch (error) {
+    if (isTimeoutError(error)) throw new Error(OCR_EXTRACT_TIMEOUT_SV);
+    throw error;
+  }
 
   // Only confirmed ledger fingerprints count as "already imported".
   // Pending needs_review from abandoned scans must not block re-import.

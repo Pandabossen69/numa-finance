@@ -67,12 +67,36 @@ let fota: FotaBootSnapshot | null = null;
 let importera: ImporteraRow[] | null = null;
 let settings: SettingsSnapshot | null = null;
 
+let sessionUserId: string | null = null;
+let sessionDisplayName: string | null = null;
+
 const homeListeners = new Set<() => void>();
 const planListeners = new Set<() => void>();
 const gettingStartedListeners = new Set<() => void>();
+const identityListeners = new Set<() => void>();
 
 function emit(listeners: Set<() => void>) {
   for (const listener of listeners) listener();
+}
+
+function wipeLastKnownViews() {
+  home = null;
+  homeDirty = false;
+  analys = null;
+  plan = null;
+  planView = null;
+  analysScope = null;
+  gettingStarted = null;
+  movements = null;
+  movementsView = null;
+  accounts = null;
+  mer = null;
+  fota = null;
+  importera = null;
+  settings = null;
+  emit(homeListeners);
+  emit(planListeners);
+  emit(gettingStartedListeners);
 }
 
 export function subscribeHomeSnapshot(listener: () => void) {
@@ -94,6 +118,38 @@ export function subscribeGettingStarted(listener: () => void) {
   return () => {
     gettingStartedListeners.delete(listener);
   };
+}
+
+export function subscribeSessionIdentity(listener: () => void) {
+  identityListeners.add(listener);
+  return () => {
+    identityListeners.delete(listener);
+  };
+}
+
+export function lastSessionDisplayName(): string | null {
+  return sessionDisplayName;
+}
+
+export function lastSessionUserId(): string | null {
+  return sessionUserId;
+}
+
+/**
+ * Bind last-known to the signed-in profile. Wrong-user money and
+ * "God kväll Hugo" on Christian's session get dropped here.
+ */
+export function rememberSessionIdentity(userId: string, displayName: string) {
+  const switched = sessionUserId != null && sessionUserId !== userId;
+  const staleHome = home != null && home.displayName !== displayName;
+  const staleMer = mer != null && mer.displayName !== displayName;
+  if (switched || staleHome || staleMer) {
+    wipeLastKnownViews();
+  }
+  if (sessionUserId === userId && sessionDisplayName === displayName) return;
+  sessionUserId = userId;
+  sessionDisplayName = displayName;
+  emit(identityListeners);
 }
 
 export function isHomeDirty(): boolean {
@@ -285,4 +341,12 @@ export function rememberSettingsSnapshot(snap: SettingsSnapshot) {
 
 export function lastSettingsSnapshot(): SettingsSnapshot | null {
   return settings;
+}
+
+/** Drop every in-memory last-known view. Call on logout, login, and /laga. */
+export function clearAllLastKnown() {
+  wipeLastKnownViews();
+  sessionUserId = null;
+  sessionDisplayName = null;
+  emit(identityListeners);
 }

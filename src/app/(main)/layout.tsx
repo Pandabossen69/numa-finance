@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { BindLastKnownUser } from "@/components/layout/BindLastKnownUser";
 import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
@@ -35,7 +36,16 @@ async function OnboardingRedirect() {
 
 async function ShellDisplayName() {
   try {
-    return (await getProfile()).displayName;
+    const profile = await getProfile();
+    return (
+      <>
+        <BindLastKnownUser
+          userId={profile.id}
+          displayName={profile.displayName}
+        />
+        {profile.displayName}
+      </>
+    );
   } catch (error) {
     console.error("[numa] layout profile failed", error);
     return "Användare";

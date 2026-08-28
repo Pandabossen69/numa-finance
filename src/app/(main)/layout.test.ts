@@ -17,6 +17,8 @@ describe("main first-load chrome", () => {
     expect(layout).toContain("redirectIfOnboardingIncomplete");
     expect(layout).toContain("OnboardingRedirect");
     expect(layout).toContain("ShellDisplayName");
+    expect(layout).toContain("BindLastKnownUser");
+    expect(layout).toContain("profile.displayName");
     expect(layout).toContain("<Suspense fallback={null}>");
     expect(layout).toContain('<Suspense fallback="Användare">');
   });

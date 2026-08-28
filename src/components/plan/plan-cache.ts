@@ -54,3 +54,7 @@ export function warmupPlanPageData(): Promise<PlanPageDataResult> {
 export function hasPlanSnapshot(): boolean {
   return lastPlanSnapshot() != null;
 }
+
+export function clearPlanWarmup() {
+  inflight = null;
+}

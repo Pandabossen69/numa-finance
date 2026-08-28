@@ -75,6 +75,7 @@ describe("first-run onboarding", () => {
     expect(onboardingLayout).not.toContain("BottomNav");
     expect(onboardingLayout).not.toContain("AppShell");
     expect(onboardingLayout).toContain("Logga ut");
+    expect(onboardingLayout).toContain("SignOutButton");
     expect(onboardingLayout).toContain("max-w-lg");
   });
 

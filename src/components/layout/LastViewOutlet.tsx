@@ -1,7 +1,11 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useNavIntent } from "@/components/layout/NavIntent";
+import {
+  lastSessionUserId,
+  subscribeSessionIdentity,
+} from "@/features/home/last-snapshot";
 import { isTabRoot, primaryTab } from "@/components/layout/nav";
 import { ViewLoading } from "@/components/layout/ViewLoading";
 import {
@@ -17,6 +21,12 @@ import {
  */
 export function LastViewOutlet({ children }: { children: ReactNode }) {
   const { pathname, pending } = useNavIntent();
+  const sessionUserId = useSyncExternalStore(
+    subscribeSessionIdentity,
+    lastSessionUserId,
+    lastSessionUserId,
+  );
+  const boundUserRef = useRef<string | null>(null);
   const loading = isViewLoadingNode(children);
   const destHref = pending?.href ?? pathname;
   const destTab = primaryTab(destHref);
@@ -30,6 +40,16 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     loading || leaving ? null : pathname,
   );
   const [leaveSnapPath, setLeaveSnapPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionUserId) return;
+    if (boundUserRef.current && boundUserRef.current !== sessionUserId) {
+      liveByTabRef.current = {};
+      setCache({});
+      setReadyAt(null);
+    }
+    boundUserRef.current = sessionUserId;
+  }, [sessionUserId]);
 
   if (!loading && pathTab && isTabRoot(pathname)) {
     liveByTabRef.current[pathTab] = children;
