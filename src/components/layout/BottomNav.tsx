@@ -97,6 +97,12 @@ function NavItem({
       >
         {label}
       </span>
+      {active ? (
+        <span
+          className="absolute bottom-1 h-[3px] w-3 rounded-full bg-[var(--numa-accent)]"
+          aria-hidden
+        />
+      ) : null}
     </Link>
   );
 }

@@ -145,7 +145,7 @@ export function HomeDashboard({
                     {overToday ? (
                       <p className="numa-chip numa-chip-alarm mb-2">Över</p>
                     ) : (
-                      <p className="mb-2 text-[11px] font-medium tracking-wide text-[var(--numa-faint)]">
+                      <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[var(--numa-accent)] uppercase">
                         Kvar
                       </p>
                     )}
@@ -181,27 +181,23 @@ export function HomeDashboard({
 
                   <div className="numa-day-metrics">
                     <div className="is-budget">
-                      <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-                        {SV.dagsbudget}
-                      </p>
-                      <div className="mt-1.5 min-h-[1.75rem] min-w-0 overflow-hidden text-[var(--numa-ink)]">
+                      <p className="numa-metric-label">{SV.dagsbudget}</p>
+                      <div className="numa-metric-value text-[var(--numa-ink)]">
                         <MoneyDisplay
                           amountMinor={view.dayBudgetMinor}
                           currency={currency}
                           size="sm"
                           compact
+                          align="start"
+                          wrap={false}
                         />
                       </div>
-                      <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
-                        Sätts på morgonen
-                      </p>
+                      <p className="numa-metric-hint">Sätts på morgonen</p>
                     </div>
                     <div className="is-spent">
-                      <p className="text-[11px] font-medium text-[var(--numa-faint)]">
-                        {SV.spenderatIdag}
-                      </p>
+                      <p className="numa-metric-label">{SV.spenderatIdag}</p>
                       <div
-                        className={`mt-1.5 min-h-[1.75rem] min-w-0 overflow-hidden ${
+                        className={`numa-metric-value ${
                           overToday
                             ? "text-[var(--numa-alarm)]"
                             : "text-[var(--numa-ink)]"
@@ -212,11 +208,11 @@ export function HomeDashboard({
                           currency={currency}
                           size="sm"
                           compact
+                          align="start"
+                          wrap={false}
                         />
                       </div>
-                      <p className="mt-1 text-[10px] text-[var(--numa-faint)]">
-                        Sänker bara idag
-                      </p>
+                      <p className="numa-metric-hint">Sänker bara idag</p>
                     </div>
                   </div>
                 </>
@@ -335,7 +331,7 @@ function ActionLink({
     <Link
       href={href}
       prefetch
-      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5"
+      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5 transition hover:bg-[var(--numa-accent-soft)]"
     >
       <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
         {title}

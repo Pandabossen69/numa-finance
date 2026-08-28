@@ -35,6 +35,7 @@ export function WealthScoreboard({
             compact
             tone="signed"
             align="start"
+            wrap={false}
           />
         </div>
       </div>
@@ -50,6 +51,7 @@ export function WealthScoreboard({
             size="sm"
             compact
             align="start"
+            wrap={false}
           />
         </div>
       </div>
@@ -65,6 +67,7 @@ export function WealthScoreboard({
             size="sm"
             compact
             align="start"
+            wrap={false}
           />
         </div>
       </div>
@@ -111,7 +114,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={incomingMinor}
             currency={currency}
-            size="sm"
+            size="xs"
             compact
             align="end"
             wrap={false}
@@ -122,7 +125,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={unpaidMinor}
             currency={currency}
-            size="sm"
+            size="xs"
             compact
             align="end"
             wrap={false}
@@ -137,7 +140,7 @@ export function CompactPiles({
           <MoneyDisplay
             amountMinor={overMinor}
             currency={currency}
-            size="sm"
+            size="xs"
             compact
             align="end"
             wrap={false}

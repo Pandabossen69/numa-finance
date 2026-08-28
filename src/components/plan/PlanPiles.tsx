@@ -256,6 +256,7 @@ function PileLine({
             size="sm"
             compact
             align="end"
+            wrap={false}
           />
         )}
       </span>

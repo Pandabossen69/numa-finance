@@ -52,6 +52,7 @@ export function MetricRow({
             size="md"
             compact
             align="end"
+            wrap={false}
           />
         ) : (
           <span className="text-sm text-[var(--numa-faint)]">—</span>

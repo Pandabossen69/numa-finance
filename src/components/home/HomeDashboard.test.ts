@@ -33,10 +33,12 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toMatch(/busy \? "Klart"/);
   });
 
-  it("lets Dagsbudget and Spenderat wrap at phone width", () => {
+  it("keeps Dagsbudget and Spenderat on one line at phone width", () => {
     expect(src).toContain("numa-day-metrics");
     expect(src).toContain("is-budget");
     expect(src).toContain("is-spent");
+    expect(src).toContain("numa-metric-label");
+    expect(src).toContain("wrap={false}");
     expect(src).not.toContain('bg-[var(--numa-card)] pt-1');
   });
 

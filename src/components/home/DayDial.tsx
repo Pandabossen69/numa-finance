@@ -1,6 +1,6 @@
 /**
- * Day dial — the visual metaphor for sticky dagsbudget.
- * The ring fills as you spend; remaining money sits in the center.
+ * Day dial — remaining dagsbudget as a living ring.
+ * Full green when nothing is spent; the arc depletes as the day is used.
  */
 export function DayDial({
   usedRatio,
@@ -13,12 +13,11 @@ export function DayDial({
   children: React.ReactNode;
 }) {
   const size = 220;
-  const stroke = 7;
-  const usedStroke = over ? 4.5 : 7;
+  const stroke = 8;
   const r = (size - stroke) / 2 - 2;
   const c = 2 * Math.PI * r;
-  const clamped = Math.min(1.08, Math.max(0, usedRatio));
-  const filled = Math.min(1, clamped) * c;
+  const remainRatio = over ? 0 : Math.max(0, 1 - Math.min(1, usedRatio));
+  const filled = remainRatio >= 0.995 ? c : remainRatio * c;
   const track = c;
 
   return (
@@ -31,28 +30,36 @@ export function DayDial({
         <circle
           cx={size / 2}
           cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={over ? "rgba(168,107,58,0.28)" : "rgba(17,17,16,0.1)"}
-          strokeWidth={stroke}
+          r={r - 10}
+          fill={over ? "rgba(168,107,58,0.08)" : "rgba(18,122,98,0.08)"}
         />
         <circle
-          className="numa-day-dial-arc"
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={over ? "var(--numa-alarm)" : "var(--numa-accent)"}
-          strokeWidth={usedStroke}
-          strokeLinecap="round"
-          strokeDasharray={`${filled} ${track}`}
-          style={
-            {
-              ["--numa-dial-len" as string]: String(filled),
-              ["--numa-dial-track" as string]: String(track),
-            }
-          }
+          stroke={over ? "rgba(168,107,58,0.28)" : "rgba(18,122,98,0.2)"}
+          strokeWidth={stroke}
         />
+        {filled > 0 ? (
+          <circle
+            className="numa-day-dial-arc"
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={over ? "var(--numa-alarm)" : "var(--numa-accent)"}
+            strokeWidth={stroke}
+            strokeLinecap={remainRatio >= 0.995 ? "butt" : "round"}
+            strokeDasharray={`${filled} ${track}`}
+            style={
+              {
+                ["--numa-dial-len" as string]: String(filled),
+                ["--numa-dial-track" as string]: String(track),
+              }
+            }
+          />
+        ) : null}
       </svg>
       <div className="absolute inset-[10%] flex flex-col items-center justify-center overflow-visible px-2 text-center">
         {children}

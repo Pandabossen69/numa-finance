@@ -223,7 +223,7 @@ function Field({
         autoComplete={autoComplete}
         autoFocus={autoFocus}
         required
-        className="min-h-14 w-full rounded-full border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] transition outline-none focus:border-[var(--numa-ink)] focus:ring-2 focus:ring-[var(--numa-ink)]/10"
+        className="min-h-14 w-full rounded-full border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] transition outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/18"
       />
     </label>
   );
@@ -260,12 +260,12 @@ function PasswordField({
           autoFocus={autoFocus}
           required
           minLength={8}
-          className="min-h-14 w-full rounded-full border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 pr-20 text-[16px] transition outline-none focus:border-[var(--numa-ink)] focus:ring-2 focus:ring-[var(--numa-ink)]/10"
+          className="min-h-14 w-full rounded-full border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 pr-20 text-[16px] transition outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/18"
         />
         <button
           type="button"
           onClick={onToggle}
-          className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-2 text-sm font-medium text-[var(--numa-ink)] transition hover:text-[var(--numa-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)]"
+          className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-2 text-sm font-medium text-[var(--numa-accent)] transition hover:text-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
         >
           {show ? "Dölj" : "Visa"}
         </button>
