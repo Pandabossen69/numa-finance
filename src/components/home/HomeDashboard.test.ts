@@ -42,6 +42,14 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toMatch(/busy \? "Klart"/);
   });
 
+  it("blocks a second QuickExpense tap while the first save is in flight", () => {
+    expect(src).toContain("if (inFlight.current || busy || !accountId) return");
+    expect(src).toContain("disabled={busy || !amount.trim()}");
+    expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
+    expect(src).toContain("inFlight.current = true");
+    expect(src).toContain("inFlight.current = false");
+  });
+
   it("keeps Dagsbudget and Spenderat on one line at phone width", () => {
     expect(src).toContain("numa-day-metrics");
     expect(src).toContain("is-budget");

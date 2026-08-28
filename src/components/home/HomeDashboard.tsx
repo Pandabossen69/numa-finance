@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -550,6 +550,8 @@ function QuickExpense({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -603,10 +605,10 @@ function QuickExpense({
             />
             <button
               type="button"
-              disabled={!amount.trim()}
+              disabled={busy || !amount.trim()}
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
-                if (!accountId) return;
+                if (inFlight.current || busy || !accountId) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -620,28 +622,35 @@ function QuickExpense({
                 }
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
+                inFlight.current = true;
+                setBusy(true);
                 setError(null);
                 setAmount("");
                 setNote("");
                 onOptimisticSpend(amountMinor);
                 void (async () => {
-                  const result = await createExpenseAction({
-                    accountId,
-                    amount: amountInput,
-                    description,
-                  });
-                  if (!result.ok) {
-                    onSpendFailed(amountMinor);
-                    setError(result.error);
-                    return;
+                  try {
+                    const result = await createExpenseAction({
+                      accountId,
+                      amount: amountInput,
+                      description,
+                    });
+                    if (!result.ok) {
+                      onSpendFailed(amountMinor);
+                      setError(result.error);
+                      return;
+                    }
+                    const next = await getHomeSnapshotAction();
+                    if (next.ok) rememberHomeSnapshot(next.data);
+                    void warmupPlanPageData();
+                  } finally {
+                    inFlight.current = false;
+                    setBusy(false);
                   }
-                  const next = await getHomeSnapshotAction();
-                  if (next.ok) rememberHomeSnapshot(next.data);
-                  void warmupPlanPageData();
                 })();
               }}
             >
-              Spara
+              {busy ? "Sparar…" : "Spara"}
             </button>
           </div>
           {error ? (

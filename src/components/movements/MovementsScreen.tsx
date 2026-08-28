@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -93,6 +93,10 @@ export function MovementsScreen({
   const [editCategory, setEditCategory] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(
+    null,
+  );
+  const actionLock = useRef(false);
 
   useEffect(() => {
     if (!confirmId) return;
@@ -320,34 +324,47 @@ export function MovementsScreen({
                     <div className="flex gap-2">
                       <button
                         type="button"
+                        disabled={pendingAction != null}
                         className="numa-btn numa-btn-accent flex-1"
                         onClick={() => {
+                          if (actionLock.current || pendingAction) return;
+                          actionLock.current = true;
+                          setPendingAction("save");
                           setActionError(null);
                           void (async () => {
-                            const result = await updateTransactionAction({
-                              id: tx.id,
-                              amount: editAmount,
-                              description: editDescription,
-                              category:
-                                tx.transactionType === "expense"
-                                  ? editCategory || null
-                                  : undefined,
-                            });
-                            if (!result.ok) {
-                              setActionError(result.error);
-                              return;
+                            try {
+                              const result = await updateTransactionAction({
+                                id: tx.id,
+                                amount: editAmount,
+                                description: editDescription,
+                                category:
+                                  tx.transactionType === "expense"
+                                    ? editCategory || null
+                                    : undefined,
+                              });
+                              if (!result.ok) {
+                                setActionError(result.error);
+                                return;
+                              }
+                              setEditingId(null);
+                              refreshQuiet(router);
+                            } finally {
+                              actionLock.current = false;
+                              setPendingAction(null);
                             }
-                            setEditingId(null);
-                            refreshQuiet(router);
                           })();
                         }}
                       >
-                        Spara
+                        {pendingAction === "save" ? "Sparar…" : "Spara"}
                       </button>
                       <button
                         type="button"
+                        disabled={pendingAction != null}
                         className="numa-tap min-h-11 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
-                        onClick={() => setEditingId(null)}
+                        onClick={() => {
+                          if (pendingAction) return;
+                          setEditingId(null);
+                        }}
                       >
                         Avbryt
                       </button>
@@ -383,26 +400,41 @@ export function MovementsScreen({
                         <div className="mt-1.5 flex flex-wrap gap-2">
                           <button
                             type="button"
+                            disabled={pendingAction != null}
                             className="numa-press numa-tap px-1 text-xs font-semibold text-[var(--numa-danger)]"
                             onClick={() => {
+                              if (actionLock.current || pendingAction) return;
+                              actionLock.current = true;
+                              setPendingAction("void");
                               setActionError(null);
-                              setConfirmId(null);
                               void (async () => {
-                                const result = await voidTransactionAction(tx.id);
-                                if (!result.ok) {
-                                  setActionError(result.error);
-                                  return;
+                                try {
+                                  const result = await voidTransactionAction(
+                                    tx.id,
+                                  );
+                                  if (!result.ok) {
+                                    setActionError(result.error);
+                                    return;
+                                  }
+                                  setConfirmId(null);
+                                  refreshQuiet(router);
+                                } finally {
+                                  actionLock.current = false;
+                                  setPendingAction(null);
                                 }
-                                refreshQuiet(router);
                               })();
                             }}
                           >
-                            Ta bort
+                            {pendingAction === "void" ? "Tar bort…" : "Ta bort"}
                           </button>
                           <button
                             type="button"
+                            disabled={pendingAction != null}
                             className="numa-press numa-tap px-1 text-xs text-[var(--numa-muted)]"
-                            onClick={() => setConfirmId(null)}
+                            onClick={() => {
+                              if (pendingAction) return;
+                              setConfirmId(null);
+                            }}
                           >
                             Avbryt
                           </button>
