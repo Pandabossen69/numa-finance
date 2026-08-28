@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCheckpointAction } from "@/features/finance/actions";
+import { refreshQuiet } from "@/lib/nav/instant";
 
 export function VerifyBalanceForm({ accountId }: { accountId: string }) {
   const router = useRouter();
@@ -24,7 +25,7 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
         return;
       }
       setBalance("");
-      router.refresh();
+      refreshQuiet(router);
     });
   }
 

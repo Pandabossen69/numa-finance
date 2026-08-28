@@ -38,4 +38,12 @@ describe("Rörelser expense color", () => {
     expect(src).not.toContain("sm:grid-cols-3");
     expect(src).toContain("overflow-x-hidden");
   });
+
+  it("shows last-known Rörelser instead of blocking on a cold fetch", () => {
+    expect(src).toContain("lastMovementsSnapshot");
+    expect(src).toContain("rememberMovementsSnapshot");
+    expect(src).toContain("MovementsViewLoading");
+    expect(src).toContain("lastMovementsView");
+    expect(src).toContain("refreshQuiet");
+  });
 });

@@ -1,11 +1,19 @@
+import { cache } from "react";
 import {
   appliesToIncome,
   appliesToSpending,
+  calculateAccountBalance,
+  filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
 } from "@/domain/finance";
 import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
-import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { loadErrorMessageSv } from "@/lib/async";
+import {
+  getLatestCheckpoint,
+  getProfile,
+  listAccounts,
+  listTransactions,
+} from "@/lib/store/repository";
 
 export type MovementRow = {
   id: string;
@@ -46,100 +54,135 @@ export type MovementsSnapshotResult =
   | { ok: true; data: MovementsSnapshot }
   | { ok: false; error: string };
 
-export async function loadMovementsSnapshot(): Promise<MovementsSnapshotResult> {
-  try {
-    const snap = await getCachedTodaySnapshot();
-    const primaryId = snap.primaryAccount?.id ?? null;
-    const transactions = snap.ledgerTransactions ?? [];
+/**
+ * Rörelser only needs profile + primary ledger + checkpoint.
+ * Skip the Hem today-snapshot (plan/progress/windows) so the menu is not a cold Hem fetch.
+ */
+export const loadMovementsSnapshot = cache(
+  async (): Promise<MovementsSnapshotResult> => {
+    try {
+      const [profile, accounts] = await Promise.all([
+        getProfile(),
+        listAccounts(),
+      ]);
+      const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
+      const [transactions, checkpoint] = await Promise.all([
+        listTransactions(
+          primary?.id ?? undefined,
+          primary ? undefined : { limit: 200 },
+        ),
+        primary ? getLatestCheckpoint(primary.id) : Promise.resolve(null),
+      ]);
 
-    const timezone = snap.profile.timezone || "Asia/Bangkok";
-    const thisMonth = monthKeyFromDate(new Date(), timezone);
-    const currency = snap.currency;
+      const timezone = profile.timezone || "Asia/Bangkok";
+      const thisMonth = monthKeyFromDate(new Date(), timezone);
+      const currency = (primary?.currency ??
+        profile.primaryCurrency) as CurrencyCode;
 
-    let monthIncomeMinor = 0;
-    let monthExpenseMinor = 0;
-    let allIncomeMinor = 0;
-    let allExpenseMinor = 0;
-    const categoryMap = new Map<string, CategoryTotal>();
-
-    const confirmed = transactions.filter(
-      (t) =>
-        t.status === "confirmed" &&
-        t.currency === currency &&
-        (primaryId == null || t.accountId === primaryId),
-    );
-
-    for (const tx of confirmed) {
-      const inMonth =
-        monthKeyFromDate(new Date(tx.occurredAt), timezone) === thisMonth;
-      const isExpense = appliesToSpending(tx);
-      const isIncome = appliesToIncome(tx);
-
-      if (isExpense) {
-        allExpenseMinor += tx.amountMinor;
-        if (inMonth) {
-          monthExpenseMinor += tx.amountMinor;
-          const name = tx.category?.trim() || "Övrigt";
-          const prev = categoryMap.get(name) ?? {
-            name,
-            amountMinor: 0,
-            count: 0,
-          };
-          prev.amountMinor += tx.amountMinor;
-          prev.count += 1;
-          categoryMap.set(name, prev);
+      let calculatedMinor: number | null = null;
+      if (checkpoint) {
+        const after = filterTransactionsAfterCheckpoint(
+          primary
+            ? transactions.filter((tx) => tx.accountId === primary.id)
+            : transactions,
+          checkpoint,
+        );
+        try {
+          calculatedMinor =
+            calculateAccountBalance({
+              checkpoint,
+              transactionsAfterCheckpoint: after,
+            })?.amountMinor ?? null;
+        } catch (error) {
+          console.error("[numa] movements balance calc failed", error);
         }
       }
-      if (isIncome) {
-        allIncomeMinor += tx.amountMinor;
-        if (inMonth) monthIncomeMinor += tx.amountMinor;
+
+      let monthIncomeMinor = 0;
+      let monthExpenseMinor = 0;
+      let allIncomeMinor = 0;
+      let allExpenseMinor = 0;
+      const categoryMap = new Map<string, CategoryTotal>();
+
+      const confirmed = transactions.filter(
+        (t) =>
+          t.status === "confirmed" &&
+          t.currency === currency &&
+          (primary == null || t.accountId === primary.id),
+      );
+
+      for (const tx of confirmed) {
+        const inMonth =
+          monthKeyFromDate(new Date(tx.occurredAt), timezone) === thisMonth;
+        const isExpense = appliesToSpending(tx);
+        const isIncome = appliesToIncome(tx);
+
+        if (isExpense) {
+          allExpenseMinor += tx.amountMinor;
+          if (inMonth) {
+            monthExpenseMinor += tx.amountMinor;
+            const name = tx.category?.trim() || "Övrigt";
+            const prev = categoryMap.get(name) ?? {
+              name,
+              amountMinor: 0,
+              count: 0,
+            };
+            prev.amountMinor += tx.amountMinor;
+            prev.count += 1;
+            categoryMap.set(name, prev);
+          }
+        }
+        if (isIncome) {
+          allIncomeMinor += tx.amountMinor;
+          if (inMonth) monthIncomeMinor += tx.amountMinor;
+        }
       }
+
+      const items: MovementRow[] = [...confirmed]
+        .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
+        .map((tx) => ({
+          id: tx.id,
+          description: sanitizeMoneyDescription(tx.description),
+          category: tx.category,
+          transactionType: tx.transactionType,
+          direction: tx.direction,
+          amountMinor: tx.amountMinor,
+          currency: tx.currency,
+          occurredAt: tx.occurredAt,
+          source: tx.source,
+        }));
+
+      const monthCategories = [...categoryMap.values()].sort(
+        (a, b) => b.amountMinor - a.amountMinor,
+      );
+
+      return {
+        ok: true,
+        data: {
+          currency,
+          hasBankTruth: checkpoint != null,
+          balanceMinor: calculatedMinor,
+          monthIncomeMinor,
+          monthExpenseMinor,
+          monthNetMinor: monthIncomeMinor - monthExpenseMinor,
+          allIncomeMinor,
+          allExpenseMinor,
+          allNetMinor: allIncomeMinor - allExpenseMinor,
+          monthCategories,
+          items,
+          timeZone: timezone,
+          monthKey: thisMonth,
+        },
+      };
+    } catch (error) {
+      console.error("[numa] loadMovementsSnapshot failed", error);
+      return {
+        ok: false,
+        error: loadErrorMessageSv(
+          error,
+          "Kunde inte hämta utgifter och intäkter",
+        ),
+      };
     }
-
-    const items: MovementRow[] = [...confirmed]
-      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-      .map((tx) => ({
-        id: tx.id,
-        description: sanitizeMoneyDescription(tx.description),
-        category: tx.category,
-        transactionType: tx.transactionType,
-        direction: tx.direction,
-        amountMinor: tx.amountMinor,
-        currency: tx.currency,
-        occurredAt: tx.occurredAt,
-        source: tx.source,
-      }));
-
-    const monthCategories = [...categoryMap.values()].sort(
-      (a, b) => b.amountMinor - a.amountMinor,
-    );
-
-    return {
-      ok: true,
-      data: {
-        currency,
-        hasBankTruth: snap.checkpoint != null,
-        balanceMinor: snap.calculatedBalanceMinor,
-        monthIncomeMinor,
-        monthExpenseMinor,
-        monthNetMinor: monthIncomeMinor - monthExpenseMinor,
-        allIncomeMinor,
-        allExpenseMinor,
-        allNetMinor: allIncomeMinor - allExpenseMinor,
-        monthCategories,
-        items,
-        timeZone: timezone,
-        monthKey: thisMonth,
-      },
-    };
-  } catch (error) {
-    console.error("[numa] loadMovementsSnapshot failed", error);
-    return {
-      ok: false,
-      error: loadErrorMessageSv(
-        error,
-        "Kunde inte hämta utgifter och intäkter",
-      ),
-    };
-  }
-}
+  },
+);

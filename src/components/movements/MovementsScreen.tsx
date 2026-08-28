@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
   updateTransactionAction,
   voidTransactionAction,
@@ -14,9 +15,19 @@ import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
+import {
+  lastMovementsSnapshot,
+  lastMovementsView,
+  rememberMovementsSnapshot,
+  rememberMovementsView,
+  type MovementsFilter,
+  type MovementsPeriod,
+} from "@/features/home/last-snapshot";
+import { refreshQuiet } from "@/lib/nav/instant";
+import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
-type Filter = "all" | "expense" | "income" | "other";
-type Period = "month" | "all";
+type Filter = MovementsFilter;
+type Period = MovementsPeriod;
 
 const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: "all", label: "Alla" },
@@ -68,8 +79,14 @@ export function MovementsScreen({
   error?: string | null;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [period, setPeriod] = useState<Period>("month");
+  const { prefetch } = usePrefetchOnIntent();
+  const rememberedView = lastMovementsView();
+  const [filter, setFilter] = useState<Filter>(
+    () => rememberedView?.filter ?? "all",
+  );
+  const [period, setPeriod] = useState<Period>(
+    () => rememberedView?.period ?? "month",
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -86,21 +103,26 @@ export function MovementsScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmId]);
 
+  if (data) rememberMovementsSnapshot(data);
+  rememberMovementsView({ filter, period });
+  const view = data ?? lastMovementsSnapshot();
+
   const filtered = useMemo(() => {
-    if (!data) return [];
-    return data.items.filter((tx) => {
+    if (!view) return [];
+    return view.items.filter((tx) => {
       if (!matchesFilter(tx, filter)) return false;
       if (
         period === "month" &&
-        !inMonthKey(tx.occurredAt, data.monthKey, data.timeZone)
+        !inMonthKey(tx.occurredAt, view.monthKey, view.timeZone)
       ) {
         return false;
       }
       return true;
     });
-  }, [data, filter, period]);
+  }, [view, filter, period]);
 
-  if (error || !data) {
+  if (!view) {
+    if (!error) return <MovementsViewLoading />;
     return (
       <div className="space-y-2">
         <p className="font-semibold">Kunde inte ladda</p>
@@ -111,11 +133,11 @@ export function MovementsScreen({
   }
 
   const income =
-    period === "month" ? data.monthIncomeMinor : data.allIncomeMinor;
+    period === "month" ? view.monthIncomeMinor : view.allIncomeMinor;
   const expense =
-    period === "month" ? data.monthExpenseMinor : data.allExpenseMinor;
-  const net = period === "month" ? data.monthNetMinor : data.allNetMinor;
-  const maxCategory = data.monthCategories[0]?.amountMinor || 1;
+    period === "month" ? view.monthExpenseMinor : view.allExpenseMinor;
+  const net = period === "month" ? view.monthNetMinor : view.allNetMinor;
+  const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
     <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
@@ -140,39 +162,39 @@ export function MovementsScreen({
         <SummaryStat
           label="Intäkter"
           amountMinor={income}
-          currency={data.currency}
+          currency={view.currency}
           tone="positive"
         />
         <SummaryStat
           label="Utgifter"
           amountMinor={expense}
-          currency={data.currency}
+          currency={view.currency}
           tone="alarm"
         />
         <SummaryStat
           label="Netto"
           amountMinor={net}
-          currency={data.currency}
+          currency={view.currency}
           tone={net >= 0 ? "positive" : "alarm"}
           signed
         />
       </section>
 
-      {data.hasBankTruth && data.balanceMinor != null ? (
+      {view.hasBankTruth && view.balanceMinor != null ? (
         <section className="numa-money-stack animate-rise-delay-2 animate-scale-in">
           <MetricRow
             label="Saldo"
-            amountMinor={data.balanceMinor}
-            currency={data.currency}
+            amountMinor={view.balanceMinor}
+            currency={view.currency}
           />
         </section>
       ) : null}
 
-      {period === "month" && data.monthCategories.length > 0 ? (
+      {period === "month" && view.monthCategories.length > 0 ? (
         <section className="numa-panel animate-rise-delay-2 p-5">
           <h2 className="numa-section-title">Per kategori</h2>
           <ul className="mt-4 space-y-3">
-            {data.monthCategories.map((cat) => (
+            {view.monthCategories.map((cat) => (
               <li key={cat.name}>
                 <div className="numa-money-line mb-1.5 text-sm">
                   <span className="numa-money-line-label text-[var(--numa-muted)]">
@@ -184,7 +206,7 @@ export function MovementsScreen({
                   <span className="numa-money-line-amt">
                     <MoneyDisplay
                       amountMinor={cat.amountMinor}
-                      currency={data.currency}
+                      currency={view.currency}
                       size="sm"
                       wrap={false}
                     />
@@ -226,6 +248,8 @@ export function MovementsScreen({
           <Link
             href="/fota"
             prefetch
+            onMouseEnter={() => prefetch("/fota")}
+            onFocus={() => prefetch("/fota")}
             className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             + Lägg till
@@ -240,7 +264,7 @@ export function MovementsScreen({
 
         {filtered.length === 0 ? (
           <div className="numa-panel space-y-3 p-5">
-            {(data?.items.length ?? 0) > 0 ? (
+            {view.items.length > 0 ? (
               <p className="text-sm text-[var(--numa-muted)]">
                 Inga träffar för filtret — prova Alla eller All tid.
               </p>
@@ -252,6 +276,8 @@ export function MovementsScreen({
                 <Link
                   href="/fota"
                   prefetch
+                  onMouseEnter={() => prefetch("/fota")}
+                  onFocus={() => prefetch("/fota")}
                   className="numa-btn numa-btn-accent inline-flex min-h-11 px-4"
                 >
                   Lägg till
@@ -312,7 +338,7 @@ export function MovementsScreen({
                               return;
                             }
                             setEditingId(null);
-                            router.refresh();
+                            refreshQuiet(router);
                           })();
                         }}
                       >
@@ -345,7 +371,7 @@ export function MovementsScreen({
                         filter === "all" || filter === "expense"
                           ? tx.category
                           : null,
-                        formatListDateSv(tx.occurredAt, data.timeZone, {
+                        formatListDateSv(tx.occurredAt, view.timeZone, {
                           withTime: true,
                         }),
                       ]
@@ -367,7 +393,7 @@ export function MovementsScreen({
                                   setActionError(result.error);
                                   return;
                                 }
-                                router.refresh();
+                                refreshQuiet(router);
                               })();
                             }}
                           >

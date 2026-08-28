@@ -1,7 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const src = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+const src = readFileSync(
+  new URL("../../../components/mer/ImporteraScreen.tsx", import.meta.url),
+  "utf8",
+);
+const page = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
 const loading = readFileSync(new URL("./loading.tsx", import.meta.url), "utf8");
 
 describe("/importera Fortsätt", () => {
@@ -13,8 +17,7 @@ describe("/importera Fortsätt", () => {
   });
 
   it("uses card-shaped list skeletons instead of a tall grey column", () => {
-    expect(loading).toContain("numa-panel-list");
-    expect(loading).toContain("ImporteraRowSkel");
+    expect(loading).toContain("ImporteraViewLoading");
     expect(loading).not.toMatch(/numa-skel h-\[1[0-9]{2}/);
   });
 
@@ -23,5 +26,12 @@ describe("/importera Fortsätt", () => {
     expect(src).toContain("numa-money-line");
     expect(src).toContain("numa-tap");
     expect(src).toContain("overflow-x-hidden");
+  });
+
+  it("streams last-known pictures while observations load", () => {
+    expect(page).toContain("Suspense");
+    expect(page).toContain("ImporteraScreen");
+    expect(src).toContain("lastImporteraRows");
+    expect(src).toContain("fotaHrefForObservation(o)");
   });
 });

@@ -1,5 +1,5 @@
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import { FotaViewLoading } from "@/components/capture/FotaViewLoading";
 
 export default function FotaLoading() {
-  return <ViewLoading />;
+  return <FotaViewLoading />;
 }

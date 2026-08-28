@@ -3,13 +3,53 @@ import {
   planWealthTotalMinor,
   projectCashCoverage,
 } from "@/domain/finance";
+import type { CurrencyCode } from "@/domain/money";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
 
 export type { PlanSnapshot } from "@/features/finance/load-plan";
+
+export type MovementsFilter = "all" | "expense" | "income" | "other";
+export type MovementsPeriod = "month" | "all";
+
+export type MerSnapshot = {
+  displayName: string;
+  isAdmin: boolean;
+};
+
+export type FotaBootSnapshot = {
+  accountId: string | null;
+  accounts: Array<{
+    id: string;
+    name: string;
+    accountType: string;
+    currency?: string;
+  }>;
+  remainingTodayMinor: number;
+  currency: CurrencyCode;
+  bootstrapping: boolean;
+};
+
+export type ImporteraRow = {
+  id: string;
+  kind: string;
+  status: string;
+  createdAt: string;
+  notes: string | null;
+};
+
+export type SettingsSnapshot = {
+  displayName: string;
+  timezone: string;
+  primaryCurrency: string;
+  supabaseReady: boolean;
+  isAdmin: boolean;
+};
 
 let home: HomeSnapshot | null = null;
 let homeDirty = false;
@@ -18,6 +58,14 @@ let plan: PlanSnapshot | null = null;
 let planView: { monthKey: string; viewYear: number } | null = null;
 let analysScope: "period" | "month" | null = null;
 let gettingStarted: GettingStartedView | null = null;
+let movements: MovementsSnapshot | null = null;
+let movementsView: { filter: MovementsFilter; period: MovementsPeriod } | null =
+  null;
+let accounts: AccountsSnapshot | null = null;
+let mer: MerSnapshot | null = null;
+let fota: FotaBootSnapshot | null = null;
+let importera: ImporteraRow[] | null = null;
+let settings: SettingsSnapshot | null = null;
 
 const homeListeners = new Set<() => void>();
 const planListeners = new Set<() => void>();
@@ -175,4 +223,66 @@ export function rememberGettingStarted(view: GettingStartedView | null) {
 
 export function lastGettingStarted(): GettingStartedView | null {
   return gettingStarted;
+}
+
+export function rememberMovementsSnapshot(snap: MovementsSnapshot) {
+  movements = snap;
+}
+
+export function lastMovementsSnapshot(): MovementsSnapshot | null {
+  return movements;
+}
+
+export function rememberMovementsView(view: {
+  filter: MovementsFilter;
+  period: MovementsPeriod;
+}) {
+  movementsView = view;
+}
+
+export function lastMovementsView(): {
+  filter: MovementsFilter;
+  period: MovementsPeriod;
+} | null {
+  return movementsView;
+}
+
+export function rememberAccountsSnapshot(snap: AccountsSnapshot) {
+  accounts = snap;
+}
+
+export function lastAccountsSnapshot(): AccountsSnapshot | null {
+  return accounts;
+}
+
+export function rememberMerSnapshot(snap: MerSnapshot) {
+  mer = snap;
+}
+
+export function lastMerSnapshot(): MerSnapshot | null {
+  return mer;
+}
+
+export function rememberFotaBoot(snap: FotaBootSnapshot) {
+  fota = snap;
+}
+
+export function lastFotaBoot(): FotaBootSnapshot | null {
+  return fota;
+}
+
+export function rememberImporteraRows(rows: ImporteraRow[]) {
+  importera = rows;
+}
+
+export function lastImporteraRows(): ImporteraRow[] | null {
+  return importera;
+}
+
+export function rememberSettingsSnapshot(snap: SettingsSnapshot) {
+  settings = snap;
+}
+
+export function lastSettingsSnapshot(): SettingsSnapshot | null {
+  return settings;
 }
