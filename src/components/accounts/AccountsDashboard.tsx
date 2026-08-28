@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { VerifyBalanceForm } from "@/components/accounts/VerifyBalanceForm";
 import { AccountsViewLoading } from "@/components/accounts/AccountsViewLoading";
@@ -13,8 +14,10 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import {
+  isAccountsDirty,
   lastAccountsSnapshot,
   rememberAccountsSnapshot,
+  subscribeAccountsSnapshot,
 } from "@/features/home/last-snapshot";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
@@ -26,8 +29,20 @@ export function AccountsDashboard({
   error?: string | null;
 }) {
   const { prefetch } = usePrefetchOnIntent();
-  if (data) rememberAccountsSnapshot(data);
-  const view = data ?? lastAccountsSnapshot();
+  const stored = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
+    lastAccountsSnapshot,
+  );
+
+  useEffect(() => {
+    if (!data) return;
+    if (lastAccountsSnapshot() == null || !isAccountsDirty()) {
+      rememberAccountsSnapshot(data);
+    }
+  }, [data]);
+
+  const view = stored ?? data ?? lastAccountsSnapshot();
 
   if (!view) {
     if (!error) return <AccountsViewLoading />;

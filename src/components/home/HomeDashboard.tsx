@@ -24,6 +24,9 @@ import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
+  applyAccountBalance,
+  applyAccountDelta,
+  applyMovementsAdd,
   applyOptimisticHomeSpend,
   lastGettingStarted,
   lastHomeSnapshot,
@@ -416,15 +419,20 @@ function AvailableNowCard({
                 accountId,
                 currency,
               });
+              setBusy(false);
               if (!result.ok) {
-                setBusy(false);
                 setError(result.error);
                 return;
               }
-              const next = await getHomeSnapshotAction();
-              if (next.ok) rememberHomeSnapshot(next.data);
+              try {
+                applyAccountBalance(accountId ?? "", parseUiAmountToMinor(balance));
+              } catch {
+                // Snapshot below fills in the living numbers.
+              }
+              void getHomeSnapshotAction().then((next) => {
+                if (next.ok) rememberHomeSnapshot(next.data);
+              });
               void warmupPlanPageData();
-              setBusy(false);
             })();
           }}
         >
@@ -494,17 +502,22 @@ function UpdateBalanceLink({
                 accountId,
                 currency,
               });
+              setBusy(false);
               if (!result.ok) {
-                setBusy(false);
                 setError(result.error);
                 return;
               }
-              const next = await getHomeSnapshotAction();
-              if (next.ok) rememberHomeSnapshot(next.data);
-              void warmupPlanPageData();
               setOpen(false);
               setBalance("");
-              setBusy(false);
+              try {
+                applyAccountBalance(accountId ?? "", parseUiAmountToMinor(balance));
+              } catch {
+                // Snapshot below fills in the living numbers.
+              }
+              void getHomeSnapshotAction().then((next) => {
+                if (next.ok) rememberHomeSnapshot(next.data);
+              });
+              void warmupPlanPageData();
             })();
           }}
         >
@@ -640,8 +653,21 @@ function QuickExpense({
                       setError(result.error);
                       return;
                     }
-                    const next = await getHomeSnapshotAction();
-                    if (next.ok) rememberHomeSnapshot(next.data);
+                    applyAccountDelta(-amountMinor, accountId);
+                    applyMovementsAdd({
+                      id: result.id ?? crypto.randomUUID(),
+                      description,
+                      category: null,
+                      transactionType: "expense",
+                      direction: "debit",
+                      amountMinor,
+                      currency,
+                      occurredAt: new Date().toISOString(),
+                      source: "manual",
+                    });
+                    void getHomeSnapshotAction().then((next) => {
+                      if (next.ok) rememberHomeSnapshot(next.data);
+                    });
                     void warmupPlanPageData();
                   } finally {
                     inFlight.current = false;

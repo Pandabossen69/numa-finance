@@ -21,6 +21,8 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {
     expect(src).toContain("applyOptimisticHomeSpend");
+    expect(src).toContain("applyMovementsAdd");
+    expect(src).toContain("applyAccountDelta");
     expect(src).toContain("getHomeSnapshotAction");
     expect(src).toContain("warmupPlanPageData");
     expect(src).not.toContain("refreshQuiet");

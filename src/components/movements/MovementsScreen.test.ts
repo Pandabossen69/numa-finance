@@ -52,6 +52,10 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("rememberMovementsSnapshot");
     expect(src).toContain("MovementsViewLoading");
     expect(src).toContain("lastMovementsView");
-    expect(src).toContain("refreshQuiet");
+    expect(src).toContain("applyMovementsEdit");
+    expect(src).toContain("applyMovementsVoid");
+    expect(src).not.toContain("refreshQuiet");
+    expect(src).not.toContain("router.refresh");
+    expect(src).not.toContain("useRouter");
   });
 });

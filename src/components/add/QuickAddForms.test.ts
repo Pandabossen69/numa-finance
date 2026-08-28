@@ -15,4 +15,13 @@ describe("Flytta/Kontant empty copy", () => {
     expect(src).toContain("min-h-11");
     expect(src).not.toContain("min-h-10");
   });
+
+  it("patches Hem and Rörelser locally after save instead of refreshing", () => {
+    expect(src).toContain("applyLocalExpense");
+    expect(src).toContain("applyLocalIncome");
+    expect(src).toContain("applyLocalTransfer");
+    expect(src).not.toContain("refreshQuiet");
+    expect(src).not.toContain("router.refresh");
+    expect(src).not.toContain("useRouter");
+  });
 });

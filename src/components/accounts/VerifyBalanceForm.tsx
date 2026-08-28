@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createCheckpointAction } from "@/features/finance/actions";
-import { refreshQuiet } from "@/lib/nav/instant";
+import { parseUiAmountToMinor } from "@/domain/money";
+import { applyAccountBalance } from "@/features/home/last-snapshot";
 
 export function VerifyBalanceForm({ accountId }: { accountId: string }) {
-  const router = useRouter();
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -15,6 +14,13 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
     e.preventDefault();
     setError(null);
     startTransition(async () => {
+      let balanceMinor: number;
+      try {
+        balanceMinor = parseUiAmountToMinor(balance);
+      } catch {
+        setError("Ogiltigt belopp");
+        return;
+      }
       const result = await createCheckpointAction({
         accountId,
         balance,
@@ -24,8 +30,8 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
         setError(result.error);
         return;
       }
+      applyAccountBalance(accountId, balanceMinor);
       setBalance("");
-      refreshQuiet(router);
     });
   }
 

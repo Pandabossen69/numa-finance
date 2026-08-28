@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
@@ -13,17 +12,20 @@ import {
 } from "@/features/finance/actions";
 import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
-import { sanitizeMoneyDescription } from "@/domain/money";
+import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
+  applyMovementsEdit,
+  applyMovementsVoid,
+  isMovementsDirty,
   lastMovementsSnapshot,
   lastMovementsView,
   rememberMovementsSnapshot,
   rememberMovementsView,
+  subscribeMovementsSnapshot,
   type MovementsFilter,
   type MovementsPeriod,
 } from "@/features/home/last-snapshot";
-import { refreshQuiet } from "@/lib/nav/instant";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 type Filter = MovementsFilter;
@@ -78,9 +80,13 @@ export function MovementsScreen({
   data: MovementsSnapshot | null;
   error?: string | null;
 }) {
-  const router = useRouter();
   const { prefetch } = usePrefetchOnIntent();
   const rememberedView = lastMovementsView();
+  const stored = useSyncExternalStore(
+    subscribeMovementsSnapshot,
+    lastMovementsSnapshot,
+    lastMovementsSnapshot,
+  );
   const [filter, setFilter] = useState<Filter>(
     () => rememberedView?.filter ?? "all",
   );
@@ -107,9 +113,15 @@ export function MovementsScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmId]);
 
-  if (data) rememberMovementsSnapshot(data);
+  useEffect(() => {
+    if (!data) return;
+    if (lastMovementsSnapshot() == null || !isMovementsDirty()) {
+      rememberMovementsSnapshot(data);
+    }
+  }, [data]);
+
   rememberMovementsView({ filter, period });
-  const view = data ?? lastMovementsSnapshot();
+  const view = stored ?? data ?? lastMovementsSnapshot();
 
   const filtered = useMemo(() => {
     if (!view) return [];
@@ -347,7 +359,19 @@ export function MovementsScreen({
                                 return;
                               }
                               setEditingId(null);
-                              refreshQuiet(router);
+                              try {
+                                applyMovementsEdit(tx.id, {
+                                  amountMinor: parseUiAmountToMinor(editAmount),
+                                  description:
+                                    sanitizeMoneyDescription(editDescription),
+                                  category:
+                                    tx.transactionType === "expense"
+                                      ? editCategory || null
+                                      : undefined,
+                                });
+                              } catch {
+                                // Server already saved — list updates on next visit.
+                              }
                             } finally {
                               actionLock.current = false;
                               setPendingAction(null);
@@ -417,7 +441,7 @@ export function MovementsScreen({
                                     return;
                                   }
                                   setConfirmId(null);
-                                  refreshQuiet(router);
+                                  applyMovementsVoid(tx.id);
                                 } finally {
                                   actionLock.current = false;
                                   setPendingAction(null);

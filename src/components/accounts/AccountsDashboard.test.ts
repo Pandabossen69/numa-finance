@@ -11,6 +11,7 @@ describe("AccountsDashboard", () => {
   it("shows last-known saldo instead of blocking on a cold fetch", () => {
     expect(src).toContain("lastAccountsSnapshot");
     expect(src).toContain("rememberAccountsSnapshot");
+    expect(src).toContain("subscribeAccountsSnapshot");
     expect(src).toContain("AccountsViewLoading");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
