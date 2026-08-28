@@ -9,8 +9,8 @@
   --numa-bg: #eee9e0;
   --numa-bg-deep: #e5ddd0;
   --numa-ink: #161513;
-  --numa-muted: #5a5750;
-  --numa-faint: #8a857c;
+  --numa-muted: #534f48;
+  --numa-faint: #827d74;
   --numa-surface: rgba(252, 251, 247, 0.94);
   --numa-surface-solid: #f7f4ee;
   --numa-surface-strong: #fcfbf7;
@@ -30,7 +30,7 @@
   --numa-positive-soft: #d5f0e6;
   --numa-spend: #8a5844;
   --numa-spend-soft: #f6e6d8;
-  --numa-money-unit: 2.55rem;
+  --numa-money-unit: 2.4rem;
   --numa-radius: 1.85rem;
   --numa-radius-sm: 1.4rem;
   --numa-warning: #9a6700;
@@ -105,6 +105,9 @@ body {
     );
   color: var(--numa-ink);
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: 0.004em;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
@@ -228,9 +231,9 @@ body {
 }
 
 .numa-section-title {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--numa-muted);
 }
@@ -397,6 +400,10 @@ body {
     var(--numa-card);
 }
 
+.numa-panel-strong.numa-day-stage {
+  overflow: visible;
+}
+
 .numa-day-stage.is-over {
   background:
     radial-gradient(ellipse 110% 72% at 50% -12%, rgba(232, 176, 110, 0.35), transparent 58%),
@@ -452,7 +459,7 @@ body {
   margin-top: 0.4rem;
   min-height: 1.45rem;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .numa-metric-hint {
@@ -537,13 +544,28 @@ body {
   animation: numa-pulse-soft 1.4s ease-in-out infinite;
 }
 
-.animate-rise,
-.animate-rise-delay-1,
-.animate-rise-delay-2,
-.animate-rise-delay-3,
-.animate-scale-in,
+.animate-rise {
+  animation: numa-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-rise-delay-1 {
+  animation: numa-rise 300ms 40ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-rise-delay-2 {
+  animation: numa-rise 320ms 80ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-rise-delay-3 {
+  animation: numa-rise 340ms 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-scale-in {
+  animation: numa-scale-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .animate-page-in {
-  animation: none;
+  animation: numa-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .numa-month-strip {
@@ -757,7 +779,7 @@ button.numa-chip:disabled {
 
 .numa-plan-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(8.1rem, auto) 2.75rem;
+  grid-template-columns: minmax(0, 1fr) minmax(8.6rem, auto) 2.75rem;
   align-items: start;
   column-gap: 0.5rem;
   margin-inline: 0;
@@ -803,7 +825,7 @@ button.numa-chip:disabled {
   flex-direction: column;
   align-items: stretch;
   gap: 0.35rem;
-  min-width: 8.1rem;
+  min-width: 8.6rem;
   padding-top: 0.02rem;
 }
 
@@ -1016,14 +1038,14 @@ button.numa-chip:disabled {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 70ms ease,
-    background-color 70ms ease,
-    box-shadow 70ms ease,
-    color 70ms ease;
+    transform 90ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    color 120ms ease;
 }
 
 .numa-press:active {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 
 .numa-komigang-card {
@@ -1071,7 +1093,7 @@ button.numa-chip:disabled {
 }
 
 .numa-btn:active:not(:disabled) {
-  transform: scale(0.96);
+  transform: scale(0.98);
 }
 
 .numa-btn:disabled {

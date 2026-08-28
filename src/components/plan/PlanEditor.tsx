@@ -647,7 +647,7 @@ export function PlanEditor({
                 onClick={() => selectMonth(key)}
                 className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize ${
                   monthKey === key
-                    ? "is-active bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(7,21,17,0.18)]"
+                    ? "is-active bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_8px_20px_rgba(22,21,19,0.16)]"
                     : key === currentMonthKey
                       ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)] ring-1 ring-[var(--numa-accent)]/35"
                       : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"

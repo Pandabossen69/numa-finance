@@ -91,7 +91,7 @@ export function HomeDashboard({
   return (
     <div className="numa-page numa-page-wide space-y-6">
       <header className="animate-rise space-y-1 px-0.5">
-        <p className="text-[13px] font-medium text-[var(--numa-muted)]">
+        <p className="text-[14px] leading-relaxed font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
             <span className="text-[var(--numa-faint)]"> · {rangeLabel}</span>

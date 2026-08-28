@@ -24,7 +24,7 @@ export function AppShell({
         <div className="flex gap-8 md:gap-12">
           <SideNav displayName={displayName} />
           <div className="min-w-0 flex-1">
-            <header className="border-b border-[var(--numa-border)]/70 pb-2.5 pt-[max(0.85rem,var(--numa-safe-top))] md:hidden">
+            <header className="pb-3 pt-[max(0.95rem,var(--numa-safe-top))] md:hidden">
               <Link href="/idag" prefetch className="numa-press block min-w-0">
                 <span className="numa-brand-mark">NUMA</span>
                 <span
@@ -36,7 +36,7 @@ export function AppShell({
               </Link>
             </header>
 
-            <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-2 md:max-w-none md:pb-16 md:pt-10">
+            <main className="mx-auto w-full max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">
               <LastViewOutlet>{children}</LastViewOutlet>
             </main>
           </div>

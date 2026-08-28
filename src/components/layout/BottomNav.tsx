@@ -20,7 +20,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/88 shadow-[0_-1px_0_rgba(17,17,16,0.04)] backdrop-blur-2xl md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 rounded-t-[1.7rem] border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/92 shadow-[0_-12px_32px_rgba(120,88,48,0.08)] backdrop-blur-2xl md:hidden"
       style={{ paddingBottom: "var(--numa-safe-bottom)" }}
       aria-label="Huvudnavigering"
     >
@@ -40,7 +40,7 @@ export function BottomNav() {
             href="/fota"
             prefetch
             onClick={() => onIntent("/fota")}
-            className="numa-press relative -mt-7 flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] ring-[4px] ring-[var(--numa-bg)]"
+            className="numa-press relative -mt-7 flex h-[3.6rem] w-[3.6rem] items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_10px_24px_rgba(22,21,19,0.22)] ring-[5px] ring-[var(--numa-bg)]"
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />
@@ -83,9 +83,9 @@ function NavItem({
       prefetch
       onClick={onIntent}
       aria-current={active ? "page" : undefined}
-      className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl px-1 ${
+      className={`numa-press relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-1 ${
         active
-          ? "text-[var(--numa-ink)]"
+          ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]"
           : "text-[var(--numa-faint)]"
       }`}
     >
@@ -97,12 +97,6 @@ function NavItem({
       >
         {label}
       </span>
-      {active ? (
-        <span
-          className="absolute bottom-1 h-[3px] w-3 rounded-full bg-[var(--numa-accent)]"
-          aria-hidden
-        />
-      ) : null}
     </Link>
   );
 }

@@ -99,11 +99,12 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-money.is-end");
     expect(css).toContain(".numa-plan-list");
     expect(css).toContain(
-      "grid-template-columns: minmax(0, 1fr) minmax(8.1rem, auto) 2.75rem",
+      "grid-template-columns: minmax(0, 1fr) minmax(8.6rem, auto) 2.75rem",
     );
     expect(css).toContain(".numa-plan-name");
     expect(css).toContain(".numa-plan-meta");
-    expect(css).toContain(".numa-metric-label");
+    expect(css).toContain(".numa-metric-value");
+    expect(css).not.toMatch(/\.numa-metric-value \{[^}]*overflow: hidden/);
   });
 
   it("gives Hem a living wash login does not use", () => {
