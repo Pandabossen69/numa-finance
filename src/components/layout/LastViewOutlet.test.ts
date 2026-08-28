@@ -12,5 +12,7 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("inert");
     expect(src).toContain("sameTabRefresh");
     expect(src).toContain("liveByTabRef");
+    expect(src).toContain("lastSessionUserId");
+    expect(src).toContain("setCache({})");
   });
 });

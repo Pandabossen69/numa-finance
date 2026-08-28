@@ -14,6 +14,7 @@ import {
   lastMovementsView,
   lastPlanSnapshot,
   lastPlanView,
+  lastSessionDisplayName,
   lastSettingsSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysScope,
@@ -25,6 +26,7 @@ import {
   rememberMovementsView,
   rememberPlanSnapshot,
   rememberPlanView,
+  rememberSessionIdentity,
   rememberSettingsSnapshot,
   revertOptimisticHomeSpend,
   subscribeHomeSnapshot,
@@ -241,5 +243,14 @@ describe("last view memory", () => {
     expect(lastPlanSnapshot()).toBeNull();
     expect(ticks).toBeGreaterThan(0);
     stop();
+  });
+
+  it("drops Hugo last-known when the signed-in profile is Christian", () => {
+    rememberHomeSnapshot(homeSnap({ displayName: "Hugo" }));
+    rememberMerSnapshot({ displayName: "Hugo", isAdmin: true });
+    rememberSessionIdentity("user-christian", "Christian Hultz");
+    expect(lastHomeSnapshot()).toBeNull();
+    expect(lastMerSnapshot()).toBeNull();
+    expect(lastSessionDisplayName()).toBe("Christian Hultz");
   });
 });

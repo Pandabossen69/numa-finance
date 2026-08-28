@@ -27,10 +27,12 @@ import {
   applyOptimisticHomeSpend,
   isHomeDirty,
   lastHomeSnapshot,
+  lastSessionDisplayName,
   rememberGettingStarted,
   rememberHomeSnapshot,
   revertOptimisticHomeSpend,
   subscribeHomeSnapshot,
+  subscribeSessionIdentity,
 } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
 import { HomeViewLoading } from "@/components/layout/ViewLoading";
@@ -52,6 +54,11 @@ export function HomeDashboard({
     subscribeHomeSnapshot,
     lastHomeSnapshot,
     lastHomeSnapshot,
+  );
+  const sessionName = useSyncExternalStore(
+    subscribeSessionIdentity,
+    lastSessionDisplayName,
+    lastSessionDisplayName,
   );
   const view = isHomeDirty()
     ? (stored ?? snap ?? lastHomeSnapshot())
@@ -89,7 +96,11 @@ export function HomeDashboard({
   const remainingTodayMinor = view.remainingTodayMinor;
   const todaySpendingMinor = view.todaySpendingMinor;
   const currency = view.currency;
-  const greeting = homeGreeting(view.displayName, new Date(), view.timeZone);
+  const greeting = homeGreeting(
+    sessionName ?? snap?.displayName,
+    new Date(),
+    view.timeZone,
+  );
   const isBridge = view.livingMode === "bridge";
   const isEmpty = view.livingMode === "empty";
   const dayOk = remainingTodayMinor > 0;
