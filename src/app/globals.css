@@ -105,6 +105,7 @@ body {
     radial-gradient(ellipse 120% 55% at 50% -12%, var(--numa-sun), transparent 58%),
     linear-gradient(180deg, #f4efe6 0%, var(--numa-bg) 42%, var(--numa-bg-deep) 100%);
   color: var(--numa-ink);
+  /* Faces come from next/font in layout.tsx — never @import Google Fonts here. */
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-size: 1rem;
   line-height: 1.5;

@@ -11,3 +11,15 @@ describe("PWA viewport", () => {
     expect(src).not.toContain('statusBarStyle: "default"');
   });
 });
+
+describe("root font loading", () => {
+  it("preloads only the UI face and keeps money mono off the critical path", () => {
+    expect(src).toContain("next/font/google");
+    expect(src).toContain('weight: "variable"');
+    expect(src).toContain('weight: ["600", "700"]');
+    expect(src).toContain("preload: true");
+    expect(src).toContain("preload: false");
+    expect(src).not.toContain("fonts.googleapis.com");
+    expect(src).not.toMatch(/JetBrains_Mono\([\s\S]*preload:\s*true/);
+  });
+});

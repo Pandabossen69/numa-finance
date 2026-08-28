@@ -8,6 +8,7 @@ import "./globals.css";
 const sans = Sora({
   variable: "--font-numa-sans",
   subsets: ["latin"],
+  weight: "variable",
   display: "swap",
   preload: true,
 });
@@ -15,8 +16,9 @@ const sans = Sora({
 const mono = JetBrains_Mono({
   variable: "--font-numa-mono",
   subsets: ["latin"],
+  weight: ["600", "700"],
   display: "swap",
-  preload: true,
+  preload: false,
 });
 
 export const metadata: Metadata = {
