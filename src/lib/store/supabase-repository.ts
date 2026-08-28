@@ -656,31 +656,58 @@ export async function createCashWithdrawal(input: {
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
 }
 
+/** PostgREST silently caps each response at max_rows (1000). Page past that. */
+const LEDGER_PAGE_SIZE = 1000;
+const LEDGER_ROW_CAP = 100_000;
+
 export async function listTransactions(
   accountId?: string,
   options?: { sinceIso?: string; limit?: number },
 ): Promise<CanonicalTransaction[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  let query = supabase
-    .from("transactions")
-    .select(numaSelect(LEDGER_TRANSACTION_SELECT))
-    .eq("user_id", userId)
-    .order("occurred_at", { ascending: false });
 
-  if (accountId) {
-    query = query.eq("account_id", accountId);
+  function ledgerQuery() {
+    let query = supabase
+      .from("transactions")
+      .select(numaSelect(LEDGER_TRANSACTION_SELECT))
+      .eq("user_id", userId)
+      .order("occurred_at", { ascending: false });
+
+    if (accountId) {
+      query = query.eq("account_id", accountId);
+    }
+    if (options?.sinceIso) {
+      query = query.gte("occurred_at", options.sinceIso);
+    }
+    return query;
   }
-  if (options?.sinceIso) {
-    query = query.gte("occurred_at", options.sinceIso);
-  }
+
   if (options?.limit != null) {
-    query = query.limit(options.limit);
+    const { data, error } = await ledgerQuery().limit(options.limit);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map(mapTransaction);
   }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapTransaction);
+  const collected: Array<Parameters<typeof mapTransaction>[0]> = [];
+
+  let from = 0;
+  for (;;) {
+    const { data, error } = await ledgerQuery().range(
+      from,
+      from + LEDGER_PAGE_SIZE - 1,
+    );
+    if (error) throw new Error(error.message);
+    const page = data ?? [];
+    collected.push(...page);
+    if (page.length < LEDGER_PAGE_SIZE) break;
+    from += LEDGER_PAGE_SIZE;
+    if (from >= LEDGER_ROW_CAP) {
+      console.error("[numa] listTransactions hit row cap", LEDGER_ROW_CAP);
+      break;
+    }
+  }
+  return collected.map(mapTransaction);
 }
 
 export async function updateTransaction(input: {

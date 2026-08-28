@@ -38,7 +38,7 @@ describe("Hem / Plan / Analys loader contract", () => {
     expect(home).toContain("export const getCachedTodaySnapshot = cache(");
     expect(plan).toContain("getCachedTodaySnapshot");
     expect(analys).toContain("getCachedTodaySnapshot");
-    expect(movements).toContain("getCachedTodaySnapshot");
+    expect(movements).not.toContain("getCachedTodaySnapshot");
 
     for (const table of MENU_SNAPSHOT_UNUSED_TABLES) {
       expect(home).not.toContain(table);
@@ -51,9 +51,10 @@ describe("Hem / Plan / Analys loader contract", () => {
     expect(analys).not.toContain("getUserProgress");
   });
 
-  it("does not issue a second ledger list after the shared snapshot", () => {
-    expect(movements).not.toContain("listTransactions(");
-    expect(movements).toContain("snap.ledgerTransactions");
+  it("loads Rörelser from its own ledger, not a second Hem snapshot", () => {
+    expect(movements).toContain("listTransactions(");
+    expect(movements).not.toContain("snap.ledgerTransactions");
+    expect(movements).not.toContain("getTodaySnapshot");
   });
 
   it("lets Plan load its snapshot without a serial getting-started waterfall", () => {
