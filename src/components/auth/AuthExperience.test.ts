@@ -18,6 +18,7 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).toContain("auth-mark");
     expect(src).not.toMatch(/välkommen/i);
     expect(src).toContain("result.nextPath");
+    expect(src).toContain("clearClientSessionMemory");
     expect(src).not.toContain('router.replace("/idag")');
     expect(src).toContain('router.prefetch("/kom-igang")');
     expect(src).toContain('router.prefetch("/idag")');

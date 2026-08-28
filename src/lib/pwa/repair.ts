@@ -1,3 +1,5 @@
+import { clearClientSessionMemory } from "@/features/home/clear-session-memory";
+
 export const NUMA_SW_KILL_FLAG = "numa.swKill.v8";
 
 export type LagaPhase = "idle" | "confirm" | "running" | "done" | "error";
@@ -24,6 +26,8 @@ export function lagaStartsIdle(): boolean {
 }
 
 export async function clearNumaRuntimeCache(): Promise<void> {
+  clearClientSessionMemory();
+
   try {
     localStorage.removeItem(NUMA_SW_KILL_FLAG);
     sessionStorage.removeItem("numa.blankGuard.v1");

@@ -286,3 +286,24 @@ export function rememberSettingsSnapshot(snap: SettingsSnapshot) {
 export function lastSettingsSnapshot(): SettingsSnapshot | null {
   return settings;
 }
+
+/** Drop every in-memory last-known view. Call on logout, login, and /laga. */
+export function clearAllLastKnown() {
+  home = null;
+  homeDirty = false;
+  analys = null;
+  plan = null;
+  planView = null;
+  analysScope = null;
+  gettingStarted = null;
+  movements = null;
+  movementsView = null;
+  accounts = null;
+  mer = null;
+  fota = null;
+  importera = null;
+  settings = null;
+  emit(homeListeners);
+  emit(planListeners);
+  emit(gettingStartedListeners);
+}

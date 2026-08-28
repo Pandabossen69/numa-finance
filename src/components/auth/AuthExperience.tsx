@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signInAction } from "@/features/auth/actions";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
+import { clearClientSessionMemory } from "@/features/home/clear-session-memory";
 
 type Screen = "welcome" | "login";
 
@@ -35,6 +36,7 @@ export function AuthExperience() {
         setError(result.error);
         return;
       }
+      clearClientSessionMemory();
       router.replace(result.nextPath);
       router.refresh();
     });

@@ -3,6 +3,7 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyOptimisticHomeSpend,
+  clearAllLastKnown,
   lastAccountsSnapshot,
   lastAnalysScope,
   lastFotaBoot,
@@ -219,5 +220,26 @@ describe("last view memory", () => {
     expect(lastFotaBoot()?.remainingTodayMinor).toBe(250_00);
     expect(lastImporteraRows()?.[0]?.id).toBe("obs-1");
     expect(lastSettingsSnapshot()?.timezone).toBe("Asia/Bangkok");
+  });
+
+  it("clears every last-known view and notifies Hem subscribers", () => {
+    rememberHomeSnapshot(homeSnap());
+    rememberMovementsSnapshot(sampleMovements);
+    rememberAccountsSnapshot({ accounts: [] });
+    rememberMerSnapshot({ displayName: "Christian", isAdmin: false });
+    rememberPlanView({ monthKey: "2027-03", viewYear: 2027 });
+    let ticks = 0;
+    const stop = subscribeHomeSnapshot(() => {
+      ticks += 1;
+    });
+    clearAllLastKnown();
+    expect(lastHomeSnapshot()).toBeNull();
+    expect(lastMovementsSnapshot()).toBeNull();
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(lastMerSnapshot()).toBeNull();
+    expect(lastPlanView()).toBeNull();
+    expect(lastPlanSnapshot()).toBeNull();
+    expect(ticks).toBeGreaterThan(0);
+    stop();
   });
 });
