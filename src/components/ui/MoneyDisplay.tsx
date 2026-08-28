@@ -65,29 +65,29 @@ export function MoneyDisplay({
 
   const sizeClass =
     size === "display"
-      ? "text-[clamp(1.7rem,6.2vw,2.7rem)] leading-[1.2] font-bold"
+      ? "text-[clamp(2.35rem,9vw,4.1rem)] leading-[0.96] font-[750]"
       : size === "xl"
-        ? "text-[clamp(1.95rem,5.5vw,2.75rem)] leading-[1.2] font-bold"
+        ? "text-[clamp(1.9rem,6vw,2.8rem)] leading-[1] font-[740]"
         : size === "lg"
-          ? "text-3xl font-bold"
+          ? "text-[1.55rem] leading-[1.05] font-bold"
           : size === "md"
-            ? "text-[1.125rem] font-bold"
+            ? "text-[1.125rem] leading-[1.1] font-bold"
             : size === "sm"
-              ? "text-[1.0625rem] font-bold"
-              : "text-[0.875rem] font-semibold";
+              ? "text-[1rem] leading-[1.15] font-bold"
+              : "text-[0.8125rem] leading-[1.2] font-semibold";
 
   const codeSize =
     size === "display"
-      ? "text-[0.9rem] font-bold"
+      ? "text-[clamp(0.74rem,2.4vw,0.9rem)] font-semibold"
       : size === "xl"
-        ? "text-[1.05rem] font-bold"
+        ? "text-[clamp(0.72rem,2vw,0.84rem)] font-semibold"
         : size === "lg"
-          ? "text-sm font-bold"
+          ? "text-[0.72rem] font-semibold"
           : size === "md"
-            ? "text-[0.75rem] font-bold"
+            ? "text-[0.68rem] font-semibold"
             : size === "sm"
-              ? "text-[0.72rem] font-bold"
-              : "text-[0.68rem] font-semibold";
+              ? "text-[0.65rem] font-semibold"
+              : "text-[0.6rem] font-medium";
 
   const toneClass =
     tone === "signed" && safeMinor < 0
