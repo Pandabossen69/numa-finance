@@ -9,6 +9,7 @@ describe("route islands", () => {
     expect(src).toContain("ssr: false");
     expect(src).toContain("HomeDashboard");
     expect(src).toContain("PlanEditor");
+    expect(src).toContain("PlanScreen");
     expect(src).toContain("AnalysDashboard");
   });
 });

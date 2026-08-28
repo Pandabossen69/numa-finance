@@ -19,6 +19,15 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("HomeViewLoading");
   });
 
+  it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {
+    expect(src).toContain("applyOptimisticHomeSpend");
+    expect(src).toContain("getHomeSnapshotAction");
+    expect(src).toContain("warmupPlanPageData");
+    expect(src).not.toContain("refreshQuiet");
+    expect(src).not.toContain("router.refresh");
+    expect(src).not.toContain("useRouter");
+  });
+
   it("does not show Mot planen as the Hem pile", () => {
     expect(src).toContain("CompactPiles");
     expect(src).toContain("overMinor");

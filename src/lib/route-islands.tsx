@@ -18,6 +18,11 @@ export const PlanEditor = nextDynamic(
   { ssr: false, loading: () => <ViewLoading /> },
 );
 
+export const PlanScreen = nextDynamic(
+  () => import("@/components/plan/PlanScreen").then((mod) => mod.PlanScreen),
+  { ssr: false, loading: () => <ViewLoading /> },
+);
+
 export const AnalysDashboard = nextDynamic(
   () =>
     import("@/components/analys/AnalysDashboard").then((mod) => mod.AnalysDashboard),
