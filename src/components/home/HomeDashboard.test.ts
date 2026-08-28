@@ -28,6 +28,14 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain("useRouter");
   });
 
+  it("prefers a fresh server snap over stale last-known unless a spend is in flight", () => {
+    expect(src).toContain("isHomeDirty()");
+    expect(src).toContain("snap ?? stored ?? lastHomeSnapshot()");
+    expect(src).toContain("stored ?? snap ?? lastHomeSnapshot()");
+    expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
+    expect(src).not.toContain("lastHomeSnapshot() == null");
+  });
+
   it("does not show Mot planen as the Hem pile", () => {
     expect(src).toContain("CompactPiles");
     expect(src).toContain("overMinor");

@@ -25,7 +25,7 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
   applyOptimisticHomeSpend,
-  lastGettingStarted,
+  isHomeDirty,
   lastHomeSnapshot,
   rememberGettingStarted,
   rememberHomeSnapshot,
@@ -53,13 +53,13 @@ export function HomeDashboard({
     lastHomeSnapshot,
     lastHomeSnapshot,
   );
-  const view = stored ?? snap ?? lastHomeSnapshot();
+  const view = isHomeDirty()
+    ? (stored ?? snap ?? lastHomeSnapshot())
+    : (snap ?? stored ?? lastHomeSnapshot());
 
   useEffect(() => {
-    if (snap && lastHomeSnapshot() == null) rememberHomeSnapshot(snap);
-    if (gettingStarted && lastGettingStarted() == null) {
-      rememberGettingStarted(gettingStarted);
-    }
+    if (snap && !isHomeDirty()) rememberHomeSnapshot(snap);
+    if (gettingStarted) rememberGettingStarted(gettingStarted);
     void warmupPlanPageData();
   }, [snap, gettingStarted]);
 
