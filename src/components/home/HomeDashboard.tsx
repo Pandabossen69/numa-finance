@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -24,6 +24,9 @@ import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
+  applyAccountBalance,
+  applyAccountDelta,
+  applyMovementsAdd,
   applyOptimisticHomeSpend,
   lastGettingStarted,
   lastHomeSnapshot,
@@ -134,10 +137,6 @@ export function HomeDashboard({
         ) : null}
       </header>
 
-      {gettingStarted?.visible ? (
-        <GettingStartedCard view={gettingStarted} />
-      ) : null}
-
       {view.needsAvailableInput ? (
         <AvailableNowCard
           accountId={view.primaryAccountId}
@@ -150,17 +149,20 @@ export function HomeDashboard({
         <>
           <div className="grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6">
             <section
-              className={`numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-5 px-4 pt-5 pb-5 md:px-5 md:pt-6 md:pb-6${
-                overToday ? " is-over" : ""
-              }`}
+              className={[
+                "numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
+                overToday ? "is-over" : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
               aria-labelledby="spend-heading"
             >
-              <div className="flex min-w-0 items-center justify-between gap-3 px-0.5">
-                <p id="spend-heading" className="min-w-0 numa-section-title">
+              <div className="flex min-w-0 items-center justify-between gap-3 px-1">
+                <p id="spend-heading" className="numa-section-title min-w-0">
                   {SV.kvarIdag}
                 </p>
                 {!isEmpty ? (
-                  <p className="shrink-0 text-[12px] font-medium text-[var(--numa-muted)]">
+                  <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
                     {daysWord}
                   </p>
                 ) : null}
@@ -190,13 +192,14 @@ export function HomeDashboard({
                         currency={currency}
                         size="display"
                         compact
+                        wrap={false}
                       />
                     </div>
                   </DayDial>
 
                   {statusLine ? (
                     <p
-                      className={`min-w-0 px-1 text-center text-sm leading-snug ${
+                      className={`min-h-5 min-w-0 px-1 text-center text-[13px] leading-snug ${
                         overToday
                           ? "font-medium text-[var(--numa-muted)]"
                           : "text-[var(--numa-muted)]"
@@ -278,35 +281,35 @@ export function HomeDashboard({
                   savingsMinor={view.savingsTotalMinor}
                   currency={currency}
                 />
-                {(view.extraCarriedInMinor > 0 ||
-                  view.extraSaldoMinor > 0 ||
-                  view.extraSaldoDrawnMinor > 0 ||
-                  (!isBridge && view.cycleSpendingMinor > 0)) ? (
-                <div className="numa-panel-list animate-scale-in px-4 py-1">
-                  {view.extraCarriedInMinor > 0 ? (
-                    <MetricRow
-                      label={SV.extraMed}
-                      amountMinor={view.extraCarriedInMinor}
-                      currency={currency}
-                      tone="positive"
-                      hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
-                    />
-                  ) : (
-                    <ExtraSaldoRow
-                      extraSaldoMinor={view.extraSaldoMinor}
-                      drawnMinor={view.extraSaldoDrawnMinor}
-                      hint={view.extraSaldoHint}
-                      currency={currency}
-                    />
-                  )}
-                  {!isBridge && view.cycleSpendingMinor > 0 ? (
-                    <MetricRow
-                      label={SV.spenderatIPerioden}
-                      amountMinor={view.cycleSpendingMinor}
-                      currency={currency}
-                    />
-                  ) : null}
-                </div>
+                {view.extraCarriedInMinor > 0 ||
+                view.extraSaldoMinor > 0 ||
+                view.extraSaldoDrawnMinor > 0 ||
+                (!isBridge && view.cycleSpendingMinor > 0) ? (
+                  <div className="numa-panel-list animate-scale-in px-4 py-1">
+                    {view.extraCarriedInMinor > 0 ? (
+                      <MetricRow
+                        label={SV.extraMed}
+                        amountMinor={view.extraCarriedInMinor}
+                        currency={currency}
+                        tone="positive"
+                        hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
+                      />
+                    ) : (
+                      <ExtraSaldoRow
+                        extraSaldoMinor={view.extraSaldoMinor}
+                        drawnMinor={view.extraSaldoDrawnMinor}
+                        hint={view.extraSaldoHint}
+                        currency={currency}
+                      />
+                    )}
+                    {!isBridge && view.cycleSpendingMinor > 0 ? (
+                      <MetricRow
+                        label={SV.spenderatIPerioden}
+                        amountMinor={view.cycleSpendingMinor}
+                        currency={currency}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
               </section>
 
@@ -341,6 +344,8 @@ export function HomeDashboard({
           />
         </>
       ) : null}
+
+      {gettingStarted?.visible ? <GettingStartedCard view={gettingStarted} /> : null}
     </div>
   );
 }
@@ -416,15 +421,20 @@ function AvailableNowCard({
                 accountId,
                 currency,
               });
+              setBusy(false);
               if (!result.ok) {
-                setBusy(false);
                 setError(result.error);
                 return;
               }
-              const next = await getHomeSnapshotAction();
-              if (next.ok) rememberHomeSnapshot(next.data);
+              try {
+                applyAccountBalance(accountId ?? "", parseUiAmountToMinor(balance));
+              } catch {
+                // Snapshot below fills in the living numbers.
+              }
+              void getHomeSnapshotAction().then((next) => {
+                if (next.ok) rememberHomeSnapshot(next.data);
+              });
               void warmupPlanPageData();
-              setBusy(false);
             })();
           }}
         >
@@ -494,17 +504,22 @@ function UpdateBalanceLink({
                 accountId,
                 currency,
               });
+              setBusy(false);
               if (!result.ok) {
-                setBusy(false);
                 setError(result.error);
                 return;
               }
-              const next = await getHomeSnapshotAction();
-              if (next.ok) rememberHomeSnapshot(next.data);
-              void warmupPlanPageData();
               setOpen(false);
               setBalance("");
-              setBusy(false);
+              try {
+                applyAccountBalance(accountId ?? "", parseUiAmountToMinor(balance));
+              } catch {
+                // Snapshot below fills in the living numbers.
+              }
+              void getHomeSnapshotAction().then((next) => {
+                if (next.ok) rememberHomeSnapshot(next.data);
+              });
+              void warmupPlanPageData();
             })();
           }}
         >
@@ -550,6 +565,8 @@ function QuickExpense({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inFlight = useRef(false);
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -603,10 +620,10 @@ function QuickExpense({
             />
             <button
               type="button"
-              disabled={!amount.trim()}
+              disabled={busy || !amount.trim()}
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
-                if (!accountId) return;
+                if (inFlight.current || busy || !accountId) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -620,28 +637,48 @@ function QuickExpense({
                 }
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
+                inFlight.current = true;
+                setBusy(true);
                 setError(null);
                 setAmount("");
                 setNote("");
                 onOptimisticSpend(amountMinor);
                 void (async () => {
-                  const result = await createExpenseAction({
-                    accountId,
-                    amount: amountInput,
-                    description,
-                  });
-                  if (!result.ok) {
-                    onSpendFailed(amountMinor);
-                    setError(result.error);
-                    return;
+                  try {
+                    const result = await createExpenseAction({
+                      accountId,
+                      amount: amountInput,
+                      description,
+                    });
+                    if (!result.ok) {
+                      onSpendFailed(amountMinor);
+                      setError(result.error);
+                      return;
+                    }
+                    applyAccountDelta(-amountMinor, accountId);
+                    applyMovementsAdd({
+                      id: result.id ?? crypto.randomUUID(),
+                      description,
+                      category: null,
+                      transactionType: "expense",
+                      direction: "debit",
+                      amountMinor,
+                      currency,
+                      occurredAt: new Date().toISOString(),
+                      source: "manual",
+                    });
+                    void getHomeSnapshotAction().then((next) => {
+                      if (next.ok) rememberHomeSnapshot(next.data);
+                    });
+                    void warmupPlanPageData();
+                  } finally {
+                    inFlight.current = false;
+                    setBusy(false);
                   }
-                  const next = await getHomeSnapshotAction();
-                  if (next.ok) rememberHomeSnapshot(next.data);
-                  void warmupPlanPageData();
                 })();
               }}
             >
-              Spara
+              {busy ? "Sparar…" : "Spara"}
             </button>
           </div>
           {error ? (

@@ -68,33 +68,21 @@ export function AuthExperience() {
 
 function WelcomeScreen({ onLogin }: { onLogin: () => void }) {
   return (
-    <div className="auth-card mx-auto w-full">
-      <div className="auth-card-copy">
+    <div className="auth-card auth-welcome mx-auto w-full">
+      <div className="auth-card-copy auth-welcome-copy">
         <p className="auth-mark">NUMA</p>
-        <p className="mt-4 max-w-[16ch] text-[1.45rem] leading-snug font-medium tracking-tight text-[var(--numa-ink)] md:text-[1.7rem]">
-          Håll koll på pengarna — enkelt varje dag.
-        </p>
-        <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
-          Se vad som är ledigt, vad som är reserverat och hur mycket du kan spendera idag.
-        </p>
+        <p className="auth-welcome-line">Vad du kan använda idag.</p>
       </div>
       <div className="auth-card-action">
         <button
           type="button"
           onClick={onLogin}
-          className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[var(--numa-card)] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 active:scale-[0.99]"
+          className="auth-primary-button"
         >
           Logga in
         </button>
-        <p className="mt-3 text-center text-[13px] leading-relaxed text-[var(--numa-faint)] md:text-left">
-          Konto skapas av NUMA. Har du fått e-post och lösenord, logga in här.
-        </p>
-        <p className="mt-3 text-center text-[12px] leading-relaxed text-[var(--numa-faint)] md:text-left">
-          Alla konton använder samma app-länk:{" "}
-          <span className="font-semibold text-[var(--numa-muted)]">
-            numa-finance.vercel.app
-          </span>
-          . Lägg till på hemskärmen därifrån.
+        <p className="auth-access-note">
+          Konto skapas av NUMA · använd uppgifterna du fått.
         </p>
       </div>
     </div>
@@ -130,7 +118,7 @@ function LoginScreen({
         <BackButton onClick={onBack} />
         <p className="auth-mark mt-6 md:mt-0">NUMA</p>
         <header className="mt-4 space-y-2">
-          <h1 className="text-[1.65rem] font-semibold tracking-tight">Logga in</h1>
+          <h1 className="auth-login-title">Logga in</h1>
           <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
             Logga in med e-post och lösenord.
           </p>
@@ -295,7 +283,7 @@ function PrimaryButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className="flex min-h-14 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] text-[15px] font-semibold text-[var(--numa-card)] transition hover:bg-[#2a2a28] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-ink)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
+      className="auth-primary-button"
     >
       {children}
     </button>

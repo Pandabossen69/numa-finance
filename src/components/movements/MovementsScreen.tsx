@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
@@ -13,17 +12,20 @@ import {
 } from "@/features/finance/actions";
 import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
-import { sanitizeMoneyDescription } from "@/domain/money";
+import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
+  applyMovementsEdit,
+  applyMovementsVoid,
+  isMovementsDirty,
   lastMovementsSnapshot,
   lastMovementsView,
   rememberMovementsSnapshot,
   rememberMovementsView,
+  subscribeMovementsSnapshot,
   type MovementsFilter,
   type MovementsPeriod,
 } from "@/features/home/last-snapshot";
-import { refreshQuiet } from "@/lib/nav/instant";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 type Filter = MovementsFilter;
@@ -78,9 +80,13 @@ export function MovementsScreen({
   data: MovementsSnapshot | null;
   error?: string | null;
 }) {
-  const router = useRouter();
   const { prefetch } = usePrefetchOnIntent();
   const rememberedView = lastMovementsView();
+  const stored = useSyncExternalStore(
+    subscribeMovementsSnapshot,
+    lastMovementsSnapshot,
+    lastMovementsSnapshot,
+  );
   const [filter, setFilter] = useState<Filter>(
     () => rememberedView?.filter ?? "all",
   );
@@ -93,6 +99,10 @@ export function MovementsScreen({
   const [editCategory, setEditCategory] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(
+    null,
+  );
+  const actionLock = useRef(false);
 
   useEffect(() => {
     if (!confirmId) return;
@@ -103,9 +113,15 @@ export function MovementsScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmId]);
 
-  if (data) rememberMovementsSnapshot(data);
+  useEffect(() => {
+    if (!data) return;
+    if (lastMovementsSnapshot() == null || !isMovementsDirty()) {
+      rememberMovementsSnapshot(data);
+    }
+  }, [data]);
+
   rememberMovementsView({ filter, period });
-  const view = data ?? lastMovementsSnapshot();
+  const view = stored ?? data ?? lastMovementsSnapshot();
 
   const filtered = useMemo(() => {
     if (!view) return [];
@@ -231,9 +247,9 @@ export function MovementsScreen({
             key={f.id}
             type="button"
             onClick={() => setFilter(f.id)}
-            className={`numa-press min-h-11 rounded-full px-2.5 text-sm font-semibold ${
+            className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
               filter === f.id
-                ? "bg-[var(--numa-ink)] text-white"
+                ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
                 : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
@@ -320,34 +336,59 @@ export function MovementsScreen({
                     <div className="flex gap-2">
                       <button
                         type="button"
+                        disabled={pendingAction != null}
                         className="numa-btn numa-btn-accent flex-1"
                         onClick={() => {
+                          if (actionLock.current || pendingAction) return;
+                          actionLock.current = true;
+                          setPendingAction("save");
                           setActionError(null);
                           void (async () => {
-                            const result = await updateTransactionAction({
-                              id: tx.id,
-                              amount: editAmount,
-                              description: editDescription,
-                              category:
-                                tx.transactionType === "expense"
-                                  ? editCategory || null
-                                  : undefined,
-                            });
-                            if (!result.ok) {
-                              setActionError(result.error);
-                              return;
+                            try {
+                              const result = await updateTransactionAction({
+                                id: tx.id,
+                                amount: editAmount,
+                                description: editDescription,
+                                category:
+                                  tx.transactionType === "expense"
+                                    ? editCategory || null
+                                    : undefined,
+                              });
+                              if (!result.ok) {
+                                setActionError(result.error);
+                                return;
+                              }
+                              setEditingId(null);
+                              try {
+                                applyMovementsEdit(tx.id, {
+                                  amountMinor: parseUiAmountToMinor(editAmount),
+                                  description:
+                                    sanitizeMoneyDescription(editDescription),
+                                  category:
+                                    tx.transactionType === "expense"
+                                      ? editCategory || null
+                                      : undefined,
+                                });
+                              } catch {
+                                // Server already saved — list updates on next visit.
+                              }
+                            } finally {
+                              actionLock.current = false;
+                              setPendingAction(null);
                             }
-                            setEditingId(null);
-                            refreshQuiet(router);
                           })();
                         }}
                       >
-                        Spara
+                        {pendingAction === "save" ? "Sparar…" : "Spara"}
                       </button>
                       <button
                         type="button"
+                        disabled={pendingAction != null}
                         className="numa-tap min-h-11 rounded-xl px-3 text-sm text-[var(--numa-muted)]"
-                        onClick={() => setEditingId(null)}
+                        onClick={() => {
+                          if (pendingAction) return;
+                          setEditingId(null);
+                        }}
                       >
                         Avbryt
                       </button>
@@ -359,7 +400,7 @@ export function MovementsScreen({
               return (
                 <li
                   key={tx.id}
-                  className="numa-money-line items-start px-4 py-3.5"
+                  className="numa-money-line items-start px-4 py-3.5 transition-colors hover:bg-[var(--numa-bg)]/30"
                 >
                   <div className="numa-money-line-label">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
@@ -383,26 +424,41 @@ export function MovementsScreen({
                         <div className="mt-1.5 flex flex-wrap gap-2">
                           <button
                             type="button"
+                            disabled={pendingAction != null}
                             className="numa-press numa-tap px-1 text-xs font-semibold text-[var(--numa-danger)]"
                             onClick={() => {
+                              if (actionLock.current || pendingAction) return;
+                              actionLock.current = true;
+                              setPendingAction("void");
                               setActionError(null);
-                              setConfirmId(null);
                               void (async () => {
-                                const result = await voidTransactionAction(tx.id);
-                                if (!result.ok) {
-                                  setActionError(result.error);
-                                  return;
+                                try {
+                                  const result = await voidTransactionAction(
+                                    tx.id,
+                                  );
+                                  if (!result.ok) {
+                                    setActionError(result.error);
+                                    return;
+                                  }
+                                  setConfirmId(null);
+                                  applyMovementsVoid(tx.id);
+                                } finally {
+                                  actionLock.current = false;
+                                  setPendingAction(null);
                                 }
-                                refreshQuiet(router);
                               })();
                             }}
                           >
-                            Ta bort
+                            {pendingAction === "void" ? "Tar bort…" : "Ta bort"}
                           </button>
                           <button
                             type="button"
+                            disabled={pendingAction != null}
                             className="numa-press numa-tap px-1 text-xs text-[var(--numa-muted)]"
-                            onClick={() => setConfirmId(null)}
+                            onClick={() => {
+                              if (pendingAction) return;
+                              setConfirmId(null);
+                            }}
                           >
                             Avbryt
                           </button>
@@ -468,7 +524,7 @@ function PeriodChip({
       onClick={onClick}
       className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
-          ? "bg-[var(--numa-ink)] text-white"
+          ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >

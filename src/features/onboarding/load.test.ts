@@ -36,6 +36,7 @@ describe("onboarding first-load waterfalls", () => {
 
   it("uses one shared getAuthUser for session and the store", () => {
     expect(authUser).toContain("export const getAuthUser = cache");
+    expect(authUser).toContain("auth.getSession()");
     expect(session).toContain("export const getSessionUser = getAuthUser");
     expect(remote).toContain("const user = await getAuthUser()");
     expect(remote).toContain('from "@/lib/supabase/auth-user"');

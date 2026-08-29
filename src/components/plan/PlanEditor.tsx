@@ -621,7 +621,7 @@ export function PlanEditor({
 
   return (
     <div className="space-y-8">
-      <section className="space-y-4">
+      <section className="animate-rise-delay-1 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <button
@@ -798,7 +798,7 @@ export function PlanEditor({
         </p>
       ) : null}
 
-      <div className="grid gap-4">
+      <div className="animate-rise-delay-2 grid gap-4">
         <PlanCard
           title="Intäkter"
           totalLabel="Summa"
@@ -909,7 +909,7 @@ export function PlanEditor({
         </PlanCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="animate-rise-delay-3 grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."

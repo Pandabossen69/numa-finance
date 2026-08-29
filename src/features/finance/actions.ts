@@ -43,7 +43,7 @@ const expenseSchema = z.object({
 });
 
 export type ActionResult =
-  | { ok: true }
+  | { ok: true; id?: string }
   | { ok: false; error: string };
 
 export async function createAccountAction(
@@ -96,7 +96,7 @@ export async function createExpenseAction(
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
 
-    await createManualExpense({
+    const tx = await createManualExpense({
       accountId: input.accountId,
       amountMinor,
       description: input.description,
@@ -104,7 +104,7 @@ export async function createExpenseAction(
     });
 
     revalidateMoneyPaths();
-    return { ok: true };
+    return { ok: true, id: tx.id };
   } catch (error) {
     return {
       ok: false,
@@ -133,9 +133,11 @@ const cashSchema = z.object({
   description: z.string().trim().max(120).optional(),
 });
 
+/** Money pages only — never revalidate the layout or the whole shell.
+ *  `revalidatePath("/", "layout")` dropped Hem↔Plan↔Analys from the
+ *  client router cache so every save made the next tab tap cold. */
 function revalidateMoneyPaths() {
   revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-  revalidatePath("/", "layout");
   revalidatePath("/idag");
   revalidatePath("/transaktioner");
   revalidatePath("/analys");
@@ -143,9 +145,6 @@ function revalidateMoneyPaths() {
   revalidatePath("/konton");
   revalidatePath("/lagg-till");
   revalidatePath("/fota");
-  revalidatePath("/mer");
-  revalidatePath("/kom-igang");
-  revalidatePath("/kom-igang/plan");
 }
 
 export async function updateTransactionAction(raw: {
@@ -200,13 +199,13 @@ export async function createIncomeAction(
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
-    await createManualIncome({
+    const tx = await createManualIncome({
       accountId: input.accountId,
       amountMinor,
       description: input.description,
     });
     revalidateMoneyPaths();
-    return { ok: true };
+    return { ok: true, id: tx.id };
   } catch (error) {
     return {
       ok: false,

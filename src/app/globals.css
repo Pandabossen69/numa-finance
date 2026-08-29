@@ -2,50 +2,60 @@
 
 /*
  * NUMA visual system — light only.
- * Sun-washed stone, cream sheets, round corners, loud money.
- * Warm beige / modern gray / cream-white — never paper #fff, never mint soup.
+ * Warm, soft, modern: champagne canvas, cream glass, loud money.
+ * Never paper #fff, never mint soup, never cabin-brown rustic.
  */
 :root {
-  --numa-bg: #eee9e0;
-  --numa-bg-deep: #e5ddd0;
-  --numa-ink: #161513;
-  --numa-muted: #534f48;
-  --numa-faint: #827d74;
-  --numa-surface: rgba(252, 251, 247, 0.94);
-  --numa-surface-solid: #f7f4ee;
-  --numa-surface-strong: #fcfbf7;
+  /* Champagne stone, lifting to cream. Contemporary, not cottage. */
+  --numa-bg: #ece4d6;
+  --numa-bg-lift: #f6f1e8;
+  --numa-bg-deep: #e4dccf;
+  --numa-ink: #17140f;
+  --numa-muted: #514b41;
+  --numa-faint: #6f675a;
+  --numa-surface: rgba(253, 251, 246, 0.94);
+  --numa-surface-solid: #f8f4ec;
+  --numa-surface-strong: #fdfbf6;
   --numa-card: #fcfbf7;
-  --numa-border: rgba(48, 40, 28, 0.08);
-  --numa-border-strong: rgba(48, 40, 28, 0.13);
+  --numa-border: rgba(68, 58, 44, 0.1);
+  --numa-border-strong: rgba(68, 58, 44, 0.16);
   --numa-accent: #127a62;
-  --numa-accent-soft: #d5f0e6;
+  --numa-accent-soft: #d9eee2;
   --numa-accent-ink: #0a5344;
-  --numa-accent-glow: rgba(18, 122, 98, 0.2);
-  --numa-sun: rgba(255, 214, 140, 0.42);
+  --numa-accent-glow: rgba(18, 122, 98, 0.17);
+  /* Champagne wash — white-gold, not amber varnish. */
+  --numa-sun: rgba(255, 232, 196, 0.42);
+  --numa-sun-warm: rgba(232, 196, 148, 0.14);
+  --numa-stone: rgba(72, 62, 50, 0.08);
   --numa-danger: #b42318;
-  --numa-danger-soft: #fde8e6;
+  --numa-danger-soft: #fce7e3;
   --numa-alarm: #a86b3a;
-  --numa-alarm-soft: #f6e4d0;
-  --numa-positive: #127a62;
-  --numa-positive-soft: #d5f0e6;
+  --numa-alarm-soft: #f7e6d1;
+  --numa-positive: #0f6a55;
+  --numa-positive-soft: #d9eee2;
   --numa-spend: #8a5844;
   --numa-spend-soft: #f6e6d8;
   --numa-money-unit: 2.4rem;
   --numa-radius: 1.85rem;
   --numa-radius-sm: 1.4rem;
-  --numa-warning: #9a6700;
-  --numa-warning-soft: #fef3c7;
-  --numa-shadow: 0 1px 0 rgba(48, 40, 28, 0.04), 0 22px 50px rgba(120, 88, 48, 0.1);
-  --numa-shadow-sm: 0 10px 28px rgba(120, 88, 48, 0.08);
-  --numa-nav: #fcfbf7;
+  --numa-warning: #8a5b00;
+  --numa-warning-soft: #faedc7;
+  /* Soft ink-taupe lift. Contemporary glass, not wood grain. */
+  --numa-shadow:
+    0 1px 2px rgba(48, 40, 30, 0.04), 0 8px 20px -8px rgba(48, 40, 30, 0.08),
+    0 24px 48px -20px rgba(48, 40, 30, 0.12);
+  --numa-shadow-sm:
+    0 1px 2px rgba(48, 40, 30, 0.04), 0 6px 14px -6px rgba(48, 40, 30, 0.07),
+    0 16px 32px -16px rgba(48, 40, 30, 0.1);
+  --numa-nav: #fdfbf6;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   --numa-safe-left: env(safe-area-inset-left, 0px);
   --numa-safe-right: env(safe-area-inset-right, 0px);
   /* 44px — iPhone HIG minimum. Nav, chips, and chrome tap targets. */
   --numa-touch: 2.75rem;
-  /* Bottom nav row (pt + items + pb). FAB hangs above it; keep last content clear. */
-  --numa-nav-bar: 4.25rem;
+  /* Floating dock + inset. FAB hangs above it; keep last content clear. */
+  --numa-nav-bar: 5.15rem;
   --numa-fab-overhang: 2.25rem;
   --numa-shell-breathing: 2rem;
   --numa-shell-pad-bottom: calc(
@@ -102,8 +112,16 @@ body {
   overflow-x: clip;
   background-color: var(--numa-bg);
   background-image:
-    radial-gradient(ellipse 120% 55% at 50% -12%, var(--numa-sun), transparent 58%),
-    linear-gradient(180deg, #f4efe6 0%, var(--numa-bg) 42%, var(--numa-bg-deep) 100%);
+    radial-gradient(ellipse 112% 44% at 50% -10%, var(--numa-sun), transparent 64%),
+    radial-gradient(ellipse 152% 62% at 50% -20%, var(--numa-sun-warm), transparent 72%),
+    radial-gradient(ellipse 135% 52% at 50% 112%, var(--numa-stone), transparent 74%),
+    linear-gradient(
+      180deg,
+      var(--numa-bg-lift) 0%,
+      var(--numa-bg) 44%,
+      var(--numa-bg-deep) 100%
+    );
+  background-repeat: no-repeat;
   color: var(--numa-ink);
   /* Faces come from next/font in layout.tsx — never @import Google Fonts here. */
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
@@ -139,15 +157,18 @@ body {
   font-feature-settings:
     "tnum" 1,
     "lnum" 1;
+  font-optical-sizing: auto;
   font-synthesis: none;
-  letter-spacing: 0;
+  letter-spacing: -0.025em;
   word-spacing: 0;
 }
 
 .money-currency {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: lining-nums;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -155,7 +176,7 @@ body {
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: baseline;
-  gap: 0.35rem;
+  gap: 0.42rem;
   max-width: 100%;
 }
 
@@ -170,7 +191,7 @@ body {
 .numa-money.is-end {
   display: grid;
   grid-template-columns: max-content var(--numa-money-unit);
-  column-gap: 0.35rem;
+  column-gap: 0.42rem;
   align-items: baseline;
   justify-content: end;
 }
@@ -194,8 +215,9 @@ body {
   font-feature-settings:
     "tnum" 1,
     "lnum" 1;
+  font-optical-sizing: auto;
   font-synthesis: none;
-  letter-spacing: 0;
+  letter-spacing: -0.045em;
   word-spacing: 0;
   overflow-wrap: normal;
   word-break: keep-all;
@@ -215,7 +237,7 @@ body {
   flex: 0 0 auto;
   display: block;
   white-space: nowrap;
-  letter-spacing: 0;
+  letter-spacing: -0.045em;
   word-spacing: 0;
 }
 
@@ -228,7 +250,8 @@ body {
   flex: 0 0 auto;
   flex-shrink: 0;
   white-space: nowrap;
-  color: color-mix(in srgb, var(--numa-ink) 62%, transparent);
+  color: color-mix(in srgb, currentColor 54%, transparent);
+  transform: translateY(-0.025em);
 }
 
 .numa-money.is-end .numa-money-unit {
@@ -253,7 +276,9 @@ body {
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius);
-  box-shadow: var(--numa-shadow-sm);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 246, 0.85),
+    var(--numa-shadow-sm);
   overflow: hidden;
 }
 
@@ -262,7 +287,9 @@ body {
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius);
-  box-shadow: var(--numa-shadow);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 246, 0.9),
+    var(--numa-shadow);
   overflow: hidden;
 }
 
@@ -271,7 +298,9 @@ body {
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius);
-  box-shadow: var(--numa-shadow-sm);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 246, 0.85),
+    var(--numa-shadow-sm);
   overflow: hidden;
 }
 
@@ -284,14 +313,16 @@ body {
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius);
-  box-shadow: var(--numa-shadow-sm);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 246, 0.85),
+    var(--numa-shadow-sm);
   overflow: hidden;
 }
 
 .numa-section-title {
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 640;
+  letter-spacing: 0.115em;
   line-height: 1.35;
   text-transform: uppercase;
   color: var(--numa-muted);
@@ -300,17 +331,20 @@ body {
 }
 
 .numa-page-title {
-  font-size: clamp(1.9rem, 5.2vw, 2.2rem);
-  line-height: 1.08;
-  font-weight: 600;
-  letter-spacing: -0.04em;
+  max-width: 19ch;
+  font-size: clamp(1.95rem, 5.8vw, 2.45rem);
+  line-height: 1.02;
+  font-weight: 680;
+  letter-spacing: -0.062em;
   color: var(--numa-ink);
+  text-wrap: balance;
 }
 
 .numa-brand-mark {
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: -0.05em;
+  font-size: 1.42rem;
+  font-weight: 720;
+  letter-spacing: -0.065em;
+  line-height: 1;
   color: var(--numa-ink);
 }
 
@@ -329,9 +363,10 @@ body {
 .numa-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
+  min-height: var(--numa-touch);
   padding: 0.9rem 0;
   border-bottom: 1px solid var(--numa-border);
   min-width: 0;
@@ -424,7 +459,7 @@ body {
 @keyframes numa-rise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -435,11 +470,22 @@ body {
 @keyframes numa-scale-in {
   from {
     opacity: 0;
-    transform: scale(0.965);
+    transform: scale(0.975);
   }
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes numa-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -451,10 +497,30 @@ body {
 
 .numa-day-stage {
   position: relative;
+  isolation: isolate;
   background:
-    radial-gradient(ellipse 110% 72% at 50% -12%, var(--numa-sun), transparent 58%),
-    radial-gradient(ellipse 92% 64% at 50% 22%, var(--numa-accent-glow), transparent 70%),
+    radial-gradient(ellipse 105% 68% at 50% -10%, var(--numa-sun), transparent 62%),
+    radial-gradient(ellipse 86% 56% at 50% 24%, var(--numa-accent-glow), transparent 72%),
     var(--numa-card);
+  box-shadow:
+    0 22px 54px rgba(78, 57, 29, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.numa-day-stage::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.52),
+    transparent 34%,
+    transparent 72%,
+    rgba(18, 122, 98, 0.035)
+  );
+  content: "";
+  pointer-events: none;
 }
 
 .numa-panel-strong.numa-day-stage {
@@ -465,53 +531,101 @@ body {
   background:
     radial-gradient(
       ellipse 110% 72% at 50% -12%,
-      rgba(232, 176, 110, 0.35),
-      transparent 58%
+      rgba(232, 176, 110, 0.28),
+      transparent 62%
     ),
     radial-gradient(
-      ellipse 92% 64% at 50% 22%,
-      rgba(168, 107, 58, 0.18),
-      transparent 70%
+      ellipse 86% 56% at 50% 24%,
+      rgba(168, 107, 58, 0.13),
+      transparent 72%
     ),
     var(--numa-card);
+}
+
+.numa-day-dial {
+  isolation: isolate;
+  border-radius: 999px;
+}
+
+.numa-day-dial::before {
+  position: absolute;
+  inset: 4%;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.82), transparent 30%),
+    radial-gradient(circle at 50% 62%, rgba(18, 122, 98, 0.1), transparent 68%);
+  box-shadow:
+    0 18px 44px rgba(18, 122, 98, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.58);
+  content: "";
+}
+
+.numa-day-dial.is-over::before {
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.76), transparent 30%),
+    radial-gradient(circle at 50% 62%, rgba(168, 107, 58, 0.1), transparent 68%);
+  box-shadow:
+    0 18px 42px rgba(124, 77, 42, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+}
+
+.numa-day-dial svg {
+  overflow: visible;
+}
+
+.numa-day-dial .is-core {
+  filter: drop-shadow(0 10px 20px rgba(42, 81, 67, 0.08));
+}
+
+.numa-day-dial.is-over .is-core {
+  filter: drop-shadow(0 10px 20px rgba(108, 72, 45, 0.07));
+}
+
+.numa-day-dial .is-track {
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.72));
+}
+
+.numa-day-dial .is-arc-halo {
+  filter: blur(1.5px);
 }
 
 .numa-day-metrics {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.65rem;
+  gap: 0;
   margin: 0;
   padding: 0;
-  border-top: 0;
+  border: 1px solid var(--numa-border);
+  border-radius: var(--numa-radius-sm);
+  background: color-mix(in srgb, var(--numa-card) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
 }
 
 .numa-day-metrics > div {
   min-width: 0;
-  padding: 0.85rem 0.75rem 0.8rem;
-  border-radius: var(--numa-radius-sm);
-  border: 1px solid var(--numa-border);
+  padding: 0.78rem 0.75rem 0.74rem;
+  border: 0;
+  border-radius: 0;
+}
+
+.numa-day-metrics > div + div {
+  border-left: 1px solid var(--numa-border);
 }
 
 @media (min-width: 768px) {
   .numa-day-metrics > div {
-    padding: 1rem 1rem 0.95rem;
+    padding: 0.9rem 1rem 0.85rem;
   }
 }
 
 .numa-day-metrics > .is-budget {
-  background: linear-gradient(
-    180deg,
-    rgba(18, 122, 98, 0.04) 0%,
-    rgba(18, 122, 98, 0.1) 100%
-  );
+  background: linear-gradient(180deg, rgba(18, 122, 98, 0.025), rgba(18, 122, 98, 0.055));
 }
 
 .numa-day-metrics > .is-spent {
-  background: linear-gradient(
-    180deg,
-    rgba(138, 88, 68, 0.04) 0%,
-    rgba(138, 88, 68, 0.1) 100%
-  );
+  background: linear-gradient(180deg, rgba(138, 88, 68, 0.018), rgba(138, 88, 68, 0.045));
 }
 
 .numa-metric-label {
@@ -539,39 +653,74 @@ body {
 .numa-piles-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 0.65rem;
+  gap: 0;
   padding: 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow: visible;
+  border-radius: var(--numa-radius);
+  border: 1px solid var(--numa-border);
+  background: var(--numa-card);
+  box-shadow:
+    var(--numa-shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  overflow: hidden;
 }
 
 .numa-piles-board > div {
   min-width: 0;
-  padding: 1.15rem 1.15rem 1.1rem;
-  border-radius: var(--numa-radius);
-  border: 1px solid var(--numa-border);
-  box-shadow: var(--numa-shadow-sm);
+  padding: 1rem 1.05rem;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .numa-piles-board > .is-live {
-  background: linear-gradient(165deg, rgba(18, 122, 98, 0.1) 0%, var(--numa-card) 62%);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(18, 122, 98, 0.1), transparent 38%),
+    linear-gradient(165deg, rgba(18, 122, 98, 0.045), var(--numa-card) 68%);
 }
 
 .numa-piles-board > .is-park {
-  background: var(--numa-card);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 0.85rem;
+  padding-block: 0.85rem;
+  border-top: 1px solid var(--numa-border);
+  background: color-mix(in srgb, var(--numa-bg) 34%, var(--numa-card));
 }
 
 .numa-day-dial-arc {
   animation: none;
+  filter: drop-shadow(0 2px 3px rgba(10, 83, 68, 0.2));
+  transition: stroke-dasharray 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .money-hero {
   animation: none;
   width: 100%;
   max-width: 100%;
+}
+
+.money-hero .numa-money {
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  justify-content: center;
+}
+
+.money-hero .money.numa-money-amt,
+.money-hero .numa-money-groups,
+.money-hero .numa-money-run {
+  font-size: clamp(2.15rem, 9.5vw, 3.1rem);
+  font-weight: 720;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.money-hero .numa-money-unit {
+  align-self: flex-end;
+  padding-bottom: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 @keyframes numa-scan {
@@ -607,27 +756,27 @@ body {
 }
 
 .animate-rise {
-  animation: numa-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-1 {
-  animation: numa-rise 300ms 40ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 140ms 12ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-2 {
-  animation: numa-rise 320ms 80ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 150ms 20ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay-3 {
-  animation: numa-rise 340ms 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-rise 160ms 28ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-scale-in {
-  animation: numa-scale-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-scale-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-page-in {
-  animation: numa-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: numa-page-in 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .numa-month-strip {
@@ -723,11 +872,13 @@ body {
   gap: 0;
   width: 100%;
   max-width: 100%;
-  padding: 0.15rem 0;
+  padding: 0;
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
-  border-radius: var(--numa-radius-sm);
-  box-shadow: var(--numa-shadow-sm);
+  border-radius: var(--numa-radius);
+  box-shadow:
+    var(--numa-shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
   overflow: hidden;
 }
 
@@ -777,9 +928,9 @@ body {
 .numa-wealth-value .money.numa-money-amt,
 .numa-wealth-value .numa-money-groups,
 .numa-wealth-value .numa-money-run {
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-size: 1.16rem;
+  font-weight: 720;
+  letter-spacing: -0.025em;
   line-height: 1.25;
 }
 
@@ -862,7 +1013,7 @@ body {
 .numa-pile-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0;
   min-width: 0;
 }
 
@@ -873,14 +1024,20 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   min-width: 0;
+  min-height: 2.2rem;
   margin: 0;
+  padding: 0.38rem 0;
+}
+
+.numa-pile-line + .numa-pile-line {
+  border-top: 1px solid color-mix(in srgb, var(--numa-border) 66%, transparent);
 }
 
 .numa-pile-line-label {
   flex: 0 1 auto;
   min-width: min-content;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.8125rem;
+  font-weight: 520;
   line-height: 1.35;
   letter-spacing: 0;
   text-transform: none;
@@ -893,6 +1050,7 @@ body {
   flex: 0 0 auto;
   min-width: min-content;
   margin-left: auto;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .numa-pile-line .numa-money,
@@ -904,9 +1062,9 @@ body {
 .numa-pile-line .money.numa-money-amt,
 .numa-pile-line .numa-money-groups,
 .numa-pile-line .numa-money-run {
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
 }
 
 .numa-pile-line .numa-money-unit {
@@ -921,9 +1079,9 @@ body {
 .numa-pile .money.numa-money-amt,
 .numa-pile .numa-money-groups,
 .numa-pile .numa-money-run {
-  font-size: 0.9375rem;
-  font-weight: 650;
-  letter-spacing: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.018em;
 }
 
 .numa-piles-board .is-park .numa-money-unit,
@@ -934,17 +1092,53 @@ body {
 
 .numa-pile-line.is-over .numa-pile-line-label {
   color: var(--numa-positive);
-  font-weight: 650;
+  font-weight: 680;
 }
 
 .numa-pile-line.is-short .numa-pile-line-label {
   color: var(--numa-alarm);
-  font-weight: 650;
+  font-weight: 680;
+}
+
+.numa-pile-line.is-in .numa-pile-line-value {
+  color: color-mix(in srgb, var(--numa-positive) 82%, var(--numa-ink));
+}
+
+.numa-pile-line.is-out .numa-pile-line-value {
+  color: color-mix(in srgb, var(--numa-spend) 82%, var(--numa-ink));
+}
+
+.numa-pile-line.is-over,
+.numa-pile-line.is-short {
+  min-height: 2.55rem;
+  margin-top: 0.22rem;
+  padding-top: 0.68rem;
+  border-top-color: var(--numa-border-strong);
+}
+
+.numa-pile-save-copy {
+  min-width: 0;
+}
+
+.numa-pile-save-copy .numa-pile-hint {
+  margin-top: 0.14rem;
+}
+
+.numa-pile-save-value {
+  min-width: min-content;
+  justify-self: end;
+}
+
+.numa-pile-save-value .numa-money,
+.numa-pile-save-value .numa-money.is-end {
+  width: max-content;
+  max-width: none;
+  justify-content: flex-end;
 }
 
 .numa-pile-hint {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   line-height: 1.4;
   color: var(--numa-muted);
 }
@@ -998,8 +1192,11 @@ body {
 }
 
 .numa-chip-alarm {
-  background: var(--numa-alarm-soft);
-  color: var(--numa-alarm);
+  background: color-mix(in srgb, var(--numa-alarm-soft) 86%, var(--numa-card));
+  color: color-mix(in srgb, var(--numa-alarm) 88%, var(--numa-ink));
+  box-shadow:
+    inset 0 0 0 1px rgba(168, 107, 58, 0.09),
+    0 4px 12px rgba(119, 72, 39, 0.06);
 }
 
 .numa-chip-ink {
@@ -1294,13 +1491,85 @@ button.numa-chip:disabled {
 }
 
 .numa-bottom-nav {
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: 0.55rem;
   padding-left: var(--numa-safe-left);
   padding-right: var(--numa-safe-right);
   padding-bottom: var(--numa-safe-bottom);
+  border: 1px solid rgba(68, 58, 44, 0.1);
+  border-radius: 1.7rem;
+  background: color-mix(in srgb, var(--numa-nav) 72%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 253, 246, 0.7) inset,
+    0 18px 44px -16px rgba(32, 28, 22, 0.2);
+  -webkit-backdrop-filter: blur(32px) saturate(1.45);
+  backdrop-filter: blur(32px) saturate(1.45);
+}
+
+.numa-bottom-nav-item {
+  transition:
+    color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.numa-bottom-nav-item.is-active {
+  background: color-mix(in srgb, var(--numa-accent-soft) 82%, var(--numa-card));
+  box-shadow: inset 0 1px 0 rgba(255, 253, 246, 0.7);
+  color: var(--numa-ink);
+}
+
+.numa-fab {
+  background: linear-gradient(
+    155deg,
+    #2e2d2a 0%,
+    var(--numa-ink) 42%,
+    #0e0d0c 100%
+  );
+  box-shadow:
+    0 10px 24px rgba(22, 21, 19, 0.24),
+    0 2px 6px rgba(22, 21, 19, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -2px 5px rgba(0, 0, 0, 0.18);
+  transition:
+    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
+    box-shadow 80ms cubic-bezier(0.34, 1.15, 0.64, 1);
+}
+
+.numa-fab:active {
+  box-shadow:
+    0 6px 16px rgba(22, 21, 19, 0.2),
+    0 1px 4px rgba(22, 21, 19, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.numa-side-nav-item {
+  transition:
+    color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.numa-side-nav-item.is-active {
+  background: linear-gradient(
+    180deg,
+    rgba(252, 251, 247, 0.92) 0%,
+    rgba(237, 232, 224, 0.88) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(48, 40, 28, 0.04),
+    0 1px 2px rgba(120, 88, 48, 0.05);
 }
 
 .numa-view {
   min-height: 24vh;
+}
+
+.numa-view-hold {
+  transition: opacity 80ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .numa-view-park {
@@ -1317,14 +1586,16 @@ button.numa-chip:disabled {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 90ms ease,
-    background-color 120ms ease,
-    box-shadow 120ms ease,
-    color 120ms ease;
+    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
+    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 100ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .numa-press:active {
   transform: scale(0.98);
+  transition-duration: 50ms;
 }
 
 .numa-komigang-card {
@@ -1366,13 +1637,16 @@ button.numa-chip:disabled {
   user-select: none;
   cursor: pointer;
   transition:
-    transform 70ms ease,
-    background-color 70ms ease,
-    opacity 70ms ease;
+    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
+    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 80ms ease;
+  will-change: transform;
 }
 
 .numa-btn:active:not(:disabled) {
   transform: scale(0.98);
+  transition-duration: 50ms;
 }
 
 .numa-btn:disabled {
@@ -1380,13 +1654,15 @@ button.numa-chip:disabled {
 }
 
 .numa-btn-primary {
-  background: var(--numa-ink);
+  background: linear-gradient(180deg, #2a2a28 0%, var(--numa-ink) 100%);
   color: var(--numa-card);
-  box-shadow: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 14px rgba(22, 21, 19, 0.18);
 }
 
 .numa-btn-primary:hover:not(:disabled) {
-  background: #2a2a28;
+  background: linear-gradient(180deg, #323230 0%, #2a2a28 100%);
 }
 
 .numa-btn-primary:focus-visible {
@@ -1395,16 +1671,25 @@ button.numa-chip:disabled {
 }
 
 .numa-btn-primary:active:not(:disabled) {
-  background: #2a2a28;
+  background: linear-gradient(180deg, #252523 0%, #1e1e1c 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 2px 8px rgba(22, 21, 19, 0.14);
 }
 
 .numa-btn-accent {
-  background: var(--numa-accent);
+  background: linear-gradient(180deg, #15906f 0%, var(--numa-accent) 100%);
   color: var(--numa-card);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 4px 14px var(--numa-accent-glow);
 }
 
 .numa-btn-accent:active:not(:disabled) {
-  background: var(--numa-accent-ink);
+  background: linear-gradient(180deg, var(--numa-accent) 0%, var(--numa-accent-ink) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 2px 8px rgba(18, 122, 98, 0.16);
 }
 
 .numa-btn-soft {
@@ -1436,7 +1721,17 @@ button.numa-chip:disabled {
 }
 
 .numa-cta-glow {
-  box-shadow: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 18px rgba(22, 21, 19, 0.2),
+    0 0 0 1px rgba(22, 21, 19, 0.04);
+}
+
+.numa-cta-glow.numa-btn-accent {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 4px 18px var(--numa-accent-glow),
+    0 0 0 1px rgba(18, 122, 98, 0.08);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1462,6 +1757,10 @@ button.numa-chip:disabled {
     transition: none;
   }
 
+  .numa-day-dial-arc {
+    transition: none;
+  }
+
   .numa-expand,
   .numa-komigang-body,
   .numa-scope-chip {
@@ -1472,12 +1771,28 @@ button.numa-chip:disabled {
   .numa-scope-panel {
     animation: none !important;
   }
+
+  .numa-press,
+  .numa-btn,
+  .numa-fab,
+  .numa-bottom-nav-item,
+  .numa-side-nav-item,
+  .numa-view-hold {
+    transition: none !important;
+  }
+
+  .numa-press:active,
+  .numa-btn:active:not(:disabled),
+  .numa-fab:active {
+    transform: none !important;
+  }
 }
 
 .auth-stage {
   min-height: 100dvh;
   color: var(--numa-ink);
   background: var(--numa-bg);
+  isolation: isolate;
 }
 
 .auth-glow {
@@ -1485,23 +1800,49 @@ button.numa-chip:disabled {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 100% 48% at 50% -8%, var(--numa-sun), transparent 60%),
-    linear-gradient(180deg, #f4efe6 0%, var(--numa-bg) 42%, var(--numa-bg-deep) 100%);
+    radial-gradient(ellipse 112% 44% at 50% -10%, var(--numa-sun), transparent 64%),
+    radial-gradient(ellipse 152% 62% at 50% -20%, var(--numa-sun-warm), transparent 72%),
+    radial-gradient(ellipse 135% 52% at 50% 112%, var(--numa-stone), transparent 74%),
+    linear-gradient(
+      180deg,
+      var(--numa-bg-lift) 0%,
+      var(--numa-bg) 44%,
+      var(--numa-bg-deep) 100%
+    );
+}
+
+.auth-glow::after {
+  content: "";
+  position: absolute;
+  top: clamp(-7rem, -14vw, -3rem);
+  left: 50%;
+  width: clamp(16rem, 52vw, 30rem);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 42% 42%,
+    rgba(255, 250, 236, 0.55),
+    rgba(236, 204, 156, 0.1) 48%,
+    transparent 70%
+  );
 }
 
 .auth-mark {
-  font-size: 1.85rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.72rem;
+  font-weight: 720;
   letter-spacing: -0.07em;
   line-height: 1;
 }
 
 .auth-mark::after {
   content: "";
-  display: block;
-  width: 1.4rem;
-  height: 3px;
-  margin-top: 0.7rem;
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-left: 0.42rem;
   border-radius: 999px;
   background: var(--numa-accent);
 }
@@ -1514,7 +1855,7 @@ button.numa-chip:disabled {
 .numa-equal-chips {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .numa-equal-chips.is-quad {
@@ -1555,7 +1896,7 @@ button.numa-chip:disabled {
 .numa-stat-trio {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
+  gap: 0.85rem;
 }
 
 @media (min-width: 768px) {
@@ -1566,6 +1907,20 @@ button.numa-chip:disabled {
 
 .numa-stat-trio > * {
   min-width: 0;
+}
+
+.numa-stat-trio > * + * {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--numa-border);
+}
+
+@media (min-width: 768px) {
+  .numa-stat-trio > * + * {
+    padding-top: 0;
+    padding-left: 1.1rem;
+    border-top: 0;
+    border-left: 1px solid var(--numa-border);
+  }
 }
 
 .numa-money-line {
@@ -1659,14 +2014,100 @@ button.numa-chip:disabled {
 .auth-card {
   display: flex;
   flex-direction: column;
-  gap: 1.65rem;
+  gap: 1.5rem;
   width: 100%;
   max-width: 26.5rem;
-  padding: 1.85rem 1.55rem 1.65rem;
-  border: 1px solid var(--numa-border);
+  padding: 1.75rem 1.5rem 1.5rem;
+  border: 1px solid rgba(68, 58, 44, 0.1);
   border-radius: var(--numa-radius);
-  background: var(--numa-card);
-  box-shadow: var(--numa-shadow);
+  background: color-mix(in srgb, var(--numa-card) 82%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 253, 246, 0.7) inset,
+    0 24px 56px -20px rgba(32, 28, 22, 0.16);
+  backdrop-filter: blur(22px) saturate(1.2);
+}
+
+.auth-card.auth-welcome {
+  justify-content: space-between;
+  gap: 2.25rem;
+  max-width: 26.5rem;
+  padding: 2rem 1.65rem 1.65rem;
+}
+
+.auth-welcome-copy {
+  padding-top: 0.15rem;
+}
+
+.auth-welcome-line {
+  max-width: 12ch;
+  margin-top: 1.15rem;
+  font-size: clamp(1.65rem, 6.4vw, 2.05rem);
+  font-weight: 670;
+  letter-spacing: -0.055em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.auth-card-action {
+  min-width: 0;
+}
+
+.auth-primary-button {
+  display: flex;
+  min-height: 3.5rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--numa-ink);
+  box-shadow: 0 10px 24px rgba(22, 21, 19, 0.14);
+  color: var(--numa-card);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+  transition:
+    transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
+    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.auth-primary-button:hover {
+  background: #292722;
+  box-shadow: 0 12px 24px rgba(22, 21, 19, 0.16);
+}
+
+.auth-primary-button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--numa-card),
+    0 0 0 4px var(--numa-ink);
+}
+
+.auth-primary-button:active {
+  transform: scale(0.99);
+}
+
+.auth-primary-button:disabled {
+  box-shadow: none;
+  opacity: 0.45;
+  transform: none;
+}
+
+.auth-access-note {
+  max-width: 34ch;
+  margin: 0.9rem auto 0;
+  color: var(--numa-faint);
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.auth-login-title {
+  font-size: 1.72rem;
+  font-weight: 680;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
 }
 
 @media (min-width: 768px) {
@@ -1677,5 +2118,17 @@ button.numa-chip:disabled {
     max-width: 52rem;
     align-items: center;
     padding: 2.4rem 2.3rem;
+  }
+
+  .auth-card.auth-welcome {
+    display: flex;
+    max-width: 26.5rem;
+    padding: 2.25rem 2rem 1.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-primary-button {
+    transition: none;
   }
 }

@@ -11,7 +11,7 @@ function token(name: string): string {
 
 describe("NUMA vision palette", () => {
   it("keeps the canvas limestone, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#eee9e0");
+    expect(token("--numa-bg")).toBe("#ece4d6");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
     expect(token("--numa-card")).toBe("#fcfbf7");
@@ -122,6 +122,8 @@ describe("NUMA vision palette", () => {
     expect(monthChip).toContain("min-height: var(--numa-touch)");
     expect(css).toContain(".numa-scope-chip {");
     expect(css).toContain(".numa-bottom-nav {");
+    expect(css).toContain("left: 0.7rem");
+    expect(css).toContain("bottom: 0.55rem");
     expect(css).toContain("padding-left: var(--numa-safe-left)");
     expect(css).toContain("padding-bottom: var(--numa-safe-bottom)");
     expect(css).toMatch(/html \{[^}]*overflow-x:\s*clip/);

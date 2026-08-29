@@ -11,6 +11,14 @@ describe("Rörelser expense color", () => {
     expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,80}tone="danger"/);
   });
 
+  it("blocks Spara and Ta bort while a mutation is in flight", () => {
+    expect(src).toContain('useState<"save" | "void" | null>');
+    expect(src).toContain("if (actionLock.current || pendingAction) return");
+    expect(src).toContain("disabled={pendingAction != null}");
+    expect(src).toContain('{pendingAction === "save" ? "Sparar…" : "Spara"}');
+    expect(src).toContain('{pendingAction === "void" ? "Tar bort…" : "Ta bort"}');
+  });
+
   it("asks for an in-DOM confirm before Ta bort", () => {
     expect(src).toContain("confirmId");
     expect(src).toContain("setConfirmId(tx.id)");
@@ -44,6 +52,10 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("rememberMovementsSnapshot");
     expect(src).toContain("MovementsViewLoading");
     expect(src).toContain("lastMovementsView");
-    expect(src).toContain("refreshQuiet");
+    expect(src).toContain("applyMovementsEdit");
+    expect(src).toContain("applyMovementsVoid");
+    expect(src).not.toContain("refreshQuiet");
+    expect(src).not.toContain("router.refresh");
+    expect(src).not.toContain("useRouter");
   });
 });

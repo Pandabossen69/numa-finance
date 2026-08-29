@@ -13,6 +13,7 @@ describe("Mer hub layout", () => {
   });
 
   it("prefetches drill-ins on hover and focus", () => {
+    expect(src).toContain("onPointerDown");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
     expect(src).toContain("usePrefetchOnIntent");

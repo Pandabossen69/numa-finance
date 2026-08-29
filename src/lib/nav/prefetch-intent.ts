@@ -9,10 +9,13 @@ export function canPrefetchHref(href: string): boolean {
   return href.startsWith("/") && !href.startsWith("//");
 }
 
+/** force-dynamic tabs need `kind: "full"` or prefetch only warms loading.tsx. */
 export function prefetchHref(router: AppRouterInstance, href: string) {
   if (!canPrefetchHref(href)) return;
   try {
-    router.prefetch(href);
+    router.prefetch(href, {
+      kind: "full",
+    } as Parameters<typeof router.prefetch>[1]);
   } catch {
     // Prefetch is best-effort.
   }

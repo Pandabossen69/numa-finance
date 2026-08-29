@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
+import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function BottomNav() {
   const { highlightPath, markIntent } = useNavIntent();
+  const { prefetch } = usePrefetchOnIntent();
 
   const left = PRIMARY_NAV.slice(0, 2);
   const right = PRIMARY_NAV.slice(2);
@@ -15,12 +17,13 @@ export function BottomNav() {
   }
 
   function onIntent(href: string) {
+    prefetch(href);
     markIntent(href);
   }
 
   return (
     <nav
-      className="numa-bottom-nav fixed inset-x-0 bottom-0 z-50 overflow-x-clip rounded-t-[1.7rem] border-t border-[var(--numa-border)] bg-[var(--numa-nav)]/92 shadow-[0_-12px_32px_rgba(120,88,48,0.08)] backdrop-blur-2xl md:hidden"
+      className="numa-bottom-nav fixed z-50 overflow-x-clip md:hidden"
       aria-label="Huvudnavigering"
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1.5 pt-1.5">
@@ -38,8 +41,11 @@ export function BottomNav() {
           <Link
             href="/fota"
             prefetch
+            onPointerDown={() => onIntent("/fota")}
+            onMouseEnter={() => prefetch("/fota")}
+            onFocus={() => prefetch("/fota")}
             onClick={() => onIntent("/fota")}
-            className="numa-press relative -mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[0_10px_24px_rgba(22,21,19,0.22)] ring-4 ring-[var(--numa-bg)]"
+            className="numa-press numa-fab relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full text-[var(--numa-card)]"
             aria-label="Fota eller lägg till"
           >
             <PlusIcon />
@@ -78,14 +84,15 @@ function NavItem({
 }) {
   return (
     <Link
-      href={href}
-      prefetch
-      onClick={onIntent}
+            href={href}
+            prefetch
+            onPointerDown={onIntent}
+            onMouseEnter={onIntent}
+            onFocus={onIntent}
+            onClick={onIntent}
       aria-current={active ? "page" : undefined}
-      className={`numa-press relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
-        active
-          ? "bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]"
-          : "text-[var(--numa-faint)]"
+      className={`numa-press numa-bottom-nav-item relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
+        active ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]" : "text-[var(--numa-faint)]"
       }`}
     >
       <NavIcon name={icon} active={active} />

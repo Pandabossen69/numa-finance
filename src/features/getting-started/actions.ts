@@ -13,7 +13,6 @@ export type GettingStartedActionResult =
   | { ok: false; error: string };
 
 function revalidateGettingStarted() {
-  revalidatePath("/", "layout");
   revalidatePath("/idag");
   revalidatePath("/plan");
 }

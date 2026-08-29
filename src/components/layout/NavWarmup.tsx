@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PRIMARY_NAV } from "@/components/layout/nav";
+import { warmHrefs } from "@/lib/nav/prefetch-intent";
 
 const WARM_HREFS = [
   ...PRIMARY_NAV.map((item) => item.href),
@@ -25,15 +26,7 @@ export function NavWarmup() {
 
     const warm = () => {
       if (cancelled) return;
-      for (const href of WARM_HREFS) {
-        try {
-          router.prefetch(href, {
-            kind: "full",
-          } as Parameters<typeof router.prefetch>[1]);
-        } catch {
-          // Prefetch is best-effort.
-        }
-      }
+      warmHrefs(router, WARM_HREFS);
     };
 
     warm();

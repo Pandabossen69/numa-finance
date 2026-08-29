@@ -155,12 +155,8 @@ export async function confirmReceiptExpenseAction(
     revalidatePath("/analys");
     revalidatePath("/plan");
     revalidatePath("/importera");
-    revalidatePath("/mer");
     revalidatePath("/konton");
     revalidatePath("/fota");
-    revalidatePath("/kom-igang");
-    revalidatePath("/kom-igang/plan");
-    revalidatePath("/", "layout");
 
     return {
       ok: true,

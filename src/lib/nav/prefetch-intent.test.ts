@@ -13,6 +13,7 @@ describe("prefetch-intent", () => {
   it("warms destinations on hover, focus, and visibility", () => {
     const src = readFileSync(new URL("./prefetch-intent.ts", import.meta.url), "utf8");
     expect(src).toContain("router.prefetch");
+    expect(src).toContain('kind: "full"');
     expect(src).toContain("visibilitychange");
     expect(src).toContain("usePrefetchOnIntent");
   });

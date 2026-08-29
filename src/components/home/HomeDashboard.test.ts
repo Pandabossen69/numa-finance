@@ -21,6 +21,8 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {
     expect(src).toContain("applyOptimisticHomeSpend");
+    expect(src).toContain("applyMovementsAdd");
+    expect(src).toContain("applyAccountDelta");
     expect(src).toContain("getHomeSnapshotAction");
     expect(src).toContain("warmupPlanPageData");
     expect(src).not.toContain("refreshQuiet");
@@ -40,6 +42,14 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain('{busy ? "Sparar…" : SV.visaDagsbudget}');
     expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
     expect(src).not.toMatch(/busy \? "Klart"/);
+  });
+
+  it("blocks a second QuickExpense tap while the first save is in flight", () => {
+    expect(src).toContain("if (inFlight.current || busy || !accountId) return");
+    expect(src).toContain("disabled={busy || !amount.trim()}");
+    expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
+    expect(src).toContain("inFlight.current = true");
+    expect(src).toContain("inFlight.current = false");
   });
 
   it("keeps Dagsbudget and Spenderat on one line at phone width", () => {

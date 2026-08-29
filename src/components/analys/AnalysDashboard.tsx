@@ -380,7 +380,7 @@ export function AnalysDashboard({
             {view.goals.map((goal) => (
               <li
                 key={goal.id}
-                className="numa-money-line px-4 py-3.5"
+                className="numa-money-line px-4 py-3.5 transition-colors hover:bg-[var(--numa-bg)]/30"
               >
                 <span className="numa-money-line-label text-sm text-[var(--numa-muted)]">
                   {goal.name}
@@ -421,7 +421,7 @@ export function AnalysDashboard({
               return (
                 <li
                   key={tx.id}
-                  className="numa-money-line items-center px-4 py-3.5"
+                  className="numa-money-line items-center px-4 py-3.5 transition-colors hover:bg-[var(--numa-bg)]/30"
                 >
                   <div className="numa-money-line-label">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
@@ -469,7 +469,7 @@ function ScopeChip({
       onClick={onClick}
       className={`numa-press numa-scope-chip min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
-          ? "is-active bg-[var(--numa-ink)] text-white"
+          ? "is-active bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >
@@ -520,7 +520,7 @@ function LineList({
           {lines.map((line) => (
             <li
               key={line.id}
-              className="numa-money-line items-center px-4 py-3.5"
+              className="numa-money-line items-center px-4 py-3.5 transition-colors hover:bg-[var(--numa-bg)]/30"
             >
               <div className="numa-money-line-label">
                 <p className="truncate text-sm font-medium text-[var(--numa-ink)]">

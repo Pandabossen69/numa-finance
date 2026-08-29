@@ -69,7 +69,8 @@ export type HomeSnapshotResult =
   { ok: true; data: HomeSnapshot } | { ok: false; error: string };
 
 /**
- * Request-scoped snapshot for Hem / Plan / Analys / Rörelser.
+ * Request-scoped snapshot for Hem / Plan / Analys.
+ * Rörelser loads its own ledger so a cold menu tap is not a full Hem fetch.
  * Cross-request `unstable_cache` cannot wrap the RLS client (cookies()).
  * Layout + loaders share this via React `cache()` so navigation does not
  * repeat the same numa reads inside one render.

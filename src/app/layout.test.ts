@@ -7,7 +7,7 @@ describe("PWA viewport", () => {
   it("covers the notch and uses a translucent status bar on cream", () => {
     expect(src).toContain('viewportFit: "cover"');
     expect(src).toContain('statusBarStyle: "black-translucent"');
-    expect(src).toContain('themeColor: "#eee9e0"');
+    expect(src).toContain('themeColor: "#ece4d6"');
     expect(src).not.toContain('statusBarStyle: "default"');
   });
 });

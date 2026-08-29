@@ -26,9 +26,11 @@ export function AppShell({
           <div className="min-w-0 flex-1">
             <header className="min-w-0 pb-3 pt-[max(0.95rem,var(--numa-safe-top))] md:hidden">
               <Link href="/idag" prefetch className="numa-press block min-h-11 min-w-0">
-                <span className="numa-brand-mark">NUMA</span>
+                <span className="numa-brand-mark inline-flex items-baseline gap-0">
+                  NUMA
+                </span>
                 <span
-                  className="mt-0.5 block truncate text-[13px] font-semibold tracking-tight text-[var(--numa-ink)]"
+                  className="mt-0.5 block truncate text-[13px] font-semibold tracking-tight text-[var(--numa-muted)]"
                   title={typeof displayName === "string" ? displayName : undefined}
                 >
                   {displayName}

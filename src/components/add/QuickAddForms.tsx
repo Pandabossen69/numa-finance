@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   createCashWithdrawalAction,
   createExpenseAction,
@@ -9,6 +8,13 @@ import {
   createTransferAction,
 } from "@/features/finance/actions";
 import { SV } from "@/features/copy/labels-sv";
+import { parseUiAmountToMinor } from "@/domain/money";
+import {
+  applyLocalExpense,
+  applyLocalIncome,
+  applyLocalTransfer,
+  lastHomeSnapshot,
+} from "@/features/home/last-snapshot";
 
 export type ShellAccount = {
   id: string;
@@ -123,7 +129,6 @@ function ExpenseForm({
   accountId: string;
   onSuccess?: () => void;
 }) {
-  const router = useRouter();
   const [amount, setAmount] = useState("");
   const storedCategory = useSyncExternalStore(
     subscribeLastExpenseCategory,
@@ -143,6 +148,13 @@ function ExpenseForm({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
+          let amountMinor: number;
+          try {
+            amountMinor = parseUiAmountToMinor(amount);
+          } catch {
+            setError("Ogiltigt belopp");
+            return;
+          }
           const result = await createExpenseAction({
             accountId,
             amount,
@@ -158,10 +170,16 @@ function ExpenseForm({
           } catch {
             // ignore
           }
+          applyLocalExpense({
+            id: result.id,
+            amountMinor,
+            description: description.trim() || "Utgift",
+            category,
+            currency: lastHomeSnapshot()?.currency ?? "THB",
+          });
           setAmount("");
           setDescription("");
           onSuccess?.();
-          router.refresh();
         });
       }}
     >
@@ -202,7 +220,6 @@ function IncomeForm({
   accounts: ShellAccount[];
   onSuccess?: () => void;
 }) {
-  const router = useRouter();
   const [targetId, setTargetId] = useState(accountId);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -216,6 +233,13 @@ function IncomeForm({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
+          let amountMinor: number;
+          try {
+            amountMinor = parseUiAmountToMinor(amount);
+          } catch {
+            setError("Ogiltigt belopp");
+            return;
+          }
           const result = await createIncomeAction({
             accountId: targetId,
             amount,
@@ -225,8 +249,13 @@ function IncomeForm({
             setError(result.error);
             return;
           }
+          applyLocalIncome({
+            id: result.id,
+            amountMinor,
+            description: description.trim() || "Inkomst",
+            currency: lastHomeSnapshot()?.currency ?? "THB",
+          });
           onSuccess?.();
-          router.refresh();
         });
       }}
     >
@@ -262,7 +291,6 @@ function TransferForm({
   accounts: ShellAccount[];
   onSuccess?: () => void;
 }) {
-  const router = useRouter();
   const others = accounts.filter((a) => a.id !== primaryAccountId);
   const [fromId, setFromId] = useState(primaryAccountId);
   const [toId, setToId] = useState(others[0]?.id ?? "");
@@ -287,6 +315,13 @@ function TransferForm({
         e.preventDefault();
         setError(null);
         startTransition(async () => {
+          let amountMinor: number;
+          try {
+            amountMinor = parseUiAmountToMinor(amount);
+          } catch {
+            setError("Ogiltigt belopp");
+            return;
+          }
           const result = await createTransferAction({
             fromAccountId: fromId,
             toAccountId: toId,
@@ -297,8 +332,12 @@ function TransferForm({
             setError(result.error);
             return;
           }
+          applyLocalTransfer({
+            fromAccountId: fromId,
+            toAccountId: toId,
+            amountMinor,
+          });
           onSuccess?.();
-          router.refresh();
         });
       }}
     >
@@ -345,7 +384,6 @@ function CashForm({
   accounts: ShellAccount[];
   onSuccess?: () => void;
 }) {
-  const router = useRouter();
   const cashAccounts = useMemo(
     () => accounts.filter((a) => a.accountType === "cash"),
     [accounts],
@@ -377,6 +415,13 @@ function CashForm({
             setError("Välj ett kontantkonto");
             return;
           }
+          let amountMinor: number;
+          try {
+            amountMinor = parseUiAmountToMinor(amount);
+          } catch {
+            setError("Ogiltigt belopp");
+            return;
+          }
           const result = await createCashWithdrawalAction({
             fromAccountId: fromId,
             toAccountId: toId,
@@ -387,8 +432,12 @@ function CashForm({
             setError(result.error);
             return;
           }
+          applyLocalTransfer({
+            fromAccountId: fromId,
+            toAccountId: toId,
+            amountMinor,
+          });
           onSuccess?.();
-          router.refresh();
         });
       }}
     >
