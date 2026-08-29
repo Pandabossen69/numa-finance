@@ -17,9 +17,8 @@ import {
   cumulativePlanSavingsMinor,
   matchPlanItemsToLedger,
   applyPlanItemEdits,
-  isPlanPartiallySettled,
-  isPlanSettled,
   planPartialBreakdown,
+  planRowView,
   planRowHeroMinor,
   previewPartialRemaining,
   projectCashCoverage,
@@ -1317,11 +1316,9 @@ function PlanRows({
         const restIso = remainingDueIso(item);
         const restLabel = restIso ? formatListDateSv(restIso, timeZone) : null;
         const breakdown = planPartialBreakdown(item);
-        // Only what the user tapped on this row. A ledger match is a money
-        // guess for Över — it must never paint a row Betald/Mottagen/Delvis.
-        const settled = isPlanSettled(item);
-        const partial = isPlanPartiallySettled(item);
-        const canUndo = settled || partial;
+        // Derived from the user's taps in one place. A ledger match is a money
+        // guess for Över — it never reaches the row.
+        const { settled, partial, canUndo } = planRowView(item);
 
         if (editingId === item.id) {
           return (

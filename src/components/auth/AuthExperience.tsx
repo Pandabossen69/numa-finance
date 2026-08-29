@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signInAction } from "@/features/auth/actions";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
+import { clearClientSessionCaches } from "@/features/home/last-snapshot";
 
 export function AuthExperience() {
   const router = useRouter();
@@ -27,6 +28,9 @@ export function AuthExperience() {
         setError(result.error);
         return;
       }
+      // Identity just changed. Drop any in-memory snapshot from the previous
+      // session so this account can never paint with someone else's numbers.
+      clearClientSessionCaches();
       router.replace(result.nextPath);
       router.refresh();
     });

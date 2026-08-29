@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { setAvailableNowAction } from "@/features/finance/actions";
@@ -18,6 +19,7 @@ export function OnboardingManualSaldo({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
   const [amount, setAmount] = useState("");
   const [accountName, setAccountName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +27,7 @@ export function OnboardingManualSaldo({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!amount.trim() || pending) return;
+    if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
       const result = await setAvailableNowAction({

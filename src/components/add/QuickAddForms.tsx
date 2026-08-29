@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import {
   createCashWithdrawalAction,
   createExpenseAction,
@@ -140,12 +141,14 @@ function ExpenseForm({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
 
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!guard.tryBegin()) return;
         setError(null);
         startTransition(async () => {
           let amountMinor: number;
@@ -225,12 +228,14 @@ function IncomeForm({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
 
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!guard.tryBegin()) return;
         setError(null);
         startTransition(async () => {
           let amountMinor: number;
@@ -298,6 +303,7 @@ function TransferForm({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
 
   if (accounts.length < 2) {
     return (
@@ -313,6 +319,7 @@ function TransferForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!guard.tryBegin()) return;
         setError(null);
         startTransition(async () => {
           let amountMinor: number;
@@ -394,6 +401,7 @@ function CashForm({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
 
   if (cashAccounts.length === 0) {
     return (
@@ -409,6 +417,7 @@ function CashForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!guard.tryBegin()) return;
         setError(null);
         startTransition(async () => {
           if (!toId) {

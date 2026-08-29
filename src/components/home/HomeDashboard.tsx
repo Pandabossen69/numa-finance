@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -413,6 +414,7 @@ function AvailableNowCard({
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const guard = useSubmitGuard(busy);
 
   return (
     <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5">
@@ -439,6 +441,7 @@ function AvailableNowCard({
           className="numa-btn numa-btn-primary numa-cta-glow min-h-12 px-5"
           onClick={() => {
             if (busy || !balance.trim()) return;
+            if (!guard.tryBegin()) return;
             setBusy(true);
             setError(null);
             void (async () => {
@@ -487,6 +490,7 @@ function UpdateBalanceLink({
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const guard = useSubmitGuard(busy);
 
   if (!open) {
     return (
@@ -522,6 +526,7 @@ function UpdateBalanceLink({
           className="numa-btn numa-btn-soft min-h-11 px-3 text-sm"
           onClick={() => {
             if (busy || !balance.trim()) return;
+            if (!guard.tryBegin()) return;
             setBusy(true);
             setError(null);
             void (async () => {
@@ -592,7 +597,7 @@ function QuickExpense({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const inFlight = useRef(false);
+  const guard = useSubmitGuard(busy);
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -649,7 +654,8 @@ function QuickExpense({
               disabled={busy || !amount.trim()}
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
-                if (inFlight.current || busy || !accountId) return;
+                if (guard.isRunning() || busy || !accountId) return;
+                if (!guard.tryBegin()) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -663,7 +669,6 @@ function QuickExpense({
                 }
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
-                inFlight.current = true;
                 setBusy(true);
                 setError(null);
                 setAmount("");
@@ -698,7 +703,7 @@ function QuickExpense({
                     });
                     void warmupPlanPageData();
                   } finally {
-                    inFlight.current = false;
+                    guard.end();
                     setBusy(false);
                   }
                 })();

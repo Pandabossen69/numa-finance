@@ -8,6 +8,7 @@ import {
   isPlanSettled,
   isRecurringMonthly,
   planListStatus,
+  planRowView,
   planPartialBreakdown,
   planRowHeroMinor,
   previewPartialRemaining,
@@ -412,6 +413,43 @@ describe("plan-months", () => {
       "El",
       "Hemsida",
     ]);
+  });
+
+  it("gives the row view straight from the item, with no match to pass in", () => {
+    const open = item({ name: "El", kind: "mandatory", amountMinor: 800_00 });
+    expect(planRowView(open)).toEqual({
+      status: "open",
+      settled: false,
+      partial: false,
+      canUndo: false,
+    });
+    const paid = item({
+      name: "Pappa",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      settledAt: "2026-08-27T12:00:00.000Z",
+    });
+    expect(planRowView(paid)).toEqual({
+      status: "settled",
+      settled: true,
+      partial: false,
+      canUndo: true,
+    });
+    const partly = item({
+      name: "Hemsida",
+      kind: "expected",
+      cadence: "income",
+      amountMinor: 8000_00,
+      settledMinor: 3000_00,
+    });
+    expect(planRowView(partly)).toEqual({
+      status: "partial",
+      settled: false,
+      partial: true,
+      canUndo: true,
+    });
+    // planRowView takes one argument, so no caller can widen it with a match.
+    expect(planRowView.length).toBe(1);
   });
 
   it("marks a row settled only from the explicit flags", () => {

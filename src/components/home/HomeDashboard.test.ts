@@ -55,11 +55,12 @@ describe("Hem PWA hint and HIGH copy", () => {
   });
 
   it("blocks a second QuickExpense tap while the first save is in flight", () => {
-    expect(src).toContain("if (inFlight.current || busy || !accountId) return");
+    expect(src).toContain("if (guard.isRunning() || busy || !accountId) return");
     expect(src).toContain("disabled={busy || !amount.trim()}");
     expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
-    expect(src).toContain("inFlight.current = true");
-    expect(src).toContain("inFlight.current = false");
+    expect(src).toContain("useSubmitGuard");
+    expect(src).toContain("guard.tryBegin()");
+    expect(src).toContain("guard.end()");
   });
 
   it("keeps Dagsbudget and Spenderat on one line at phone width", () => {

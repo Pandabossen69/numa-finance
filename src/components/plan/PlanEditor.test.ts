@@ -127,9 +127,10 @@ describe("Plan dates and add-form", () => {
   });
 
   it("paints a row from the user's taps only, never from a ledger match", () => {
-    expect(src).toContain("const settled = isPlanSettled(item)");
-    expect(src).toContain("const partial = isPlanPartiallySettled(item)");
-    expect(src).toContain("const canUndo = settled || partial");
+    // One derivation, owned by the domain, taking only the item.
+    expect(src).toContain("const { settled, partial, canUndo } = planRowView(item)");
+    expect(src).not.toContain("isPlanSettled(item)");
+    expect(src).not.toContain("isPlanPartiallySettled(item)");
     // The rows never receive the matcher result at all.
     expect(src).not.toContain("matchedIds");
     expect(src).not.toContain("const matched =");

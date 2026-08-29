@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { useRouter } from "next/navigation";
 import { createAccountAction } from "@/features/finance/actions";
 import { CURRENCIES, type CurrencyCode } from "@/domain/money";
@@ -12,6 +13,7 @@ export function CreateAccountForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
   const [error, setError] = useState<string | null>(null);
   const [useOnIdag, setUseOnIdag] = useState(false);
   const [form, setForm] = useState({
@@ -31,6 +33,7 @@ export function CreateAccountForm({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
       const result = await createAccountAction({

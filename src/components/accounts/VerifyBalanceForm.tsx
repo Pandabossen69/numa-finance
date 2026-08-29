@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { createCheckpointAction } from "@/features/finance/actions";
 import { parseUiAmountToMinor } from "@/domain/money";
 import { applyAccountBalance } from "@/features/home/last-snapshot";
@@ -9,9 +10,11 @@ export function VerifyBalanceForm({ accountId }: { accountId: string }) {
   const [balance, setBalance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
       let balanceMinor: number;

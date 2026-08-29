@@ -117,6 +117,30 @@ export function planListStatus(item: PlanItem): PlanListStatus {
   return "open";
 }
 
+export type PlanRowView = {
+  status: PlanListStatus;
+  /** Show the Betald / Mottagen chip. */
+  settled: boolean;
+  /** Show the Delvis chip. */
+  partial: boolean;
+  /** Anything that looks paid can be undone. */
+  canUndo: boolean;
+};
+
+/**
+ * Everything a Plan row needs to decide how it looks, derived in one place.
+ *
+ * The list used to build these flags itself and OR-ed a ledger match into
+ * `settled`, which painted rows the user never marked. Keeping the derivation
+ * here means a screen cannot reintroduce that: it takes the item, nothing else.
+ */
+export function planRowView(item: PlanItem): PlanRowView {
+  const status = planListStatus(item);
+  const settled = status === "settled";
+  const partial = status === "partial";
+  return { status, settled, partial, canUndo: settled || partial };
+}
+
 const PLAN_LIST_RANK: Record<PlanListStatus, number> = {
   open: 0,
   partial: 1,
