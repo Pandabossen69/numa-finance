@@ -165,6 +165,14 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain('block: "nearest"');
   });
 
+  it("publishes the plan store after commit, never from inside an updater", () => {
+    expect(src).toContain("useEffect(() => {\n    publishItems(localItems);");
+    expect(src).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
+    expect(src).toContain(
+      "setLocalItems((current) => adoptServerPlanItems(current, items));",
+    );
+  });
+
   it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {
     expect(src).toContain("planRowHeroMinor");
     expect(src).toContain("planPartialBreakdown");

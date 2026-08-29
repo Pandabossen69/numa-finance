@@ -250,6 +250,14 @@ export function PlanEditor({
     }, 80);
     return () => window.clearTimeout(id);
   }, [focusAdd]);
+  // Publish after commit. Writing to the plan store inside a setState
+  // updater ran during render and updated PlanScreen mid-render, which React
+  // rejects and which could repaint the list under the user's finger.
+  useEffect(() => {
+    publishItems(localItems);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
+
   function publishItems(next: PlanItem[]) {
     rememberLivePlan({
       items: next,
@@ -263,11 +271,7 @@ export function PlanEditor({
 
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);
-    setLocalItems((current) => {
-      const next = adoptServerPlanItems(current, items);
-      publishItems(next);
-      return next;
-    });
+    setLocalItems((current) => adoptServerPlanItems(current, items));
   }
 
   const isPastMonth = monthKey < currentMonthKey;
@@ -414,7 +418,6 @@ export function PlanEditor({
     setBusy(opts.busy);
     setLocalItems((current) => {
       const next = opts.apply(current);
-      publishItems(next);
       return next;
     });
     try {
@@ -422,7 +425,6 @@ export function PlanEditor({
       if (!result.ok) {
         setLocalItems((current) => {
           const next = opts.revert(current);
-          publishItems(next);
           return next;
         });
         setError(result.error);
@@ -436,14 +438,12 @@ export function PlanEditor({
             : result.items
               ? mergeReturnedItems(current, result.items, new Set())
               : current;
-        publishItems(next);
         return next;
       });
       return true;
     } catch (err) {
       setLocalItems((current) => {
         const next = opts.revert(current);
-        publishItems(next);
         return next;
       });
       setError(err instanceof Error ? err.message : "Något gick fel");

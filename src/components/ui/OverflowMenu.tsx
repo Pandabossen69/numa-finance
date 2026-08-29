@@ -146,7 +146,8 @@ export function OverflowMenu({
           ⋯
         </span>
       </button>
-      {open && typeof document !== "undefined"
+      {/* `open` only turns true from a click, so this never runs on the server. */}
+      {open
         ? createPortal(
             <div
               ref={menuRef}
