@@ -70,6 +70,19 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain('bg-[var(--numa-card)] pt-1');
   });
 
+  it("does not dress the Kvar idag card as a tap target", () => {
+    expect(src).toContain("numa-day-stage cursor-default");
+    expect(src).not.toMatch(/numa-day-stage[^"]*numa-press/);
+  });
+
+  it("lets the ring and the sentence both talk about kvar, not spent-of-budget", () => {
+    expect(src).toContain(
+      "remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar",
+    );
+    expect(src).toContain("formatMoneyCompact");
+    expect(src).toContain("usedRatio={dayUsedRatio}");
+  });
+
   it("labels QuickExpense amount and note for a11y", () => {
     expect(src).toContain('aria-label="Anteckning"');
     expect(src).toContain('aria-label="Belopp"');

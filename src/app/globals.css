@@ -498,6 +498,7 @@ body {
 .numa-day-stage {
   position: relative;
   isolation: isolate;
+  cursor: default;
   background:
     radial-gradient(ellipse 105% 68% at 50% -10%, var(--numa-sun), transparent 62%),
     radial-gradient(ellipse 86% 56% at 50% 24%, var(--numa-accent-glow), transparent 72%),
@@ -525,6 +526,11 @@ body {
 
 .numa-panel-strong.numa-day-stage {
   overflow: visible;
+}
+
+.numa-day-stage,
+.numa-day-stage * {
+  cursor: default;
 }
 
 .numa-day-stage.is-over {

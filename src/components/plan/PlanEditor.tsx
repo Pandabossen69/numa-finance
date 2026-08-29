@@ -627,7 +627,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => shiftYear(-1)}
-              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
+              className="numa-press min-h-11 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
               aria-label="Föregående år"
             >
               ← {viewYear - 1}
@@ -638,7 +638,7 @@ export function PlanEditor({
             <button
               type="button"
               onClick={() => shiftYear(1)}
-              className="numa-press min-h-10 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
+              className="numa-press min-h-11 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
               aria-label="Nästa år"
             >
               {viewYear + 1} →
@@ -654,7 +654,7 @@ export function PlanEditor({
             </button>
           ) : (
             <p className="text-xs font-medium text-[var(--numa-faint)]">
-              Bläddra månad för månad — även år framåt
+              Bläddra bakåt och framåt — historik ändras inte
             </p>
           )}
         </div>
