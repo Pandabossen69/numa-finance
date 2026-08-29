@@ -107,6 +107,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     );
     expect(src).toContain("Ingen dagsbudget än. Sätt saldo så räknas kvar idag.");
     expect(src).toMatch(/\{hasSaldo\s*\n?\s*\?/);
+    expect(src).toContain('view.dayBudgetMinor > 0 ? null : "md:h-auto md:self-start"');
   });
 
   it("stacks the dial above piles on the phone and splits them only at md", () => {

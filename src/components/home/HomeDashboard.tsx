@@ -159,6 +159,9 @@ export function HomeDashboard({
               className={[
                 "numa-panel-strong numa-day-stage cursor-default animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
                 overToday ? "is-over" : null,
+                // No dagsbudget yet: hug the copy instead of stretching to
+                // match the piles column and leaving a tall empty card.
+                view.dayBudgetMinor > 0 ? null : "md:h-auto md:self-start",
               ]
                 .filter(Boolean)
                 .join(" ")}
