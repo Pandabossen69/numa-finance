@@ -18,6 +18,12 @@ describe("knownDisplayNameForEmail", () => {
     expect(knownDisplayNameForEmail("christianhultz1@gmail.com")).toBeNull();
     expect(knownDisplayNameForEmail("jjisthename17@gmail.com")).toBeNull();
   });
+
+  it("ignores the deleted Hugo2 test account", () => {
+    expect(
+      knownDisplayNameForEmail("throsandher12hugo@hotmail.com"),
+    ).toBeNull();
+  });
 });
 
 describe("resolveProfileDisplayName", () => {
@@ -82,6 +88,58 @@ describe("resolveProfileDisplayName", () => {
         authMetaName: "Christian Hultz",
       }),
     ).toBe("Christian Hultz");
+  });
+
+  it("keeps the five active profiles as stored, never Hugo2", () => {
+    const active = [
+      {
+        stored: "Hugo",
+        email: "qualityltf@gmail.com",
+        authMetaName: "Användare",
+      },
+      {
+        stored: "Jordan",
+        email: "kliv.arne@icloud.com",
+        authMetaName: "Kliv",
+      },
+      {
+        stored: "Oscar",
+        email: "oslin002@gmail.com",
+        authMetaName: "Oslin",
+      },
+      {
+        stored: "Jhunel Mabuti",
+        email: "jjisthename17@gmail.com",
+        authMetaName: null,
+      },
+      {
+        stored: "Christian Hultz",
+        email: "christianhultz1@gmail.com",
+        authMetaName: "Användare",
+      },
+    ] as const;
+    expect(active.map((row) => resolveProfileDisplayName(row))).toEqual([
+      "Hugo",
+      "Jordan",
+      "Oscar",
+      "Jhunel Mabuti",
+      "Christian Hultz",
+    ]);
+    expect(
+      resolveProfileDisplayName({
+        stored: "Användare",
+        email: "throsandher12hugo@hotmail.com",
+        authMetaName: "Användare",
+      }),
+    ).toBe("Användare");
+    expect(
+      greetingFirstName(
+        resolveProfileDisplayName({
+          stored: "Christian Hultz",
+          email: "christianhultz1@gmail.com",
+        }),
+      ),
+    ).toBe("Christian");
   });
 
   it("never uses the email local-part", () => {
