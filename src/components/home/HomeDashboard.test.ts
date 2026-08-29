@@ -25,9 +25,18 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("applyAccountDelta");
     expect(src).toContain("getHomeSnapshotAction");
     expect(src).toContain("warmupPlanPageData");
+    expect(src).toContain("isHomeDirty");
+    expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
+    expect(src).not.toContain("lastHomeSnapshot() == null");
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
+  });
+
+  it("paints signed Över on the dial, not a clamped 0", () => {
+    expect(src).toContain("dialCenterMinor");
+    expect(src).toContain("overToday || remainingTodayMinor < 0");
+    expect(src).toContain('"signed"');
   });
 
   it("does not show Mot planen as the Hem pile", () => {

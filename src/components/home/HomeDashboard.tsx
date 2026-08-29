@@ -28,6 +28,7 @@ import {
   applyAccountDelta,
   applyMovementsAdd,
   applyOptimisticHomeSpend,
+  isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
   rememberGettingStarted,
@@ -59,7 +60,10 @@ export function HomeDashboard({
   const view = stored ?? snap ?? lastHomeSnapshot();
 
   useEffect(() => {
-    if (snap && lastHomeSnapshot() == null) rememberHomeSnapshot(snap);
+    // Adopt the server snap unless an optimistic spend is in flight.
+    // The old "== null" guard left Hem stuck on the first in-memory
+    // snapshot (often 0) after saldo, Fota, or a later RSC load.
+    if (snap && !isHomeDirty()) rememberHomeSnapshot(snap);
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);
     }
@@ -192,6 +196,11 @@ export function HomeDashboard({
                         currency={currency}
                         size="display"
                         compact
+                        tone={
+                          overToday || remainingTodayMinor < 0
+                            ? "signed"
+                            : "neutral"
+                        }
                         wrap={false}
                       />
                     </div>
@@ -257,6 +266,9 @@ export function HomeDashboard({
                       amountMinor={remainingTodayMinor}
                       currency={currency}
                       size="xl"
+                      compact
+                      tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
+                      wrap={false}
                     />
                   </div>
                   {!isEmpty ? (

@@ -704,12 +704,13 @@ body {
   flex-wrap: nowrap;
   gap: 0.3rem;
   justify-content: center;
+  max-width: 100%;
 }
 
 .money-hero .money.numa-money-amt,
 .money-hero .numa-money-groups,
 .money-hero .numa-money-run {
-  font-size: clamp(2.15rem, 9.5vw, 3.1rem);
+  font-size: clamp(1.55rem, 7.4vw, 3.1rem);
   font-weight: 720;
   line-height: 1;
   letter-spacing: -0.045em;
