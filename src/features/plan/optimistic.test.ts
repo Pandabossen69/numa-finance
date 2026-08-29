@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   MONTHLY_SAVE_NAME,
+  matchPlanItemsToLedger,
+  planListStatus,
   projectPlanForMonth,
   type PlanItem,
 } from "@/domain/finance";
@@ -13,6 +15,7 @@ import {
   optimisticPlanItem,
   removeItemById,
   revertMonthSavings,
+  settlePlanItem,
   stampPlanItems,
 } from "./optimistic";
 
@@ -227,5 +230,74 @@ describe("plan optimistic helpers", () => {
     const a = item({ id: "a", kind: "mandatory", amountMinor: 1 });
     const b = item({ id: "b", kind: "mandatory", amountMinor: 2 });
     expect(removeItemById([a, b], "a")).toEqual([b]);
+  });
+});
+
+describe("settle flags come from the user's tap only", () => {
+  const loan = item({
+    id: "pappa",
+    name: "Pappa",
+    kind: "mandatory",
+    amountMinor: 15000_00,
+  });
+
+  it("starts open, with nothing written by the app", () => {
+    expect(loan.settledAt ?? null).toBeNull();
+    expect(loan.settledMinor ?? null).toBeNull();
+    expect(planListStatus(loan)).toBe("open");
+    // A ledger transaction that would match this row changes the money view,
+    // not the row: the matcher output never reaches planListStatus.
+    expect(
+      matchPlanItemsToLedger({
+        items: [loan],
+        transactions: [
+          {
+            id: "tx-1",
+            occurredAt: "2026-08-01T09:00:00.000Z",
+            amountMinor: 15000_00,
+            direction: "debit",
+            transactionType: "expense",
+            status: "confirmed",
+            description: "Pappa",
+            merchant: null,
+            source: "manual",
+            fingerprint: "fp-1",
+            balanceAfterMinor: null,
+            sourceObservationId: null,
+          },
+        ],
+        kind: "expense",
+        monthKey: "2026-08",
+        timeZone: "Asia/Bangkok",
+      }).has(loan.id),
+    ).toBe(true);
+    expect(planListStatus(loan)).toBe("open");
+  });
+
+  it("marks Betald only when settle is requested", () => {
+    const [tapped] = settlePlanItem([loan], loan.id, { settled: true });
+    expect(planListStatus(tapped!)).toBe("settled");
+    expect(tapped!.settledMinor).toBe(15000_00);
+  });
+
+  it("keeps Delvis when a part amount is requested", () => {
+    const [partly] = settlePlanItem([loan], loan.id, {
+      settled: true,
+      settledMinor: 5000_00,
+      remainingDueAt: "2026-08-20T12:00:00.000Z",
+    });
+    expect(planListStatus(partly!)).toBe("partial");
+    expect(partly!.settledMinor).toBe(5000_00);
+  });
+
+  it("un-settle clears the explicit flags and nothing else", () => {
+    const [tapped] = settlePlanItem([loan], loan.id, { settled: true });
+    const [undone] = settlePlanItem([tapped!], loan.id, { settled: false });
+    expect(undone!.settledAt).toBeNull();
+    expect(undone!.settledMinor).toBeNull();
+    expect(undone!.remainingDueAt).toBeNull();
+    expect(planListStatus(undone!)).toBe("open");
+    expect(undone!.name).toBe("Pappa");
+    expect(undone!.amountMinor).toBe(15000_00);
   });
 });

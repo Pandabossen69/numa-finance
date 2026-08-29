@@ -1501,17 +1501,33 @@ button.numa-chip:disabled {
 
 .numa-overflow-menu {
   transform-origin: top right;
-  animation: numa-menu-in 180ms ease;
+  animation: numa-menu-in 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.numa-overflow-menu.is-up {
+  transform-origin: bottom right;
+  animation-name: numa-menu-in-up;
 }
 
 @keyframes numa-menu-in {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translateY(-6px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes numa-menu-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

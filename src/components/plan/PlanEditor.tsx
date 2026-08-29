@@ -241,8 +241,9 @@ export function PlanEditor({
     if (!focusAdd) return;
     setAddKind(focusAdd);
     const id = window.setTimeout(() => {
+      // "nearest" so a card already on screen does not yank the page.
       focusCardRef.current?.scrollIntoView({
-        block: "start",
+        block: "nearest",
         inline: "nearest",
         behavior: "smooth",
       });
@@ -299,6 +300,9 @@ export function PlanEditor({
       }),
     [localItems, ledgerTransactions, monthKey, timeZone, bankBalanceMinor],
   );
+  // Money only: keeps the card Summa in step with Hem's Kvar att betala so
+  // cash already in the ledger is not counted twice. Never passed to the
+  // rows — a match must not paint a chip or move a row.
   const matchedIncomeIds = useMemo(
     () =>
       matchPlanItemsToLedger({
@@ -820,7 +824,6 @@ export function PlanEditor({
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             pendingId={rowBusy().pendingId}
             pendingAction={rowBusy().pendingAction}
-            matchedIds={matchedIncomeIds}
             onSettle={settleRow}
             partialId={partialId}
             partialAmount={partialAmount}
@@ -978,7 +981,6 @@ export function PlanEditor({
             }
             pendingId={rowBusy().pendingId}
             pendingAction={rowBusy().pendingAction}
-            matchedIds={matchedExpenseIds}
             onSettle={settleRow}
             partialId={partialId}
             partialAmount={partialAmount}
@@ -1091,7 +1093,6 @@ export function PlanEditor({
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
             pendingId={rowBusy().pendingId}
             pendingAction={rowBusy().pendingAction}
-            matchedIds={matchedExpenseIds}
             onSettle={settleRow}
             partialId={partialId}
             partialAmount={partialAmount}
@@ -1250,7 +1251,6 @@ function PlanRows({
   subtitle,
   pendingId = null,
   pendingAction = null,
-  matchedIds,
   onSettle,
   partialId,
   partialAmount,
@@ -1282,7 +1282,6 @@ function PlanRows({
   subtitle: (item: PlanItem) => string;
   pendingId?: string | null;
   pendingAction?: "save" | "delete" | "settle" | null;
-  matchedIds: Set<string>;
   onSettle: (id: string, settled: boolean) => void;
   partialId: string | null;
   partialAmount: string;
@@ -1308,7 +1307,7 @@ function PlanRows({
     return <p className="py-4 text-sm text-[var(--numa-muted)]">{emptyHint}</p>;
   }
 
-  const rows = sortPlanRowsForList(items, matchedIds);
+  const rows = sortPlanRowsForList(items);
 
   return (
     <ul className="numa-plan-list">
@@ -1318,11 +1317,11 @@ function PlanRows({
         const restIso = remainingDueIso(item);
         const restLabel = restIso ? formatListDateSv(restIso, timeZone) : null;
         const breakdown = planPartialBreakdown(item);
-        const matched = matchedIds.has(item.id);
-        const explicitSettled = isPlanSettled(item);
-        const partial = !matched && isPlanPartiallySettled(item);
-        const settled = explicitSettled || (matched && !partial);
-        const canUndo = explicitSettled || partial;
+        // Only what the user tapped on this row. A ledger match is a money
+        // guess for Över — it must never paint a row Betald/Mottagen/Delvis.
+        const settled = isPlanSettled(item);
+        const partial = isPlanPartiallySettled(item);
+        const canUndo = settled || partial;
 
         if (editingId === item.id) {
           return (
@@ -1451,7 +1450,7 @@ function PlanRows({
         const doneLabel = planDoneLabel(settleKind);
         const partialLabel = planPartialLabel(settleKind);
         const menuItems: OverflowMenuItem[] = [];
-        if (!matched && !settled) {
+        if (!canUndo) {
           menuItems.push({
             label: doneLabel,
             disabled: pendingId === item.id && pendingAction === "settle",
@@ -1549,21 +1548,15 @@ function PlanRows({
                     wrap={false}
                   />
                   {settled ? (
-                    canUndo ? (
-                      <button
-                        type="button"
-                        className="numa-chip numa-chip-mint self-end"
-                        disabled={pendingId === item.id && pendingAction === "settle"}
-                        aria-label={`Ångra ${doneLabel}`}
-                        onClick={() => onSettle(item.id, false)}
-                      >
-                        {doneLabel}
-                      </button>
-                    ) : (
-                      <span className="numa-chip numa-chip-mint self-end">
-                        {doneLabel}
-                      </span>
-                    )
+                    <button
+                      type="button"
+                      className="numa-chip numa-chip-mint self-end"
+                      disabled={pendingId === item.id && pendingAction === "settle"}
+                      aria-label={`Ångra ${doneLabel}`}
+                      onClick={() => onSettle(item.id, false)}
+                    >
+                      {doneLabel}
+                    </button>
                   ) : partial ? (
                     <button
                       type="button"

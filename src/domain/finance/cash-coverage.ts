@@ -115,6 +115,10 @@ function remainingPlanAmount(
 /**
  * 1:1 greedy match: kind + near date + similar amount (name is a tie-break).
  * Each ledger row and each plan row is used at most once.
+ *
+ * Money only. This keeps Över from subtracting cash that already left the
+ * account, and it is a guess — never a claim that the user paid the row.
+ * It must not reach the Plan list chips, sorting, or the settle flags.
  */
 export function matchPlanItemsToLedger(params: {
   items: PlanItem[];

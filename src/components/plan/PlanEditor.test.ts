@@ -104,7 +104,9 @@ describe("Plan dates and add-form", () => {
     expect(src).toContain("numa-chip numa-chip-mint");
     expect(src).toContain("numa-chip numa-chip-spend");
     expect(src).toContain("<button");
-    expect(src).toContain('<span className="numa-chip numa-chip-mint self-end">');
+    // The dead span is gone: a chip only exists when the user tapped it, and
+    // then it must be an Ångra control.
+    expect(src).not.toContain('<span className="numa-chip numa-chip-mint self-end">');
     expect(src).toContain("onClick={() => onSettle(item.id, false)}");
     expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
     expect(src).toContain("numa-plan-list");
@@ -120,9 +122,47 @@ describe("Plan dates and add-form", () => {
   it("puts Betald last, Delvis just above, and lets Ångra undo both", () => {
     expect(src).toContain("sortPlanRowsForList");
     expect(src).toContain("canUndo");
-    expect(src).toContain("explicitSettled");
     expect(src).toContain("aria-label={`Ångra ${doneLabel}`}");
     expect(src).toContain("SV.angraKlar");
+  });
+
+  it("paints a row from the user's taps only, never from a ledger match", () => {
+    expect(src).toContain("const settled = isPlanSettled(item)");
+    expect(src).toContain("const partial = isPlanPartiallySettled(item)");
+    expect(src).toContain("const canUndo = settled || partial");
+    // The rows never receive the matcher result at all.
+    expect(src).not.toContain("matchedIds");
+    expect(src).not.toContain("const matched =");
+    expect(src).not.toContain("matched &&");
+    expect(src).not.toContain("explicitSettled");
+    // Matching survives for the money totals only.
+    expect(src).toContain("matchPlanItemsToLedger");
+    expect(src).toContain("sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)");
+    expect(src).toContain("sortPlanRowsForList(items)");
+  });
+
+  it("opens row actions in a portal so a panel cannot clip or shift them", () => {
+    const menu = readFileSync(
+      new URL("../ui/OverflowMenu.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(menu).toContain("createPortal");
+    expect(menu).toContain("document.body");
+    expect(menu).toContain("fixed z-[70]");
+    expect(menu).not.toContain("absolute right-0");
+    // Flip up when the dock would cover a downward menu.
+    expect(menu).toContain("DOCK_CLEARANCE");
+    expect(menu).toContain('direction === "down"');
+    expect(menu).toContain("requestAnimationFrame");
+    expect(menu).toContain('window.addEventListener("scroll"');
+    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(css).toContain(".numa-overflow-menu.is-up");
+    expect(css).toContain("numa-menu-in-up");
+  });
+
+  it("does not yank the page when the add card opens", () => {
+    expect(src).not.toContain('block: "start"');
+    expect(src).toContain('block: "nearest"');
   });
 
   it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {

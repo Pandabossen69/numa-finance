@@ -380,21 +380,56 @@ describe("plan-months", () => {
     expect(planListStatus(paid)).toBe("settled");
   });
 
-  it("treats a ledger match as Betald when sorting", () => {
-    const matched = item({
-      name: "Hyra",
+  it("never treats a ledger match as Betald — only the user's own tap counts", () => {
+    // Hugo never tapped these. A nearby ledger transaction must not paint
+    // them Betald/Mottagen, sink them in the list, or claim they are settled.
+    const loan = item({
+      name: "Pappa",
       kind: "mandatory",
       amountMinor: 15000_00,
+    });
+    const websiteIncome = item({
+      name: "Hemsida",
+      kind: "expected",
+      cadence: "income",
+      amountMinor: 8000_00,
     });
     const open = item({
       name: "El",
       kind: "mandatory",
       amountMinor: 800_00,
     });
-    expect(sortPlanRowsForList([matched, open], new Set([matched.id])).map((row) => row.name)).toEqual([
+
+    expect(planListStatus(loan)).toBe("open");
+    expect(planListStatus(websiteIncome)).toBe("open");
+    expect(isPlanSettled(loan)).toBe(false);
+    expect(isPlanPartiallySettled(loan)).toBe(false);
+    expect(isPlanSettled(websiteIncome)).toBe(false);
+
+    // Order is the caller's order — a match cannot reorder anything.
+    expect(sortPlanRowsForList([loan, open, websiteIncome]).map((row) => row.name)).toEqual([
+      "Pappa",
       "El",
-      "Hyra",
+      "Hemsida",
     ]);
+  });
+
+  it("marks a row settled only from the explicit flags", () => {
+    const tapped = item({
+      name: "Pappa",
+      kind: "mandatory",
+      amountMinor: 15000_00,
+      settledAt: "2026-08-27T12:00:00.000Z",
+    });
+    const tappedPartly = item({
+      name: "Hemsida",
+      kind: "expected",
+      cadence: "income",
+      amountMinor: 8000_00,
+      settledMinor: 3000_00,
+    });
+    expect(planListStatus(tapped)).toBe("settled");
+    expect(planListStatus(tappedPartly)).toBe("partial");
   });
 
   it("treats Delvis klar as remaining amount with a rest date", () => {
