@@ -25,9 +25,18 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("applyAccountDelta");
     expect(src).toContain("getHomeSnapshotAction");
     expect(src).toContain("warmupPlanPageData");
+    expect(src).toContain("isHomeDirty");
+    expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
+    expect(src).not.toContain("lastHomeSnapshot() == null");
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
+  });
+
+  it("paints signed Över on the dial, not a clamped 0", () => {
+    expect(src).toContain("dialCenterMinor");
+    expect(src).toContain("overToday || remainingTodayMinor < 0");
+    expect(src).toContain('"signed"');
   });
 
   it("does not show Mot planen as the Hem pile", () => {
@@ -59,6 +68,19 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("numa-metric-label");
     expect(src).toContain("wrap={false}");
     expect(src).not.toContain('bg-[var(--numa-card)] pt-1');
+  });
+
+  it("does not dress the Kvar idag card as a tap target", () => {
+    expect(src).toContain("numa-day-stage cursor-default");
+    expect(src).not.toMatch(/numa-day-stage[^"]*numa-press/);
+  });
+
+  it("lets the ring and the sentence both talk about kvar, not spent-of-budget", () => {
+    expect(src).toContain(
+      "remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar",
+    );
+    expect(src).toContain("formatMoneyCompact");
+    expect(src).toContain("usedRatio={dayUsedRatio}");
   });
 
   it("labels QuickExpense amount and note for a11y", () => {

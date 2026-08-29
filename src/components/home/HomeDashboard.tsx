@@ -14,6 +14,7 @@ import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
   formatMoney,
+  formatMoneyCompact,
   money,
   parseUiAmountToMinor,
   type CurrencyCode,
@@ -28,6 +29,7 @@ import {
   applyAccountDelta,
   applyMovementsAdd,
   applyOptimisticHomeSpend,
+  isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
   rememberGettingStarted,
@@ -39,7 +41,7 @@ import { homeGreeting } from "@/features/home/mock-snapshot";
 import { HomeViewLoading } from "@/components/layout/ViewLoading";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
-  return formatMoney(money(Math.max(0, amountMinor), currency));
+  return formatMoneyCompact(money(amountMinor, currency));
 }
 
 export function HomeDashboard({
@@ -59,7 +61,10 @@ export function HomeDashboard({
   const view = stored ?? snap ?? lastHomeSnapshot();
 
   useEffect(() => {
-    if (snap && lastHomeSnapshot() == null) rememberHomeSnapshot(snap);
+    // Adopt the server snap unless an optimistic spend is in flight.
+    // The old "== null" guard left Hem stuck on the first in-memory
+    // snapshot (often 0) after saldo, Fota, or a later RSC load.
+    if (snap && !isHomeDirty()) rememberHomeSnapshot(snap);
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);
     }
@@ -115,7 +120,7 @@ export function HomeDashboard({
     : view.dayBudgetMinor > 0 && todaySpendingMinor === 0
       ? `Hela dagsbudgeten kvar · ${daysWord}`
       : view.dayBudgetMinor > 0
-        ? `${formatMoneyHint(todaySpendingMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)}`
+        ? `${formatMoneyHint(remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar`
         : null;
 
   return (
@@ -150,7 +155,7 @@ export function HomeDashboard({
           <div className="grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6">
             <section
               className={[
-                "numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
+                "numa-panel-strong numa-day-stage cursor-default animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
                 overToday ? "is-over" : null,
               ]
                 .filter(Boolean)
@@ -192,6 +197,11 @@ export function HomeDashboard({
                         currency={currency}
                         size="display"
                         compact
+                        tone={
+                          overToday || remainingTodayMinor < 0
+                            ? "signed"
+                            : "neutral"
+                        }
                         wrap={false}
                       />
                     </div>
@@ -217,7 +227,6 @@ export function HomeDashboard({
                           amountMinor={view.dayBudgetMinor}
                           currency={currency}
                           size="md"
-                          compact
                           align="start"
                           wrap={false}
                         />
@@ -237,7 +246,6 @@ export function HomeDashboard({
                           amountMinor={todaySpendingMinor}
                           currency={currency}
                           size="md"
-                          compact
                           align="start"
                           wrap={false}
                         />
@@ -257,6 +265,9 @@ export function HomeDashboard({
                       amountMinor={remainingTodayMinor}
                       currency={currency}
                       size="xl"
+                      compact
+                      tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
+                      wrap={false}
                     />
                   </div>
                   {!isEmpty ? (

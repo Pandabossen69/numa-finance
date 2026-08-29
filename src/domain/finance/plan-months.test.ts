@@ -336,17 +336,14 @@ describe("plan-months", () => {
     ]);
   });
 
-  it("starts 2026 at August (app founding)", () => {
-    expect(visibleMonthKeysForYear(2026)[0]).toBe("2026-08");
-    expect(visibleMonthKeysForYear(2026)).toEqual([
-      "2026-08",
-      "2026-09",
-      "2026-10",
-      "2026-11",
-      "2026-12",
-    ]);
+  it("lists January–December for 2026 so earlier months are browsable", () => {
+    expect(visibleMonthKeysForYear(2026)[0]).toBe("2026-01");
+    expect(visibleMonthKeysForYear(2026)).toHaveLength(12);
+    expect(visibleMonthKeysForYear(2026)).toContain("2026-07");
+    expect(visibleMonthKeysForYear(2026)).toContain("2026-08");
     expect(visibleMonthKeysForYear(2027)[0]).toBe("2027-01");
     expect(visibleMonthKeysForYear(2027)).toHaveLength(12);
+    expect(visibleMonthKeysForYear(2025)).toHaveLength(12);
   });
 
   it("sorts open, then Delvis, then Betald — paid always last", () => {

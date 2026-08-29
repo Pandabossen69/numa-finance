@@ -512,17 +512,11 @@ export function yearMonthKeys(year: number): string[] {
 
 /**
  * Months shown in the Plan year strip.
- * 2026 starts at August (app founding); other years are Jan–Dec.
+ * Every calendar year is Jan–Dec so users can browse earlier months.
+ * Carryover / extra-saldo math still starts at APP_PLAN_START_MONTH.
  */
 export function visibleMonthKeysForYear(year: number): string[] {
-  const all = yearMonthKeys(year);
-  const [startY, startM] = APP_PLAN_START_MONTH.split("-").map(Number);
-  if (year < startY!) return all;
-  if (year > startY!) return all;
-  return all.filter((key) => {
-    const m = Number(key.slice(5));
-    return m >= startM!;
-  });
+  return yearMonthKeys(year);
 }
 
 /** Short Swedish month name without year, e.g. `augusti`. */

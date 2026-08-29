@@ -161,9 +161,13 @@ export function AnalysDashboard({
                   amountMinor={isBridge && !hasSaldo ? 0 : cycle.remainingTodayMinor}
                   currency={currency}
                   tone={
-                    (!isBridge || hasSaldo) && cycle.remainingTodayMinor > 0
-                      ? "positive"
-                      : undefined
+                    isBridge && !hasSaldo
+                      ? undefined
+                      : cycle.remainingTodayMinor < 0
+                        ? "alarm"
+                        : cycle.remainingTodayMinor > 0
+                          ? "positive"
+                          : undefined
                   }
                 />
                 <MetricRow

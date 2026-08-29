@@ -63,6 +63,15 @@ describe("Plan dates and add-form", () => {
     expect(src).not.toContain("numa-month-strip -mx-1");
   });
 
+  it("lets users browse earlier months and years without rewriting history", () => {
+    expect(src).toContain("visibleMonthKeysForYear");
+    expect(src).toContain("shiftYear(-1)");
+    expect(src).toContain('aria-label="Föregående år"');
+    expect(src).toContain("Bläddra bakåt och framåt — historik ändras inte");
+    expect(src).toContain("min-h-11 rounded-full px-3");
+    expect(src).not.toContain("även år framåt");
+  });
+
   it("opens the matching add form when Kom igång sends steg", () => {
     expect(src).toContain("focusAdd");
     expect(src).toContain("stepHint");

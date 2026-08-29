@@ -30,6 +30,8 @@ describe("ReceiptCaptureFlow copy wiring", () => {
   it("paints remaining-overspend in clay alarm, not destroy red", () => {
     expect(src).toContain('text-[var(--numa-alarm)]');
     expect(src).not.toMatch(/impact\.remaining < 0[\s\S]{0,80}numa-danger/);
+    expect(src).toContain("formatMoney(money(impact.remaining, currency))");
+    expect(src).not.toContain("Math.max(0, impact.remaining)");
   });
 
   it("keeps Fota amounts and category chips from wrapping or shrinking unequally", () => {

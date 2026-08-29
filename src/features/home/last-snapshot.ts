@@ -2,8 +2,10 @@ import {
   cumulativePlanSavingsMinor,
   isSameZonedDay,
   monthKeyFromDate,
+  perDayBudgetMinor,
   planWealthTotalMinor,
   projectCashCoverage,
+  remainingTodayOf,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
@@ -441,6 +443,18 @@ export function applyOptimisticHomeIncome(
 export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null {
   if (!home) return null;
   const overMinor = balanceMinor + home.incomingMinor - home.unpaidMinor;
+  const spentToday = Math.max(0, home.todaySpendingMinor);
+  const refreshDayEnvelope =
+    home.livingMode !== "cycle" &&
+    (home.needsAvailableInput ||
+      home.livingMode === "bridge" ||
+      home.usesBankBalance);
+  const dayBudgetMinor = refreshDayEnvelope
+    ? perDayBudgetMinor(Math.max(0, balanceMinor + spentToday), Math.max(1, home.spendDaysLeft))
+    : home.dayBudgetMinor;
+  const remainingTodayMinor = refreshDayEnvelope
+    ? remainingTodayOf(dayBudgetMinor, spentToday)
+    : home.remainingTodayMinor;
   rememberHomeSnapshot(
     {
       ...home,
@@ -448,6 +462,15 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
       hasBankTruth: true,
       overMinor,
       wealthTotalMinor: planWealthTotalMinor(overMinor, home.savingsTotalMinor),
+      ...(refreshDayEnvelope
+        ? {
+            needsAvailableInput: false,
+            usesBankBalance: true,
+            dayBudgetMinor,
+            remainingTodayMinor,
+            safeToSpendTodayMinor: remainingTodayMinor,
+          }
+        : {}),
     },
     { dirty: true },
   );

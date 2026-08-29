@@ -365,4 +365,39 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(250_00);
     expect(lastMovementsSnapshot()?.balanceMinor).toBe(250_00);
   });
+
+  it("lets kvar idag go negative when spend passes the sticky dagsbudget", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        todaySpendingMinor: 900_00,
+        remainingTodayMinor: 100_00,
+        dayBudgetMinor: 1_000_00,
+      }),
+    );
+    applyOptimisticHomeSpend(250_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_150_00);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(-150_00);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).not.toBe(0);
+  });
+
+  it("rebuilds kvar idag from a new bridge saldo instead of leaving 0", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        livingMode: "bridge",
+        needsAvailableInput: true,
+        usesBankBalance: false,
+        calculatedBalanceMinor: null,
+        todaySpendingMinor: 0,
+        dayBudgetMinor: 0,
+        remainingTodayMinor: 0,
+        spendDaysLeft: 10,
+      }),
+    );
+    applyAccountBalance("acc", 10_000_00);
+    const next = lastHomeSnapshot();
+    expect(next?.needsAvailableInput).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(1_000_00);
+    expect(next?.remainingTodayMinor).toBe(1_000_00);
+    expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00);
+  });
 });
