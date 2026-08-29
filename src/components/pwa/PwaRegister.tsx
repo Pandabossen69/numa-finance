@@ -106,7 +106,7 @@ export function PwaRegister() {
       className="fixed inset-x-0 z-[80] flex items-center justify-center gap-3 px-4 bottom-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+0.4rem)] pb-[max(0.35rem,var(--numa-safe-bottom))] md:bottom-6 md:pb-0"
       aria-label="Ny version"
     >
-      <div className="flex max-w-lg items-center gap-3 rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 py-1.5 shadow-[0_8px_24px_rgba(7,21,17,0.1)]">
+      <div className="flex max-w-lg items-center gap-3 rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 py-1.5 shadow-[var(--numa-toast-shadow)]">
         <p className="min-w-0 text-[12px] font-medium text-[var(--numa-ink)]">
           Ny version — uppdatera
         </p>

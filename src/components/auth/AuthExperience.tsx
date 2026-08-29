@@ -33,25 +33,23 @@ export function AuthExperience() {
   }
 
   return (
-    <div className="auth-stage relative flex min-h-dvh flex-col overflow-x-hidden">
+    <div className="auth-stage">
       <div className="auth-glow" aria-hidden />
 
-      <div className="auth-frame relative z-10">
+      <div className="auth-frame">
         <div className="auth-hero">
           <p className="auth-mark">NUMA</p>
           <p className="auth-welcome-line">Vad du kan använda idag.</p>
         </div>
 
-        <div className="auth-card mx-auto w-full">
-          <form onSubmit={submitLogin} className="auth-card-action flex flex-col">
-            <header className="space-y-2">
+        <div className="auth-card">
+          <form onSubmit={submitLogin} className="auth-form">
+            <header className="auth-card-header">
               <h1 className="auth-login-title">Logga in</h1>
-              <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
-                Logga in med e-post och lösenord.
-              </p>
+              <p className="auth-login-sub">Logga in med e-post och lösenord.</p>
             </header>
 
-            <div className="mt-7 space-y-5">
+            <div className="auth-fields">
               <Field
                 label="E-post"
                 type="email"
@@ -68,17 +66,22 @@ export function AuthExperience() {
                 onChange={setPassword}
                 onToggle={() => setShowPassword((v) => !v)}
               />
-              {error ? <ErrorText>{error}</ErrorText> : null}
             </div>
 
-            <div className="mt-8 space-y-4">
-              <PrimaryButton disabled={pending || !email || !password}>
-                {pending ? "Loggar in…" : "Logga in"}
-              </PrimaryButton>
-              <p className="auth-access-note">
-                Konto skapas av NUMA · använd uppgifterna du fått.
-              </p>
+            <div className="auth-error-slot" aria-live="polite">
+              {error ? <p className="auth-error">{error}</p> : null}
             </div>
+
+            <button
+              type="submit"
+              disabled={pending || !email || !password}
+              className="auth-primary-button"
+            >
+              {pending ? "Loggar in…" : "Logga in"}
+            </button>
+            <p className="auth-access-note">
+              Konto skapas av NUMA · använd uppgifterna du fått.
+            </p>
           </form>
         </div>
       </div>
@@ -109,10 +112,8 @@ function Field({
   const isEmail = type === "email";
 
   return (
-    <label className="block">
-      <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
-        {label}
-      </span>
+    <label className="auth-label">
+      <span className="auth-label-text">{label}</span>
       <input
         type={type}
         inputMode={isEmail ? "email" : undefined}
@@ -149,11 +150,9 @@ function PasswordField({
   autoComplete?: string;
 }) {
   return (
-    <label className="block">
-      <span className="mb-2 block text-[13px] font-medium text-[var(--numa-muted)]">
-        {label}
-      </span>
-      <div className="relative">
+    <label className="auth-label">
+      <span className="auth-label-text">{label}</span>
+      <span className="auth-field-wrap">
         <input
           type={show ? "text" : "password"}
           value={value}
@@ -163,36 +162,10 @@ function PasswordField({
           minLength={8}
           className="auth-field auth-field-password"
         />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="auth-field-toggle"
-        >
+        <button type="button" onClick={onToggle} className="auth-field-toggle">
           {show ? "Dölj" : "Visa"}
         </button>
-      </div>
+      </span>
     </label>
-  );
-}
-
-function PrimaryButton({
-  children,
-  disabled,
-}: {
-  children: React.ReactNode;
-  disabled?: boolean;
-}) {
-  return (
-    <button type="submit" disabled={disabled} className="auth-primary-button">
-      {children}
-    </button>
-  );
-}
-
-function ErrorText({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="auth-error" role="alert">
-      {children}
-    </p>
   );
 }

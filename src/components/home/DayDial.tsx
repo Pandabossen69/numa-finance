@@ -36,23 +36,31 @@ export function DayDial({
       >
         <defs>
           <linearGradient id="numa-dial-mint" x1="24" y1="18" x2="196" y2="202">
-            <stop offset="0" stopColor="#55bfa1" />
-            <stop offset="0.42" stopColor="var(--numa-accent)" />
-            <stop offset="1" stopColor="#0a5948" />
+            <stop offset="0" style={{ stopColor: "var(--numa-dial-mint-from)" }} />
+            <stop offset="0.42" style={{ stopColor: "var(--numa-accent)" }} />
+            <stop offset="1" style={{ stopColor: "var(--numa-dial-mint-to)" }} />
           </linearGradient>
           <linearGradient id="numa-dial-clay" x1="24" y1="18" x2="196" y2="202">
-            <stop offset="0" stopColor="#d9a06d" />
-            <stop offset="0.52" stopColor="var(--numa-alarm)" />
-            <stop offset="1" stopColor="#7f4c2d" />
+            <stop offset="0" style={{ stopColor: "var(--numa-dial-clay-from)" }} />
+            <stop offset="0.52" style={{ stopColor: "var(--numa-alarm)" }} />
+            <stop offset="1" style={{ stopColor: "var(--numa-dial-clay-to)" }} />
           </linearGradient>
           <radialGradient id="numa-dial-core" cx="36%" cy="25%" r="76%">
             <stop
               offset="0"
-              stopColor={over ? "rgba(255,245,233,0.92)" : "rgba(255,252,239,0.96)"}
+              style={{
+                stopColor: over
+                  ? "var(--numa-dial-core-over-from)"
+                  : "var(--numa-dial-core-from)",
+              }}
             />
             <stop
               offset="1"
-              stopColor={over ? "rgba(246,228,208,0.6)" : "rgba(213,240,230,0.46)"}
+              style={{
+                stopColor: over
+                  ? "var(--numa-dial-core-over-to)"
+                  : "var(--numa-dial-core-to)",
+              }}
             />
           </radialGradient>
         </defs>
@@ -69,7 +77,7 @@ export function DayDial({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={over ? "url(#numa-dial-clay)" : "rgba(18,122,98,0.14)"}
+          stroke={over ? "url(#numa-dial-clay)" : "var(--numa-dial-track)"}
           opacity={over ? 0.52 : 1}
           strokeWidth={stroke}
         />
@@ -81,7 +89,9 @@ export function DayDial({
               cy={size / 2}
               r={r}
               fill="none"
-              stroke={over ? "rgba(168,107,58,0.2)" : "rgba(18,122,98,0.18)"}
+              stroke={
+                over ? "var(--numa-dial-halo-over)" : "var(--numa-dial-halo)"
+              }
               strokeWidth={stroke + 6}
               strokeLinecap={remainRatio >= 0.995 ? "butt" : "round"}
               strokeDasharray={`${filled} ${track}`}
@@ -109,7 +119,7 @@ export function DayDial({
           cy={size / 2}
           r={r - 15}
           fill="none"
-          stroke="rgba(255,255,255,0.68)"
+          stroke="var(--numa-dial-inner-line)"
           strokeWidth="1"
         />
       </svg>

@@ -101,6 +101,7 @@ export function HomeDashboard({
   const greeting = homeGreeting(view.displayName, new Date(), view.timeZone);
   const isBridge = view.livingMode === "bridge";
   const isEmpty = view.livingMode === "empty";
+  const hasSaldo = view.calculatedBalanceMinor != null;
   const dayOk = remainingTodayMinor > 0;
   const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
@@ -259,7 +260,9 @@ export function HomeDashboard({
                 <div className="space-y-3 py-6 text-center">
                   {isEmpty ? (
                     <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                      Ingen dagsbudget än. Sätt saldo så räknas kvar idag.
+                      {hasSaldo
+                        ? "Ingen dagsbudget än. Lägg in vad som kommer in i Plan."
+                        : "Ingen dagsbudget än. Sätt saldo så räknas kvar idag."}
                     </p>
                   ) : (
                     <>

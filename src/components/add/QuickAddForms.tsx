@@ -82,7 +82,7 @@ export function QuickAddForms({
             onClick={() => setMode(m.id)}
             className={`numa-press min-h-11 rounded-full px-2.5 text-sm ${
               mode === m.id
-                ? "bg-[var(--numa-ink)] font-semibold text-white"
+                ? "bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                 : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
@@ -192,7 +192,7 @@ function ExpenseForm({
             onClick={() => setCategoryOverride(c)}
             className={`numa-press min-h-11 rounded-full px-3 text-sm ${
               category === c
-                ? "bg-[var(--numa-ink)] font-semibold text-white"
+                ? "bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                 : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >

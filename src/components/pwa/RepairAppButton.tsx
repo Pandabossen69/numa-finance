@@ -25,7 +25,7 @@ export function RepairAppButton() {
       {phase === "idle" || phase === "error" ? (
         <button
           type="button"
-          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition hover:bg-[var(--numa-accent-ink)]"
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)] transition hover:bg-[var(--numa-accent-ink)]"
           onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
         >
           Laga appen nu
@@ -37,7 +37,7 @@ export function RepairAppButton() {
             type="button"
             disabled={pending}
             onClick={runRepair}
-            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] disabled:opacity-60"
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)] transition hover:bg-[var(--numa-accent-ink)] disabled:opacity-60"
           >
             Ja, rensa cache
           </button>

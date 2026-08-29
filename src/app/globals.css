@@ -17,8 +17,13 @@
   --numa-surface-solid: #f8f4ec;
   --numa-surface-strong: #fdfbf6;
   --numa-card: #fcfbf7;
-  --numa-border: rgba(68, 58, 44, 0.1);
-  --numa-border-strong: rgba(68, 58, 44, 0.16);
+  /* Inputs sit one step under the card so a form reads as recessed. */
+  --numa-field: #f6f1e7;
+  --numa-border: rgba(68, 58, 44, 0.12);
+  --numa-border-strong: rgba(68, 58, 44, 0.18);
+  --numa-border-contrast: rgba(68, 58, 44, 0.28);
+  --numa-sheet-highlight: rgba(255, 253, 246, 0.8);
+  --numa-button-highlight: rgba(255, 255, 255, 0.14);
   --numa-accent: #127a62;
   --numa-accent-soft: #d9eee2;
   --numa-accent-ink: #0a5344;
@@ -29,7 +34,9 @@
   --numa-stone: rgba(56, 48, 38, 0.07);
   --numa-danger: #b42318;
   --numa-danger-soft: #fce7e3;
-  --numa-alarm: #a86b3a;
+  /* Body copy on danger-soft needs more than the fill colour gives. */
+  --numa-danger-ink: #8e1b12;
+  --numa-alarm: #a3611f;
   --numa-alarm-soft: #f7e6d1;
   --numa-positive: #0f6a55;
   --numa-positive-soft: #d9eee2;
@@ -47,6 +54,25 @@
   --numa-shadow-sm:
     0 1px 2px rgba(48, 40, 30, 0.04), 0 6px 14px -6px rgba(48, 40, 30, 0.07),
     0 16px 32px -16px rgba(48, 40, 30, 0.1);
+  --numa-shadow-ink: 0 10px 24px rgba(22, 21, 19, 0.16);
+  /* Selected pill / chip on ink. One value so every screen matches. */
+  --numa-pill-shadow: 0 6px 16px rgba(22, 21, 19, 0.18);
+  --numa-toast-shadow: 0 8px 24px rgba(7, 21, 17, 0.1);
+  --numa-chip-neutral: rgba(23, 20, 15, 0.06);
+  /* Day dial: mint when the day still has money, clay when overspent. */
+  --numa-dial-mint-from: #55bfa1;
+  --numa-dial-mint-to: #0a5948;
+  --numa-dial-clay-from: #d9a06d;
+  --numa-dial-clay-to: #7f4c2d;
+  --numa-dial-core-from: rgba(255, 252, 239, 0.96);
+  --numa-dial-core-to: rgba(213, 240, 230, 0.46);
+  --numa-dial-core-over-from: rgba(255, 245, 233, 0.92);
+  --numa-dial-core-over-to: rgba(246, 228, 208, 0.6);
+  --numa-dial-track: rgba(18, 122, 98, 0.14);
+  --numa-dial-halo: rgba(18, 122, 98, 0.18);
+  --numa-dial-halo-over: rgba(163, 97, 31, 0.2);
+  --numa-dial-inner-line: rgba(255, 255, 255, 0.68);
+  --numa-scan-sweep: rgba(13, 122, 102, 0.35);
   --numa-nav: #fdfbf6;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
@@ -1796,7 +1822,11 @@ button.numa-chip:disabled {
 }
 
 .auth-stage {
+  position: relative;
+  display: flex;
   min-height: 100dvh;
+  flex-direction: column;
+  overflow-x: hidden;
   color: var(--numa-ink);
   background: var(--numa-bg);
   isolation: isolate;
@@ -1836,11 +1866,13 @@ button.numa-chip:disabled {
 }
 
 .auth-frame {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.85rem;
   width: 100%;
   max-width: 26.5rem;
   margin: 0 auto;
@@ -1850,23 +1882,26 @@ button.numa-chip:disabled {
 
 .auth-hero {
   min-width: 0;
+  padding-left: 0.15rem;
 }
 
 .auth-mark {
   display: inline-flex;
   align-items: center;
-  font-size: 1.15rem;
-  font-weight: 720;
-  letter-spacing: -0.06em;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
   line-height: 1;
+  text-transform: uppercase;
+  color: var(--numa-muted);
 }
 
 .auth-mark::after {
   content: "";
   display: inline-block;
-  width: 0.4rem;
-  height: 0.4rem;
-  margin-left: 0.42rem;
+  width: 0.34rem;
+  height: 0.34rem;
+  margin-left: 0.4rem;
   border-radius: 999px;
   background: var(--numa-accent);
 }
@@ -2036,33 +2071,78 @@ button.numa-chip:disabled {
 }
 
 .auth-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  position: relative;
   width: 100%;
   max-width: 26.5rem;
-  padding: 1.65rem 1.35rem 1.4rem;
+  padding: 1.5rem 1.3rem 1.35rem;
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius);
-  background: color-mix(in srgb, var(--numa-card) 88%, transparent);
+  background: color-mix(in srgb, var(--numa-card) 90%, transparent);
   box-shadow:
-    0 1px 0 rgba(255, 253, 246, 0.78) inset,
+    0 1px 0 var(--numa-sheet-highlight) inset,
     var(--numa-shadow);
-  backdrop-filter: blur(22px) saturate(1.18);
+  backdrop-filter: blur(24px) saturate(1.16);
 }
 
 .auth-welcome-line {
   max-width: 11ch;
-  margin-top: 0.85rem;
-  font-size: clamp(2.05rem, 8.2vw, 2.55rem);
+  margin-top: 0.8rem;
+  font-size: clamp(2.15rem, 8.6vw, 2.6rem);
   font-weight: 680;
   letter-spacing: -0.062em;
-  line-height: 1.02;
+  line-height: 1.01;
   text-wrap: balance;
 }
 
-.auth-card-action {
+.auth-form {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+}
+
+.auth-card-header {
+  padding-bottom: 1.15rem;
+  border-bottom: 1px solid var(--numa-border);
+}
+
+.auth-login-title {
+  font-size: 1.32rem;
+  font-weight: 680;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+}
+
+.auth-login-sub {
+  margin-top: 0.35rem;
+  color: var(--numa-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.05rem;
+  padding-top: 1.25rem;
+}
+
+.auth-label {
+  display: block;
+  min-width: 0;
+}
+
+.auth-label-text {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--numa-muted);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  letter-spacing: -0.005em;
+}
+
+.auth-field-wrap {
+  position: relative;
+  display: block;
 }
 
 .auth-field {
@@ -2070,22 +2150,28 @@ button.numa-chip:disabled {
   width: 100%;
   border-radius: 1.15rem;
   border: 1px solid var(--numa-border-strong);
-  background: var(--numa-surface-strong);
+  background: var(--numa-field);
   padding: 0 1.05rem;
   font-size: 16px;
   color: var(--numa-ink);
   outline: none;
   transition:
     border-color 120ms ease,
-    box-shadow 120ms ease;
+    box-shadow 120ms ease,
+    background-color 120ms ease;
 }
 
 .auth-field::placeholder {
   color: var(--numa-faint);
 }
 
+.auth-field:hover:not(:focus) {
+  border-color: var(--numa-border-contrast);
+}
+
 .auth-field:focus {
   border-color: var(--numa-accent);
+  background: var(--numa-surface-strong);
   box-shadow: 0 0 0 3px var(--numa-accent-glow);
 }
 
@@ -2119,38 +2205,59 @@ button.numa-chip:disabled {
   box-shadow: 0 0 0 2px var(--numa-accent);
 }
 
+/* Reserved so a failed login does not push the button down. */
+.auth-error-slot {
+  min-height: 1.35rem;
+  padding-top: 0.85rem;
+}
+
 .auth-error {
-  border-left: 3px solid var(--numa-danger);
-  border-radius: 0.9rem;
-  background: color-mix(in srgb, var(--numa-danger) 10%, transparent);
-  padding: 0.7rem 0.85rem 0.7rem 0.95rem;
+  display: flex;
+  gap: 0.5rem;
+  border-radius: 0.95rem;
+  background: var(--numa-danger-soft);
+  padding: 0.65rem 0.8rem;
   font-size: 0.875rem;
   line-height: 1.45;
-  color: var(--numa-danger);
+  color: var(--numa-danger-ink);
+}
+
+.auth-error::before {
+  content: "";
+  flex-shrink: 0;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--numa-danger);
 }
 
 .auth-primary-button {
   display: flex;
   min-height: 3.5rem;
   width: 100%;
+  margin-top: 1.15rem;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--numa-ink);
-  box-shadow: 0 10px 24px rgba(22, 21, 19, 0.14);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--numa-ink) 92%, var(--numa-card)) 0%,
+    var(--numa-ink) 100%
+  );
+  box-shadow:
+    0 1px 0 var(--numa-button-highlight) inset,
+    var(--numa-shadow-ink);
   color: var(--numa-card);
   font-size: 0.9375rem;
   font-weight: 650;
   letter-spacing: -0.012em;
   transition:
     transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
-    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 100ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.auth-primary-button:hover {
-  background: color-mix(in srgb, var(--numa-ink) 86%, #ffffff);
-  box-shadow: 0 12px 24px rgba(22, 21, 19, 0.16);
+.auth-primary-button:hover:not(:disabled) {
+  filter: brightness(1.14);
 }
 
 .auth-primary-button:focus-visible {
@@ -2160,31 +2267,25 @@ button.numa-chip:disabled {
     0 0 0 4px var(--numa-ink);
 }
 
-.auth-primary-button:active {
+.auth-primary-button:active:not(:disabled) {
   transform: scale(0.99);
 }
 
 .auth-primary-button:disabled {
+  background: var(--numa-bg-deep);
   box-shadow: none;
-  opacity: 0.45;
+  color: var(--numa-faint);
   transform: none;
 }
 
 .auth-access-note {
   max-width: 34ch;
-  margin: 0.85rem auto 0;
+  margin: 0.9rem auto 0;
   color: var(--numa-faint);
   font-size: 0.75rem;
   letter-spacing: 0.01em;
   line-height: 1.55;
   text-align: center;
-}
-
-.auth-login-title {
-  font-size: 1.35rem;
-  font-weight: 680;
-  letter-spacing: -0.045em;
-  line-height: 1.15;
 }
 
 @media (min-width: 768px) {
@@ -2197,8 +2298,8 @@ button.numa-chip:disabled {
     padding: 4rem 2rem;
   }
 
-  .auth-mark {
-    font-size: 1.2rem;
+  .auth-hero {
+    padding-left: 0;
   }
 
   .auth-welcome-line {
@@ -2208,7 +2309,7 @@ button.numa-chip:disabled {
   }
 
   .auth-card {
-    padding: 2rem 1.85rem 1.75rem;
+    padding: 1.95rem 1.8rem 1.7rem;
   }
 }
 

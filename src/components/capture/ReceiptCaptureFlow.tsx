@@ -346,7 +346,7 @@ export function ReceiptCaptureFlow({
                 className="mx-auto max-h-72 min-h-56 w-full object-contain opacity-90"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/40" />
-              <div className="pointer-events-none absolute inset-x-4 top-0 h-16 numa-scan-line rounded-full bg-[linear-gradient(180deg,transparent,rgba(13,122,102,0.35),transparent)]" />
+              <div className="pointer-events-none absolute inset-x-4 top-0 h-16 numa-scan-line rounded-full bg-[linear-gradient(180deg,transparent,var(--numa-scan-sweep),transparent)]" />
             </>
           ) : (
             <div className="flex min-h-56 items-center justify-center">
@@ -391,13 +391,13 @@ export function ReceiptCaptureFlow({
             type="button"
             disabled={pending}
             onClick={() => cameraInputRef.current?.click()}
-            className="numa-press group flex min-h-[9.5rem] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-white shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
+            className="numa-press group flex min-h-[9.5rem] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-[var(--numa-card)] shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
           >
             <span className="text-2xl font-light leading-none" aria-hidden>
               ◉
             </span>
             <span className="text-sm font-semibold tracking-tight">Kamera</span>
-            <span className="text-center text-xs text-white/70">
+            <span className="text-center text-xs text-[var(--numa-card)]/70">
               {copy.camera}
             </span>
           </button>
@@ -677,7 +677,7 @@ export function ReceiptCaptureFlow({
                 onClick={() => setCategory(c)}
                 className={`numa-press min-h-11 shrink-0 rounded-full px-4 text-sm ${
                   category === c
-                    ? "bg-[var(--numa-ink)] font-semibold text-white"
+                    ? "bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                     : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
                 }`}
               >

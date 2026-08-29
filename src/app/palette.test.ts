@@ -36,9 +36,43 @@ describe("NUMA vision palette", () => {
   });
 
   it("keeps over-budget clay alarm distinct from destroy red", () => {
-    expect(token("--numa-alarm")).toBe("#a86b3a");
+    expect(token("--numa-alarm")).toBe("#a3611f");
     expect(token("--numa-danger")).toBe("#b42318");
     expect(token("--numa-alarm")).not.toBe(token("--numa-danger"));
+    expect(token("--numa-alarm")).not.toBe(token("--numa-spend"));
+  });
+
+  it("names every shared surface, edge and shadow as a token", () => {
+    expect(token("--numa-field")).toBe("#f6f1e7");
+    expect(token("--numa-field")).not.toBe(token("--numa-card"));
+    expect(token("--numa-border-contrast")).toContain("rgba");
+    expect(token("--numa-sheet-highlight")).toContain("rgba");
+    expect(token("--numa-button-highlight")).toContain("rgba");
+    expect(token("--numa-shadow-ink")).toContain("rgba");
+    expect(token("--numa-pill-shadow")).toContain("rgba");
+    expect(token("--numa-toast-shadow")).toContain("rgba");
+    expect(token("--numa-chip-neutral")).toContain("rgba");
+    expect(token("--numa-scan-sweep")).toContain("rgba");
+    expect(token("--numa-danger-ink")).toBe("#8e1b12");
+  });
+
+  it("keeps the day dial colours in tokens, not in the SVG", () => {
+    for (const name of [
+      "--numa-dial-mint-from",
+      "--numa-dial-mint-to",
+      "--numa-dial-clay-from",
+      "--numa-dial-clay-to",
+      "--numa-dial-core-from",
+      "--numa-dial-core-to",
+      "--numa-dial-core-over-from",
+      "--numa-dial-core-over-to",
+      "--numa-dial-track",
+      "--numa-dial-halo",
+      "--numa-dial-halo-over",
+      "--numa-dial-inner-line",
+    ]) {
+      expect(token(name)).toBeTruthy();
+    }
   });
 
   it("fades the Plan month strip only on overflowing edges", () => {

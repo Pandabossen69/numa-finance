@@ -97,8 +97,16 @@ describe("Hem PWA hint and HIGH copy", () => {
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
     expect(src).toContain("GettingStartedCard");
     expect(src).toContain("läget just nu");
-    expect(src).toContain("Ingen dagsbudget än");
     expect(src).not.toMatch(/välkommen till din resa/i);
+  });
+
+  it("does not tell a user with a saldo to set a saldo", () => {
+    expect(src).toContain("const hasSaldo = view.calculatedBalanceMinor != null");
+    expect(src).toContain(
+      "Ingen dagsbudget än. Lägg in vad som kommer in i Plan.",
+    );
+    expect(src).toContain("Ingen dagsbudget än. Sätt saldo så räknas kvar idag.");
+    expect(src).toMatch(/\{hasSaldo\s*\n?\s*\?/);
   });
 
   it("stacks the dial above piles on the phone and splits them only at md", () => {

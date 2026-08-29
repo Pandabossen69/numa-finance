@@ -249,7 +249,7 @@ export function MovementsScreen({
             onClick={() => setFilter(f.id)}
             className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
               filter === f.id
-                ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
+                ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                 : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
@@ -524,7 +524,7 @@ function PeriodChip({
       onClick={onClick}
       className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
-          ? "bg-[var(--numa-ink)] text-white shadow-[0_6px_16px_rgba(22,21,19,0.18)]"
+          ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
       }`}
     >

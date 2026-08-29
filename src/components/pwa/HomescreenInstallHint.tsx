@@ -149,7 +149,7 @@ export function HomescreenInstallHint({
         {alreadyOnProduction ? null : (
           <a
             href={PRODUCTION_ORIGIN}
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-white"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)]"
           >
             Öppna rätt länk
           </a>

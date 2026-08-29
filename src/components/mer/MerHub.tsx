@@ -98,7 +98,7 @@ const MER_ICON_TONE_CLASS: Record<MerIconTone, string> = {
   positive: "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]",
   spend: "bg-[var(--numa-spend-soft)] text-[var(--numa-spend)]",
   alarm: "bg-[var(--numa-alarm-soft)] text-[var(--numa-alarm)]",
-  neutral: "bg-[rgba(7,21,17,0.06)] text-[var(--numa-ink)]",
+  neutral: "bg-[var(--numa-chip-neutral)] text-[var(--numa-ink)]",
 };
 
 export function MerIcon({
