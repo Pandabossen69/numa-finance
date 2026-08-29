@@ -645,7 +645,7 @@ export function ReceiptCaptureFlow({
           {impact.canAfford ? "Inom dagsbudgeten" : "Över dagsbudgeten"}
           {" · "}
           <span className="numa-money-line-amt money">
-            {formatMoney(money(Math.max(0, impact.remaining), currency))}
+            {formatMoney(money(impact.remaining, currency))}
           </span>{" "}
           kvar idag
         </p>
