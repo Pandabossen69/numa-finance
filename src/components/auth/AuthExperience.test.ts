@@ -16,6 +16,11 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).toContain("Logga in med e-post och lösenord.");
     expect(src).toContain("auth-card");
     expect(src).toContain("auth-mark");
+    expect(src).toContain("auth-frame");
+    expect(src).toContain("auth-hero");
+    expect(src).toContain("Vad du kan använda idag.");
+    expect(src).not.toContain("WelcomeScreen");
+    expect(src).not.toContain("Tillbaka");
     expect(src).not.toMatch(/välkommen/i);
     expect(src).toContain("result.nextPath");
     expect(src).not.toContain('router.replace("/idag")');
