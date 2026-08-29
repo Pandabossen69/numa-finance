@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { createSubmitLock } from "./submit-guard";
 
 const componentsDir = new URL("../../components", import.meta.url).pathname;
 
@@ -23,6 +24,31 @@ const MONEY_FORMS = [
   "accounts/VerifyBalanceForm.tsx",
   "onboarding/OnboardingManualSaldo.tsx",
 ];
+
+describe("submit lock", () => {
+  it("lets the first tap through and refuses the rest of the burst", () => {
+    const lock = createSubmitLock();
+    expect(lock.tryBegin()).toBe(true);
+    expect(lock.tryBegin()).toBe(false);
+    expect(lock.tryBegin()).toBe(false);
+    expect(lock.isRunning()).toBe(true);
+  });
+
+  it("takes the next write once the first one settles", () => {
+    const lock = createSubmitLock();
+    lock.tryBegin();
+    lock.end();
+    expect(lock.isRunning()).toBe(false);
+    expect(lock.tryBegin()).toBe(true);
+  });
+
+  it("keeps one form's lock independent of another's", () => {
+    const a = createSubmitLock();
+    const b = createSubmitLock();
+    expect(a.tryBegin()).toBe(true);
+    expect(b.tryBegin()).toBe(true);
+  });
+});
 
 describe("double-submit guard", () => {
   it("guards every money form", () => {

@@ -9,34 +9,41 @@ export type SubmitGuard = {
   isRunning: () => boolean;
 };
 
+/** The lock itself, with no React in it, so it can be tested directly. */
+export function createSubmitLock(): SubmitGuard {
+  let inFlight = false;
+  return {
+    tryBegin: () => {
+      if (inFlight) return false;
+      inFlight = true;
+      return true;
+    },
+    end: () => {
+      inFlight = false;
+    },
+    isRunning: () => inFlight,
+  };
+}
+
 /**
  * One in-flight write per form.
  *
  * A `useTransition` pending flag (or a `busy` state) only disables the button
  * on the next render, so a fast double-tap on a phone can fire the action
- * twice and duplicate money. The ref closes that window synchronously, in the
- * same tick as the tap.
+ * twice and duplicate money. The lock closes that window synchronously, in
+ * the same tick as the tap.
  *
  * Pass the form's pending flag and the guard releases itself when the write
  * settles, so callers never have to unwind it by hand.
  */
 export function useSubmitGuard(pending?: boolean): SubmitGuard {
-  const inFlight = useRef(false);
-  const guard = useRef<SubmitGuard>({
-    tryBegin: () => {
-      if (inFlight.current) return false;
-      inFlight.current = true;
-      return true;
-    },
-    end: () => {
-      inFlight.current = false;
-    },
-    isRunning: () => inFlight.current,
-  });
+  const guard = useRef<SubmitGuard | null>(null);
+  if (!guard.current) guard.current = createSubmitLock();
+  const lock = guard.current;
 
   useEffect(() => {
-    if (pending === false) guard.current.end();
-  }, [pending]);
+    if (pending === false) lock.end();
+  }, [pending, lock]);
 
-  return guard.current;
+  return lock;
 }
