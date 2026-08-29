@@ -62,10 +62,14 @@ import { emptyTodaySnapshot } from "./empty-snapshot";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
-import { knownDisplayNameForEmail } from "@/domain/identity/display-name";
+import {
+  isPlaceholderDisplayName,
+  resolveProfileDisplayName,
+} from "@/domain/identity/display-name";
+import type { AuthUser } from "@/lib/supabase/auth-user";
 
 /** One auth lookup per request — shared with layout / onboarding getSessionUser. */
-const requireAuthUser = cache(async (): Promise<{ id: string; email: string }> => {
+const requireAuthUser = cache(async (): Promise<AuthUser> => {
   const user = await getAuthUser();
   if (!user) {
     throw new Error("Du måste vara inloggad");
@@ -78,8 +82,7 @@ const requireUserId = cache(async (): Promise<string> => {
 });
 
 async function ensureProfile(_userId?: string): Promise<Profile> {
-  const { id: userId, email } = await requireAuthUser();
-  const named = knownDisplayNameForEmail(email);
+  const { id: userId, email, metadataDisplayName } = await requireAuthUser();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -90,18 +93,34 @@ async function ensureProfile(_userId?: string): Promise<Profile> {
   if (error) throw new Error(error.message);
   if (data) {
     const mapped = mapProfile(data);
-    if (named && mapped.displayName !== named) {
-      await supabase.from("profiles").update({ display_name: named }).eq("id", userId);
-      return { ...mapped, displayName: named };
+    const resolved = resolveProfileDisplayName({
+      stored: mapped.displayName,
+      email,
+      authMetaName: metadataDisplayName,
+    });
+    if (
+      isPlaceholderDisplayName(mapped.displayName) &&
+      resolved !== mapped.displayName
+    ) {
+      await supabase
+        .from("profiles")
+        .update({ display_name: resolved })
+        .eq("id", userId);
+      return { ...mapped, displayName: resolved };
     }
     return mapped;
   }
 
+  const resolved = resolveProfileDisplayName({
+    stored: null,
+    email,
+    authMetaName: metadataDisplayName,
+  });
   const { data: created, error: insertError } = await supabase
     .from("profiles")
     .insert({
       id: userId,
-      display_name: named ?? "Användare",
+      display_name: resolved,
       timezone: "Asia/Bangkok",
       primary_currency: "THB",
       reference_currency: "SEK",

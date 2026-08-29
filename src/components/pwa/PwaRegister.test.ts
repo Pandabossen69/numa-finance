@@ -14,8 +14,11 @@ describe("PWA version nudge", () => {
     expect(src).not.toContain("location.replace");
   });
 
-  it("clears the notch and keeps Uppdatera at 44px", () => {
-    expect(src).toContain("pt-[max(0.6rem,var(--numa-safe-top))]");
+  it("sits above the dock, not over the NUMA logo, and keeps Uppdatera at 44px", () => {
+    expect(src).toContain(
+      "bottom-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+0.4rem)]",
+    );
+    expect(src).not.toContain("top-0");
     expect(src).toContain("inline-flex min-h-11 shrink-0 items-center");
   });
 });

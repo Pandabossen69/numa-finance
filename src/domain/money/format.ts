@@ -118,3 +118,18 @@ export function sanitizeMoneyDescription(text: string): string {
     .replace(/\s{2,}/g, " ")
     .trim();
 }
+
+const RAW_BANK_SMS =
+  /^(withdrawal|transfer|payment|deposit|incoming|outgoing|promptpay|moneyplus)\b/i;
+
+/** Cheap Swedish title for raw English bank-SMS stored as the movement name. */
+export function humanizeMovementTitle(
+  description: string,
+  signedAmountMinor: number,
+): string {
+  const clean = sanitizeMoneyDescription(description).trim();
+  if (RAW_BANK_SMS.test(clean)) {
+    return signedAmountMinor < 0 ? "Utgift (bank-SMS)" : "Insättning (bank-SMS)";
+  }
+  return clean;
+}

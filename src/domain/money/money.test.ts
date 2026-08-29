@@ -6,6 +6,7 @@ import {
   fromMajorUnits,
   money,
   parseUiAmountToMinor,
+  humanizeMovementTitle,
   sanitizeMoneyDescription,
   subtractMoney,
 } from "@/domain/money";
@@ -48,6 +49,22 @@ describe("Money", () => {
       sanitizeMoneyDescription("− Utgift ฿750,00 · …X6591 · saldo ฿10 758,04"),
     ).toBe("− Utgift 750,00 THB · …X6591 · saldo 10 758,04 THB");
     expect(sanitizeMoneyDescription("Lunch 150 THB")).toBe("Lunch 150 THB");
+  });
+
+  it("rewrites raw English bank-SMS titles to Swedish", () => {
+    expect(
+      humanizeMovementTitle(
+        "Withdrawal/transfer/payment from your account X6591 of Bt 750.00 via MOBILE",
+        -750_00,
+      ),
+    ).toBe("Utgift (bank-SMS)");
+    expect(
+      humanizeMovementTitle(
+        "PromptPay received to your account X6591 of Bt 3400.00",
+        3400_00,
+      ),
+    ).toBe("Insättning (bank-SMS)");
+    expect(humanizeMovementTitle("Lunch", -150_00)).toBe("Lunch");
   });
 
   it("parses Swedish UI amounts without using bank source rules", () => {

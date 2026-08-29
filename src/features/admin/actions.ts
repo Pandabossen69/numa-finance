@@ -39,7 +39,7 @@ export async function createUserAction(raw: {
 
   try {
     const admin = createSupabaseServiceRoleClient();
-    const displayName = parsed.input.displayName?.trim() || "Användare";
+    const displayName = parsed.input.displayName;
     const { data, error } = await admin.auth.admin.createUser({
       email: parsed.input.email,
       password: parsed.input.password,
@@ -66,7 +66,19 @@ export async function createUserAction(raw: {
       console.error("[numa] admin profile lookup failed", profileError);
     }
 
-    if (!profile) {
+    if (profile) {
+      const { error: updateError } = await admin
+        .from("profiles")
+        .update({ display_name: displayName })
+        .eq("id", userId);
+      if (updateError) {
+        return {
+          ok: false,
+          error:
+            "Användaren skapades i inloggningen, men profilen saknas. Försök igen eller kolla Supabase-loggen.",
+        };
+      }
+    } else {
       const { error: insertError } = await admin.from("profiles").insert({
         id: userId,
         display_name: displayName,

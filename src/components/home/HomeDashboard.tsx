@@ -58,7 +58,8 @@ export function HomeDashboard({
     lastHomeSnapshot,
     lastHomeSnapshot,
   );
-  const view = stored ?? snap ?? lastHomeSnapshot();
+  const sameOwner = !stored || !snap || stored.userId === snap.userId;
+  const view = (sameOwner ? stored : null) ?? snap ?? lastHomeSnapshot();
 
   useEffect(() => {
     // Adopt the server snap unless an optimistic spend is in flight.
@@ -256,27 +257,35 @@ export function HomeDashboard({
                 </>
               ) : (
                 <div className="space-y-3 py-6 text-center">
-                  <div
-                    className={`money-hero mx-auto ${
-                      dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
-                    }`}
-                  >
-                    <MoneyDisplay
-                      amountMinor={remainingTodayMinor}
-                      currency={currency}
-                      size="xl"
-                      compact
-                      tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
-                      wrap={false}
-                    />
-                  </div>
-                  {!isEmpty ? (
+                  {isEmpty ? (
                     <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                      {isBridge
-                        ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
-                        : "När planen har pengar kvar syns dagsbudgeten här."}
+                      Ingen dagsbudget än. Sätt saldo så räknas kvar idag.
                     </p>
-                  ) : null}
+                  ) : (
+                    <>
+                      <div
+                        className={`money-hero mx-auto ${
+                          dayOk
+                            ? "text-[var(--numa-ink)]"
+                            : "text-[var(--numa-muted)]"
+                        }`}
+                      >
+                        <MoneyDisplay
+                          amountMinor={remainingTodayMinor}
+                          currency={currency}
+                          size="xl"
+                          compact
+                          tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
+                          wrap={false}
+                        />
+                      </div>
+                      <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                        {isBridge
+                          ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                          : "När planen har pengar kvar syns dagsbudgeten här."}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </section>

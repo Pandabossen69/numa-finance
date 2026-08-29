@@ -1,3 +1,4 @@
+import { greetingFirstName } from "@/domain/identity/display-name";
 import { calculateSafeToSpend, DEFAULT_TIMEZONE } from "@/domain/finance";
 import { calculateDayPulse } from "@/domain/gamification";
 import { money, type CurrencyCode } from "@/domain/money";
@@ -53,6 +54,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
 
   return {
     mockMode: true,
+    userId: "mock-hugo",
     displayName: "Hugo",
     timeZone: DEFAULT_TIMEZONE,
     hasBankTruth: true,
@@ -107,7 +109,7 @@ export function homeGreeting(
 ): string {
   const hour = zonedHour(now, timeZone);
   const hello = hour < 11 ? "God morgon" : hour < 18 ? "Hej" : "God kväll";
-  const name = displayName?.trim();
+  const name = greetingFirstName(displayName);
   return name ? `${hello} ${name}` : hello;
 }
 

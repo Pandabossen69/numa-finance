@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADMIN_NOT_FOUND_SV,
+  DISPLAY_NAME_REQUIRED_SV,
   authorizeAdminCreateUser,
   parseCreateUserInput,
   SERVICE_ROLE_MISSING_SV,
@@ -55,6 +56,7 @@ describe("parseCreateUserInput", () => {
     const parsed = parseCreateUserInput({
       email: "inte-en-epost",
       password: "abcdefgh",
+      displayName: "Christian",
     });
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error).toMatch(/e-post/i);
@@ -64,9 +66,47 @@ describe("parseCreateUserInput", () => {
     const parsed = parseCreateUserInput({
       email: "namn@mail.com",
       password: "short",
+      displayName: "Christian",
     });
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) expect(parsed.error).toMatch(/8 tecken/i);
+  });
+
+  it("requires a real display name, not Användare or an empty field", () => {
+    expect(
+      parseCreateUserInput({
+        email: "christianhultz1@gmail.com",
+        password: "abcdefgh",
+      }).ok,
+    ).toBe(false);
+    expect(
+      parseCreateUserInput({
+        email: "christianhultz1@gmail.com",
+        password: "abcdefgh",
+        displayName: "   ",
+      }),
+    ).toEqual({ ok: false, error: DISPLAY_NAME_REQUIRED_SV });
+    expect(
+      parseCreateUserInput({
+        email: "christianhultz1@gmail.com",
+        password: "abcdefgh",
+        displayName: "Användare",
+      }),
+    ).toEqual({ ok: false, error: DISPLAY_NAME_REQUIRED_SV });
+    expect(
+      parseCreateUserInput({
+        email: "christianhultz1@gmail.com",
+        password: "abcdefgh",
+        displayName: "Christian Hultz",
+      }),
+    ).toEqual({
+      ok: true,
+      input: {
+        email: "christianhultz1@gmail.com",
+        password: "abcdefgh",
+        displayName: "Christian Hultz",
+      },
+    });
   });
 });
 

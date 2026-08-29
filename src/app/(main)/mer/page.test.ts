@@ -64,6 +64,13 @@ describe("Mer HIGH regress", () => {
     expect(mer).toContain("/konton");
     expect(merPage).toContain("Suspense");
   });
+
+  it("never paints Användare as a Mer fallback", () => {
+    expect(merPage).toContain("chromeDisplayName");
+    expect(merPage).not.toContain('?? "Användare"');
+    expect(mer).toContain("Inloggad som");
+    expect(mer).toContain('?? "Inloggad"');
+  });
 });
 
 describe("admin-only user creation security", () => {

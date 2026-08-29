@@ -15,6 +15,7 @@ import { loadErrorMessageSv } from "@/lib/async";
 import { getTodaySnapshot } from "@/lib/store/repository";
 
 export type HomeSnapshot = {
+  userId: string;
   displayName: string;
   timeZone: string;
   primaryAccountId: string | null;
@@ -118,6 +119,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     return {
       ok: true,
       data: {
+        userId: snap.profile.id,
         displayName: snap.profile.displayName,
         timeZone,
         primaryAccountId: snap.primaryAccount?.id ?? null,

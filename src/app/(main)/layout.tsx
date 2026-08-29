@@ -1,5 +1,8 @@
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { SessionOwnerBinder } from "@/components/layout/SessionOwnerBinder";
+import { ShellDisplayNameFallback } from "@/components/layout/ShellDisplayNameFallback";
+import { chromeDisplayName } from "@/domain/identity/display-name";
 import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
@@ -15,7 +18,7 @@ export default function MainLayout({
   return (
     <AppShell
       displayName={
-        <Suspense fallback="Användare">
+        <Suspense fallback={<ShellDisplayNameFallback />}>
           <ShellDisplayName />
         </Suspense>
       }
@@ -35,9 +38,16 @@ async function OnboardingRedirect() {
 
 async function ShellDisplayName() {
   try {
-    return (await getProfile()).displayName;
+    const profile = await getProfile();
+    const name = chromeDisplayName(profile.displayName);
+    return (
+      <>
+        <SessionOwnerBinder userId={profile.id} />
+        {name}
+      </>
+    );
   } catch (error) {
     console.error("[numa] layout profile failed", error);
-    return "Användare";
+    return <ShellDisplayNameFallback />;
   }
 }

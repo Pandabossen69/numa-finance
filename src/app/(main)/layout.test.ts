@@ -18,7 +18,10 @@ describe("main first-load chrome", () => {
     expect(layout).toContain("OnboardingRedirect");
     expect(layout).toContain("ShellDisplayName");
     expect(layout).toContain("<Suspense fallback={null}>");
-    expect(layout).toContain('<Suspense fallback="Användare">');
+    expect(layout).toContain("ShellDisplayNameFallback");
+    expect(layout).toContain("chromeDisplayName");
+    expect(layout).toContain("SessionOwnerBinder");
+    expect(layout).not.toContain("Användare");
   });
 
   it("keeps loading.tsx as content-only so the shell is not nested", () => {

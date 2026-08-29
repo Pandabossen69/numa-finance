@@ -108,7 +108,7 @@ export const MER_WARM_HREFS = [
 export function MerScreen({
   data,
 }: {
-  data: { displayName: string; isAdmin: boolean } | null;
+  data: { userId: string; displayName: string | null; isAdmin: boolean } | null;
 }) {
   if (data) rememberMerSnapshot(data);
   const view = data ?? lastMerSnapshot();
@@ -120,7 +120,9 @@ export function MerScreen({
       <DestinationWarmup hrefs={MER_WARM_HREFS} />
       <MerPageHeader
         title="Mer"
-        description={`Inloggad som ${view.displayName}`}
+        description={
+          view.displayName ? `Inloggad som ${view.displayName}` : "Inloggad"
+        }
       />
 
       <div className="animate-rise-delay-1 space-y-6">
@@ -176,10 +178,12 @@ export function MerScreen({
           <MerSection title="Konto">
             <MerListGroup>
               <MerListRow className="flex items-center gap-3">
-                <MerAvatar initial={view.displayName.charAt(0).toUpperCase()} />
+                <MerAvatar
+                  initial={(view.displayName ?? "·").charAt(0).toUpperCase()}
+                />
                 <span className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold tracking-tight">
-                    {view.displayName}
+                    {view.displayName ?? "Inloggad"}
                   </p>
                   <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
                     Inloggad nu

@@ -17,6 +17,9 @@ import {
   lastPlanSnapshot,
   lastPlanView,
   lastSettingsSnapshot,
+  lastKnownChromeDisplayName,
+  hasBoundSessionOwner,
+  clearClientSessionCaches,
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
@@ -51,6 +54,7 @@ const sampleMovements: MovementsSnapshot = {
 
 function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
   return {
+    userId: "user-hugo",
     displayName: "Hugo",
     timeZone: "Asia/Bangkok",
     primaryAccountId: "acc",
@@ -190,7 +194,11 @@ describe("last view memory", () => {
         },
       ],
     });
-    rememberMerSnapshot({ displayName: "Christian", isAdmin: false });
+    rememberMerSnapshot({
+      userId: "user-hugo",
+      displayName: "Christian",
+      isAdmin: false,
+    });
     rememberFotaBoot({
       accountId: "a1",
       accounts: [{ id: "a1", name: "Bangkok Bank", accountType: "checking" }],
@@ -208,6 +216,7 @@ describe("last view memory", () => {
       },
     ]);
     rememberSettingsSnapshot({
+      userId: "user-hugo",
       displayName: "Christian",
       timezone: "Asia/Bangkok",
       primaryCurrency: "THB",
@@ -399,5 +408,22 @@ describe("last view memory", () => {
     expect(next?.dayBudgetMinor).toBe(1_000_00);
     expect(next?.remainingTodayMinor).toBe(1_000_00);
     expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00);
+  });
+
+  it("drops Hugo's last-known numbers when another user binds", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 99_000_00 }));
+    expect(lastHomeSnapshot()?.displayName).toBe("Hugo");
+    rememberMerSnapshot({
+      userId: "user-christian",
+      displayName: "Christian Hultz",
+      isAdmin: false,
+    });
+    expect(lastHomeSnapshot()).toBeNull();
+    expect(lastMerSnapshot()?.displayName).toBe("Christian Hultz");
+    expect(lastKnownChromeDisplayName()).toBe("Christian Hultz");
+    clearClientSessionCaches();
+    expect(hasBoundSessionOwner()).toBe(false);
+    expect(lastKnownChromeDisplayName()).toBeNull();
+    expect(lastMerSnapshot()).toBeNull();
   });
 });

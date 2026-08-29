@@ -28,6 +28,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("isHomeDirty");
     expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
     expect(src).not.toContain("lastHomeSnapshot() == null");
+    expect(src).toContain("stored.userId === snap.userId");
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
@@ -96,6 +97,7 @@ describe("Hem PWA hint and HIGH copy", () => {
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
     expect(src).toContain("GettingStartedCard");
     expect(src).toContain("läget just nu");
+    expect(src).toContain("Ingen dagsbudget än");
     expect(src).not.toMatch(/välkommen till din resa/i);
   });
 

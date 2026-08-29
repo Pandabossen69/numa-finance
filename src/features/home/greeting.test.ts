@@ -13,4 +13,15 @@ describe("homeGreeting", () => {
     expect(homeGreeting("Hugo", morning, "Asia/Bangkok")).toBe("God morgon Hugo");
     expect(homeGreeting("Hugo", morning, "Asia/Bangkok")).not.toMatch(/Morgon/);
   });
+
+  it("greets an unmapped full name with the first name only", () => {
+    const midday = new Date("2026-08-23T06:00:00.000Z");
+    expect(homeGreeting("Christian Hultz", midday, "Asia/Bangkok")).toBe(
+      "Hej Christian",
+    );
+    expect(homeGreeting("Användare", midday, "Asia/Bangkok")).toBe("Hej");
+    expect(
+      homeGreeting("christianhultz1@gmail.com", midday, "Asia/Bangkok"),
+    ).toBe("Hej");
+  });
 });

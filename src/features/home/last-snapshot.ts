@@ -1,3 +1,4 @@
+import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
   cumulativePlanSavingsMinor,
   isSameZonedDay,
@@ -25,7 +26,8 @@ export type MovementsFilter = "all" | "expense" | "income" | "other";
 export type MovementsPeriod = "month" | "all";
 
 export type MerSnapshot = {
-  displayName: string;
+  userId: string;
+  displayName: string | null;
   isAdmin: boolean;
 };
 
@@ -51,13 +53,15 @@ export type ImporteraRow = {
 };
 
 export type SettingsSnapshot = {
-  displayName: string;
+  userId: string;
+  displayName: string | null;
   timezone: string;
   primaryCurrency: string;
   supabaseReady: boolean;
   isAdmin: boolean;
 };
 
+let sessionOwnerId: string | null = null;
 let home: HomeSnapshot | null = null;
 let homeDirty = false;
 let analys: AnalysSnapshot | null = null;
@@ -121,6 +125,53 @@ export function subscribeAccountsSnapshot(listener: () => void) {
   };
 }
 
+function wipeSessionCaches() {
+  home = null;
+  homeDirty = false;
+  analys = null;
+  plan = null;
+  planView = null;
+  analysScope = null;
+  gettingStarted = null;
+  movements = null;
+  movementsDirty = false;
+  movementsView = null;
+  accounts = null;
+  accountsDirty = false;
+  mer = null;
+  fota = null;
+  importera = null;
+  settings = null;
+  emit(homeListeners);
+  emit(planListeners);
+  emit(gettingStartedListeners);
+  emit(movementsListeners);
+  emit(accountsListeners);
+}
+
+export function bindSessionOwner(userId: string) {
+  if (sessionOwnerId && sessionOwnerId !== userId) {
+    wipeSessionCaches();
+  }
+  sessionOwnerId = userId;
+}
+
+export function clearClientSessionCaches() {
+  wipeSessionCaches();
+  sessionOwnerId = null;
+}
+
+export function hasBoundSessionOwner(): boolean {
+  return sessionOwnerId != null;
+}
+
+export function lastKnownChromeDisplayName(): string | null {
+  if (!sessionOwnerId) return null;
+  return chromeDisplayName(
+    home?.displayName ?? mer?.displayName ?? settings?.displayName ?? null,
+  );
+}
+
 export function isHomeDirty(): boolean {
   return homeDirty;
 }
@@ -129,6 +180,7 @@ export function rememberHomeSnapshot(
   snap: HomeSnapshot,
   opts?: { dirty?: boolean },
 ) {
+  bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
   if (home === snap && homeDirty === nextDirty) return;
   home = snap;
@@ -303,6 +355,7 @@ export function lastAccountsSnapshot(): AccountsSnapshot | null {
 }
 
 export function rememberMerSnapshot(snap: MerSnapshot) {
+  bindSessionOwner(snap.userId);
   mer = snap;
 }
 
@@ -327,6 +380,7 @@ export function lastImporteraRows(): ImporteraRow[] | null {
 }
 
 export function rememberSettingsSnapshot(snap: SettingsSnapshot) {
+  bindSessionOwner(snap.userId);
   settings = snap;
 }
 

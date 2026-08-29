@@ -32,6 +32,16 @@ const emptyUser = {
 };
 
 describe("buildGettingStartedView", () => {
+  it("shows the card for an unmapped new user like Christian", () => {
+    const view = buildGettingStartedView({
+      ...emptyUser,
+      email: "christianhultz1@gmail.com",
+    });
+    expect(view.visible).toBe(true);
+    expect(view.doneCount).toBe(0);
+    expect(view.allDone).toBe(false);
+  });
+
   it("hides the card for Hugo even when the ledger is empty", () => {
     const view = buildGettingStartedView({
       ...emptyUser,

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { MerScreen } from "@/components/mer/MerScreen";
+import { chromeDisplayName } from "@/domain/identity/display-name";
 import { getProfile } from "@/lib/store/repository";
 import { currentUserIsNumaAdmin } from "@/features/auth/session";
 
@@ -21,7 +22,17 @@ async function MerBody() {
       }),
     currentUserIsNumaAdmin(),
   ]);
-  const displayName = profileResult.profile?.displayName ?? "Användare";
+  if (!profileResult.profile) {
+    return <MerScreen data={null} />;
+  }
 
-  return <MerScreen data={{ displayName, isAdmin }} />;
+  return (
+    <MerScreen
+      data={{
+        userId: profileResult.profile.id,
+        displayName: chromeDisplayName(profileResult.profile.displayName),
+        isAdmin,
+      }}
+    />
+  );
 }

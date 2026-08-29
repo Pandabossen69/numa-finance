@@ -52,6 +52,12 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("Lägg till →");
   });
 
+  it("keeps the last Analys block clear of the floating dock", () => {
+    expect(src).toContain("pb-10");
+    expect(src).toContain("pb-8");
+    expect(src).not.toContain("space-y-3 pb-2");
+  });
+
   it("lets the Analys header wrap so the formula panel can sit above the tabs", () => {
     expect(src).toContain("flex flex-wrap items-start justify-between");
   });

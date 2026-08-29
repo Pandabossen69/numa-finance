@@ -18,7 +18,11 @@ import {
   projectPayCycle,
   projectPlanForMonth,
 } from "@/domain/finance";
-import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
+import {
+  humanizeMovementTitle,
+  sanitizeMoneyDescription,
+  type CurrencyCode,
+} from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { loadErrorMessageSv } from "@/lib/async";
 
@@ -193,7 +197,10 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
 
     const recent = (snap.recentTransactions ?? []).slice(0, 10).map((tx) => ({
       id: tx.id,
-      description: sanitizeMoneyDescription(tx.description),
+      description: humanizeMovementTitle(
+        sanitizeMoneyDescription(tx.description),
+        tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor,
+      ),
       category: tx.category,
       transactionType: tx.transactionType,
       direction: tx.direction,

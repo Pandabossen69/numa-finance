@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isNumaAdminEmail } from "@/domain/identity/admin";
+import { isPlaceholderDisplayName } from "@/domain/identity/display-name";
 import { EMAIL_INVALID_MESSAGE, isPlausibleEmail } from "@/domain/identity/email";
 
 export const SERVICE_ROLE_MISSING_SV =
@@ -9,6 +10,8 @@ export const ADMIN_NOT_FOUND_SV = "Sidan finns inte";
 
 export const CREATE_USER_SUCCESS_SV =
   "Kontot skapades. Personen loggar in på /logga-in och börjar med att sätta saldo.";
+
+export const DISPLAY_NAME_REQUIRED_SV = "Ange ett visningsnamn";
 
 const createUserSchema = z.object({
   email: z
@@ -24,14 +27,18 @@ const createUserSchema = z.object({
   displayName: z
     .string()
     .trim()
+    .min(1, DISPLAY_NAME_REQUIRED_SV)
     .max(40, "Visningsnamnet får vara högst 40 tecken")
-    .optional(),
+    .refine(
+      (value) => !isPlaceholderDisplayName(value) && !value.includes("@"),
+      DISPLAY_NAME_REQUIRED_SV,
+    ),
 });
 
 export type CreateUserInput = {
   email: string;
   password: string;
-  displayName?: string;
+  displayName: string;
 };
 
 export type CreateUserResult =
@@ -54,7 +61,7 @@ export function parseCreateUserInput(raw: {
   const parsed = createUserSchema.safeParse({
     email: raw.email,
     password: raw.password,
-    displayName: raw.displayName?.trim() ? raw.displayName : undefined,
+    displayName: raw.displayName,
   });
   if (!parsed.success) {
     return {
@@ -62,13 +69,12 @@ export function parseCreateUserInput(raw: {
       error: parsed.error.issues[0]?.message ?? EMAIL_INVALID_MESSAGE,
     };
   }
-  const displayName = parsed.data.displayName?.trim();
   return {
     ok: true,
     input: {
       email: parsed.data.email.trim().toLowerCase(),
       password: parsed.data.password,
-      displayName: displayName ? displayName : undefined,
+      displayName: parsed.data.displayName.trim(),
     },
   };
 }

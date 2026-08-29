@@ -72,7 +72,7 @@ export function InstallningarScreen({
           {view ? (
             <MerListGroup>
               <dl>
-                <MerMetaRow label="Namn" value={view.displayName} />
+                <MerMetaRow label="Namn" value={view.displayName ?? "—"} />
                 <MerMetaRow label="Tidszon" value={view.timezone} />
                 <MerMetaRow label="Valuta" value={view.primaryCurrency} />
                 <MerMetaRow

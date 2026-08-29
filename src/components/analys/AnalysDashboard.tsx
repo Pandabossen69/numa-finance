@@ -20,7 +20,11 @@ import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
-import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
+import {
+  humanizeMovementTitle,
+  sanitizeMoneyDescription,
+  type CurrencyCode,
+} from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
 
@@ -93,7 +97,7 @@ export function AnalysDashboard({
       : null;
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
+    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6 pb-10">
       <DestinationWarmup hrefs={["/transaktioner", "/plan"]} />
       <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
         <h1 className="numa-page-title">Analys</h1>
@@ -403,7 +407,7 @@ export function AnalysDashboard({
         )}
       </section>
 
-      <section className="animate-rise-delay-3 space-y-3 pb-2">
+      <section className="animate-rise-delay-3 space-y-3 pb-8">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold tracking-tight">Senaste</h2>
           <Link
@@ -429,7 +433,7 @@ export function AnalysDashboard({
                 >
                   <div className="numa-money-line-label">
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
-                      {sanitizeMoneyDescription(tx.description)}
+                      {humanizeMovementTitle(tx.description, signed)}
                     </p>
                     {tx.category ? (
                       <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">

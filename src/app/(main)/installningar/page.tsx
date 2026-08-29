@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { InstallningarScreen } from "@/components/mer/InstallningarScreen";
+import { chromeDisplayName } from "@/domain/identity/display-name";
 import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { currentUserIsNumaAdmin } from "@/features/auth/session";
@@ -27,7 +28,8 @@ async function InstallningarBody() {
       data={
         profile
           ? {
-              displayName: profile.displayName,
+              userId: profile.id,
+              displayName: chromeDisplayName(profile.displayName),
               timezone: profile.timezone,
               primaryCurrency: profile.primaryCurrency,
               supabaseReady,

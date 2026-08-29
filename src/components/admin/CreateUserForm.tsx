@@ -55,12 +55,13 @@ export function CreateUserForm() {
         required
       />
       <Field
-        label="Visningsnamn (valfritt)"
+        label="Visningsnamn"
         type="text"
         autoComplete="off"
         value={form.displayName}
         onChange={(v) => setForm((f) => ({ ...f, displayName: v }))}
-        placeholder="t.ex. Jordan"
+        placeholder="t.ex. Christian Hultz"
+        required
       />
       <PasswordField
         label="Lösenord"
@@ -91,7 +92,12 @@ export function CreateUserForm() {
       ) : null}
       <button
         type="submit"
-        disabled={pending || !form.email.trim() || form.password.length < 8}
+        disabled={
+          pending ||
+          !form.email.trim() ||
+          !form.displayName.trim() ||
+          form.password.length < 8
+        }
         className="flex min-h-14 w-full items-center justify-center rounded-[1.25rem] bg-[var(--numa-accent)] text-[15px] font-semibold text-white transition hover:bg-[var(--numa-accent-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 enabled:active:scale-[0.99] disabled:opacity-45"
       >
         {pending ? "Skapar…" : "Skapa användare"}

@@ -6,7 +6,11 @@ import {
   filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
 } from "@/domain/finance";
-import { sanitizeMoneyDescription, type CurrencyCode } from "@/domain/money";
+import {
+  humanizeMovementTitle,
+  sanitizeMoneyDescription,
+  type CurrencyCode,
+} from "@/domain/money";
 import { loadErrorMessageSv } from "@/lib/async";
 import {
   getLatestCheckpoint,
@@ -142,7 +146,10 @@ export const loadMovementsSnapshot = cache(
         .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
         .map((tx) => ({
           id: tx.id,
-          description: sanitizeMoneyDescription(tx.description),
+          description: humanizeMovementTitle(
+            sanitizeMoneyDescription(tx.description),
+            tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor,
+          ),
           category: tx.category,
           transactionType: tx.transactionType,
           direction: tx.direction,

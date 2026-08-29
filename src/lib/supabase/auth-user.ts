@@ -3,7 +3,20 @@ import { withTimeoutRetry } from "@/lib/async";
 import { isSupabaseConfigured } from "./config";
 import { createSupabaseServerClient } from "./server";
 
-export type AuthUser = { id: string; email: string };
+export type AuthUser = {
+  id: string;
+  email: string;
+  metadataDisplayName: string | null;
+};
+
+function metadataDisplayNameOf(user: {
+  user_metadata?: unknown;
+}): string | null {
+  const meta = user.user_metadata;
+  if (!meta || typeof meta !== "object") return null;
+  const raw = (meta as Record<string, unknown>).display_name;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+}
 
 /**
  * One session read per request. Proxy already verified the JWT with
@@ -23,5 +36,9 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   );
   const user = session?.user;
   if (!user) return null;
-  return { id: user.id, email: user.email ?? "" };
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    metadataDisplayName: metadataDisplayNameOf(user),
+  };
 });
