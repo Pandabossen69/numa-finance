@@ -81,7 +81,7 @@ const requireUserId = cache(async (): Promise<string> => {
   return (await requireAuthUser()).id;
 });
 
-async function ensureProfile(_userId?: string): Promise<Profile> {
+async function ensureProfile(): Promise<Profile> {
   const { id: userId, email, metadataDisplayName } = await requireAuthUser();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -324,7 +324,7 @@ export async function createAccount(input: {
   makeDefault?: boolean;
 }): Promise<Account> {
   const userId = await requireUserId();
-  await ensureProfile(userId);
+  await ensureProfile();
   const supabase = await createSupabaseServerClient();
 
   const existing = await listAccounts();
@@ -1006,7 +1006,7 @@ export async function createPlanItem(input: {
 }): Promise<PlanItem> {
   if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
   const userId = await requireUserId();
-  await ensureProfile(userId);
+  await ensureProfile();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("plan_items")
@@ -1312,7 +1312,7 @@ export async function uploadReceiptAndExtract(input: {
   preferBankApp?: boolean;
 }): Promise<ReceiptUploadResult> {
   const userId = await requireUserId();
-  await ensureProfile(userId);
+  await ensureProfile();
   const supabase = await createSupabaseServerClient();
   const storagePath = buildUserStoragePath(userId, input.fileName);
   assertUserOwnsStoragePath(userId, storagePath);

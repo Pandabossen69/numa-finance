@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 
 export type SubmitGuard = {
   /** True when this call owns the write. False means one is already running. */
@@ -37,9 +37,8 @@ export function createSubmitLock(): SubmitGuard {
  * settles, so callers never have to unwind it by hand.
  */
 export function useSubmitGuard(pending?: boolean): SubmitGuard {
-  const guard = useRef<SubmitGuard | null>(null);
-  if (!guard.current) guard.current = createSubmitLock();
-  const lock = guard.current;
+  // One lock per mounted form, created once.
+  const [lock] = useState(createSubmitLock);
 
   useEffect(() => {
     if (pending === false) lock.end();

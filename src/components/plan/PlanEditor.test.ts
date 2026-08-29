@@ -153,7 +153,7 @@ describe("Plan dates and add-form", () => {
     expect(menu).not.toContain("absolute right-0");
     // Flip up when the dock would cover a downward menu.
     expect(menu).toContain("DOCK_CLEARANCE");
-    expect(menu).toContain('direction === "down"');
+    expect(menu).toContain('menu.classList.toggle("is-up", up)');
     expect(menu).toContain("requestAnimationFrame");
     expect(menu).toContain('window.addEventListener("scroll"');
     const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");

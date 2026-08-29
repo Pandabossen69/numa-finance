@@ -249,14 +249,6 @@ export function PlanEditor({
     }, 80);
     return () => window.clearTimeout(id);
   }, [focusAdd]);
-  // Publish after commit. Writing to the plan store inside a setState
-  // updater ran during render and updated PlanScreen mid-render, which React
-  // rejects and which could repaint the list under the user's finger.
-  useEffect(() => {
-    publishItems(localItems);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
-
   function publishItems(next: PlanItem[]) {
     rememberLivePlan({
       items: next,
@@ -267,6 +259,14 @@ export function PlanEditor({
       ledgerTransactions,
     });
   }
+
+  // Publish after commit. Writing to the plan store inside a setState
+  // updater ran during render and updated PlanScreen mid-render, which React
+  // rejects and which could repaint the list under the user's finger.
+  useEffect(() => {
+    publishItems(localItems);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
 
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);

@@ -37,17 +37,19 @@ async function OnboardingRedirect() {
 }
 
 async function ShellDisplayName() {
+  let profile: Awaited<ReturnType<typeof getProfile>> | null = null;
   try {
-    const profile = await getProfile();
-    const name = chromeDisplayName(profile.displayName);
-    return (
-      <>
-        <SessionOwnerBinder userId={profile.id} />
-        {name}
-      </>
-    );
+    profile = await getProfile();
   } catch (error) {
     console.error("[numa] layout profile failed", error);
-    return <ShellDisplayNameFallback />;
   }
+
+  if (!profile) return <ShellDisplayNameFallback />;
+
+  return (
+    <>
+      <SessionOwnerBinder userId={profile.id} />
+      {chromeDisplayName(profile.displayName)}
+    </>
+  );
 }
