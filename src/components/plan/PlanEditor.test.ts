@@ -1,33 +1,66 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const src = readFileSync(new URL("./PlanEditor.tsx", import.meta.url), "utf8");
+function read(name: string): string {
+  return readFileSync(new URL(name, import.meta.url), "utf8");
+}
+
+const editor = read("./PlanEditor.tsx");
+const rows = read("./PlanRows.tsx");
+const dateField = read("./PlanDateField.tsx");
+const inlineAdd = read("./InlineAdd.tsx");
+const monthStrip = read("./MonthChipStrip.tsx");
+const card = read("./PlanCard.tsx");
+const equation = read("./PlanEquation.tsx");
+const format = read("./plan-format.ts");
+const css = read("../../app/globals.css");
+
+/** For rules that must hold across Plan, wherever the code happens to live. */
+const plan = [editor, rows, dateField, inlineAdd, monthStrip, card, equation, format].join(
+  "\n",
+);
+
+describe("Plan file layout", () => {
+  it("keeps the editor small enough to read and the row list on its own", () => {
+    const lines = (text: string) => text.split("\n").length;
+    expect(lines(editor)).toBeLessThan(1200);
+    expect(lines(rows)).toBeLessThan(400);
+    // The screens are composed, not one file.
+    expect(editor).toContain('from "@/components/plan/PlanRows"');
+    expect(editor).toContain('from "@/components/plan/InlineAdd"');
+    expect(editor).toContain('from "@/components/plan/PlanCard"');
+    expect(editor).toContain('from "@/components/plan/MonthChipStrip"');
+    expect(editor).toContain('from "@/components/plan/plan-format"');
+    // The row list owns the settle rule and does not reach back into the editor.
+    expect(rows).not.toContain("PlanEditor");
+    expect(rows).toContain("export function PlanRows(");
+  });
+});
 
 describe("Plan dates and add-form", () => {
   it("labels Intäkter and Fasta utgifter with the same Swedish short date", () => {
-    expect(src).toContain("formatListDateSv(item.nextDueAt, timeZone)");
-    expect(src).toContain("labelIncomeDateSv");
-    expect(src).not.toContain("labelDayOfMonthSv");
+    expect(editor).toContain("formatListDateSv(item.nextDueAt, timeZone)");
+    expect(editor).toContain("labelIncomeDateSv");
+    expect(plan).not.toContain("labelDayOfMonthSv");
   });
 
   it("shows Plan date inputs as Swedish calendar dates, not US mm/dd/yyyy", () => {
-    expect(src).toContain("PlanDateField");
-    expect(src).toContain("formatIsoDateOnlySv");
-    expect(src).toContain('lang="sv-SE"');
-    expect(src).toContain("ÅÅÅÅ-MM-DD");
+    expect(plan).toContain("PlanDateField");
+    expect(dateField).toContain("formatIsoDateOnlySv");
+    expect(dateField).toContain('lang="sv-SE"');
+    expect(dateField).toContain("ÅÅÅÅ-MM-DD");
   });
 
   it("opens the picker from the native date input so a calendar tap can commit", () => {
-    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
-    expect(src).toContain('className="numa-date-input"');
-    expect(src).toContain("commitCalendarDate");
-    expect(src).toContain("PlanDateField");
-    expect(src).not.toContain("onPointerDown");
-    expect(src).not.toContain("event.preventDefault");
-    expect(src).not.toContain("preventDefault()");
-    expect(src).not.toContain("openNativeDatePicker");
-    expect(src).not.toContain("showPicker");
-    expect(src).not.toContain("absolute inset-0 cursor-pointer opacity-0");
+    expect(dateField).toContain('className="numa-date-input"');
+    expect(dateField).toContain("commitCalendarDate");
+    expect(format).toContain("nextCommittedCalendarDate");
+    expect(plan).not.toContain("onPointerDown");
+    expect(plan).not.toContain("event.preventDefault");
+    expect(plan).not.toContain("preventDefault()");
+    expect(plan).not.toContain("openNativeDatePicker");
+    expect(plan).not.toContain("showPicker");
+    expect(plan).not.toContain("absolute inset-0 cursor-pointer opacity-0");
     expect(css).toContain(".numa-date-input");
     expect(css).not.toContain("::-webkit-calendar-picker-indicator");
     const dateCss = css.slice(
@@ -40,79 +73,80 @@ describe("Plan dates and add-form", () => {
   });
 
   it("scrolls the submit row into view and pads above the FAB when adding", () => {
-    expect(src).toContain("scrollIntoView");
-    expect(src).toContain('block: "nearest"');
-    expect(src).toContain(
+    expect(inlineAdd).toContain("scrollIntoView");
+    expect(inlineAdd).toContain('block: "nearest"');
+    expect(inlineAdd).toContain(
       "pb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+1.75rem)] md:pb-0",
     );
-    expect(src).toContain("scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)");
-    expect(src).toContain("md:scroll-mb-0");
+    expect(inlineAdd).toContain(
+      "scroll-mb-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)",
+    );
+    expect(inlineAdd).toContain("md:scroll-mb-0");
   });
 
   it("does not keep the add toggle over the fields while they expand", () => {
-    expect(src).toContain("fieldsMounted");
-    expect(src).toContain("const showFields = open || fieldsMounted");
-    expect(src).toContain("onTransitionEnd");
+    expect(inlineAdd).toContain("fieldsMounted");
+    expect(inlineAdd).toContain("const showFields = open || fieldsMounted");
+    expect(inlineAdd).toContain("onTransitionEnd");
   });
 
   it("keeps month context and fades the chip strip only when it overflows", () => {
-    expect(src).toContain("rememberPlanView");
-    expect(src).toContain("lastPlanView");
-    expect(src).toContain("MonthChipStrip");
-    expect(src).toContain("is-overflow-start");
-    expect(src).not.toContain("numa-month-strip -mx-1");
+    expect(editor).toContain("rememberPlanView");
+    expect(editor).toContain("lastPlanView");
+    expect(editor).toContain("MonthChipStrip");
+    expect(monthStrip).toContain("is-overflow-start");
+    expect(plan).not.toContain("numa-month-strip -mx-1");
   });
 
   it("lets users browse earlier months and years without rewriting history", () => {
-    expect(src).toContain("visibleMonthKeysForYear");
-    expect(src).toContain("shiftYear(-1)");
-    expect(src).toContain('aria-label="Föregående år"');
-    expect(src).toContain("Bläddra bakåt och framåt — historik ändras inte");
-    expect(src).toContain("min-h-11 rounded-full px-3");
-    expect(src).not.toContain("även år framåt");
+    expect(editor).toContain("visibleMonthKeysForYear");
+    expect(editor).toContain("shiftYear(-1)");
+    expect(editor).toContain('aria-label="Föregående år"');
+    expect(editor).toContain("Bläddra bakåt och framåt — historik ändras inte");
+    expect(editor).toContain("min-h-11 rounded-full px-3");
+    expect(plan).not.toContain("även år framåt");
   });
 
   it("opens the matching add form when Kom igång sends steg", () => {
-    expect(src).toContain("focusAdd");
-    expect(src).toContain("stepHint");
-    expect(src).toContain("scrollOnOpen");
-    expect(src).toContain('banner={focusAdd === "income" ? stepHint : null}');
-    expect(src).toContain("setAddKind(focusAdd)");
+    expect(editor).toContain("focusAdd");
+    expect(editor).toContain("stepHint");
+    expect(editor).toContain("scrollOnOpen");
+    expect(editor).toContain('banner={focusAdd === "income" ? stepHint : null}');
+    expect(editor).toContain("setAddKind(focusAdd)");
   });
 
   it("computes Över from cash coverage, not Mot planen leftover", () => {
-    expect(src).toContain("projectCashCoverage");
-    expect(src).toContain("ledgerTransactions");
-    expect(src).toContain("coverage={coverage}");
+    expect(editor).toContain("projectCashCoverage");
+    expect(editor).toContain("ledgerTransactions");
+    expect(editor).toContain("coverage={coverage}");
   });
 
   it("lets every month mark Betald or Mottagen without deleting", () => {
-    expect(src).toContain("setPlanItemSettledAction");
-    expect(src).toContain("onSettle={settleRow}");
-    expect(src).toContain("planDoneLabel");
-    expect(src).toContain("planPartialLabel");
-    expect(src).toContain('settleKind="income"');
-    expect(src).toContain('settleKind="expense"');
-    expect(src).toContain("SV.angraKlar");
-    expect(src).not.toContain("locked={isPastMonth}");
+    expect(editor).toContain("setPlanItemSettledAction");
+    expect(editor).toContain("onSettle={settleRow}");
+    expect(rows).toContain("planDoneLabel");
+    expect(rows).toContain("planPartialLabel");
+    expect(editor).toContain('settleKind="income"');
+    expect(editor).toContain('settleKind="expense"');
+    expect(rows).toContain("SV.angraKlar");
+    expect(plan).not.toContain("locked={isPastMonth}");
   });
 
   it("shows Betald/Mottagen in mint and Delvis in clay, without a Klar button", () => {
-    expect(src).toContain("numa-plan-row");
-    expect(src).toContain("is-settled");
-    expect(src).toContain("is-partial");
-    expect(src).toContain("numa-chip numa-chip-mint");
-    expect(src).toContain("numa-chip numa-chip-spend");
-    expect(src).toContain("<button");
+    expect(rows).toContain("numa-plan-row");
+    expect(rows).toContain("is-settled");
+    expect(rows).toContain("is-partial");
+    expect(rows).toContain("numa-chip numa-chip-mint");
+    expect(rows).toContain("numa-chip numa-chip-spend");
+    expect(rows).toContain("<button");
     // The dead span is gone: a chip only exists when the user tapped it, and
     // then it must be an Ångra control.
-    expect(src).not.toContain('<span className="numa-chip numa-chip-mint self-end">');
-    expect(src).toContain("onClick={() => onSettle(item.id, false)}");
-    expect(src).not.toContain("onClick={() => onSettle(item.id, true)}");
-    expect(src).toContain("numa-plan-list");
-    expect(src).toContain("numa-plan-figures");
-    expect(src).toContain("wrap={false}");
-    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(rows).not.toContain('<span className="numa-chip numa-chip-mint self-end">');
+    expect(rows).toContain("onClick={() => onSettle(item.id, false)}");
+    expect(rows).not.toContain("onClick={() => onSettle(item.id, true)}");
+    expect(rows).toContain("numa-plan-list");
+    expect(rows).toContain("numa-plan-figures");
+    expect(rows).toContain("wrap={false}");
     expect(css).toContain(".numa-plan-row.is-settled");
     expect(css).toContain(".numa-plan-row.is-partial");
     expect(css).toContain("var(--numa-positive)");
@@ -120,33 +154,34 @@ describe("Plan dates and add-form", () => {
   });
 
   it("puts Betald last, Delvis just above, and lets Ångra undo both", () => {
-    expect(src).toContain("sortPlanRowsForList");
-    expect(src).toContain("canUndo");
-    expect(src).toContain("aria-label={`Ångra ${doneLabel}`}");
-    expect(src).toContain("SV.angraKlar");
+    expect(rows).toContain("sortPlanRowsForList");
+    expect(rows).toContain("canUndo");
+    expect(rows).toContain("aria-label={`Ångra ${doneLabel}`}");
+    expect(rows).toContain("SV.angraKlar");
   });
 
   it("paints a row from the user's taps only, never from a ledger match", () => {
     // One derivation, owned by the domain, taking only the item.
-    expect(src).toContain("const { settled, partial, canUndo } = planRowView(item)");
-    expect(src).not.toContain("isPlanSettled(item)");
-    expect(src).not.toContain("isPlanPartiallySettled(item)");
-    // The rows never receive the matcher result at all.
-    expect(src).not.toContain("matchedIds");
-    expect(src).not.toContain("const matched =");
-    expect(src).not.toContain("matched &&");
-    expect(src).not.toContain("explicitSettled");
+    expect(rows).toContain("const { settled, partial, canUndo } = planRowView(item)");
+    expect(rows).not.toContain("isPlanSettled(item)");
+    expect(rows).not.toContain("isPlanPartiallySettled(item)");
+    // Nothing in Plan hands the matcher result to a row.
+    expect(plan).not.toContain("matchedIds={");
+    expect(rows).not.toContain("matchedIds");
+    expect(rows).not.toContain("matchPlanItemsToLedger");
+    expect(plan).not.toContain("const matched =");
+    expect(plan).not.toContain("matched &&");
+    expect(plan).not.toContain("explicitSettled");
     // Matching survives for the money totals only.
-    expect(src).toContain("matchPlanItemsToLedger");
-    expect(src).toContain("sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)");
-    expect(src).toContain("sortPlanRowsForList(items)");
+    expect(editor).toContain("matchPlanItemsToLedger");
+    expect(editor).toContain(
+      "sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)",
+    );
+    expect(rows).toContain("sortPlanRowsForList(items)");
   });
 
   it("opens row actions in a portal so a panel cannot clip or shift them", () => {
-    const menu = readFileSync(
-      new URL("../ui/OverflowMenu.tsx", import.meta.url),
-      "utf8",
-    );
+    const menu = read("../ui/OverflowMenu.tsx");
     expect(menu).toContain("createPortal");
     expect(menu).toContain("document.body");
     expect(menu).toContain("fixed z-[70]");
@@ -156,72 +191,71 @@ describe("Plan dates and add-form", () => {
     expect(menu).toContain('menu.classList.toggle("is-up", up)');
     expect(menu).toContain("requestAnimationFrame");
     expect(menu).toContain('window.addEventListener("scroll"');
-    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
     expect(css).toContain(".numa-overflow-menu.is-up");
     expect(css).toContain("numa-menu-in-up");
   });
 
   it("does not yank the page when the add card opens", () => {
-    expect(src).not.toContain('block: "start"');
-    expect(src).toContain('block: "nearest"');
+    expect(plan).not.toContain('block: "start"');
+    expect(plan).toContain('block: "nearest"');
   });
 
   it("publishes the plan store after commit, never from inside an updater", () => {
-    expect(src).toContain("useEffect(() => {\n    publishItems(localItems);");
-    expect(src).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
-    expect(src).toContain(
+    expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
+    expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
+    expect(editor).toContain(
       "setLocalItems((current) => adoptServerPlanItems(current, items));",
     );
   });
 
   it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {
-    expect(src).toContain("planRowHeroMinor");
-    expect(src).toContain("planPartialBreakdown");
-    expect(src).toContain("previewPartialRemaining");
-    expect(src).toContain("PlanEquation");
-    expect(src).toContain("coverage.incomingMinor");
-    expect(src).toContain("coverage.unpaidMinor");
-    expect(src).toContain("sumCountsTowardCashMinor");
+    expect(rows).toContain("planRowHeroMinor");
+    expect(rows).toContain("planPartialBreakdown");
+    expect(rows).toContain("previewPartialRemaining");
+    expect(rows).toContain("PlanEquation");
+    expect(equation).toContain("formatPlanFigure");
+    expect(editor).toContain("coverage.incomingMinor");
+    expect(editor).toContain("coverage.unpaidMinor");
+    expect(editor).toContain("sumCountsTowardCashMinor");
   });
 
   it("uses a calendar date on new and existing incomes and expenses", () => {
-    expect(src).not.toContain('editExtraType="day"');
-    expect(src).not.toContain('extraType="day"');
-    expect(src).toContain("expenseDate");
-    expect(src).not.toContain("Låst — passerad månad");
-    expect(src).toContain("createPlanItemAction");
+    expect(plan).not.toContain('editExtraType="day"');
+    expect(plan).not.toContain('extraType="day"');
+    expect(editor).toContain("expenseDate");
+    expect(plan).not.toContain("Låst — passerad månad");
+    expect(editor).toContain("createPlanItemAction");
   });
 
   it("lets Delvis betald / mottagen take an amount and a date for the rest", () => {
-    expect(src).toContain("planPartialLabel");
-    expect(src).toContain("remainingDatePrompt");
-    expect(src).toContain("När kommer resten?");
-    expect(src).toContain("När ska resten betalas?");
-    expect(src).toContain("partialDate");
-    expect(src).toContain("remainingDate");
-    expect(src).toContain("applyPlanItemEdits");
-    expect(src).toContain("remainingDueIso(item)");
+    expect(rows).toContain("planPartialLabel");
+    expect(rows).toContain("remainingDatePrompt");
+    expect(editor).toContain("När kommer resten?");
+    expect(editor).toContain("När ska resten betalas?");
+    expect(editor).toContain("partialDate");
+    expect(editor).toContain("remainingDate");
+    expect(editor).toContain("applyPlanItemEdits");
+    expect(rows).toContain("remainingDueIso(item)");
   });
 
   it("reconciles mutations locally and does not refresh the whole page", () => {
-    expect(src).toContain("rememberLivePlan");
-    expect(src).toContain("publishItems");
-    expect(src).not.toContain("refreshQuiet");
-    expect(src).not.toContain("router.refresh");
-    expect(src).not.toContain("useRouter");
+    expect(editor).toContain("rememberLivePlan");
+    expect(editor).toContain("publishItems");
+    expect(plan).not.toContain("refreshQuiet");
+    expect(plan).not.toContain("router.refresh");
+    expect(plan).not.toContain("useRouter");
   });
 
   it("lands a new row immediately and closes add without emptying the form first", () => {
-    expect(src).toContain("function commitAdd");
-    expect(src).toContain("setAddKind(null)");
-    expect(src).toContain("adoptServerPlanItems");
-    expect(src).toContain("is-fresh");
-    const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
+    expect(editor).toContain("function commitAdd");
+    expect(editor).toContain("setAddKind(null)");
+    expect(editor).toContain("adoptServerPlanItems");
+    expect(rows).toContain("is-fresh");
     expect(css).toContain(".numa-plan-row.is-fresh");
     expect(css).toContain("numa-row-in");
-    const commit = src.slice(
-      src.indexOf("function commitAdd"),
-      src.indexOf("function settleRow"),
+    const commit = editor.slice(
+      editor.indexOf("function commitAdd"),
+      editor.indexOf("function settleRow"),
     );
     expect(commit).toContain("setAddKind(null)");
     expect(commit).toContain("runMutation");
