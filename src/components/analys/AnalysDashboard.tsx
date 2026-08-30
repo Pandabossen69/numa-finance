@@ -352,13 +352,15 @@ export function AnalysDashboard({
                     />
                   </>
                 ) : null}
-                {hasSaldo ? (
+                {/* Before payday the headline already is the saldo, so a
+                    "På kontot" row here would just repeat it. */}
+                {isBridge ? null : hasSaldo ? (
                   <MetricRow
                     label={SV.paKontot}
                     amountMinor={view.calculatedBalanceMinor!}
                     currency={currency}
                   />
-                ) : isBridge ? null : (
+                ) : (
                   <MetricRow label={SV.saldo} />
                 )}
               </div>

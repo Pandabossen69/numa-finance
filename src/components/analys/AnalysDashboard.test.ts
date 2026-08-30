@@ -178,6 +178,9 @@ describe("Analys month result color", () => {
     // Before payday it used to hold only "På kontot".
     expect(src).toContain('label="Kommande intäkter"');
     expect(src).toContain('label="Kommande utgifter"');
+    // ...and the headline is the saldo before payday, so the block must not
+    // print the same number again under a second name.
+    expect(src).toContain("{isBridge ? null : hasSaldo ? (");
   });
 
   it("shows the same period figure above the list as in it", () => {
