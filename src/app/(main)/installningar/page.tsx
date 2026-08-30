@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { InstallningarScreen } from "@/components/mer/InstallningarScreen";
 import { chromeDisplayName } from "@/domain/identity/display-name";
@@ -18,6 +19,7 @@ async function InstallningarBody() {
   try {
     profile = await getProfile();
   } catch (error) {
+    unstable_rethrow(error);
     console.error("[numa] installningar failed", error);
   }
   const supabaseReady = isSupabaseConfigured();

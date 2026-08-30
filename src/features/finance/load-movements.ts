@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
   spendingCategoriesByMonthKey,
@@ -175,6 +176,7 @@ export const loadMovementsSnapshot = cache(
         },
       };
     } catch (error) {
+      unstable_rethrow(error);
       console.error("[numa] loadMovementsSnapshot failed", error);
       return {
         ok: false,

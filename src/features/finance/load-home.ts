@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
   extraSaldoHintSv,
@@ -164,6 +165,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error("[numa] loadHomeSnapshot failed", error);
     return {
       ok: false,

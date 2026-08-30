@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
@@ -31,6 +32,7 @@ export async function loadPlanSnapshot(): Promise<PlanSnapshotResult> {
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error("[numa] loadPlanSnapshot failed", error);
     return {
       ok: false,

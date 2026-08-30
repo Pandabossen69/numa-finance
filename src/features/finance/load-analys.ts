@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction } from "@/domain/finance";
 import {
   NEXT_INCOME_NAME,
@@ -212,6 +213,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error("[numa] loadAnalysSnapshot failed", error);
     return {
       ok: false,

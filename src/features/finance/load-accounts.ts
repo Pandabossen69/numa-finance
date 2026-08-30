@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
   calculateAccountBalance,
@@ -80,6 +81,7 @@ export const loadAccountsSnapshot = cache(
         },
       };
     } catch (error) {
+      unstable_rethrow(error);
       console.error("[numa] loadAccountsSnapshot failed", error);
       return {
         ok: false,
