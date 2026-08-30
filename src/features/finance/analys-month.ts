@@ -6,14 +6,15 @@ import {
   isRecurringMonthly,
   labelDayOfMonthSv,
   monthLeftoverHintSv,
-  monthLivingSaldoMinor,
   planRowHeroMinor,
   planRowView,
-  planWealthTotalMinor,
+  projectCashCoverage,
   projectExtraSaldo,
   projectPlanForMonth,
   remainingOpenMinor,
   settledAmountMinor,
+  type CashCoverageView,
+  type LedgerMatchTx,
   type PlanItem,
   type PlanListStatus,
 } from "@/domain/finance";
@@ -34,6 +35,8 @@ export type AnalysLine = {
 };
 
 export type AnalysMonthView = {
+  /** Saldo + kommer in − kvar att betala, for this month. Same as Hem and Plan. */
+  coverage: CashCoverageView;
   incomeMinor: number;
   expenseMinor: number;
   savingsMinor: number;
@@ -42,10 +45,7 @@ export type AnalysMonthView = {
   extraSaldoDrawnMinor: number;
   extraSaldoHint: string | null;
   extraCarriedInMinor: number;
-  /** Calendar-month leftover vs plan (not cash). Analys only — Plan/Hem use Över. */
-  livingSaldoMinor: number;
   savingsTotalMinor: number;
-  wealthTotalMinor: number;
   monthLeftoverHint: string | null;
   monthResultMinor: number;
   spentMinor: number;
@@ -90,12 +90,21 @@ export function toAnalysLine(
 export function buildAnalysMonth(input: {
   planItems: PlanItem[];
   spendingByMonthKey: Record<string, number>;
+  ledgerTransactions: LedgerMatchTx[];
+  saldoMinor: number | null;
   monthKey: string;
   currentMonthKey: string;
   timeZone: string;
 }): AnalysMonthView {
-  const { planItems, spendingByMonthKey, monthKey, currentMonthKey, timeZone } =
-    input;
+  const {
+    planItems,
+    spendingByMonthKey,
+    ledgerTransactions,
+    saldoMinor,
+    monthKey,
+    currentMonthKey,
+    timeZone,
+  } = input;
 
   const month = projectPlanForMonth(planItems, monthKey, timeZone);
   const extra = projectExtraSaldo({
@@ -105,7 +114,6 @@ export function buildAnalysMonth(input: {
     currentMonthKey,
     timeZone,
   });
-  const livingSaldoMinor = monthLivingSaldoMinor(extra);
   const savingsTotalMinor = cumulativePlanSavingsMinor(
     planItems,
     monthKey,
@@ -113,6 +121,13 @@ export function buildAnalysMonth(input: {
   );
 
   return {
+    coverage: projectCashCoverage({
+      planItems,
+      transactions: ledgerTransactions,
+      monthKey,
+      timeZone,
+      saldoMinor,
+    }),
     incomeMinor: month.incomeMinor,
     expenseMinor: month.totalPlannedMinor,
     savingsMinor: month.savingsMinor,
@@ -121,9 +136,7 @@ export function buildAnalysMonth(input: {
     extraSaldoDrawnMinor: extra.drawnMinor,
     extraSaldoHint: extraSaldoHintSv(extra, currentMonthKey) ?? null,
     extraCarriedInMinor: extra.carriedInMinor,
-    livingSaldoMinor,
     savingsTotalMinor,
-    wealthTotalMinor: planWealthTotalMinor(livingSaldoMinor, savingsTotalMinor),
     monthLeftoverHint: monthLeftoverHintSv(extra, currentMonthKey) ?? null,
     monthResultMinor: extra.monthResultMinor,
     spentMinor: extra.spentMinor,

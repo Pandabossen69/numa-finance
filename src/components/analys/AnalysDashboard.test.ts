@@ -16,9 +16,41 @@ describe("Analys month result color", () => {
     expect(src).not.toMatch(/freeToSpendMinor >= 0 \? "positive" : "danger"/);
   });
 
-  it("labels month leftover as Mot planen, not cash", () => {
-    expect(src).toContain("livingLabel={SV.motPlanen}");
+  it("answers 'what is left' with the same Över as Hem and Plan", () => {
+    // One money story: the hero is cash coverage for the browsed month.
+    expect(src).toContain("livingMinor={month.coverage.overMinor}");
+    expect(src).toContain("livingLabel={SV.over}");
+    expect(src).not.toContain("livingLabel={SV.motPlanen}");
+    // And the four lines that build it, exactly as Hem shows them.
+    expect(src).toContain("CASH_COVERAGE_HINT_SV");
+    expect(src).toContain("label={SV.kommerIn}");
+    expect(src).toContain("label={SV.kvarAttBetala}");
+    expect(src).toContain("amountMinor={month.coverage.saldoMinor}");
+
+    // The plan-vs-spend story stays as exactly one row, explained, so it
+    // cannot be mistaken for the cash answer or repeated twice.
     expect(src).toContain("inte kontanter");
+    expect(src).not.toContain("label={SV.motPlanen}");
+    expect(src.match(/SV\.minusMotPlanen/g) ?? []).toHaveLength(1);
+    expect(src).not.toContain("amountMinor={month.livingSaldoMinor}");
+    // Sentences the engine already produced but nothing rendered.
+    expect(src).toContain("month.monthLeftoverHint ??");
+    expect(src).toContain("hint={month.extraSaldoHint}");
+    // And no leftover payload for figures the screen no longer shows.
+    const monthView = readFileSync(
+      new URL("../../features/finance/analys-month.ts", import.meta.url),
+      "utf8",
+    );
+    expect(monthView).not.toContain("livingSaldoMinor");
+    expect(monthView).not.toContain("wealthTotalMinor");
+
+    // Coverage is built by the shared month builder, not re-derived here.
+    const monthBuilder = readFileSync(
+      new URL("../../features/finance/analys-month.ts", import.meta.url),
+      "utf8",
+    );
+    expect(monthBuilder).toContain("coverage: projectCashCoverage({");
+    expect(src).not.toContain("projectCashCoverage(");
   });
 
   it("restores Perioden/Månad when the dashboard remounts", () => {

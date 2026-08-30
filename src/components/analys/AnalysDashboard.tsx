@@ -12,9 +12,11 @@ import { PlanEquation } from "@/components/plan/PlanEquation";
 import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
 import { buildAnalysMonth } from "@/features/finance/analys-month";
 import {
+  CASH_COVERAGE_HINT_SV,
   addMonthsKey,
   labelMonthNameSv,
   labelMonthSv,
+  planWealthTotalMinor,
   visibleMonthKeysForYear,
   yearFromMonthKey,
   type SpendingCategoryTotal,
@@ -31,6 +33,7 @@ import {
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
+import { PileLine } from "@/components/ui/PileLine";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
@@ -88,6 +91,8 @@ export function AnalysDashboard({
       : buildAnalysMonth({
           planItems: view.planItems,
           spendingByMonthKey: view.spendingByMonthKey,
+          ledgerTransactions: view.ledgerTransactions,
+          saldoMinor: view.calculatedBalanceMinor,
           monthKey: activeMonthKey,
           currentMonthKey: view.currentMonthKey,
           timeZone: view.timeZone,
@@ -353,18 +358,51 @@ export function AnalysDashboard({
             </Link>
           </div>
 
+          {/* The same Över as Hem and Plan, for the month you are looking at. */}
           <div className="numa-analys-wealth">
             <WealthScoreboard
-              livingMinor={month.livingSaldoMinor}
-              livingLabel={SV.motPlanen}
+              livingMinor={month.coverage.overMinor}
+              livingLabel={SV.over}
               savingsMinor={month.savingsTotalMinor}
-              totalMinor={month.wealthTotalMinor}
+              totalMinor={planWealthTotalMinor(
+                month.coverage.overMinor,
+                month.savingsTotalMinor,
+              )}
               currency={currency}
             />
           </div>
-          <p className="px-1 text-xs leading-snug text-[var(--numa-muted)]">
-            Mot planen är inte kontanter — planerat kvar minus spenderat i månaden.
-          </p>
+
+          <div className="numa-panel-list px-4 py-1">
+            <div className="numa-pile-stack">
+              <PileLine
+                label={SV.saldo}
+                amountMinor={month.coverage.saldoMinor}
+                currency={currency}
+              />
+              <PileLine
+                label={SV.kommerIn}
+                amountMinor={month.coverage.incomingMinor}
+                currency={currency}
+                tone="in"
+              />
+              <PileLine
+                label={SV.kvarAttBetala}
+                amountMinor={month.coverage.unpaidMinor}
+                currency={currency}
+                tone="out"
+              />
+              <PileLine
+                label={SV.over}
+                amountMinor={month.coverage.overMinor}
+                currency={currency}
+                tone={month.coverage.overMinor >= 0 ? "over" : "short"}
+              />
+            </div>
+            <p className="numa-pile-hint mt-3 mb-3">
+              {CASH_COVERAGE_HINT_SV}
+              {month.coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
+            </p>
+          </div>
 
           <div className="numa-panel-list numa-money-stack px-4 py-1">
             <MetricRow
@@ -395,6 +433,7 @@ export function AnalysDashboard({
               <ExtraSaldoRow
                 extraSaldoMinor={month.extraSaldoMinor}
                 drawnMinor={month.extraSaldoDrawnMinor}
+                hint={month.extraSaldoHint}
                 currency={currency}
               />
             )}
@@ -403,11 +442,17 @@ export function AnalysDashboard({
               amountMinor={month.spentMinor}
               currency={currency}
             />
+            {/* The plan-vs-spend story, kept as one row so it cannot be
+                mistaken for the cash answer above. */}
             <MetricRow
               label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
               amountMinor={month.monthResultMinor}
               currency={currency}
               tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
+              hint={
+                month.monthLeftoverHint ??
+                "Planerat kvar minus spenderat — inte kontanter"
+              }
             />
           </div>
           {monthSpendProgress != null ? (
