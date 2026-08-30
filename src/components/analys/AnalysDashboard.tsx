@@ -8,6 +8,8 @@ import {
   usePrefetchOnIntent,
 } from "@/lib/nav/prefetch-intent";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
+import { PlanEquation } from "@/components/plan/PlanEquation";
+import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
@@ -25,7 +27,8 @@ import {
   sanitizeMoneyDescription,
   type CurrencyCode,
 } from "@/domain/money";
-import { SV } from "@/features/copy/labels-sv";
+import { SV, type PlanSettleKind } from "@/features/copy/labels-sv";
+import type { PlanListStatus } from "@/domain/finance";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
 
 type AnalysScope = "period" | "month";
@@ -248,7 +251,7 @@ export function AnalysDashboard({
                   empty={isBridge ? "Inga kommande." : "Inga i perioden."}
                   lines={cycle.incomes}
                   currency={currency}
-                  totalMinor={cycle.incomeMinor}
+                  settleKind="income"
                 />
                 <LineList
                   title={isBridge ? "Kommande utgifter" : "Utgifter i perioden"}
@@ -256,7 +259,7 @@ export function AnalysDashboard({
                   empty={isBridge ? "Inga kommande." : "Inga i perioden."}
                   lines={cycle.expenses}
                   currency={currency}
-                  totalMinor={cycle.expenseMinor}
+                  settleKind="expense"
                 />
               </div>
             </section>
@@ -352,7 +355,7 @@ export function AnalysDashboard({
               empty="Inga intäkter inlagda."
               lines={month.incomes}
               currency={currency}
-              totalMinor={month.incomeMinor}
+              settleKind="income"
             />
             <LineList
               title="Utgifter"
@@ -360,7 +363,7 @@ export function AnalysDashboard({
               empty="Inga utgifter inlagda."
               lines={month.expenses}
               currency={currency}
-              totalMinor={month.expenseMinor}
+              settleKind="expense"
             />
           </div>
         </section>
@@ -393,13 +396,14 @@ export function AnalysDashboard({
                 <span className="numa-money-line-label text-sm text-[var(--numa-muted)]">
                   {goal.name}
                 </span>
-                <span className="numa-money-line-amt">
+                <span className="numa-money-line-amt flex flex-col items-end gap-1">
                   <MoneyDisplay
                     amountMinor={goal.amountMinor}
                     currency={currency}
                     size="sm"
                     wrap={false}
                   />
+                  <PlanStatusChip status={goal.status} kind="expense" />
                 </span>
               </li>
             ))}
@@ -492,15 +496,19 @@ function LineList({
   empty,
   lines,
   currency,
-  totalMinor,
+  settleKind,
 }: {
   title: string;
   subtitle?: string;
   empty: string;
   lines: AnalysLine[];
   currency: CurrencyCode;
-  totalMinor: number;
+  settleKind: PlanSettleKind;
 }) {
+  // What is still left, the same sum Plan's card shows. A Betald row keeps
+  // its figure and its chip but stops counting, exactly as it does on Plan.
+  const totalMinor = lines.reduce((sum, line) => sum + line.remainingMinor, 0);
+
   return (
     <div className="min-w-0 space-y-2">
       <div className="numa-money-line px-0.5">
@@ -534,17 +542,28 @@ function LineList({
                 <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
                   {sanitizeMoneyDescription(line.name)}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
-                  {sanitizeMoneyDescription(line.detail)}
-                </p>
+                {line.status === "partial" ? (
+                  <PlanEquation
+                    breakdown={{
+                      totalMinor: line.plannedMinor,
+                      settledMinor: line.settledMinor,
+                      remainingMinor: line.amountMinor,
+                    }}
+                  />
+                ) : (
+                  <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
+                    {sanitizeMoneyDescription(line.detail)}
+                  </p>
+                )}
               </div>
-              <span className="numa-money-line-amt">
+              <span className="numa-money-line-amt flex flex-col items-end gap-1">
                 <MoneyDisplay
                   amountMinor={line.amountMinor}
                   currency={currency}
                   size="sm"
                   wrap={false}
                 />
+                <PlanStatusChip status={line.status} kind={settleKind} />
               </span>
             </li>
           ))}
@@ -552,4 +571,17 @@ function LineList({
       )}
     </div>
   );
+}
+
+/** Display-only twin of the Plan chip: same words, same colour, no action. */
+function PlanStatusChip({
+  status,
+  kind,
+}: {
+  status: PlanListStatus;
+  kind: PlanSettleKind;
+}) {
+  const label = planChipLabel(status, kind);
+  if (!label) return null;
+  return <span className={planChipClass(status)}>{label}</span>;
 }

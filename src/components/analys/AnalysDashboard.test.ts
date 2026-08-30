@@ -52,6 +52,46 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("Lägg till →");
   });
 
+  it("follows Delvis and Betald/Mottagen from Plan", () => {
+    const loader = readFileSync(
+      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      "utf8",
+    );
+    // Same derivation as the Plan list — not a second reading of the item.
+    expect(loader).toContain("planRowHeroMinor(item)");
+    expect(loader).toContain("planRowView(item).status");
+    expect(loader).toContain("settledMinor: settledAmountMinor(item)");
+    expect(loader).toContain("plannedMinor: item.amountMinor");
+    // Every list goes through the one helper, so none can drift back.
+    expect(loader).toContain("function toAnalysLine(");
+    expect(loader).not.toMatch(/amountMinor: i\.amountMinor/);
+    expect(loader).not.toMatch(/amountMinor: g\.amountMinor/);
+
+    // The screen renders the same chip and the same Delvis equation as Plan.
+    expect(src).toContain("planChipLabel");
+    expect(src).toContain("planChipClass");
+    expect(src).toContain("PlanStatusChip");
+    expect(src).toContain("PlanEquation");
+    expect(src).toContain('settleKind="income"');
+    expect(src).toContain('settleKind="expense"');
+  });
+
+  it("totals a list the same way Plan's Summa does — what is left", () => {
+    expect(src).toContain(
+      "const totalMinor = lines.reduce((sum, line) => sum + line.remainingMinor, 0)",
+    );
+    const loader = readFileSync(
+      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      "utf8",
+    );
+    expect(loader).toContain("remainingMinor: remainingOpenMinor(item)");
+    // No caller can hand the list a total that contradicts its rows.
+    expect(src).not.toContain("totalMinor={cycle.incomeMinor}");
+    expect(src).not.toContain("totalMinor={cycle.expenseMinor}");
+    expect(src).not.toContain("totalMinor={month.incomeMinor}");
+    expect(src).not.toContain("totalMinor={month.expenseMinor}");
+  });
+
   it("keeps the last Analys block clear of the floating dock", () => {
     expect(src).toContain("pb-10");
     expect(src).toContain("pb-8");

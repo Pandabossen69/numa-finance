@@ -12,11 +12,17 @@ import {
   monthLeftoverHintSv,
   monthLivingSaldoMinor,
   cumulativePlanSavingsMinor,
+  planRowHeroMinor,
+  planRowView,
   planWealthTotalMinor,
   projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
   projectPlanForMonth,
+  remainingOpenMinor,
+  settledAmountMinor,
+  type PlanItem,
+  type PlanListStatus,
 } from "@/domain/finance";
 import {
   humanizeMovementTitle,
@@ -29,8 +35,16 @@ import { loadErrorMessageSv } from "@/lib/async";
 export type AnalysLine = {
   id: string;
   name: string;
+  /** The same figure Plan shows: what is left when a row is Delvis klar. */
   amountMinor: number;
   detail: string;
+  /** Straight from the user's taps on Plan — never from a ledger match. */
+  status: PlanListStatus;
+  /** Full planned amount, so Delvis can show 51 000 − 22 000 = 29 000. */
+  plannedMinor: number;
+  settledMinor: number;
+  /** What this row still adds to Kommer in / Kvar att betala. 0 once done. */
+  remainingMinor: number;
 };
 
 export type AnalysSnapshot = {
@@ -107,6 +121,29 @@ function labelIncomeDate(iso: string | null, timeZone: string): string {
   return formatListDateSv(iso, timeZone);
 }
 
+/**
+ * One plan row, described the way Plan describes it.
+ *
+ * Analys used to read `item.amountMinor` straight, so a row marked Delvis or
+ * Betald looked untouched here while Plan showed it settled. Both screens now
+ * go through planRowView / planRowHeroMinor, so they cannot disagree.
+ */
+function toAnalysLine(
+  item: PlanItem,
+  options: { id?: string; detail: string },
+): AnalysLine {
+  return {
+    id: options.id ?? item.id,
+    name: item.name,
+    amountMinor: planRowHeroMinor(item),
+    detail: options.detail,
+    status: planRowView(item).status,
+    plannedMinor: item.amountMinor,
+    settledMinor: settledAmountMinor(item),
+    remainingMinor: remainingOpenMinor(item),
+  };
+}
+
 export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
   try {
     const snap = await getCachedTodaySnapshot();
@@ -142,33 +179,24 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const dayBudgetMinor = living.dayBudgetMinor;
     const remainingTodayMinor = living.remainingTodayMinor;
 
-    const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) => ({
-      id: i.id,
-      name: i.name,
-      amountMinor: i.amountMinor,
-      detail: labelIncomeDate(i.nextDueAt, timeZone),
-    }));
+    const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) =>
+      toAnalysLine(i, { detail: labelIncomeDate(i.nextDueAt, timeZone) }),
+    );
 
-    const cycleExpenses: AnalysLine[] = cycle.expenses.map(({ item, dueAt }) => ({
-      id: `${item.id}:${dueAt}`,
-      name: item.name,
-      amountMinor: item.amountMinor,
-      detail: labelIncomeDate(dueAt, timeZone),
-    }));
+    const cycleExpenses: AnalysLine[] = cycle.expenses.map(({ item, dueAt }) =>
+      toAnalysLine(item, {
+        id: `${item.id}:${dueAt}`,
+        detail: labelIncomeDate(dueAt, timeZone),
+      }),
+    );
 
-    const monthIncomes: AnalysLine[] = month.incomes.map((i) => ({
-      id: i.id,
-      name: i.name,
-      amountMinor: i.amountMinor,
-      detail: labelIncomeDate(i.nextDueAt, timeZone),
-    }));
+    const monthIncomes: AnalysLine[] = month.incomes.map((i) =>
+      toAnalysLine(i, { detail: labelIncomeDate(i.nextDueAt, timeZone) }),
+    );
 
     const monthExpenses: AnalysLine[] = month.items.map((item) => {
       const recurring = isRecurringMonthly(item);
-      return {
-        id: item.id,
-        name: item.name,
-        amountMinor: item.amountMinor,
+      return toAnalysLine(item, {
         detail: recurring
           ? item.nextDueAt != null
             ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
@@ -176,7 +204,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           : item.nextDueAt != null
             ? `Engång · ${labelIncomeDate(item.nextDueAt, timeZone)}`
             : "Engång",
-      };
+      });
     });
 
     const goals: AnalysLine[] = (snap.planItems ?? [])
@@ -188,12 +216,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           !isPlanIncome(p) &&
           !isPlanSavings(p),
       )
-      .map((g) => ({
-        id: g.id,
-        name: g.name,
-        amountMinor: g.amountMinor,
-        detail: "Mål",
-      }));
+      .map((g) => toAnalysLine(g, { detail: "Mål" }));
 
     const recent = (snap.recentTransactions ?? []).slice(0, 10).map((tx) => ({
       id: tx.id,
