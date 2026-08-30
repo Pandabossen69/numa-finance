@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { isTabRoot, primaryTab } from "@/components/layout/nav";
 import { ViewLoading } from "@/components/layout/ViewLoading";
@@ -15,6 +22,12 @@ import {
  * Same-tab refresh (Spara on Plan) keeps the live view, not loading.tsx.
  * Drill-in (Mer → Saldo) is not held.
  */
+/** Server snapshot false, client snapshot true — no mismatch either way. */
+const subscribeNever = () => () => {};
+
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function LastViewOutlet({ children }: { children: ReactNode }) {
   const { pathname, pending } = useNavIntent();
   const loading = isViewLoadingNode(children);
@@ -24,6 +37,11 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const leaving = Boolean(pending && pending.fromPath === pathname);
   const inFlight = loading || leaving;
   const liveByTabRef = useRef<Record<string, ReactNode>>({});
+  const hydrated = useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
 
   const [cache, setCache] = useState<Record<string, ReactNode>>({});
   const [readyAt, setReadyAt] = useState<string | null>(
@@ -71,6 +89,17 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const visibleTab =
     paint === "dest" ? destTab : paint === "held" ? heldTab : pathTab;
 
+  // Tabs stay mounted, so the window keeps the scroll offset of the tab you
+  // came from. Switching after scrolling used to open the next tab halfway
+  // down, with its title and controls above the fold.
+  const shownTabRef = useRef<string | null>(null);
+  useIsomorphicLayoutEffect(() => {
+    if (!visibleTab || shownTabRef.current === visibleTab) return;
+    const isFirstPaint = shownTabRef.current === null;
+    shownTabRef.current = visibleTab;
+    if (!isFirstPaint) window.scrollTo(0, 0);
+  }, [visibleTab]);
+
   const tabs = new Set<string>(Object.keys(cache));
   if (pathTab) tabs.add(pathTab);
   if (visibleTab) tabs.add(visibleTab);
@@ -82,10 +111,15 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const showSoftFallback =
     (inFlight && paint === "children" && children == null) || heldMissing;
 
+  // The server streams the loading node, so inFlight is true there and false
+  // on the client at hydration. React does not patch mismatched attributes up,
+  // which left aria-busy="true" stuck on the main region on every screen.
+  const holding = hydrated && inFlight;
+
   return (
     <div
-      className={inFlight ? "numa-view numa-view-hold" : "numa-view"}
-      aria-busy={inFlight || undefined}
+      className={holding ? "numa-view numa-view-hold" : "numa-view"}
+      aria-busy={holding || undefined}
     >
       {[...tabs].map((tab) => {
         const isCurrent = tab === pathTab;

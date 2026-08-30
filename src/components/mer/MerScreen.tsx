@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   IconCamera,
@@ -110,7 +111,9 @@ export function MerScreen({
 }: {
   data: { userId: string; displayName: string | null; isAdmin: boolean } | null;
 }) {
-  if (data) rememberMerSnapshot(data);
+  useEffect(() => {
+    if (data) rememberMerSnapshot(data);
+  }, [data]);
   const view = data ?? lastMerSnapshot();
 
   if (!view) return <MerViewLoading />;

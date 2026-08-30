@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { SessionOwnerBinder } from "@/components/layout/SessionOwnerBinder";
@@ -41,6 +42,9 @@ async function ShellDisplayName() {
   try {
     profile = await getProfile();
   } catch (error) {
+    // cookies() and redirect() throw for Next to catch. Swallowing those
+    // would break the static/dynamic bail-out, not just hide a bug.
+    unstable_rethrow(error);
     console.error("[numa] layout profile failed", error);
   }
 

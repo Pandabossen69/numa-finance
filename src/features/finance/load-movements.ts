@@ -1,5 +1,7 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
+  spendingCategoriesByMonthKey,
   appliesToIncome,
   appliesToSpending,
   calculateAccountBalance,
@@ -106,7 +108,6 @@ export const loadMovementsSnapshot = cache(
       let monthExpenseMinor = 0;
       let allIncomeMinor = 0;
       let allExpenseMinor = 0;
-      const categoryMap = new Map<string, CategoryTotal>();
 
       const confirmed = transactions.filter(
         (t) =>
@@ -123,18 +124,7 @@ export const loadMovementsSnapshot = cache(
 
         if (isExpense) {
           allExpenseMinor += tx.amountMinor;
-          if (inMonth) {
-            monthExpenseMinor += tx.amountMinor;
-            const name = tx.category?.trim() || "Övrigt";
-            const prev = categoryMap.get(name) ?? {
-              name,
-              amountMinor: 0,
-              count: 0,
-            };
-            prev.amountMinor += tx.amountMinor;
-            prev.count += 1;
-            categoryMap.set(name, prev);
-          }
+          if (inMonth) monthExpenseMinor += tx.amountMinor;
         }
         if (isIncome) {
           allIncomeMinor += tx.amountMinor;
@@ -159,9 +149,13 @@ export const loadMovementsSnapshot = cache(
           source: tx.source,
         }));
 
-      const monthCategories = [...categoryMap.values()].sort(
-        (a, b) => b.amountMinor - a.amountMinor,
-      );
+      // Same split Analys shows, from one shared function.
+      const monthCategories =
+        spendingCategoriesByMonthKey({
+          transactions: confirmed,
+          currency,
+          timeZone: timezone,
+        })[thisMonth] ?? [];
 
       return {
         ok: true,
@@ -182,6 +176,7 @@ export const loadMovementsSnapshot = cache(
         },
       };
     } catch (error) {
+      unstable_rethrow(error);
       console.error("[numa] loadMovementsSnapshot failed", error);
       return {
         ok: false,

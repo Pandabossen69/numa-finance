@@ -13,12 +13,23 @@ const monthStrip = read("./MonthChipStrip.tsx");
 const card = read("./PlanCard.tsx");
 const equation = read("./PlanEquation.tsx");
 const format = read("./plan-format.ts");
+const chip = read("./plan-chip.ts");
+const monthNav = read("./PlanMonthNav.tsx");
 const css = read("../../app/globals.css");
 
 /** For rules that must hold across Plan, wherever the code happens to live. */
-const plan = [editor, rows, dateField, inlineAdd, monthStrip, card, equation, format].join(
-  "\n",
-);
+const plan = [
+  editor,
+  rows,
+  dateField,
+  inlineAdd,
+  monthStrip,
+  card,
+  equation,
+  format,
+  chip,
+  monthNav,
+].join("\n");
 
 describe("Plan file layout", () => {
   it("keeps the editor small enough to read and the row list on its own", () => {
@@ -29,7 +40,7 @@ describe("Plan file layout", () => {
     expect(editor).toContain('from "@/components/plan/PlanRows"');
     expect(editor).toContain('from "@/components/plan/InlineAdd"');
     expect(editor).toContain('from "@/components/plan/PlanCard"');
-    expect(editor).toContain('from "@/components/plan/MonthChipStrip"');
+    expect(editor).toContain('from "@/components/plan/PlanMonthNav"');
     expect(editor).toContain('from "@/components/plan/plan-format"');
     // The row list owns the settle rule and does not reach back into the editor.
     expect(rows).not.toContain("PlanEditor");
@@ -93,17 +104,17 @@ describe("Plan dates and add-form", () => {
   it("keeps month context and fades the chip strip only when it overflows", () => {
     expect(editor).toContain("rememberPlanView");
     expect(editor).toContain("lastPlanView");
-    expect(editor).toContain("MonthChipStrip");
+    expect(monthNav).toContain("MonthChipStrip");
     expect(monthStrip).toContain("is-overflow-start");
     expect(plan).not.toContain("numa-month-strip -mx-1");
   });
 
   it("lets users browse earlier months and years without rewriting history", () => {
-    expect(editor).toContain("visibleMonthKeysForYear");
-    expect(editor).toContain("shiftYear(-1)");
-    expect(editor).toContain('aria-label="Föregående år"');
-    expect(editor).toContain("Bläddra bakåt och framåt — historik ändras inte");
-    expect(editor).toContain("min-h-11 rounded-full px-3");
+    expect(monthNav).toContain("visibleMonthKeysForYear");
+    expect(editor).toContain("onShiftYear={shiftYear}");
+    expect(monthNav).toContain('aria-label="Föregående år"');
+    expect(monthNav).toContain("Bläddra bakåt och framåt — historik ändras inte");
+    expect(monthNav).toContain("min-h-11 rounded-full px-3");
     expect(plan).not.toContain("även år framåt");
   });
 
@@ -136,8 +147,11 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("numa-plan-row");
     expect(rows).toContain("is-settled");
     expect(rows).toContain("is-partial");
-    expect(rows).toContain("numa-chip numa-chip-mint");
-    expect(rows).toContain("numa-chip numa-chip-spend");
+    // The chip's words and colour live in one module that Analys shares.
+    expect(chip).toContain("numa-chip numa-chip-mint");
+    expect(chip).toContain("numa-chip numa-chip-spend");
+    expect(rows).toContain("planChipClass(status)");
+    expect(rows).toContain("planChipLabel(status, settleKind)");
     expect(rows).toContain("<button");
     // The dead span is gone: a chip only exists when the user tapped it, and
     // then it must be an Ångra control.
@@ -156,13 +170,15 @@ describe("Plan dates and add-form", () => {
   it("puts Betald last, Delvis just above, and lets Ångra undo both", () => {
     expect(rows).toContain("sortPlanRowsForList");
     expect(rows).toContain("canUndo");
-    expect(rows).toContain("aria-label={`Ångra ${doneLabel}`}");
+    expect(rows).toContain("aria-label={`Ångra ${settled ? doneLabel : partialLabel}`}");
     expect(rows).toContain("SV.angraKlar");
   });
 
   it("paints a row from the user's taps only, never from a ledger match", () => {
     // One derivation, owned by the domain, taking only the item.
-    expect(rows).toContain("const { settled, partial, canUndo } = planRowView(item)");
+    expect(rows).toContain(
+      "const { status, settled, partial, canUndo } = planRowView(item)",
+    );
     expect(rows).not.toContain("isPlanSettled(item)");
     expect(rows).not.toContain("isPlanPartiallySettled(item)");
     // Nothing in Plan hands the matcher result to a row.

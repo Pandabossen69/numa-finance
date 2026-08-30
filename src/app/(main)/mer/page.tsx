@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { chromeDisplayName } from "@/domain/identity/display-name";
@@ -17,6 +18,7 @@ async function MerBody() {
     getProfile()
       .then((profile) => ({ ok: true as const, profile }))
       .catch((error) => {
+        unstable_rethrow(error);
         console.error("[numa] mer profile failed", error);
         return { ok: false as const, profile: null };
       }),

@@ -1,56 +1,47 @@
+import { unstable_rethrow } from "next/navigation";
+import type { CanonicalTransaction } from "@/domain/finance";
 import {
   NEXT_INCOME_NAME,
-  dayOfMonthFromIso,
-  extraSaldoHintSv,
-  formatListDateSv,
+  spendingCategoriesByMonthKey,
+  type LedgerMatchTx,
+  type SpendingCategoryTotal,
   isPlanIncome,
   isPlanSavings,
-  isRecurringMonthly,
-  labelDayOfMonthSv,
-  labelMonthSv,
   monthKeyFromDate,
-  monthLeftoverHintSv,
-  monthLivingSaldoMinor,
-  cumulativePlanSavingsMinor,
-  planWealthTotalMinor,
-  projectExtraSaldo,
   projectLivingBudget,
   projectPayCycle,
-  projectPlanForMonth,
+  type PlanItem,
 } from "@/domain/finance";
-import {
-  humanizeMovementTitle,
-  sanitizeMoneyDescription,
-  type CurrencyCode,
-} from "@/domain/money";
+import type { CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
+import {
+  buildAnalysMonth,
+  labelIncomeDate,
+  toAnalysLine,
+  type AnalysLine,
+  type AnalysMonthView,
+} from "@/features/finance/analys-month";
 import { loadErrorMessageSv } from "@/lib/async";
 
-export type AnalysLine = {
-  id: string;
-  name: string;
-  amountMinor: number;
-  detail: string;
-};
+export type { AnalysLine } from "@/features/finance/analys-month";
+
+/** Ledger rows Analys needs: enough for the matcher and for the Senaste list. */
+export type AnalysLedgerTx = LedgerMatchTx &
+  Pick<CanonicalTransaction, "category" | "currency">;
 
 export type AnalysSnapshot = {
   currency: CurrencyCode;
   hasBankTruth: boolean;
   monthKey: string;
-  monthLabelSv: string;
-  verificationLabel: string | null;
   calculatedBalanceMinor: number | null;
   todaySpendingMinor: number;
   monthSpendingMinor: number;
   cycleSpendingMinor: number;
-  safeToSpendTodayMinor: number;
-  safeToSpendWeekMinor: number;
-  freeMinor: number;
-  daysUntilIncome: number;
   cycle: {
+    startAt: string | null;
+    endAt: string | null;
     startLabelSv: string | null;
     endLabelSv: string | null;
-    endInferred: boolean;
     isActive: boolean;
     livingMode: "bridge" | "cycle" | "empty";
     incomeMinor: number;
@@ -65,35 +56,14 @@ export type AnalysSnapshot = {
     incomes: AnalysLine[];
     expenses: AnalysLine[];
   };
-  month: {
-    incomeMinor: number;
-    expenseMinor: number;
-    savingsMinor: number;
-    freeToSpendMinor: number;
-    extraSaldoMinor: number;
-    extraSaldoDrawnMinor: number;
-    extraSaldoHint: string | null;
-    extraCarriedInMinor: number;
-    /** Calendar-month leftover vs plan (not cash). Analys only — Plan/Hem use Över. */
-    livingSaldoMinor: number;
-    savingsTotalMinor: number;
-    wealthTotalMinor: number;
-    monthLeftoverHint: string | null;
-    monthResultMinor: number;
-    spentMinor: number;
-    incomes: AnalysLine[];
-    expenses: AnalysLine[];
-  };
+  month: AnalysMonthView;
+  timeZone: string;
+  currentMonthKey: string;
+  planItems: PlanItem[];
+  spendingByMonthKey: Record<string, number>;
+  ledgerTransactions: AnalysLedgerTx[];
+  categoriesByMonthKey: Record<string, SpendingCategoryTotal[]>;
   goals: AnalysLine[];
-  recent: Array<{
-    id: string;
-    description: string;
-    category: string | null;
-    transactionType: string;
-    direction: "debit" | "credit";
-    amountMinor: number;
-    currency: CurrencyCode;
-  }>;
   formula: {
     steps: string[];
   };
@@ -102,10 +72,7 @@ export type AnalysSnapshot = {
 export type AnalysSnapshotResult =
   { ok: true; data: AnalysSnapshot } | { ok: false; error: string };
 
-function labelIncomeDate(iso: string | null, timeZone: string): string {
-  if (!iso) return "Datum saknas";
-  return formatListDateSv(iso, timeZone);
-}
+
 
 export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
   try {
@@ -114,7 +81,6 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const now = new Date();
     const monthKey = monthKeyFromDate(now, timeZone);
     const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
-    const month = projectPlanForMonth(snap.planItems ?? [], monthKey, timeZone);
     const cycleSpendingMinor = snap.cycleSpendingMinor ?? 0;
     const living = projectLivingBudget({
       cycle,
@@ -125,61 +91,41 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       todaySpendingMinor: snap.todaySpendingMinor,
       fundingConfirmed: snap.fundingConfirmed,
     });
-    const extra = projectExtraSaldo({
-      planItems: snap.planItems ?? [],
-      spendingByMonthKey: snap.monthSpendingByKey ?? {},
+    const planItems = snap.planItems ?? [];
+    const spendingByMonthKey = snap.monthSpendingByKey ?? {};
+    const ledgerTransactions = snap.ledgerTransactions ?? [];
+    // Same rows as the month totals, split by category, for every month the
+    // user can browse to.
+    const categoriesByMonthKey = spendingCategoriesByMonthKey({
+      transactions: ledgerTransactions,
+      currency: snap.currency,
+      timeZone,
+    });
+    const month = buildAnalysMonth({
+      planItems,
+      spendingByMonthKey,
+      ledgerTransactions,
+      saldoMinor: snap.calculatedBalanceMinor,
       monthKey,
       currentMonthKey: monthKey,
       timeZone,
     });
-    const livingSaldoMinor = monthLivingSaldoMinor(extra);
-    const savingsTotalMinor = cumulativePlanSavingsMinor(
-      snap.planItems ?? [],
-      monthKey,
-      timeZone,
-    );
     const remainingFreeMinor = living.remainingFreeMinor;
     const dayBudgetMinor = living.dayBudgetMinor;
     const remainingTodayMinor = living.remainingTodayMinor;
 
-    const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) => ({
-      id: i.id,
-      name: i.name,
-      amountMinor: i.amountMinor,
-      detail: labelIncomeDate(i.nextDueAt, timeZone),
-    }));
+    const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) =>
+      toAnalysLine(i, { detail: labelIncomeDate(i.nextDueAt, timeZone) }),
+    );
 
-    const cycleExpenses: AnalysLine[] = cycle.expenses.map(({ item, dueAt }) => ({
-      id: `${item.id}:${dueAt}`,
-      name: item.name,
-      amountMinor: item.amountMinor,
-      detail: labelIncomeDate(dueAt, timeZone),
-    }));
+    const cycleExpenses: AnalysLine[] = cycle.expenses.map(({ item, dueAt }) =>
+      toAnalysLine(item, {
+        id: `${item.id}:${dueAt}`,
+        detail: labelIncomeDate(dueAt, timeZone),
+      }),
+    );
 
-    const monthIncomes: AnalysLine[] = month.incomes.map((i) => ({
-      id: i.id,
-      name: i.name,
-      amountMinor: i.amountMinor,
-      detail: labelIncomeDate(i.nextDueAt, timeZone),
-    }));
-
-    const monthExpenses: AnalysLine[] = month.items.map((item) => {
-      const recurring = isRecurringMonthly(item);
-      return {
-        id: item.id,
-        name: item.name,
-        amountMinor: item.amountMinor,
-        detail: recurring
-          ? item.nextDueAt != null
-            ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`
-            : "Varje månad"
-          : item.nextDueAt != null
-            ? `Engång · ${labelIncomeDate(item.nextDueAt, timeZone)}`
-            : "Engång",
-      };
-    });
-
-    const goals: AnalysLine[] = (snap.planItems ?? [])
+    const goals: AnalysLine[] = planItems
       .filter(
         (p) =>
           p.isActive &&
@@ -188,25 +134,8 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           !isPlanIncome(p) &&
           !isPlanSavings(p),
       )
-      .map((g) => ({
-        id: g.id,
-        name: g.name,
-        amountMinor: g.amountMinor,
-        detail: "Mål",
-      }));
+      .map((g) => toAnalysLine(g, { detail: "Mål" }));
 
-    const recent = (snap.recentTransactions ?? []).slice(0, 10).map((tx) => ({
-      id: tx.id,
-      description: humanizeMovementTitle(
-        sanitizeMoneyDescription(tx.description),
-        tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor,
-      ),
-      category: tx.category,
-      transactionType: tx.transactionType,
-      direction: tx.direction,
-      amountMinor: tx.amountMinor,
-      currency: tx.currency,
-    }));
 
     const formulaSteps =
       living.mode === "bridge"
@@ -249,20 +178,15 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         currency: snap.currency,
         hasBankTruth: snap.checkpoint != null,
         monthKey,
-        monthLabelSv: labelMonthSv(monthKey),
-        verificationLabel: snap.verificationLabel,
         calculatedBalanceMinor: snap.calculatedBalanceMinor,
         todaySpendingMinor: snap.todaySpendingMinor,
         monthSpendingMinor: snap.monthSpendingMinor,
         cycleSpendingMinor,
-        safeToSpendTodayMinor: living.remainingTodayMinor,
-        safeToSpendWeekMinor: snap.safeToSpendWeekMinor,
-        freeMinor: snap.freeMinor,
-        daysUntilIncome: snap.daysUntilIncome,
         cycle: {
+          startAt: cycle.startAt,
+          endAt: cycle.endAt,
           startLabelSv: cycle.startLabelSv,
           endLabelSv: cycle.endLabelSv,
-          endInferred: cycle.endInferred,
           isActive: cycle.isActive && snap.fundingConfirmed,
           livingMode: living.mode,
           incomeMinor: cycle.incomeMinor,
@@ -277,30 +201,19 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           incomes: cycleIncomes,
           expenses: cycleExpenses,
         },
-        month: {
-          incomeMinor: month.incomeMinor,
-          expenseMinor: month.totalPlannedMinor,
-          savingsMinor: month.savingsMinor,
-          freeToSpendMinor: month.freeToSpendMinor,
-          extraSaldoMinor: extra.extraSaldoMinor,
-          extraSaldoDrawnMinor: extra.drawnMinor,
-          extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
-          extraCarriedInMinor: extra.carriedInMinor,
-          livingSaldoMinor,
-          savingsTotalMinor,
-          wealthTotalMinor: planWealthTotalMinor(livingSaldoMinor, savingsTotalMinor),
-          monthLeftoverHint: monthLeftoverHintSv(extra, monthKey) ?? null,
-          monthResultMinor: extra.monthResultMinor,
-          spentMinor: extra.spentMinor,
-          incomes: monthIncomes,
-          expenses: monthExpenses,
-        },
+        month,
+        timeZone,
+        currentMonthKey: monthKey,
+        planItems,
+        spendingByMonthKey,
+        ledgerTransactions,
+        categoriesByMonthKey,
         goals,
-        recent,
         formula: { steps: formulaSteps },
       },
     };
   } catch (error) {
+    unstable_rethrow(error);
     console.error("[numa] loadAnalysSnapshot failed", error);
     return {
       ok: false,

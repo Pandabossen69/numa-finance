@@ -1,3 +1,4 @@
+import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import { isNumaAdminEmail } from "@/domain/identity/admin";
 import { getSessionUser } from "@/features/auth/session";
@@ -40,10 +41,12 @@ export const loadOnboardingState = cache(
     // session → profile → accounts on the first-login path.
     const userPromise = getSessionUser();
     const profilePromise = getProfile().catch((error) => {
+      unstable_rethrow(error);
       console.error("[numa] onboarding profile failed", error);
       return null;
     });
     const accountsPromise = listAccounts().catch((error) => {
+      unstable_rethrow(error);
       console.error("[numa] onboarding accounts failed", error);
       return [] as Account[];
     });

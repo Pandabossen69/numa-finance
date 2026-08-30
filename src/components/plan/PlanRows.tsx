@@ -18,6 +18,7 @@ import { SV, planDoneLabel, planPartialLabel } from "@/features/copy/labels-sv";
 import { isTempPlanId } from "@/features/plan/optimistic";
 import { PlanDateField } from "@/components/plan/PlanDateField";
 import { PlanEquation } from "@/components/plan/PlanEquation";
+import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 
 export function PlanRows({
   items,
@@ -100,7 +101,7 @@ export function PlanRows({
         const breakdown = planPartialBreakdown(item);
         // Derived from the user's taps in one place. A ledger match is a money
         // guess for Över — it never reaches the row.
-        const { settled, partial, canUndo } = planRowView(item);
+        const { status, settled, partial, canUndo } = planRowView(item);
 
         if (editingId === item.id) {
           return (
@@ -326,25 +327,15 @@ export function PlanRows({
                     align="end"
                     wrap={false}
                   />
-                  {settled ? (
+                  {canUndo ? (
                     <button
                       type="button"
-                      className="numa-chip numa-chip-mint self-end"
+                      className={`${planChipClass(status)} self-end`}
                       disabled={pendingId === item.id && pendingAction === "settle"}
-                      aria-label={`Ångra ${doneLabel}`}
+                      aria-label={`Ångra ${settled ? doneLabel : partialLabel}`}
                       onClick={() => onSettle(item.id, false)}
                     >
-                      {doneLabel}
-                    </button>
-                  ) : partial ? (
-                    <button
-                      type="button"
-                      className="numa-chip numa-chip-spend self-end"
-                      disabled={pendingId === item.id && pendingAction === "settle"}
-                      aria-label={`Ångra ${partialLabel}`}
-                      onClick={() => onSettle(item.id, false)}
-                    >
-                      {SV.delvis}
+                      {planChipLabel(status, settleKind)}
                     </button>
                   ) : null}
                 </div>

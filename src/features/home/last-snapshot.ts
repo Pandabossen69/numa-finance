@@ -85,6 +85,7 @@ const planListeners = new Set<() => void>();
 const gettingStartedListeners = new Set<() => void>();
 const movementsListeners = new Set<() => void>();
 const accountsListeners = new Set<() => void>();
+const planViewListeners = new Set<() => void>();
 
 function emit(listeners: Set<() => void>) {
   for (const listener of listeners) listener();
@@ -147,6 +148,7 @@ function wipeSessionCaches() {
   emit(gettingStartedListeners);
   emit(movementsListeners);
   emit(accountsListeners);
+  emit(planViewListeners);
 }
 
 export function bindSessionOwner(userId: string) {
@@ -276,8 +278,30 @@ export function lastPlanSnapshot(): PlanSnapshot | null {
   return plan;
 }
 
+/**
+ * The month Plan and Analys are both looking at.
+ *
+ * Notifies subscribers so a screen that is already mounted follows along —
+ * tabs stay mounted between visits, so reading this only at mount time would
+ * leave whichever screen you opened first showing a stale month.
+ */
 export function rememberPlanView(view: { monthKey: string; viewYear: number }) {
+  if (
+    planView &&
+    planView.monthKey === view.monthKey &&
+    planView.viewYear === view.viewYear
+  ) {
+    return;
+  }
   planView = view;
+  emit(planViewListeners);
+}
+
+export function subscribePlanView(listener: () => void) {
+  planViewListeners.add(listener);
+  return () => {
+    planViewListeners.delete(listener);
+  };
 }
 
 export function lastPlanView(): { monthKey: string; viewYear: number } | null {

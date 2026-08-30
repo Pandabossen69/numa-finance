@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import {
@@ -8,24 +8,46 @@ import {
   usePrefetchOnIntent,
 } from "@/lib/nav/prefetch-intent";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
+import { PlanEquation } from "@/components/plan/PlanEquation";
+import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
+import { buildAnalysMonth } from "@/features/finance/analys-month";
+import {
+  CASH_COVERAGE_HINT_SV,
+  addMonthsKey,
+  monthKeyFromDate,
+  labelMonthNameSv,
+  labelMonthSv,
+  planWealthTotalMinor,
+  visibleMonthKeysForYear,
+  yearFromMonthKey,
+  type SpendingCategoryTotal,
+} from "@/domain/finance";
+import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
+  lastPlanView,
+  rememberPlanView,
+  subscribePlanView,
   rememberAnalysScope,
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
+import { PileLine } from "@/components/ui/PileLine";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
+  formatMoneyCompact,
   humanizeMovementTitle,
+  money,
   sanitizeMoneyDescription,
   type CurrencyCode,
 } from "@/domain/money";
-import { SV } from "@/features/copy/labels-sv";
+import { SV, type PlanSettleKind } from "@/features/copy/labels-sv";
+import type { PlanListStatus } from "@/domain/finance";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
 
 type AnalysScope = "period" | "month";
@@ -41,11 +63,60 @@ export function AnalysDashboard({
   const [scope, setScope] = useState<AnalysScope>(
     () => lastAnalysScope() ?? "period",
   );
+  // Share the month with Plan. Subscribed, not read once at mount, because
+  // tabs stay mounted between visits.
+  const sharedMonth = useSyncExternalStore(
+    subscribePlanView,
+    lastPlanView,
+    () => null,
+  );
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
   const view = data ?? lastAnalysSnapshot();
+  const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 
-  if (!view) {
+  // Same numbers as the server sends for today's month, recomputed locally for
+  // any other month so browsing is instant and cannot drift from Plan.
+  const month = useMemo(() => {
+    if (!view || !activeMonthKey) return null;
+    if (activeMonthKey === view.monthKey) return view.month;
+    return buildAnalysMonth({
+      planItems: view.planItems,
+      spendingByMonthKey: view.spendingByMonthKey,
+      ledgerTransactions: view.ledgerTransactions,
+      saldoMinor: view.calculatedBalanceMinor,
+      monthKey: activeMonthKey,
+      currentMonthKey: view.currentMonthKey,
+      timeZone: view.timeZone,
+    });
+  }, [activeMonthKey, view]);
+
+  // "Senaste" belongs to what you are looking at: the browsed month in Månad,
+  // the running pay cycle in Perioden.
+  const recent = useMemo(() => {
+    if (!view || !activeMonthKey) return [];
+    const inScope = view.ledgerTransactions.filter((tx) => {
+      if (tx.status !== "confirmed") return false;
+      if (scope === "month") {
+        return (
+          monthKeyFromDate(new Date(tx.occurredAt), view.timeZone) === activeMonthKey
+        );
+      }
+      const at = Date.parse(tx.occurredAt);
+      const from = view.cycle.startAt
+        ? Date.parse(view.cycle.startAt)
+        : Number.NEGATIVE_INFINITY;
+      const to = view.cycle.endAt
+        ? Date.parse(view.cycle.endAt)
+        : Number.POSITIVE_INFINITY;
+      return at >= from && at <= to;
+    });
+    return [...inScope]
+      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
+      .slice(0, 8);
+  }, [view, scope, activeMonthKey]);
+
+  if (!view || !month || !activeMonthKey) {
     if (!error) return <AnalysViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
@@ -56,7 +127,46 @@ export function AnalysDashboard({
     );
   }
 
-  const { currency, cycle, month } = view;
+  const { currency, cycle } = view;
+  const viewYear = yearFromMonthKey(activeMonthKey);
+
+  function selectMonth(key: string) {
+    rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
+  }
+
+  // The rows above the lists must show the same figure as the lists, which
+  // count what is left after Delvis and Betald.
+  const cycleIncomingMinor = sumRemaining(cycle.incomes);
+  const cycleUnpaidMinor = sumRemaining(cycle.expenses);
+  const monthCategories = view.categoriesByMonthKey[activeMonthKey] ?? [];
+  // Total and comparison both come from the listed rows, so the header can
+  // never contradict the categories under it.
+  const categorySpentMinor = sumCategories(monthCategories);
+  const previousMonthKey = addMonthsKey(activeMonthKey, -1);
+  const previousSpentMinor = sumCategories(
+    view.categoriesByMonthKey[previousMonthKey] ?? [],
+  );
+  const spendComparison =
+    previousSpentMinor > 0
+      ? {
+          deltaMinor: categorySpentMinor - previousSpentMinor,
+          monthName: labelMonthNameSv(previousMonthKey).toLocaleLowerCase("sv-SE"),
+        }
+      : null;
+
+  const recentEmptyLabel =
+    scope === "month"
+      ? `Inga rörelser i ${labelMonthSv(activeMonthKey)}`
+      : "Inga rörelser i perioden";
+
+  const monthSuffix = activeMonthKey.slice(5);
+
+  function shiftYear(delta: number) {
+    const nextYear = viewYear + delta;
+    const keys = visibleMonthKeysForYear(nextYear);
+    const preferred = `${nextYear}-${monthSuffix}`;
+    selectMonth(keys.includes(preferred) ? preferred : keys[0]!);
+  }
   const isBridge = cycle.livingMode === "bridge";
   const isEmpty = cycle.livingMode === "empty";
   const isCycle = cycle.livingMode === "cycle";
@@ -195,7 +305,23 @@ export function AnalysDashboard({
             >
               <div className="numa-panel-list numa-money-stack px-4 py-1">
                 {isBridge ? (
-                  hasSaldo ? null : (
+                  hasSaldo ? (
+                    // Before payday the block used to hold only "På kontot".
+                    // Show the period's own figures, matching the lists below.
+                    <>
+                      <MetricRow
+                        label="Kommande intäkter"
+                        amountMinor={cycleIncomingMinor}
+                        currency={currency}
+                        tone="positive"
+                      />
+                      <MetricRow
+                        label="Kommande utgifter"
+                        amountMinor={cycleUnpaidMinor}
+                        currency={currency}
+                      />
+                    </>
+                  ) : (
                     <MetricRow
                       label={SV.saldo}
                       value={<span className="text-sm text-[var(--numa-faint)]">—</span>}
@@ -205,13 +331,13 @@ export function AnalysDashboard({
                   <>
                     <MetricRow
                       label={SV.intakter}
-                      amountMinor={cycle.incomeMinor}
+                      amountMinor={cycleIncomingMinor}
                       currency={currency}
                       tone="positive"
                     />
                     <MetricRow
                       label={SV.utgifter}
-                      amountMinor={cycle.expenseMinor}
+                      amountMinor={cycleUnpaidMinor}
                       currency={currency}
                     />
                     <MetricRow
@@ -226,13 +352,15 @@ export function AnalysDashboard({
                     />
                   </>
                 ) : null}
-                {hasSaldo ? (
+                {/* Before payday the headline already is the saldo, so a
+                    "På kontot" row here would just repeat it. */}
+                {isBridge ? null : hasSaldo ? (
                   <MetricRow
                     label={SV.paKontot}
                     amountMinor={view.calculatedBalanceMinor!}
                     currency={currency}
                   />
-                ) : isBridge ? null : (
+                ) : (
                   <MetricRow label={SV.saldo} />
                 )}
               </div>
@@ -248,7 +376,7 @@ export function AnalysDashboard({
                   empty={isBridge ? "Inga kommande." : "Inga i perioden."}
                   lines={cycle.incomes}
                   currency={currency}
-                  totalMinor={cycle.incomeMinor}
+                  settleKind="income"
                 />
                 <LineList
                   title={isBridge ? "Kommande utgifter" : "Utgifter i perioden"}
@@ -256,7 +384,7 @@ export function AnalysDashboard({
                   empty={isBridge ? "Inga kommande." : "Inga i perioden."}
                   lines={cycle.expenses}
                   currency={currency}
-                  totalMinor={cycle.expenseMinor}
+                  settleKind="expense"
                 />
               </div>
             </section>
@@ -264,11 +392,19 @@ export function AnalysDashboard({
         </div>
       ) : (
         <section className="numa-scope-panel space-y-5">
+          <PlanMonthNav
+            monthKey={activeMonthKey}
+            viewYear={viewYear}
+            currentMonthKey={view.currentMonthKey}
+            onSelectMonth={selectMonth}
+            onShiftYear={shiftYear}
+            idPrefix="analys"
+          />
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="numa-section-title">{SV.manad}</p>
               <h2 className="mt-1 text-lg font-semibold tracking-tight">
-                {view.monthLabelSv}
+                {labelMonthSv(activeMonthKey)}
               </h2>
             </div>
             <Link
@@ -282,18 +418,51 @@ export function AnalysDashboard({
             </Link>
           </div>
 
+          {/* The same Över as Hem and Plan, for the month you are looking at. */}
           <div className="numa-analys-wealth">
             <WealthScoreboard
-              livingMinor={month.livingSaldoMinor}
-              livingLabel={SV.motPlanen}
+              livingMinor={month.coverage.overMinor}
+              livingLabel={SV.over}
               savingsMinor={month.savingsTotalMinor}
-              totalMinor={month.wealthTotalMinor}
+              totalMinor={planWealthTotalMinor(
+                month.coverage.overMinor,
+                month.savingsTotalMinor,
+              )}
               currency={currency}
             />
           </div>
-          <p className="px-1 text-xs leading-snug text-[var(--numa-muted)]">
-            Mot planen är inte kontanter — planerat kvar minus spenderat i månaden.
-          </p>
+
+          <div className="numa-panel-list px-4 py-1">
+            <div className="numa-pile-stack">
+              <PileLine
+                label={SV.saldo}
+                amountMinor={month.coverage.saldoMinor}
+                currency={currency}
+              />
+              <PileLine
+                label={SV.kommerIn}
+                amountMinor={month.coverage.incomingMinor}
+                currency={currency}
+                tone="in"
+              />
+              <PileLine
+                label={SV.kvarAttBetala}
+                amountMinor={month.coverage.unpaidMinor}
+                currency={currency}
+                tone="out"
+              />
+              <PileLine
+                label={SV.over}
+                amountMinor={month.coverage.overMinor}
+                currency={currency}
+                tone={month.coverage.overMinor >= 0 ? "over" : "short"}
+              />
+            </div>
+            <p className="numa-pile-hint mt-3 mb-3">
+              {CASH_COVERAGE_HINT_SV}
+              {month.coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
+            </p>
+          </div>
 
           <div className="numa-panel-list numa-money-stack px-4 py-1">
             <MetricRow
@@ -324,6 +493,7 @@ export function AnalysDashboard({
               <ExtraSaldoRow
                 extraSaldoMinor={month.extraSaldoMinor}
                 drawnMinor={month.extraSaldoDrawnMinor}
+                hint={month.extraSaldoHint}
                 currency={currency}
               />
             )}
@@ -332,11 +502,17 @@ export function AnalysDashboard({
               amountMinor={month.spentMinor}
               currency={currency}
             />
+            {/* The plan-vs-spend story, kept as one row so it cannot be
+                mistaken for the cash answer above. */}
             <MetricRow
               label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
               amountMinor={month.monthResultMinor}
               currency={currency}
               tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
+              hint={
+                month.monthLeftoverHint ??
+                "Planerat kvar minus spenderat — inte kontanter"
+              }
             />
           </div>
           {monthSpendProgress != null ? (
@@ -345,22 +521,29 @@ export function AnalysDashboard({
             </div>
           ) : null}
 
+          <SpendByCategory
+            categories={monthCategories}
+            spentMinor={categorySpentMinor}
+            comparison={spendComparison}
+            currency={currency}
+          />
+
           <div className="grid items-start gap-4 md:grid-cols-2">
             <LineList
               title="Intäkter"
-              subtitle={view.monthLabelSv}
+              subtitle={labelMonthSv(activeMonthKey)}
               empty="Inga intäkter inlagda."
               lines={month.incomes}
               currency={currency}
-              totalMinor={month.incomeMinor}
+              settleKind="income"
             />
             <LineList
               title="Utgifter"
-              subtitle={view.monthLabelSv}
+              subtitle={labelMonthSv(activeMonthKey)}
               empty="Inga utgifter inlagda."
               lines={month.expenses}
               currency={currency}
-              totalMinor={month.expenseMinor}
+              settleKind="expense"
             />
           </div>
         </section>
@@ -393,13 +576,14 @@ export function AnalysDashboard({
                 <span className="numa-money-line-label text-sm text-[var(--numa-muted)]">
                   {goal.name}
                 </span>
-                <span className="numa-money-line-amt">
+                <span className="numa-money-line-amt flex flex-col items-end gap-1">
                   <MoneyDisplay
                     amountMinor={goal.amountMinor}
                     currency={currency}
                     size="sm"
                     wrap={false}
                   />
+                  <PlanStatusChip status={goal.status} kind="expense" />
                 </span>
               </li>
             ))}
@@ -420,11 +604,11 @@ export function AnalysDashboard({
             Alla →
           </Link>
         </div>
-        {view.recent.length === 0 ? (
-          <p className="text-sm text-[var(--numa-faint)]">Inga rörelser ännu</p>
+        {recent.length === 0 ? (
+          <p className="text-sm text-[var(--numa-faint)]">{recentEmptyLabel}</p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
-            {view.recent.map((tx) => {
+            {recent.map((tx) => {
               const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
               return (
                 <li
@@ -492,15 +676,19 @@ function LineList({
   empty,
   lines,
   currency,
-  totalMinor,
+  settleKind,
 }: {
   title: string;
   subtitle?: string;
   empty: string;
   lines: AnalysLine[];
   currency: CurrencyCode;
-  totalMinor: number;
+  settleKind: PlanSettleKind;
 }) {
+  // What is still left, the same sum Plan's card shows. A Betald row keeps
+  // its figure and its chip but stops counting, exactly as it does on Plan.
+  const totalMinor = lines.reduce((sum, line) => sum + line.remainingMinor, 0);
+
   return (
     <div className="min-w-0 space-y-2">
       <div className="numa-money-line px-0.5">
@@ -534,22 +722,131 @@ function LineList({
                 <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
                   {sanitizeMoneyDescription(line.name)}
                 </p>
-                <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
-                  {sanitizeMoneyDescription(line.detail)}
-                </p>
+                {line.status === "partial" ? (
+                  <PlanEquation
+                    breakdown={{
+                      totalMinor: line.plannedMinor,
+                      settledMinor: line.settledMinor,
+                      remainingMinor: line.amountMinor,
+                    }}
+                  />
+                ) : (
+                  <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
+                    {sanitizeMoneyDescription(line.detail)}
+                  </p>
+                )}
               </div>
-              <span className="numa-money-line-amt">
+              <span className="numa-money-line-amt flex flex-col items-end gap-1">
                 <MoneyDisplay
                   amountMinor={line.amountMinor}
                   currency={currency}
                   size="sm"
                   wrap={false}
                 />
+                <PlanStatusChip status={line.status} kind={settleKind} />
               </span>
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+/** Display-only twin of the Plan chip: same words, same colour, no action. */
+function PlanStatusChip({
+  status,
+  kind,
+}: {
+  status: PlanListStatus;
+  kind: PlanSettleKind;
+}) {
+  const label = planChipLabel(status, kind);
+  if (!label) return null;
+  return <span className={planChipClass(status)}>{label}</span>;
+}
+
+function sumRemaining(lines: AnalysLine[]): number {
+  return lines.reduce((total, line) => total + line.remainingMinor, 0);
+}
+
+function sumCategories(categories: SpendingCategoryTotal[]): number {
+  return categories.reduce((total, category) => total + category.amountMinor, 0);
+}
+
+/**
+ * Where the month's money went. Same rows as Spenderat i månaden, split by
+ * the category saved on each transaction, biggest first.
+ */
+function SpendByCategory({
+  categories,
+  spentMinor,
+  comparison,
+  currency,
+}: {
+  categories: SpendingCategoryTotal[];
+  spentMinor: number;
+  comparison: { deltaMinor: number; monthName: string } | null;
+  currency: CurrencyCode;
+}) {
+  if (categories.length === 0) return null;
+  const biggest = categories[0]?.amountMinor || 1;
+
+  return (
+    <section className="space-y-3" aria-label="Per kategori">
+      <div className="numa-money-line px-0.5">
+        <div className="numa-money-line-label">
+          <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
+            Per kategori
+          </h3>
+          {comparison ? (
+            <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
+              {comparison.deltaMinor === 0
+                ? `Lika mycket som ${comparison.monthName}`
+                : `${formatMoneyCompact(
+                    money(Math.abs(comparison.deltaMinor), currency),
+                  )} ${comparison.deltaMinor > 0 ? "mer" : "mindre"} än ${comparison.monthName}`}
+            </p>
+          ) : null}
+        </div>
+        <div className="numa-money-line-amt text-[var(--numa-muted)]">
+          <MoneyDisplay
+            amountMinor={spentMinor}
+            currency={currency}
+            size="sm"
+            wrap={false}
+          />
+        </div>
+      </div>
+      <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
+        {categories.map((category) => (
+          <li key={category.name} className="px-4 py-3">
+            <div className="numa-money-line mb-1.5 text-sm">
+              <span className="numa-money-line-label text-[var(--numa-muted)]">
+                {category.name}
+                <span className="ml-2 text-xs text-[var(--numa-faint)]">
+                  {category.count}×
+                </span>
+              </span>
+              <span className="numa-money-line-amt">
+                <MoneyDisplay
+                  amountMinor={category.amountMinor}
+                  currency={currency}
+                  size="sm"
+                  wrap={false}
+                />
+              </span>
+            </div>
+            <div className="numa-progress animate-bar" aria-hidden>
+              <span
+                style={{
+                  width: `${Math.max(6, (category.amountMinor / biggest) * 100)}%`,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
