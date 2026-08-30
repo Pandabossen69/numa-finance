@@ -9,10 +9,19 @@ import {
 } from "@/lib/nav/prefetch-intent";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
 import { PlanEquation } from "@/components/plan/PlanEquation";
+import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
+import { buildAnalysMonth } from "@/features/finance/analys-month";
+import {
+  labelMonthSv,
+  visibleMonthKeysForYear,
+  yearFromMonthKey,
+} from "@/domain/finance";
 import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
+  lastPlanView,
+  rememberPlanView,
   rememberAnalysScope,
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
@@ -44,6 +53,10 @@ export function AnalysDashboard({
   const [scope, setScope] = useState<AnalysScope>(
     () => lastAnalysScope() ?? "period",
   );
+  // Share the month with Plan, so switching tabs keeps you where you were.
+  const [monthKey, setMonthKey] = useState<string | null>(
+    () => lastPlanView()?.monthKey ?? null,
+  );
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
   const view = data ?? lastAnalysSnapshot();
@@ -59,7 +72,33 @@ export function AnalysDashboard({
     );
   }
 
-  const { currency, cycle, month } = view;
+  const { currency, cycle } = view;
+  const activeMonthKey = monthKey ?? view.currentMonthKey;
+  const viewYear = yearFromMonthKey(activeMonthKey);
+  // Same numbers as the server sends for today's month, recomputed locally for
+  // any other month so browsing is instant and cannot drift from Plan.
+  const month =
+    activeMonthKey === view.monthKey
+      ? view.month
+      : buildAnalysMonth({
+          planItems: view.planItems,
+          spendingByMonthKey: view.spendingByMonthKey,
+          monthKey: activeMonthKey,
+          currentMonthKey: view.currentMonthKey,
+          timeZone: view.timeZone,
+        });
+
+  function selectMonth(key: string) {
+    setMonthKey(key);
+    rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
+  }
+
+  function shiftYear(delta: number) {
+    const nextYear = viewYear + delta;
+    const keys = visibleMonthKeysForYear(nextYear);
+    const preferred = `${nextYear}-${activeMonthKey.slice(5)}`;
+    selectMonth(keys.includes(preferred) ? preferred : keys[0]!);
+  }
   const isBridge = cycle.livingMode === "bridge";
   const isEmpty = cycle.livingMode === "empty";
   const isCycle = cycle.livingMode === "cycle";
@@ -267,11 +306,19 @@ export function AnalysDashboard({
         </div>
       ) : (
         <section className="numa-scope-panel space-y-5">
+          <PlanMonthNav
+            monthKey={activeMonthKey}
+            viewYear={viewYear}
+            currentMonthKey={view.currentMonthKey}
+            onSelectMonth={selectMonth}
+            onShiftYear={shiftYear}
+            idPrefix="analys"
+          />
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="numa-section-title">{SV.manad}</p>
               <h2 className="mt-1 text-lg font-semibold tracking-tight">
-                {view.monthLabelSv}
+                {labelMonthSv(activeMonthKey)}
               </h2>
             </div>
             <Link
@@ -351,7 +398,7 @@ export function AnalysDashboard({
           <div className="grid items-start gap-4 md:grid-cols-2">
             <LineList
               title="Intäkter"
-              subtitle={view.monthLabelSv}
+              subtitle={labelMonthSv(activeMonthKey)}
               empty="Inga intäkter inlagda."
               lines={month.incomes}
               currency={currency}
@@ -359,7 +406,7 @@ export function AnalysDashboard({
             />
             <LineList
               title="Utgifter"
-              subtitle={view.monthLabelSv}
+              subtitle={labelMonthSv(activeMonthKey)}
               empty="Inga utgifter inlagda."
               lines={month.expenses}
               currency={currency}

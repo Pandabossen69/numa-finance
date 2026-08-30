@@ -58,7 +58,7 @@ import {
 import { PlanCard } from "@/components/plan/PlanCard";
 import { PlanRows } from "@/components/plan/PlanRows";
 import { InlineAdd } from "@/components/plan/InlineAdd";
-import { MonthChipStrip } from "@/components/plan/MonthChipStrip";
+import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
 import {
   labelIncomeDateSv,
   minorToUi,
@@ -261,7 +261,6 @@ export function PlanEditor({
     }
     return out;
   }, [localItems, monthKeys, timeZone]);
-  const monthChipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [savingsAmount, setSavingsAmount] = useValueForKey(
     projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
     `${monthKey}:${projection.savingsMinor}`,
@@ -277,13 +276,6 @@ export function PlanEditor({
     setExpenseDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-01`));
   }
 
-  useEffect(() => {
-    monthChipRefs.current[monthKey]?.scrollIntoView({
-      inline: "center",
-      block: "nearest",
-      behavior: "smooth",
-    });
-  }, [monthKey, monthKeys]);
 
   function selectMonth(key: string) {
     setMonthKey(key);
@@ -527,75 +519,17 @@ export function PlanEditor({
   return (
     <div className="space-y-8">
       <section className="animate-rise-delay-1 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => shiftYear(-1)}
-              className="numa-press min-h-11 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
-              aria-label="Föregående år"
-            >
-              ← {viewYear - 1}
-            </button>
-            <p className="min-w-[3.5rem] text-center text-base font-semibold tracking-tight">
-              {viewYear}
-            </p>
-            <button
-              type="button"
-              onClick={() => shiftYear(1)}
-              className="numa-press min-h-11 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
-              aria-label="Nästa år"
-            >
-              {viewYear + 1} →
-            </button>
-          </div>
-          {monthKey !== currentMonthKey ? (
-            <button
-              type="button"
-              onClick={() => selectMonth(currentMonthKey)}
-              className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
-            >
-              Denna månad
-            </button>
-          ) : (
-            <p className="text-xs font-medium text-[var(--numa-faint)]">
-              Bläddra bakåt och framåt — historik ändras inte
-            </p>
-          )}
-        </div>
-
-        <MonthChipStrip>
-          {monthKeys.map((key) => {
-            const livingDot = (extraByMonth[key] ?? 0) > 0;
-            const saveDot = (savingsByMonth[key] ?? 0) > 0;
-            return (
-              <button
-                key={key}
-                type="button"
-                id={`plan-month-${key}`}
-                ref={(el) => {
-                  monthChipRefs.current[key] = el;
-                }}
-                onClick={() => selectMonth(key)}
-                className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize ${
-                  monthKey === key
-                    ? "is-active bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
-                    : key === currentMonthKey
-                      ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)] ring-1 ring-[var(--numa-accent)]/35"
-                      : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"
-                }`}
-              >
-                {labelMonthNameSv(key)}
-                {livingDot || saveDot ? (
-                  <span className="numa-month-dots" aria-hidden>
-                    {livingDot ? <i className="is-saldo" /> : null}
-                    {saveDot ? <i className="is-save" /> : null}
-                  </span>
-                ) : null}
-              </button>
-            );
+        <PlanMonthNav
+          monthKey={monthKey}
+          viewYear={viewYear}
+          currentMonthKey={currentMonthKey}
+          onSelectMonth={selectMonth}
+          onShiftYear={shiftYear}
+          dotsFor={(key) => ({
+            living: (extraByMonth[key] ?? 0) > 0,
+            save: (savingsByMonth[key] ?? 0) > 0,
           })}
-        </MonthChipStrip>
+        />
 
         <PlanPiles
           coverage={coverage}

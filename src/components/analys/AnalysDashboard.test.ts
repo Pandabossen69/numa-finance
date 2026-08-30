@@ -53,17 +53,21 @@ describe("Analys month result color", () => {
   });
 
   it("follows Delvis and Betald/Mottagen from Plan", () => {
+    const monthBuilder = readFileSync(
+      new URL("../../features/finance/analys-month.ts", import.meta.url),
+      "utf8",
+    );
     const loader = readFileSync(
       new URL("../../features/finance/load-analys.ts", import.meta.url),
       "utf8",
     );
     // Same derivation as the Plan list — not a second reading of the item.
-    expect(loader).toContain("planRowHeroMinor(item)");
-    expect(loader).toContain("planRowView(item).status");
-    expect(loader).toContain("settledMinor: settledAmountMinor(item)");
-    expect(loader).toContain("plannedMinor: item.amountMinor");
+    expect(monthBuilder).toContain("planRowHeroMinor(item)");
+    expect(monthBuilder).toContain("planRowView(item).status");
+    expect(monthBuilder).toContain("settledMinor: settledAmountMinor(item)");
+    expect(monthBuilder).toContain("plannedMinor: item.amountMinor");
     // Every list goes through the one helper, so none can drift back.
-    expect(loader).toContain("function toAnalysLine(");
+    expect(monthBuilder).toContain("export function toAnalysLine(");
     expect(loader).not.toMatch(/amountMinor: i\.amountMinor/);
     expect(loader).not.toMatch(/amountMinor: g\.amountMinor/);
 
@@ -80,11 +84,11 @@ describe("Analys month result color", () => {
     expect(src).toContain(
       "const totalMinor = lines.reduce((sum, line) => sum + line.remainingMinor, 0)",
     );
-    const loader = readFileSync(
-      new URL("../../features/finance/load-analys.ts", import.meta.url),
+    const monthBuilder = readFileSync(
+      new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
     );
-    expect(loader).toContain("remainingMinor: remainingOpenMinor(item)");
+    expect(monthBuilder).toContain("remainingMinor: remainingOpenMinor(item)");
     // No caller can hand the list a total that contradicts its rows.
     expect(src).not.toContain("totalMinor={cycle.incomeMinor}");
     expect(src).not.toContain("totalMinor={cycle.expenseMinor}");
@@ -109,5 +113,25 @@ describe("Analys month result color", () => {
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
     expect(src).toContain("DestinationWarmup");
+  });
+
+  it("browses months and shares the month with Plan", () => {
+    const monthBuilder = readFileSync(
+      new URL("../../features/finance/analys-month.ts", import.meta.url),
+      "utf8",
+    );
+    // The same nav component Plan uses, so the two cannot look or act different.
+    expect(src).toContain("PlanMonthNav");
+    expect(src).toContain('idPrefix="analys"');
+    // One remembered month for both screens.
+    expect(src).toContain("lastPlanView()?.monthKey");
+    expect(src).toContain("rememberPlanView({ monthKey: key");
+    // Browsing recomputes locally with the same pure builder the server used.
+    expect(src).toContain("buildAnalysMonth({");
+    expect(monthBuilder).toContain("export function buildAnalysMonth(");
+    expect(src).toContain("activeMonthKey === view.monthKey");
+    // The heading follows the browsed month, not today.
+    expect(src).toContain("labelMonthSv(activeMonthKey)");
+    expect(src).not.toContain("{view.monthLabelSv}");
   });
 });
