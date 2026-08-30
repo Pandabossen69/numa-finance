@@ -14,6 +14,16 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("liveByTabRef");
   });
 
+  it("opens a tab at its top instead of the last tab's scroll position", () => {
+    // Tabs stay mounted, so the window keeps the offset you left behind:
+    // scrolling down in Plan and tapping Analys opened Analys halfway down,
+    // with its title and Perioden/Månad switch above the fold.
+    expect(src).toContain("shownTabRef");
+    expect(src).toContain("window.scrollTo(0, 0)");
+    expect(src).toContain("if (!isFirstPaint)");
+    expect(src).toContain("[visibleTab]");
+  });
+
   it("does not hand the server a hold state the client disagrees with", () => {
     // The server streams the loading node, so inFlight is true there and false
     // on the client. React does not patch mismatched attributes up, so

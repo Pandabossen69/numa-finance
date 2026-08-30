@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { isTabRoot, primaryTab } from "@/components/layout/nav";
 import { ViewLoading } from "@/components/layout/ViewLoading";
@@ -17,6 +24,9 @@ import {
  */
 /** Server snapshot false, client snapshot true — no mismatch either way. */
 const subscribeNever = () => () => {};
+
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function LastViewOutlet({ children }: { children: ReactNode }) {
   const { pathname, pending } = useNavIntent();
@@ -78,6 +88,17 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   });
   const visibleTab =
     paint === "dest" ? destTab : paint === "held" ? heldTab : pathTab;
+
+  // Tabs stay mounted, so the window keeps the scroll offset of the tab you
+  // came from. Switching after scrolling used to open the next tab halfway
+  // down, with its title and controls above the fold.
+  const shownTabRef = useRef<string | null>(null);
+  useIsomorphicLayoutEffect(() => {
+    if (!visibleTab || shownTabRef.current === visibleTab) return;
+    const isFirstPaint = shownTabRef.current === null;
+    shownTabRef.current = visibleTab;
+    if (!isFirstPaint) window.scrollTo(0, 0);
+  }, [visibleTab]);
 
   const tabs = new Set<string>(Object.keys(cache));
   if (pathTab) tabs.add(pathTab);
