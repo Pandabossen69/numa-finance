@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysViewLoading } from "@/components/layout/ViewLoading";
 import {
@@ -28,6 +28,7 @@ import {
   lastAnalysSnapshot,
   lastPlanView,
   rememberPlanView,
+  subscribePlanView,
   rememberAnalysScope,
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
@@ -62,15 +63,60 @@ export function AnalysDashboard({
   const [scope, setScope] = useState<AnalysScope>(
     () => lastAnalysScope() ?? "period",
   );
-  // Share the month with Plan, so switching tabs keeps you where you were.
-  const [monthKey, setMonthKey] = useState<string | null>(
-    () => lastPlanView()?.monthKey ?? null,
+  // Share the month with Plan. Subscribed, not read once at mount, because
+  // tabs stay mounted between visits.
+  const sharedMonth = useSyncExternalStore(
+    subscribePlanView,
+    lastPlanView,
+    () => null,
   );
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
   const view = data ?? lastAnalysSnapshot();
+  const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 
-  if (!view) {
+  // Same numbers as the server sends for today's month, recomputed locally for
+  // any other month so browsing is instant and cannot drift from Plan.
+  const month = useMemo(() => {
+    if (!view || !activeMonthKey) return null;
+    if (activeMonthKey === view.monthKey) return view.month;
+    return buildAnalysMonth({
+      planItems: view.planItems,
+      spendingByMonthKey: view.spendingByMonthKey,
+      ledgerTransactions: view.ledgerTransactions,
+      saldoMinor: view.calculatedBalanceMinor,
+      monthKey: activeMonthKey,
+      currentMonthKey: view.currentMonthKey,
+      timeZone: view.timeZone,
+    });
+  }, [activeMonthKey, view]);
+
+  // "Senaste" belongs to what you are looking at: the browsed month in Månad,
+  // the running pay cycle in Perioden.
+  const recent = useMemo(() => {
+    if (!view || !activeMonthKey) return [];
+    const inScope = view.ledgerTransactions.filter((tx) => {
+      if (tx.status !== "confirmed") return false;
+      if (scope === "month") {
+        return (
+          monthKeyFromDate(new Date(tx.occurredAt), view.timeZone) === activeMonthKey
+        );
+      }
+      const at = Date.parse(tx.occurredAt);
+      const from = view.cycle.startAt
+        ? Date.parse(view.cycle.startAt)
+        : Number.NEGATIVE_INFINITY;
+      const to = view.cycle.endAt
+        ? Date.parse(view.cycle.endAt)
+        : Number.POSITIVE_INFINITY;
+      return at >= from && at <= to;
+    });
+    return [...inScope]
+      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
+      .slice(0, 8);
+  }, [view, scope, activeMonthKey]);
+
+  if (!view || !month || !activeMonthKey) {
     if (!error) return <AnalysViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
@@ -82,25 +128,9 @@ export function AnalysDashboard({
   }
 
   const { currency, cycle } = view;
-  const activeMonthKey = monthKey ?? view.currentMonthKey;
   const viewYear = yearFromMonthKey(activeMonthKey);
-  // Same numbers as the server sends for today's month, recomputed locally for
-  // any other month so browsing is instant and cannot drift from Plan.
-  const month =
-    activeMonthKey === view.monthKey
-      ? view.month
-      : buildAnalysMonth({
-          planItems: view.planItems,
-          spendingByMonthKey: view.spendingByMonthKey,
-          ledgerTransactions: view.ledgerTransactions,
-          saldoMinor: view.calculatedBalanceMinor,
-          monthKey: activeMonthKey,
-          currentMonthKey: view.currentMonthKey,
-          timeZone: view.timeZone,
-        });
 
   function selectMonth(key: string) {
-    setMonthKey(key);
     rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
   }
 
@@ -124,32 +154,17 @@ export function AnalysDashboard({
         }
       : null;
 
-  // "Senaste" belongs to what you are looking at: the browsed month in Månad,
-  // the running pay cycle in Perioden.
-  const recent = (() => {
-    const inScope = view.ledgerTransactions.filter((tx) => {
-      if (tx.status !== "confirmed") return false;
-      if (scope === "month") {
-        return monthKeyFromDate(new Date(tx.occurredAt), view.timeZone) === activeMonthKey;
-      }
-      const at = Date.parse(tx.occurredAt);
-      const from = cycle.startAt ? Date.parse(cycle.startAt) : Number.NEGATIVE_INFINITY;
-      const to = cycle.endAt ? Date.parse(cycle.endAt) : Number.POSITIVE_INFINITY;
-      return at >= from && at <= to;
-    });
-    return [...inScope]
-      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-      .slice(0, 8);
-  })();
   const recentEmptyLabel =
     scope === "month"
       ? `Inga rörelser i ${labelMonthSv(activeMonthKey)}`
       : "Inga rörelser i perioden";
 
+  const monthSuffix = activeMonthKey.slice(5);
+
   function shiftYear(delta: number) {
     const nextYear = viewYear + delta;
     const keys = visibleMonthKeysForYear(nextYear);
-    const preferred = `${nextYear}-${activeMonthKey.slice(5)}`;
+    const preferred = `${nextYear}-${monthSuffix}`;
     selectMonth(keys.includes(preferred) ? preferred : keys[0]!);
   }
   const isBridge = cycle.livingMode === "bridge";

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   MerListGroup,
   MerListLink,
@@ -24,7 +25,9 @@ export function InstallningarScreen({
   data: SettingsSnapshot | null;
   profileMissing?: boolean;
 }) {
-  if (data) rememberSettingsSnapshot(data);
+  useEffect(() => {
+    if (data) rememberSettingsSnapshot(data);
+  }, [data]);
   const view = data ?? lastSettingsSnapshot();
 
   if (!view && !profileMissing) return <SettingsViewLoading />;

@@ -27,7 +27,11 @@ import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { SV } from "@/features/copy/labels-sv";
-import { lastPlanView, rememberPlanView } from "@/features/home/last-snapshot";
+import {
+  lastPlanView,
+  rememberPlanView,
+  subscribePlanView,
+} from "@/features/home/last-snapshot";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
@@ -111,7 +115,23 @@ export function PlanEditor({
   const [monthKey, setMonthKey] = useState(
     () => lastPlanView()?.monthKey ?? currentMonthKey,
   );
-  rememberPlanView({ monthKey, viewYear });
+  // Published after commit: this store has subscribers now, and writing to it
+  // during render would update Analys while Plan is still rendering.
+  useEffect(() => {
+    rememberPlanView({ monthKey, viewYear });
+  }, [monthKey, viewYear]);
+
+  // Analys can move the shared month while Plan sits mounted in the tab cache.
+  useEffect(
+    () =>
+      subscribePlanView(() => {
+        const shared = lastPlanView();
+        if (!shared || shared.monthKey === monthKey) return;
+        setMonthKey(shared.monthKey);
+        setViewYear(shared.viewYear);
+      }),
+    [monthKey],
+  );
   const [localItems, setLocalItems] = useState(items);
   const incomingStamp = stampPlanItems(items);
   const [itemsStamp, setItemsStamp] = useState(incomingStamp);

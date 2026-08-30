@@ -61,7 +61,6 @@ export type AnalysSnapshot = {
   planItems: PlanItem[];
   spendingByMonthKey: Record<string, number>;
   ledgerTransactions: AnalysLedgerTx[];
-  saldoMinor: number | null;
   categoriesByMonthKey: Record<string, SpendingCategoryTotal[]>;
   goals: AnalysLine[];
   formula: {
@@ -207,7 +206,6 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         planItems,
         spendingByMonthKey,
         ledgerTransactions,
-        saldoMinor: snap.calculatedBalanceMinor,
         categoriesByMonthKey,
         goals,
         formula: { steps: formulaSteps },

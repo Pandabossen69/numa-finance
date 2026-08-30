@@ -240,9 +240,18 @@ describe("Analys month result color", () => {
     // The same nav component Plan uses, so the two cannot look or act different.
     expect(src).toContain("PlanMonthNav");
     expect(src).toContain('idPrefix="analys"');
-    // One remembered month for both screens.
-    expect(src).toContain("lastPlanView()?.monthKey");
+    // One remembered month for both screens, subscribed rather than read at
+    // mount — tabs stay mounted, so a mount-time read would go stale.
+    expect(src).toContain("useSyncExternalStore(\n    subscribePlanView,");
+    expect(src).toContain("sharedMonth?.monthKey");
     expect(src).toContain("rememberPlanView({ monthKey: key");
+    expect(src).not.toContain("setMonthKey");
+    const store = readFileSync(
+      new URL("../../features/home/last-snapshot.ts", import.meta.url),
+      "utf8",
+    );
+    expect(store).toContain("export function subscribePlanView(");
+    expect(store).toContain("emit(planViewListeners)");
     // Browsing recomputes locally with the same pure builder the server used.
     expect(src).toContain("buildAnalysMonth({");
     expect(monthBuilder).toContain("export function buildAnalysMonth(");
