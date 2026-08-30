@@ -115,6 +115,33 @@ describe("Analys month result color", () => {
     expect(src).toContain("DestinationWarmup");
   });
 
+  it("shows where the month's money went, from the shared split", () => {
+    const loader = readFileSync(
+      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      "utf8",
+    );
+    const movements = readFileSync(
+      new URL("../../features/finance/load-movements.ts", import.meta.url),
+      "utf8",
+    );
+    // Rörelser and Analys read the same function, so the split cannot differ.
+    expect(loader).toContain("spendingCategoriesByMonthKey({");
+    expect(movements).toContain("spendingCategoriesByMonthKey({");
+    expect(movements).not.toContain("categoryMap");
+    // The section follows the browsed month and compares with the one before.
+    expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
+    expect(src).toContain("addMonthsKey(activeMonthKey, -1)");
+    expect(src).toContain("SpendByCategory");
+    expect(src).toContain("Per kategori");
+    expect(src).toContain("mer");
+    expect(src).toContain("mindre");
+    // Header and comparison come from the listed rows, so they cannot
+    // contradict the categories under them.
+    expect(src).toContain("const categorySpentMinor = sumCategories(monthCategories)");
+    expect(src).toContain("spentMinor={categorySpentMinor}");
+    expect(src).not.toContain("spentMinor={month.spentMinor}");
+  });
+
   it("browses months and shares the month with Plan", () => {
     const monthBuilder = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),

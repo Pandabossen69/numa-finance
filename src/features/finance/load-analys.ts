@@ -1,5 +1,7 @@
 import {
   NEXT_INCOME_NAME,
+  spendingCategoriesByMonthKey,
+  type SpendingCategoryTotal,
   isPlanIncome,
   isPlanSavings,
   labelMonthSv,
@@ -62,6 +64,7 @@ export type AnalysSnapshot = {
   currentMonthKey: string;
   planItems: PlanItem[];
   spendingByMonthKey: Record<string, number>;
+  categoriesByMonthKey: Record<string, SpendingCategoryTotal[]>;
   goals: AnalysLine[];
   recent: Array<{
     id: string;
@@ -101,6 +104,13 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     });
     const planItems = snap.planItems ?? [];
     const spendingByMonthKey = snap.monthSpendingByKey ?? {};
+    // Same rows as the month totals, split by category, for every month the
+    // user can browse to.
+    const categoriesByMonthKey = spendingCategoriesByMonthKey({
+      transactions: snap.ledgerTransactions ?? [],
+      currency: snap.currency,
+      timeZone,
+    });
     const month = buildAnalysMonth({
       planItems,
       spendingByMonthKey,
@@ -221,6 +231,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         currentMonthKey: monthKey,
         planItems,
         spendingByMonthKey,
+        categoriesByMonthKey,
         goals,
         recent,
         formula: { steps: formulaSteps },

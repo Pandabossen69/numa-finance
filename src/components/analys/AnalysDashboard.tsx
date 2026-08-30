@@ -12,9 +12,12 @@ import { PlanEquation } from "@/components/plan/PlanEquation";
 import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
 import { buildAnalysMonth } from "@/features/finance/analys-month";
 import {
+  addMonthsKey,
+  labelMonthNameSv,
   labelMonthSv,
   visibleMonthKeysForYear,
   yearFromMonthKey,
+  type SpendingCategoryTotal,
 } from "@/domain/finance";
 import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 import {
@@ -32,7 +35,9 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
+  formatMoneyCompact,
   humanizeMovementTitle,
+  money,
   sanitizeMoneyDescription,
   type CurrencyCode,
 } from "@/domain/money";
@@ -92,6 +97,22 @@ export function AnalysDashboard({
     setMonthKey(key);
     rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
   }
+
+  const monthCategories = view.categoriesByMonthKey[activeMonthKey] ?? [];
+  // Total and comparison both come from the listed rows, so the header can
+  // never contradict the categories under it.
+  const categorySpentMinor = sumCategories(monthCategories);
+  const previousMonthKey = addMonthsKey(activeMonthKey, -1);
+  const previousSpentMinor = sumCategories(
+    view.categoriesByMonthKey[previousMonthKey] ?? [],
+  );
+  const spendComparison =
+    previousSpentMinor > 0
+      ? {
+          deltaMinor: categorySpentMinor - previousSpentMinor,
+          monthName: labelMonthNameSv(previousMonthKey).toLocaleLowerCase("sv-SE"),
+        }
+      : null;
 
   function shiftYear(delta: number) {
     const nextYear = viewYear + delta;
@@ -395,6 +416,13 @@ export function AnalysDashboard({
             </div>
           ) : null}
 
+          <SpendByCategory
+            categories={monthCategories}
+            spentMinor={categorySpentMinor}
+            comparison={spendComparison}
+            currency={currency}
+          />
+
           <div className="grid items-start gap-4 md:grid-cols-2">
             <LineList
               title="Intäkter"
@@ -631,4 +659,85 @@ function PlanStatusChip({
   const label = planChipLabel(status, kind);
   if (!label) return null;
   return <span className={planChipClass(status)}>{label}</span>;
+}
+
+function sumCategories(categories: SpendingCategoryTotal[]): number {
+  return categories.reduce((total, category) => total + category.amountMinor, 0);
+}
+
+/**
+ * Where the month's money went. Same rows as Spenderat i månaden, split by
+ * the category saved on each transaction, biggest first.
+ */
+function SpendByCategory({
+  categories,
+  spentMinor,
+  comparison,
+  currency,
+}: {
+  categories: SpendingCategoryTotal[];
+  spentMinor: number;
+  comparison: { deltaMinor: number; monthName: string } | null;
+  currency: CurrencyCode;
+}) {
+  if (categories.length === 0) return null;
+  const biggest = categories[0]?.amountMinor || 1;
+
+  return (
+    <section className="space-y-3" aria-label="Per kategori">
+      <div className="numa-money-line px-0.5">
+        <div className="numa-money-line-label">
+          <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
+            Per kategori
+          </h3>
+          {comparison ? (
+            <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
+              {comparison.deltaMinor === 0
+                ? `Lika mycket som ${comparison.monthName}`
+                : `${formatMoneyCompact(
+                    money(Math.abs(comparison.deltaMinor), currency),
+                  )} ${comparison.deltaMinor > 0 ? "mer" : "mindre"} än ${comparison.monthName}`}
+            </p>
+          ) : null}
+        </div>
+        <div className="numa-money-line-amt text-[var(--numa-muted)]">
+          <MoneyDisplay
+            amountMinor={spentMinor}
+            currency={currency}
+            size="sm"
+            wrap={false}
+          />
+        </div>
+      </div>
+      <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
+        {categories.map((category) => (
+          <li key={category.name} className="px-4 py-3">
+            <div className="numa-money-line mb-1.5 text-sm">
+              <span className="numa-money-line-label text-[var(--numa-muted)]">
+                {category.name}
+                <span className="ml-2 text-xs text-[var(--numa-faint)]">
+                  {category.count}×
+                </span>
+              </span>
+              <span className="numa-money-line-amt">
+                <MoneyDisplay
+                  amountMinor={category.amountMinor}
+                  currency={currency}
+                  size="sm"
+                  wrap={false}
+                />
+              </span>
+            </div>
+            <div className="numa-progress animate-bar" aria-hidden>
+              <span
+                style={{
+                  width: `${Math.max(6, (category.amountMinor / biggest) * 100)}%`,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }

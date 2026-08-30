@@ -169,6 +169,52 @@ export function spendingByMonthKey(params: {
   return out;
 }
 
+export type SpendingCategoryTotal = {
+  name: string;
+  amountMinor: number;
+  count: number;
+};
+
+/** Shown when a transaction was saved without a category. */
+export const UNCATEGORISED_SPEND_NAME = "Övrigt";
+
+/**
+ * The same rows as `spendingByMonthKey`, split by category.
+ *
+ * Kept next to it on purpose: the categories of a month must always add up to
+ * that month's spending, so both filters have to stay identical.
+ */
+export function spendingCategoriesByMonthKey(params: {
+  transactions: CanonicalTransaction[];
+  currency: CurrencyCode;
+  timeZone: string;
+}): Record<string, SpendingCategoryTotal[]> {
+  const buckets = new Map<string, Map<string, SpendingCategoryTotal>>();
+  for (const tx of params.transactions) {
+    if (!appliesToSpending(tx)) continue;
+    if (tx.currency !== params.currency) continue;
+    const key = monthKeyFromDate(new Date(tx.occurredAt), params.timeZone);
+    let bucket = buckets.get(key);
+    if (!bucket) {
+      bucket = new Map();
+      buckets.set(key, bucket);
+    }
+    const name = tx.category?.trim() || UNCATEGORISED_SPEND_NAME;
+    const prev = bucket.get(name) ?? { name, amountMinor: 0, count: 0 };
+    prev.amountMinor += tx.amountMinor;
+    prev.count += 1;
+    bucket.set(name, prev);
+  }
+
+  const out: Record<string, SpendingCategoryTotal[]> = {};
+  for (const [key, bucket] of buckets) {
+    out[key] = [...bucket.values()].sort(
+      (a, b) => b.amountMinor - a.amountMinor,
+    );
+  }
+  return out;
+}
+
 export function monthKeysInclusive(fromKey: string, toKey: string): string[] {
   if (fromKey > toKey) return [];
   const keys: string[] = [];
