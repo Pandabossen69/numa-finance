@@ -174,6 +174,64 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("spentMinor={month.spentMinor}");
   });
 
+  it("gives the bridge block the period's own figures", () => {
+    // Before payday it used to hold only "På kontot".
+    expect(src).toContain('label="Kommande intäkter"');
+    expect(src).toContain('label="Kommande utgifter"');
+  });
+
+  it("shows the same period figure above the list as in it", () => {
+    // Rows used to show the planned amount while the list below counted what
+    // is left, so one screen printed 15 800 and 800 under the same word.
+    expect(src).toContain("const cycleIncomingMinor = sumRemaining(cycle.incomes)");
+    expect(src).toContain("const cycleUnpaidMinor = sumRemaining(cycle.expenses)");
+    expect(src).toContain("amountMinor={cycleIncomingMinor}");
+    expect(src).toContain("amountMinor={cycleUnpaidMinor}");
+    expect(src).not.toContain("amountMinor={cycle.incomeMinor}");
+    expect(src).not.toContain("amountMinor={cycle.expenseMinor}");
+    // Spenderat i perioden is structurally 0 before the period opens, so the
+    // bridge block does not print it.
+    expect(src).not.toMatch(/hasSaldo \? \([\s\S]{0,600}spenderatIPerioden/);
+  });
+
+  it("ships no figure the screen never renders", () => {
+    const loader = readFileSync(
+      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      "utf8",
+    );
+    for (const dead of [
+      "safeToSpendWeekMinor",
+      "freeMinor",
+      "daysUntilIncome",
+      "endInferred",
+      "verificationLabel",
+      "safeToSpendTodayMinor",
+      "monthLabelSv",
+    ]) {
+      expect(loader, `${dead} is not rendered by Analys`).not.toContain(dead);
+    }
+  });
+
+  it("scopes Senaste to the tab you are on", () => {
+    const loader = readFileSync(
+      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      "utf8",
+    );
+    // Månad shows the browsed month, Perioden the running cycle window.
+    expect(src).toContain('scope === "month"');
+    expect(src).toContain("=== activeMonthKey");
+    expect(src).toContain("cycle.startAt");
+    expect(src).toContain("cycle.endAt");
+    expect(loader).toContain("startAt: cycle.startAt");
+    // Unconfirmed rows are not money that moved.
+    expect(src).toContain('tx.status !== "confirmed"');
+    // The empty line says which window is empty.
+    expect(src).toContain("Inga rörelser i perioden");
+    expect(src).not.toContain("Inga rörelser ännu");
+    // No pre-sliced list on the payload any more.
+    expect(loader).not.toContain("recentTransactions");
+  });
+
   it("browses months and shares the month with Plan", () => {
     const monthBuilder = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),

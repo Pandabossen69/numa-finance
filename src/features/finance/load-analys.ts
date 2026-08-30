@@ -1,3 +1,4 @@
+import type { CanonicalTransaction } from "@/domain/finance";
 import {
   NEXT_INCOME_NAME,
   spendingCategoriesByMonthKey,
@@ -5,17 +6,12 @@ import {
   type SpendingCategoryTotal,
   isPlanIncome,
   isPlanSavings,
-  labelMonthSv,
   monthKeyFromDate,
   projectLivingBudget,
   projectPayCycle,
   type PlanItem,
 } from "@/domain/finance";
-import {
-  humanizeMovementTitle,
-  sanitizeMoneyDescription,
-  type CurrencyCode,
-} from "@/domain/money";
+import type { CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import {
   buildAnalysMonth,
@@ -28,24 +24,23 @@ import { loadErrorMessageSv } from "@/lib/async";
 
 export type { AnalysLine } from "@/features/finance/analys-month";
 
+/** Ledger rows Analys needs: enough for the matcher and for the Senaste list. */
+export type AnalysLedgerTx = LedgerMatchTx &
+  Pick<CanonicalTransaction, "category" | "currency">;
+
 export type AnalysSnapshot = {
   currency: CurrencyCode;
   hasBankTruth: boolean;
   monthKey: string;
-  monthLabelSv: string;
-  verificationLabel: string | null;
   calculatedBalanceMinor: number | null;
   todaySpendingMinor: number;
   monthSpendingMinor: number;
   cycleSpendingMinor: number;
-  safeToSpendTodayMinor: number;
-  safeToSpendWeekMinor: number;
-  freeMinor: number;
-  daysUntilIncome: number;
   cycle: {
+    startAt: string | null;
+    endAt: string | null;
     startLabelSv: string | null;
     endLabelSv: string | null;
-    endInferred: boolean;
     isActive: boolean;
     livingMode: "bridge" | "cycle" | "empty";
     incomeMinor: number;
@@ -65,19 +60,10 @@ export type AnalysSnapshot = {
   currentMonthKey: string;
   planItems: PlanItem[];
   spendingByMonthKey: Record<string, number>;
-  ledgerTransactions: LedgerMatchTx[];
+  ledgerTransactions: AnalysLedgerTx[];
   saldoMinor: number | null;
   categoriesByMonthKey: Record<string, SpendingCategoryTotal[]>;
   goals: AnalysLine[];
-  recent: Array<{
-    id: string;
-    description: string;
-    category: string | null;
-    transactionType: string;
-    direction: "debit" | "credit";
-    amountMinor: number;
-    currency: CurrencyCode;
-  }>;
   formula: {
     steps: string[];
   };
@@ -150,18 +136,6 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       )
       .map((g) => toAnalysLine(g, { detail: "Mål" }));
 
-    const recent = (snap.recentTransactions ?? []).slice(0, 10).map((tx) => ({
-      id: tx.id,
-      description: humanizeMovementTitle(
-        sanitizeMoneyDescription(tx.description),
-        tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor,
-      ),
-      category: tx.category,
-      transactionType: tx.transactionType,
-      direction: tx.direction,
-      amountMinor: tx.amountMinor,
-      currency: tx.currency,
-    }));
 
     const formulaSteps =
       living.mode === "bridge"
@@ -204,20 +178,15 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         currency: snap.currency,
         hasBankTruth: snap.checkpoint != null,
         monthKey,
-        monthLabelSv: labelMonthSv(monthKey),
-        verificationLabel: snap.verificationLabel,
         calculatedBalanceMinor: snap.calculatedBalanceMinor,
         todaySpendingMinor: snap.todaySpendingMinor,
         monthSpendingMinor: snap.monthSpendingMinor,
         cycleSpendingMinor,
-        safeToSpendTodayMinor: living.remainingTodayMinor,
-        safeToSpendWeekMinor: snap.safeToSpendWeekMinor,
-        freeMinor: snap.freeMinor,
-        daysUntilIncome: snap.daysUntilIncome,
         cycle: {
+          startAt: cycle.startAt,
+          endAt: cycle.endAt,
           startLabelSv: cycle.startLabelSv,
           endLabelSv: cycle.endLabelSv,
-          endInferred: cycle.endInferred,
           isActive: cycle.isActive && snap.fundingConfirmed,
           livingMode: living.mode,
           incomeMinor: cycle.incomeMinor,
@@ -241,7 +210,6 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         saldoMinor: snap.calculatedBalanceMinor,
         categoriesByMonthKey,
         goals,
-        recent,
         formula: { steps: formulaSteps },
       },
     };

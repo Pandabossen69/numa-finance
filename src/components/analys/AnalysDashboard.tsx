@@ -14,6 +14,7 @@ import { buildAnalysMonth } from "@/features/finance/analys-month";
 import {
   CASH_COVERAGE_HINT_SV,
   addMonthsKey,
+  monthKeyFromDate,
   labelMonthNameSv,
   labelMonthSv,
   planWealthTotalMinor,
@@ -103,6 +104,10 @@ export function AnalysDashboard({
     rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
   }
 
+  // The rows above the lists must show the same figure as the lists, which
+  // count what is left after Delvis and Betald.
+  const cycleIncomingMinor = sumRemaining(cycle.incomes);
+  const cycleUnpaidMinor = sumRemaining(cycle.expenses);
   const monthCategories = view.categoriesByMonthKey[activeMonthKey] ?? [];
   // Total and comparison both come from the listed rows, so the header can
   // never contradict the categories under it.
@@ -118,6 +123,28 @@ export function AnalysDashboard({
           monthName: labelMonthNameSv(previousMonthKey).toLocaleLowerCase("sv-SE"),
         }
       : null;
+
+  // "Senaste" belongs to what you are looking at: the browsed month in Månad,
+  // the running pay cycle in Perioden.
+  const recent = (() => {
+    const inScope = view.ledgerTransactions.filter((tx) => {
+      if (tx.status !== "confirmed") return false;
+      if (scope === "month") {
+        return monthKeyFromDate(new Date(tx.occurredAt), view.timeZone) === activeMonthKey;
+      }
+      const at = Date.parse(tx.occurredAt);
+      const from = cycle.startAt ? Date.parse(cycle.startAt) : Number.NEGATIVE_INFINITY;
+      const to = cycle.endAt ? Date.parse(cycle.endAt) : Number.POSITIVE_INFINITY;
+      return at >= from && at <= to;
+    });
+    return [...inScope]
+      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
+      .slice(0, 8);
+  })();
+  const recentEmptyLabel =
+    scope === "month"
+      ? `Inga rörelser i ${labelMonthSv(activeMonthKey)}`
+      : "Inga rörelser i perioden";
 
   function shiftYear(delta: number) {
     const nextYear = viewYear + delta;
@@ -263,7 +290,23 @@ export function AnalysDashboard({
             >
               <div className="numa-panel-list numa-money-stack px-4 py-1">
                 {isBridge ? (
-                  hasSaldo ? null : (
+                  hasSaldo ? (
+                    // Before payday the block used to hold only "På kontot".
+                    // Show the period's own figures, matching the lists below.
+                    <>
+                      <MetricRow
+                        label="Kommande intäkter"
+                        amountMinor={cycleIncomingMinor}
+                        currency={currency}
+                        tone="positive"
+                      />
+                      <MetricRow
+                        label="Kommande utgifter"
+                        amountMinor={cycleUnpaidMinor}
+                        currency={currency}
+                      />
+                    </>
+                  ) : (
                     <MetricRow
                       label={SV.saldo}
                       value={<span className="text-sm text-[var(--numa-faint)]">—</span>}
@@ -273,13 +316,13 @@ export function AnalysDashboard({
                   <>
                     <MetricRow
                       label={SV.intakter}
-                      amountMinor={cycle.incomeMinor}
+                      amountMinor={cycleIncomingMinor}
                       currency={currency}
                       tone="positive"
                     />
                     <MetricRow
                       label={SV.utgifter}
-                      amountMinor={cycle.expenseMinor}
+                      amountMinor={cycleUnpaidMinor}
                       currency={currency}
                     />
                     <MetricRow
@@ -544,11 +587,11 @@ export function AnalysDashboard({
             Alla →
           </Link>
         </div>
-        {view.recent.length === 0 ? (
-          <p className="text-sm text-[var(--numa-faint)]">Inga rörelser ännu</p>
+        {recent.length === 0 ? (
+          <p className="text-sm text-[var(--numa-faint)]">{recentEmptyLabel}</p>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
-            {view.recent.map((tx) => {
+            {recent.map((tx) => {
               const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
               return (
                 <li
@@ -704,6 +747,10 @@ function PlanStatusChip({
   const label = planChipLabel(status, kind);
   if (!label) return null;
   return <span className={planChipClass(status)}>{label}</span>;
+}
+
+function sumRemaining(lines: AnalysLine[]): number {
+  return lines.reduce((total, line) => total + line.remainingMinor, 0);
 }
 
 function sumCategories(categories: SpendingCategoryTotal[]): number {
