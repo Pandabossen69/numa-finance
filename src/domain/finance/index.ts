@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./account-kind";
 export * from "./balance";
 export * from "./safe-to-spend";
 export * from "./fingerprint";
@@ -13,3 +14,4 @@ export * from "./transfer-pair";
 export * from "./import-occurred-at";
 export * from "./month-carryover";
 export * from "./cash-coverage";
+export * from "./total-saldo";

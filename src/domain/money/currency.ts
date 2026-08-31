@@ -1,4 +1,4 @@
-export const CURRENCIES = ["THB", "SEK", "EUR"] as const;
+export const CURRENCIES = ["THB", "SEK", "EUR", "USD"] as const;
 
 export type CurrencyCode = (typeof CURRENCIES)[number];
 
@@ -6,7 +6,7 @@ export const CURRENCY_META: Record<
   CurrencyCode,
   {
     code: CurrencyCode;
-    /** ISO 4217 minor-unit exponent (THB/SEK/EUR = 2). */
+    /** ISO 4217 minor-unit exponent (THB/SEK/EUR/USD = 2). */
     minorUnits: 2;
     symbol: string;
     /** Swedish-facing short label without the amount. */
@@ -32,6 +32,12 @@ export const CURRENCY_META: Record<
     symbol: "€",
     displayNameSv: "euro",
   },
+  USD: {
+    code: "USD",
+    minorUnits: 2,
+    symbol: "USD",
+    displayNameSv: "amerikanska dollar",
+  },
 };
 
 export function isCurrencyCode(value: string): value is CurrencyCode {
@@ -54,5 +60,8 @@ export function parseCurrencyToken(
   if (t === "EUR" || t === "€" || t === "EURO") return "EUR";
   if (t === "THB" || t === "BT" || t === "฿" || t === "TH") return "THB";
   if (t === "SEK" || t === "KR" || t === "KRONOR") return "SEK";
+  if (t === "USD" || t === "$" || t === "US$" || t === "DOLLAR" || t === "DOLLARS") {
+    return "USD";
+  }
   return isCurrencyCode(t) ? t : null;
 }

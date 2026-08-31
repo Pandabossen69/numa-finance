@@ -16,7 +16,12 @@ import {
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
-import { CURRENCIES, parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
+import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } from "@/domain/money";
+import {
+  ACCOUNT_KINDS,
+  assertCurrencyAllowedForKind,
+  type AccountKind,
+} from "@/domain/finance";
 
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -29,9 +34,12 @@ const accountSchema = z.object({
     "investment",
     "other",
   ]),
+  kind: z.enum(ACCOUNT_KINDS),
   currency: z.enum(CURRENCIES),
   maskedIdentifier: z.string().trim().max(32).optional().nullable(),
   openingBalance: z.string().trim().min(1),
+  /** Manual THB-per-1-unit rate when currency ≠ THB. Optional if Frankfurter works. */
+  fxRate: z.string().trim().optional().nullable(),
   makeDefault: z.boolean().optional(),
 });
 
@@ -56,10 +64,23 @@ export async function createAccountAction(
       return { ok: false, error: "Ingående saldo kan inte vara negativt" };
     }
 
+    assertCurrencyAllowedForKind(input.kind as AccountKind, input.currency);
+
+    const manualRate =
+      input.currency === "THB"
+        ? null
+        : input.fxRate
+          ? parseManualRate(input.fxRate)
+          : null;
+    if (input.currency !== "THB" && input.fxRate && manualRate == null) {
+      return { ok: false, error: "Ogiltig växelkurs" };
+    }
+
     const account = await createAccount({
       name: input.name,
       institution: input.institution,
       accountType: input.accountType,
+      kind: input.kind,
       currency: input.currency,
       maskedIdentifier: input.maskedIdentifier,
       makeDefault: input.makeDefault ?? false,
@@ -70,6 +91,8 @@ export async function createAccountAction(
       balanceMinor: openingMinor,
       source: "manual_opening_balance",
       note: "Ingående / verifierat saldo",
+      fxRate: manualRate,
+      fxSource: manualRate != null ? "manual" : null,
     });
 
     revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
@@ -270,7 +293,8 @@ export async function createCheckpointAction(raw: {
   accountId: string;
   balance: string;
   source?: string;
-}): Promise<ActionResult> {
+  fxRate?: string | null;
+}): Promise<ActionResult & { thbMinor?: number }> {
   try {
     const accountId = z.string().uuid().parse(raw.accountId);
     const balanceMinor = parseUiAmountToMinor(raw.balance);
@@ -278,15 +302,22 @@ export async function createCheckpointAction(raw: {
       return { ok: false, error: "Saldo kan inte vara negativt" };
     }
 
-    await createCheckpoint({
+    const manualRate = raw.fxRate ? parseManualRate(raw.fxRate) : null;
+    if (raw.fxRate && manualRate == null) {
+      return { ok: false, error: "Ogiltig växelkurs" };
+    }
+
+    const checkpoint = await createCheckpoint({
       accountId,
       balanceMinor,
       source: raw.source?.trim() || "manual_verification",
       note: "Manuellt verifierat saldo",
+      fxRate: manualRate,
+      fxSource: manualRate != null ? "manual" : null,
     });
 
     revalidateMoneyPaths();
-    return { ok: true };
+    return { ok: true, thbMinor: checkpoint.thbMinor ?? undefined };
   } catch (error) {
     return {
       ok: false,
@@ -319,6 +350,7 @@ export async function setAvailableNowAction(raw: {
         const account = await createAccount({
           name: accountName.slice(0, 80),
           accountType: "checking",
+          kind: currency === "THB" ? "thai_bank" : "other",
           currency,
           makeDefault: true,
         });

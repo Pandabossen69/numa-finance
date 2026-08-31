@@ -568,14 +568,27 @@ export function applyAccountDelta(
     accounts.accounts.find((row) => row.isDefault) ??
     accounts.accounts[0];
   if (!target || target.calculatedMinor == null) return accounts;
+  const nextCalculated = target.calculatedMinor + deltaMinor;
+  const nextThb =
+    target.currency === "THB"
+      ? nextCalculated
+      : target.thbMinor != null && target.fxRate != null
+        ? Math.round(nextCalculated * target.fxRate)
+        : target.thbMinor;
+  const nextAccounts = accounts.accounts.map((row) =>
+    row.id === target.id
+      ? { ...row, calculatedMinor: nextCalculated, thbMinor: nextThb }
+      : row,
+  );
+  let totalThbMinor: number | null = null;
+  for (const row of nextAccounts) {
+    const thb =
+      row.thbMinor ?? (row.currency === "THB" ? row.calculatedMinor : null);
+    if (thb == null) continue;
+    totalThbMinor = (totalThbMinor ?? 0) + thb;
+  }
   rememberAccountsSnapshot(
-    {
-      accounts: accounts.accounts.map((row) =>
-        row.id === target.id
-          ? { ...row, calculatedMinor: row.calculatedMinor! + deltaMinor }
-          : row,
-      ),
-    },
+    { accounts: nextAccounts, totalThbMinor },
     { dirty: true },
   );
   return accounts;
@@ -584,24 +597,58 @@ export function applyAccountDelta(
 export function applyAccountBalance(
   accountId: string,
   balanceMinor: number,
+  options?: {
+    thbMinor?: number;
+    currency?: import("@/domain/money").CurrencyCode;
+  },
 ): AccountsSnapshot | null {
+  const currency = options?.currency;
+  const thbForRow =
+    options?.thbMinor ??
+    (currency === "THB" || currency == null ? balanceMinor : undefined);
+
+  let totalThbMinor: number | null = null;
+
   if (accounts) {
-    rememberAccountsSnapshot(
-      {
-        accounts: accounts.accounts.map((row) =>
-          row.id === accountId ? { ...row, calculatedMinor: balanceMinor } : row,
-        ),
-      },
-      { dirty: true },
-    );
+    const found = accounts.accounts.some((row) => row.id === accountId);
+    if (!found) {
+      applyHomeBankBalance(thbForRow ?? balanceMinor);
+    } else {
+      const nextAccounts = accounts.accounts.map((row) => {
+        if (row.id !== accountId) return row;
+        return {
+          ...row,
+          calculatedMinor: balanceMinor,
+          thbMinor: thbForRow ?? row.thbMinor ?? null,
+          currency: currency ?? row.currency,
+        };
+      });
+      for (const row of nextAccounts) {
+        const thb =
+          row.thbMinor ??
+          (row.currency === "THB" ? row.calculatedMinor : null);
+        if (thb == null) continue;
+        totalThbMinor = (totalThbMinor ?? 0) + thb;
+      }
+      rememberAccountsSnapshot(
+        { accounts: nextAccounts, totalThbMinor },
+        { dirty: true },
+      );
+
+      if (totalThbMinor != null) {
+        applyHomeBankBalance(totalThbMinor);
+      } else {
+        applyHomeBankBalance(thbForRow ?? balanceMinor);
+      }
+    }
+  } else {
+    applyHomeBankBalance(thbForRow ?? balanceMinor);
   }
-  const row = accounts?.accounts.find((item) => item.id === accountId);
-  if (!row || row.isDefault) {
-    applyHomeBankBalance(balanceMinor);
-  }
+
   if (movements) {
+    const homeTotal = totalThbMinor ?? thbForRow ?? balanceMinor;
     rememberMovementsSnapshot(
-      { ...movements, balanceMinor, hasBankTruth: true },
+      { ...movements, balanceMinor: homeTotal, hasBankTruth: true },
       { dirty: true },
     );
   }

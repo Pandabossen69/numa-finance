@@ -127,7 +127,7 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         currency: snap.currency,
         monthKey,
         monthLabelSv: labelMonthSv(monthKey),
-        hasBankTruth: snap.checkpoint != null,
+        hasBankTruth: snap.calculatedBalanceMinor != null,
         calculatedBalanceMinor: snap.calculatedBalanceMinor,
         verificationLabel: snap.verificationLabel,
         todaySpendingMinor: snap.todaySpendingMinor,

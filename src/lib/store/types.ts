@@ -57,6 +57,31 @@ export function createEmptyStore(): NumaStoreData {
 export function normalizeStore(data: NumaStoreData): NumaStoreData {
   return {
     ...data,
+    accounts: (Array.isArray(data.accounts) ? data.accounts : []).map((account) => {
+      const kind =
+        account.kind ??
+        (account.accountType === "cash"
+          ? "cash"
+          : account.currency === "THB"
+            ? "thai_bank"
+            : account.currency === "SEK"
+              ? "swedish_bank"
+              : "other");
+      return { ...account, kind };
+    }),
+    checkpoints: (Array.isArray(data.checkpoints) ? data.checkpoints : []).map(
+      (cp) => {
+        const isThb = cp.currency === "THB";
+        return {
+          ...cp,
+          thbMinor:
+            cp.thbMinor ?? (isThb ? cp.balanceMinor : null),
+          fxRate: cp.fxRate ?? (isThb ? 1 : null),
+          fxAsOf: cp.fxAsOf ?? (isThb ? cp.verifiedAt : null),
+          fxSource: cp.fxSource ?? (isThb ? "identity" : null),
+        };
+      },
+    ),
     planItems: (Array.isArray(data.planItems) ? data.planItems : []).map((item) => ({
       ...item,
       settledAt: item.settledAt ?? null,

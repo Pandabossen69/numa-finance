@@ -31,6 +31,7 @@ type DbAccount = {
   name: string;
   institution: string | null;
   account_type: Account["accountType"];
+  kind?: Account["kind"] | null;
   currency: CurrencyCode;
   masked_identifier: string | null;
   is_active: boolean;
@@ -45,6 +46,10 @@ type DbCheckpoint = {
   account_id: string;
   balance_minor: number;
   currency: CurrencyCode;
+  thb_minor?: number | null;
+  fx_rate?: number | string | null;
+  fx_as_of?: string | null;
+  fx_source?: string | null;
   verified_at: string;
   source: string;
   source_observation_id: string | null;
@@ -106,6 +111,17 @@ export function mapProfile(row: DbProfile): Profile {
   };
 }
 
+function inferKindFromRow(row: DbAccount): Account["kind"] {
+  if (row.kind) return row.kind;
+  if (row.account_type === "cash") return "cash";
+  if (row.currency === "THB") return "thai_bank";
+  if (row.currency === "SEK") return "swedish_bank";
+  const inst = (row.institution ?? row.name ?? "").toLowerCase();
+  if (inst.includes("revolut")) return "revolut";
+  if (inst.includes("bunq")) return "bunq";
+  return "other";
+}
+
 export function mapAccount(row: DbAccount): Account {
   return {
     id: row.id,
@@ -113,6 +129,7 @@ export function mapAccount(row: DbAccount): Account {
     name: row.name,
     institution: row.institution,
     accountType: row.account_type,
+    kind: inferKindFromRow(row),
     currency: row.currency,
     maskedIdentifier: row.masked_identifier,
     isActive: row.is_active,
@@ -123,12 +140,23 @@ export function mapAccount(row: DbAccount): Account {
 }
 
 export function mapCheckpoint(row: DbCheckpoint): BalanceCheckpoint {
+  const fxRaw = row.fx_rate;
+  const fxRate =
+    fxRaw == null || fxRaw === ""
+      ? null
+      : Number(fxRaw);
   return {
     id: row.id,
     userId: row.user_id,
     accountId: row.account_id,
     balanceMinor: Number(row.balance_minor),
     currency: row.currency,
+    thbMinor:
+      row.thb_minor == null ? null : Number(row.thb_minor),
+    fxRate:
+      fxRate != null && Number.isFinite(fxRate) ? fxRate : null,
+    fxAsOf: row.fx_as_of ?? null,
+    fxSource: row.fx_source ?? null,
     verifiedAt: row.verified_at,
     source: row.source,
     sourceObservationId: row.source_observation_id,

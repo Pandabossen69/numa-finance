@@ -89,3 +89,68 @@ export function convertWithRate(
 function key(base: CurrencyCode, quote: CurrencyCode): string {
   return `${base}:${quote}`;
 }
+
+export type FxQuoteToThb = {
+  /** THB per 1 major unit of `from`. */
+  rate: number;
+  asOf: string;
+  source: "manual" | "frankfurter" | "identity";
+};
+
+const FRANKFURTER_URL = "https://api.frankfurter.app/latest";
+
+/**
+ * Mid-market rate: 1 `from` (major) = `rate` THB (major).
+ * Frankfurter (ECB). Returns null on network/API failure — caller must
+ * fall back to a manual rate rather than invent one.
+ */
+export async function fetchFxToThb(
+  from: CurrencyCode,
+): Promise<FxQuoteToThb | null> {
+  if (from === "THB") {
+    return {
+      rate: 1,
+      asOf: new Date().toISOString(),
+      source: "identity",
+    };
+  }
+
+  try {
+    const url = `${FRANKFURTER_URL}?from=${from}&to=THB`;
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      date?: string;
+      rates?: { THB?: number };
+    };
+    const rate = data.rates?.THB;
+    if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
+      return null;
+    }
+    const asOf = data.date
+      ? new Date(`${data.date}T12:00:00.000Z`).toISOString()
+      : new Date().toISOString();
+    return { rate, asOf, source: "frankfurter" };
+  } catch {
+    return null;
+  }
+}
+
+/** Native minor → THB minor using a major→major rate. */
+export function thbMinorFromNative(
+  balanceMinor: number,
+  currency: CurrencyCode,
+  rate: number,
+): number {
+  if (currency === "THB") return balanceMinor;
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+  return Math.round(balanceMinor * rate);
+}
+
+export function parseManualRate(raw: string): number | null {
+  const normalized = raw.trim().replace(",", ".");
+  if (!normalized) return null;
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}

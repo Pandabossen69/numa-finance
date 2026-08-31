@@ -107,6 +107,29 @@ export function AccountsDashboard({
         </MerSection>
       ) : (
         <div className="animate-rise-delay-1 space-y-6">
+          {view.totalThbMinor != null && view.accounts.length > 1 ? (
+            <MerSection>
+              <MerListGroup>
+                <MerListRow className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+                      Totalt
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-[var(--numa-muted)]">
+                      Alla konton i THB
+                    </p>
+                  </div>
+                  <MoneyDisplay
+                    amountMinor={view.totalThbMinor}
+                    currency="THB"
+                    size="md"
+                    wrap={false}
+                  />
+                </MerListRow>
+              </MerListGroup>
+            </MerSection>
+          ) : null}
+
           {view.accounts.map((account) => (
             <MerSection key={account.id}>
               <MerListGroup>
@@ -115,21 +138,41 @@ export function AccountsDashboard({
                     <IconWallet />
                   </MerIcon>
                   <div className="numa-money-line min-w-0 flex-1 items-start">
-                    <div className="numa-money-line-label">
+                    <div className="numa-money-line-label min-w-0">
                       <h2 className="truncate text-[15px] font-semibold tracking-tight">
                         {account.name}
                         {account.maskedIdentifier
                           ? ` ·${account.maskedIdentifier}`
                           : ""}
                       </h2>
-                      <p className="mt-0.5 truncate text-[12px] text-[var(--numa-faint)]">
-                        {account.institution ?? "Eget konto"} · {account.currency}
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[var(--numa-faint)]">
+                        <span>
+                          {account.kindLabelSv ?? account.institution ?? "Eget konto"}
+                          {" · "}
+                          {account.currency}
+                        </span>
                         {account.isDefault ? (
-                          <span className="numa-chip numa-chip-mint ml-1.5 align-middle">
+                          <span className="numa-chip numa-chip-mint align-middle">
                             Standard
                           </span>
                         ) : null}
                       </p>
+                      {account.currency !== "THB" &&
+                      account.thbMinor != null &&
+                      account.calculatedMinor != null ? (
+                        <p className="mt-1 text-[12px] text-[var(--numa-muted)]">
+                          ≈{" "}
+                          <MoneyDisplay
+                            amountMinor={account.thbMinor}
+                            currency="THB"
+                            size="sm"
+                            wrap={false}
+                          />
+                          {account.fxRate != null
+                            ? ` · kurs ${account.fxRate}`
+                            : null}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="numa-money-line-amt">
                       {account.calculatedMinor != null ? (
@@ -148,7 +191,10 @@ export function AccountsDashboard({
                   </div>
                 </MerListRow>
                 <MerListRow className="bg-[var(--numa-bg)]/35">
-                  <VerifyBalanceForm accountId={account.id} />
+                  <VerifyBalanceForm
+                    accountId={account.id}
+                    currency={account.currency}
+                  />
                 </MerListRow>
               </MerListGroup>
             </MerSection>

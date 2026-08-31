@@ -17,11 +17,16 @@ function checkpoint(
     source: string;
   },
 ): BalanceCheckpoint {
+  const currency = overrides.currency ?? "THB";
   return {
     id: "cp-1",
     userId: "u1",
     accountId: "a1",
-    currency: "THB",
+    currency,
+    thbMinor: currency === "THB" ? overrides.balanceMinor : null,
+    fxRate: currency === "THB" ? 1 : null,
+    fxAsOf: currency === "THB" ? overrides.verifiedAt : null,
+    fxSource: currency === "THB" ? "identity" : null,
     sourceObservationId: null,
     note: null,
     createdAt: overrides.verifiedAt,

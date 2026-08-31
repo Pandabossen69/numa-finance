@@ -52,6 +52,36 @@ const sampleMovements: MovementsSnapshot = {
   monthKey: "2026-08",
 };
 
+function accountRow(
+  partial: Partial<{
+    id: string;
+    name: string;
+    institution: string | null;
+    maskedIdentifier: string | null;
+    currency: "THB" | "SEK" | "EUR" | "USD";
+    isDefault: boolean;
+    calculatedMinor: number | null;
+    thbMinor: number | null;
+  }> = {},
+) {
+  const calculatedMinor = partial.calculatedMinor ?? 100_00;
+  const currency = partial.currency ?? "THB";
+  return {
+    id: partial.id ?? "a1",
+    name: partial.name ?? "Bangkok Bank",
+    institution: partial.institution ?? "Bangkok Bank",
+    maskedIdentifier: partial.maskedIdentifier ?? "6591",
+    kind: "thai_bank" as const,
+    kindLabelSv: "Thai-bank",
+    currency,
+    isDefault: partial.isDefault ?? true,
+    calculatedMinor,
+    thbMinor: partial.thbMinor ?? (currency === "THB" ? calculatedMinor : null),
+    fxRate: currency === "THB" ? 1 : null,
+    fxSource: currency === "THB" ? "identity" : null,
+  };
+}
+
 function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
   return {
     userId: "user-hugo",
@@ -182,17 +212,8 @@ describe("last view memory", () => {
     rememberMovementsSnapshot(sampleMovements);
     rememberMovementsView({ filter: "expense", period: "all" });
     rememberAccountsSnapshot({
-      accounts: [
-        {
-          id: "a1",
-          name: "Bangkok Bank",
-          institution: "Bangkok Bank",
-          maskedIdentifier: "6591",
-          currency: "THB",
-          isDefault: true,
-          calculatedMinor: 100_00,
-        },
-      ],
+      accounts: [accountRow()],
+      totalThbMinor: 100_00,
     });
     rememberMerSnapshot({
       userId: "user-hugo",
@@ -258,17 +279,8 @@ describe("last view memory", () => {
       ],
     });
     rememberAccountsSnapshot({
-      accounts: [
-        {
-          id: "acc",
-          name: "Bangkok Bank",
-          institution: "Bangkok Bank",
-          maskedIdentifier: "6591",
-          currency: "THB",
-          isDefault: true,
-          calculatedMinor: 100_00,
-        },
-      ],
+      accounts: [accountRow({ id: "acc", calculatedMinor: 100_00 })],
+      totalThbMinor: 100_00,
     });
 
     applyMovementsVoid("tx1");
@@ -354,17 +366,8 @@ describe("last view memory", () => {
   it("writes a new saldo into Konton and Hem immediately", () => {
     rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 100_00 }));
     rememberAccountsSnapshot({
-      accounts: [
-        {
-          id: "a1",
-          name: "Bangkok Bank",
-          institution: "Bangkok Bank",
-          maskedIdentifier: "6591",
-          currency: "THB",
-          isDefault: true,
-          calculatedMinor: 100_00,
-        },
-      ],
+      accounts: [accountRow({ calculatedMinor: 100_00 })],
+      totalThbMinor: 100_00,
     });
     rememberMovementsSnapshot(sampleMovements);
 

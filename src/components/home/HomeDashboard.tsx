@@ -31,11 +31,13 @@ import {
   applyMovementsAdd,
   applyOptimisticHomeSpend,
   isHomeDirty,
+  lastAccountsSnapshot,
   lastGettingStarted,
   lastHomeSnapshot,
   rememberGettingStarted,
   rememberHomeSnapshot,
   revertOptimisticHomeSpend,
+  subscribeAccountsSnapshot,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
@@ -58,6 +60,11 @@ export function HomeDashboard({
     subscribeHomeSnapshot,
     lastHomeSnapshot,
     lastHomeSnapshot,
+  );
+  const accountsView = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
+    lastAccountsSnapshot,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
   const view = (sameOwner ? stored : null) ?? snap ?? lastHomeSnapshot();
@@ -308,6 +315,37 @@ export function HomeDashboard({
                   savingsMinor={view.savingsTotalMinor}
                   currency={currency}
                 />
+                {accountsView && accountsView.accounts.length > 1 ? (
+                  <Link
+                    href="/konton"
+                    className="numa-press numa-panel-list flex items-center justify-between gap-3 px-4 py-3 transition hover:border-[var(--numa-border-strong)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold tracking-tight">
+                        {accountsView.accounts.length} konton
+                      </p>
+                      <p className="mt-0.5 truncate text-[12px] text-[var(--numa-faint)]">
+                        {accountsView.accounts
+                          .map((a) => a.name)
+                          .slice(0, 3)
+                          .join(" · ")}
+                        {accountsView.accounts.length > 3 ? "…" : ""}
+                      </p>
+                    </div>
+                    {accountsView.totalThbMinor != null ? (
+                      <MoneyDisplay
+                        amountMinor={accountsView.totalThbMinor}
+                        currency="THB"
+                        size="sm"
+                        wrap={false}
+                      />
+                    ) : (
+                      <span className="text-[13px] font-semibold text-[var(--numa-accent)]">
+                        Visa →
+                      </span>
+                    )}
+                  </Link>
+                ) : null}
                 {view.extraCarriedInMinor > 0 ||
                 view.extraSaldoMinor > 0 ||
                 view.extraSaldoDrawnMinor > 0 ||

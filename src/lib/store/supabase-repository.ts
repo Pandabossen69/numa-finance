@@ -1,4 +1,5 @@
 import {
+  assertCurrencyAllowedForKind,
   calculateAccountBalance,
   calculatePlanTotals,
   calculateSafeToSpend,
@@ -19,8 +20,10 @@ import {
   collectPairedVoidIds,
   hasCycleFundingEvidence,
   resolveSmsBatchOccurredAt,
+  totalSaldoThbMinor,
   zonedDayKey,
   type Account,
+  type AccountKind,
   type BalanceCheckpoint,
   type CanonicalTransaction,
   type ExtractedTransactionCandidate,
@@ -43,6 +46,8 @@ import {
   numaSelect,
 } from "@/lib/supabase/selects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { inferAccountKind } from "./account-kind-infer";
+import { resolveCheckpointFx } from "./checkpoint-fx";
 import { fetchMenuSnapshotBundle } from "./menu-snapshot-fetch";
 import {
   mapAccount,
@@ -243,6 +248,7 @@ export async function ensureDefaultBankAccount(input?: {
         name: wantedCurrency === "THB" ? "Bangkok Bank" : "Bankkonto",
         institution: wantedCurrency === "THB" ? "Bangkok Bank" : null,
         accountType: "checking",
+        kind: wantedCurrency === "THB" ? "thai_bank" : "other",
         currency: wantedCurrency,
         maskedIdentifier: input?.maskedIdentifier ?? null,
         makeDefault: existing.length === 0,
@@ -271,6 +277,7 @@ export async function ensureDefaultBankAccount(input?: {
     name: "Bangkok Bank",
     institution: "Bangkok Bank",
     accountType: "checking",
+    kind: "thai_bank",
     currency: wantedCurrency,
     maskedIdentifier: input?.maskedIdentifier ?? null,
     makeDefault: true,
@@ -319,6 +326,7 @@ export async function createAccount(input: {
   name: string;
   institution?: string | null;
   accountType: Account["accountType"];
+  kind?: AccountKind;
   currency: CurrencyCode;
   maskedIdentifier?: string | null;
   makeDefault?: boolean;
@@ -326,6 +334,15 @@ export async function createAccount(input: {
   const userId = await requireUserId();
   await ensureProfile();
   const supabase = await createSupabaseServerClient();
+
+  const kind = inferAccountKind({
+    kind: input.kind,
+    accountType: input.accountType,
+    currency: input.currency,
+    name: input.name,
+    institution: input.institution,
+  });
+  assertCurrencyAllowedForKind(kind, input.currency);
 
   const existing = await listAccounts();
   const makeDefault = input.makeDefault ?? existing.length === 0;
@@ -346,6 +363,7 @@ export async function createAccount(input: {
       name: input.name.trim(),
       institution: input.institution?.trim() || null,
       account_type: input.accountType,
+      kind,
       currency: input.currency,
       masked_identifier: input.maskedIdentifier?.trim() || null,
       is_active: true,
@@ -364,10 +382,21 @@ export async function createCheckpoint(input: {
   verifiedAt?: string;
   source: string;
   note?: string | null;
+  fxRate?: number | null;
+  fxAsOf?: string | null;
+  fxSource?: string | null;
 }): Promise<BalanceCheckpoint> {
   const userId = await requireUserId();
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+
+  const fx = await resolveCheckpointFx({
+    currency: account.currency,
+    balanceMinor: input.balanceMinor,
+    fxRate: input.fxRate,
+    fxAsOf: input.fxAsOf,
+    fxSource: input.fxSource,
+  });
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -377,6 +406,10 @@ export async function createCheckpoint(input: {
       account_id: input.accountId,
       balance_minor: input.balanceMinor,
       currency: account.currency,
+      thb_minor: fx.thbMinor,
+      fx_rate: fx.fxRate,
+      fx_as_of: fx.fxAsOf,
+      fx_source: fx.fxSource,
       verified_at: input.verifiedAt ?? new Date().toISOString(),
       source: input.source,
       note: input.note ?? null,
@@ -1127,7 +1160,32 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     }
   }
 
-  const currency = primary.currency;
+  // Σ THB across all accounts — Över / Hem / Plan use this as saldo source.
+  // Primary keeps full post-checkpoint calc; others use latest checkpoint
+  // (foreign wallets are verify-driven in v1).
+  const otherAccounts = accounts.filter((a) => a.id !== primary.id);
+  const otherCheckpoints = await Promise.all(
+    otherAccounts.map((a) => latestCheckpointForAccount(a.id)),
+  );
+  const calculatedBalanceMinor = totalSaldoThbMinor([
+    {
+      account: primary,
+      nativeMinor: calculated?.amountMinor ?? null,
+      checkpoint,
+    },
+    ...otherAccounts.map((account, i) => {
+      const cp = otherCheckpoints[i] ?? null;
+      return {
+        account,
+        nativeMinor: cp?.balanceMinor ?? null,
+        checkpoint: cp,
+      };
+    }),
+  ]);
+
+  // Ledger spend stays in the primary account's currency; totals/Över are THB.
+  const ledgerCurrency = primary.currency;
+  const currency = "THB" as CurrencyCode;
   const projection = projectPlanForMonth(planItems, monthKey, timezone);
   const totals = calculatePlanTotals(planItems, currency, now, 0, timezone);
   // Cycle expenses + savings; buffer separate (avoid double-count).
@@ -1143,7 +1201,7 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     cycle: cycleSpending,
   } = computeSpendingWindows({
     transactions: accountTx,
-    currency,
+    currency: ledgerCurrency,
     now,
     timeZone: timezone || "Asia/Bangkok",
     cycleStartAt: cycle.startAt,
@@ -1156,9 +1214,9 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
   });
   // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
   const safe =
-    calculated != null
+    calculatedBalanceMinor != null
       ? calculateSafeToSpend({
-          available: calculated,
+          available: money(calculatedBalanceMinor, currency),
           reserved: money(reservedMinor, currency),
           safetyBuffer: money(bufferMinor, currency),
           daysUntilNextIncome,
@@ -1171,6 +1229,7 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
   if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
   else if (checkpoint && calculated) balanceKind = "calculated";
   else if (checkpoint) balanceKind = "verified_checkpoint_only";
+  else if (calculatedBalanceMinor != null) balanceKind = "calculated";
 
   return {
     profile,
@@ -1178,7 +1237,7 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     primaryAccount: primary,
     checkpoint,
     // null (not 0): unknown saldo must not look like an empty wallet
-    calculatedBalanceMinor: calculated?.amountMinor ?? null,
+    calculatedBalanceMinor,
     balanceKind,
     verificationLabel: checkpoint
       ? formatRelativeVerificationSv(checkpoint.verifiedAt, now)
@@ -1188,7 +1247,7 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     cycleSpendingMinor: cycleSpending.amountMinor,
     monthSpendingByKey: spendingByMonthKey({
       transactions: accountTx,
-      currency,
+      currency: ledgerCurrency,
       timeZone: timezone || "Asia/Bangkok",
     }),
     fundingConfirmed,

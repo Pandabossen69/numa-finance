@@ -1,4 +1,7 @@
 import type { CurrencyCode } from "@/domain/money";
+import type { AccountKind } from "./account-kind";
+
+export type { AccountKind } from "./account-kind";
 
 export type AccountType =
   "checking" | "savings" | "cash" | "credit" | "investment" | "other";
@@ -94,6 +97,8 @@ export type Account = {
   name: string;
   institution: string | null;
   accountType: AccountType;
+  /** Where the money lives — locks allowed currencies. */
+  kind: AccountKind;
   currency: CurrencyCode;
   maskedIdentifier: string | null;
   isActive: boolean;
@@ -108,6 +113,15 @@ export type BalanceCheckpoint = {
   accountId: string;
   balanceMinor: number;
   currency: CurrencyCode;
+  /**
+   * THB value of balanceMinor locked when the checkpoint was saved.
+   * Null only for legacy non-THB rows that have not been re-verified.
+   */
+  thbMinor: number | null;
+  /** THB per 1 major unit of currency, locked at verify. Null ↔ thbMinor null. */
+  fxRate: number | null;
+  fxAsOf: string | null;
+  fxSource: string | null;
   verifiedAt: string;
   source: string;
   sourceObservationId: string | null;
