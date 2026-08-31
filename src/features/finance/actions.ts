@@ -126,7 +126,8 @@ export async function createExpenseAction(
       category: input.category,
     });
 
-    revalidateMoneyPaths();
+    // No path revalidation — client last-snapshot already patched Hem/Rörelser.
+    // Plan warms via warmupPlanPageData after save; Analys loads fresh on visit.
     return { ok: true, id: tx.id };
   } catch (error) {
     return {
@@ -156,17 +157,17 @@ const cashSchema = z.object({
   description: z.string().trim().max(120).optional(),
 });
 
-/** Money pages only — never revalidate the layout or the whole shell.
- *  `revalidatePath("/", "layout")` dropped Hem↔Plan↔Analys from the
- *  client router cache so every save made the next tab tap cold.
- *
- *  Hem / Rörelser / Konton / Fota patch via last-snapshot immediately, so
- *  revalidating those on the critical path only made "Sparar…" wait on a
- *  full RSC refresh. Plan + Analys lack that optimistic path for spends. */
+/** After saldo verify / new account — those lack a full optimistic path.
+ *  Never call this from expense/income/edit/void: it made Sparar… wait on RSC.
+ *  Never revalidate "/", "layout" — that drops Hem↔Plan↔Analys from the
+ *  client router cache so every save made the next tab tap cold. */
 function revalidateMoneyPaths() {
   revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
+  revalidatePath("/idag");
+  revalidatePath("/transaktioner");
   revalidatePath("/analys");
   revalidatePath("/plan");
+  revalidatePath("/konton");
 }
 
 export async function updateTransactionAction(raw: {
@@ -187,7 +188,6 @@ export async function updateTransactionAction(raw: {
       description: raw.description,
       category: raw.category,
     });
-    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -201,7 +201,6 @@ export async function updateTransactionAction(raw: {
 export async function voidTransactionAction(id: string): Promise<ActionResult> {
   try {
     await voidTransaction(z.string().uuid().parse(id));
-    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -226,7 +225,6 @@ export async function createIncomeAction(
       amountMinor,
       description: input.description,
     });
-    revalidateMoneyPaths();
     return { ok: true, id: tx.id };
   } catch (error) {
     return {
@@ -251,7 +249,6 @@ export async function createTransferAction(
       amountMinor,
       description: input.description,
     });
-    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -277,7 +274,6 @@ export async function createCashWithdrawalAction(
       amountMinor,
       description: input.description,
     });
-    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -315,7 +311,6 @@ export async function createCheckpointAction(raw: {
       fxSource: manualRate != null ? "manual" : null,
     });
 
-    revalidateMoneyPaths();
     return { ok: true, thbMinor: checkpoint.thbMinor ?? undefined };
   } catch (error) {
     return {

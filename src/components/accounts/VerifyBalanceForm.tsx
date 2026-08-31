@@ -32,24 +32,31 @@ export function VerifyBalanceForm({
         setError("Ogiltigt belopp");
         return;
       }
+      const balanceInput = balance;
+      const fxInput = fxRate;
+      // Patch Hem/Konton immediately; persist in the background.
+      applyAccountBalance(accountId, balanceMinor, {
+        thbMinor: currency === "THB" ? balanceMinor : undefined,
+        currency,
+      });
+      setBalance("");
+      setFxRate("");
       const result = await createCheckpointAction({
         accountId,
-        balance,
+        balance: balanceInput,
         source: "manual_verification",
-        fxRate: needsFx ? fxRate || null : null,
+        fxRate: needsFx ? fxInput || null : null,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      applyAccountBalance(accountId, balanceMinor, {
-        thbMinor:
-          result.thbMinor ??
-          (currency === "THB" ? balanceMinor : undefined),
-        currency,
-      });
-      setBalance("");
-      setFxRate("");
+      if (result.thbMinor != null && currency !== "THB") {
+        applyAccountBalance(accountId, balanceMinor, {
+          thbMinor: result.thbMinor,
+          currency,
+        });
+      }
     });
   }
 

@@ -6,22 +6,33 @@ function read(rel: string) {
 }
 
 describe("smooth nav and saves", () => {
-  it("does not drop the client router cache after money mutations", () => {
+  it("does not revalidate money pages on the hot expense/edit path", () => {
     const money = read("../../features/finance/actions.ts");
     const imports = read("../../features/imports/actions.ts");
     const gettingStarted = read("../../features/getting-started/actions.ts");
+
+    const expense = money.slice(
+      money.indexOf("export async function createExpenseAction"),
+      money.indexOf("const incomeSchema"),
+    );
+    const update = money.slice(
+      money.indexOf("export async function updateTransactionAction"),
+      money.indexOf("export async function voidTransactionAction"),
+    );
+    const voidTx = money.slice(
+      money.indexOf("export async function voidTransactionAction"),
+      money.indexOf("export async function createIncomeAction"),
+    );
+    expect(expense).not.toContain("revalidateMoneyPaths");
+    expect(expense).not.toContain("revalidatePath");
+    expect(update).not.toContain("revalidateMoneyPaths");
+    expect(voidTx).not.toContain("revalidateMoneyPaths");
+
     const moneyFn = money.slice(
       money.indexOf("function revalidateMoneyPaths()"),
       money.indexOf("export async function updateTransactionAction"),
     );
-    // Optimistic last-snapshot owns Hem/Rörelser/Konton/Fota — do not
-    // revalidate those on the save critical path (keeps Sparar… snappy).
-    expect(moneyFn).toContain("revalidatePath(\"/analys\")");
-    expect(moneyFn).toContain("revalidatePath(\"/plan\")");
-    expect(moneyFn).not.toContain('revalidatePath("/idag")');
-    expect(moneyFn).not.toContain('revalidatePath("/transaktioner")');
-    expect(moneyFn).not.toContain('revalidatePath("/konton")');
-    expect(moneyFn).not.toContain('revalidatePath("/fota")');
+    // Verify/account still revalidate — but never the whole layout.
     expect(moneyFn).not.toContain('revalidatePath("/", "layout")');
     expect(moneyFn).not.toContain('revalidatePath("/mer")');
     expect(imports).not.toContain('revalidatePath("/", "layout")');

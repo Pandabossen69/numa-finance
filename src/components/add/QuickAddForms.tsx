@@ -361,14 +361,8 @@ function TransferForm({
             setError("Ogiltigt belopp");
             return;
           }
-          const result = await createTransferAction({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amount,
-            description: description || undefined,
-          });
-          if (!result.ok) {
-            setError(result.error);
+          if (amountMinor <= 0) {
+            setError("Beloppet måste vara större än 0");
             return;
           }
           applyLocalTransfer({
@@ -376,7 +370,22 @@ function TransferForm({
             toAccountId: toId,
             amountMinor,
           });
+          setAmount("");
+          setDescription("");
           onSuccess?.();
+          const result = await createTransferAction({
+            fromAccountId: fromId,
+            toAccountId: toId,
+            amount,
+            description: description || undefined,
+          });
+          if (!result.ok) {
+            applyLocalTransfer({
+              fromAccountId: toId,
+              toAccountId: fromId,
+              amountMinor,
+            });
+          }
         });
       }}
     >
@@ -463,14 +472,8 @@ function CashForm({
             setError("Ogiltigt belopp");
             return;
           }
-          const result = await createCashWithdrawalAction({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amount,
-            description: description || undefined,
-          });
-          if (!result.ok) {
-            setError(result.error);
+          if (amountMinor <= 0) {
+            setError("Beloppet måste vara större än 0");
             return;
           }
           applyLocalTransfer({
@@ -478,7 +481,22 @@ function CashForm({
             toAccountId: toId,
             amountMinor,
           });
+          setAmount("");
+          setDescription("");
           onSuccess?.();
+          const result = await createCashWithdrawalAction({
+            fromAccountId: fromId,
+            toAccountId: toId,
+            amount,
+            description: description || undefined,
+          });
+          if (!result.ok) {
+            applyLocalTransfer({
+              fromAccountId: toId,
+              toAccountId: fromId,
+              amountMinor,
+            });
+          }
         });
       }}
     >

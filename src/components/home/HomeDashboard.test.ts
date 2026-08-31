@@ -23,7 +23,6 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("applyOptimisticHomeSpend");
     expect(src).toContain("applyMovementsAdd");
     expect(src).toContain("applyAccountDelta");
-    expect(src).toContain("getHomeSnapshotAction");
     expect(src).toContain("warmupPlanPageData");
     expect(src).toContain("isHomeDirty");
     expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
@@ -32,6 +31,13 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
+    // Spend path must not wait on Sparar… or a full Hem refetch.
+    const start = src.indexOf("function QuickExpense");
+    const end = src.indexOf("\nfunction ", start + 1);
+    const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
+    expect(quickExpense).not.toContain("Sparar");
+    expect(quickExpense).not.toContain("getHomeSnapshotAction");
+    expect(quickExpense).toContain("onOptimisticSpend(amountMinor)");
   });
 
   it("paints signed Över on the dial, not a clamped 0", () => {
@@ -50,17 +56,19 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("says Sparar… while saldo buttons are busy, not Klart", () => {
     expect(src).toContain('{busy ? "Sparar…" : SV.visaDagsbudget}');
-    expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
     expect(src).not.toMatch(/busy \? "Klart"/);
   });
 
   it("blocks a second QuickExpense tap while the first save is in flight", () => {
-    expect(src).toContain("if (guard.isRunning() || busy || !accountId) return");
-    expect(src).toContain("disabled={busy || !amount.trim()}");
-    expect(src).toContain('{busy ? "Sparar…" : "Spara"}');
-    expect(src).toContain("useSubmitGuard");
-    expect(src).toContain("guard.tryBegin()");
-    expect(src).toContain("guard.end()");
+    const start = src.indexOf("function QuickExpense");
+    const end = src.indexOf("\nfunction ", start + 1);
+    const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
+    expect(quickExpense).toContain("if (guard.isRunning() || !accountId) return");
+    expect(quickExpense).toContain("useSubmitGuard");
+    expect(quickExpense).toContain("guard.tryBegin()");
+    expect(quickExpense).toContain("guard.end()");
+    expect(quickExpense).not.toContain("Sparar");
+    expect(quickExpense).not.toContain("getHomeSnapshotAction");
   });
 
   it("keeps Dagsbudget and Spenderat on one line at phone width", () => {

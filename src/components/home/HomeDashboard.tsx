@@ -617,8 +617,8 @@ function QuickExpense({
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const guard = useSubmitGuard(busy);
+  // Guard only — never flip a busy "saving…" flag; dial updates instantly.
+  const guard = useSubmitGuard();
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -672,10 +672,10 @@ function QuickExpense({
             />
             <button
               type="button"
-              disabled={busy || !amount.trim()}
+              disabled={!amount.trim()}
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
-                if (guard.isRunning() || busy || !accountId) return;
+                if (guard.isRunning() || !accountId) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -690,11 +690,12 @@ function QuickExpense({
                 if (!guard.tryBegin()) return;
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
-                setBusy(true);
                 setError(null);
                 setAmount("");
                 setNote("");
+                // Instant UI — dial + konton; server + rörelser catch up.
                 onOptimisticSpend(amountMinor);
+                applyAccountDelta(-amountMinor, accountId);
                 void (async () => {
                   try {
                     const result = await createExpenseAction({
@@ -704,10 +705,10 @@ function QuickExpense({
                     });
                     if (!result.ok) {
                       onSpendFailed(amountMinor);
+                      applyAccountDelta(amountMinor, accountId);
                       setError(result.error);
                       return;
                     }
-                    applyAccountDelta(-amountMinor, accountId);
                     applyMovementsAdd({
                       id: result.id ?? crypto.randomUUID(),
                       description,
@@ -719,18 +720,14 @@ function QuickExpense({
                       occurredAt: new Date().toISOString(),
                       source: "manual",
                     });
-                    void getHomeSnapshotAction().then((next) => {
-                      if (next.ok) rememberHomeSnapshot(next.data);
-                    });
                     void warmupPlanPageData();
                   } finally {
                     guard.end();
-                    setBusy(false);
                   }
                 })();
               }}
             >
-              {busy ? "Sparar…" : "Spara"}
+              Spara
             </button>
           </div>
           {error ? (
