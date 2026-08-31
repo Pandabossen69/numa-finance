@@ -3,6 +3,9 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
+  applyLocalExpense,
+  applyLocalIncome,
+  applyLocalTransfer,
   applyMovementsEdit,
   applyMovementsVoid,
   applyOptimisticHomeSpend,
@@ -31,6 +34,9 @@ import {
   rememberPlanSnapshot,
   rememberPlanView,
   rememberSettingsSnapshot,
+  revertLocalExpense,
+  revertLocalIncome,
+  revertLocalTransfer,
   revertOptimisticHomeSpend,
   subscribeHomeSnapshot,
   syncHomeCoverageFromPlan,
@@ -408,6 +414,144 @@ describe("last view memory", () => {
     expect(next?.dayBudgetMinor).toBe(1_000_00);
     expect(next?.remainingTodayMinor).toBe(1_000_00);
     expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00);
+  });
+
+  it("reverts an optimistic Lägg till expense when the write fails", () => {
+    clearClientSessionCaches();
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 10_000_00 }));
+    rememberMovementsSnapshot({ ...sampleMovements, balanceMinor: 10_000_00 });
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          id: "acc",
+          name: "Bangkok Bank",
+          institution: "Bangkok Bank",
+          maskedIdentifier: "6591",
+          currency: "THB",
+          isDefault: true,
+          calculatedMinor: 10_000_00,
+        },
+      ],
+    });
+
+    applyLocalExpense({
+      id: "local-tx",
+      amountMinor: 150_00,
+      description: "Lunch",
+      category: "Mat",
+      currency: "THB",
+    });
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(350_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(9_850_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(9_850_00);
+    expect(lastMovementsSnapshot()?.items[0]?.id).toBe("local-tx");
+
+    revertLocalExpense("local-tx", 150_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(200_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(10_000_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(10_000_00);
+    expect(lastMovementsSnapshot()?.items).toEqual([]);
+  });
+
+  it("reverts an optimistic expense even when Rörelser is not cached", () => {
+    clearClientSessionCaches();
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 10_000_00 }));
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          id: "acc",
+          name: "Bangkok Bank",
+          institution: "Bangkok Bank",
+          maskedIdentifier: "6591",
+          currency: "THB",
+          isDefault: true,
+          calculatedMinor: 10_000_00,
+        },
+      ],
+    });
+
+    applyLocalExpense({
+      id: "local-tx",
+      amountMinor: 80_00,
+      description: "Grab",
+      currency: "THB",
+    });
+    revertLocalExpense("local-tx", 80_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(200_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(10_000_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(10_000_00);
+  });
+
+  it("reverts an optimistic income when the write fails", () => {
+    clearClientSessionCaches();
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 10_000_00 }));
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          id: "acc",
+          name: "Bangkok Bank",
+          institution: "Bangkok Bank",
+          maskedIdentifier: "6591",
+          currency: "THB",
+          isDefault: true,
+          calculatedMinor: 10_000_00,
+        },
+      ],
+    });
+
+    applyLocalIncome({
+      id: "local-in",
+      amountMinor: 500_00,
+      description: "Lön",
+      currency: "THB",
+    });
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(10_500_00);
+    revertLocalIncome("local-in", 500_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(10_000_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(10_000_00);
+  });
+
+  it("reverts an optimistic transfer by swapping the legs", () => {
+    clearClientSessionCaches();
+    rememberHomeSnapshot(homeSnap({ primaryAccountId: "acc-a" }));
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          id: "acc-a",
+          name: "Bank",
+          institution: null,
+          maskedIdentifier: null,
+          currency: "THB",
+          isDefault: true,
+          calculatedMinor: 1_000_00,
+        },
+        {
+          id: "acc-b",
+          name: "Kontanter",
+          institution: null,
+          maskedIdentifier: null,
+          currency: "THB",
+          isDefault: false,
+          calculatedMinor: 200_00,
+        },
+      ],
+    });
+
+    applyLocalTransfer({
+      fromAccountId: "acc-a",
+      toAccountId: "acc-b",
+      amountMinor: 100_00,
+    });
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(900_00);
+    expect(lastAccountsSnapshot()?.accounts[1]?.calculatedMinor).toBe(300_00);
+
+    revertLocalTransfer({
+      fromAccountId: "acc-a",
+      toAccountId: "acc-b",
+      amountMinor: 100_00,
+    });
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(1_000_00);
+    expect(lastAccountsSnapshot()?.accounts[1]?.calculatedMinor).toBe(200_00);
   });
 
   it("drops Hugo's last-known numbers when another user binds", () => {
