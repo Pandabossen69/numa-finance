@@ -60,7 +60,8 @@ export function parseCurrencyToken(
   if (t === "EUR" || t === "€" || t === "EURO") return "EUR";
   if (t === "THB" || t === "BT" || t === "฿" || t === "TH") return "THB";
   if (t === "SEK" || t === "KR" || t === "KRONOR") return "SEK";
-  if (t === "USD" || t === "$" || t === "US$" || t === "DOLLAR" || t === "DOLLARS") {
+  // Bare "$" is too common on Thai receipts to treat as USD.
+  if (t === "USD" || t === "US$" || t === "DOLLAR" || t === "DOLLARS") {
     return "USD";
   }
   return isCurrencyCode(t) ? t : null;

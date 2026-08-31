@@ -22,7 +22,12 @@ export async function resolveCheckpointFx(input: {
   fxRate?: number | null;
   fxAsOf?: string | null;
   fxSource?: string | null;
-}): Promise<CheckpointFxLock> {
+  /**
+   * Default true: non-THB must lock a rate (manual or Frankfurter).
+   * False: bootstrap / import paths may write a native checkpoint without THB.
+   */
+  required?: boolean;
+}): Promise<CheckpointFxLock | null> {
   if (input.currency === "THB") {
     return {
       thbMinor: input.balanceMinor,
@@ -39,6 +44,7 @@ export async function resolveCheckpointFx(input: {
   if (rate == null || !Number.isFinite(rate) || rate <= 0) {
     const quote = await fetchFxToThb(input.currency);
     if (!quote) {
+      if (input.required === false) return null;
       throw new Error(
         "Kunde inte hämta växelkurs. Ange kurs manuellt (THB per 1 " +
           input.currency +

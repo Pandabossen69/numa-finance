@@ -32,7 +32,13 @@ describe("smooth nav and saves", () => {
       money.indexOf("function revalidateMoneyPaths()"),
       money.indexOf("export async function updateTransactionAction"),
     );
-    // Verify/account still revalidate — but never the whole layout.
+    expect(moneyFn).not.toContain("revalidatePath(");
+    expect(moneyFn).toContain('revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max")');
+    expect(money).not.toContain("revalidatePath(");
+    expect(moneyFn).not.toContain('revalidatePath("/idag")');
+    expect(moneyFn).not.toContain('revalidatePath("/transaktioner")');
+    expect(moneyFn).not.toContain('revalidatePath("/konton")');
+    expect(moneyFn).not.toContain('revalidatePath("/fota")');
     expect(moneyFn).not.toContain('revalidatePath("/", "layout")');
     expect(moneyFn).not.toContain('revalidatePath("/mer")');
     expect(imports).not.toContain('revalidatePath("/", "layout")');

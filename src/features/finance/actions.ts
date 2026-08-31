@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { z } from "zod";
 import {
@@ -95,11 +95,7 @@ export async function createAccountAction(
       fxSource: manualRate != null ? "manual" : null,
     });
 
-    revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-    revalidatePath("/idag");
-    revalidatePath("/konton");
-    revalidatePath("/transaktioner");
-    revalidatePath("/mer");
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -157,17 +153,16 @@ const cashSchema = z.object({
   description: z.string().trim().max(120).optional(),
 });
 
-/** After saldo verify / new account — those lack a full optimistic path.
- *  Never call this from expense/income/edit/void: it made Sparar… wait on RSC.
- *  Never revalidate "/", "layout" — that drops Hem↔Plan↔Analys from the
- *  client router cache so every save made the next tab tap cold. */
+/**
+ * Mark money data stale without re-rendering the current route.
+ *
+ * `revalidatePath` on a Server Action ships a full RSC Flight payload in the
+ * same HTTP response. Desktop hard-locks; phone just feels slow. Tabs are
+ * `force-dynamic`; the next visit is fresh. Hem / Rörelser / Konton already
+ * patch themselves. Plan + Analys pick up the spend on the next tab open.
+ */
 function revalidateMoneyPaths() {
   revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-  revalidatePath("/idag");
-  revalidatePath("/transaktioner");
-  revalidatePath("/analys");
-  revalidatePath("/plan");
-  revalidatePath("/konton");
 }
 
 export async function updateTransactionAction(raw: {

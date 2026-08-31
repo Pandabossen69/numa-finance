@@ -12,6 +12,7 @@ const inlineAdd = read("./InlineAdd.tsx");
 const monthStrip = read("./MonthChipStrip.tsx");
 const card = read("./PlanCard.tsx");
 const equation = read("./PlanEquation.tsx");
+const piles = read("./PlanPiles.tsx");
 const format = read("./plan-format.ts");
 const chip = read("./plan-chip.ts");
 const monthNav = read("./PlanMonthNav.tsx");
@@ -230,8 +231,9 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("previewPartialRemaining");
     expect(rows).toContain("PlanEquation");
     expect(equation).toContain("formatPlanFigure");
-    expect(editor).toContain("coverage.incomingMinor");
-    expect(editor).toContain("coverage.unpaidMinor");
+    expect(editor).toContain("coverage={coverage}");
+    expect(piles).toContain("coverage.incomingMinor");
+    expect(piles).toContain("coverage.unpaidMinor");
     expect(editor).toContain("sumCountsTowardCashMinor");
   });
 

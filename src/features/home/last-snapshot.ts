@@ -787,13 +787,7 @@ export function applyLocalTransfer(input: {
 }) {
   applyAccountDelta(-input.amountMinor, input.fromAccountId);
   applyAccountDelta(input.amountMinor, input.toAccountId);
-  const primaryId =
-    accounts?.accounts.find((row) => row.isDefault)?.id ??
-    home?.primaryAccountId ??
-    null;
-  if (primaryId === input.fromAccountId) {
-    applyOptimisticHomeIncome(-input.amountMinor);
-  } else if (primaryId === input.toAccountId) {
-    applyOptimisticHomeIncome(input.amountMinor);
-  }
+  // Hem saldo is Σ THB. A same-currency move must not shrink or grow it.
+  const total = accounts?.totalThbMinor;
+  if (total != null) applyHomeBankBalance(total);
 }
