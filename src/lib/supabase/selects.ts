@@ -83,6 +83,7 @@ export const LEDGER_TRANSACTION_SELECT = [
   "fingerprint",
   "source_observation_id",
   "transfer_group_id",
+  "plan_item_id",
   "sync_status",
   "created_at",
   "updated_at",

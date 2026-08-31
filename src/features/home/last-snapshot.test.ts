@@ -6,6 +6,7 @@ import {
   applyMovementsEdit,
   applyMovementsVoid,
   applyOptimisticHomeSpend,
+  applyOptimisticPlanSettle,
   lastAccountsSnapshot,
   lastAnalysScope,
   lastFotaBoot,
@@ -124,6 +125,26 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(200_00);
     expect(lastHomeSnapshot()?.overMinor).toBe(12_000_00);
     stop();
+  });
+
+  it("moves Hem saldo with Mottagen and keeps Över still", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 10_000_00,
+        incomingMinor: 57_000_00,
+        unpaidMinor: 0,
+        overMinor: 67_000_00,
+      }),
+    );
+    applyOptimisticPlanSettle({
+      saldoDeltaMinor: 57_000_00,
+      incomingDeltaMinor: -57_000_00,
+      unpaidDeltaMinor: 0,
+    });
+    const next = lastHomeSnapshot();
+    expect(next?.calculatedBalanceMinor).toBe(67_000_00);
+    expect(next?.incomingMinor).toBe(0);
+    expect(next?.overMinor).toBe(67_000_00);
   });
 
   it("keeps Över as saldo + kommer in − kvar att betala when Plan settles", () => {

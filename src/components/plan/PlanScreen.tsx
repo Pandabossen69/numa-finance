@@ -7,6 +7,7 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
+  isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
   lastPlanSnapshot,
@@ -44,7 +45,7 @@ export function PlanScreen({
   const [error, setError] = useState<string | null>(initialError);
 
   useEffect(() => {
-    if (initial) {
+    if (initial && !isHomeDirty()) {
       rememberPlanSnapshot(initial);
       syncHomeCoverageFromPlan(initial);
     }

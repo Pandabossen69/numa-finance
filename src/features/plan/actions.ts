@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import {
   addMonthsKey,
@@ -13,9 +13,12 @@ import {
   monthAnchorIso,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
+  planSettleTargetMinor,
+  settledAmountMinor,
   type PlanItem,
 } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
+import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import {
   createPlanItem,
   deletePlanItem,
@@ -24,9 +27,21 @@ import {
   setNextIncomeDate,
   updatePlanItem,
 } from "@/lib/store/repository";
+import {
+  syncPlanItemSettleLedger,
+  type PlanSettleLedgerResult,
+} from "@/features/plan/sync-settle-ledger";
+
+export type { PlanSettleLedgerResult };
 
 export type ActionResult =
-  { ok: true; item?: PlanItem; items?: PlanItem[] } | { ok: false; error: string };
+  | {
+      ok: true;
+      item?: PlanItem;
+      items?: PlanItem[];
+      settleLedger?: PlanSettleLedgerResult;
+    }
+  | { ok: false; error: string };
 
 const kindSchema = z.enum(["mandatory", "expected", "flexible", "goal", "buffer"]);
 
@@ -55,6 +70,11 @@ function revalidatePlanPaths() {
   revalidatePath("/plan");
   revalidatePath("/idag");
   revalidatePath("/analys");
+}
+
+/** Settle writes a ledger row. Do not ship a full RSC Flight payload — cards update locally. */
+function revalidateSettleCaches() {
+  revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 }
 
 function profileTimeZone(timezone: string | null | undefined): string {
@@ -223,6 +243,15 @@ export async function setMonthSavingsAction(
 export async function deletePlanItemAction(id: string): Promise<ActionResult> {
   try {
     const parsedId = z.string().uuid().parse(id);
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((p) => p.id === parsedId);
+    if (existing) {
+      await syncPlanItemSettleLedger({
+        item: existing,
+        targetBookedMinor: 0,
+        timeZone: ctx.timeZone,
+      });
+    }
     await deletePlanItem(parsedId);
     revalidatePlanPaths();
     return { ok: true };
@@ -296,14 +325,28 @@ export async function setPlanItemSettledAction(
       }
     }
 
+    const targetBookedMinor = planSettleTargetMinor(existing, {
+      settled: input.settled,
+      requestedMinor: input.settled
+        ? input.amount != null
+          ? parseUiAmountToMinor(input.amount)
+          : existing.amountMinor
+        : 0,
+    });
+    const settleLedger = await syncPlanItemSettleLedger({
+      item: existing,
+      targetBookedMinor,
+      timeZone: ctx.timeZone,
+    });
+
     const item = await updatePlanItem({
       id: input.id,
       settledAt,
       settledMinor,
       remainingDueAt,
     });
-    revalidatePlanPaths();
-    return { ok: true, item };
+    revalidateSettleCaches();
+    return { ok: true, item, settleLedger };
   } catch (error) {
     return {
       ok: false,
@@ -351,6 +394,13 @@ export async function updatePlanItemAmountAction(raw: {
       settledMinor: edited?.settledMinor,
       remainingDueAt: edited?.remainingDueAt,
     });
+    if (existing) {
+      await syncPlanItemSettleLedger({
+        item: existing,
+        targetBookedMinor: settledAmountMinor(item),
+        timeZone: ctx.timeZone,
+      });
+    }
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
@@ -419,6 +469,13 @@ export async function updatePlanItemAction(
       settledMinor: edited?.settledMinor,
       remainingDueAt: edited?.remainingDueAt,
     });
+    if (existing) {
+      await syncPlanItemSettleLedger({
+        item: existing,
+        targetBookedMinor: settledAmountMinor(item),
+        timeZone: ctx.timeZone,
+      });
+    }
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {

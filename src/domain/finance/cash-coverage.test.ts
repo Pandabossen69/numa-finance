@@ -409,6 +409,41 @@ describe("projectCashCoverage", () => {
     expect(view.overMinor).toBe(8_600_00);
   });
 
+  it("keeps Över still when Klar is booked on the ledger", () => {
+    const items = [
+      item({
+        id: "csn",
+        name: "CSN",
+        kind: "expected",
+        amountMinor: 57_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+        settledAt: "2026-08-25T14:00:00.000Z",
+        settledMinor: 57_000_00,
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [
+        tx({
+          id: "settle-csn",
+          amountMinor: 57_000_00,
+          occurredAt: "2026-08-25T12:00:00.000Z",
+          direction: "credit",
+          transactionType: "income",
+          description: "CSN",
+          source: "manual",
+          planItemId: "csn",
+        }),
+      ],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 67_000_00,
+    });
+    expect(view.incomingMinor).toBe(0);
+    expect(view.overMinor).toBe(67_000_00);
+  });
+
   it("drops a plan income marked Klar from Kommer in", () => {
     const items = [
       item({

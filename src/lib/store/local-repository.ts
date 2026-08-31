@@ -310,6 +310,7 @@ export async function createManualExpense(input: {
   merchant?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
+  planItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -355,6 +356,7 @@ export async function createManualExpense(input: {
       fingerprint: input.fingerprint ?? null,
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
+      planItemId: input.planItemId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -373,6 +375,7 @@ export async function createManualIncome(input: {
   sourceObservationId?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
+  planItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -409,6 +412,7 @@ export async function createManualIncome(input: {
       fingerprint: input.fingerprint ?? null,
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
+      planItemId: input.planItemId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -573,6 +577,32 @@ export async function listTransactions(
   return store.transactions
     .filter((t) => (accountId ? t.accountId === accountId : true))
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+}
+
+export async function listTransactionsByPlanItemId(
+  planItemId: string,
+): Promise<CanonicalTransaction[]> {
+  const store = await readStore();
+  return store.transactions
+    .filter(
+      (t) =>
+        t.planItemId === planItemId &&
+        t.status !== "voided" &&
+        t.userId === LOCAL_DEMO_USER_ID,
+    )
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+}
+
+export async function listConfirmedPlanSettleLedgers(): Promise<
+  CanonicalTransaction[]
+> {
+  const store = await readStore();
+  return store.transactions.filter(
+    (t) =>
+      t.userId === LOCAL_DEMO_USER_ID &&
+      t.status === "confirmed" &&
+      Boolean(t.planItemId),
+  );
 }
 
 export async function updateTransaction(input: {

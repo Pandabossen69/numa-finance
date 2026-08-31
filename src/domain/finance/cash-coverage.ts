@@ -39,7 +39,10 @@ export type LedgerMatchTx = Pick<
   | "fingerprint"
   | "balanceAfterMinor"
   | "sourceObservationId"
->;
+> & {
+  /** Present on synthetic settle bookings — excluded from "already funded" probes. */
+  planItemId?: string | null;
+};
 
 export type CashCoverageView = {
   monthKey: string;

@@ -81,6 +81,7 @@ describe("menu snapshot repository contract", () => {
     expect(PLAN_ITEM_SELECT).not.toContain("*");
     expect(CHECKPOINT_SELECT).not.toContain("*");
     expect(LEDGER_TRANSACTION_SELECT).not.toContain("*");
+    expect(LEDGER_TRANSACTION_SELECT).toContain("plan_item_id");
     expect(repo).toContain("PROFILE_SELECT");
     expect(repo).toContain("LEDGER_TRANSACTION_SELECT");
   });

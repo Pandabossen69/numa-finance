@@ -399,6 +399,7 @@ export async function createManualExpense(input: {
   merchant?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
+  planItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -443,12 +444,13 @@ export async function createManualExpense(input: {
       source_observation_id: input.sourceObservationId ?? null,
       fingerprint: input.fingerprint ?? null,
       balance_after_minor: input.balanceAfterMinor ?? null,
+      plan_item_id: input.planItemId ?? null,
     })
     .select("*")
     .single();
 
   if (error) {
-    if (isUniqueViolationMessage(error.message)) {
+    if (isUniqueViolationMessage(error.message) && input.fingerprint) {
       throw new Error(swedishFingerprintConflictError());
     }
     throw new Error(error.message);
@@ -465,6 +467,7 @@ export async function createManualIncome(input: {
   sourceObservationId?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
+  planItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -499,11 +502,12 @@ export async function createManualIncome(input: {
       fingerprint: input.fingerprint ?? null,
       balance_after_minor: input.balanceAfterMinor ?? null,
       source_observation_id: input.sourceObservationId ?? null,
+      plan_item_id: input.planItemId ?? null,
     })
     .select("*")
     .single();
   if (error) {
-    if (isUniqueViolationMessage(error.message)) {
+    if (isUniqueViolationMessage(error.message) && input.fingerprint) {
       throw new Error(swedishFingerprintConflictError());
     }
     throw new Error(error.message);
@@ -698,6 +702,37 @@ export async function listTransactions(
   }
 
   const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapTransaction);
+}
+
+export async function listTransactionsByPlanItemId(
+  planItemId: string,
+): Promise<CanonicalTransaction[]> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(numaSelect(LEDGER_TRANSACTION_SELECT))
+    .eq("user_id", userId)
+    .eq("plan_item_id", planItemId)
+    .neq("status", "voided")
+    .order("occurred_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapTransaction);
+}
+
+export async function listConfirmedPlanSettleLedgers(): Promise<
+  CanonicalTransaction[]
+> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(numaSelect(LEDGER_TRANSACTION_SELECT))
+    .eq("user_id", userId)
+    .eq("status", "confirmed")
+    .not("plan_item_id", "is", null);
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapTransaction);
 }

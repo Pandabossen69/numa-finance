@@ -10,6 +10,10 @@ const planMonths = readFileSync(
   new URL("../../domain/finance/plan-months.ts", import.meta.url),
   "utf8",
 );
+const sync = readFileSync(
+  new URL("./sync-settle-ledger.ts", import.meta.url),
+  "utf8",
+);
 
 /**
  * Betald / Mottagen / Delvis is a statement by the user. Nothing else in the
@@ -23,6 +27,9 @@ describe("settle state is written by user action only", () => {
     expect(actions).toContain("if (input.settled)");
     expect(actions).toContain("let settledAt: string | null = null");
     expect(actions).toContain("let settledMinor: number | null = null");
+    expect(actions).toContain("syncPlanItemSettleLedger");
+    expect(actions).toContain("revalidateSettleCaches");
+    expect(actions).toContain('revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max")');
     // No matcher anywhere near the write path.
     expect(actions).not.toContain("matchPlanItemsToLedger");
   });
@@ -39,6 +46,15 @@ describe("settle state is written by user action only", () => {
     // countsTowardCashMinor is the money path and still takes the match.
     expect(planMonths).toContain("ledgerMatched = false");
     expect(planMonths).toContain("if (ledgerMatched) return 0;");
+  });
+
+  it("books saldo only through plan-linked rows and never voids a bank tx", () => {
+    expect(sync).toContain("listTransactionsByPlanItemId");
+    expect(sync).toContain("planItemAlreadyFundedInLedger");
+    expect(sync).toContain('source: "manual"');
+    expect(sync).toContain("planItemId: input.planItemId");
+    expect(sync).not.toContain("matchPlanItemsToLedger");
+    expect(sync).toContain("Never voids a row without plan_item_id");
   });
 
   it("documents the matcher as money-only", () => {

@@ -135,6 +135,11 @@ export type CanonicalTransaction = {
   sourceObservationId: string | null;
   /** Shared by debit+credit legs of a transfer / cash_withdrawal. */
   transferGroupId: string | null;
+  /**
+   * Synthetic Mottagen/Betald booking for this plan row.
+   * Null on bank/SMS/manual rows. Only these rows may be voided on Ångra.
+   */
+  planItemId?: string | null;
   syncStatus: SyncStatus;
   createdAt: string;
   updatedAt: string;
