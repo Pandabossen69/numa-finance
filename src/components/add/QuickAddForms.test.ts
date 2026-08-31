@@ -17,8 +17,12 @@ describe("Flytta/Kontant empty copy", () => {
   });
 
   it("patches Hem and Rörelser locally after save instead of refreshing", () => {
-    expect(src).toContain("applyLocalExpense");
-    expect(src).toContain("applyLocalIncome");
+    expect(src).toContain("applyOptimisticHomeSpend");
+    expect(src).toContain("applyOptimisticHomeIncome");
+    expect(src).toContain("applyAccountDelta");
+    expect(src).toContain("applyMovementsAdd");
+    expect(src).toContain("createExpenseAction");
+    expect(src).toContain("onSuccess?.()");
     expect(src).toContain("applyLocalTransfer");
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");

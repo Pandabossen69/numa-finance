@@ -158,16 +158,15 @@ const cashSchema = z.object({
 
 /** Money pages only — never revalidate the layout or the whole shell.
  *  `revalidatePath("/", "layout")` dropped Hem↔Plan↔Analys from the
- *  client router cache so every save made the next tab tap cold. */
+ *  client router cache so every save made the next tab tap cold.
+ *
+ *  Hem / Rörelser / Konton / Fota patch via last-snapshot immediately, so
+ *  revalidating those on the critical path only made "Sparar…" wait on a
+ *  full RSC refresh. Plan + Analys lack that optimistic path for spends. */
 function revalidateMoneyPaths() {
   revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-  revalidatePath("/idag");
-  revalidatePath("/transaktioner");
   revalidatePath("/analys");
   revalidatePath("/plan");
-  revalidatePath("/konton");
-  revalidatePath("/lagg-till");
-  revalidatePath("/fota");
 }
 
 export async function updateTransactionAction(raw: {

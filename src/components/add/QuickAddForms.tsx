@@ -11,9 +11,11 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { parseUiAmountToMinor } from "@/domain/money";
 import {
-  applyLocalExpense,
-  applyLocalIncome,
+  applyAccountDelta,
   applyLocalTransfer,
+  applyMovementsAdd,
+  applyOptimisticHomeIncome,
+  applyOptimisticHomeSpend,
   lastHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -158,6 +160,23 @@ function ExpenseForm({
             setError("Ogiltigt belopp");
             return;
           }
+          if (amountMinor <= 0) {
+            setError("Beloppet måste vara större än 0");
+            return;
+          }
+          const descriptionText = description.trim() || "Utgift";
+          const currency = lastHomeSnapshot()?.currency ?? "THB";
+          // Patch Hem numbers + leave immediately; persist in the background.
+          applyOptimisticHomeSpend(amountMinor);
+          applyAccountDelta(-amountMinor);
+          try {
+            localStorage.setItem(LAST_CATEGORY_KEY, category);
+          } catch {
+            // ignore
+          }
+          setAmount("");
+          setDescription("");
+          onSuccess?.();
           const result = await createExpenseAction({
             accountId,
             amount,
@@ -165,24 +184,21 @@ function ExpenseForm({
             description: description || undefined,
           });
           if (!result.ok) {
-            setError(result.error);
+            applyOptimisticHomeSpend(-amountMinor);
+            applyAccountDelta(amountMinor);
             return;
           }
-          try {
-            localStorage.setItem(LAST_CATEGORY_KEY, category);
-          } catch {
-            // ignore
-          }
-          applyLocalExpense({
-            id: result.id,
-            amountMinor,
-            description: description.trim() || "Utgift",
+          applyMovementsAdd({
+            id: result.id ?? crypto.randomUUID(),
+            description: descriptionText,
             category,
-            currency: lastHomeSnapshot()?.currency ?? "THB",
+            transactionType: "expense",
+            direction: "debit",
+            amountMinor,
+            currency,
+            occurredAt: new Date().toISOString(),
+            source: "manual",
           });
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
         });
       }}
     >
@@ -245,22 +261,38 @@ function IncomeForm({
             setError("Ogiltigt belopp");
             return;
           }
+          if (amountMinor <= 0) {
+            setError("Beloppet måste vara större än 0");
+            return;
+          }
+          const descriptionText = description.trim() || "Inkomst";
+          const currency = lastHomeSnapshot()?.currency ?? "THB";
+          applyOptimisticHomeIncome(amountMinor);
+          applyAccountDelta(amountMinor, targetId);
+          setAmount("");
+          setDescription("");
+          onSuccess?.();
           const result = await createIncomeAction({
             accountId: targetId,
             amount,
             description: description || undefined,
           });
           if (!result.ok) {
-            setError(result.error);
+            applyOptimisticHomeIncome(-amountMinor);
+            applyAccountDelta(-amountMinor, targetId);
             return;
           }
-          applyLocalIncome({
-            id: result.id,
+          applyMovementsAdd({
+            id: result.id ?? crypto.randomUUID(),
+            description: descriptionText,
+            category: null,
+            transactionType: "income",
+            direction: "credit",
             amountMinor,
-            description: description.trim() || "Inkomst",
-            currency: lastHomeSnapshot()?.currency ?? "THB",
+            currency,
+            occurredAt: new Date().toISOString(),
+            source: "manual",
           });
-          onSuccess?.();
         });
       }}
     >

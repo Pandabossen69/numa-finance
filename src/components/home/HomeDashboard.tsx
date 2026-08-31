@@ -676,7 +676,6 @@ function QuickExpense({
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
                 if (guard.isRunning() || busy || !accountId) return;
-                if (!guard.tryBegin()) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -688,6 +687,7 @@ function QuickExpense({
                   setError("Beloppet måste vara större än 0");
                   return;
                 }
+                if (!guard.tryBegin()) return;
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
                 setBusy(true);

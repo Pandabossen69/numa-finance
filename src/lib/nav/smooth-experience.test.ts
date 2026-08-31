@@ -14,7 +14,14 @@ describe("smooth nav and saves", () => {
       money.indexOf("function revalidateMoneyPaths()"),
       money.indexOf("export async function updateTransactionAction"),
     );
-    expect(moneyFn).toContain("revalidatePath(\"/idag\")");
+    // Optimistic last-snapshot owns Hem/Rörelser/Konton/Fota — do not
+    // revalidate those on the save critical path (keeps Sparar… snappy).
+    expect(moneyFn).toContain("revalidatePath(\"/analys\")");
+    expect(moneyFn).toContain("revalidatePath(\"/plan\")");
+    expect(moneyFn).not.toContain('revalidatePath("/idag")');
+    expect(moneyFn).not.toContain('revalidatePath("/transaktioner")');
+    expect(moneyFn).not.toContain('revalidatePath("/konton")');
+    expect(moneyFn).not.toContain('revalidatePath("/fota")');
     expect(moneyFn).not.toContain('revalidatePath("/", "layout")');
     expect(moneyFn).not.toContain('revalidatePath("/mer")');
     expect(imports).not.toContain('revalidatePath("/", "layout")');
