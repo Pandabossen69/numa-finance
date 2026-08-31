@@ -376,6 +376,43 @@ export async function createAccount(input: {
   return mapAccount(data);
 }
 
+/** Soft-hide an account. Ledger rows stay so Rörelser and saldo math stay true. */
+export async function archiveAccount(accountId: string): Promise<Account> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const existing = await listAccounts();
+  const account = existing.find((row) => row.id === accountId);
+  if (!account) {
+    throw new Error("Kontot finns inte");
+  }
+  if (existing.length <= 1) {
+    throw new Error("Lägg till ett annat konto först");
+  }
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .update({ is_active: false, is_default: false })
+    .eq("user_id", userId)
+    .eq("id", accountId)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+
+  if (account.isDefault) {
+    const nextDefault = existing.find((row) => row.id !== accountId);
+    if (nextDefault) {
+      const { error: promoteError } = await supabase
+        .from("accounts")
+        .update({ is_default: true })
+        .eq("user_id", userId)
+        .eq("id", nextDefault.id);
+      if (promoteError) throw new Error(promoteError.message);
+    }
+  }
+
+  return mapAccount(data);
+}
+
 export async function createCheckpoint(input: {
   accountId: string;
   balanceMinor: number;

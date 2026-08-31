@@ -23,6 +23,10 @@ describe("AccountsDashboard", () => {
     expect(src).toContain("Ange manuellt");
     expect(src).toContain("Uppdatera saldo");
     expect(src).toContain("openVerifyId");
+    expect(src).toContain("Ta bort");
+    expect(src).toContain("archiveAccountAction");
+    expect(src).toContain("applyAccountRemoved");
+    expect(src).toContain("Lägg till ett annat konto först");
   });
 
   it("loads every account from one ledger plus checkpoints", () => {

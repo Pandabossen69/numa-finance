@@ -4,6 +4,7 @@ import { revalidateTag } from "next/cache";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { z } from "zod";
 import {
+  archiveAccount,
   createAccount,
   createCashWithdrawal,
   createCheckpoint,
@@ -103,6 +104,20 @@ export async function createAccountAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte skapa konto",
+    };
+  }
+}
+
+export async function archiveAccountAction(accountId: string): Promise<ActionResult> {
+  try {
+    const id = z.string().uuid().parse(accountId);
+    await archiveAccount(id);
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte ta bort kontot",
     };
   }
 }
