@@ -742,6 +742,7 @@ export async function updateTransaction(input: {
   amountMinor?: number;
   description?: string;
   category?: string | null;
+  occurredAt?: string;
 }): Promise<CanonicalTransaction> {
   const userId = await requireUserId();
   const patch: Record<string, unknown> = {
@@ -757,6 +758,7 @@ export async function updateTransaction(input: {
     patch.description = input.description.trim() || "Utgift";
   }
   if (input.category !== undefined) patch.category = input.category;
+  if (input.occurredAt != null) patch.occurred_at = input.occurredAt;
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

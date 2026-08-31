@@ -7,6 +7,7 @@ import { calculateDayPulse } from "@/domain/gamification";
 import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
   confirmReceiptExpense,
+  getProfile,
   getTodaySnapshot,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
@@ -133,8 +134,10 @@ export async function confirmReceiptExpenseAction(
       await stampOnboardingCompletedAt();
     }
 
-    await reclaimStalePlanSettleLedgers({ timeZone: "Asia/Bangkok" });
-
+    const profile = await getProfile();
+    await reclaimStalePlanSettleLedgers({
+      timeZone: profile.timezone || "Asia/Bangkok",
+    });
     const snap = await getTodaySnapshot();
     const timeZone = snap.profile.timezone || "Asia/Bangkok";
     const now = new Date();

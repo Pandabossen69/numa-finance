@@ -66,21 +66,27 @@ export function isExternalLedgerTx(tx: LedgerMatchTx): boolean {
  */
 export function planItemAlreadyFundedInLedger(params: {
   item: PlanItem;
+  /** Full plan set so a bank hit is not stolen from a sibling row. */
+  planItems?: readonly PlanItem[];
   transactions: readonly LedgerMatchTx[];
   kind: PlanSettleKind;
   monthKey: string;
   timeZone: string;
 }): boolean {
   const { item, kind, monthKey, timeZone } = params;
-  const openItem: PlanItem = {
-    ...item,
-    settledAt: null,
-    settledMinor: null,
-    remainingDueAt: remainingDueIso(item) ?? item.nextDueAt,
-  };
+  const probe = (row: PlanItem): PlanItem =>
+    row.id === item.id
+      ? {
+          ...row,
+          settledAt: null,
+          settledMinor: null,
+          remainingDueAt: remainingDueIso(row) ?? row.nextDueAt,
+        }
+      : row;
+  const items = (params.planItems ?? [item]).map(probe);
   const external = params.transactions.filter(isExternalLedgerTx);
   const matched = matchPlanItemsToLedger({
-    items: [openItem],
+    items,
     transactions: external,
     kind,
     monthKey,
@@ -105,6 +111,7 @@ export function monthKeyForPlanSettle(
  */
 export function previewPlanSettleEffect(params: {
   item: PlanItem;
+  planItems?: readonly PlanItem[];
   targetBookedMinor: number;
   transactions: readonly LedgerMatchTx[];
   timeZone: string;
@@ -116,6 +123,7 @@ export function previewPlanSettleEffect(params: {
   const monthKey = monthKeyForPlanSettle(params.item, params.timeZone);
   const funded = planItemAlreadyFundedInLedger({
     item: params.item,
+    planItems: params.planItems,
     transactions: params.transactions,
     kind,
     monthKey,

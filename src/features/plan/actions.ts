@@ -248,6 +248,7 @@ export async function deletePlanItemAction(id: string): Promise<ActionResult> {
     if (existing) {
       await syncPlanItemSettleLedger({
         item: existing,
+        planItems: ctx.planItems,
         targetBookedMinor: 0,
         timeZone: ctx.timeZone,
       });
@@ -335,6 +336,7 @@ export async function setPlanItemSettledAction(
     });
     const settleLedger = await syncPlanItemSettleLedger({
       item: existing,
+      planItems: ctx.planItems,
       targetBookedMinor,
       timeZone: ctx.timeZone,
     });
@@ -396,7 +398,8 @@ export async function updatePlanItemAmountAction(raw: {
     });
     if (existing) {
       await syncPlanItemSettleLedger({
-        item: existing,
+        item,
+        planItems: ctx.planItems.map((row) => (row.id === item.id ? item : row)),
         targetBookedMinor: settledAmountMinor(item),
         timeZone: ctx.timeZone,
       });
@@ -471,7 +474,8 @@ export async function updatePlanItemAction(
     });
     if (existing) {
       await syncPlanItemSettleLedger({
-        item: existing,
+        item,
+        planItems: ctx.planItems.map((row) => (row.id === item.id ? item : row)),
         targetBookedMinor: settledAmountMinor(item),
         timeZone: ctx.timeZone,
       });

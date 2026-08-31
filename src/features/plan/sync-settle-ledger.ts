@@ -13,6 +13,7 @@ import {
   listPlanItems,
   listTransactions,
   listTransactionsByPlanItemId,
+  updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
@@ -82,6 +83,7 @@ async function insertSettleBooking(input: {
  */
 export async function syncPlanItemSettleLedger(params: {
   item: PlanItem;
+  planItems?: readonly PlanItem[];
   targetBookedMinor: number;
   timeZone: string;
 }): Promise<PlanSettleLedgerResult> {
@@ -97,13 +99,25 @@ export async function syncPlanItemSettleLedger(params: {
 
   const target = Math.max(0, Math.round(params.targetBookedMinor));
   const account = await ensureDefaultBankAccount();
-  const { previousBookedMinor, accountId: previousAccountId } =
-    await voidPlanSettleBookings(params.item.id);
+  const existing = liveSettleBookings(
+    await listTransactionsByPlanItemId(params.item.id),
+  );
+  const previousBookedMinor = existing.reduce(
+    (sum, tx) => sum + tx.amountMinor,
+    0,
+  );
+  const previousAccountId = existing[0]?.accountId ?? null;
 
-  const ledger = await listTransactions();
+  const [ledger, planItems] = await Promise.all([
+    listTransactions(),
+    params.planItems
+      ? Promise.resolve(params.planItems)
+      : listPlanItems(),
+  ]);
   const monthKey = monthKeyForPlanSettle(params.item, params.timeZone);
   const funded = planItemAlreadyFundedInLedger({
     item: params.item,
+    planItems,
     transactions: ledger,
     kind,
     monthKey,
@@ -112,17 +126,33 @@ export async function syncPlanItemSettleLedger(params: {
 
   let bookedMinor = 0;
   let accountId = previousAccountId ?? account.id;
-  if (target > 0 && !funded) {
+
+  if (target <= 0 || funded) {
+    const voided = await voidPlanSettleBookings(params.item.id);
+    accountId = voided.accountId ?? accountId;
+    bookedMinor = 0;
+  } else if (existing.length === 1 && existing[0]) {
+    const current = existing[0];
+    if (current.amountMinor !== target) {
+      await updateTransaction({
+        id: current.id,
+        amountMinor: target,
+        occurredAt: new Date().toISOString(),
+      });
+    }
+    bookedMinor = target;
+    accountId = current.accountId;
+  } else {
+    if (existing.length > 1) {
+      await voidPlanSettleBookings(params.item.id);
+    }
     try {
       const created = await insertSettleBooking({
         kind,
         accountId: account.id,
         amountMinor: target,
         description: params.item.name,
-        occurredAt:
-          params.item.nextDueAt ??
-          params.item.remainingDueAt ??
-          new Date().toISOString(),
+        occurredAt: new Date().toISOString(),
         planItemId: params.item.id,
       });
       bookedMinor = created.amountMinor;
@@ -181,6 +211,7 @@ export async function reclaimStalePlanSettleLedgers(params: {
     const others = ledger.filter((tx) => tx.planItemId !== itemId);
     const funded = planItemAlreadyFundedInLedger({
       item,
+      planItems: items,
       transactions: others,
       kind,
       monthKey: monthKeyForPlanSettle(item, params.timeZone),

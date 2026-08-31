@@ -173,6 +173,95 @@ describe("plan settle ledger math", () => {
     expect(after.overMinor).toBe(open.overMinor);
   });
 
+  it("does not let one settle booking pay a sibling bill", () => {
+    const hyra = item({
+      id: "hyra",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 10_000_00,
+      cadence: "monthly",
+      nextDueAt: "2026-08-25T12:00:00.000Z",
+      settledAt: "2026-08-25T14:00:00.000Z",
+      settledMinor: 10_000_00,
+    });
+    const el = item({
+      id: "el",
+      name: "El",
+      kind: "mandatory",
+      amountMinor: 10_000_00,
+      cadence: "monthly",
+      nextDueAt: "2026-08-27T12:00:00.000Z",
+    });
+    const view = projectCashCoverage({
+      planItems: [hyra, el],
+      transactions: [
+        tx({
+          id: "settle-hyra",
+          amountMinor: 10_000_00,
+          direction: "debit",
+          transactionType: "expense",
+          description: "Hyra",
+          source: "manual",
+          planItemId: hyra.id,
+          occurredAt: "2026-08-31T10:00:00.000Z",
+        }),
+      ],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 40_000_00,
+    });
+    expect(view.unpaidMinor).toBe(10_000_00);
+    expect(view.overMinor).toBe(30_000_00);
+  });
+
+  it("does not steal a sibling's bank hit when probing already-funded", () => {
+    const hyra = item({
+      id: "hyra",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 10_000_00,
+      cadence: "monthly",
+      nextDueAt: "2026-08-25T12:00:00.000Z",
+    });
+    const el = item({
+      id: "el",
+      name: "El",
+      kind: "mandatory",
+      amountMinor: 10_000_00,
+      cadence: "monthly",
+      nextDueAt: "2026-08-27T12:00:00.000Z",
+    });
+    const bank = tx({
+      id: "sms-hyra",
+      amountMinor: 10_000_00,
+      direction: "debit",
+      transactionType: "expense",
+      description: "Hyra",
+      source: "sms",
+      occurredAt: "2026-08-25T09:00:00.000Z",
+    });
+    expect(
+      planItemAlreadyFundedInLedger({
+        item: el,
+        planItems: [hyra, el],
+        transactions: [bank],
+        kind: "expense",
+        monthKey: "2026-08",
+        timeZone: tz,
+      }),
+    ).toBe(false);
+    expect(
+      planItemAlreadyFundedInLedger({
+        item: hyra,
+        planItems: [hyra, el],
+        transactions: [bank],
+        kind: "expense",
+        monthKey: "2026-08",
+        timeZone: tz,
+      }),
+    ).toBe(true);
+  });
+
   it("books only the Delvis step-up", () => {
     const half = previewPlanSettleEffect({
       item: { ...csn, settledMinor: 20_000_00 },

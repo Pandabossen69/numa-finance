@@ -334,6 +334,15 @@ export async function createManualExpense(input: {
       throw new Error("Den här bankbetalningen finns redan");
     }
   }
+  if (input.planItemId) {
+    const clash = store.transactions.find(
+      (t) =>
+        t.planItemId === input.planItemId &&
+        t.status === "confirmed" &&
+        t.userId === LOCAL_DEMO_USER_ID,
+    );
+    if (clash) throw new Error("Den här planposten är redan bokad mot saldot");
+  }
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
@@ -389,6 +398,15 @@ export async function createManualIncome(input: {
     if (known.includes(input.fingerprint)) {
       throw new Error("Den här bankrörelsen finns redan");
     }
+  }
+  if (input.planItemId) {
+    const clash = store.transactions.find(
+      (t) =>
+        t.planItemId === input.planItemId &&
+        t.status === "confirmed" &&
+        t.userId === LOCAL_DEMO_USER_ID,
+    );
+    if (clash) throw new Error("Den här planposten är redan bokad mot saldot");
   }
 
   const updated = await updateStore((s) => {
@@ -610,6 +628,7 @@ export async function updateTransaction(input: {
   amountMinor?: number;
   description?: string;
   category?: string | null;
+  occurredAt?: string;
 }): Promise<CanonicalTransaction> {
   let found: CanonicalTransaction | null = null;
   await updateStore((s) => {
@@ -626,6 +645,7 @@ export async function updateTransaction(input: {
       tx.description = input.description.trim() || tx.description;
     }
     if (input.category !== undefined) tx.category = input.category;
+    if (input.occurredAt != null) tx.occurredAt = input.occurredAt;
     tx.updatedAt = nowIso();
     found = tx;
   });

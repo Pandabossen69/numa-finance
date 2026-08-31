@@ -11,6 +11,7 @@ import {
   createManualIncome,
   createTransfer,
   ensureDefaultBankAccount,
+  getProfile,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
   updateTransaction,
@@ -104,7 +105,10 @@ export async function createExpenseAction(
       category: input.category,
     });
 
-    await reclaimStalePlanSettleLedgers({ timeZone: "Asia/Bangkok" });
+    const profile = await getProfile();
+    await reclaimStalePlanSettleLedgers({
+      timeZone: profile.timezone || "Asia/Bangkok",
+    });
 
     revalidateMoneyPaths();
     return { ok: true, id: tx.id };
@@ -207,7 +211,10 @@ export async function createIncomeAction(
       amountMinor,
       description: input.description,
     });
-    await reclaimStalePlanSettleLedgers({ timeZone: "Asia/Bangkok" });
+    const profile = await getProfile();
+    await reclaimStalePlanSettleLedgers({
+      timeZone: profile.timezone || "Asia/Bangkok",
+    });
     revalidateMoneyPaths();
     return { ok: true, id: tx.id };
   } catch (error) {

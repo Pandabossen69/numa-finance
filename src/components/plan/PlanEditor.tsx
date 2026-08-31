@@ -460,6 +460,7 @@ export function PlanEditor({
     const preview = previous
       ? previewPlanSettleEffect({
           item: previous,
+          planItems: localItems,
           targetBookedMinor,
           transactions: ledgerTransactions,
           timeZone,

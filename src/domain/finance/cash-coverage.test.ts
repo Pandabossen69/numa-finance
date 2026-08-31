@@ -52,6 +52,7 @@ function tx(
     createdAt: occurredAt,
     updatedAt: occurredAt,
     transferGroupId: null,
+    planItemId: partial.planItemId ?? null,
     amountMinor: partial.amountMinor,
     occurredAt,
     direction: partial.direction ?? "debit",
@@ -407,6 +408,47 @@ describe("projectCashCoverage", () => {
     });
     expect(view.unpaidMinor).toBe(1_400_00);
     expect(view.overMinor).toBe(8_600_00);
+  });
+
+  it("does not drop a sibling bill because another row was booked", () => {
+    const items = [
+      item({
+        id: "hyra",
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 10_000_00,
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+        settledAt: "2026-08-25T14:00:00.000Z",
+        settledMinor: 10_000_00,
+      }),
+      item({
+        id: "el",
+        name: "El",
+        kind: "mandatory",
+        amountMinor: 10_000_00,
+        nextDueAt: "2026-08-27T12:00:00.000Z",
+      }),
+    ];
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [
+        tx({
+          id: "settle-hyra",
+          amountMinor: 10_000_00,
+          occurredAt: "2026-08-31T10:00:00.000Z",
+          direction: "debit",
+          transactionType: "expense",
+          description: "Hyra",
+          source: "manual",
+          planItemId: "hyra",
+        }),
+      ],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 40_000_00,
+    });
+    expect(view.unpaidMinor).toBe(10_000_00);
+    expect(view.overMinor).toBe(30_000_00);
   });
 
   it("keeps Över still when Klar is booked on the ledger", () => {

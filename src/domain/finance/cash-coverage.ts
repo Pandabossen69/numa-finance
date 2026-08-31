@@ -132,6 +132,8 @@ export function matchPlanItemsToLedger(params: {
 }): Set<string> {
   const { items, transactions, kind, monthKey, timeZone } = params;
   const eligibleTx = transactions.filter((tx) => {
+    // Settle bookings live in saldo via flags. They must not "pay" a sibling bill.
+    if (tx.planItemId) return false;
     if (!isKindHit(tx, kind)) return false;
     const txMonth = monthKeyFromDate(new Date(tx.occurredAt), timeZone);
     return isNearbyMonth(txMonth, monthKey);

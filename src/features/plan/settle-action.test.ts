@@ -53,6 +53,8 @@ describe("settle state is written by user action only", () => {
     expect(sync).toContain("planItemAlreadyFundedInLedger");
     expect(sync).toContain('source: "manual"');
     expect(sync).toContain("planItemId: input.planItemId");
+    expect(sync).toContain("occurredAt: new Date().toISOString()");
+    expect(sync).toContain("updateTransaction");
     expect(sync).not.toContain("matchPlanItemsToLedger");
     expect(sync).toContain("Never voids a row without plan_item_id");
   });
