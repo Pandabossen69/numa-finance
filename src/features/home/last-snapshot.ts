@@ -739,3 +739,36 @@ export function applyLocalTransfer(input: {
     applyOptimisticHomeIncome(input.amountMinor);
   }
 }
+
+/** Undo `applyLocalExpense` when the server write fails. */
+export function revertLocalExpense(id: string, amountMinor: number) {
+  if (movements?.items.some((tx) => tx.id === id)) {
+    applyMovementsVoid(id);
+    return;
+  }
+  revertOptimisticHomeSpend(amountMinor);
+  applyAccountDelta(amountMinor);
+}
+
+/** Undo `applyLocalIncome` when the server write fails. */
+export function revertLocalIncome(id: string, amountMinor: number) {
+  if (movements?.items.some((tx) => tx.id === id)) {
+    applyMovementsVoid(id);
+    return;
+  }
+  applyOptimisticHomeIncome(-amountMinor);
+  applyAccountDelta(-amountMinor);
+}
+
+/** Undo `applyLocalTransfer` when the server write fails. */
+export function revertLocalTransfer(input: {
+  fromAccountId: string;
+  toAccountId: string;
+  amountMinor: number;
+}) {
+  applyLocalTransfer({
+    fromAccountId: input.toAccountId,
+    toAccountId: input.fromAccountId,
+    amountMinor: input.amountMinor,
+  });
+}

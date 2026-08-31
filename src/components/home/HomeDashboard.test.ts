@@ -25,6 +25,9 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("applyAccountDelta");
     expect(src).toContain("getHomeSnapshotAction");
     expect(src).toContain("warmupPlanPageData");
+    const quickBody = src.slice(src.indexOf("function QuickExpense"));
+    expect(quickBody).not.toContain("getHomeSnapshotAction");
+    expect(quickBody).not.toContain("warmupPlanPageData");
     expect(src).toContain("isHomeDirty");
     expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
     expect(src).not.toContain("lastHomeSnapshot() == null");

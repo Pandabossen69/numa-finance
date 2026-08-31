@@ -24,4 +24,26 @@ describe("Flytta/Kontant empty copy", () => {
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
   });
+
+  it("paints the write before the server action and does not wrap it in useTransition", () => {
+    expect(src).not.toContain("useTransition");
+    expect(src).not.toContain("startTransition");
+    expect(src).toContain("revertLocalExpense");
+    expect(src).toContain("revertLocalIncome");
+    expect(src).toContain("revertLocalTransfer");
+    const expense = src.slice(
+      src.indexOf("function ExpenseForm"),
+      src.indexOf("function IncomeForm"),
+    );
+    expect(expense.indexOf("applyLocalExpense")).toBeLessThan(
+      expense.indexOf("createExpenseAction"),
+    );
+    const income = src.slice(
+      src.indexOf("function IncomeForm"),
+      src.indexOf("function TransferForm"),
+    );
+    expect(income.indexOf("applyLocalIncome")).toBeLessThan(
+      income.indexOf("createIncomeAction"),
+    );
+  });
 });

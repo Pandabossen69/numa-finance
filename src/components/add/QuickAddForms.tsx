@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import {
   createCashWithdrawalAction,
@@ -15,6 +15,9 @@ import {
   applyLocalIncome,
   applyLocalTransfer,
   lastHomeSnapshot,
+  revertLocalExpense,
+  revertLocalIncome,
+  revertLocalTransfer,
 } from "@/features/home/last-snapshot";
 
 export type ShellAccount = {
@@ -140,50 +143,67 @@ function ExpenseForm({
   const category = categoryOverride ?? storedCategory;
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [busy, setBusy] = useState(false);
+  const guard = useSubmitGuard(busy);
 
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (guard.isRunning() || busy) return;
+        let amountMinor: number;
+        try {
+          amountMinor = parseUiAmountToMinor(amount);
+        } catch {
+          setError("Ogiltigt belopp");
+          return;
+        }
+        if (amountMinor <= 0) {
+          setError("Beloppet måste vara större än 0");
+          return;
+        }
         if (!guard.tryBegin()) return;
+        const descriptionText = description.trim() || "Utgift";
+        const amountInput = amount;
+        const categoryInput = category;
+        const localId = crypto.randomUUID();
         setError(null);
-        startTransition(async () => {
-          let amountMinor: number;
-          try {
-            amountMinor = parseUiAmountToMinor(amount);
-          } catch {
-            setError("Ogiltigt belopp");
-            return;
-          }
-          const result = await createExpenseAction({
-            accountId,
-            amount,
-            category,
-            description: description || undefined,
-          });
-          if (!result.ok) {
-            setError(result.error);
-            return;
-          }
-          try {
-            localStorage.setItem(LAST_CATEGORY_KEY, category);
-          } catch {
-            // ignore
-          }
-          applyLocalExpense({
-            id: result.id,
-            amountMinor,
-            description: description.trim() || "Utgift",
-            category,
-            currency: lastHomeSnapshot()?.currency ?? "THB",
-          });
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
+        setBusy(true);
+        setAmount("");
+        setDescription("");
+        applyLocalExpense({
+          id: localId,
+          amountMinor,
+          description: descriptionText,
+          category: categoryInput,
+          currency: lastHomeSnapshot()?.currency ?? "THB",
         });
+        try {
+          localStorage.setItem(LAST_CATEGORY_KEY, categoryInput);
+        } catch {
+          // ignore
+        }
+        void (async () => {
+          try {
+            const result = await createExpenseAction({
+              accountId,
+              amount: amountInput,
+              category: categoryInput,
+              description:
+                descriptionText === "Utgift" ? undefined : descriptionText,
+            });
+            if (!result.ok) {
+              revertLocalExpense(localId, amountMinor);
+              setError(result.error);
+              return;
+            }
+            onSuccess?.();
+          } finally {
+            guard.end();
+            setBusy(false);
+          }
+        })();
       }}
     >
       <AmountField value={amount} onChange={setAmount} />
@@ -209,7 +229,7 @@ function ExpenseForm({
         placeholder="Valfri beskrivning"
       />
       <ErrorText error={error} />
-      <Submit pending={pending} disabled={!amount.trim()} label="Spara utgift" />
+      <Submit pending={busy} disabled={!amount.trim()} label="Spara utgift" />
     </form>
   );
 }
@@ -227,41 +247,60 @@ function IncomeForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [busy, setBusy] = useState(false);
+  const guard = useSubmitGuard(busy);
 
   return (
     <form
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (guard.isRunning() || busy) return;
+        let amountMinor: number;
+        try {
+          amountMinor = parseUiAmountToMinor(amount);
+        } catch {
+          setError("Ogiltigt belopp");
+          return;
+        }
+        if (amountMinor <= 0) {
+          setError("Beloppet måste vara större än 0");
+          return;
+        }
         if (!guard.tryBegin()) return;
+        const descriptionText = description.trim() || "Inkomst";
+        const amountInput = amount;
+        const accountInput = targetId;
+        const localId = crypto.randomUUID();
         setError(null);
-        startTransition(async () => {
-          let amountMinor: number;
-          try {
-            amountMinor = parseUiAmountToMinor(amount);
-          } catch {
-            setError("Ogiltigt belopp");
-            return;
-          }
-          const result = await createIncomeAction({
-            accountId: targetId,
-            amount,
-            description: description || undefined,
-          });
-          if (!result.ok) {
-            setError(result.error);
-            return;
-          }
-          applyLocalIncome({
-            id: result.id,
-            amountMinor,
-            description: description.trim() || "Inkomst",
-            currency: lastHomeSnapshot()?.currency ?? "THB",
-          });
-          onSuccess?.();
+        setBusy(true);
+        setAmount("");
+        setDescription("");
+        applyLocalIncome({
+          id: localId,
+          amountMinor,
+          description: descriptionText,
+          currency: lastHomeSnapshot()?.currency ?? "THB",
         });
+        void (async () => {
+          try {
+            const result = await createIncomeAction({
+              accountId: accountInput,
+              amount: amountInput,
+              description:
+                descriptionText === "Inkomst" ? undefined : descriptionText,
+            });
+            if (!result.ok) {
+              revertLocalIncome(localId, amountMinor);
+              setError(result.error);
+              return;
+            }
+            onSuccess?.();
+          } finally {
+            guard.end();
+            setBusy(false);
+          }
+        })();
       }}
     >
       <p className="text-sm text-[var(--numa-muted)]">
@@ -282,7 +321,7 @@ function IncomeForm({
         placeholder="t.ex. Lön"
       />
       <ErrorText error={error} />
-      <Submit pending={pending} disabled={!amount.trim()} label="Spara inkomst" />
+      <Submit pending={busy} disabled={!amount.trim()} label="Spara inkomst" />
     </form>
   );
 }
@@ -302,8 +341,8 @@ function TransferForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [busy, setBusy] = useState(false);
+  const guard = useSubmitGuard(busy);
 
   if (accounts.length < 2) {
     return (
@@ -319,33 +358,55 @@ function TransferForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (guard.isRunning() || busy) return;
+        let amountMinor: number;
+        try {
+          amountMinor = parseUiAmountToMinor(amount);
+        } catch {
+          setError("Ogiltigt belopp");
+          return;
+        }
+        if (amountMinor <= 0) {
+          setError("Beloppet måste vara större än 0");
+          return;
+        }
         if (!guard.tryBegin()) return;
+        const amountInput = amount;
+        const fromAccountId = fromId;
+        const toAccountId = toId;
+        const note = description || undefined;
         setError(null);
-        startTransition(async () => {
-          let amountMinor: number;
-          try {
-            amountMinor = parseUiAmountToMinor(amount);
-          } catch {
-            setError("Ogiltigt belopp");
-            return;
-          }
-          const result = await createTransferAction({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amount,
-            description: description || undefined,
-          });
-          if (!result.ok) {
-            setError(result.error);
-            return;
-          }
-          applyLocalTransfer({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amountMinor,
-          });
-          onSuccess?.();
+        setBusy(true);
+        setAmount("");
+        setDescription("");
+        applyLocalTransfer({
+          fromAccountId,
+          toAccountId,
+          amountMinor,
         });
+        void (async () => {
+          try {
+            const result = await createTransferAction({
+              fromAccountId,
+              toAccountId,
+              amount: amountInput,
+              description: note,
+            });
+            if (!result.ok) {
+              revertLocalTransfer({
+                fromAccountId,
+                toAccountId,
+                amountMinor,
+              });
+              setError(result.error);
+              return;
+            }
+            onSuccess?.();
+          } finally {
+            guard.end();
+            setBusy(false);
+          }
+        })();
       }}
     >
       <AccountSelect
@@ -374,7 +435,7 @@ function TransferForm({
       />
       <ErrorText error={error} />
       <Submit
-        pending={pending}
+        pending={busy}
         disabled={!amount.trim() || !toId}
         label="Flytta"
       />
@@ -400,8 +461,8 @@ function CashForm({
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [busy, setBusy] = useState(false);
+  const guard = useSubmitGuard(busy);
 
   if (cashAccounts.length === 0) {
     return (
@@ -417,37 +478,59 @@ function CashForm({
       className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault();
+        if (guard.isRunning() || busy) return;
+        if (!toId) {
+          setError("Välj ett kontantkonto");
+          return;
+        }
+        let amountMinor: number;
+        try {
+          amountMinor = parseUiAmountToMinor(amount);
+        } catch {
+          setError("Ogiltigt belopp");
+          return;
+        }
+        if (amountMinor <= 0) {
+          setError("Beloppet måste vara större än 0");
+          return;
+        }
         if (!guard.tryBegin()) return;
+        const amountInput = amount;
+        const fromAccountId = fromId;
+        const toAccountId = toId;
+        const note = description || undefined;
         setError(null);
-        startTransition(async () => {
-          if (!toId) {
-            setError("Välj ett kontantkonto");
-            return;
-          }
-          let amountMinor: number;
-          try {
-            amountMinor = parseUiAmountToMinor(amount);
-          } catch {
-            setError("Ogiltigt belopp");
-            return;
-          }
-          const result = await createCashWithdrawalAction({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amount,
-            description: description || undefined,
-          });
-          if (!result.ok) {
-            setError(result.error);
-            return;
-          }
-          applyLocalTransfer({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amountMinor,
-          });
-          onSuccess?.();
+        setBusy(true);
+        setAmount("");
+        setDescription("");
+        applyLocalTransfer({
+          fromAccountId,
+          toAccountId,
+          amountMinor,
         });
+        void (async () => {
+          try {
+            const result = await createCashWithdrawalAction({
+              fromAccountId,
+              toAccountId,
+              amount: amountInput,
+              description: note,
+            });
+            if (!result.ok) {
+              revertLocalTransfer({
+                fromAccountId,
+                toAccountId,
+                amountMinor,
+              });
+              setError(result.error);
+              return;
+            }
+            onSuccess?.();
+          } finally {
+            guard.end();
+            setBusy(false);
+          }
+        })();
       }}
     >
       <p className="text-sm text-[var(--numa-muted)]">
@@ -480,7 +563,7 @@ function CashForm({
       />
       <ErrorText error={error} />
       <Submit
-        pending={pending}
+        pending={busy}
         disabled={!amount.trim() || !toId}
         label="Spara uttag"
       />

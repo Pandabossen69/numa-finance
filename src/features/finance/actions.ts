@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { z } from "zod";
 import {
@@ -72,11 +72,7 @@ export async function createAccountAction(
       note: "Ingående / verifierat saldo",
     });
 
-    revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-    revalidatePath("/idag");
-    revalidatePath("/konton");
-    revalidatePath("/transaktioner");
-    revalidatePath("/mer");
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -133,18 +129,19 @@ const cashSchema = z.object({
   description: z.string().trim().max(120).optional(),
 });
 
-/** Money pages only — never revalidate the layout or the whole shell.
- *  `revalidatePath("/", "layout")` dropped Hem↔Plan↔Analys from the
- *  client router cache so every save made the next tab tap cold. */
+/**
+ * Mark money data stale without re-rendering the current route.
+ *
+ * `revalidatePath` on a Server Action ships a full RSC Flight payload in the
+ * same HTTP response. The client commits that as a seeded navigation and the
+ * main thread freezes — desktop hard-locks, phone just feels slow. Tabs are
+ * `force-dynamic`; the next visit is fresh. Hem / Rörelser already patch
+ * themselves from the write.
+ *
+ * `revalidateTag(..., "max")` is SWR-only and does not include a re-render.
+ */
 function revalidateMoneyPaths() {
   revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-  revalidatePath("/idag");
-  revalidatePath("/transaktioner");
-  revalidatePath("/analys");
-  revalidatePath("/plan");
-  revalidatePath("/konton");
-  revalidatePath("/lagg-till");
-  revalidatePath("/fota");
 }
 
 export async function updateTransactionAction(raw: {

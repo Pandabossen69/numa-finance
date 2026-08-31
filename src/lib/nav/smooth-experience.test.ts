@@ -14,7 +14,9 @@ describe("smooth nav and saves", () => {
       money.indexOf("function revalidateMoneyPaths()"),
       money.indexOf("export async function updateTransactionAction"),
     );
-    expect(moneyFn).toContain("revalidatePath(\"/idag\")");
+    expect(moneyFn).not.toContain("revalidatePath(");
+    expect(moneyFn).toContain('revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max")');
+    expect(money).not.toContain("revalidatePath(");
     expect(moneyFn).not.toContain('revalidatePath("/", "layout")');
     expect(moneyFn).not.toContain('revalidatePath("/mer")');
     expect(imports).not.toContain('revalidatePath("/", "layout")');
