@@ -720,7 +720,6 @@ function QuickExpense({
                       occurredAt: new Date().toISOString(),
                       source: "manual",
                     });
-                    void warmupPlanPageData();
                   } finally {
                     guard.end();
                   }

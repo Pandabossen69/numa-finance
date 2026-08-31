@@ -186,6 +186,7 @@ function ExpenseForm({
           if (!result.ok) {
             applyOptimisticHomeSpend(-amountMinor);
             applyAccountDelta(amountMinor);
+            setError(result.error);
             return;
           }
           applyMovementsAdd({
@@ -280,6 +281,7 @@ function IncomeForm({
           if (!result.ok) {
             applyOptimisticHomeIncome(-amountMinor);
             applyAccountDelta(-amountMinor, targetId);
+            setError(result.error);
             return;
           }
           applyMovementsAdd({

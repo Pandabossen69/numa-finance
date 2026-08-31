@@ -274,10 +274,10 @@ export async function ensureDefaultBankAccount(input?: {
   }
 
   return createAccount({
-    name: "Bangkok Bank",
-    institution: "Bangkok Bank",
+    name: wantedCurrency === "THB" ? "Bangkok Bank" : "Bankkonto",
+    institution: wantedCurrency === "THB" ? "Bangkok Bank" : null,
     accountType: "checking",
-    kind: "thai_bank",
+    kind: wantedCurrency === "THB" ? "thai_bank" : "other",
     currency: wantedCurrency,
     maskedIdentifier: input?.maskedIdentifier ?? null,
     makeDefault: true,
@@ -385,6 +385,7 @@ export async function createCheckpoint(input: {
   fxRate?: number | null;
   fxAsOf?: string | null;
   fxSource?: string | null;
+  requireFx?: boolean;
 }): Promise<BalanceCheckpoint> {
   const userId = await requireUserId();
   const account = await getAccount(input.accountId);
@@ -396,6 +397,7 @@ export async function createCheckpoint(input: {
     fxRate: input.fxRate,
     fxAsOf: input.fxAsOf,
     fxSource: input.fxSource,
+    required: input.requireFx,
   });
 
   const supabase = await createSupabaseServerClient();
@@ -406,10 +408,10 @@ export async function createCheckpoint(input: {
       account_id: input.accountId,
       balance_minor: input.balanceMinor,
       currency: account.currency,
-      thb_minor: fx.thbMinor,
-      fx_rate: fx.fxRate,
-      fx_as_of: fx.fxAsOf,
-      fx_source: fx.fxSource,
+      thb_minor: fx?.thbMinor ?? null,
+      fx_rate: fx?.fxRate ?? null,
+      fx_as_of: fx?.fxAsOf ?? null,
+      fx_source: fx?.fxSource ?? null,
       verified_at: input.verifiedAt ?? new Date().toISOString(),
       source: input.source,
       note: input.note ?? null,
@@ -1863,6 +1865,7 @@ export async function confirmReceiptExpense(
         verifiedAt: new Date(earliestMs - 60_000).toISOString(),
         source: "bank_app_bootstrap",
         note: `Startsaldo 0 ${account.currency} — justera under Konton om du vet verkligt saldo`,
+        requireFx: false,
       });
     }
 
