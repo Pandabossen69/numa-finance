@@ -7,6 +7,7 @@ import {
   calculateAccountBalance,
   filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
+  totalSaldoThbMinor,
 } from "@/domain/finance";
 import {
   humanizeMovementTitle,
@@ -42,7 +43,7 @@ export type CategoryTotal = {
 export type MovementsSnapshot = {
   currency: CurrencyCode;
   hasBankTruth: boolean;
-  /** null when saldo is unknown — never show as ฿0 */
+  /** null when saldo is unknown — never show as ฿0. Always Σ THB. */
   balanceMinor: number | null;
   monthIncomeMinor: number;
   monthExpenseMinor: number;
@@ -61,8 +62,7 @@ export type MovementsSnapshotResult =
   | { ok: false; error: string };
 
 /**
- * Rörelser only needs profile + primary ledger + checkpoint.
- * Skip the Hem today-snapshot (plan/progress/windows) so the menu is not a cold Hem fetch.
+ * Rörelser: profile + full ledger for the list, Σ THB saldo like Hem/Konton.
  */
 export const loadMovementsSnapshot = cache(
   async (): Promise<MovementsSnapshotResult> => {
@@ -72,37 +72,45 @@ export const loadMovementsSnapshot = cache(
         listAccounts(),
       ]);
       const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
-      const [transactions, checkpoint] = await Promise.all([
-        listTransactions(
-          primary?.id ?? undefined,
-          primary ? undefined : { limit: 200 },
-        ),
-        primary ? getLatestCheckpoint(primary.id) : Promise.resolve(null),
+      const [transactions, checkpoints] = await Promise.all([
+        listTransactions(),
+        Promise.all(accounts.map((account) => getLatestCheckpoint(account.id))),
       ]);
 
       const timezone = profile.timezone || "Asia/Bangkok";
       const thisMonth = monthKeyFromDate(new Date(), timezone);
-      const currency = (primary?.currency ??
+      const ledgerCurrency = (primary?.currency ??
         profile.primaryCurrency) as CurrencyCode;
 
-      let calculatedMinor: number | null = null;
-      if (checkpoint) {
-        const after = filterTransactionsAfterCheckpoint(
-          primary
-            ? transactions.filter((tx) => tx.accountId === primary.id)
-            : transactions,
-          checkpoint,
-        );
-        try {
-          calculatedMinor =
-            calculateAccountBalance({
-              checkpoint,
-              transactionsAfterCheckpoint: after,
-            })?.amountMinor ?? null;
-        } catch (error) {
-          console.error("[numa] movements balance calc failed", error);
-        }
+      const txsByAccount = new Map<string, typeof transactions>();
+      for (const tx of transactions) {
+        const list = txsByAccount.get(tx.accountId);
+        if (list) list.push(tx);
+        else txsByAccount.set(tx.accountId, [tx]);
       }
+
+      const balanceMinor = totalSaldoThbMinor(
+        accounts.map((account, index) => {
+          const checkpoint = checkpoints[index] ?? null;
+          let nativeMinor: number | null = null;
+          if (checkpoint) {
+            const after = filterTransactionsAfterCheckpoint(
+              txsByAccount.get(account.id) ?? [],
+              checkpoint,
+            );
+            try {
+              nativeMinor =
+                calculateAccountBalance({
+                  checkpoint,
+                  transactionsAfterCheckpoint: after,
+                })?.amountMinor ?? null;
+            } catch (error) {
+              console.error("[numa] movements balance calc failed", error);
+            }
+          }
+          return { account, nativeMinor, checkpoint };
+        }),
+      );
 
       let monthIncomeMinor = 0;
       let monthExpenseMinor = 0;
@@ -112,7 +120,7 @@ export const loadMovementsSnapshot = cache(
       const confirmed = transactions.filter(
         (t) =>
           t.status === "confirmed" &&
-          t.currency === currency &&
+          t.currency === ledgerCurrency &&
           (primary == null || t.accountId === primary.id),
       );
 
@@ -153,16 +161,16 @@ export const loadMovementsSnapshot = cache(
       const monthCategories =
         spendingCategoriesByMonthKey({
           transactions: confirmed,
-          currency,
+          currency: ledgerCurrency,
           timeZone: timezone,
         })[thisMonth] ?? [];
 
       return {
         ok: true,
         data: {
-          currency,
-          hasBankTruth: checkpoint != null,
-          balanceMinor: calculatedMinor,
+          currency: "THB",
+          hasBankTruth: balanceMinor != null,
+          balanceMinor,
           monthIncomeMinor,
           monthExpenseMinor,
           monthNetMinor: monthIncomeMinor - monthExpenseMinor,

@@ -1678,11 +1678,24 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     },
     ...otherAccounts.map((account) => {
       const cp = latestCheckpointForAccount(store, account.id);
-      return {
-        account,
-        nativeMinor: cp?.balanceMinor ?? null,
-        checkpoint: cp,
-      };
+      let nativeMinor: number | null = null;
+      if (cp) {
+        const accountTxs = store.transactions.filter(
+          (t) => t.accountId === account.id,
+        );
+        const afterOther = filterTransactionsAfterCheckpoint(accountTxs, cp);
+        try {
+          nativeMinor =
+            calculateAccountBalance({
+              checkpoint: cp,
+              transactionsAfterCheckpoint: afterOther,
+            })?.amountMinor ?? null;
+        } catch (error) {
+          console.error("[numa] secondary balance calc failed", error);
+          nativeMinor = cp.balanceMinor;
+        }
+      }
+      return { account, nativeMinor, checkpoint: cp };
     }),
   ]);
 

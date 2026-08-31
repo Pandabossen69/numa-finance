@@ -62,6 +62,7 @@ function accountRow(
     isDefault: boolean;
     calculatedMinor: number | null;
     thbMinor: number | null;
+    fxRate: number | null;
   }> = {},
 ) {
   const calculatedMinor = partial.calculatedMinor ?? 100_00;
@@ -77,7 +78,12 @@ function accountRow(
     isDefault: partial.isDefault ?? true,
     calculatedMinor,
     thbMinor: partial.thbMinor ?? (currency === "THB" ? calculatedMinor : null),
-    fxRate: currency === "THB" ? 1 : null,
+    fxRate:
+      partial.fxRate !== undefined
+        ? partial.fxRate
+        : currency === "THB"
+          ? 1
+          : null,
     fxSource: currency === "THB" ? "identity" : null,
   };
 }
@@ -376,6 +382,37 @@ describe("last view memory", () => {
     expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(250_00);
     expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(250_00);
     expect(lastMovementsSnapshot()?.balanceMinor).toBe(250_00);
+  });
+
+  it("does not treat a bare EUR verify as THB on Hem", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 15_800_00 }));
+    rememberAccountsSnapshot({
+      accounts: [
+        accountRow({
+          id: "eur",
+          currency: "EUR",
+          calculatedMinor: 100_00,
+          thbMinor: 3_800_00,
+          fxRate: 38,
+        }),
+        accountRow({
+          id: "thai",
+          currency: "THB",
+          calculatedMinor: 12_000_00,
+          thbMinor: 12_000_00,
+        }),
+      ],
+      totalThbMinor: 15_800_00,
+    });
+
+    applyAccountBalance("eur", 90_00, { currency: "EUR" });
+
+    const accounts = lastAccountsSnapshot();
+    expect(accounts?.accounts.find((a) => a.id === "eur")?.thbMinor).toBe(
+      3_420_00,
+    );
+    expect(accounts?.totalThbMinor).toBe(15_420_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(15_420_00);
   });
 
   it("lets kvar idag go negative when spend passes the sticky dagsbudget", () => {

@@ -1161,12 +1161,21 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
   }
 
   // Σ THB across all accounts — Över / Hem / Plan use this as saldo source.
-  // Primary keeps full post-checkpoint calc; others use latest checkpoint
-  // (foreign wallets are verify-driven in v1).
+  // Same post-checkpoint calc as Konton for every account (not checkpoint-only).
   const otherAccounts = accounts.filter((a) => a.id !== primary.id);
-  const otherCheckpoints = await Promise.all(
-    otherAccounts.map((a) => latestCheckpointForAccount(a.id)),
-  );
+  const [otherCheckpoints, allLedgerTx] = await Promise.all([
+    Promise.all(otherAccounts.map((a) => latestCheckpointForAccount(a.id))),
+    otherAccounts.length > 0
+      ? listTransactions()
+      : Promise.resolve([] as Awaited<ReturnType<typeof listTransactions>>),
+  ]);
+  const txsByOtherAccount = new Map<string, typeof allLedgerTx>();
+  for (const tx of allLedgerTx) {
+    if (tx.accountId === primary.id) continue;
+    const list = txsByOtherAccount.get(tx.accountId);
+    if (list) list.push(tx);
+    else txsByOtherAccount.set(tx.accountId, [tx]);
+  }
   const calculatedBalanceMinor = totalSaldoThbMinor([
     {
       account: primary,
@@ -1175,11 +1184,24 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     },
     ...otherAccounts.map((account, i) => {
       const cp = otherCheckpoints[i] ?? null;
-      return {
-        account,
-        nativeMinor: cp?.balanceMinor ?? null,
-        checkpoint: cp,
-      };
+      let nativeMinor: number | null = null;
+      if (cp) {
+        const afterOther = filterTransactionsAfterCheckpoint(
+          txsByOtherAccount.get(account.id) ?? [],
+          cp,
+        );
+        try {
+          nativeMinor =
+            calculateAccountBalance({
+              checkpoint: cp,
+              transactionsAfterCheckpoint: afterOther,
+            })?.amountMinor ?? null;
+        } catch (error) {
+          console.error("[numa] secondary balance calc failed", error);
+          nativeMinor = cp.balanceMinor;
+        }
+      }
+      return { account, nativeMinor, checkpoint: cp };
     }),
   ]);
 

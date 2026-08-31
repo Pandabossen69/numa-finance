@@ -603,24 +603,34 @@ export function applyAccountBalance(
   },
 ): AccountsSnapshot | null {
   const currency = options?.currency;
-  const thbForRow =
-    options?.thbMinor ??
-    (currency === "THB" || currency == null ? balanceMinor : undefined);
 
   let totalThbMinor: number | null = null;
+  let appliedThb: number | null = null;
 
   if (accounts) {
     const found = accounts.accounts.some((row) => row.id === accountId);
     if (!found) {
-      applyHomeBankBalance(thbForRow ?? balanceMinor);
+      const fallbackCurrency = currency ?? "THB";
+      appliedThb =
+        options?.thbMinor ??
+        (fallbackCurrency === "THB" ? balanceMinor : null);
+      if (appliedThb != null) applyHomeBankBalance(appliedThb);
     } else {
       const nextAccounts = accounts.accounts.map((row) => {
         if (row.id !== accountId) return row;
+        const nextCurrency = currency ?? row.currency;
+        const thbMinor =
+          options?.thbMinor ??
+          (nextCurrency === "THB"
+            ? balanceMinor
+            : row.fxRate != null && row.fxRate > 0
+              ? Math.round(balanceMinor * row.fxRate)
+              : null);
         return {
           ...row,
           calculatedMinor: balanceMinor,
-          thbMinor: thbForRow ?? row.thbMinor ?? null,
-          currency: currency ?? row.currency,
+          thbMinor,
+          currency: nextCurrency,
         };
       });
       for (const row of nextAccounts) {
@@ -634,21 +644,22 @@ export function applyAccountBalance(
         { accounts: nextAccounts, totalThbMinor },
         { dirty: true },
       );
-
+      appliedThb = totalThbMinor;
       if (totalThbMinor != null) {
         applyHomeBankBalance(totalThbMinor);
-      } else {
-        applyHomeBankBalance(thbForRow ?? balanceMinor);
       }
     }
   } else {
-    applyHomeBankBalance(thbForRow ?? balanceMinor);
+    const fallbackCurrency = currency ?? "THB";
+    appliedThb =
+      options?.thbMinor ??
+      (fallbackCurrency === "THB" ? balanceMinor : null);
+    if (appliedThb != null) applyHomeBankBalance(appliedThb);
   }
 
-  if (movements) {
-    const homeTotal = totalThbMinor ?? thbForRow ?? balanceMinor;
+  if (movements && appliedThb != null) {
     rememberMovementsSnapshot(
-      { ...movements, balanceMinor: homeTotal, hasBankTruth: true },
+      { ...movements, balanceMinor: appliedThb, hasBankTruth: true },
       { dirty: true },
     );
   }

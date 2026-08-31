@@ -95,7 +95,7 @@ describe("totalSaldoThbMinor", () => {
     ).toBeNull();
   });
 
-  it("skips non-THB without a locked rate instead of inventing one", () => {
+  it("skips non-THB without a locked rate instead of inventing ฿0", () => {
     const bunq = account({ id: "b", currency: "EUR", kind: "bunq" });
     const total = totalSaldoThbMinor([
       {
@@ -108,7 +108,37 @@ describe("totalSaldoThbMinor", () => {
         }),
       },
     ]);
-    // any=true but contribution 0 — still "known" empty convertible set
-    expect(total).toBe(0);
+    expect(total).toBeNull();
+    expect(balanceToThbMinor(50_00, "EUR", checkpoint({
+      accountId: "b",
+      balanceMinor: 50_00,
+      currency: "EUR",
+    }))).toBeNull();
+  });
+
+  it("sums only convertible accounts when one FX is missing", () => {
+    const thai = account({ id: "t", currency: "THB", kind: "thai_bank" });
+    const bunq = account({ id: "b", currency: "EUR", kind: "bunq" });
+    const total = totalSaldoThbMinor([
+      {
+        account: thai,
+        nativeMinor: 10_000_00,
+        checkpoint: checkpoint({
+          accountId: "t",
+          balanceMinor: 10_000_00,
+          currency: "THB",
+        }),
+      },
+      {
+        account: bunq,
+        nativeMinor: 50_00,
+        checkpoint: checkpoint({
+          accountId: "b",
+          balanceMinor: 50_00,
+          currency: "EUR",
+        }),
+      },
+    ]);
+    expect(total).toBe(10_000_00);
   });
 });

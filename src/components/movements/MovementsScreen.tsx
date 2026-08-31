@@ -199,7 +199,7 @@ export function MovementsScreen({
       {view.hasBankTruth && view.balanceMinor != null ? (
         <section className="numa-money-stack animate-rise-delay-2 animate-scale-in">
           <MetricRow
-            label="Saldo"
+            label="På kontona"
             amountMinor={view.balanceMinor}
             currency={view.currency}
           />
@@ -340,37 +340,50 @@ export function MovementsScreen({
                         className="numa-btn numa-btn-accent flex-1"
                         onClick={() => {
                           if (actionLock.current || pendingAction) return;
+                          let amountMinor: number;
+                          let description: string;
+                          try {
+                            amountMinor = parseUiAmountToMinor(editAmount);
+                            description =
+                              sanitizeMoneyDescription(editDescription);
+                          } catch {
+                            setActionError("Ogiltigt belopp");
+                            return;
+                          }
+                          if (amountMinor <= 0) {
+                            setActionError("Beloppet måste vara större än 0");
+                            return;
+                          }
+                          const previous = {
+                            amountMinor: tx.amountMinor,
+                            description: tx.description,
+                            category: tx.category,
+                          };
+                          const nextCategory =
+                            tx.transactionType === "expense"
+                              ? editCategory || null
+                              : undefined;
                           actionLock.current = true;
                           setPendingAction("save");
                           setActionError(null);
+                          setEditingId(null);
+                          applyMovementsEdit(tx.id, {
+                            amountMinor,
+                            description,
+                            category: nextCategory,
+                          });
                           void (async () => {
                             try {
                               const result = await updateTransactionAction({
                                 id: tx.id,
                                 amount: editAmount,
                                 description: editDescription,
-                                category:
-                                  tx.transactionType === "expense"
-                                    ? editCategory || null
-                                    : undefined,
+                                category: nextCategory,
                               });
                               if (!result.ok) {
+                                applyMovementsEdit(tx.id, previous);
+                                setEditingId(tx.id);
                                 setActionError(result.error);
-                                return;
-                              }
-                              setEditingId(null);
-                              try {
-                                applyMovementsEdit(tx.id, {
-                                  amountMinor: parseUiAmountToMinor(editAmount),
-                                  description:
-                                    sanitizeMoneyDescription(editDescription),
-                                  category:
-                                    tx.transactionType === "expense"
-                                      ? editCategory || null
-                                      : undefined,
-                                });
-                              } catch {
-                                // Server already saved — list updates on next visit.
                               }
                             } finally {
                               actionLock.current = false;

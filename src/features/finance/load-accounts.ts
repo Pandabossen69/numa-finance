@@ -81,16 +81,6 @@ export const loadAccountsSnapshot = cache(
           calculatedMinor != null && checkpoint
             ? balanceToThbMinor(calculatedMinor, account.currency, checkpoint)
             : null;
-        // Non-THB without rate → balanceToThb returns 0; treat as unknown.
-        const convertible =
-          calculatedMinor == null || checkpoint == null
-            ? null
-            : account.currency === "THB" ||
-                (typeof checkpoint.fxRate === "number" && checkpoint.fxRate > 0) ||
-                (checkpoint.thbMinor != null &&
-                  checkpoint.balanceMinor === calculatedMinor)
-              ? thbMinor
-              : null;
 
         return {
           id: account.id,
@@ -102,7 +92,7 @@ export const loadAccountsSnapshot = cache(
           currency: account.currency,
           isDefault: account.isDefault,
           calculatedMinor,
-          thbMinor: convertible,
+          thbMinor,
           fxRate: checkpoint?.fxRate ?? null,
           fxSource: checkpoint?.fxSource ?? null,
         };
