@@ -18,6 +18,7 @@ import { SV, planDoneLabel, planPartialLabel } from "@/features/copy/labels-sv";
 import { isTempPlanId } from "@/features/plan/optimistic";
 import { PlanDateField } from "@/components/plan/PlanDateField";
 import { PlanEquation } from "@/components/plan/PlanEquation";
+import { PlanRowEditForm } from "@/components/plan/PlanRowEditForm";
 import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 
 export function PlanRows({
@@ -29,6 +30,8 @@ export function PlanRows({
   editName,
   editAmount,
   editExtra,
+  editSettledAmount,
+  editRestDate,
   emptyHint = "Inget inlagt.",
   subtitle,
   pendingId = null,
@@ -47,6 +50,8 @@ export function PlanRows({
   onEditName,
   onEditAmount,
   onEditExtra,
+  onEditSettledAmount,
+  onEditRestDate,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
@@ -60,6 +65,8 @@ export function PlanRows({
   editName: string;
   editAmount: string;
   editExtra: string;
+  editSettledAmount: string;
+  editRestDate: string;
   emptyHint?: string;
   subtitle: (item: PlanItem) => string;
   pendingId?: string | null;
@@ -78,6 +85,8 @@ export function PlanRows({
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
   onEditExtra: (v: string) => void;
+  onEditSettledAmount: (v: string) => void;
+  onEditRestDate: (v: string) => void;
   onStartEdit: (item: PlanItem) => void;
   onCancelEdit: () => void;
   onSaveEdit: (id: string) => void;
@@ -105,46 +114,25 @@ export function PlanRows({
 
         if (editingId === item.id) {
           return (
-            <li key={item.id} className="numa-plan-row is-form space-y-3">
-              <input
-                value={editName}
-                onChange={(e) => onEditName(e.target.value)}
-                className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
-              />
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  inputMode="decimal"
-                  value={editAmount}
-                  onChange={(e) => onEditAmount(e.target.value)}
-                  className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
-                />
-                <PlanDateField
-                  value={editExtra}
-                  onChange={onEditExtra}
-                  ariaLabel="Datum"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={pendingId === item.id && pendingAction === "save"}
-                  className="numa-btn numa-btn-accent min-h-10 flex-1"
-                  onClick={() => onSaveEdit(item.id)}
-                >
-                  {pendingId === item.id && pendingAction === "save"
-                    ? "Sparar…"
-                    : "Spara"}
-                </button>
-                <button
-                  type="button"
-                  disabled={pendingId === item.id}
-                  className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
-                  onClick={onCancelEdit}
-                >
-                  Avbryt
-                </button>
-              </div>
-            </li>
+            <PlanRowEditForm
+              key={item.id}
+              item={item}
+              settleKind={settleKind}
+              canUndo={canUndo}
+              editName={editName}
+              editAmount={editAmount}
+              editExtra={editExtra}
+              editSettledAmount={editSettledAmount}
+              editRestDate={editRestDate}
+              pending={pendingId === item.id && pendingAction === "save"}
+              onEditName={onEditName}
+              onEditAmount={onEditAmount}
+              onEditExtra={onEditExtra}
+              onEditSettledAmount={onEditSettledAmount}
+              onEditRestDate={onEditRestDate}
+              onSave={() => onSaveEdit(item.id)}
+              onCancel={onCancelEdit}
+            />
           );
         }
 

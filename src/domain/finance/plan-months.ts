@@ -172,10 +172,9 @@ export function remainingDueIso(item: PlanItem): string | null {
 }
 
 /**
- * Apply name/amount/date from Plan edit without breaking Klar / Delvis klar.
- * - Fully Klar stays Klar at the new amount (row can still move date).
- * - Delvis klar keeps the original month (`nextDueAt`); the date field is the rest.
- * - If the new amount is covered by what is already marked, it becomes fully Klar.
+ * Apply name / plan total / booked amount / dates from Plan edit.
+ * Mottagen / Betald / Delvis can change both the planned price and what
+ * was already marked — without forcing Ångra first.
  */
 export function applyPlanItemEdits(
   item: PlanItem,
@@ -183,16 +182,53 @@ export function applyPlanItemEdits(
     name?: string;
     amountMinor?: number;
     nextDueAt?: string | null;
+    settledMinor?: number;
+    remainingDueAt?: string | null;
   },
   now: Date = new Date(),
 ): PlanItem {
   const name = patch.name ?? item.name;
   const amountMinor = patch.amountMinor ?? item.amountMinor;
-  const dateTouched = patch.nextDueAt !== undefined;
-  const pickedDue = dateTouched ? patch.nextDueAt : item.nextDueAt;
+  const planDateTouched = patch.nextDueAt !== undefined;
+  const restDateTouched = patch.remainingDueAt !== undefined;
+  const bookedTouched = patch.settledMinor !== undefined;
+  const pickedDue = planDateTouched ? patch.nextDueAt : item.nextDueAt;
   const ts = now.toISOString();
+  const hadSettle = isPlanSettled(item) || isPlanPartiallySettled(item);
 
-  if (isPlanSettled(item)) {
+  if (!hadSettle && !bookedTouched) {
+    return {
+      ...item,
+      name,
+      amountMinor,
+      nextDueAt: pickedDue ?? item.nextDueAt,
+      updatedAt: ts,
+    };
+  }
+
+  let booked: number;
+  if (bookedTouched) {
+    booked = Math.max(0, Math.round(patch.settledMinor ?? 0));
+  } else if (isPlanSettled(item)) {
+    booked = amountMinor;
+  } else {
+    booked = settledAmountMinor(item);
+  }
+
+  if (booked <= 0) {
+    return {
+      ...item,
+      name,
+      amountMinor,
+      nextDueAt: pickedDue ?? item.nextDueAt,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      updatedAt: ts,
+    };
+  }
+
+  if (booked >= amountMinor) {
     return {
       ...item,
       name,
@@ -205,39 +241,18 @@ export function applyPlanItemEdits(
     };
   }
 
-  if (isPlanPartiallySettled(item)) {
-    const settled = settledAmountMinor(item);
-    if (settled >= amountMinor) {
-      return {
-        ...item,
-        name,
-        amountMinor,
-        nextDueAt: item.nextDueAt,
-        settledAt: item.settledAt ?? ts,
-        settledMinor: amountMinor,
-        remainingDueAt: null,
-        updatedAt: ts,
-      };
-    }
-    return {
-      ...item,
-      name,
-      amountMinor,
-      nextDueAt: item.nextDueAt,
-      settledAt: null,
-      settledMinor: settled,
-      remainingDueAt: dateTouched
-        ? (pickedDue ?? item.remainingDueAt ?? item.nextDueAt)
-        : (item.remainingDueAt ?? item.nextDueAt),
-      updatedAt: ts,
-    };
-  }
+  const restDue = restDateTouched
+    ? patch.remainingDueAt
+    : (item.remainingDueAt ?? item.nextDueAt);
 
   return {
     ...item,
     name,
     amountMinor,
     nextDueAt: pickedDue ?? item.nextDueAt,
+    settledAt: null,
+    settledMinor: booked,
+    remainingDueAt: restDue ?? pickedDue ?? item.nextDueAt,
     updatedAt: ts,
   };
 }

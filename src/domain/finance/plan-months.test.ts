@@ -575,12 +575,59 @@ describe("plan-months", () => {
     });
     const edited = applyPlanItemEdits(
       row,
-      { nextDueAt: "2026-09-02T12:00:00.000Z" },
+      { remainingDueAt: "2026-09-02T12:00:00.000Z" },
       now,
     );
     expect(edited.nextDueAt).toBe("2026-08-27T12:00:00.000Z");
     expect(edited.remainingDueAt).toBe("2026-09-02T12:00:00.000Z");
     expect(isPlanPartiallySettled(edited)).toBe(true);
+  });
+
+  it("lets Delvis edit the planned date independently of the rest date", () => {
+    const now = new Date("2026-08-27T10:00:00.000Z");
+    const row = item({
+      name: "Trukks",
+      kind: "expected",
+      amountMinor: 51_000_00,
+      cadence: "income",
+      nextDueAt: "2026-08-27T12:00:00.000Z",
+      settledMinor: 20_000_00,
+      remainingDueAt: "2026-08-29T12:00:00.000Z",
+    });
+    const edited = applyPlanItemEdits(
+      row,
+      { nextDueAt: "2026-08-15T12:00:00.000Z" },
+      now,
+    );
+    expect(edited.nextDueAt).toBe("2026-08-15T12:00:00.000Z");
+    expect(edited.remainingDueAt).toBe("2026-08-29T12:00:00.000Z");
+    expect(edited.settledMinor).toBe(20_000_00);
+  });
+
+  it("lets Mottagen edit both the planned total and the booked amount", () => {
+    const now = new Date("2026-08-27T10:00:00.000Z");
+    const row = item({
+      name: "CSN",
+      kind: "expected",
+      amountMinor: 57_000_00,
+      cadence: "income",
+      nextDueAt: "2026-08-27T12:00:00.000Z",
+      settledAt: "2026-08-27T08:00:00.000Z",
+      settledMinor: 57_000_00,
+    });
+    const edited = applyPlanItemEdits(
+      row,
+      {
+        amountMinor: 60_000_00,
+        settledMinor: 20_000_00,
+        remainingDueAt: "2026-09-10T12:00:00.000Z",
+      },
+      now,
+    );
+    expect(isPlanPartiallySettled(edited)).toBe(true);
+    expect(edited.amountMinor).toBe(60_000_00);
+    expect(edited.settledMinor).toBe(20_000_00);
+    expect(edited.remainingDueAt).toBe("2026-09-10T12:00:00.000Z");
   });
 
   it("turns Delvis klar into Klar when the new amount is already covered", () => {

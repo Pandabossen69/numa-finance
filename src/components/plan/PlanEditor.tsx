@@ -14,6 +14,7 @@ import {
   cumulativePlanSavingsMinor,
   matchPlanItemsToLedger,
   applyPlanItemEdits,
+  planRowView,
   previewPlanSettleEffect,
   projectCashCoverage,
   projectExtraSaldoSeries,
@@ -161,6 +162,8 @@ export function PlanEditor({
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editSettledAmount, setEditSettledAmount] = useState("");
+  const [editRestDate, setEditRestDate] = useState("");
   const [partialId, setPartialId] = useState<string | null>(null);
   const [partialAmount, setPartialAmount] = useState("");
   const [partialDate, setPartialDate] = useState("");
@@ -552,7 +555,12 @@ export function PlanEditor({
     setEditingId(item.id);
     setEditName(item.name);
     setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(remainingDueIso(item), timeZone));
+    setEditDate(isoToDateInput(item.nextDueAt, timeZone));
+    const booked = settledAmountMinor(item);
+    setEditSettledAmount(
+      planRowView(item).canUndo && booked > 0 ? minorToUi(booked) : "",
+    );
+    setEditRestDate(isoToDateInput(item.remainingDueAt, timeZone));
   }
 
   function startEditExpense(item: PlanItem) {
@@ -570,25 +578,96 @@ export function PlanEditor({
       name: patch.name,
       amountMinor: patch.amountMinor,
       nextDueAt: patch.nextDueAt,
+      settledMinor: patch.settledMinor ?? undefined,
+      remainingDueAt: patch.remainingDueAt,
     });
-    const pickedDate = patch.nextDueAt
-      ? isoToDateInput(patch.nextDueAt, timeZone) || undefined
+    const pickedDate = next.nextDueAt
+      ? isoToDateInput(next.nextDueAt, timeZone) || undefined
       : undefined;
+    const restDate = next.remainingDueAt
+      ? isoToDateInput(next.remainingDueAt, timeZone) || undefined
+      : undefined;
+    const settleTouched = patch.settledMinor !== undefined;
+    const preview = settleTouched
+      ? previewPlanSettleEffect({
+          item: previous,
+          planItems: localItems,
+          targetBookedMinor: settledAmountMinor(next),
+          transactions: ledgerTransactions,
+          timeZone,
+        })
+      : null;
+    if (preview) {
+      applyAccountDelta(preview.saldoDeltaMinor);
+      applyOptimisticPlanSettle(preview);
+    }
     void runMutation({
       busy: `edit:${id}`,
       apply: (rows) => replaceItemById(rows, id, next),
-      revert: (rows) => replaceItemById(rows, id, previous),
+      revert: (rows) => {
+        if (preview) {
+          applyAccountDelta(-preview.saldoDeltaMinor);
+          applyOptimisticPlanSettle({
+            saldoDeltaMinor: -preview.saldoDeltaMinor,
+            incomingDeltaMinor: -preview.incomingDeltaMinor,
+            unpaidDeltaMinor: -preview.unpaidDeltaMinor,
+          });
+        }
+        return replaceItemById(rows, id, previous);
+      },
       action: () =>
         updatePlanItemAction({
           id,
           name: next.name,
           amount: editAmount,
           date: pickedDate,
+          settledAmount: settleTouched ? editSettledAmount : undefined,
+          restDate,
         }),
-      reconcile: (rows, result) =>
-        result.item ? mergeReturnedItem(rows, result.item) : rows,
+      reconcile: (rows, result) => {
+        const actual = result.settleLedger;
+        if (preview && actual) {
+          const saldoFix = actual.saldoDeltaMinor - preview.saldoDeltaMinor;
+          if (saldoFix !== 0) {
+            applyAccountDelta(saldoFix);
+            applyOptimisticPlanSettle({
+              saldoDeltaMinor: saldoFix,
+              incomingDeltaMinor: 0,
+              unpaidDeltaMinor: 0,
+            });
+          }
+        }
+        return result.item ? mergeReturnedItem(rows, result.item) : rows;
+      },
     }).then((ok) => {
       if (ok) setEditingId(null);
+    });
+  }
+
+  function commitRowEdit(id: string) {
+    const parsed = parsePlanAmount(editAmount);
+    if (typeof parsed !== "number") {
+      setError(parsed.error);
+      return;
+    }
+    const previous = localItems.find((row) => row.id === id);
+    if (!previous) return;
+    const canEditSettle = planRowView(previous).canUndo;
+    let settledMinor: number | undefined;
+    if (canEditSettle) {
+      const booked = parsePlanAmount(editSettledAmount);
+      if (typeof booked !== "number") {
+        setError(booked.error);
+        return;
+      }
+      settledMinor = booked;
+    }
+    saveEditedItem(id, {
+      name: editName.trim(),
+      amountMinor: parsed,
+      nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
+      settledMinor,
+      remainingDueAt: editRestDate ? `${editRestDate}T12:00:00.000Z` : undefined,
     });
   }
 
@@ -700,6 +779,8 @@ export function PlanEditor({
             editName={editName}
             editAmount={editAmount}
             editExtra={editDate}
+            editSettledAmount={editSettledAmount}
+            editRestDate={editRestDate}
             timeZone={timeZone}
             emptyHint="Lägg in lön eller CSN."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
@@ -719,23 +800,14 @@ export function PlanEditor({
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
+            onEditSettledAmount={setEditSettledAmount}
+            onEditRestDate={setEditRestDate}
             onStartEdit={startEditIncome}
             onCancelEdit={() => {
               setEditingId(null);
               setPartialId(null);
             }}
-            onSaveEdit={(id) => {
-              const parsed = parsePlanAmount(editAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              saveEditedItem(id, {
-                name: editName.trim(),
-                amountMinor: parsed,
-                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
-              });
-            }}
+            onSaveEdit={commitRowEdit}
             onDelete={(id) => {
               const previous = localItems.find((row) => row.id === id);
               if (!previous) return;
@@ -851,6 +923,8 @@ export function PlanEditor({
             editName={editName}
             editAmount={editAmount}
             editExtra={editDate}
+            editSettledAmount={editSettledAmount}
+            editRestDate={editRestDate}
             timeZone={timeZone}
             emptyHint={
               canImportFixed
@@ -876,23 +950,14 @@ export function PlanEditor({
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
+            onEditSettledAmount={setEditSettledAmount}
+            onEditRestDate={setEditRestDate}
             onStartEdit={startEditExpense}
             onCancelEdit={() => {
               setEditingId(null);
               setPartialId(null);
             }}
-            onSaveEdit={(id) => {
-              const parsed = parsePlanAmount(editAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              saveEditedItem(id, {
-                name: editName.trim(),
-                amountMinor: parsed,
-                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
-              });
-            }}
+            onSaveEdit={commitRowEdit}
             onDelete={(id) => {
               const previous = localItems.find((row) => row.id === id);
               if (!previous) return;
@@ -969,6 +1034,8 @@ export function PlanEditor({
             editName={editName}
             editAmount={editAmount}
             editExtra={editDate}
+            editSettledAmount={editSettledAmount}
+            editRestDate={editRestDate}
             timeZone={timeZone}
             emptyHint="En räkning som bara kommer en gång."
             subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
@@ -988,23 +1055,14 @@ export function PlanEditor({
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
+            onEditSettledAmount={setEditSettledAmount}
+            onEditRestDate={setEditRestDate}
             onStartEdit={startEditExtra}
             onCancelEdit={() => {
               setEditingId(null);
               setPartialId(null);
             }}
-            onSaveEdit={(id) => {
-              const parsed = parsePlanAmount(editAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              saveEditedItem(id, {
-                name: editName.trim(),
-                amountMinor: parsed,
-                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
-              });
-            }}
+            onSaveEdit={commitRowEdit}
             onDelete={(id) => {
               const previous = localItems.find((row) => row.id === id);
               if (!previous) return;
