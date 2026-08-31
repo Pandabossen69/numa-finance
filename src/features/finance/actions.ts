@@ -11,11 +11,13 @@ import {
   createManualIncome,
   createTransfer,
   ensureDefaultBankAccount,
+  getProfile,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
+import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
 import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } from "@/domain/money";
 import {
   ACCOUNT_KINDS,
@@ -122,8 +124,11 @@ export async function createExpenseAction(
       category: input.category,
     });
 
+    const profile = await getProfile();
+    await reclaimStalePlanSettleLedgers({
+      timeZone: profile.timezone || "Asia/Bangkok",
+    });
     // No path revalidation — client last-snapshot already patched Hem/Rörelser.
-    // Plan warms via warmupPlanPageData after save; Analys loads fresh on visit.
     return { ok: true, id: tx.id };
   } catch (error) {
     return {
@@ -219,6 +224,10 @@ export async function createIncomeAction(
       accountId: input.accountId,
       amountMinor,
       description: input.description,
+    });
+    const profile = await getProfile();
+    await reclaimStalePlanSettleLedgers({
+      timeZone: profile.timezone || "Asia/Bangkok",
     });
     return { ok: true, id: tx.id };
   } catch (error) {

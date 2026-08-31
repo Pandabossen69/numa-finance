@@ -490,6 +490,49 @@ function applyHomeForExpenseDelta(item: MovementRow, amountDelta: number) {
   applyOptimisticHomeIncome(-amountDelta);
 }
 
+/** Mottagen / Betald: move saldo and drop the matching pile so Över stays still. */
+export function applyOptimisticPlanSettle(input: {
+  saldoDeltaMinor: number;
+  incomingDeltaMinor: number;
+  unpaidDeltaMinor: number;
+}): HomeSnapshot | null {
+  if (
+    !home ||
+    (input.saldoDeltaMinor === 0 &&
+      input.incomingDeltaMinor === 0 &&
+      input.unpaidDeltaMinor === 0)
+  ) {
+    return home;
+  }
+  const previous = home;
+  const calculatedBalanceMinor =
+    previous.calculatedBalanceMinor == null
+      ? null
+      : previous.calculatedBalanceMinor + input.saldoDeltaMinor;
+  const incomingMinor = Math.max(
+    0,
+    previous.incomingMinor + input.incomingDeltaMinor,
+  );
+  const unpaidMinor = Math.max(0, previous.unpaidMinor + input.unpaidDeltaMinor);
+  const overMinor =
+    (calculatedBalanceMinor ?? 0) + incomingMinor - unpaidMinor;
+  rememberHomeSnapshot(
+    {
+      ...previous,
+      calculatedBalanceMinor,
+      incomingMinor,
+      unpaidMinor,
+      overMinor,
+      wealthTotalMinor: planWealthTotalMinor(
+        overMinor,
+        previous.savingsTotalMinor,
+      ),
+    },
+    { dirty: true },
+  );
+  return home;
+}
+
 export function applyOptimisticHomeIncome(
   amountMinor: number,
 ): HomeSnapshot | null {

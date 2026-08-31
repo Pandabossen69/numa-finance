@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
@@ -14,6 +14,7 @@ import {
   cumulativePlanSavingsMinor,
   matchPlanItemsToLedger,
   applyPlanItemEdits,
+  previewPlanSettleEffect,
   projectCashCoverage,
   projectExtraSaldoSeries,
   projectPlanForMonth,
@@ -28,8 +29,12 @@ import { PlanPiles } from "@/components/plan/PlanPiles";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { SV } from "@/features/copy/labels-sv";
 import {
+  applyAccountDelta,
+  applyOptimisticPlanSettle,
+  lastHomeSnapshot,
   lastPlanView,
   rememberPlanView,
+  subscribeHomeSnapshot,
   subscribePlanView,
 } from "@/features/home/last-snapshot";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
@@ -108,6 +113,12 @@ export function PlanEditor({
     () => monthKeyFromDate(new Date(), timeZone),
     [timeZone],
   );
+  const liveSaldoMinor = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    () => lastHomeSnapshot()?.calculatedBalanceMinor ?? null,
+    () => lastHomeSnapshot()?.calculatedBalanceMinor ?? null,
+  );
+  const coverageSaldoMinor = liveSaldoMinor ?? bankBalanceMinor;
   const [viewYear, setViewYear] = useState(() => {
     const remembered = lastPlanView();
     return remembered?.viewYear ?? yearFromMonthKey(currentMonthKey);
@@ -176,7 +187,7 @@ export function PlanEditor({
       items: next,
       currency,
       timeZone,
-      bankBalanceMinor,
+      bankBalanceMinor: coverageSaldoMinor,
       spendingByMonthKey,
       ledgerTransactions,
     });
@@ -188,7 +199,7 @@ export function PlanEditor({
   useEffect(() => {
     publishItems(localItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
+  }, [localItems, currency, timeZone, coverageSaldoMinor, spendingByMonthKey, ledgerTransactions]);
 
   if (!busy && incomingStamp !== itemsStamp) {
     setItemsStamp(incomingStamp);
@@ -221,9 +232,9 @@ export function PlanEditor({
         transactions: ledgerTransactions,
         monthKey,
         timeZone,
-        saldoMinor: bankBalanceMinor,
+        saldoMinor: coverageSaldoMinor,
       }),
-    [localItems, ledgerTransactions, monthKey, timeZone, bankBalanceMinor],
+    [localItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
   );
   // Money only: keeps the card Summa in step with Hem's Kvar att betala so
   // cash already in the ledger is not counted twice. Never passed to the
@@ -441,11 +452,39 @@ export function PlanEditor({
       remainingDueAt = remainingDate ? `${remainingDate}T12:00:00.000Z` : null;
     }
     const previous = localItems.find((row) => row.id === id);
+    const targetBookedMinor = !settled
+      ? 0
+      : settledMinor != null
+        ? settledMinor
+        : (previous?.amountMinor ?? 0);
+    const preview = previous
+      ? previewPlanSettleEffect({
+          item: previous,
+          planItems: localItems,
+          targetBookedMinor,
+          transactions: ledgerTransactions,
+          timeZone,
+        })
+      : null;
+    if (preview) {
+      applyAccountDelta(preview.saldoDeltaMinor);
+      applyOptimisticPlanSettle(preview);
+    }
     void runMutation({
       busy: `settle:${id}`,
       apply: (rows) =>
         settlePlanItem(rows, id, { settled, settledMinor, remainingDueAt }),
-      revert: (rows) => (previous ? replaceItemById(rows, id, previous) : rows),
+      revert: (rows) => {
+        if (preview) {
+          applyAccountDelta(-preview.saldoDeltaMinor);
+          applyOptimisticPlanSettle({
+            saldoDeltaMinor: -preview.saldoDeltaMinor,
+            incomingDeltaMinor: -preview.incomingDeltaMinor,
+            unpaidDeltaMinor: -preview.unpaidDeltaMinor,
+          });
+        }
+        return previous ? replaceItemById(rows, id, previous) : rows;
+      },
       action: () =>
         setPlanItemSettledAction({
           id,
@@ -453,8 +492,25 @@ export function PlanEditor({
           amount,
           remainingDate,
         }),
-      reconcile: (rows, result) =>
-        result.item ? mergeReturnedItem(rows, result.item) : rows,
+      reconcile: (rows, result) => {
+        const actual = result.settleLedger;
+        if (preview && actual) {
+          const saldoFix = actual.saldoDeltaMinor - preview.saldoDeltaMinor;
+          const fundedMismatch =
+            actual.skippedBecauseFunded && !preview.skippedBecauseFunded;
+          if (saldoFix !== 0 || fundedMismatch) {
+            applyAccountDelta(saldoFix);
+            applyOptimisticPlanSettle({
+              saldoDeltaMinor: saldoFix,
+              incomingDeltaMinor: fundedMismatch
+                ? -preview.incomingDeltaMinor
+                : 0,
+              unpaidDeltaMinor: fundedMismatch ? -preview.unpaidDeltaMinor : 0,
+            });
+          }
+        }
+        return result.item ? mergeReturnedItem(rows, result.item) : rows;
+      },
     }).then((ok) => {
       if (ok) {
         setPartialId(null);

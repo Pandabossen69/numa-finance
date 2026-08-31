@@ -136,6 +136,9 @@ describe("Plan dates and add-form", () => {
   it("lets every month mark Betald or Mottagen without deleting", () => {
     expect(editor).toContain("setPlanItemSettledAction");
     expect(editor).toContain("onSettle={settleRow}");
+    expect(editor).toContain("previewPlanSettleEffect");
+    expect(editor).toContain("applyOptimisticPlanSettle");
+    expect(editor).toContain("applyAccountDelta");
     expect(rows).toContain("planDoneLabel");
     expect(rows).toContain("planPartialLabel");
     expect(editor).toContain('settleKind="income"');

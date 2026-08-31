@@ -345,6 +345,7 @@ export async function createManualExpense(input: {
   merchant?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
+  planItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -368,6 +369,15 @@ export async function createManualExpense(input: {
       throw new Error("Den här bankbetalningen finns redan");
     }
   }
+  if (input.planItemId) {
+    const clash = store.transactions.find(
+      (t) =>
+        t.planItemId === input.planItemId &&
+        t.status === "confirmed" &&
+        t.userId === LOCAL_DEMO_USER_ID,
+    );
+    if (clash) throw new Error("Den här planposten är redan bokad mot saldot");
+  }
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
@@ -390,6 +400,7 @@ export async function createManualExpense(input: {
       fingerprint: input.fingerprint ?? null,
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
+      planItemId: input.planItemId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -408,6 +419,7 @@ export async function createManualIncome(input: {
   sourceObservationId?: string | null;
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
+  planItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -421,6 +433,15 @@ export async function createManualIncome(input: {
     if (known.includes(input.fingerprint)) {
       throw new Error("Den här bankrörelsen finns redan");
     }
+  }
+  if (input.planItemId) {
+    const clash = store.transactions.find(
+      (t) =>
+        t.planItemId === input.planItemId &&
+        t.status === "confirmed" &&
+        t.userId === LOCAL_DEMO_USER_ID,
+    );
+    if (clash) throw new Error("Den här planposten är redan bokad mot saldot");
   }
 
   const updated = await updateStore((s) => {
@@ -444,6 +465,7 @@ export async function createManualIncome(input: {
       fingerprint: input.fingerprint ?? null,
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
+      planItemId: input.planItemId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -610,11 +632,38 @@ export async function listTransactions(
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
 }
 
+export async function listTransactionsByPlanItemId(
+  planItemId: string,
+): Promise<CanonicalTransaction[]> {
+  const store = await readStore();
+  return store.transactions
+    .filter(
+      (t) =>
+        t.planItemId === planItemId &&
+        t.status !== "voided" &&
+        t.userId === LOCAL_DEMO_USER_ID,
+    )
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+}
+
+export async function listConfirmedPlanSettleLedgers(): Promise<
+  CanonicalTransaction[]
+> {
+  const store = await readStore();
+  return store.transactions.filter(
+    (t) =>
+      t.userId === LOCAL_DEMO_USER_ID &&
+      t.status === "confirmed" &&
+      Boolean(t.planItemId),
+  );
+}
+
 export async function updateTransaction(input: {
   id: string;
   amountMinor?: number;
   description?: string;
   category?: string | null;
+  occurredAt?: string;
 }): Promise<CanonicalTransaction> {
   let found: CanonicalTransaction | null = null;
   await updateStore((s) => {
@@ -631,6 +680,7 @@ export async function updateTransaction(input: {
       tx.description = input.description.trim() || tx.description;
     }
     if (input.category !== undefined) tx.category = input.category;
+    if (input.occurredAt != null) tx.occurredAt = input.occurredAt;
     tx.updatedAt = nowIso();
     found = tx;
   });

@@ -88,6 +88,12 @@ export function normalizeStore(data: NumaStoreData): NumaStoreData {
       settledMinor: item.settledMinor ?? null,
       remainingDueAt: item.remainingDueAt ?? null,
     })),
+    transactions: (Array.isArray(data.transactions) ? data.transactions : []).map(
+      (tx) => ({
+        ...tx,
+        planItemId: tx.planItemId ?? null,
+      }),
+    ),
     profile: {
       ...data.profile,
       onboardingSaldoAt: data.profile.onboardingSaldoAt ?? null,

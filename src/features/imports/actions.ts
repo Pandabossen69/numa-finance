@@ -7,12 +7,14 @@ import { calculateDayPulse } from "@/domain/gamification";
 import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
   confirmReceiptExpense,
+  getProfile,
   getTodaySnapshot,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
   uploadReceiptAndExtract,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
+import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -132,6 +134,10 @@ export async function confirmReceiptExpenseAction(
       await stampOnboardingCompletedAt();
     }
 
+    const profile = await getProfile();
+    await reclaimStalePlanSettleLedgers({
+      timeZone: profile.timezone || "Asia/Bangkok",
+    });
     const snap = await getTodaySnapshot();
     const timeZone = snap.profile.timezone || "Asia/Bangkok";
     const now = new Date();

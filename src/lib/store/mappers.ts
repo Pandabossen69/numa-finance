@@ -76,6 +76,7 @@ type DbTransaction = {
   fingerprint: string | null;
   source_observation_id: string | null;
   transfer_group_id?: string | null;
+  plan_item_id?: string | null;
   sync_status: CanonicalTransaction["syncStatus"];
   created_at: string;
   updated_at: string;
@@ -186,6 +187,7 @@ export function mapTransaction(row: DbTransaction): CanonicalTransaction {
     fingerprint: row.fingerprint,
     sourceObservationId: row.source_observation_id,
     transferGroupId: row.transfer_group_id ?? null,
+    planItemId: row.plan_item_id ?? null,
     syncStatus: row.sync_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -135,6 +135,14 @@ export async function listTransactions(
   return local.listTransactions(accountId);
 }
 
+export async function listTransactionsByPlanItemId(planItemId: string) {
+  return api().listTransactionsByPlanItemId(planItemId);
+}
+
+export async function listConfirmedPlanSettleLedgers() {
+  return api().listConfirmedPlanSettleLedgers();
+}
+
 export async function updateTransaction(
   input: Parameters<typeof local.updateTransaction>[0],
 ) {
