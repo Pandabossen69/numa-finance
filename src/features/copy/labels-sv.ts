@@ -43,7 +43,7 @@ export const SV = {
   sparande: "Sparande",
   /** Σ THB across every wallet — Hem / Plan / Analys. */
   saldo: "På kontona",
-  saldoAllaKontonHint: "Alla plånböcker ihopröstade till THB",
+  saldoAllaKontonHint: "Alla plånböcker ihopräknade till THB",
   merPathSaldo: "Mer → Konton",
   paKontot: "På kontona",
   saldoLevaFor: "Att leva för",
