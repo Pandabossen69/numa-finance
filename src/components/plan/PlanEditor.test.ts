@@ -7,6 +7,7 @@ function read(name: string): string {
 
 const editor = read("./PlanEditor.tsx");
 const rows = read("./PlanRows.tsx");
+const editForm = read("./PlanRowEditForm.tsx");
 const dateField = read("./PlanDateField.tsx");
 const inlineAdd = read("./InlineAdd.tsx");
 const monthStrip = read("./MonthChipStrip.tsx");
@@ -22,6 +23,7 @@ const css = read("../../app/globals.css");
 const plan = [
   editor,
   rows,
+  editForm,
   dateField,
   inlineAdd,
   monthStrip,
@@ -256,6 +258,11 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("partialDate");
     expect(editor).toContain("remainingDate");
     expect(editor).toContain("applyPlanItemEdits");
+    expect(editor).toContain("editSettledAmount");
+    expect(editor).toContain("settledAmount");
+    expect(editForm).toContain("Mottaget");
+    expect(editForm).toContain("Betalt");
+    expect(editForm).toContain("Planerat");
     expect(rows).toContain("remainingDueIso(item)");
   });
 

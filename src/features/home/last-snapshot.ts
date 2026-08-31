@@ -637,6 +637,29 @@ export function applyAccountDelta(
   return accounts;
 }
 
+/** Hide an archived account from Konton and drop it from Hem Σ THB. */
+export function applyAccountRemoved(accountId: string): AccountsSnapshot | null {
+  if (!accounts) return accounts;
+  const remaining = accounts.accounts.filter((row) => row.id !== accountId);
+  if (remaining.length === accounts.accounts.length) return accounts;
+  if (remaining.length === 0) return accounts;
+
+  const nextAccounts = remaining.some((row) => row.isDefault)
+    ? remaining
+    : remaining.map((row, index) => ({ ...row, isDefault: index === 0 }));
+
+  let totalThbMinor: number | null = null;
+  for (const row of nextAccounts) {
+    const thb =
+      row.thbMinor ?? (row.currency === "THB" ? row.calculatedMinor : null);
+    if (thb == null) continue;
+    totalThbMinor = (totalThbMinor ?? 0) + thb;
+  }
+  rememberAccountsSnapshot({ accounts: nextAccounts, totalThbMinor }, { dirty: true });
+  if (totalThbMinor != null) applyHomeBankBalance(totalThbMinor);
+  return accounts;
+}
+
 export function applyAccountBalance(
   accountId: string,
   balanceMinor: number,

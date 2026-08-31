@@ -419,8 +419,15 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   kind: kindSchema.optional(),
   amount: z.string().trim().min(1).optional(),
+  /** Booked Mottagen / Betald / Delvis amount. */
+  settledAmount: z.string().trim().optional(),
   /** Full calendar date (`YYYY-MM-DD`) for incomes, extras, and fixed. */
   date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  /** Rest date when Delvis (`YYYY-MM-DD`). */
+  restDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
@@ -442,6 +449,13 @@ export async function updatePlanItemAction(
     if (amountMinor != null && amountMinor < 0) {
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
+    const settledMinor =
+      input.settledAmount != null && input.settledAmount !== ""
+        ? parseUiAmountToMinor(input.settledAmount)
+        : undefined;
+    if (settledMinor != null && settledMinor < 0) {
+      return { ok: false, error: "Belopp kan inte vara negativt" };
+    }
 
     const ctx = await planWriteContext();
     const existing = ctx.planItems.find((p) => p.id === input.id);
@@ -453,12 +467,17 @@ export async function updatePlanItemAction(
       const monthKey = input.monthKey ?? ctx.currentMonthKey;
       proposedDue = dueDateInMonth(monthKey, input.dayOfMonth);
     }
+    const proposedRest = input.restDate
+      ? `${input.restDate}T12:00:00.000Z`
+      : undefined;
 
     const edited = existing
       ? applyPlanItemEdits(existing, {
           name: input.name,
           amountMinor,
           nextDueAt: proposedDue,
+          settledMinor,
+          remainingDueAt: proposedRest,
         })
       : null;
 
@@ -472,16 +491,21 @@ export async function updatePlanItemAction(
       settledMinor: edited?.settledMinor,
       remainingDueAt: edited?.remainingDueAt,
     });
+    let settleLedger: PlanSettleLedgerResult | undefined;
     if (existing) {
-      await syncPlanItemSettleLedger({
+      settleLedger = await syncPlanItemSettleLedger({
         item,
         planItems: ctx.planItems.map((row) => (row.id === item.id ? item : row)),
         targetBookedMinor: settledAmountMinor(item),
         timeZone: ctx.timeZone,
       });
     }
-    revalidatePlanPaths();
-    return { ok: true, item };
+    if (input.settledAmount != null) {
+      revalidateSettleCaches();
+    } else {
+      revalidatePlanPaths();
+    }
+    return { ok: true, item, settleLedger };
   } catch (error) {
     return {
       ok: false,

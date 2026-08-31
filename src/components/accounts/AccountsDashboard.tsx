@@ -14,8 +14,10 @@ import {
 } from "@/components/mer/MerHub";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { archiveAccountAction } from "@/features/finance/actions";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import {
+  applyAccountRemoved,
   isAccountsDirty,
   lastAccountsSnapshot,
   rememberAccountsSnapshot,
@@ -32,6 +34,9 @@ export function AccountsDashboard({
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const [openVerifyId, setOpenVerifyId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
     lastAccountsSnapshot,
@@ -46,6 +51,25 @@ export function AccountsDashboard({
   }, [data]);
 
   const view = stored ?? data ?? lastAccountsSnapshot();
+
+  async function removeAccount(accountId: string) {
+    if (!view) return;
+    if (view.accounts.length <= 1) {
+      setDeleteError("Lägg till ett annat konto först");
+      return;
+    }
+    const previous = view;
+    setDeletingId(accountId);
+    setDeleteError(null);
+    applyAccountRemoved(accountId);
+    const result = await archiveAccountAction(accountId);
+    if (!result.ok) {
+      rememberAccountsSnapshot(previous);
+      setDeleteError(result.error);
+    }
+    setDeletingId(null);
+    setConfirmDeleteId(null);
+  }
 
   if (!view) {
     if (!error) return <AccountsViewLoading />;
@@ -203,15 +227,70 @@ export function AccountsDashboard({
                           Stäng
                         </button>
                       </div>
+                    ) : confirmDeleteId === account.id ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-[var(--numa-muted)]">
+                          Ta bort {account.name}? Rörelserna stannar i historiken.
+                        </p>
+                        {view.accounts.length <= 1 ? (
+                          <p className="text-sm text-[var(--numa-danger)]">
+                            Lägg till ett annat konto först
+                          </p>
+                        ) : null}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={
+                              deletingId === account.id ||
+                              view.accounts.length <= 1
+                            }
+                            className="numa-btn numa-btn-soft flex-1 text-[var(--numa-danger)]"
+                            onClick={() => void removeAccount(account.id)}
+                          >
+                            {deletingId === account.id
+                              ? "Tar bort…"
+                              : "Ta bort"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingId === account.id}
+                            className="text-[13px] font-semibold text-[var(--numa-muted)]"
+                            onClick={() => setConfirmDeleteId(null)}
+                          >
+                            Avbryt
+                          </button>
+                        </div>
+                      </div>
                     ) : (
-                      <button
-                        type="button"
-                        className="numa-btn numa-btn-soft w-full"
-                        onClick={() => setOpenVerifyId(account.id)}
-                      >
-                        Uppdatera saldo
-                      </button>
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          className="numa-btn numa-btn-soft flex-1"
+                          onClick={() => {
+                            setConfirmDeleteId(null);
+                            setOpenVerifyId(account.id);
+                          }}
+                        >
+                          Uppdatera saldo
+                        </button>
+                        <button
+                          type="button"
+                          className="numa-btn numa-btn-soft flex-1 text-[var(--numa-danger)]"
+                          onClick={() => {
+                            setOpenVerifyId(null);
+                            setDeleteError(null);
+                            setConfirmDeleteId(account.id);
+                          }}
+                        >
+                          Ta bort
+                        </button>
+                      </div>
                     )}
+                    {deleteError && confirmDeleteId === account.id ? (
+                      <p className="mt-2 text-sm text-[var(--numa-danger)]">
+                        {deleteError}
+                      </p>
+                    ) : null}
                   </MerListRow>
                 </MerListGroup>
               </MerSection>

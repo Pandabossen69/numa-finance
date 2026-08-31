@@ -83,6 +83,10 @@ export async function createAccount(
   return api().createAccount(input);
 }
 
+export async function archiveAccount(accountId: string) {
+  return api().archiveAccount(accountId);
+}
+
 export async function ensureDefaultBankAccount(
   input?: Parameters<typeof local.ensureDefaultBankAccount>[0],
 ) {

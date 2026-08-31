@@ -3,6 +3,7 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
+  applyAccountRemoved,
   applyLocalTransfer,
   applyMovementsEdit,
   applyMovementsVoid,
@@ -473,6 +474,42 @@ describe("last view memory", () => {
     expect(lastAccountsSnapshot()?.accounts[1]?.calculatedMinor).toBe(300_00);
     expect(lastAccountsSnapshot()?.totalThbMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(1_200_00);
+  });
+
+  it("drops an archived account from Konton and Hem Σ THB", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        primaryAccountId: "acc-a",
+        calculatedBalanceMinor: 1_200_00,
+      }),
+    );
+    rememberAccountsSnapshot({
+      accounts: [
+        accountRow({
+          id: "acc-a",
+          isDefault: true,
+          calculatedMinor: 1_000_00,
+          thbMinor: 1_000_00,
+        }),
+        accountRow({
+          id: "acc-b",
+          name: "Kontanter",
+          isDefault: false,
+          calculatedMinor: 200_00,
+          thbMinor: 200_00,
+        }),
+      ],
+      totalThbMinor: 1_200_00,
+    });
+
+    applyAccountRemoved("acc-a");
+
+    const accounts = lastAccountsSnapshot();
+    expect(accounts?.accounts).toHaveLength(1);
+    expect(accounts?.accounts[0]?.id).toBe("acc-b");
+    expect(accounts?.accounts[0]?.isDefault).toBe(true);
+    expect(accounts?.totalThbMinor).toBe(200_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(200_00);
   });
 
   it("lets kvar idag go negative when spend passes the sticky dagsbudget", () => {

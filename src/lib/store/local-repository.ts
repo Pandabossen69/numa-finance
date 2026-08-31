@@ -111,6 +111,36 @@ export async function getAccount(accountId: string): Promise<Account | null> {
   return store.accounts.find((a) => a.id === accountId) ?? null;
 }
 
+/** Soft-hide an account. Ledger rows stay so Rörelser and saldo math stay true. */
+export async function archiveAccount(accountId: string): Promise<Account> {
+  const store = await readStore();
+  const active = store.accounts.filter((a) => a.isActive);
+  const account = active.find((a) => a.id === accountId);
+  if (!account) {
+    throw new Error("Kontot finns inte");
+  }
+  if (active.length <= 1) {
+    throw new Error("Lägg till ett annat konto först");
+  }
+
+  const updated = await updateStore((next) => {
+    const ts = nowIso();
+    const row = next.accounts.find((a) => a.id === accountId);
+    if (!row) return;
+    row.isActive = false;
+    row.isDefault = false;
+    row.updatedAt = ts;
+    const remaining = next.accounts.filter((a) => a.isActive);
+    if (!remaining.some((a) => a.isDefault) && remaining[0]) {
+      remaining[0].isDefault = true;
+      remaining[0].updatedAt = ts;
+    }
+  });
+  const archived = updated.accounts.find((a) => a.id === accountId);
+  if (!archived) throw new Error("Kontot finns inte");
+  return archived;
+}
+
 export async function ensureDefaultBankAccount(input?: {
   maskedIdentifier?: string | null;
   currency?: CurrencyCode;
