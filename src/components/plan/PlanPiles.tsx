@@ -5,7 +5,6 @@ import { CASH_COVERAGE_HINT_SV, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PileLine } from "@/components/ui/PileLine";
-import { WealthScoreboard } from "@/components/ui/WealthScoreboard";
 import { SV } from "@/features/copy/labels-sv";
 
 export function PlanPiles({
@@ -50,23 +49,20 @@ export function PlanPiles({
 
   return (
     <div className="space-y-4">
-      <WealthScoreboard
-        livingMinor={coverage.overMinor}
-        livingLabel={SV.over}
-        savingsMinor={savingsTotalMinor}
-        totalMinor={totalMinor}
-        currency={currency}
-      />
-
       <div className="grid items-stretch gap-4 md:grid-cols-2">
         <section
           className="numa-panel-strong numa-pile flex h-full min-w-0 flex-col gap-3 p-5"
           aria-labelledby="plan-over-heading"
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <p id="plan-over-heading" className="numa-section-title min-w-0">
-              {monthName}
-            </p>
+            <div className="min-w-0">
+              <p id="plan-over-heading" className="numa-section-title">
+                {monthName}
+              </p>
+              <p className="mt-1 text-[12px] leading-snug text-[var(--numa-faint)]">
+                {SV.saldoAllaKontonHint}
+              </p>
+            </div>
             <span
               className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
             >
@@ -103,6 +99,20 @@ export function PlanPiles({
             {CASH_COVERAGE_HINT_SV}
             {coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
           </p>
+          {savingsTotalMinor > 0 ? (
+            <div className="flex items-baseline justify-between gap-2 border-t border-[var(--numa-border)] pt-3">
+              <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+                {SV.alltINuma}
+              </span>
+              <MoneyDisplay
+                amountMinor={totalMinor}
+                currency={currency}
+                size="sm"
+                compact
+                wrap={false}
+              />
+            </div>
+          ) : null}
         </section>
 
         <section

@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
-  IconCamera,
   IconGear,
   IconImages,
   IconLink,
@@ -22,7 +21,6 @@ import {
 } from "@/components/mer/MerHub";
 import { MerViewLoading } from "@/components/mer/MerViewLoading";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
-import { SV } from "@/features/copy/labels-sv";
 import {
   lastMerSnapshot,
   rememberMerSnapshot,
@@ -51,26 +49,15 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
       },
       {
         href: "/konton",
-        label: SV.saldo,
-        hint: "Uppdatera belopp",
+        label: "Konton",
+        hint: "Alla plånböcker i THB",
         icon: <IconWallet />,
         tone: "positive",
-      },
-    ],
-  },
-  {
-    title: "Lägg till",
-    items: [
-      {
-        href: "/fota",
-        label: "Fota",
-        hint: "Saldo eller kvitto",
-        icon: <IconCamera />,
-        tone: "accent",
       },
       {
         href: "/importera",
         label: "Tidigare bilder",
+        hint: "Kvitton och SMS du fotat",
         icon: <IconImages />,
         tone: "accent",
       },
@@ -99,7 +86,6 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
 export const MER_WARM_HREFS = [
   "/transaktioner",
   "/konton",
-  "/fota",
   "/importera",
   "/installningar",
   "/laga",

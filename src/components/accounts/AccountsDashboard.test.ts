@@ -18,9 +18,11 @@ describe("AccountsDashboard", () => {
   });
 
   it("keeps the empty-state Swedish copy and Fota path", () => {
-    expect(src).toContain("Inga saldon ännu. Snabbast är att fota bank-SMS.");
+    expect(src).toContain("Inga konton ännu. Snabbast är att fota bank-SMS via +.");
     expect(src).toContain("/fota?mode=sms");
     expect(src).toContain("Ange manuellt");
+    expect(src).toContain("Uppdatera saldo");
+    expect(src).toContain("openVerifyId");
   });
 
   it("loads every account from one ledger plus checkpoints", () => {

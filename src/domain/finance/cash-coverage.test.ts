@@ -90,7 +90,7 @@ describe("projectCashCoverage", () => {
     expect(view.unpaidMinor).toBe(20_000_00);
     expect(view.overMinor).toBe(15_000_00 + 100_000_00 - 20_000_00);
     expect(view.overMinor).toBe(95_000_00);
-    expect(CASH_COVERAGE_HINT_SV).toMatch(/Saldo \+ kommer in/);
+    expect(CASH_COVERAGE_HINT_SV).toMatch(/På kontona \+ kommer in/);
   });
 
   it("does not subtract a paid plan expense again after it hits the ledger", () => {

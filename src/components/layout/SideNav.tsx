@@ -79,9 +79,13 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
             }}
             onMouseEnter={() => prefetch("/fota")}
             onClick={() => markIntent("/fota")}
-            className="numa-btn numa-btn-accent w-full rounded-full"
+            className="numa-btn numa-btn-accent flex w-full items-center justify-center gap-2 rounded-full"
+            aria-label="Lägg till — fota saldo eller kvitto"
           >
-            Fota
+            <span className="text-xl leading-none" aria-hidden>
+              +
+            </span>
+            <span>Lägg till</span>
           </Link>
         </div>
       </div>

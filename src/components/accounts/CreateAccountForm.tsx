@@ -28,26 +28,14 @@ export function CreateAccountForm({
     primaryCurrency === "THB" ? "thai_bank" : "other";
   const [form, setForm] = useState<{
     name: string;
-    institution: string;
     kind: AccountKind;
-    accountType:
-      | "checking"
-      | "savings"
-      | "cash"
-      | "credit"
-      | "investment"
-      | "other";
     currency: CurrencyCode;
-    maskedIdentifier: string;
     openingBalance: string;
     fxRate: string;
   }>({
     name: defaultNameForKind(initialKind),
-    institution: "",
     kind: initialKind,
-    accountType: "checking",
     currency: defaultCurrencyForKind(initialKind),
-    maskedIdentifier: "",
     openingBalance: "",
     fxRate: "",
   });
@@ -64,7 +52,6 @@ export function CreateAccountForm({
       ...f,
       kind,
       currency,
-      accountType: kind === "cash" ? "cash" : f.accountType === "cash" ? "checking" : f.accountType,
       name:
         !f.name.trim() ||
         ACCOUNT_KINDS.some((k) => defaultNameForKind(k) === f.name)
@@ -81,11 +68,11 @@ export function CreateAccountForm({
     startTransition(async () => {
       const result = await createAccountAction({
         name: form.name,
-        institution: form.institution || null,
-        accountType: form.accountType,
+        institution: null,
+        accountType: form.kind === "cash" ? "cash" : "checking",
         kind: form.kind,
         currency: form.currency,
-        maskedIdentifier: form.maskedIdentifier || null,
+        maskedIdentifier: null,
         openingBalance: form.openingBalance,
         fxRate: needsFx ? form.fxRate || null : null,
         makeDefault: useOnIdag,
@@ -103,7 +90,7 @@ export function CreateAccountForm({
     <form onSubmit={onSubmit} className="numa-panel-strong space-y-4 p-5">
       <label className="block">
         <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-          Var pengarna finns
+          Typ av konto
         </span>
         <select
           value={form.kind}
@@ -118,23 +105,16 @@ export function CreateAccountForm({
         </select>
       </label>
 
-      <Field
-        label="Namn"
-        value={form.name}
-        onChange={(v) => setForm((f) => ({ ...f, name: v }))}
-      />
-      <Field
-        label="Bank / etikett (valfritt)"
-        value={form.institution}
-        onChange={(v) => setForm((f) => ({ ...f, institution: v }))}
-        placeholder="t.ex. Bangkok Bank"
-      />
-      <Field
-        label="Kort etikett (valfritt)"
-        value={form.maskedIdentifier}
-        onChange={(v) => setForm((f) => ({ ...f, maskedIdentifier: v }))}
-        placeholder="t.ex. 6591"
-      />
+      <label className="block">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+          Namn
+        </span>
+        <input
+          value={form.name}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+        />
+      </label>
 
       <label className="block">
         <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
@@ -164,24 +144,27 @@ export function CreateAccountForm({
             </option>
           ))}
         </select>
-        {allowedCurrencies.length === 1 ? (
-          <p className="mt-1.5 text-xs text-[var(--numa-faint)]">
-            {ACCOUNT_KIND_LABEL_SV[form.kind]} är alltid {form.currency}.
-          </p>
-        ) : (
+        {allowedCurrencies.length > 1 ? (
           <p className="mt-1.5 text-xs text-[var(--numa-faint)]">
             Ett konto = en valuta. Revolut EUR och SEK = två konton.
           </p>
-        )}
+        ) : null}
       </label>
 
-      <Field
-        label="Hur mycket har du just nu?"
-        value={form.openingBalance}
-        onChange={(v) => setForm((f) => ({ ...f, openingBalance: v }))}
-        placeholder="t.ex. 10058,04"
-        inputMode="decimal"
-      />
+      <label className="block">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+          Hur mycket har du just nu?
+        </span>
+        <input
+          value={form.openingBalance}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, openingBalance: e.target.value }))
+          }
+          placeholder="t.ex. 10058,04"
+          inputMode="decimal"
+          className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+        />
+      </label>
 
       {needsFx ? (
         <label className="block">
@@ -196,7 +179,7 @@ export function CreateAccountForm({
             className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
           />
           <p className="mt-1.5 text-xs text-[var(--numa-faint)]">
-            Kursen låses när du sparar — saldot räknas om till THB en gång.
+            Kursen låses när du sparar.
           </p>
         </label>
       ) : null}
@@ -209,7 +192,7 @@ export function CreateAccountForm({
           className="mt-1 h-4 w-4 accent-[var(--numa-accent)]"
         />
         <span className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Använd på Hem (gör detta till ditt primära konto för utgifter)
+          Primärt konto för utgifter (Hem)
         </span>
       </label>
 
@@ -227,40 +210,11 @@ export function CreateAccountForm({
         disabled={pending || !form.name.trim() || !form.openingBalance.trim()}
         className="numa-btn numa-btn-accent numa-cta-glow min-h-14 w-full text-[15px]"
       >
-        {pending ? "Sparar…" : "Spara saldo och fortsätt"}
+        {pending ? "Sparar…" : "Spara konto"}
       </button>
       <p className="text-center text-xs leading-relaxed text-[var(--numa-faint)]">
-        Totalsumman på Hem är alltid i THB — alla konton räknas ihop.
+        Hem och Plan räknar alltid ihop alla konton till THB.
       </p>
     </form>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  inputMode,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-        {label}
-      </span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        inputMode={inputMode}
-        className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
-      />
-    </label>
   );
 }

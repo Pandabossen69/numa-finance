@@ -35,7 +35,7 @@ describe("Plan cash coverage stack", () => {
     expect(src).not.toContain("SV.motPlanen");
     expect(src).not.toContain("monthLivingSaldoMinor");
     expect(src).not.toContain("livingVsPlanHintSv");
-    expect(src).not.toContain("tracking-[0.12em]");
     expect(src).not.toContain('size="xs"');
+    expect(src).not.toContain("WealthScoreboard");
   });
 });

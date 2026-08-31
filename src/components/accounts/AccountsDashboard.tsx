@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { VerifyBalanceForm } from "@/components/accounts/VerifyBalanceForm";
 import { AccountsViewLoading } from "@/components/accounts/AccountsViewLoading";
@@ -31,6 +31,7 @@ export function AccountsDashboard({
   error?: string | null;
 }) {
   const { prefetch } = usePrefetchOnIntent();
+  const [openVerifyId, setOpenVerifyId] = useState<string | null>(null);
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
     lastAccountsSnapshot,
@@ -61,7 +62,7 @@ export function AccountsDashboard({
     <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
       <MerPageHeader
         back
-        title="Saldo"
+        title="Konton"
         action={
           <Link
             href="/konton/ny"
@@ -80,7 +81,7 @@ export function AccountsDashboard({
           <MerListGroup>
             <MerListRow className="space-y-3 py-5">
               <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                Inga saldon ännu. Snabbast är att fota bank-SMS.
+                Inga konton ännu. Snabbast är att fota bank-SMS via +.
               </p>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold">
                 <Link
@@ -107,7 +108,7 @@ export function AccountsDashboard({
         </MerSection>
       ) : (
         <div className="animate-rise-delay-1 space-y-6">
-          {view.totalThbMinor != null && view.accounts.length > 1 ? (
+          {view.totalThbMinor != null ? (
             <MerSection>
               <MerListGroup>
                 <MerListRow className="flex items-center justify-between gap-3">
@@ -116,7 +117,7 @@ export function AccountsDashboard({
                       Totalt
                     </p>
                     <p className="mt-0.5 text-[13px] text-[var(--numa-muted)]">
-                      Alla konton i THB
+                      Det du äger — Hem och Plan använder detta
                     </p>
                   </div>
                   <MoneyDisplay
@@ -130,75 +131,92 @@ export function AccountsDashboard({
             </MerSection>
           ) : null}
 
-          {view.accounts.map((account) => (
-            <MerSection key={account.id}>
-              <MerListGroup>
-                <MerListRow className="flex items-center gap-3">
-                  <MerIcon tone={account.isDefault ? "positive" : "neutral"}>
-                    <IconWallet />
-                  </MerIcon>
-                  <div className="numa-money-line min-w-0 flex-1 items-start">
-                    <div className="numa-money-line-label min-w-0">
-                      <h2 className="truncate text-[15px] font-semibold tracking-tight">
-                        {account.name}
-                        {account.maskedIdentifier
-                          ? ` ·${account.maskedIdentifier}`
-                          : ""}
-                      </h2>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[var(--numa-faint)]">
-                        <span>
-                          {account.kindLabelSv ?? account.institution ?? "Eget konto"}
-                          {" · "}
-                          {account.currency}
-                        </span>
-                        {account.isDefault ? (
-                          <span className="numa-chip numa-chip-mint align-middle">
-                            Standard
+          {view.accounts.map((account) => {
+            const open = openVerifyId === account.id;
+            return (
+              <MerSection key={account.id}>
+                <MerListGroup>
+                  <MerListRow className="flex items-center gap-3">
+                    <MerIcon tone={account.isDefault ? "positive" : "neutral"}>
+                      <IconWallet />
+                    </MerIcon>
+                    <div className="numa-money-line min-w-0 flex-1 items-start">
+                      <div className="numa-money-line-label min-w-0">
+                        <h2 className="truncate text-[15px] font-semibold tracking-tight">
+                          {account.name}
+                        </h2>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[var(--numa-faint)]">
+                          <span>
+                            {account.kindLabelSv} · {account.currency}
                           </span>
+                          {account.isDefault ? (
+                            <span className="numa-chip numa-chip-mint align-middle">
+                              Primär
+                            </span>
+                          ) : null}
+                        </p>
+                        {account.currency !== "THB" &&
+                        account.thbMinor != null &&
+                        account.calculatedMinor != null ? (
+                          <p className="mt-1 text-[12px] text-[var(--numa-muted)]">
+                            ≈{" "}
+                            <MoneyDisplay
+                              amountMinor={account.thbMinor}
+                              currency="THB"
+                              size="sm"
+                              wrap={false}
+                            />
+                            {account.fxRate != null
+                              ? ` · kurs ${account.fxRate}`
+                              : null}
+                          </p>
                         ) : null}
-                      </p>
-                      {account.currency !== "THB" &&
-                      account.thbMinor != null &&
-                      account.calculatedMinor != null ? (
-                        <p className="mt-1 text-[12px] text-[var(--numa-muted)]">
-                          ≈{" "}
+                      </div>
+                      <div className="numa-money-line-amt">
+                        {account.calculatedMinor != null ? (
                           <MoneyDisplay
-                            amountMinor={account.thbMinor}
-                            currency="THB"
-                            size="sm"
+                            amountMinor={account.calculatedMinor}
+                            currency={account.currency}
+                            size="md"
                             wrap={false}
                           />
-                          {account.fxRate != null
-                            ? ` · kurs ${account.fxRate}`
-                            : null}
-                        </p>
-                      ) : null}
+                        ) : (
+                          <span className="text-sm text-[var(--numa-faint)]">
+                            —
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="numa-money-line-amt">
-                      {account.calculatedMinor != null ? (
-                        <MoneyDisplay
-                          amountMinor={account.calculatedMinor}
+                  </MerListRow>
+                  <MerListRow className="bg-[var(--numa-bg)]/35">
+                    {open ? (
+                      <div className="space-y-2">
+                        <VerifyBalanceForm
+                          accountId={account.id}
                           currency={account.currency}
-                          size="md"
-                          wrap={false}
                         />
-                      ) : (
-                        <span className="text-sm text-[var(--numa-faint)]">
-                          —
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </MerListRow>
-                <MerListRow className="bg-[var(--numa-bg)]/35">
-                  <VerifyBalanceForm
-                    accountId={account.id}
-                    currency={account.currency}
-                  />
-                </MerListRow>
-              </MerListGroup>
-            </MerSection>
-          ))}
+                        <button
+                          type="button"
+                          className="text-[13px] font-semibold text-[var(--numa-muted)]"
+                          onClick={() => setOpenVerifyId(null)}
+                        >
+                          Stäng
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="numa-btn numa-btn-soft w-full"
+                        onClick={() => setOpenVerifyId(account.id)}
+                      >
+                        Uppdatera saldo
+                      </button>
+                    )}
+                  </MerListRow>
+                </MerListGroup>
+              </MerSection>
+            );
+          })}
         </div>
       )}
     </div>

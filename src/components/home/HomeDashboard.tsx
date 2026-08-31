@@ -24,16 +24,19 @@ import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
   applyAccountBalance,
   applyAccountDelta,
   applyMovementsAdd,
   applyOptimisticHomeSpend,
+  isAccountsDirty,
   isHomeDirty,
   lastAccountsSnapshot,
   lastGettingStarted,
   lastHomeSnapshot,
+  rememberAccountsSnapshot,
   rememberGettingStarted,
   rememberHomeSnapshot,
   revertOptimisticHomeSpend,
@@ -50,10 +53,12 @@ function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
 export function HomeDashboard({
   snap,
   error,
+  accounts = null,
   gettingStarted = null,
 }: {
   snap: HomeSnapshot | null;
   error?: string | null;
+  accounts?: AccountsSnapshot | null;
   gettingStarted?: GettingStartedView | null;
 }) {
   const stored = useSyncExternalStore(
@@ -74,11 +79,14 @@ export function HomeDashboard({
     // The old "== null" guard left Hem stuck on the first in-memory
     // snapshot (often 0) after saldo, Fota, or a later RSC load.
     if (snap && !isHomeDirty()) rememberHomeSnapshot(snap);
+    if (accounts && (lastAccountsSnapshot() == null || !isAccountsDirty())) {
+      rememberAccountsSnapshot(accounts);
+    }
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);
     }
     void warmupPlanPageData();
-  }, [snap, gettingStarted]);
+  }, [snap, accounts, gettingStarted]);
 
   useEffect(() => {
     if (stored || snap) return;
@@ -307,6 +315,9 @@ export function HomeDashboard({
             <div className="flex h-full min-w-0 flex-col gap-5 md:gap-6">
               <section className="animate-rise-delay-2 min-w-0 space-y-2">
                 <p className="numa-section-title px-1">{SV.saldoOchSparande}</p>
+                <p className="px-1 text-[12px] leading-snug text-[var(--numa-faint)]">
+                  {SV.saldoAllaKontonHint}
+                </p>
                 <CompactPiles
                   saldoMinor={view.calculatedBalanceMinor}
                   incomingMinor={view.incomingMinor}
@@ -315,37 +326,39 @@ export function HomeDashboard({
                   savingsMinor={view.savingsTotalMinor}
                   currency={currency}
                 />
-                {accountsView && accountsView.accounts.length > 1 ? (
+                {accountsView && accountsView.accounts.length > 0 ? (
                   <Link
                     href="/konton"
                     className="numa-press numa-panel-list flex items-center justify-between gap-3 px-4 py-3 transition hover:border-[var(--numa-border-strong)]"
                   >
                     <div className="min-w-0">
                       <p className="text-[13px] font-semibold tracking-tight">
-                        {accountsView.accounts.length} konton
+                        {accountsView.accounts.length === 1
+                          ? accountsView.accounts[0]!.name
+                          : `${accountsView.accounts.length} konton`}
                       </p>
                       <p className="mt-0.5 truncate text-[12px] text-[var(--numa-faint)]">
-                        {accountsView.accounts
-                          .map((a) => a.name)
-                          .slice(0, 3)
-                          .join(" · ")}
-                        {accountsView.accounts.length > 3 ? "…" : ""}
+                        {accountsView.accounts.length === 1
+                          ? "Se och uppdatera →"
+                          : accountsView.accounts
+                              .map((a) => a.name)
+                              .slice(0, 3)
+                              .join(" · ") +
+                            (accountsView.accounts.length > 3 ? "…" : "")}
                       </p>
                     </div>
-                    {accountsView.totalThbMinor != null ? (
-                      <MoneyDisplay
-                        amountMinor={accountsView.totalThbMinor}
-                        currency="THB"
-                        size="sm"
-                        wrap={false}
-                      />
-                    ) : (
-                      <span className="text-[13px] font-semibold text-[var(--numa-accent)]">
-                        Visa →
-                      </span>
-                    )}
+                    <span className="shrink-0 text-[13px] font-semibold text-[var(--numa-accent)]">
+                      Konton →
+                    </span>
                   </Link>
-                ) : null}
+                ) : (
+                  <Link
+                    href="/konton"
+                    className="numa-press block px-1 text-[13px] font-semibold text-[var(--numa-accent)]"
+                  >
+                    Lägg till konto →
+                  </Link>
+                )}
                 {view.extraCarriedInMinor > 0 ||
                 view.extraSaldoMinor > 0 ||
                 view.extraSaldoDrawnMinor > 0 ||
@@ -386,11 +399,6 @@ export function HomeDashboard({
                   />
                 </div>
               ) : null}
-
-              <section className="animate-rise-delay-2 mt-auto grid min-w-0 grid-cols-2 gap-3">
-                <ActionLink href="/fota" title={SV.fota} subtitle={SV.fotaHint} />
-                <ActionLink href="/plan" title={SV.plan} subtitle={SV.planHint} />
-              </section>
             </div>
           </div>
 
@@ -412,31 +420,6 @@ export function HomeDashboard({
 
       {gettingStarted?.visible ? <GettingStartedCard view={gettingStarted} /> : null}
     </div>
-  );
-}
-
-function ActionLink({
-  href,
-  title,
-  subtitle,
-}: {
-  href: string;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <Link
-      href={href}
-      prefetch
-      className="numa-panel numa-press group flex h-full min-h-[5.25rem] min-w-0 flex-col justify-center px-4 py-3.5 transition hover:bg-[var(--numa-accent-soft)]"
-    >
-      <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
-        {title}
-      </span>
-      <span className="mt-0.5 text-xs leading-snug break-words text-[var(--numa-muted)]">
-        {subtitle}
-      </span>
-    </Link>
   );
 }
 

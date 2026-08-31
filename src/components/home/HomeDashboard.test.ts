@@ -113,7 +113,6 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("stacks the dial above piles on the phone and splits them only at md", () => {
     expect(src).toContain("grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6");
-    expect(src).toContain("grid min-w-0 grid-cols-2 gap-3");
     expect(src).not.toContain("grid-cols-2 md:grid-cols-2");
     expect(src).toContain("min-w-0 space-y-6");
   });
@@ -126,10 +125,16 @@ describe("Hem PWA hint and HIGH copy", () => {
   });
 
   it("keeps Hem chrome tap targets at least 44px", () => {
-    expect(src).toContain("min-h-[5.25rem]");
     expect(src).toContain("min-h-12");
     expect(src).toContain(
       "numa-press inline-flex min-h-11 items-center font-semibold text-[var(--numa-accent)]",
     );
+  });
+
+  it("does not duplicate Fota/Plan as Hem action cards — + is the only capture entry", () => {
+    expect(src).not.toContain('href="/fota" title={SV.fota}');
+    expect(src).not.toContain("function ActionLink");
+    expect(src).toContain('href="/konton"');
+    expect(src).toContain("SV.saldoAllaKontonHint");
   });
 });

@@ -51,7 +51,7 @@ export function BottomNav() {
             <PlusIcon />
           </Link>
           <span className="whitespace-nowrap text-[10px] font-semibold tracking-wide text-[var(--numa-ink)]">
-            Fota
+            Lägg till
           </span>
         </div>
         {right.map((tab) => (

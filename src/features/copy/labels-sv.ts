@@ -9,10 +9,10 @@
  * - Spenderat i perioden: spending since cycle start (inkl. bank-SMS)
  *
  * Vocabulary (cash vs plan — do not mix):
- * - Saldo / På kontot: verified bank / calculated account balance
+ * - På kontona: Σ THB across every wallet (cash, banks, Revolut…)
  * - Kommer in: planned income not yet received (minus Mottagen / Delvis mottagen)
  * - Kvar att betala: planned expenses not yet paid (minus Betald / Delvis betald; not savings)
- * - Över: saldo + kommer in − kvar att betala (Plan/Hem hero)
+ * - Över: på kontona + kommer in − kvar att betala (Plan/Hem hero)
  * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
  * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
@@ -36,14 +36,16 @@ export const SV = {
   over: "Över",
   pengarOver: "Pengar över",
   rackerInte: "Räcker inte",
-  saldoOchSparande: "Saldo och sparande",
+  saldoOchSparande: "Dina pengar",
   kvarIManadenPlan: "Kvar i månaden (plan)",
   planOchSparande: "Plan och sparande",
   spenderatIManaden: "Spenderat i månaden",
   sparande: "Sparande",
-  saldo: "Saldo",
-  merPathSaldo: "Mer → Saldo",
-  paKontot: "På kontot",
+  /** Σ THB across every wallet — Hem / Plan / Analys. */
+  saldo: "På kontona",
+  saldoAllaKontonHint: "Alla plånböcker ihopröstade till THB",
+  merPathSaldo: "Mer → Konton",
+  paKontot: "På kontona",
   saldoLevaFor: "Att leva för",
   sparandeAvsatt: "Ligger avsatt",
   vaxer: "Växer",

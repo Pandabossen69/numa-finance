@@ -5,8 +5,8 @@ describe("Swedish money labels", () => {
   it("never calls the plan leftover pile Saldo or Allt i NUMA", () => {
     expect(SV.motPlanen).toBe("Mot planen");
     expect(SV.alltINuma).toBe("Plan + sparande");
-    expect(SV.paKontot).toBe("På kontot");
-    expect(SV.saldo).toBe("Saldo");
+    expect(SV.paKontot).toBe("På kontona");
+    expect(SV.saldo).toBe("På kontona");
     expect(SV.motPlanen).not.toBe(SV.saldo);
     expect(SV.alltINuma.toLowerCase()).not.toMatch(/allt i numa/);
     expect(SV.kvarIManadenPlan).toMatch(/plan/i);
@@ -28,10 +28,10 @@ describe("Swedish money labels", () => {
     expect(SV.overDagsbudget).toBe("Över dagsbudgeten");
   });
 
-  it("points Flytta/Kontant empty states to Mer → Saldo", () => {
-    expect(SV.merPathSaldo).toBe("Mer → Saldo");
+  it("points Flytta/Kontant empty states to Mer → Konton", () => {
+    expect(SV.merPathSaldo).toBe("Mer → Konton");
     expect(SV.merPathSaldo).not.toMatch(/Mina saldon/i);
-    expect(SV.saldo).toBe("Saldo");
+    expect(SV.saldo).toBe("På kontona");
   });
 
   it("teaches Hem, Plan and Fota in short Swedish", () => {

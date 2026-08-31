@@ -619,36 +619,6 @@ export function PlanEditor({
             });
           }}
         />
-
-        <div className="numa-panel numa-split">
-          <div>
-            <p className="numa-section-title">{SV.intakter}</p>
-            <div className="mt-1.5 text-[var(--numa-positive)]">
-              <MoneyDisplay
-                amountMinor={coverage.incomingMinor}
-                currency={currency}
-                size="md"
-                compact
-                align="start"
-                wrap={false}
-              />
-            </div>
-          </div>
-          <div className="numa-split-rule" aria-hidden />
-          <div>
-            <p className="numa-section-title">{SV.utgifter}</p>
-            <div className="numa-amt-out mt-1.5">
-              <MoneyDisplay
-                amountMinor={coverage.unpaidMinor}
-                currency={currency}
-                size="md"
-                compact
-                align="start"
-                wrap={false}
-              />
-            </div>
-          </div>
-        </div>
       </section>
 
       {error ? (

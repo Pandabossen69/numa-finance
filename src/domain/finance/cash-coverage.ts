@@ -15,7 +15,7 @@ import {
 import type { CanonicalTransaction, PlanItem } from "./types";
 
 /** One-line formula shown on Plan and Hem. */
-export const CASH_COVERAGE_HINT_SV = "Saldo + kommer in − kvar att betala";
+export const CASH_COVERAGE_HINT_SV = "På kontona + kommer in − kvar att betala";
 
 const DATE_WINDOW_DAYS = 7;
 const AMOUNT_FLOOR_MINOR = 500_00;
