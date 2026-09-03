@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import {
   addMonthsKey,
@@ -14,6 +14,7 @@ import {
   monthKeyFromDate,
   NEXT_INCOME_NAME,
   planSettleTargetMinor,
+  planAmountBelowSettledError,
   settledAmountMinor,
   type PlanItem,
 } from "@/domain/finance";
@@ -66,10 +67,21 @@ const createIncomeSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+/**
+ * Mark plan-derived caches stale without re-rendering the current route.
+ *
+ * Calling Next path-revalidation helpers from a Server Action ships a full RSC
+ * Flight payload in the same HTTP response. On desktop that hard-locks the tab
+ * right after Save; on phone it freezes. The row is already in Supabase and
+ * PlanEditor already patched locally — so refreshing /plan|/idag|/analys in
+ * the action only races the optimistic tree (and can look like
+ * "crashed but saved").
+ *
+ * Tabs are force-dynamic; the next visit is fresh. Same pattern as money saves
+ * and settle (`revalidateSettleCaches`).
+ */
 function revalidatePlanPaths() {
-  revalidatePath("/plan");
-  revalidatePath("/idag");
-  revalidatePath("/analys");
+  revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 }
 
 /** Settle writes a ledger row. Do not ship a full RSC Flight payload — cards update locally. */
@@ -267,8 +279,12 @@ export async function deletePlanItemAction(id: string): Promise<ActionResult> {
 const settleSchema = z.object({
   id: z.string().uuid(),
   settled: z.boolean(),
-  /** Partial amount already received/paid. Omit for full Klar. */
-  amount: z.string().trim().min(1).optional(),
+  /**
+   * Cumulative settled total so far (absolute), in UI amount form.
+   * Omit for full Klar (settled=true) or when undoing (settled=false).
+   * Callers that collect "how much NOW" must add already-settled first.
+   */
+  targetSettledAmount: z.string().trim().min(1).optional(),
   /** Calendar date for the remaining amount after Delvis klar. */
   remainingDate: z
     .string()
@@ -303,8 +319,8 @@ export async function setPlanItemSettledAction(
     let remainingDueAt: string | null = null;
     if (input.settled) {
       let minor = existing.amountMinor;
-      if (input.amount != null) {
-        minor = parseUiAmountToMinor(input.amount);
+      if (input.targetSettledAmount != null) {
+        minor = parseUiAmountToMinor(input.targetSettledAmount);
         if (minor < 0) {
           return { ok: false, error: "Belopp kan inte vara negativt" };
         }
@@ -329,8 +345,8 @@ export async function setPlanItemSettledAction(
     const targetBookedMinor = planSettleTargetMinor(existing, {
       settled: input.settled,
       requestedMinor: input.settled
-        ? input.amount != null
-          ? parseUiAmountToMinor(input.amount)
+        ? input.targetSettledAmount != null
+          ? parseUiAmountToMinor(input.targetSettledAmount)
           : existing.amountMinor
         : 0,
     });
@@ -386,6 +402,10 @@ export async function updatePlanItemAmountAction(raw: {
     }
     const ctx = await planWriteContext();
     const existing = ctx.planItems.find((p) => p.id === id);
+    if (existing) {
+      const belowErr = planAmountBelowSettledError(existing, amountMinor);
+      if (belowErr) return { ok: false, error: belowErr };
+    }
     const edited = existing
       ? applyPlanItemEdits(existing, { amountMinor })
       : null;
@@ -445,6 +465,10 @@ export async function updatePlanItemAction(
 
     const ctx = await planWriteContext();
     const existing = ctx.planItems.find((p) => p.id === input.id);
+    if (existing && amountMinor != null) {
+      const belowErr = planAmountBelowSettledError(existing, amountMinor);
+      if (belowErr) return { ok: false, error: belowErr };
+    }
 
     let proposedDue: string | null | undefined;
     if (input.date) {

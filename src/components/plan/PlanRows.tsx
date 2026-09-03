@@ -7,8 +7,9 @@ import {
   planPartialBreakdown,
   planRowHeroMinor,
   planRowView,
-  previewPartialRemaining,
+  previewAdditionalPartialRemaining,
   remainingDueIso,
+  settledAmountMinor,
   sortPlanRowsForList,
 } from "@/domain/finance";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
@@ -34,6 +35,7 @@ export function PlanRows({
   pendingId = null,
   pendingAction = null,
   onSettle,
+  onMarkRemainder,
   partialId,
   partialAmount,
   partialDate,
@@ -65,6 +67,7 @@ export function PlanRows({
   pendingId?: string | null;
   pendingAction?: "save" | "delete" | "settle" | null;
   onSettle: (id: string, settled: boolean) => void;
+  onMarkRemainder: (id: string) => void;
   partialId: string | null;
   partialAmount: string;
   partialDate: string;
@@ -157,7 +160,12 @@ export function PlanRows({
               typedMinor = null;
             }
           }
-          const preview = previewPartialRemaining(item.amountMinor, typedMinor);
+          const alreadySettled = settledAmountMinor(item);
+          const preview = previewAdditionalPartialRemaining(
+            item.amountMinor,
+            alreadySettled,
+            typedMinor,
+          );
           return (
             <li key={item.id} className="numa-plan-row is-form is-partial space-y-3">
               <div>
@@ -229,8 +237,14 @@ export function PlanRows({
 
         const doneLabel = planDoneLabel(settleKind);
         const partialLabel = planPartialLabel(settleKind);
+        const addPartialLabel =
+          settleKind === "income" ? "Lägg till mottaget" : "Lägg till betalt";
+        const markRestLabel =
+          settleKind === "income"
+            ? "Markera resten mottagen"
+            : "Markera resten betald";
         const menuItems: OverflowMenuItem[] = [];
-        if (!canUndo) {
+        if (status === "open") {
           menuItems.push({
             label: doneLabel,
             disabled: pendingId === item.id && pendingAction === "settle",
@@ -243,19 +257,51 @@ export function PlanRows({
               onStartPartial(item);
             },
           });
-        }
-        menuItems.push({
-          label: "Redigera",
-          onSelect: () => {
-            setConfirmId(null);
-            onStartEdit(item);
-          },
-        });
-        if (canUndo) {
+          menuItems.push({
+            label: "Redigera",
+            onSelect: () => {
+              setConfirmId(null);
+              onStartEdit(item);
+            },
+          });
+        } else if (status === "partial") {
+          menuItems.push({
+            label: addPartialLabel,
+            onSelect: () => {
+              setConfirmId(null);
+              onStartPartial(item);
+            },
+          });
+          menuItems.push({
+            label: markRestLabel,
+            disabled: pendingId === item.id && pendingAction === "settle",
+            onSelect: () => onMarkRemainder(item.id),
+          });
+          menuItems.push({
+            label: "Redigera",
+            onSelect: () => {
+              setConfirmId(null);
+              onStartEdit(item);
+            },
+          });
           menuItems.push({
             label: SV.angraKlar,
             disabled: pendingId === item.id && pendingAction === "settle",
             onSelect: () => onSettle(item.id, false),
+          });
+        } else {
+          // fully settled
+          menuItems.push({
+            label: SV.angraKlar,
+            disabled: pendingId === item.id && pendingAction === "settle",
+            onSelect: () => onSettle(item.id, false),
+          });
+          menuItems.push({
+            label: "Redigera",
+            onSelect: () => {
+              setConfirmId(null);
+              onStartEdit(item);
+            },
           });
         }
         menuItems.push({

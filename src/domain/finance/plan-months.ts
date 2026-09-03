@@ -88,6 +88,107 @@ export function previewPartialRemaining(
   };
 }
 
+/**
+ * User-facing partial entry is "how much NOW" (additional).
+ * Domain/server persistence uses the cumulative `targetSettledMinor`.
+ */
+export type AdditionalSettlementInput = {
+  plannedMinor: number;
+  alreadySettledMinor: number;
+  /** Amount received/paid in this step — not the cumulative total. */
+  additionalMinor: number;
+};
+
+export type AdditionalSettlementResult =
+  | {
+      ok: true;
+      targetSettledMinor: number;
+      remainingMinor: number;
+      fullySettled: boolean;
+    }
+  | { ok: false; error: string };
+
+function formatMinorPlainSv(minor: number): string {
+  return new Intl.NumberFormat("sv-SE", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(minor / 100));
+}
+
+/**
+ * Resolve an additional partial payment into a cumulative settlement target.
+ * Rejects <= 0, non-finite, and amounts above the open remainder.
+ * Exact remainder → fully settled.
+ */
+export function resolveAdditionalSettlement(
+  input: AdditionalSettlementInput,
+): AdditionalSettlementResult {
+  const plannedMinor = Math.max(0, Math.round(input.plannedMinor));
+  const alreadySettledMinor = Math.min(
+    plannedMinor,
+    Math.max(0, Math.round(input.alreadySettledMinor)),
+  );
+  const additionalMinor = Math.round(input.additionalMinor);
+
+  if (!Number.isFinite(additionalMinor)) {
+    return { ok: false, error: "Ogiltigt belopp" };
+  }
+  if (additionalMinor <= 0) {
+    return { ok: false, error: "Belopp måste vara större än 0" };
+  }
+
+  const openMinor = plannedMinor - alreadySettledMinor;
+  if (additionalMinor > openMinor) {
+    return {
+      ok: false,
+      error: `Beloppet kan inte vara högre än ${formatMinorPlainSv(openMinor)} som är kvar.`,
+    };
+  }
+
+  const targetSettledMinor = alreadySettledMinor + additionalMinor;
+  return {
+    ok: true,
+    targetSettledMinor,
+    remainingMinor: plannedMinor - targetSettledMinor,
+    fullySettled: targetSettledMinor >= plannedMinor && plannedMinor > 0,
+  };
+}
+
+/**
+ * Live equation while typing an additional partial amount:
+ * planned − (already + now) = kvar.
+ * Returns null for empty/invalid input (no silent guessing).
+ */
+export function previewAdditionalPartialRemaining(
+  plannedMinor: number,
+  alreadySettledMinor: number,
+  additionalMinor: number | null,
+): PlanPartialBreakdown | null {
+  if (additionalMinor == null || !Number.isFinite(additionalMinor)) return null;
+  if (additionalMinor <= 0) return null;
+  const totalMinor = Math.max(0, Math.round(plannedMinor));
+  const already = Math.min(totalMinor, Math.max(0, Math.round(alreadySettledMinor)));
+  const openMinor = totalMinor - already;
+  if (Math.round(additionalMinor) > openMinor) return null;
+  const target = already + Math.round(additionalMinor);
+  return {
+    totalMinor,
+    settledMinor: target,
+    remainingMinor: totalMinor - target,
+  };
+}
+
+/** Block editing planned amount below what is already settled. */
+export function planAmountBelowSettledError(
+  item: PlanItem,
+  nextAmountMinor: number,
+): string | null {
+  const settled = settledAmountMinor(item);
+  const next = Math.round(nextAmountMinor);
+  if (!Number.isFinite(next) || settled <= 0 || next >= settled) return null;
+  const verb = isPlanIncome(item) ? "mottaget" : "betalat";
+  return `Beloppet kan inte vara lägre än ${formatMinorPlainSv(settled)} THB eftersom så mycket redan är ${verb}.`;
+}
+
 /** True when this occurrence was marked fully Klar (paid/received). */
 export function isPlanSettled(item: PlanItem): boolean {
   if (item.amountMinor > 0) {
