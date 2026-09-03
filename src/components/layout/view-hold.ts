@@ -1,4 +1,4 @@
-import { isValidElement, Suspense, type ReactNode } from "react";
+import { Fragment, isValidElement, type ReactNode } from "react";
 import {
   AnalysViewLoading,
   HomeViewLoading,
@@ -20,9 +20,12 @@ export function shouldHoldPreviousView(input: {
 
 /**
  * What to paint while a tab transition is in flight.
- * - dest: cached destination (revisit or same-tab refresh — keep the view mounted)
- * - held: previous tab (first visit to dest)
- * - children: show the incoming tree (drill-in, first load, soft fallback)
+ * - dest: destination tab (cached revisit, same-tab refresh, or first visit)
+ * - held: previous tab — only as a last resort, never for primary tab switches
+ * - children: incoming tree (drill-in, first load, soft fallback)
+ *
+ * Hem → Plan/Analys/Mer must never keep Hem on screen. The destination
+ * comes up immediately: cache on revisit, incoming tree / soft shell otherwise.
  */
 export function resolveVisibleTab(input: {
   loading: boolean;
@@ -42,15 +45,22 @@ export function resolveVisibleTab(input: {
     if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
     return "children";
   }
-  if (input.destIsTabRoot && input.hasDestCache) return "dest";
-  return "held";
+  // Cross-tab: always the destination. Holding Hem while Plan streams is the
+  // "menyn fastnar" bug — Mer/Fota pages are Suspense trees, so a hold never
+  // released.
+  if (input.destIsTabRoot) return "dest";
+  return "children";
 }
 
+/**
+ * True only for a dedicated route loading shell (loading.tsx), not a real
+ * page that happens to contain Suspense, a skeleton, or "Laddar…".
+ * Recursing the tree treated Mer (always <Suspense>) as loading forever.
+ */
 export function isViewLoadingNode(node: ReactNode): boolean {
   if (node == null || typeof node === "boolean") return false;
   if (Array.isArray(node)) return node.some(isViewLoadingNode);
   if (!isValidElement(node)) return false;
-  if (node.type === Suspense) return true;
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
@@ -60,8 +70,6 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   }
   const props = node.props as {
     "data-numa-view-loading"?: unknown;
-    "aria-label"?: unknown;
-    className?: unknown;
     children?: ReactNode;
   };
   if (
@@ -70,17 +78,8 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   ) {
     return true;
   }
-  if (
-    typeof props["aria-label"] === "string" &&
-    props["aria-label"].startsWith("Laddar")
-  ) {
-    return true;
+  if (node.type === Fragment) {
+    return isViewLoadingNode(props.children);
   }
-  if (
-    typeof props.className === "string" &&
-    props.className.split(/\s+/).includes("numa-skel")
-  ) {
-    return true;
-  }
-  return isViewLoadingNode(props.children);
+  return false;
 }

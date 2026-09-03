@@ -10,8 +10,8 @@ import {
 } from "@/components/layout/view-hold";
 
 /**
- * Keep primary tabs mounted across revisits and hold the previous tab
- * while the next one streams — no blank column, no skeleton flash.
+ * Keep primary tabs mounted across revisits so Hem/Plan/Analys/Mer swap
+ * instantly. Cross-tab always paints the destination — never Hem-while-Plan.
  * Same-tab refresh (Spara on Plan) keeps the live view, not loading.tsx.
  * Drill-in (Mer → Saldo) is not held.
  */
@@ -89,7 +89,11 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     >
       {[...tabs].map((tab) => {
         const isCurrent = tab === pathTab;
-        const live = isCurrent && (paint === "children" || leaving);
+        const destHasNode = Boolean(destTab && (cache[destTab] || destLive));
+        const liveIncomingDest =
+          paint === "dest" && tab === destTab && isCurrent && !destHasNode;
+        const live =
+          isCurrent && (paint === "children" || leaving || liveIncomingDest);
         const heldLive =
           sameTabRefresh && tab === pathTab
             ? liveByTabRef.current[pathTab]

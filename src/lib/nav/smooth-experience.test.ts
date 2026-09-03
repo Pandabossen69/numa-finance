@@ -26,6 +26,14 @@ describe("smooth nav and saves", () => {
     expect(prefetch).toContain('kind: "full"');
   });
 
+  it("does not mark tab leave on hover — only pointerdown/click", () => {
+    const bottom = read("../../components/layout/BottomNav.tsx");
+    expect(bottom).toContain("onMouseEnter={onHover}");
+    expect(bottom).toContain("onPointerDown={onCommit}");
+    expect(bottom).not.toContain("onMouseEnter={onIntent}");
+    expect(bottom).not.toContain("onMouseEnter={onCommit}");
+  });
+
   it("lets Hem, Rörelser, Lägg till and Saldo save without router.refresh", () => {
     const hem = read("../../components/home/HomeDashboard.tsx");
     const movements = read("../../components/movements/MovementsScreen.tsx");
