@@ -9,6 +9,7 @@ import {
   monthKeyFromDate,
   perDayBudgetMinor,
   projectPlanForMonth,
+  remainingOpenMinor,
 } from "./plan-months";
 
 /** Day of month (1–31) from an ISO timestamp, using UTC calendar date. */
@@ -134,23 +135,29 @@ function groupByMonth(dated: DatedIncome[]): Map<string, DatedIncome[]> {
   return map;
 }
 
+/**
+ * Unpaid reservation only. Settled amount has already moved to the ledger;
+ * counting the full planned amount here would double-subtract once living
+ * budget also deducts actual cycle spending.
+ */
 function expenseAmountParts(item: PlanItem): {
   reserved: number;
   buffer: number;
   flexible: number;
 } {
+  const openMinor = remainingOpenMinor(item);
   if (item.kind === "buffer") {
-    return { reserved: 0, buffer: item.amountMinor, flexible: 0 };
+    return { reserved: 0, buffer: openMinor, flexible: 0 };
   }
   if (item.kind === "flexible") {
-    return { reserved: 0, buffer: 0, flexible: item.amountMinor };
+    return { reserved: 0, buffer: 0, flexible: openMinor };
   }
   if (
     item.kind === "mandatory" ||
     item.kind === "expected" ||
     item.kind === "goal"
   ) {
-    return { reserved: item.amountMinor, buffer: 0, flexible: 0 };
+    return { reserved: openMinor, buffer: 0, flexible: 0 };
   }
   return { reserved: 0, buffer: 0, flexible: 0 };
 }

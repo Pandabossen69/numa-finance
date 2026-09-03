@@ -557,21 +557,29 @@ export function projectPlanForMonth(
   let bufferMinor = 0;
   let flexibleMinor = 0;
   for (const item of projected) {
-    if (item.kind === "buffer") bufferMinor += item.amountMinor;
-    else if (item.kind === "flexible") flexibleMinor += item.amountMinor;
+    // Unpaid remainder only — paid plan rows live in the ledger/saldo.
+    const openMinor = remainingOpenMinor(item);
+    if (item.kind === "buffer") bufferMinor += openMinor;
+    else if (item.kind === "flexible") flexibleMinor += openMinor;
     else if (
       item.kind === "mandatory" ||
       item.kind === "expected" ||
       item.kind === "goal"
     ) {
-      reservedMinor += item.amountMinor;
+      reservedMinor += openMinor;
     }
   }
 
   const incomeMinor = incomes.reduce((sum, i) => sum + i.amountMinor, 0);
   const savingsMinor = savings?.amountMinor ?? 0;
-  const fixedMinor = fixedItems.reduce((sum, i) => sum + i.amountMinor, 0);
-  const extraMinor = extraItems.reduce((sum, i) => sum + i.amountMinor, 0);
+  const fixedMinor = fixedItems.reduce(
+    (sum, i) => sum + remainingOpenMinor(i),
+    0,
+  );
+  const extraMinor = extraItems.reduce(
+    (sum, i) => sum + remainingOpenMinor(i),
+    0,
+  );
   const totalPlannedMinor = reservedMinor + bufferMinor + flexibleMinor;
   const freeToSpendMinor = incomeMinor - totalPlannedMinor - savingsMinor;
 

@@ -178,6 +178,46 @@ export function isHomeDirty(): boolean {
   return homeDirty;
 }
 
+
+function financeRevisionOf(
+  snap: { financeRevision?: string; verifiedAt?: string } | null,
+): string {
+  return snap?.financeRevision ?? "";
+}
+
+/** Adopt server money snapshots only when revision is newer or equal and not dirty. */
+function shouldAdoptFinanceSnapshot(
+  current: { financeRevision?: string; verifiedAt?: string } | null,
+  incoming: { financeRevision?: string; verifiedAt?: string },
+  dirty: boolean,
+): boolean {
+  if (!current) return true;
+  const curRev = financeRevisionOf(current);
+  const nextRev = financeRevisionOf(incoming);
+  const curAt = current.verifiedAt ?? "";
+  const nextAt = incoming.verifiedAt ?? "";
+
+  if (dirty) {
+    // Optimistic in flight: ignore same-revision RSC echoes; accept newer truth.
+    if (!nextRev || nextRev === curRev) return false;
+    if (curAt && nextAt && nextAt < curAt) return false;
+    return true;
+  }
+
+  // Clean client: adopt unless the payload is an older revision than we show.
+  if (
+    curRev &&
+    nextRev &&
+    curRev !== nextRev &&
+    curAt &&
+    nextAt &&
+    nextAt < curAt
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function rememberHomeSnapshot(
   snap: HomeSnapshot,
   opts?: { dirty?: boolean },
@@ -185,7 +225,20 @@ export function rememberHomeSnapshot(
   bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
   if (home === snap && homeDirty === nextDirty) return;
-  home = snap;
+  if (
+    !nextDirty &&
+    home &&
+    !shouldAdoptFinanceSnapshot(home, snap, homeDirty)
+  ) {
+    return;
+  }
+  home = nextDirty
+    ? {
+        ...snap,
+        verifiedAt: new Date().toISOString(),
+        truthStatus: snap.truthStatus === "unavailable" ? "unavailable" : "stale",
+      }
+    : snap;
   homeDirty = nextDirty;
   emit(homeListeners);
 }
@@ -253,6 +306,10 @@ export function syncHomeCoverageFromPlan(snapshot: PlanSnapshot) {
 }
 
 export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
+  if (analys === snap) return;
+  if (analys && !shouldAdoptFinanceSnapshot(analys, snap, false)) {
+    return;
+  }
   analys = snap;
 }
 
@@ -266,11 +323,25 @@ function planStamp(snapshot: PlanSnapshot): string {
 
 export function rememberPlanSnapshot(snapshot: PlanSnapshot) {
   if (plan === snapshot) return;
+  if (plan && !shouldAdoptFinanceSnapshot(plan, snapshot, false)) {
+    return;
+  }
   if (plan && planStamp(plan) === planStamp(snapshot)) {
     plan = snapshot;
     return;
   }
+  const prevRev = plan?.financeRevision;
   plan = snapshot;
+  // Drop Analys cache when Plan truth moved — forces shared revision on next load.
+  if (
+    analys &&
+    snapshot.financeRevision &&
+    analys.financeRevision !== snapshot.financeRevision
+  ) {
+    analys = null;
+  } else if (prevRev && snapshot.financeRevision && prevRev !== snapshot.financeRevision) {
+    analys = null;
+  }
   emit(planListeners);
 }
 

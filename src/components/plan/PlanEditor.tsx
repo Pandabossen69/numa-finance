@@ -35,6 +35,7 @@ import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
   lastHomeSnapshot,
+  lastPlanSnapshot,
   lastPlanView,
   rememberPlanView,
   subscribeHomeSnapshot,
@@ -188,6 +189,7 @@ export function PlanEditor({
     return () => window.clearTimeout(id);
   }, [focusAdd]);
   function publishItems(next: PlanItem[]) {
+    const previous = lastPlanSnapshot();
     rememberLivePlan({
       items: next,
       currency,
@@ -197,6 +199,11 @@ export function PlanEditor({
       bankBalanceMinor,
       spendingByMonthKey,
       ledgerTransactions,
+      financeRevision: previous?.financeRevision
+        ? `${previous.financeRevision}:local`
+        : `local:${Date.now()}`,
+      verifiedAt: new Date().toISOString(),
+      truthStatus: "stale",
     });
   }
 

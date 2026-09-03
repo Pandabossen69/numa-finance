@@ -24,6 +24,7 @@ import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
@@ -102,14 +103,27 @@ export function HomeDashboard({
 
   if (!view) {
     if (!error) return <HomeViewLoading />;
+    const truth = financeTruthMessageSv({
+      truthStatus: "unavailable",
+      verifiedAt: null,
+    });
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
-        <p className="text-sm font-semibold">Kunde inte ladda</p>
+        <p className="text-sm font-semibold">{truth.title}</p>
         <p className="text-sm text-[var(--numa-muted)]">{error}</p>
         <RetryLoadButton />
       </div>
     );
   }
+
+  const staleBanner =
+    error || view.truthStatus === "stale" || view.truthStatus === "unavailable"
+      ? financeTruthMessageSv({
+          truthStatus: view.truthStatus === "verified" ? "stale" : view.truthStatus,
+          verifiedAt: view.verifiedAt,
+          timeZone: view.timeZone,
+        })
+      : null;
 
   const remainingTodayMinor = view.remainingTodayMinor;
   const todaySpendingMinor = view.todaySpendingMinor;
@@ -143,7 +157,15 @@ export function HomeDashboard({
 
   return (
     <div className="numa-page numa-page-wide min-w-0 space-y-6">
-      <header className="animate-rise min-w-0 space-y-1 px-0.5">
+
+      {staleBanner && staleBanner.title ? (
+        <div className="numa-panel animate-rise space-y-1 p-4 text-sm">
+          <p className="font-semibold">{staleBanner.title}</p>
+          {staleBanner.detail ? (
+            <p className="text-[var(--numa-muted)]">{staleBanner.detail}</p>
+          ) : null}
+        </div>
+      ) : null}      <header className="animate-rise min-w-0 space-y-1 px-0.5">
         <p className="min-w-0 text-[14px] leading-relaxed font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
