@@ -106,6 +106,9 @@ export function mergeReturnedItems(
  * Ignore temp ids in `incoming`: rememberLivePlan publishes local state
  * (including temps) into the plan store, so PlanScreen can feed those
  * temps back as props. Re-appending them would duplicate keys and freeze.
+ *
+ * Prefer the newer `updatedAt` per id so a stale store echo cannot wipe a
+ * settle/edit that local already applied (publish → store → adopt race).
  */
 export function adoptServerPlanItems(
   local: PlanItem[],
@@ -113,21 +116,25 @@ export function adoptServerPlanItems(
 ): PlanItem[] {
   const incomingReals = incoming.filter((row) => !isTempPlanId(row.id));
   if (incomingReals.length === 0) return local.length > 0 ? local : incomingReals;
-  const incomingById = new Map(incomingReals.map((row) => [row.id, row]));
   const temps = [
     ...new Map(
       local.filter((row) => isTempPlanId(row.id)).map((row) => [row.id, row]),
     ).values(),
   ];
   const localReals = local.filter((row) => !isTempPlanId(row.id));
+  const localById = new Map(localReals.map((row) => [row.id, row]));
+  const mergedReals = incomingReals.map((row) => {
+    const localRow = localById.get(row.id);
+    if (!localRow) return row;
+    return localRow.updatedAt > row.updatedAt ? localRow : row;
+  });
+  const incomingById = new Map(incomingReals.map((row) => [row.id, row]));
   const extraLocal = localReals.filter((row) => !incomingById.has(row.id));
-  const incomingHasNew = incomingReals.some(
-    (row) => !localReals.some((localRow) => localRow.id === row.id),
-  );
+  const incomingHasNew = incomingReals.some((row) => !localById.has(row.id));
   if (extraLocal.length > 0 && !incomingHasNew) {
-    return [...localReals.map((row) => incomingById.get(row.id) ?? row), ...temps];
+    return [...mergedReals, ...extraLocal, ...temps];
   }
-  return [...incomingReals, ...temps];
+  return [...mergedReals, ...temps];
 }
 
 export function findMonthSavings(

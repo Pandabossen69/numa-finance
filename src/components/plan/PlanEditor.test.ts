@@ -223,8 +223,14 @@ describe("Plan dates and add-form", () => {
   it("publishes the plan store after commit, never from inside an updater", () => {
     expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
+    expect(editor).toContain("adoptServerPlanItems(current, items)");
+    expect(editor).toContain("setItemsStamp(adoptedStamp)");
+    // Live coverage must not re-trigger publish (Delvis settle loop).
     expect(editor).toContain(
-      "setLocalItems((current) => adoptServerPlanItems(current, items));",
+      "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]",
+    );
+    expect(editor).not.toContain(
+      "[localItems, currency, timeZone, coverageSaldoMinor, spendingByMonthKey, ledgerTransactions]",
     );
   });
 

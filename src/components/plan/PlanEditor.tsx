@@ -192,7 +192,9 @@ export function PlanEditor({
       items: next,
       currency,
       timeZone,
-      bankBalanceMinor: coverageSaldoMinor,
+      // Prop saldo only — live coverage mirrors this publish and must not
+      // re-enter the effect (that loop crashed Plan after Delvis settle).
+      bankBalanceMinor,
       spendingByMonthKey,
       ledgerTransactions,
     });
@@ -204,7 +206,7 @@ export function PlanEditor({
   useEffect(() => {
     publishItems(localItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, coverageSaldoMinor, spendingByMonthKey, ledgerTransactions]);
+  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
 
   // Adopt server/store props after commit — never during render.
   // Render-phase setState here raced PlanScreen's useSyncExternalStore when a
@@ -212,8 +214,15 @@ export function PlanEditor({
   useEffect(() => {
     if (busy) return;
     if (incomingStamp === itemsStamp) return;
-    setItemsStamp(incomingStamp);
-    setLocalItems((current) => adoptServerPlanItems(current, items));
+    setLocalItems((current) => {
+      const adopted = adoptServerPlanItems(current, items);
+      const adoptedStamp = stampPlanItems(adopted);
+      // Stamp what we keep — not raw incoming — so a merge that prefers
+      // newer local rows cannot desync and re-trigger forever.
+      setItemsStamp(adoptedStamp);
+      if (adoptedStamp === stampPlanItems(current)) return current;
+      return adopted;
+    });
   }, [busy, incomingStamp, itemsStamp, items]);
 
   const isPastMonth = monthKey < currentMonthKey;

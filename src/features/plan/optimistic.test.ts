@@ -258,6 +258,26 @@ describe("plan optimistic helpers", () => {
     expect(adopted.map((row) => row.id)).toEqual(["keep"]);
   });
 
+  it("keeps a newer local settle when the store echoes a stale copy", () => {
+    const stale = item({
+      id: "lon",
+      kind: "expected",
+      amountMinor: 10000_00,
+      name: "Partial Lon",
+      updatedAt: "2026-09-03T10:00:00.000Z",
+    });
+    const localSettled = {
+      ...stale,
+      settledMinor: 3000_00,
+      remainingDueAt: "2026-09-20T12:00:00.000Z",
+      updatedAt: "2026-09-03T10:00:01.000Z",
+    };
+    const adopted = adoptServerPlanItems([localSettled], [stale]);
+    expect(adopted).toHaveLength(1);
+    expect(adopted[0]?.settledMinor).toBe(3000_00);
+    expect(adopted[0]?.updatedAt).toBe(localSettled.updatedAt);
+  });
+
   it("stamps items so an unchanged server list does not reset local edits", () => {
     const a = item({ kind: "mandatory", amountMinor: 1 });
     const b = item({ kind: "mandatory", amountMinor: 2 });
