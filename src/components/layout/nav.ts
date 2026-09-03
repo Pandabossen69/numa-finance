@@ -65,11 +65,11 @@ export function isTabRoot(pathname: string): boolean {
   );
 }
 
-/** Highlight the tap target only while we are still on the page we left. */
+/** Highlight the last tap, even if a slower tab's URL commits in between. */
 export function optimisticNavPath(
   pathname: string,
   pending: { href: string; fromPath: string } | null,
 ): string {
-  if (pending && pending.fromPath === pathname) return pending.href;
+  if (pending) return pending.href;
   return pathname;
 }

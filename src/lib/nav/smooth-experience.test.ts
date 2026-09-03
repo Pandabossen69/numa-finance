@@ -26,6 +26,22 @@ describe("smooth nav and saves", () => {
     expect(prefetch).toContain('kind: "full"');
   });
 
+  it("does not mark tab leave on hover — only pointerdown/click", () => {
+    const bottom = read("../../components/layout/BottomNav.tsx");
+    expect(bottom).toContain("onMouseEnter={onHover}");
+    expect(bottom).toContain("onPointerDown={onCommit}");
+    expect(bottom).not.toContain("onMouseEnter={onIntent}");
+    expect(bottom).not.toContain("onMouseEnter={onCommit}");
+  });
+
+  it("pushes the last tapped tab so a slow Analys payload cannot win", () => {
+    const intent = read("../../components/layout/NavIntent.tsx");
+    expect(intent).toContain("router.push(href, { scroll: false })");
+    expect(intent).toContain("router.push(intent, { scroll: false })");
+    expect(intent).toContain("popstate");
+    expect(intent).toContain("intentRef");
+  });
+
   it("lets Hem, Rörelser, Lägg till and Saldo save without router.refresh", () => {
     const hem = read("../../components/home/HomeDashboard.tsx");
     const movements = read("../../components/movements/MovementsScreen.tsx");

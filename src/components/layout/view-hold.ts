@@ -1,4 +1,4 @@
-import { isValidElement, Suspense, type ReactNode } from "react";
+import { Fragment, isValidElement, type ReactNode } from "react";
 import {
   AnalysViewLoading,
   HomeViewLoading,
@@ -7,9 +7,8 @@ import {
 
 export function shouldHoldPreviousView(input: {
   loading: boolean;
-  leaving: boolean;
   destTab: string | null;
-  heldTab: string | null;
+  pathTab: string | null;
 }): boolean {
   return resolveVisibleTab({
     ...input,
@@ -20,37 +19,37 @@ export function shouldHoldPreviousView(input: {
 
 /**
  * What to paint while a tab transition is in flight.
- * - dest: cached destination (revisit or same-tab refresh — keep the view mounted)
- * - held: previous tab (first visit to dest)
- * - children: show the incoming tree (drill-in, first load, soft fallback)
+ * - dest: last tapped tab (cache, incoming tree, or dest-shaped shell)
+ * - children: URL tree (drill-in, first load, same-tab)
+ *
+ * Latest intent always wins. A slow Analys RSC that commits after the user
+ * already tapped Mer must never paint Analys.
  */
 export function resolveVisibleTab(input: {
   loading: boolean;
-  leaving: boolean;
   destTab: string | null;
-  heldTab: string | null;
+  pathTab: string | null;
   destIsTabRoot: boolean;
   hasDestCache: boolean;
 }): "dest" | "held" | "children" {
-  const inFlight = input.loading || input.leaving;
-  if (!inFlight) return "children";
-  const crossTab = Boolean(
-    input.destTab && input.heldTab && input.destTab !== input.heldTab,
+  const mismatch = Boolean(
+    input.destTab && input.pathTab && input.destTab !== input.pathTab,
   );
-  if (!crossTab) {
-    // router.refresh() on Plan/Hem still swaps in loading.tsx. Keep the live tab.
-    if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
-    return "children";
+  if (mismatch) {
+    return input.destIsTabRoot ? "dest" : "children";
   }
-  if (input.destIsTabRoot && input.hasDestCache) return "dest";
-  return "held";
+  if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
+  return "children";
 }
 
+/**
+ * True only for a dedicated route loading shell (loading.tsx), not a real
+ * page that happens to contain Suspense, a skeleton, or "Laddar…".
+ */
 export function isViewLoadingNode(node: ReactNode): boolean {
   if (node == null || typeof node === "boolean") return false;
   if (Array.isArray(node)) return node.some(isViewLoadingNode);
   if (!isValidElement(node)) return false;
-  if (node.type === Suspense) return true;
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
@@ -60,8 +59,6 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   }
   const props = node.props as {
     "data-numa-view-loading"?: unknown;
-    "aria-label"?: unknown;
-    className?: unknown;
     children?: ReactNode;
   };
   if (
@@ -70,17 +67,8 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   ) {
     return true;
   }
-  if (
-    typeof props["aria-label"] === "string" &&
-    props["aria-label"].startsWith("Laddar")
-  ) {
-    return true;
+  if (node.type === Fragment) {
+    return isViewLoadingNode(props.children);
   }
-  if (
-    typeof props.className === "string" &&
-    props.className.split(/\s+/).includes("numa-skel")
-  ) {
-    return true;
-  }
-  return isViewLoadingNode(props.children);
+  return false;
 }

@@ -16,7 +16,11 @@ export function BottomNav() {
     return isNavActive(highlightPath, href);
   }
 
-  function onIntent(href: string) {
+  function onHover(href: string) {
+    prefetch(href);
+  }
+
+  function onCommit(href: string) {
     prefetch(href);
     markIntent(href);
   }
@@ -34,17 +38,18 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            onIntent={() => onIntent(tab.href)}
+            onHover={() => onHover(tab.href)}
+            onCommit={() => onCommit(tab.href)}
           />
         ))}
         <div className="flex flex-col items-center justify-end gap-0.5 pb-0.5">
           <Link
             href="/fota"
             prefetch
-            onPointerDown={() => onIntent("/fota")}
-            onMouseEnter={() => prefetch("/fota")}
-            onFocus={() => prefetch("/fota")}
-            onClick={() => onIntent("/fota")}
+            onPointerDown={() => onCommit("/fota")}
+            onMouseEnter={() => onHover("/fota")}
+            onFocus={() => onHover("/fota")}
+            onClick={() => onCommit("/fota")}
             className="numa-press numa-fab relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full text-[var(--numa-card)]"
             aria-label="Fota eller lägg till"
           >
@@ -61,7 +66,8 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            onIntent={() => onIntent(tab.href)}
+            onHover={() => onHover(tab.href)}
+            onCommit={() => onCommit(tab.href)}
           />
         ))}
       </div>
@@ -74,22 +80,24 @@ function NavItem({
   label,
   icon,
   active,
-  onIntent,
+  onHover,
+  onCommit,
 }: {
   href: string;
   label: string;
   icon: NavIconName;
   active: boolean;
-  onIntent: () => void;
+  onHover: () => void;
+  onCommit: () => void;
 }) {
   return (
     <Link
             href={href}
             prefetch
-            onPointerDown={onIntent}
-            onMouseEnter={onIntent}
-            onFocus={onIntent}
-            onClick={onIntent}
+            onPointerDown={onCommit}
+            onMouseEnter={onHover}
+            onFocus={onHover}
+            onClick={onCommit}
       aria-current={active ? "page" : undefined}
       className={`numa-press numa-bottom-nav-item relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
         active ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]" : "text-[var(--numa-faint)]"
