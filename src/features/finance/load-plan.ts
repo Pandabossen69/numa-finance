@@ -1,5 +1,9 @@
 import { unstable_rethrow } from "next/navigation";
-import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
+import {
+  discretionarySpendingByMonthKey,
+  type CanonicalTransaction,
+  type PlanItem,
+} from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { loadErrorMessageSv } from "@/lib/async";
@@ -30,7 +34,12 @@ export async function loadPlanSnapshot(): Promise<PlanSnapshotResult> {
         currency: snap.currency,
         timeZone: snap.profile.timezone || "Asia/Bangkok",
         bankBalanceMinor: snap.calculatedBalanceMinor,
-        spendingByMonthKey: snap.monthSpendingByKey ?? {},
+        spendingByMonthKey: discretionarySpendingByMonthKey({
+          transactions: snap.ledgerTransactions ?? [],
+          planItems: snap.planItems ?? [],
+          currency: snap.currency,
+          timeZone: snap.profile.timezone || "Asia/Bangkok",
+        }),
         ledgerTransactions: snap.ledgerTransactions ?? [],
         financeRevision: snap.financeRevision,
         verifiedAt: snap.verifiedAt,

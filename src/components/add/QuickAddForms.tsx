@@ -14,9 +14,10 @@ import {
   applyAccountDelta,
   applyLocalTransfer,
   applyMovementsAdd,
-  applyOptimisticHomeIncome,
   applyOptimisticHomeSpend,
+  applyOptimisticIncomeLanding,
   confirmOptimisticFinance,
+  publishManualExpenseToPlan,
   lastHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -186,9 +187,18 @@ function ExpenseForm({
             setError(result.error);
             return;
           }
+          const expenseId = result.id ?? crypto.randomUUID();
+          publishManualExpenseToPlan({
+            id: expenseId,
+            amountMinor,
+            description: descriptionText,
+            currency,
+            category,
+            accountId,
+          });
           confirmOptimisticFinance();
           applyMovementsAdd({
-            id: result.id ?? crypto.randomUUID(),
+            id: expenseId,
             description: descriptionText,
             category,
             transactionType: "expense",
@@ -269,31 +279,23 @@ function IncomeForm({
           }
           const descriptionText = description.trim() || "Inkomst";
           const currency = lastHomeSnapshot()?.currency ?? "THB";
-          applyOptimisticHomeIncome(amountMinor);
-          applyAccountDelta(amountMinor, targetId);
           const result = await createIncomeAction({
             accountId: targetId,
             amount,
             description: description || undefined,
           });
           if (!result.ok) {
-            applyOptimisticHomeIncome(-amountMinor);
-            applyAccountDelta(-amountMinor, targetId);
             setError(result.error);
             return;
           }
-          confirmOptimisticFinance();
-          applyMovementsAdd({
+          applyOptimisticIncomeLanding({
             id: result.id ?? crypto.randomUUID(),
-            description: descriptionText,
-            category: null,
-            transactionType: "income",
-            direction: "credit",
             amountMinor,
+            description: descriptionText,
             currency,
-            occurredAt: new Date().toISOString(),
-            source: "manual",
+            accountId: targetId,
           });
+          confirmOptimisticFinance();
           setAmount("");
           setDescription("");
           onSuccess?.();

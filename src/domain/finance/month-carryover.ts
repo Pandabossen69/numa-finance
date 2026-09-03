@@ -1,4 +1,5 @@
 import { appliesToSpending } from "./balance";
+import { reservedPlanExpenseTxIds } from "./cash-coverage";
 import {
   APP_PLAN_START_MONTH,
   addMonthsKey,
@@ -152,6 +153,39 @@ function closeMonthView(params: {
     extraSaldoMinor: extraSaldo,
     nextMonthExtraMinor: nextMonthExtra,
   };
+}
+
+export function discretionarySpendingByMonthKey(params: {
+  transactions: CanonicalTransaction[];
+  planItems: PlanItem[];
+  currency: CurrencyCode;
+  timeZone: string;
+}): Record<string, number> {
+  const raw = spendingByMonthKey({
+    transactions: params.transactions,
+    currency: params.currency,
+    timeZone: params.timeZone,
+  });
+  const out = { ...raw };
+  for (const key of Object.keys(out)) {
+    const reserved = reservedPlanExpenseTxIds({
+      items: params.planItems,
+      transactions: params.transactions,
+      monthKey: key,
+      timeZone: params.timeZone,
+    });
+    if (reserved.size === 0) continue;
+    let deduct = 0;
+    for (const tx of params.transactions) {
+      if (!reserved.has(tx.id)) continue;
+      if (monthKeyFromDate(new Date(tx.occurredAt), params.timeZone) !== key) {
+        continue;
+      }
+      deduct += tx.amountMinor;
+    }
+    out[key] = Math.max(0, (out[key] ?? 0) - deduct);
+  }
+  return out;
 }
 
 export function spendingByMonthKey(params: {

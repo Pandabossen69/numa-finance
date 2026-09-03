@@ -1274,6 +1274,9 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     cycleStartAt: cycle.startAt,
     cycleEndAt: cycle.endAt,
     transactions: accountTx,
+    planItems,
+    monthKey,
+    timeZone: timezone || "Asia/Bangkok",
   });
   // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
   const safe =

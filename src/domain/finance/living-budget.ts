@@ -2,7 +2,9 @@ import { calendarDaysBetween, isSameZonedDay, zonedDayAnchorMs } from "./datetim
 import type { PayCycleProjection } from "./pay-cycle";
 import { perDayBudgetMinor } from "./plan-months";
 import { isBankSmsLedgerRow } from "./balance";
-import type { TransactionSource } from "./types";
+import { matchPlanLedgerPairs } from "./cash-coverage";
+import { isPlanIncome } from "./plan-months";
+import type { PlanItem, TransactionSource } from "./types";
 
 export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 
@@ -148,6 +150,7 @@ export function hasCycleFundingEvidence(input: {
   cycleStartAt: string | null;
   cycleEndAt: string | null;
   transactions: Array<{
+    id?: string;
     status: string;
     direction: string;
     transactionType: string;
@@ -156,19 +159,60 @@ export function hasCycleFundingEvidence(input: {
     fingerprint?: string | null;
     balanceAfterMinor?: number | null;
     sourceObservationId?: string | null;
+    amountMinor?: number;
+    description?: string;
+    merchant?: string | null;
+    planItemId?: string | null;
   }>;
+  /** When set, a random refund must not open the full planned pool. */
+  planItems?: PlanItem[];
+  monthKey?: string;
+  timeZone?: string;
 }): boolean {
   const startMs = input.cycleStartAt ? Date.parse(input.cycleStartAt) : NaN;
   const endMs = input.cycleEndAt ? Date.parse(input.cycleEndAt) : NaN;
   if (!Number.isFinite(startMs)) return false;
 
-  return input.transactions.some((tx) => {
+  const inWindow = input.transactions.filter((tx) => {
     if (!isFundingEvidenceTransaction(tx)) return false;
     const at = Date.parse(tx.occurredAt);
     if (!Number.isFinite(at) || at < startMs) return false;
     if (Number.isFinite(endMs) && at >= endMs) return false;
     return true;
   });
+  if (inWindow.length === 0) return false;
+
+  if (input.planItems && input.monthKey && input.timeZone) {
+    const hasPlannedIncome = input.planItems.some(
+      (item) => item.isActive && isPlanIncome(item),
+    );
+    if (hasPlannedIncome) {
+      const matched = matchPlanLedgerPairs({
+        items: input.planItems,
+        transactions: inWindow.map((tx, i) => ({
+          id: tx.id ?? `funding-${i}`,
+          status: tx.status as "confirmed",
+          direction: tx.direction as "credit",
+          transactionType: tx.transactionType as "income",
+          amountMinor: tx.amountMinor ?? 0,
+          occurredAt: tx.occurredAt,
+          description: tx.description ?? "",
+          merchant: tx.merchant ?? null,
+          source: (tx.source ?? "manual") as TransactionSource,
+          fingerprint: tx.fingerprint ?? null,
+          balanceAfterMinor: tx.balanceAfterMinor ?? null,
+          sourceObservationId: tx.sourceObservationId ?? null,
+          planItemId: tx.planItemId ?? null,
+        })),
+        kind: "income",
+        monthKey: input.monthKey,
+        timeZone: input.timeZone,
+      });
+      return matched.itemIds.size > 0;
+    }
+  }
+
+  return true;
 }
 
 export function projectLivingBudget(input: {
