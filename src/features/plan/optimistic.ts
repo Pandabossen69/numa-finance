@@ -102,23 +102,32 @@ export function mergeReturnedItems(
 /**
  * Keep optimistic rows when a stale or empty server snapshot arrives
  * (router.refresh can briefly replay the previous payload).
+ *
+ * Ignore temp ids in `incoming`: rememberLivePlan publishes local state
+ * (including temps) into the plan store, so PlanScreen can feed those
+ * temps back as props. Re-appending them would duplicate keys and freeze.
  */
 export function adoptServerPlanItems(
   local: PlanItem[],
   incoming: PlanItem[],
 ): PlanItem[] {
-  if (incoming.length === 0) return local.length > 0 ? local : incoming;
-  const incomingById = new Map(incoming.map((row) => [row.id, row]));
-  const temps = local.filter((row) => isTempPlanId(row.id));
+  const incomingReals = incoming.filter((row) => !isTempPlanId(row.id));
+  if (incomingReals.length === 0) return local.length > 0 ? local : incomingReals;
+  const incomingById = new Map(incomingReals.map((row) => [row.id, row]));
+  const temps = [
+    ...new Map(
+      local.filter((row) => isTempPlanId(row.id)).map((row) => [row.id, row]),
+    ).values(),
+  ];
   const localReals = local.filter((row) => !isTempPlanId(row.id));
   const extraLocal = localReals.filter((row) => !incomingById.has(row.id));
-  const incomingHasNew = incoming.some(
+  const incomingHasNew = incomingReals.some(
     (row) => !localReals.some((localRow) => localRow.id === row.id),
   );
   if (extraLocal.length > 0 && !incomingHasNew) {
     return [...localReals.map((row) => incomingById.get(row.id) ?? row), ...temps];
   }
-  return [...incoming, ...temps];
+  return [...incomingReals, ...temps];
 }
 
 export function findMonthSavings(

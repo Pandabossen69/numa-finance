@@ -219,6 +219,45 @@ describe("plan optimistic helpers", () => {
     expect(adopted.map((row) => row.id)).toEqual(["keep", temp.id]);
   });
 
+  it("does not duplicate a temp that the live plan store echoed back", () => {
+    const existing = item({
+      id: "keep",
+      kind: "mandatory",
+      amountMinor: 800_00,
+    });
+    const temp = optimisticPlanItem({
+      name: "Lön",
+      kind: "expected",
+      amountMinor: 10000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    const adopted = adoptServerPlanItems(
+      [existing, temp],
+      [existing, temp],
+    );
+    expect(adopted.map((row) => row.id)).toEqual(["keep", temp.id]);
+  });
+
+  it("drops a store-echoed temp after local revert (failed create)", () => {
+    const existing = item({
+      id: "keep",
+      kind: "mandatory",
+      amountMinor: 800_00,
+    });
+    const temp = optimisticPlanItem({
+      name: "Lön",
+      kind: "expected",
+      amountMinor: 10000_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-08-01T12:00:00.000Z",
+    });
+    const adopted = adoptServerPlanItems([existing], [existing, temp]);
+    expect(adopted.map((row) => row.id)).toEqual(["keep"]);
+  });
+
   it("stamps items so an unchanged server list does not reset local edits", () => {
     const a = item({ kind: "mandatory", amountMinor: 1 });
     const b = item({ kind: "mandatory", amountMinor: 2 });
