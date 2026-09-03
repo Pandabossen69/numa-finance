@@ -2,7 +2,6 @@
 
 import {
   createContext,
-  startTransition,
   useCallback,
   useContext,
   useEffect,
@@ -47,9 +46,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     (href: string) => {
       intentRef.current = href;
       setIntentHref(href);
-      startTransition(() => {
-        router.push(href, { scroll: false });
-      });
+      router.push(href, { scroll: false });
     },
     [router],
   );
@@ -67,9 +64,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     const pathTab = primaryTab(pathname);
     const destTab = primaryTab(intent);
     if (!pathTab || !destTab || pathTab === destTab) return;
-    startTransition(() => {
-      router.push(intent, { scroll: false });
-    });
+    router.push(intent, { scroll: false });
   }, [pathname, router]);
 
   const pending =

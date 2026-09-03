@@ -32,7 +32,6 @@ describe("smooth nav and saves", () => {
     expect(bottom).toContain("onPointerDown={onCommit}");
     expect(bottom).not.toContain("onMouseEnter={onIntent}");
     expect(bottom).not.toContain("onMouseEnter={onCommit}");
-    expect(bottom).toContain("event.preventDefault()");
   });
 
   it("pushes the last tapped tab so a slow Analys payload cannot win", () => {

@@ -35,6 +35,9 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const inFlight = loading || leaving;
   const liveByTabRef = useRef<Record<string, ReactNode>>({});
   const refreshingRef = useRef(false);
+  const pathRef = useRef(pathname);
+  const pathChanged = pathRef.current !== pathname;
+  if (pathChanged) pathRef.current = pathname;
 
   const [cache, setCache] = useState<Record<string, ReactNode>>({});
 
@@ -43,7 +46,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   );
   if (sameTabRefresh) refreshingRef.current = true;
 
-  if (settled && pathTab) {
+  if (settled && pathTab && !pathChanged) {
     liveByTabRef.current[pathTab] = children;
     const shouldReplace = refreshingRef.current;
     if (shouldReplace) refreshingRef.current = false;
