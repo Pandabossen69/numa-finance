@@ -18,7 +18,7 @@ describe("Flytta/Kontant empty copy", () => {
 
   it("patches Hem locally but confirms server before navigation on money writes", () => {
     expect(src).toContain("applyOptimisticHomeSpend");
-    expect(src).toContain("applyOptimisticHomeIncome");
+    expect(src).toContain("applyOptimisticIncomeLanding");
     expect(src).toContain("applyAccountDelta");
     expect(src).toContain("applyMovementsAdd");
     expect(src).toContain("confirmOptimisticFinance");

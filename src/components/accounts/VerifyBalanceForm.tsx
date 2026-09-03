@@ -4,7 +4,14 @@ import { useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { createCheckpointAction } from "@/features/finance/actions";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
-import { applyAccountBalance } from "@/features/home/last-snapshot";
+import {
+  applyAccountBalance,
+  confirmOptimisticFinance,
+  lastAccountsSnapshot,
+  lastHomeSnapshot,
+  rememberAccountsSnapshot,
+  rememberHomeSnapshot,
+} from "@/features/home/last-snapshot";
 
 export function VerifyBalanceForm({
   accountId,
@@ -34,13 +41,12 @@ export function VerifyBalanceForm({
       }
       const balanceInput = balance;
       const fxInput = fxRate;
-      // Patch Hem/Konton immediately; persist in the background.
+      const previousAccounts = lastAccountsSnapshot();
+      const previousHome = lastHomeSnapshot();
       applyAccountBalance(accountId, balanceMinor, {
         thbMinor: currency === "THB" ? balanceMinor : undefined,
         currency,
       });
-      setBalance("");
-      setFxRate("");
       const result = await createCheckpointAction({
         accountId,
         balance: balanceInput,
@@ -48,6 +54,8 @@ export function VerifyBalanceForm({
         fxRate: needsFx ? fxInput || null : null,
       });
       if (!result.ok) {
+        if (previousAccounts) rememberAccountsSnapshot(previousAccounts);
+        if (previousHome) rememberHomeSnapshot(previousHome);
         setError(result.error);
         return;
       }
@@ -57,6 +65,9 @@ export function VerifyBalanceForm({
           currency,
         });
       }
+      confirmOptimisticFinance();
+      setBalance("");
+      setFxRate("");
     });
   }
 

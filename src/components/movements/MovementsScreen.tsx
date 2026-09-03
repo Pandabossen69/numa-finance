@@ -17,6 +17,7 @@ import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyMovementsEdit,
   applyMovementsVoid,
+  confirmOptimisticFinance,
   isMovementsDirty,
   lastMovementsSnapshot,
   lastMovementsView,
@@ -384,6 +385,8 @@ export function MovementsScreen({
                                 applyMovementsEdit(tx.id, previous);
                                 setEditingId(tx.id);
                                 setActionError(result.error);
+                              } else {
+                                confirmOptimisticFinance();
                               }
                             } finally {
                               actionLock.current = false;
@@ -455,6 +458,7 @@ export function MovementsScreen({
                                   }
                                   setConfirmId(null);
                                   applyMovementsVoid(tx.id);
+                                  confirmOptimisticFinance();
                                 } finally {
                                   actionLock.current = false;
                                   setPendingAction(null);

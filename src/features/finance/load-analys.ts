@@ -2,6 +2,7 @@ import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction } from "@/domain/finance";
 import {
   NEXT_INCOME_NAME,
+  computeDiscretionarySpendingWindows,
   spendingCategoriesByMonthKey,
   type LedgerMatchTx,
   type SpendingCategoryTotal,
@@ -85,13 +86,23 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const monthKey = monthKeyFromDate(now, timeZone);
     const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
     const cycleSpendingMinor = snap.cycleSpendingMinor ?? 0;
+    const discretionary = computeDiscretionarySpendingWindows({
+      transactions: snap.ledgerTransactions ?? [],
+      planItems: snap.planItems ?? [],
+      currency: snap.currency,
+      now,
+      timeZone,
+      monthKey,
+      cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
+    });
     const living = projectLivingBudget({
       cycle,
       now,
       timeZone,
       bankBalanceMinor: snap.calculatedBalanceMinor,
-      cycleSpendingMinor,
-      todaySpendingMinor: snap.todaySpendingMinor,
+      cycleSpendingMinor: discretionary.cycle.amountMinor,
+      todaySpendingMinor: discretionary.today.amountMinor,
       fundingConfirmed: snap.fundingConfirmed,
     });
     const planItems = snap.planItems ?? [];

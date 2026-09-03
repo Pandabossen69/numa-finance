@@ -32,6 +32,7 @@ export type MovementRow = {
   currency: CurrencyCode;
   occurredAt: string;
   source: string;
+  planItemId?: string | null;
 };
 
 export type CategoryTotal = {
@@ -155,6 +156,7 @@ export const loadMovementsSnapshot = cache(
           currency: tx.currency,
           occurredAt: tx.occurredAt,
           source: tx.source,
+          planItemId: tx.planItemId ?? null,
         }));
 
       // Same split Analys shows, from one shared function.

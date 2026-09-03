@@ -1,6 +1,6 @@
 import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
-  computeSpendingWindows,
+  computeDiscretionarySpendingWindows,
   cumulativePlanSavingsMinor,
   hasCycleFundingEvidence,
   isSameZonedDay,
@@ -11,6 +11,7 @@ import {
   projectLivingBudget,
   projectPayCycle,
   remainingTodayOf,
+  type CanonicalTransaction,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
@@ -309,14 +310,17 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
   const now = new Date();
   const timeZone = snapshot.timeZone;
   const cycle = projectPayCycle(snapshot.items, now, timeZone);
-  const { today, cycle: ledgerCycleSpend } = computeSpendingWindows({
-    transactions: snapshot.ledgerTransactions,
-    currency: snapshot.currency,
-    now,
-    timeZone,
-    cycleStartAt: cycle.startAt,
-    cycleEndAt: cycle.endAt,
-  });
+  const { today, cycle: ledgerCycleSpend } =
+    computeDiscretionarySpendingWindows({
+      transactions: snapshot.ledgerTransactions,
+      planItems: snapshot.items,
+      currency: snapshot.currency,
+      now,
+      timeZone,
+      monthKey: home.monthKey,
+      cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
+    });
   const ledgerCycleMinor = ledgerCycleSpend.amountMinor;
   const ledgerTodayMinor = today.amountMinor;
   const cycleSpendingMinor = homeDirty
@@ -334,6 +338,9 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       cycleStartAt: cycle.startAt,
       cycleEndAt: cycle.endAt,
       transactions: snapshot.ledgerTransactions,
+      planItems: snapshot.items,
+      monthKey: home.monthKey,
+      timeZone,
     });
   const living = projectLivingBudget({
     cycle,
@@ -736,6 +743,109 @@ export function applyOptimisticPlanSettle(input: {
   return home;
 }
 
+export function appendPlanLedgerTransaction(
+  tx: CanonicalTransaction,
+): PlanSnapshot | null {
+  if (!plan) return null;
+  if (plan.ledgerTransactions.some((row) => row.id === tx.id)) return plan;
+  rememberPlanSnapshot({
+    ...plan,
+    ledgerTransactions: [tx, ...plan.ledgerTransactions],
+    financeRevision: plan.financeRevision
+      ? `${plan.financeRevision}:ledger`
+      : `ledger:${Date.now()}`,
+    verifiedAt: new Date().toISOString(),
+    truthStatus: "stale",
+  });
+  return plan;
+}
+
+export function publishManualExpenseToPlan(input: {
+  id: string;
+  amountMinor: number;
+  description: string;
+  currency: CurrencyCode;
+  category?: string | null;
+  accountId?: string | null;
+}) {
+  const occurredAt = new Date().toISOString();
+  appendPlanLedgerTransaction({
+    id: input.id,
+    userId: home?.userId ?? "local",
+    accountId: input.accountId ?? home?.primaryAccountId ?? "",
+    counterAccountId: null,
+    transferGroupId: null,
+    direction: "debit",
+    transactionType: "expense",
+    amountMinor: input.amountMinor,
+    currency: input.currency,
+    occurredAt,
+    description: input.description,
+    merchant: null,
+    category: input.category ?? null,
+    source: "manual",
+    status: "confirmed",
+    balanceAfterMinor: null,
+    fingerprint: null,
+    sourceObservationId: null,
+    planItemId: null,
+    syncStatus: "synced",
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+  });
+  if (plan) syncHomeLivingFromPlan(plan);
+}
+
+export function applyOptimisticIncomeLanding(input: {
+  id: string;
+  amountMinor: number;
+  description: string;
+  currency: CurrencyCode;
+  accountId?: string | null;
+}): HomeSnapshot | null {
+  const occurredAt = new Date().toISOString();
+  applyOptimisticHomeIncome(input.amountMinor);
+  applyAccountDelta(input.amountMinor, input.accountId);
+  applyMovementsAdd({
+    id: input.id,
+    description: input.description,
+    category: null,
+    transactionType: "income",
+    direction: "credit",
+    amountMinor: input.amountMinor,
+    currency: input.currency,
+    occurredAt,
+    source: "manual",
+    planItemId: null,
+  });
+  appendPlanLedgerTransaction({
+    id: input.id,
+    userId: home?.userId ?? "local",
+    accountId: input.accountId ?? home?.primaryAccountId ?? "",
+    counterAccountId: null,
+    transferGroupId: null,
+    direction: "credit",
+    transactionType: "income",
+    amountMinor: input.amountMinor,
+    currency: input.currency,
+    occurredAt,
+    description: input.description,
+    merchant: null,
+    category: null,
+    source: "manual",
+    status: "confirmed",
+    balanceAfterMinor: null,
+    fingerprint: null,
+    sourceObservationId: null,
+    planItemId: null,
+    syncStatus: "synced",
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+  });
+  if (plan) syncHomeLivingFromPlan(plan);
+  return home;
+}
+
 export function applyOptimisticHomeIncome(
   amountMinor: number,
 ): HomeSnapshot | null {
@@ -944,6 +1054,7 @@ export function applyMovementsVoid(id: string): MovementsSnapshot | null {
   } else if (item.transactionType === "income") {
     applyOptimisticHomeIncome(-item.amountMinor);
   }
+  applyLocalPlanFlagFromLedger(item, { voided: true });
   return movements;
 }
 
@@ -980,7 +1091,49 @@ export function applyMovementsEdit(
   } else if (item.transactionType === "income") {
     applyOptimisticHomeIncome(nextItem.amountMinor - item.amountMinor);
   }
+  applyLocalPlanFlagFromLedger(nextItem, { voided: false });
   return movements;
+}
+
+function applyLocalPlanFlagFromLedger(
+  item: MovementRow,
+  opts: { voided: boolean },
+) {
+  if (!item.planItemId || !plan) return;
+  const nextItems = plan.items.map((row) => {
+    if (row.id !== item.planItemId) return row;
+    if (opts.voided) {
+      return {
+        ...row,
+        settledAt: null,
+        settledMinor: null,
+        remainingDueAt: row.nextDueAt,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    const minor = Math.min(row.amountMinor, item.amountMinor);
+    const full = minor >= row.amountMinor;
+    return {
+      ...row,
+      settledAt: full ? new Date().toISOString() : null,
+      settledMinor: minor,
+      remainingDueAt: full ? null : (row.remainingDueAt ?? row.nextDueAt),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  rememberPlanSnapshot({
+    ...plan,
+    items: nextItems,
+    ledgerTransactions: opts.voided
+      ? plan.ledgerTransactions.filter((tx) => tx.id !== item.id)
+      : plan.ledgerTransactions.map((tx) =>
+          tx.id === item.id ? { ...tx, amountMinor: item.amountMinor } : tx,
+        ),
+    financeRevision: `${plan.financeRevision}:ledger`,
+    verifiedAt: new Date().toISOString(),
+    truthStatus: "stale",
+  });
+  if (plan) syncHomeLivingFromPlan(plan);
 }
 
 export function applyLocalExpense(input: {

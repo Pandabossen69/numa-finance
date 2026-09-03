@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { projectCashCoverage } from "./cash-coverage";
+import {
+  computeDiscretionarySpendingWindows,
+  projectCashCoverage,
+} from "./cash-coverage";
 import { projectLivingBudget } from "./living-budget";
 import { projectPayCycle } from "./pay-cycle";
+import type { CanonicalTransaction } from "./types";
 import {
   MONTHLY_SAVE_NAME,
   remainingOpenMinor,
@@ -327,5 +331,89 @@ describe("financial truth — live audit regression scenario", () => {
     const afterUndo = auditView(unpaid, lunchMinor);
     expect(afterUndo.cycle.expenseMinor).toBe(25_000_00);
     expect(afterUndo.living.remainingFreeMinor).toBe(30_800_00);
+  });
+
+  it("bank rent without Betald does not consume flexible again", () => {
+    const items = auditItems();
+    const txs: CanonicalTransaction[] = [
+      {
+        id: "rent-sms",
+        userId: "u1",
+        accountId: "a1",
+        counterAccountId: null,
+        direction: "debit",
+        transactionType: "expense",
+        amountMinor: 20_000_00,
+        currency: "THB",
+        occurredAt: "2026-08-26T08:00:00.000Z",
+        description: "Hyra",
+        merchant: null,
+        category: "Boende",
+        source: "manual",
+        status: "confirmed",
+        balanceAfterMinor: null,
+        fingerprint: null,
+        sourceObservationId: null,
+        planItemId: null,
+        transferGroupId: null,
+        syncStatus: "synced",
+        createdAt: "2026-08-26T08:00:00.000Z",
+        updatedAt: "2026-08-26T08:00:00.000Z",
+      },
+      {
+        id: "lunch",
+        userId: "u1",
+        accountId: "a1",
+        counterAccountId: null,
+        direction: "debit",
+        transactionType: "expense",
+        amountMinor: lunchMinor,
+        currency: "THB",
+        occurredAt: "2026-08-26T09:00:00.000Z",
+        description: "Lunch",
+        merchant: null,
+        category: "Mat",
+        source: "manual",
+        status: "confirmed",
+        balanceAfterMinor: null,
+        fingerprint: null,
+        sourceObservationId: null,
+        planItemId: null,
+        transferGroupId: null,
+        syncStatus: "synced",
+        createdAt: "2026-08-26T09:00:00.000Z",
+        updatedAt: "2026-08-26T09:00:00.000Z",
+      },
+    ];
+    const cycle = projectPayCycle(items, auditNow, tz);
+    const disc = computeDiscretionarySpendingWindows({
+      transactions: txs,
+      planItems: items,
+      currency: "THB",
+      now: auditNow,
+      timeZone: tz,
+      monthKey: "2026-08",
+      cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
+    });
+    expect(disc.cycle.amountMinor).toBe(lunchMinor);
+    const living = projectLivingBudget({
+      cycle,
+      now: auditNow,
+      timeZone: tz,
+      bankBalanceMinor: bankStart,
+      cycleSpendingMinor: disc.cycle.amountMinor,
+      todaySpendingMinor: disc.today.amountMinor,
+      fundingConfirmed: true,
+    });
+    expect(living.remainingFreeMinor).toBe(30_800_00);
+    const coverage = projectCashCoverage({
+      planItems: items,
+      transactions: txs,
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: bankStart,
+    });
+    expect(coverage.unpaidMinor).toBe(5_000_00);
   });
 });

@@ -2,7 +2,9 @@ import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
   extraSaldoHintSv,
+  computeDiscretionarySpendingWindows,
   cumulativePlanSavingsMinor,
+  discretionarySpendingByMonthKey,
   labelMonthSv,
   monthKeyFromDate,
   planWealthTotalMinor,
@@ -91,32 +93,49 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
     const monthKey = monthKeyFromDate(now, timeZone);
     const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
     const cycleSpendingMinor = snap.cycleSpendingMinor ?? 0;
+    const ledger = snap.ledgerTransactions ?? [];
+    const planItems = snap.planItems ?? [];
+    const discretionary = computeDiscretionarySpendingWindows({
+      transactions: ledger,
+      planItems,
+      currency: snap.currency,
+      now,
+      timeZone,
+      monthKey,
+      cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
+    });
     const living = projectLivingBudget({
       cycle,
       now,
       timeZone,
       bankBalanceMinor: snap.calculatedBalanceMinor,
-      cycleSpendingMinor,
-      todaySpendingMinor: snap.todaySpendingMinor,
+      cycleSpendingMinor: discretionary.cycle.amountMinor,
+      todaySpendingMinor: discretionary.today.amountMinor,
       fundingConfirmed: snap.fundingConfirmed,
     });
 
     const extra = projectExtraSaldo({
-      planItems: snap.planItems ?? [],
-      spendingByMonthKey: snap.monthSpendingByKey ?? {},
+      planItems,
+      spendingByMonthKey: discretionarySpendingByMonthKey({
+        transactions: ledger,
+        planItems,
+        currency: snap.currency,
+        timeZone,
+      }),
       monthKey,
       currentMonthKey: monthKey,
       timeZone,
     });
     const coverage = projectCashCoverage({
-      planItems: snap.planItems ?? [],
-      transactions: snap.ledgerTransactions ?? [],
+      planItems,
+      transactions: ledger,
       monthKey,
       timeZone,
       saldoMinor: snap.calculatedBalanceMinor,
     });
     const savingsTotalMinor = cumulativePlanSavingsMinor(
-      snap.planItems ?? [],
+      planItems,
       monthKey,
       timeZone,
     );

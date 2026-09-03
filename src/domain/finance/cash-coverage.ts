@@ -1,4 +1,8 @@
-import { appliesToSpending } from "./balance";
+import {
+  appliesToSpending,
+  computeSpendingWindows,
+  type SpendingWindows,
+} from "./balance";
 import { calendarDaysBetween } from "./datetime";
 import {
   addMonthsKey,
@@ -13,6 +17,7 @@ import {
   sumCountsTowardCashMinor,
 } from "./plan-months";
 import type { CanonicalTransaction, PlanItem } from "./types";
+
 
 /** One-line formula shown on Plan and Hem. */
 export const CASH_COVERAGE_HINT_SV = "På kontona + kommer in − kvar att betala";
@@ -123,13 +128,13 @@ function remainingPlanAmount(
  * account, and it is a guess — never a claim that the user paid the row.
  * It must not reach the Plan list chips, sorting, or the settle flags.
  */
-export function matchPlanItemsToLedger(params: {
+export function matchPlanLedgerPairs(params: {
   items: PlanItem[];
   transactions: LedgerMatchTx[];
   kind: "income" | "expense";
   monthKey: string;
   timeZone: string;
-}): Set<string> {
+}): { itemIds: Set<string>; txIds: Set<string> } {
   const { items, transactions, kind, monthKey, timeZone } = params;
   const eligibleTx = transactions.filter((tx) => {
     // Settle bookings live in saldo via flags. They must not "pay" a sibling bill.
@@ -154,14 +159,74 @@ export function matchPlanItemsToLedger(params: {
   }
 
   pairs.sort((a, b) => b.score - a.score);
-  const usedItems = new Set<string>();
-  const usedTx = new Set<string>();
+  const itemIds = new Set<string>();
+  const txIds = new Set<string>();
   for (const pair of pairs) {
-    if (usedItems.has(pair.itemId) || usedTx.has(pair.txId)) continue;
-    usedItems.add(pair.itemId);
-    usedTx.add(pair.txId);
+    if (itemIds.has(pair.itemId) || txIds.has(pair.txId)) continue;
+    itemIds.add(pair.itemId);
+    txIds.add(pair.txId);
   }
-  return usedItems;
+  return { itemIds, txIds };
+}
+
+export function matchPlanItemsToLedger(params: {
+  items: PlanItem[];
+  transactions: LedgerMatchTx[];
+  kind: "income" | "expense";
+  monthKey: string;
+  timeZone: string;
+}): Set<string> {
+  return matchPlanLedgerPairs(params).itemIds;
+}
+
+/**
+ * External ledger expenses already reserved as unpaid plan rows.
+ * Living-budget / extra must not subtract these again. Rörelser still shows them.
+ * Synthetic settle bookings (`planItemId`) stay in cycle spend — reservation
+ * already shrank via remainingOpenMinor.
+ */
+export function reservedPlanExpenseTxIds(params: {
+  items: PlanItem[];
+  transactions: LedgerMatchTx[];
+  monthKey: string;
+  timeZone: string;
+}): Set<string> {
+  return matchPlanLedgerPairs({ ...params, kind: "expense" }).txIds;
+}
+
+export function excludeReservedPlanSpend<T extends { id: string }>(
+  transactions: readonly T[],
+  reservedTxIds: ReadonlySet<string>,
+): T[] {
+  if (reservedTxIds.size === 0) return [...transactions];
+  return transactions.filter((tx) => !reservedTxIds.has(tx.id));
+}
+
+/** Day/month/cycle spend that is not already reserved as an unpaid plan bill. */
+export function computeDiscretionarySpendingWindows(params: {
+  transactions: CanonicalTransaction[];
+  planItems: PlanItem[];
+  currency: CanonicalTransaction["currency"];
+  now?: Date;
+  timeZone: string;
+  monthKey: string;
+  cycleStartAt?: string | null;
+  cycleEndAt?: string | null;
+}): SpendingWindows {
+  const reserved = reservedPlanExpenseTxIds({
+    items: params.planItems,
+    transactions: params.transactions,
+    monthKey: params.monthKey,
+    timeZone: params.timeZone,
+  });
+  return computeSpendingWindows({
+    transactions: excludeReservedPlanSpend(params.transactions, reserved),
+    currency: params.currency,
+    now: params.now,
+    timeZone: params.timeZone,
+    cycleStartAt: params.cycleStartAt,
+    cycleEndAt: params.cycleEndAt,
+  });
 }
 
 function isNearbyMonth(txMonth: string, monthKey: string): boolean {

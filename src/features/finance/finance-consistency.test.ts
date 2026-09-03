@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import type { PlanItem } from "@/domain/finance";
 import {
+  applyOptimisticIncomeLanding,
   applyOptimisticPlanSettle,
   clearClientSessionCaches,
   confirmOptimisticFinance,
@@ -223,6 +224,34 @@ describe("finance consistency contract", () => {
       cycleSpendingDeltaMinor: 20_000_00,
     });
     expect(lastHomeSnapshot()?.remainingFreeMinor).toBe(before);
+  });
+
+  it("recording planned income drops Kvar att få without a reload", () => {
+    const due = new Date();
+    due.setUTCHours(12, 0, 0, 0);
+    const dueIso = due.toISOString();
+    rememberHomeSnapshot(homeSnap({ incomingMinor: 60_000_00, overMinor: 85_000_00 }));
+    rememberPlanSnapshot(
+      planSnap([
+        planItem({
+          id: "inc",
+          name: "Lön",
+          kind: "expected",
+          amountMinor: 60_000_00,
+          cadence: "income",
+          nextDueAt: dueIso,
+        }),
+      ]),
+    );
+    applyOptimisticIncomeLanding({
+      id: "tx-lon",
+      amountMinor: 60_000_00,
+      description: "Lön",
+      currency: "THB",
+      accountId: "a1",
+    });
+    expect(lastHomeSnapshot()?.incomingMinor).toBe(0);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(110_000_00);
   });
 
   it("QuickAddForms waits for server before success on transfers", async () => {

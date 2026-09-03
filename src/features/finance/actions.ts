@@ -12,12 +12,15 @@ import {
   createTransfer,
   ensureDefaultBankAccount,
   getProfile,
+  listPlanItems,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
+  updatePlanItem,
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
+import type { CanonicalTransaction } from "@/domain/finance";
 import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } from "@/domain/money";
 import {
   ACCOUNT_KINDS,
@@ -170,6 +173,41 @@ function revalidateMoneyPaths() {
   revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 }
 
+async function reconcilePlanAfterLedgerTx(
+  tx: CanonicalTransaction,
+): Promise<void> {
+  const profile = await getProfile();
+  const timeZone = profile.timezone || "Asia/Bangkok";
+  if (tx.planItemId) {
+    const items = await listPlanItems();
+    const item = items.find((row) => row.id === tx.planItemId);
+    if (item) {
+      if (tx.status === "voided") {
+        await updatePlanItem({
+          id: item.id,
+          settledAt: null,
+          settledMinor: null,
+          remainingDueAt: item.nextDueAt,
+        });
+      } else {
+        const minor = Math.min(item.amountMinor, Math.max(0, tx.amountMinor));
+        const full = minor >= item.amountMinor;
+        await updatePlanItem({
+          id: item.id,
+          settledAt: full ? new Date().toISOString() : null,
+          settledMinor: minor,
+          remainingDueAt: full
+            ? null
+            : (item.remainingDueAt ?? item.nextDueAt),
+        });
+      }
+    }
+  } else {
+    await reclaimStalePlanSettleLedgers({ timeZone });
+  }
+  revalidateMoneyPaths();
+}
+
 export async function updateTransactionAction(raw: {
   id: string;
   amount: string;
@@ -182,12 +220,13 @@ export async function updateTransactionAction(raw: {
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
-    await updateTransaction({
+    const tx = await updateTransaction({
       id,
       amountMinor,
       description: raw.description,
       category: raw.category,
     });
+    await reconcilePlanAfterLedgerTx(tx);
     return { ok: true };
   } catch (error) {
     return {
@@ -200,7 +239,8 @@ export async function updateTransactionAction(raw: {
 
 export async function voidTransactionAction(id: string): Promise<ActionResult> {
   try {
-    await voidTransaction(z.string().uuid().parse(id));
+    const tx = await voidTransaction(z.string().uuid().parse(id));
+    await reconcilePlanAfterLedgerTx(tx);
     return { ok: true };
   } catch (error) {
     return {
@@ -318,6 +358,7 @@ export async function createCheckpointAction(raw: {
       fxSource: manualRate != null ? "manual" : null,
     });
 
+    revalidateMoneyPaths();
     return { ok: true, thbMinor: checkpoint.thbMinor ?? undefined };
   } catch (error) {
     return {

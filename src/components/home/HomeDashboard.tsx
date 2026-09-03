@@ -32,6 +32,8 @@ import {
   applyAccountDelta,
   applyMovementsAdd,
   applyOptimisticHomeSpend,
+  confirmOptimisticFinance,
+  publishManualExpenseToPlan,
   isAccountsDirty,
   isHomeDirty,
   lastAccountsSnapshot,
@@ -731,8 +733,16 @@ function QuickExpense({
                       setError(result.error);
                       return;
                     }
+                    const expenseId = result.id ?? crypto.randomUUID();
+                    publishManualExpenseToPlan({
+                      id: expenseId,
+                      amountMinor,
+                      description,
+                      currency,
+                      accountId,
+                    });
                     applyMovementsAdd({
-                      id: result.id ?? crypto.randomUUID(),
+                      id: expenseId,
                       description,
                       category: null,
                       transactionType: "expense",
@@ -742,6 +752,7 @@ function QuickExpense({
                       occurredAt: new Date().toISOString(),
                       source: "manual",
                     });
+                    confirmOptimisticFinance();
                   } finally {
                     guard.end();
                   }
