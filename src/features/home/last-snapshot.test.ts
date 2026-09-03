@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
@@ -134,10 +134,17 @@ function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
     unpaidMinor: 3_000_00,
     overMinor: 12_000_00,
     ...partial,
+    financeRevision: partial.financeRevision ?? "test-rev",
+    verifiedAt: partial.verifiedAt ?? "2026-08-26T05:00:00.000Z",
+    truthStatus: partial.truthStatus ?? "verified",
   };
 }
 
 describe("last view memory", () => {
+  beforeEach(() => {
+    clearClientSessionCaches();
+  });
+
   it("keeps Plan month and Analys scope across remounts", () => {
     rememberPlanView({ monthKey: "2027-03", viewYear: 2027 });
     rememberAnalysScope("month");
@@ -217,6 +224,9 @@ describe("last view memory", () => {
       bankBalanceMinor: 8_000_00,
       spendingByMonthKey: {},
       ledgerTransactions: [],
+      financeRevision: "test-rev",
+      verifiedAt: "2026-08-26T05:00:00.000Z",
+      truthStatus: "verified",
     });
     const next = lastHomeSnapshot();
     expect(next?.unpaidMinor).toBe(0);
@@ -231,6 +241,9 @@ describe("last view memory", () => {
       bankBalanceMinor: 10_000_00,
       spendingByMonthKey: {},
       ledgerTransactions: [],
+      financeRevision: "test-rev",
+      verifiedAt: "2026-08-26T05:00:00.000Z",
+      truthStatus: "verified",
     });
     expect(lastPlanSnapshot()?.bankBalanceMinor).toBe(10_000_00);
     expect(lastPlanSnapshot()?.currency).toBe("THB");

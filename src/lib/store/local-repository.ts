@@ -1,3 +1,4 @@
+import { computeFinanceRevision } from "@/domain/finance";
 import {
   assertCurrencyAllowedForKind,
   calculateAccountBalance,
@@ -1697,6 +1698,14 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       planItems,
       currency: profile.primaryCurrency,
       progress: null,
+      financeRevision: computeFinanceRevision({
+        planItems,
+        ledgerTransactions: [],
+        calculatedBalanceMinor: null,
+        cycleSpendingMinor: 0,
+        todaySpendingMinor: 0,
+      }),
+      verifiedAt: new Date().toISOString(),
     };
   }
 
@@ -1834,6 +1843,14 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
     planItems,
     currency,
     progress: null,
+    financeRevision: computeFinanceRevision({
+      planItems,
+      ledgerTransactions: accountTx,
+      calculatedBalanceMinor,
+      cycleSpendingMinor: cycleSpending.amountMinor,
+      todaySpendingMinor: todaySpending.amountMinor,
+    }),
+    verifiedAt: now.toISOString(),
   };
 }
 

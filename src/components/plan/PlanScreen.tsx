@@ -5,9 +5,9 @@ import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
+import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
-  isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
   lastPlanSnapshot,
@@ -15,7 +15,7 @@ import {
   rememberPlanSnapshot,
   subscribeGettingStarted,
   subscribePlanSnapshot,
-  syncHomeCoverageFromPlan,
+  syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
 import { PlanEditor } from "@/lib/route-islands";
 
@@ -45,9 +45,9 @@ export function PlanScreen({
   const [error, setError] = useState<string | null>(initialError);
 
   useEffect(() => {
-    if (initial && !isHomeDirty()) {
+    if (initial) {
       rememberPlanSnapshot(initial);
-      syncHomeCoverageFromPlan(initial);
+      syncHomeLivingFromPlan(initial);
     }
     if (initialGettingStarted) rememberGettingStarted(initialGettingStarted);
   }, [initial, initialGettingStarted]);
@@ -88,7 +88,9 @@ export function PlanScreen({
       ) : null}
       {error && !payload ? (
         <div className="numa-panel-strong space-y-3 p-5">
-          <p className="text-sm font-semibold">Kunde inte ladda</p>
+          <p className="text-sm font-semibold">
+            {financeTruthMessageSv({ truthStatus: "unavailable" }).title}
+          </p>
           <p className="text-sm text-[var(--numa-muted)]">{error}</p>
           <RetryLoadButton />
         </div>

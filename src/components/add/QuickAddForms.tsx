@@ -16,6 +16,7 @@ import {
   applyMovementsAdd,
   applyOptimisticHomeIncome,
   applyOptimisticHomeSpend,
+  confirmOptimisticFinance,
   lastHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -166,7 +167,6 @@ function ExpenseForm({
           }
           const descriptionText = description.trim() || "Utgift";
           const currency = lastHomeSnapshot()?.currency ?? "THB";
-          // Patch Hem numbers + leave immediately; persist in the background.
           applyOptimisticHomeSpend(amountMinor);
           applyAccountDelta(-amountMinor);
           try {
@@ -174,9 +174,6 @@ function ExpenseForm({
           } catch {
             // ignore
           }
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
           const result = await createExpenseAction({
             accountId,
             amount,
@@ -189,6 +186,7 @@ function ExpenseForm({
             setError(result.error);
             return;
           }
+          confirmOptimisticFinance();
           applyMovementsAdd({
             id: result.id ?? crypto.randomUUID(),
             description: descriptionText,
@@ -200,6 +198,9 @@ function ExpenseForm({
             occurredAt: new Date().toISOString(),
             source: "manual",
           });
+          setAmount("");
+          setDescription("");
+          onSuccess?.();
         });
       }}
     >
@@ -270,9 +271,6 @@ function IncomeForm({
           const currency = lastHomeSnapshot()?.currency ?? "THB";
           applyOptimisticHomeIncome(amountMinor);
           applyAccountDelta(amountMinor, targetId);
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
           const result = await createIncomeAction({
             accountId: targetId,
             amount,
@@ -284,6 +282,7 @@ function IncomeForm({
             setError(result.error);
             return;
           }
+          confirmOptimisticFinance();
           applyMovementsAdd({
             id: result.id ?? crypto.randomUUID(),
             description: descriptionText,
@@ -295,6 +294,9 @@ function IncomeForm({
             occurredAt: new Date().toISOString(),
             source: "manual",
           });
+          setAmount("");
+          setDescription("");
+          onSuccess?.();
         });
       }}
     >
@@ -339,6 +341,16 @@ function TransferForm({
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
 
+  const fromAccount = accounts.find((a) => a.id === fromId);
+  const fromCurrency = fromAccount?.currency ?? "THB";
+  const compatibleDestinations = useMemo(
+    () =>
+      accounts.filter(
+        (a) => a.id !== fromId && (a.currency ?? "THB") === fromCurrency,
+      ),
+    [accounts, fromId, fromCurrency],
+  );
+
   if (accounts.length < 2) {
     return (
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
@@ -367,14 +379,21 @@ function TransferForm({
             setError("Beloppet måste vara större än 0");
             return;
           }
-          applyLocalTransfer({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amountMinor,
-          });
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
+          if (!toId) {
+            setError("Välj ett målkonto");
+            return;
+          }
+          const toAccount = accounts.find((a) => a.id === toId);
+          if (!toAccount) {
+            setError("Kontot hittades inte");
+            return;
+          }
+          if ((toAccount.currency ?? "THB") !== fromCurrency) {
+            setError(
+              "Överföring mellan olika valutor stöds inte ännu. Välj ett konto i samma valuta.",
+            );
+            return;
+          }
           const result = await createTransferAction({
             fromAccountId: fromId,
             toAccountId: toId,
@@ -382,12 +401,18 @@ function TransferForm({
             description: description || undefined,
           });
           if (!result.ok) {
-            applyLocalTransfer({
-              fromAccountId: toId,
-              toAccountId: fromId,
-              amountMinor,
-            });
+            setError(result.error);
+            return;
           }
+          applyLocalTransfer({
+            fromAccountId: fromId,
+            toAccountId: toId,
+            amountMinor,
+          });
+          confirmOptimisticFinance();
+          setAmount("");
+          setDescription("");
+          onSuccess?.();
         });
       }}
     >
@@ -396,10 +421,15 @@ function TransferForm({
         value={fromId}
         onChange={(id) => {
           setFromId(id);
-          if (id === toId) {
-            const next = accounts.find((a) => a.id !== id);
-            if (next) setToId(next.id);
+          const nextFrom = accounts.find((a) => a.id === id);
+          const nextCurrency = nextFrom?.currency ?? "THB";
+          const nextDest = accounts.filter(
+            (a) => a.id !== id && (a.currency ?? "THB") === nextCurrency,
+          );
+          if (!nextDest.some((a) => a.id === toId)) {
+            setToId(nextDest[0]?.id ?? "");
           }
+          setError(null);
         }}
         accounts={accounts}
       />
@@ -407,8 +437,14 @@ function TransferForm({
         label="Till"
         value={toId}
         onChange={setToId}
-        accounts={accounts.filter((a) => a.id !== fromId)}
+        accounts={compatibleDestinations}
       />
+      {compatibleDestinations.length === 0 ? (
+        <p className="text-sm text-[var(--numa-muted)]">
+          Inga andra konton i {fromCurrency}. Överföring mellan olika valutor
+          stöds inte ännu.
+        </p>
+      ) : null}
       <AmountField value={amount} onChange={setAmount} />
       <TextField
         value={description}
@@ -418,7 +454,7 @@ function TransferForm({
       <ErrorText error={error} />
       <Submit
         pending={pending}
-        disabled={!amount.trim() || !toId}
+        disabled={!amount.trim() || !toId || compatibleDestinations.length === 0}
         label="Flytta"
       />
     </form>
@@ -478,14 +514,6 @@ function CashForm({
             setError("Beloppet måste vara större än 0");
             return;
           }
-          applyLocalTransfer({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amountMinor,
-          });
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
           const result = await createCashWithdrawalAction({
             fromAccountId: fromId,
             toAccountId: toId,
@@ -493,12 +521,18 @@ function CashForm({
             description: description || undefined,
           });
           if (!result.ok) {
-            applyLocalTransfer({
-              fromAccountId: toId,
-              toAccountId: fromId,
-              amountMinor,
-            });
+            setError(result.error);
+            return;
           }
+          applyLocalTransfer({
+            fromAccountId: fromId,
+            toAccountId: toId,
+            amountMinor,
+          });
+          confirmOptimisticFinance();
+          setAmount("");
+          setDescription("");
+          onSuccess?.();
         });
       }}
     >

@@ -11,6 +11,9 @@ export type PlanSnapshot = {
   bankBalanceMinor: number | null;
   spendingByMonthKey: Record<string, number>;
   ledgerTransactions: CanonicalTransaction[];
+  financeRevision: string;
+  verifiedAt: string;
+  truthStatus: "verified" | "stale" | "unavailable";
 };
 
 export type PlanSnapshotResult =
@@ -29,6 +32,9 @@ export async function loadPlanSnapshot(): Promise<PlanSnapshotResult> {
         bankBalanceMinor: snap.calculatedBalanceMinor,
         spendingByMonthKey: snap.monthSpendingByKey ?? {},
         ledgerTransactions: snap.ledgerTransactions ?? [],
+        financeRevision: snap.financeRevision,
+        verifiedAt: snap.verifiedAt,
+        truthStatus: "verified",
       },
     };
   } catch (error) {

@@ -68,7 +68,7 @@ describe("menu snapshot repository contract", () => {
   it("builds the snapshot through the parallel bundle and skips progress on the read path", () => {
     const snapshotFn = repo.slice(
       repo.indexOf("export const getTodaySnapshot"),
-      repo.indexOf("export async function getUserProgress"),
+      (() => { const i = repo.indexOf("export const getTodaySnapshot"); const m = repo.slice(i+10).match(/\nexport (?:async )?function (\w+)/); return m ? i+10+repo.slice(i+10).indexOf(m[0]) : repo.length; })(),
     );
     expect(snapshotFn).toContain("fetchMenuSnapshotBundle");
     expect(snapshotFn).not.toContain("getUserProgress");
@@ -84,5 +84,21 @@ describe("menu snapshot repository contract", () => {
     expect(LEDGER_TRANSACTION_SELECT).toContain("plan_item_id");
     expect(repo).toContain("PROFILE_SELECT");
     expect(repo).toContain("LEDGER_TRANSACTION_SELECT");
+  });
+});
+
+
+describe("financial truth fail-closed contract", () => {
+  it("does not turn a Plan read failure into an empty plan", () => {
+    const snapshotFn = repo.slice(
+      repo.indexOf("export const getTodaySnapshot"),
+      repo.indexOf("export async function getUserProgress"),
+    );
+    expect(snapshotFn).not.toMatch(
+      /listPlanItems\(\)\.catch\(\s*\(\)\s*=>\s*\[\]/,
+    );
+    expect(home).toContain("financeRevision");
+    expect(plan).toContain("financeRevision");
+    expect(analys).toContain("financeRevision");
   });
 });

@@ -99,6 +99,9 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     dayPulseDeltaMinor: pulse.delta.amountMinor,
     dayPulseUsedPercent: pulse.usedPercent,
     referenceSekApprox: Math.round((available.amountMinor / 100) * 0.3),
+    financeRevision: "mock-rev",
+    verifiedAt: new Date().toISOString(),
+    truthStatus: "verified",
   };
 }
 

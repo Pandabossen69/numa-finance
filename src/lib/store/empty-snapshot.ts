@@ -37,5 +37,7 @@ export function emptyTodaySnapshot(
     planItems,
     currency: profile.primaryCurrency,
     progress: progress ?? emptyUserProgress(profile.id),
+    financeRevision: `empty:${profile.id}:${planItems.length}`,
+    verifiedAt: new Date(0).toISOString(),
   };
 }

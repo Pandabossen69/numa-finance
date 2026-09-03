@@ -32,6 +32,7 @@ import {
   type Profile,
   type SourceObservation,
   type TransactionSource,
+  computeFinanceRevision,
 } from "@/domain/finance";
 import { money, type CurrencyCode } from "@/domain/money";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
@@ -1169,7 +1170,8 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
   const bundle = await fetchMenuSnapshotBundle({
     loadProfile: getProfile,
     loadAccounts: listAccounts,
-    loadPlanItems: () => listPlanItems().catch(() => [] as PlanItem[]),
+    // Fail closed: a Plan read error must NOT become "empty plan" / 0 obligations.
+    loadPlanItems: listPlanItems,
     loadCheckpoint: latestCheckpointForAccount,
     loadTransactions: (accountId, options) =>
       listTransactions(accountId, options),
@@ -1324,6 +1326,14 @@ export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
     planItems,
     currency,
     progress: null,
+    financeRevision: computeFinanceRevision({
+      planItems,
+      ledgerTransactions: accountTx,
+      calculatedBalanceMinor,
+      cycleSpendingMinor: cycleSpending.amountMinor,
+      todaySpendingMinor: todaySpending.amountMinor,
+    }),
+    verifiedAt: now.toISOString(),
   };
 });
 

@@ -35,6 +35,7 @@ import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
   lastHomeSnapshot,
+  lastPlanSnapshot,
   lastPlanView,
   rememberPlanView,
   subscribeHomeSnapshot,
@@ -188,6 +189,7 @@ export function PlanEditor({
     return () => window.clearTimeout(id);
   }, [focusAdd]);
   function publishItems(next: PlanItem[]) {
+    const previous = lastPlanSnapshot();
     rememberLivePlan({
       items: next,
       currency,
@@ -197,6 +199,11 @@ export function PlanEditor({
       bankBalanceMinor,
       spendingByMonthKey,
       ledgerTransactions,
+      financeRevision: previous?.financeRevision
+        ? `${previous.financeRevision}:local`
+        : `local:${Date.now()}`,
+      verifiedAt: new Date().toISOString(),
+      truthStatus: "stale",
     });
   }
 
@@ -493,7 +500,15 @@ export function PlanEditor({
       : null;
     if (preview) {
       applyAccountDelta(preview.saldoDeltaMinor);
-      applyOptimisticPlanSettle(preview);
+      applyOptimisticPlanSettle({
+        saldoDeltaMinor: preview.saldoDeltaMinor,
+        incomingDeltaMinor: preview.incomingDeltaMinor,
+        unpaidDeltaMinor: preview.unpaidDeltaMinor,
+        cycleSpendingDeltaMinor:
+          preview.kind === "expense" && !preview.skippedBecauseFunded
+            ? -preview.saldoDeltaMinor
+            : 0,
+      });
     }
     void runMutation({
       busy: `settle:${id}`,
@@ -506,6 +521,10 @@ export function PlanEditor({
             saldoDeltaMinor: -preview.saldoDeltaMinor,
             incomingDeltaMinor: -preview.incomingDeltaMinor,
             unpaidDeltaMinor: -preview.unpaidDeltaMinor,
+            cycleSpendingDeltaMinor:
+              preview.kind === "expense" && !preview.skippedBecauseFunded
+                ? preview.saldoDeltaMinor
+                : 0,
           });
         }
         return previous ? replaceItemById(rows, id, previous) : rows;
