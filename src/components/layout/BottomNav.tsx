@@ -49,7 +49,10 @@ export function BottomNav() {
             onPointerDown={() => onCommit("/fota")}
             onMouseEnter={() => onHover("/fota")}
             onFocus={() => onHover("/fota")}
-            onClick={() => onCommit("/fota")}
+            onClick={(event) => {
+              event.preventDefault();
+              onCommit("/fota");
+            }}
             className="numa-press numa-fab relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full text-[var(--numa-card)]"
             aria-label="Fota eller lägg till"
           >
@@ -97,7 +100,10 @@ function NavItem({
             onPointerDown={onCommit}
             onMouseEnter={onHover}
             onFocus={onHover}
-            onClick={onCommit}
+            onClick={(event) => {
+              event.preventDefault();
+              onCommit();
+            }}
       aria-current={active ? "page" : undefined}
       className={`numa-press numa-bottom-nav-item relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
         active ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]" : "text-[var(--numa-faint)]"

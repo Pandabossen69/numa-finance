@@ -44,9 +44,8 @@ describe("shouldHoldPreviousView", () => {
     expect(
       shouldHoldPreviousView({
         loading: true,
-        leaving: false,
         destTab: "/analys",
-        heldTab: "/idag",
+        pathTab: "/idag",
       }),
     ).toBe(false);
   });
@@ -55,9 +54,8 @@ describe("shouldHoldPreviousView", () => {
     expect(
       shouldHoldPreviousView({
         loading: false,
-        leaving: false,
         destTab: "/analys",
-        heldTab: "/idag",
+        pathTab: "/analys",
       }),
     ).toBe(false);
   });
@@ -66,9 +64,8 @@ describe("shouldHoldPreviousView", () => {
     expect(
       shouldHoldPreviousView({
         loading: true,
-        leaving: false,
         destTab: "/mer",
-        heldTab: "/mer",
+        pathTab: "/mer",
       }),
     ).toBe(false);
   });
@@ -79,9 +76,8 @@ describe("resolveVisibleTab", () => {
     expect(
       resolveVisibleTab({
         loading: true,
-        leaving: false,
         destTab: "/idag",
-        heldTab: "/analys",
+        pathTab: "/analys",
         destIsTabRoot: true,
         hasDestCache: true,
       }),
@@ -92,9 +88,8 @@ describe("resolveVisibleTab", () => {
     expect(
       resolveVisibleTab({
         loading: true,
-        leaving: false,
         destTab: "/fota",
-        heldTab: "/plan",
+        pathTab: "/plan",
         destIsTabRoot: true,
         hasDestCache: false,
       }),
@@ -105,9 +100,29 @@ describe("resolveVisibleTab", () => {
     expect(
       resolveVisibleTab({
         loading: false,
-        leaving: true,
         destTab: "/plan",
-        heldTab: "/idag",
+        pathTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+      }),
+    ).toBe("dest");
+  });
+
+  it("keeps the last tap when a slower tab RSC commits after a rapid switch", () => {
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        destTab: "/mer",
+        pathTab: "/analys",
+        destIsTabRoot: true,
+        hasDestCache: true,
+      }),
+    ).toBe("dest");
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        destTab: "/plan",
+        pathTab: "/analys",
         destIsTabRoot: true,
         hasDestCache: false,
       }),
@@ -118,9 +133,8 @@ describe("resolveVisibleTab", () => {
     expect(
       resolveVisibleTab({
         loading: true,
-        leaving: false,
         destTab: "/mer",
-        heldTab: "/mer",
+        pathTab: "/mer",
         destIsTabRoot: false,
         hasDestCache: true,
       }),
@@ -131,9 +145,8 @@ describe("resolveVisibleTab", () => {
     expect(
       resolveVisibleTab({
         loading: true,
-        leaving: false,
         destTab: "/plan",
-        heldTab: "/plan",
+        pathTab: "/plan",
         destIsTabRoot: true,
         hasDestCache: true,
       }),

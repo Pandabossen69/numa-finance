@@ -32,6 +32,15 @@ describe("smooth nav and saves", () => {
     expect(bottom).toContain("onPointerDown={onCommit}");
     expect(bottom).not.toContain("onMouseEnter={onIntent}");
     expect(bottom).not.toContain("onMouseEnter={onCommit}");
+    expect(bottom).toContain("event.preventDefault()");
+  });
+
+  it("pushes the last tapped tab so a slow Analys payload cannot win", () => {
+    const intent = read("../../components/layout/NavIntent.tsx");
+    expect(intent).toContain("router.push(href, { scroll: false })");
+    expect(intent).toContain("router.push(intent, { scroll: false })");
+    expect(intent).toContain("popstate");
+    expect(intent).toContain("intentRef");
   });
 
   it("lets Hem, Rörelser, Lägg till and Saldo save without router.refresh", () => {

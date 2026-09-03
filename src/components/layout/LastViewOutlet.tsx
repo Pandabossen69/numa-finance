@@ -15,9 +15,9 @@ import {
 
 /**
  * Keep primary tabs mounted across revisits so Hem/Plan/Analys/Mer swap
- * instantly. Cross-tab always paints the destination — never Hem-while-Plan.
- * Same-tab refresh (Spara on Plan) keeps the live view, not loading.tsx.
- * Drill-in (Mer → Saldo) is not held.
+ * instantly. The last tap always paints — a slow Analys RSC that arrives
+ * after Mer was tapped must not replace Mer. Same-tab refresh (Spara)
+ * keeps the live view, not loading.tsx. Drill-in (Mer → Saldo) is not held.
  */
 export function LastViewOutlet({ children }: { children: ReactNode }) {
   const { pathname, pending } = useNavIntent();
@@ -25,21 +25,35 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const destHref = pending?.href ?? pathname;
   const destTab = primaryTab(destHref);
   const pathTab = primaryTab(pathname);
-  const leaving = Boolean(pending && pending.fromPath === pathname);
+  const leaving = Boolean(destTab && pathTab && destTab !== pathTab);
   const inFlight = loading || leaving;
   const liveByTabRef = useRef<Record<string, ReactNode>>({});
+  const warmedPathRef = useRef<string | null>(null);
 
   const [cache, setCache] = useState<Record<string, ReactNode>>({});
   const [readyAt, setReadyAt] = useState<string | null>(
     loading || leaving ? null : pathname,
   );
-  const [leaveSnapPath, setLeaveSnapPath] = useState<string | null>(null);
 
   if (!loading && pathTab && isTabRoot(pathname)) {
     liveByTabRef.current[pathTab] = children;
+    if (warmedPathRef.current !== pathname) {
+      warmedPathRef.current = pathname;
+      setCache((current) =>
+        current[pathTab] === children
+          ? current
+          : { ...current, [pathTab]: children },
+      );
+    }
   }
 
-  if (!inFlight && isTabRoot(pathname) && pathTab && readyAt !== pathname) {
+  if (
+    !inFlight &&
+    isTabRoot(pathname) &&
+    pathTab &&
+    destTab === pathTab &&
+    readyAt !== pathname
+  ) {
     setReadyAt(pathname);
     setCache((current) => ({ ...current, [pathTab]: children }));
   }
@@ -54,35 +68,23 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     }
   }
 
-  if (leaving && pathTab && leaveSnapPath !== pathname) {
-    setLeaveSnapPath(pathname);
-    setCache((current) => ({ ...current, [pathTab]: children }));
-  }
-  if (!leaving && leaveSnapPath !== null) {
-    setLeaveSnapPath(null);
-  }
-
-  const heldTab = readyAt ? primaryTab(readyAt) : null;
   const destLive = destTab ? liveByTabRef.current[destTab] : null;
   const paint = resolveVisibleTab({
     loading,
-    leaving,
     destTab,
-    heldTab,
+    pathTab,
     destIsTabRoot: isTabRoot(destHref),
     hasDestCache: Boolean(destTab && (cache[destTab] || destLive)),
   });
-  const visibleTab =
-    paint === "dest" ? destTab : paint === "held" ? heldTab : pathTab;
+  const visibleTab = paint === "dest" ? destTab : pathTab;
 
   const tabs = new Set<string>(Object.keys(cache));
   if (pathTab) tabs.add(pathTab);
   if (visibleTab) tabs.add(visibleTab);
 
+  const destHasNode = Boolean(destTab && (cache[destTab] || destLive));
   const heldMissing =
-    inFlight &&
-    ((paint === "held" && visibleTab && !cache[visibleTab] && !leaving) ||
-      (paint === "dest" && destTab && !cache[destTab] && destLive == null));
+    inFlight && paint === "dest" && destTab && !destHasNode;
   const showSoftFallback =
     (inFlight && paint === "children" && children == null) || heldMissing;
 
@@ -90,14 +92,16 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     <div
       className={inFlight ? "numa-view numa-view-hold" : "numa-view"}
       aria-busy={inFlight || undefined}
+      data-numa-visible-tab={visibleTab ?? undefined}
     >
       {[...tabs].map((tab) => {
         const isCurrent = tab === pathTab;
-        const destHasNode = Boolean(destTab && (cache[destTab] || destLive));
         const liveIncomingDest =
           paint === "dest" && tab === destTab && isCurrent && !destHasNode;
         const live =
-          isCurrent && (paint === "children" || leaving || liveIncomingDest);
+          isCurrent &&
+          tab === destTab &&
+          (paint === "children" || liveIncomingDest);
         const heldLive =
           sameTabRefresh && tab === pathTab
             ? liveByTabRef.current[pathTab]
@@ -111,6 +115,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
             hidden={!visible}
             inert={!visible ? true : undefined}
             className={visible ? undefined : "numa-view-park"}
+            data-numa-tab={tab}
           >
             {node}
           </div>

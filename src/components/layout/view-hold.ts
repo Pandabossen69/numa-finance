@@ -7,9 +7,8 @@ import {
 
 export function shouldHoldPreviousView(input: {
   loading: boolean;
-  leaving: boolean;
   destTab: string | null;
-  heldTab: string | null;
+  pathTab: string | null;
 }): boolean {
   return resolveVisibleTab({
     ...input,
@@ -20,42 +19,32 @@ export function shouldHoldPreviousView(input: {
 
 /**
  * What to paint while a tab transition is in flight.
- * - dest: destination tab (cached revisit, same-tab refresh, or first visit)
- * - held: previous tab — only as a last resort, never for primary tab switches
- * - children: incoming tree (drill-in, first load, soft fallback)
+ * - dest: last tapped tab (cache, incoming tree, or dest-shaped shell)
+ * - children: URL tree (drill-in, first load, same-tab)
  *
- * Hem → Plan/Analys/Mer must never keep Hem on screen. The destination
- * comes up immediately: cache on revisit, incoming tree / soft shell otherwise.
+ * Latest intent always wins. A slow Analys RSC that commits after the user
+ * already tapped Mer must never paint Analys.
  */
 export function resolveVisibleTab(input: {
   loading: boolean;
-  leaving: boolean;
   destTab: string | null;
-  heldTab: string | null;
+  pathTab: string | null;
   destIsTabRoot: boolean;
   hasDestCache: boolean;
 }): "dest" | "held" | "children" {
-  const inFlight = input.loading || input.leaving;
-  if (!inFlight) return "children";
-  const crossTab = Boolean(
-    input.destTab && input.heldTab && input.destTab !== input.heldTab,
+  const mismatch = Boolean(
+    input.destTab && input.pathTab && input.destTab !== input.pathTab,
   );
-  if (!crossTab) {
-    // router.refresh() on Plan/Hem still swaps in loading.tsx. Keep the live tab.
-    if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
-    return "children";
+  if (mismatch) {
+    return input.destIsTabRoot ? "dest" : "children";
   }
-  // Cross-tab: always the destination. Holding Hem while Plan streams is the
-  // "menyn fastnar" bug — Mer/Fota pages are Suspense trees, so a hold never
-  // released.
-  if (input.destIsTabRoot) return "dest";
+  if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
   return "children";
 }
 
 /**
  * True only for a dedicated route loading shell (loading.tsx), not a real
  * page that happens to contain Suspense, a skeleton, or "Laddar…".
- * Recursing the tree treated Mer (always <Suspense>) as loading forever.
  */
 export function isViewLoadingNode(node: ReactNode): boolean {
   if (node == null || typeof node === "boolean") return false;

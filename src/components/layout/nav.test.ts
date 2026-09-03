@@ -2,19 +2,16 @@ import { describe, expect, it } from "vitest";
 import { isNavActive, isTabRoot, optimisticNavPath, PRIMARY_NAV, primaryTab } from "./nav";
 
 describe("optimisticNavPath", () => {
-  it("uses the pending href while still on the page that was clicked", () => {
+  it("keeps highlighting the last tap when a slower tab URL commits in between", () => {
     expect(
       optimisticNavPath("/idag", { href: "/plan", fromPath: "/idag" }),
     ).toBe("/plan");
-  });
-
-  it("drops the pending href once the pathname has changed", () => {
     expect(
       optimisticNavPath("/plan", { href: "/plan", fromPath: "/idag" }),
     ).toBe("/plan");
     expect(
-      optimisticNavPath("/analys", { href: "/plan", fromPath: "/idag" }),
-    ).toBe("/analys");
+      optimisticNavPath("/analys", { href: "/mer", fromPath: "/idag" }),
+    ).toBe("/mer");
   });
 
   it("falls back to the real pathname when nothing is pending", () => {

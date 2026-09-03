@@ -2,14 +2,18 @@
 
 import {
   createContext,
+  startTransition,
   useCallback,
   useContext,
+  useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
-import { isNavActive, optimisticNavPath } from "@/components/layout/nav";
+import { usePathname, useRouter } from "next/navigation";
+import { isNavActive, isTabRoot, optimisticNavPath, primaryTab } from "@/components/layout/nav";
 
 type Pending = { href: string; fromPath: string };
 
@@ -24,29 +28,64 @@ const NavIntentContext = createContext<NavIntentValue | null>(null);
 
 export function NavIntentProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [pending, setPending] = useState<Pending | null>(null);
-  const resolvedPending =
-    pending &&
-    (pending.href === pathname || isNavActive(pathname, pending.href))
-      ? null
-      : pending;
-  const highlightPath = optimisticNavPath(pathname, resolvedPending);
+  const router = useRouter();
+  const [intentHref, setIntentHref] = useState<string | null>(null);
+  const intentRef = useRef<string | null>(null);
+  const popRef = useRef(false);
+
+  useEffect(() => {
+    const onPop = () => {
+      popRef.current = true;
+      intentRef.current = null;
+      setIntentHref(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   const markIntent = useCallback(
     (href: string) => {
-      setPending({ href, fromPath: pathname });
+      intentRef.current = href;
+      setIntentHref(href);
+      startTransition(() => {
+        router.push(href, { scroll: false });
+      });
     },
-    [pathname],
+    [router],
   );
+
+  // Rapid taps: a slow Analys payload can commit after the last tap was Mer.
+  // Push the last intent again so the router does not settle on the stale tab.
+  useLayoutEffect(() => {
+    if (popRef.current) {
+      popRef.current = false;
+      return;
+    }
+    const intent = intentRef.current;
+    if (!intent || !isTabRoot(intent)) return;
+    if (isNavActive(pathname, intent)) return;
+    const pathTab = primaryTab(pathname);
+    const destTab = primaryTab(intent);
+    if (!pathTab || !destTab || pathTab === destTab) return;
+    startTransition(() => {
+      router.push(intent, { scroll: false });
+    });
+  }, [pathname, router]);
+
+  const pending =
+    intentHref && !isNavActive(pathname, intentHref)
+      ? { href: intentHref, fromPath: pathname }
+      : null;
+  const highlightPath = optimisticNavPath(pathname, pending);
 
   const value = useMemo(
     () => ({
       pathname,
       highlightPath,
-      pending: resolvedPending,
+      pending,
       markIntent,
     }),
-    [pathname, highlightPath, resolvedPending, markIntent],
+    [pathname, highlightPath, pending, markIntent],
   );
 
   return (

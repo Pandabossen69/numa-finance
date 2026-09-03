@@ -45,7 +45,10 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
                 }}
                 onMouseEnter={() => prefetch(item.href)}
                 onFocus={() => prefetch(item.href)}
-                onClick={() => markIntent(item.href)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  markIntent(item.href);
+                }}
                 className={`numa-press numa-side-nav-item relative min-h-11 rounded-2xl px-1.5 py-3 ${
                   active
                     ? "is-active text-[var(--numa-ink)]"
@@ -78,7 +81,10 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
               markIntent("/fota");
             }}
             onMouseEnter={() => prefetch("/fota")}
-            onClick={() => markIntent("/fota")}
+            onClick={(event) => {
+              event.preventDefault();
+              markIntent("/fota");
+            }}
             className="numa-btn numa-btn-accent w-full rounded-full"
           >
             Fota
