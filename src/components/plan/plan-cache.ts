@@ -3,7 +3,7 @@ import {
   lastPlanSnapshot,
   rememberGettingStarted,
   rememberPlanSnapshot,
-  syncHomeCoverageFromPlan,
+  syncHomeLivingFromPlan,
   type PlanSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -16,6 +16,9 @@ function takeSnapshot(data: {
   bankBalanceMinor: PlanSnapshot["bankBalanceMinor"];
   spendingByMonthKey: PlanSnapshot["spendingByMonthKey"];
   ledgerTransactions: PlanSnapshot["ledgerTransactions"];
+  financeRevision: PlanSnapshot["financeRevision"];
+  verifiedAt: PlanSnapshot["verifiedAt"];
+  truthStatus: PlanSnapshot["truthStatus"];
 }): PlanSnapshot {
   return {
     items: data.items,
@@ -24,12 +27,15 @@ function takeSnapshot(data: {
     bankBalanceMinor: data.bankBalanceMinor,
     spendingByMonthKey: data.spendingByMonthKey,
     ledgerTransactions: data.ledgerTransactions,
+    financeRevision: data.financeRevision,
+    verifiedAt: data.verifiedAt,
+    truthStatus: data.truthStatus,
   };
 }
 
 export function rememberLivePlan(snapshot: PlanSnapshot) {
   rememberPlanSnapshot(snapshot);
-  syncHomeCoverageFromPlan(snapshot);
+  syncHomeLivingFromPlan(snapshot);
 }
 
 export function warmupPlanPageData(): Promise<PlanPageDataResult> {
@@ -40,7 +46,7 @@ export function warmupPlanPageData(): Promise<PlanPageDataResult> {
           const snapshot = takeSnapshot(result.data);
           rememberPlanSnapshot(snapshot);
           rememberGettingStarted(result.data.gettingStarted);
-          syncHomeCoverageFromPlan(snapshot);
+          syncHomeLivingFromPlan(snapshot);
         }
         return result;
       })

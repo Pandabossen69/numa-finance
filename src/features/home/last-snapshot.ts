@@ -1,11 +1,15 @@
 import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
+  computeSpendingWindows,
   cumulativePlanSavingsMinor,
+  hasCycleFundingEvidence,
   isSameZonedDay,
   monthKeyFromDate,
   perDayBudgetMinor,
   planWealthTotalMinor,
   projectCashCoverage,
+  projectLivingBudget,
+  projectPayCycle,
   remainingTodayOf,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
@@ -178,6 +182,46 @@ export function isHomeDirty(): boolean {
   return homeDirty;
 }
 
+
+function financeRevisionOf(
+  snap: { financeRevision?: string; verifiedAt?: string } | null,
+): string {
+  return snap?.financeRevision ?? "";
+}
+
+/** Adopt server money snapshots only when revision is newer or equal and not dirty. */
+function shouldAdoptFinanceSnapshot(
+  current: { financeRevision?: string; verifiedAt?: string } | null,
+  incoming: { financeRevision?: string; verifiedAt?: string },
+  dirty: boolean,
+): boolean {
+  if (!current) return true;
+  const curRev = financeRevisionOf(current);
+  const nextRev = financeRevisionOf(incoming);
+  const curAt = current.verifiedAt ?? "";
+  const nextAt = incoming.verifiedAt ?? "";
+
+  if (dirty) {
+    // Optimistic in flight: ignore same-revision RSC echoes; accept newer truth.
+    if (!nextRev || nextRev === curRev) return false;
+    if (curAt && nextAt && nextAt < curAt) return false;
+    return true;
+  }
+
+  // Clean client: adopt unless the payload is an older revision than we show.
+  if (
+    curRev &&
+    nextRev &&
+    curRev !== nextRev &&
+    curAt &&
+    nextAt &&
+    nextAt < curAt
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function rememberHomeSnapshot(
   snap: HomeSnapshot,
   opts?: { dirty?: boolean },
@@ -185,7 +229,20 @@ export function rememberHomeSnapshot(
   bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
   if (home === snap && homeDirty === nextDirty) return;
-  home = snap;
+  if (
+    !nextDirty &&
+    home &&
+    !shouldAdoptFinanceSnapshot(home, snap, homeDirty)
+  ) {
+    return;
+  }
+  home = nextDirty
+    ? {
+        ...snap,
+        verifiedAt: new Date().toISOString(),
+        truthStatus: snap.truthStatus === "unavailable" ? "unavailable" : "stale",
+      }
+    : snap;
   homeDirty = nextDirty;
   emit(homeListeners);
 }
@@ -227,32 +284,125 @@ export function revertOptimisticHomeSpend(amountMinor: number): HomeSnapshot | n
   return next;
 }
 
-export function syncHomeCoverageFromPlan(snapshot: PlanSnapshot) {
-  if (!home || homeDirty) return;
+/** Server confirmed — drop optimistic lock so tabs adopt the next RSC payload. */
+export function confirmOptimisticFinance() {
+  homeDirty = false;
+  movementsDirty = false;
+  accountsDirty = false;
+  analys = null;
+  if (home && home.truthStatus === "stale") {
+    rememberHomeSnapshot({ ...home, truthStatus: "verified" });
+  }
+}
+
+/** Drop Analys cache when money truth moves — next visit refetches shared revision. */
+export function invalidateAnalysSnapshot() {
+  analys = null;
+}
+
+/**
+ * Recompute Hem living-budget + coverage from Plan truth.
+ * Runs even while homeDirty so settle/expense optimistic paths stay coherent.
+ */
+export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
+  if (!home) return;
+  const now = new Date();
+  const timeZone = snapshot.timeZone;
+  const cycle = projectPayCycle(snapshot.items, now, timeZone);
+  const { today, cycle: ledgerCycleSpend } = computeSpendingWindows({
+    transactions: snapshot.ledgerTransactions,
+    currency: snapshot.currency,
+    now,
+    timeZone,
+    cycleStartAt: cycle.startAt,
+    cycleEndAt: cycle.endAt,
+  });
+  const ledgerCycleMinor = ledgerCycleSpend.amountMinor;
+  const ledgerTodayMinor = today.amountMinor;
+  const cycleSpendingMinor = homeDirty
+    ? Math.max(home.cycleSpendingMinor, ledgerCycleMinor)
+    : ledgerCycleMinor;
+  const todaySpendingMinor = homeDirty
+    ? Math.max(home.todaySpendingMinor, ledgerTodayMinor)
+    : ledgerTodayMinor;
+  const bankBalanceMinor = homeDirty
+    ? home.calculatedBalanceMinor
+    : (snapshot.bankBalanceMinor ?? home.calculatedBalanceMinor);
+  const fundingConfirmed =
+    home.cycleIsActive ||
+    hasCycleFundingEvidence({
+      cycleStartAt: cycle.startAt,
+      cycleEndAt: cycle.endAt,
+      transactions: snapshot.ledgerTransactions,
+    });
+  const living = projectLivingBudget({
+    cycle,
+    now,
+    timeZone,
+    bankBalanceMinor,
+    cycleSpendingMinor,
+    todaySpendingMinor,
+    fundingConfirmed,
+  });
   const coverage = projectCashCoverage({
     planItems: snapshot.items,
     transactions: snapshot.ledgerTransactions,
     monthKey: home.monthKey,
-    timeZone: snapshot.timeZone,
-    saldoMinor: snapshot.bankBalanceMinor,
+    timeZone,
+    saldoMinor: bankBalanceMinor,
   });
   const savingsTotalMinor = cumulativePlanSavingsMinor(
     snapshot.items,
     home.monthKey,
-    snapshot.timeZone,
+    timeZone,
   );
-  rememberHomeSnapshot({
-    ...home,
-    calculatedBalanceMinor: snapshot.bankBalanceMinor,
-    incomingMinor: coverage.incomingMinor,
-    unpaidMinor: coverage.unpaidMinor,
-    overMinor: coverage.overMinor,
-    savingsTotalMinor,
-    wealthTotalMinor: planWealthTotalMinor(coverage.overMinor, savingsTotalMinor),
-  });
+  rememberHomeSnapshot(
+    {
+      ...home,
+      calculatedBalanceMinor: bankBalanceMinor,
+      todaySpendingMinor,
+      cycleSpendingMinor,
+      safeToSpendTodayMinor: living.remainingTodayMinor,
+      cycleStartLabelSv: cycle.startLabelSv,
+      cycleEndLabelSv: living.cycleEndLabelSv,
+      cycleEndInferred: living.cycleEndInferred,
+      cycleIsActive: cycle.isActive && fundingConfirmed,
+      livingMode: living.mode,
+      needsAvailableInput: living.needsAvailableInput,
+      usesBankBalance: living.usesBankBalance,
+      planIncomeMinor: cycle.incomeMinor,
+      planExpenseMinor: cycle.expenseMinor,
+      planSavingsMinor: cycle.savingsMinor,
+      freeToSpendMinor: cycle.freeToSpendMinor,
+      remainingFreeMinor: living.remainingFreeMinor,
+      spendDaysLeft: living.daysUntilHorizon,
+      dayBudgetMinor: living.dayBudgetMinor,
+      remainingTodayMinor: living.remainingTodayMinor,
+      daysUntilIncome: living.daysUntilHorizon,
+      nextIncomeLabelSv: living.nextIncomeLabelSv,
+      incomingMinor: coverage.incomingMinor,
+      unpaidMinor: coverage.unpaidMinor,
+      overMinor: coverage.overMinor,
+      savingsTotalMinor,
+      wealthTotalMinor: planWealthTotalMinor(
+        coverage.overMinor,
+        savingsTotalMinor,
+      ),
+    },
+    { dirty: homeDirty },
+  );
+}
+
+/** @deprecated use syncHomeLivingFromPlan */
+export function syncHomeCoverageFromPlan(snapshot: PlanSnapshot) {
+  syncHomeLivingFromPlan(snapshot);
 }
 
 export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
+  if (analys === snap) return;
+  if (analys && !shouldAdoptFinanceSnapshot(analys, snap, false)) {
+    return;
+  }
   analys = snap;
 }
 
@@ -266,11 +416,25 @@ function planStamp(snapshot: PlanSnapshot): string {
 
 export function rememberPlanSnapshot(snapshot: PlanSnapshot) {
   if (plan === snapshot) return;
+  if (plan && !shouldAdoptFinanceSnapshot(plan, snapshot, false)) {
+    return;
+  }
   if (plan && planStamp(plan) === planStamp(snapshot)) {
     plan = snapshot;
     return;
   }
+  const prevRev = plan?.financeRevision;
   plan = snapshot;
+  // Drop Analys cache when Plan truth moved — forces shared revision on next load.
+  if (
+    analys &&
+    snapshot.financeRevision &&
+    analys.financeRevision !== snapshot.financeRevision
+  ) {
+    analys = null;
+  } else if (prevRev && snapshot.financeRevision && prevRev !== snapshot.financeRevision) {
+    analys = null;
+  }
   emit(planListeners);
 }
 
@@ -495,12 +659,15 @@ export function applyOptimisticPlanSettle(input: {
   saldoDeltaMinor: number;
   incomingDeltaMinor: number;
   unpaidDeltaMinor: number;
+  /** Expense settle booked to ledger — counts once in cycle spend, not flexible twice. */
+  cycleSpendingDeltaMinor?: number;
 }): HomeSnapshot | null {
   if (
     !home ||
     (input.saldoDeltaMinor === 0 &&
       input.incomingDeltaMinor === 0 &&
-      input.unpaidDeltaMinor === 0)
+      input.unpaidDeltaMinor === 0 &&
+      (input.cycleSpendingDeltaMinor ?? 0) === 0)
   ) {
     return home;
   }
@@ -514,8 +681,36 @@ export function applyOptimisticPlanSettle(input: {
     previous.incomingMinor + input.incomingDeltaMinor,
   );
   const unpaidMinor = Math.max(0, previous.unpaidMinor + input.unpaidDeltaMinor);
+  const cycleSpendingMinor =
+    previous.cycleSpendingMinor + (input.cycleSpendingDeltaMinor ?? 0);
   const overMinor =
     (calculatedBalanceMinor ?? 0) + incomingMinor - unpaidMinor;
+  const planSnap = lastPlanSnapshot();
+  let remainingFreeMinor = previous.remainingFreeMinor;
+  let freeToSpendMinor = previous.freeToSpendMinor;
+  let planExpenseMinor = previous.planExpenseMinor;
+  let dayBudgetMinor = previous.dayBudgetMinor;
+  let remainingTodayMinor = previous.remainingTodayMinor;
+  if (planSnap) {
+    const now = new Date();
+    const cycle = projectPayCycle(planSnap.items, now, planSnap.timeZone);
+    if (cycle.isActive || previous.cycleIsActive) {
+      const living = projectLivingBudget({
+        cycle,
+        now,
+        timeZone: planSnap.timeZone,
+        bankBalanceMinor: calculatedBalanceMinor,
+        cycleSpendingMinor,
+        todaySpendingMinor: previous.todaySpendingMinor,
+        fundingConfirmed: previous.cycleIsActive || cycle.isActive,
+      });
+      remainingFreeMinor = living.remainingFreeMinor;
+      freeToSpendMinor = cycle.freeToSpendMinor;
+      planExpenseMinor = cycle.expenseMinor;
+      dayBudgetMinor = living.dayBudgetMinor;
+      remainingTodayMinor = living.remainingTodayMinor;
+    }
+  }
   rememberHomeSnapshot(
     {
       ...previous,
@@ -523,6 +718,13 @@ export function applyOptimisticPlanSettle(input: {
       incomingMinor,
       unpaidMinor,
       overMinor,
+      cycleSpendingMinor,
+      remainingFreeMinor,
+      freeToSpendMinor,
+      planExpenseMinor,
+      dayBudgetMinor,
+      remainingTodayMinor,
+      safeToSpendTodayMinor: remainingTodayMinor,
       wealthTotalMinor: planWealthTotalMinor(
         overMinor,
         previous.savingsTotalMinor,
@@ -530,6 +732,7 @@ export function applyOptimisticPlanSettle(input: {
     },
     { dirty: true },
   );
+  invalidateAnalysSnapshot();
   return home;
 }
 

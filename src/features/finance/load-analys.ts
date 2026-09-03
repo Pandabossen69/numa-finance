@@ -67,6 +67,9 @@ export type AnalysSnapshot = {
   formula: {
     steps: string[];
   };
+  financeRevision: string;
+  verifiedAt: string;
+  truthStatus: "verified" | "stale" | "unavailable";
 };
 
 export type AnalysSnapshotResult =
@@ -210,6 +213,9 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
         categoriesByMonthKey,
         goals,
         formula: { steps: formulaSteps },
+        financeRevision: snap.financeRevision,
+        verifiedAt: snap.verifiedAt,
+        truthStatus: "verified",
       },
     };
   } catch (error) {

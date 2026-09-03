@@ -1,11 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep recently visited tabs in the client router cache so Hem↔Plan↔Analys
-  // feel instant instead of re-hitting the server every click.
+  // Money tabs must not keep a 5‑minute stale RSC payload after a mutation.
+  // Correctness > tab-cache convenience for Hem / Plan / Analys.
   experimental: {
     staleTimes: {
-      dynamic: 300,
+      dynamic: 0,
       static: 600,
     },
     optimizePackageImports: ["date-fns-tz", "zod"],

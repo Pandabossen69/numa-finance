@@ -23,7 +23,7 @@ describe("smooth nav and saves", () => {
       money.indexOf("export async function voidTransactionAction"),
       money.indexOf("export async function createIncomeAction"),
     );
-    expect(expense).not.toContain("revalidateMoneyPaths");
+    expect(expense).toContain("revalidateMoneyPaths");
     expect(expense).not.toContain("revalidatePath");
     expect(update).not.toContain("revalidateMoneyPaths");
     expect(voidTx).not.toContain("revalidateMoneyPaths");

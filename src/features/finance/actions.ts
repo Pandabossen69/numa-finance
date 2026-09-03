@@ -128,7 +128,7 @@ export async function createExpenseAction(
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
-    // No path revalidation — client last-snapshot already patched Hem/Rörelser.
+    revalidateMoneyPaths();
     return { ok: true, id: tx.id };
   } catch (error) {
     return {
@@ -229,6 +229,7 @@ export async function createIncomeAction(
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
+    revalidateMoneyPaths();
     return { ok: true, id: tx.id };
   } catch (error) {
     return {
@@ -253,6 +254,7 @@ export async function createTransferAction(
       amountMinor,
       description: input.description,
     });
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
@@ -278,6 +280,7 @@ export async function createCashWithdrawalAction(
       amountMinor,
       description: input.description,
     });
+    revalidateMoneyPaths();
     return { ok: true };
   } catch (error) {
     return {
