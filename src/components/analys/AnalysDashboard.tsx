@@ -49,6 +49,7 @@ import {
 import { SV, type PlanSettleKind } from "@/features/copy/labels-sv";
 import type { PlanListStatus } from "@/domain/finance";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
+import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
 
 type AnalysScope = "period" | "month";
 
@@ -120,7 +121,7 @@ export function AnalysDashboard({
     if (!error) return <AnalysViewLoading />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
-        <p className="text-sm font-semibold">Kunde inte ladda</p>
+        <p className="text-sm font-semibold">{financeTruthMessageSv({ truthStatus: "unavailable" }).title}</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
         <RetryLoadButton />
       </div>

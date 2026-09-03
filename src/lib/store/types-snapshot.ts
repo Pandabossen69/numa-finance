@@ -44,4 +44,11 @@ export type TodaySnapshot = {
   currency: CurrencyCode;
   /** Personal game progress — never includes balances. */
   progress: UserProgress | null;
+  /**
+   * Content token shared by Hem / Plan / Analys. Equal ⇒ same financial truth.
+   * Built from plan + ledger + saldo so client caches can reject stale mixes.
+   */
+  financeRevision: string;
+  /** ISO time when this snapshot was verified from authoritative reads. */
+  verifiedAt: string;
 };

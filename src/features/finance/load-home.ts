@@ -65,6 +65,10 @@ export type HomeSnapshot = {
   unpaidMinor: number;
   /** Saldo + kommer in − kvar att betala. */
   overMinor: number;
+  financeRevision: string;
+  verifiedAt: string;
+  /** verified = authoritative read; stale/unavailable kept for client fail-soft */
+  truthStatus: "verified" | "stale" | "unavailable";
 };
 
 export type HomeSnapshotResult =
@@ -162,6 +166,9 @@ export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
         incomingMinor: coverage.incomingMinor,
         unpaidMinor: coverage.unpaidMinor,
         overMinor: coverage.overMinor,
+        financeRevision: snap.financeRevision,
+        verifiedAt: snap.verifiedAt,
+        truthStatus: "verified",
       },
     };
   } catch (error) {

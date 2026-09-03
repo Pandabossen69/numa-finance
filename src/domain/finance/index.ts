@@ -16,3 +16,4 @@ export * from "./month-carryover";
 export * from "./cash-coverage";
 export * from "./total-saldo";
 export * from "./plan-settle-ledger";
+export * from "./finance-revision";
