@@ -12,9 +12,11 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("inert");
     expect(src).toContain("sameTabRefresh");
     expect(src).toContain("liveByTabRef");
-    expect(src).toContain("liveIncomingDest");
     expect(src).toContain("DestShell");
     expect(src).toContain("data-numa-visible-tab");
-    expect(src).toContain("destTab !== pathTab");
+    expect(src).toContain("settled");
+    expect(src).toContain("cache[pathTab] == null");
+    expect(src).toContain("feedLive");
+    expect(src).not.toContain("warmedPathRef");
   });
 });

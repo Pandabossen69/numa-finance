@@ -1573,7 +1573,9 @@ button.numa-chip:disabled {
 }
 
 .numa-view-park {
-  display: none;
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .numa-scope-panel {
