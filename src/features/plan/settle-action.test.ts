@@ -64,3 +64,16 @@ describe("settle state is written by user action only", () => {
     expect(coverage).toContain("must not reach the Plan list");
   });
 });
+
+describe("settle action API naming", () => {
+  it("uses targetSettledAmount — never an ambiguous amount field", () => {
+    expect(actions).toContain("targetSettledAmount");
+    expect(actions).toMatch(/settleSchema[\s\S]*?targetSettledAmount/);
+    // The settle schema must not expose a generic `amount` key.
+    const schema = actions.slice(
+      actions.indexOf("settleSchema"),
+      actions.indexOf("export async function setPlanItemSettledAction"),
+    );
+    expect(schema).not.toMatch(/\bamount:/);
+  });
+});

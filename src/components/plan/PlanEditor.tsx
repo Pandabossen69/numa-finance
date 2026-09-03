@@ -15,6 +15,9 @@ import {
   matchPlanItemsToLedger,
   applyPlanItemEdits,
   previewPlanSettleEffect,
+  remainingOpenMinor,
+  planAmountBelowSettledError,
+  resolveAdditionalSettlement,
   projectCashCoverage,
   projectExtraSaldoSeries,
   projectPlanForMonth,
@@ -441,7 +444,8 @@ export function PlanEditor({
   function settleRow(
     id: string,
     settled: boolean,
-    amount?: string,
+    /** Cumulative settled total (absolute minor target as UI string), not "amount now". */
+    targetSettledAmount?: string,
     remainingDate?: string,
   ) {
     if (isTempPlanId(id)) return;
@@ -450,8 +454,8 @@ export function PlanEditor({
     if (!settled) {
       settledMinor = null;
       remainingDueAt = null;
-    } else if (amount != null) {
-      const parsed = parsePlanAmount(amount);
+    } else if (targetSettledAmount != null) {
+      const parsed = parsePlanAmount(targetSettledAmount);
       if (typeof parsed !== "number") {
         setError(parsed.error);
         return;
@@ -501,7 +505,7 @@ export function PlanEditor({
         setPlanItemSettledAction({
           id,
           settled,
-          amount,
+          targetSettledAmount,
           remainingDate,
         }),
       reconcile: (rows, result) => {
@@ -532,13 +536,49 @@ export function PlanEditor({
     });
   }
 
+  function savePartialRow(id: string) {
+    const item = localItems.find((row) => row.id === id);
+    if (!item) return;
+    const parsed = parsePlanAmount(partialAmount);
+    if (typeof parsed !== "number") {
+      setError(parsed.error);
+      return;
+    }
+    const resolved = resolveAdditionalSettlement({
+      plannedMinor: item.amountMinor,
+      alreadySettledMinor: settledAmountMinor(item),
+      additionalMinor: parsed,
+    });
+    if (!resolved.ok) {
+      setError(resolved.error);
+      return;
+    }
+    if (!resolved.fullySettled && !partialDate.trim()) {
+      setError("Ange datum för resten");
+      return;
+    }
+    settleRow(
+      id,
+      true,
+      minorToUi(resolved.targetSettledMinor),
+      resolved.fullySettled ? undefined : partialDate,
+    );
+  }
+
+  function markRemainder(id: string) {
+    const item = localItems.find((row) => row.id === id);
+    if (!item) return;
+    // Full Klar — omit target so the action settles the planned amount.
+    settleRow(id, true);
+  }
+
   function startPartial(item: PlanItem) {
     if (isTempPlanId(item.id)) return;
     setAddKind(null);
     setEditingId(null);
     setPartialId(item.id);
-    const already = settledAmountMinor(item);
-    setPartialAmount(already > 0 ? minorToUi(already) : "");
+    // Additional amount for this step — not the cumulative settled total.
+    setPartialAmount("");
     const rest = remainingDueIso(item);
     setPartialDate(isoToDateInput(rest, timeZone) || `${monthKey}-01`);
   }
@@ -698,7 +738,7 @@ export function PlanEditor({
       <div className="animate-rise-delay-2 grid gap-4">
         <PlanCard
           title="Intäkter"
-          totalLabel="Summa"
+          totalLabel="Kvar att få"
           totalMinor={sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)}
           currency={currency}
           banner={focusAdd === "income" ? stepHint : null}
@@ -718,16 +758,17 @@ export function PlanEditor({
             pendingId={rowBusy().pendingId}
             pendingAction={rowBusy().pendingAction}
             onSettle={settleRow}
+            onMarkRemainder={markRemainder}
             partialId={partialId}
             partialAmount={partialAmount}
             partialDate={partialDate}
-            partialPrompt="Hur mycket har kommit in?"
+            partialPrompt="Hur mycket fick du nu?"
             remainingDatePrompt="När kommer resten?"
             onPartialAmount={setPartialAmount}
             onPartialDate={setPartialDate}
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) => settleRow(id, true, partialAmount, partialDate)}
+            onSavePartial={(id) => savePartialRow(id)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -741,6 +782,14 @@ export function PlanEditor({
               if (typeof parsed !== "number") {
                 setError(parsed.error);
                 return;
+              }
+              const current = localItems.find((row) => row.id === id);
+              if (current) {
+                const below = planAmountBelowSettledError(current, parsed);
+                if (below) {
+                  setError(below);
+                  return;
+                }
               }
               saveEditedItem(id, {
                 name: editName.trim(),
@@ -809,7 +858,7 @@ export function PlanEditor({
         <PlanCard
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."
-          totalLabel="Summa"
+          totalLabel="Kvar att betala"
           totalMinor={sumCountsTowardCashMinor(projection.fixedItems, matchedExpenseIds)}
           currency={currency}
           banner={focusAdd === "fixed" ? stepHint : null}
@@ -875,16 +924,17 @@ export function PlanEditor({
             pendingId={rowBusy().pendingId}
             pendingAction={rowBusy().pendingAction}
             onSettle={settleRow}
+            onMarkRemainder={markRemainder}
             partialId={partialId}
             partialAmount={partialAmount}
             partialDate={partialDate}
-            partialPrompt="Hur mycket är betalt?"
+            partialPrompt="Hur mycket betalade du nu?"
             remainingDatePrompt="När ska resten betalas?"
             onPartialAmount={setPartialAmount}
             onPartialDate={setPartialDate}
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) => settleRow(id, true, partialAmount, partialDate)}
+            onSavePartial={(id) => savePartialRow(id)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -898,6 +948,14 @@ export function PlanEditor({
               if (typeof parsed !== "number") {
                 setError(parsed.error);
                 return;
+              }
+              const current = localItems.find((row) => row.id === id);
+              if (current) {
+                const below = planAmountBelowSettledError(current, parsed);
+                if (below) {
+                  setError(below);
+                  return;
+                }
               }
               saveEditedItem(id, {
                 name: editName.trim(),
@@ -969,7 +1027,7 @@ export function PlanEditor({
 
         <PlanCard
           title="Extra utgifter"
-          totalLabel="Summa"
+          totalLabel="Kvar att betala"
           totalMinor={sumCountsTowardCashMinor(projection.extraItems, matchedExpenseIds)}
           currency={currency}
         >
@@ -987,16 +1045,17 @@ export function PlanEditor({
             pendingId={rowBusy().pendingId}
             pendingAction={rowBusy().pendingAction}
             onSettle={settleRow}
+            onMarkRemainder={markRemainder}
             partialId={partialId}
             partialAmount={partialAmount}
             partialDate={partialDate}
-            partialPrompt="Hur mycket är betalt?"
+            partialPrompt="Hur mycket betalade du nu?"
             remainingDatePrompt="När ska resten betalas?"
             onPartialAmount={setPartialAmount}
             onPartialDate={setPartialDate}
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) => settleRow(id, true, partialAmount, partialDate)}
+            onSavePartial={(id) => savePartialRow(id)}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1010,6 +1069,14 @@ export function PlanEditor({
               if (typeof parsed !== "number") {
                 setError(parsed.error);
                 return;
+              }
+              const current = localItems.find((row) => row.id === id);
+              if (current) {
+                const below = planAmountBelowSettledError(current, parsed);
+                if (below) {
+                  setError(below);
+                  return;
+                }
               }
               saveEditedItem(id, {
                 name: editName.trim(),

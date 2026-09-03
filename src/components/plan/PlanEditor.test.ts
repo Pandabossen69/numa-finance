@@ -228,10 +228,10 @@ describe("Plan dates and add-form", () => {
     );
   });
 
-  it("shows 51 000 − 22 000 = 29 000 and keeps Summa on remaining cash", () => {
+  it("shows 51 000 − 22 000 = 29 000 and labels remaining cash as Kvar att få/betala", () => {
     expect(rows).toContain("planRowHeroMinor");
     expect(rows).toContain("planPartialBreakdown");
-    expect(rows).toContain("previewPartialRemaining");
+    expect(rows).toContain("previewAdditionalPartialRemaining");
     expect(rows).toContain("PlanEquation");
     expect(equation).toContain("formatPlanFigure");
     expect(editor).toContain("coverage={coverage}");
@@ -257,6 +257,9 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("remainingDate");
     expect(editor).toContain("applyPlanItemEdits");
     expect(rows).toContain("remainingDueIso(item)");
+    expect(rows).toContain("Lägg till mottaget");
+    expect(rows).toContain("Markera resten mottagen");
+    expect(rows).toContain("onMarkRemainder");
   });
 
   it("reconciles mutations locally and does not refresh the whole page", () => {
