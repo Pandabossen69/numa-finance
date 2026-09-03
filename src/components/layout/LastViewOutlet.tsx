@@ -3,7 +3,11 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { isTabRoot, primaryTab } from "@/components/layout/nav";
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import {
+  AnalysViewLoading,
+  HomeViewLoading,
+  ViewLoading,
+} from "@/components/layout/ViewLoading";
 import {
   isViewLoadingNode,
   resolveVisibleTab,
@@ -113,7 +117,13 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
         );
       })}
       {paint === "children" && !pathTab ? children : null}
-      {showSoftFallback ? <ViewLoading /> : null}
+      {showSoftFallback ? <DestShell tab={destTab ?? visibleTab} /> : null}
     </div>
   );
+}
+
+function DestShell({ tab }: { tab: string | null }) {
+  if (tab === "/idag") return <HomeViewLoading />;
+  if (tab === "/analys") return <AnalysViewLoading />;
+  return <ViewLoading />;
 }

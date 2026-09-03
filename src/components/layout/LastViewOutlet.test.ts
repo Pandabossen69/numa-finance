@@ -13,5 +13,6 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("sameTabRefresh");
     expect(src).toContain("liveByTabRef");
     expect(src).toContain("liveIncomingDest");
+    expect(src).toContain("DestShell");
   });
 });
