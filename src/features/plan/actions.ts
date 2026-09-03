@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import {
   addMonthsKey,
@@ -66,10 +66,21 @@ const createIncomeSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+/**
+ * Mark plan-derived caches stale without re-rendering the current route.
+ *
+ * Calling Next path-revalidation helpers from a Server Action ships a full RSC
+ * Flight payload in the same HTTP response. On desktop that hard-locks the tab
+ * right after Save; on phone it freezes. The row is already in Supabase and
+ * PlanEditor already patched locally — so refreshing /plan|/idag|/analys in
+ * the action only races the optimistic tree (and can look like
+ * "crashed but saved").
+ *
+ * Tabs are force-dynamic; the next visit is fresh. Same pattern as money saves
+ * and settle (`revalidateSettleCaches`).
+ */
 function revalidatePlanPaths() {
-  revalidatePath("/plan");
-  revalidatePath("/idag");
-  revalidatePath("/analys");
+  revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 }
 
 /** Settle writes a ledger row. Do not ship a full RSC Flight payload — cards update locally. */

@@ -167,6 +167,8 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
+  /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
+  const writeLockRef = useRef(false);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
   const focusCardRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -201,10 +203,15 @@ export function PlanEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localItems, currency, timeZone, coverageSaldoMinor, spendingByMonthKey, ledgerTransactions]);
 
-  if (!busy && incomingStamp !== itemsStamp) {
+  // Adopt server/store props after commit — never during render.
+  // Render-phase setState here raced PlanScreen's useSyncExternalStore when a
+  // save finished (and previously when revalidatePath remounted /plan).
+  useEffect(() => {
+    if (busy) return;
+    if (incomingStamp === itemsStamp) return;
     setItemsStamp(incomingStamp);
     setLocalItems((current) => adoptServerPlanItems(current, items));
-  }
+  }, [busy, incomingStamp, itemsStamp, items]);
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
@@ -338,6 +345,8 @@ export function PlanEditor({
       result: Extract<ActionResult, { ok: true }>,
     ) => PlanItem[];
   }): Promise<boolean> {
+    if (writeLockRef.current) return false;
+    writeLockRef.current = true;
     setError(null);
     setBusy(opts.busy);
     setLocalItems((current) => {
@@ -362,6 +371,8 @@ export function PlanEditor({
             : result.items
               ? mergeReturnedItems(current, result.items, new Set())
               : current;
+        // Keep stamp in step so adopting store props after unlock is a no-op.
+        setItemsStamp(stampPlanItems(next));
         return next;
       });
       return true;
@@ -373,6 +384,7 @@ export function PlanEditor({
       setError(err instanceof Error ? err.message : "Något gick fel");
       return false;
     } finally {
+      writeLockRef.current = false;
       setBusy((current) => (current === opts.busy ? null : current));
     }
   }
