@@ -628,4 +628,67 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.todayPlannedPaidMinor).toBe(20_000_00);
   });
+
+  it("never lets a Plan ledger raise Spenderat idag", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        todaySpendingMinor: 1_200_00,
+        todayPlannedPaidMinor: 0,
+        remainingTodayMinor: 1_428_00,
+        dayBudgetMinor: 2_628_00,
+        financeRevision: "pre-settle",
+        verifiedAt: "2026-09-04T08:00:00.000Z",
+      }),
+    );
+    const lunch: CanonicalTransaction = {
+      id: "lunch",
+      userId: "user-hugo",
+      accountId: "acc",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: 1_200_00,
+      currency: "THB",
+      occurredAt: new Date().toISOString(),
+      description: "Lunch",
+      merchant: null,
+      category: "Mat",
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      transferGroupId: null,
+      planItemId: null,
+      ledgerOrigin: "external",
+      linkedPlanItemId: null,
+      syncStatus: "saved",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    syncHomeLivingFromPlan({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 34_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [
+        lunch,
+        {
+          ...lunch,
+          id: "hyra",
+          amountMinor: 20_000_00,
+          description: "Hyra",
+          category: null,
+          ledgerOrigin: undefined,
+          planItemId: null,
+        },
+      ],
+      financeRevision: "pre-settle:local",
+      verifiedAt: "2026-09-04T08:00:01.000Z",
+      truthStatus: "stale",
+    });
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).not.toBe(21_200_00);
+  });
 });

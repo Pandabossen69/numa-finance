@@ -346,19 +346,24 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
     cycleEndAt: cycle.endAt,
   });
   const ledgerCycleMinor = windows.cycle.total.amountMinor;
+  const cycleSpendingMinor = homeDirty
+    ? Math.max(home.cycleSpendingMinor, ledgerCycleMinor)
+    : ledgerCycleMinor;
   const todaySplit = resolveTodaySpendSplit({
     ledgerDiscretionaryMinor: windows.today.discretionary.amountMinor,
     ledgerPlannedPaidMinor: windows.today.plannedPaid.amountMinor,
     ledgerTotalMinor: windows.today.total.amountMinor,
-    homeDiscretionaryMinor: home.todaySpendingMinor,
-    homePlannedPaidMinor: home.todayPlannedPaidMinor,
+    homeDiscretionaryMinor: home.todaySpendingMinor ?? 0,
+    homePlannedPaidMinor: home.todayPlannedPaidMinor ?? 0,
     homeDirty,
   });
-  const cycleSpendingMinor = homeDirty
-    ? Math.max(home.cycleSpendingMinor, ledgerCycleMinor)
-    : ledgerCycleMinor;
-  const todaySpendingMinor = todaySplit.discretionaryMinor;
-  const todayPlannedPaidMinor = todaySplit.plannedPaidMinor;
+  // Plan ledger must never raise Spenderat idag. A settle row that lost
+  // origin/link fields classifies as lunch and produced 21 200 here.
+  const todaySpendingMinor = home.todaySpendingMinor ?? 0;
+  const todayPlannedPaidMinor = Math.max(
+    home.todayPlannedPaidMinor ?? 0,
+    todaySplit.plannedPaidMinor,
+  );
   const bankBalanceMinor = homeDirty
     ? home.calculatedBalanceMinor
     : (snapshot.bankBalanceMinor ?? home.calculatedBalanceMinor);
