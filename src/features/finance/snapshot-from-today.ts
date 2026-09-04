@@ -10,8 +10,13 @@ import {
   projectLivingBudget,
   projectPayCycle,
 } from "@/domain/finance";
+import type { BalanceCheckpoint } from "@/domain/finance";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import {
+  buildMovementsSnapshot,
+  type MovementsSnapshot,
+} from "@/features/finance/load-movements";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { TodaySnapshot } from "@/lib/store/types-snapshot";
 
@@ -144,4 +149,42 @@ export function accountsSnapshotFromToday(snap: TodaySnapshot): AccountsSnapshot
     totalThbMinor = (totalThbMinor ?? 0) + row.thbMinor;
   }
   return { accounts, totalThbMinor };
+}
+
+export function movementsSnapshotFromToday(
+  snap: TodaySnapshot,
+  now = new Date(),
+): MovementsSnapshot {
+  const byId = new Map(
+    (snap.accountBalances ?? []).map((row) => [row.accountId, row]),
+  );
+  const checkpoints: Array<BalanceCheckpoint | null> = snap.accounts.map(
+    (account) => {
+      const bal = byId.get(account.id);
+      if (!bal) return null;
+      return {
+        id: `snap-${account.id}`,
+        userId: snap.profile.id,
+        accountId: account.id,
+        balanceMinor: bal.nativeMinor ?? 0,
+        currency: account.currency,
+        thbMinor: bal.thbMinor,
+        fxRate: bal.fxRate,
+        fxAsOf: snap.verifiedAt,
+        fxSource: bal.fxSource,
+        verifiedAt: snap.verifiedAt,
+        source: "snapshot",
+        sourceObservationId: null,
+        note: null,
+        createdAt: snap.verifiedAt,
+      };
+    },
+  );
+  return buildMovementsSnapshot({
+    accounts: snap.accounts,
+    transactions: snap.ledgerTransactions ?? [],
+    checkpoints,
+    timeZone: snap.profile.timezone || "Asia/Bangkok",
+    now,
+  });
 }

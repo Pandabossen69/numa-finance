@@ -36,7 +36,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const pathTab = primaryTab(pathname);
   const leaving = Boolean(pending && pending.fromPath === pathname);
   const inFlight = loading || leaving;
-  const liveByTabRef = useRef<Record<string, ReactNode>>({});
+  const [liveByTab, setLiveByTab] = useState<Record<string, ReactNode>>({});
   const hydrated = useSyncExternalStore(
     subscribeNever,
     () => true,
@@ -49,9 +49,13 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   );
   const [leaveSnapPath, setLeaveSnapPath] = useState<string | null>(null);
 
-  if (!loading && pathTab && isTabRoot(pathname)) {
-    liveByTabRef.current[pathTab] = children;
-  }
+  useIsomorphicLayoutEffect(() => {
+    if (!loading && pathTab && isTabRoot(pathname)) {
+      setLiveByTab((prev) =>
+        prev[pathTab] === children ? prev : { ...prev, [pathTab]: children },
+      );
+    }
+  }, [loading, pathTab, pathname, children]);
 
   if (!inFlight && isTabRoot(pathname) && pathTab && readyAt !== pathname) {
     setReadyAt(pathname);
@@ -62,7 +66,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     loading && !leaving && pathTab && destTab === pathTab && isTabRoot(pathname),
   );
   if (sameTabRefresh && pathTab) {
-    const live = liveByTabRef.current[pathTab];
+    const live = liveByTab[pathTab];
     if (live != null && cache[pathTab] !== live) {
       setCache((current) => ({ ...current, [pathTab]: live }));
     }
@@ -77,7 +81,12 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   }
 
   const heldTab = readyAt ? primaryTab(readyAt) : null;
-  const destLive = destTab ? liveByTabRef.current[destTab] : null;
+  const destLive =
+    destTab === pathTab && !loading
+      ? children
+      : destTab
+        ? liveByTab[destTab]
+        : null;
   const paint = resolveVisibleTab({
     loading,
     leaving,
@@ -125,9 +134,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
         const isCurrent = tab === pathTab;
         const live = isCurrent && (paint === "children" || leaving);
         const heldLive =
-          sameTabRefresh && tab === pathTab
-            ? liveByTabRef.current[pathTab]
-            : undefined;
+          sameTabRefresh && tab === pathTab ? liveByTab[pathTab] : undefined;
         const node = live ? children : (heldLive ?? cache[tab]);
         if (node == null) return null;
         const visible = paint === "children" ? isCurrent : tab === visibleTab;

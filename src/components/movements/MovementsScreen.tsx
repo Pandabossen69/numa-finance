@@ -15,6 +15,7 @@ import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
+  adoptMutationFinance,
   applyMovementsEdit,
   applyMovementsVoid,
   isMovementsDirty,
@@ -319,12 +320,18 @@ export function MovementsScreen({
                       placeholder="Beskrivning"
                       className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
                     />
-                    <input
-                      inputMode="decimal"
-                      value={editAmount}
-                      onChange={(e) => setEditAmount(e.target.value)}
-                      className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-lg font-semibold"
-                    />
+                    <label className="relative block">
+                      <input
+                        inputMode="decimal"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        aria-label={`Belopp ${tx.nativeCurrency ?? tx.currency}`}
+                        className="money min-h-12 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 pr-12 text-lg font-semibold"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[var(--numa-muted)]">
+                        {tx.nativeCurrency ?? tx.currency}
+                      </span>
+                    </label>
                     {tx.transactionType === "expense" ? (
                       <input
                         value={editCategory}
@@ -356,6 +363,8 @@ export function MovementsScreen({
                           }
                           const previous = {
                             amountMinor: tx.amountMinor,
+                            nativeAmountMinor: tx.nativeAmountMinor ?? tx.amountMinor,
+                            thbMinor: tx.amountMinor,
                             description: tx.description,
                             category: tx.category,
                           };
@@ -369,6 +378,7 @@ export function MovementsScreen({
                           setEditingId(null);
                           applyMovementsEdit(tx.id, {
                             amountMinor,
+                            nativeAmountMinor: amountMinor,
                             description,
                             category: nextCategory,
                           });
@@ -384,7 +394,9 @@ export function MovementsScreen({
                                 applyMovementsEdit(tx.id, previous);
                                 setEditingId(tx.id);
                                 setActionError(result.error);
+                                return;
                               }
+                              adoptMutationFinance(result);
                             } finally {
                               actionLock.current = false;
                               setPendingAction(null);
@@ -455,6 +467,7 @@ export function MovementsScreen({
                                   }
                                   setConfirmId(null);
                                   applyMovementsVoid(tx.id);
+                                  adoptMutationFinance(result);
                                 } finally {
                                   actionLock.current = false;
                                   setPendingAction(null);
@@ -484,7 +497,9 @@ export function MovementsScreen({
                             onClick={() => {
                               setEditingId(tx.id);
                               setConfirmId(null);
-                              setEditAmount(minorToUi(tx.amountMinor));
+                              setEditAmount(
+                                minorToUi(tx.nativeAmountMinor ?? tx.amountMinor),
+                              );
                               setEditDescription(tx.description);
                               setEditCategory(tx.category ?? "");
                               setActionError(null);

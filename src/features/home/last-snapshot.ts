@@ -302,10 +302,12 @@ export function adoptMutationFinance(result: {
   home?: HomeSnapshot | null;
   plan?: PlanSnapshot | null;
   accounts?: AccountsSnapshot | null;
+  movements?: MovementsSnapshot | null;
 }) {
   if (result.home) rememberHomeSnapshot(result.home, { force: true });
   if (result.plan) rememberPlanSnapshot(result.plan);
   if (result.accounts) rememberAccountsSnapshot(result.accounts);
+  if (result.movements) rememberMovementsSnapshot(result.movements);
   confirmOptimisticFinance();
 }
 
@@ -960,11 +962,16 @@ export function applyAccountBalance(
 export function applyMovementsAdd(row: MovementRow): MovementsSnapshot | null {
   if (!movements) return null;
   if (movements.items.some((tx) => tx.id === row.id)) return movements;
+  const normalized: MovementRow = {
+    ...row,
+    nativeAmountMinor: row.nativeAmountMinor ?? row.amountMinor,
+    nativeCurrency: row.nativeCurrency ?? row.currency,
+  };
   rememberMovementsSnapshot(
     recomputeMovements(
       movements,
-      [row, ...movements.items],
-      movementBalanceDelta(row),
+      [normalized, ...movements.items],
+      movementBalanceDelta(normalized),
     ),
     { dirty: true },
   );
@@ -983,7 +990,10 @@ export function applyMovementsVoid(id: string): MovementsSnapshot | null {
     ),
     { dirty: true },
   );
-  applyAccountDelta(-movementBalanceDelta(item));
+  applyAccountDelta(
+    -signedNativeDelta(item, item.nativeAmountMinor ?? item.amountMinor),
+    item.accountId,
+  );
   if (item.transactionType === "expense") {
     applyHomeForExpenseDelta(item, -item.amountMinor);
   } else if (item.transactionType === "income") {
@@ -992,20 +1002,40 @@ export function applyMovementsVoid(id: string): MovementsSnapshot | null {
   return movements;
 }
 
+function signedNativeDelta(tx: MovementRow, nativeMinor: number): number {
+  if (tx.transactionType === "income" || tx.direction === "credit") {
+    return nativeMinor;
+  }
+  if (tx.transactionType === "expense" || tx.direction === "debit") {
+    return -nativeMinor;
+  }
+  return 0;
+}
+
 export function applyMovementsEdit(
   id: string,
   patch: {
     amountMinor: number;
     description: string;
     category?: string | null;
+    nativeAmountMinor?: number;
+    thbMinor?: number;
   },
 ): MovementsSnapshot | null {
   if (!movements) return null;
   const item = movements.items.find((tx) => tx.id === id);
   if (!item) return movements;
+  const nextNative = patch.nativeAmountMinor ?? patch.amountMinor;
+  const rate = item.fxRate ?? (item.nativeCurrency === "THB" ? 1 : null);
+  const nextThb =
+    patch.thbMinor ??
+    (item.nativeCurrency === "THB" || rate == null
+      ? nextNative
+      : Math.round(nextNative * rate));
   const nextItem: MovementRow = {
     ...item,
-    amountMinor: patch.amountMinor,
+    amountMinor: nextThb,
+    nativeAmountMinor: nextNative,
     description: patch.description,
     category: patch.category === undefined ? item.category : patch.category,
   };
@@ -1019,7 +1049,10 @@ export function applyMovementsEdit(
     ),
     { dirty: true },
   );
-  applyAccountDelta(balanceDelta);
+  const nativeDelta =
+    signedNativeDelta(nextItem, nextNative) -
+    signedNativeDelta(item, item.nativeAmountMinor ?? item.amountMinor);
+  applyAccountDelta(nativeDelta, item.accountId);
   if (item.transactionType === "expense") {
     applyHomeForExpenseDelta(item, nextItem.amountMinor - item.amountMinor);
   } else if (item.transactionType === "income") {
@@ -1035,17 +1068,34 @@ export function applyLocalExpense(input: {
   category?: string | null;
   currency: CurrencyCode;
   accountId?: string | null;
+  thbAmountMinor?: number;
+  nativeAmountMinor?: number;
+  nativeCurrency?: CurrencyCode;
+  fxRate?: number | null;
 }) {
-  applyOptimisticHomeSpend(input.amountMinor);
-  applyAccountDelta(-input.amountMinor, input.accountId);
+  const nativeMinor = input.nativeAmountMinor ?? input.amountMinor;
+  const nativeCurrency = input.nativeCurrency ?? input.currency;
+  const thbMinor =
+    input.thbAmountMinor ??
+    (nativeCurrency === "THB"
+      ? nativeMinor
+      : input.fxRate != null && input.fxRate > 0
+        ? Math.round(nativeMinor * input.fxRate)
+        : nativeMinor);
+  applyOptimisticHomeSpend(thbMinor);
+  applyAccountDelta(-nativeMinor, input.accountId);
   applyMovementsAdd({
     id: input.id ?? crypto.randomUUID(),
     description: input.description,
     category: input.category ?? null,
     transactionType: "expense",
     direction: "debit",
-    amountMinor: input.amountMinor,
-    currency: input.currency,
+    amountMinor: thbMinor,
+    currency: "THB",
+    nativeAmountMinor: nativeMinor,
+    nativeCurrency,
+    accountId: input.accountId,
+    fxRate: input.fxRate ?? (nativeCurrency === "THB" ? 1 : null),
     occurredAt: new Date().toISOString(),
     source: "manual",
   });
@@ -1056,17 +1106,35 @@ export function applyLocalIncome(input: {
   amountMinor: number;
   description: string;
   currency: CurrencyCode;
+  accountId?: string | null;
+  thbAmountMinor?: number;
+  nativeAmountMinor?: number;
+  nativeCurrency?: CurrencyCode;
+  fxRate?: number | null;
 }) {
-  applyOptimisticHomeIncome(input.amountMinor);
-  applyAccountDelta(input.amountMinor);
+  const nativeMinor = input.nativeAmountMinor ?? input.amountMinor;
+  const nativeCurrency = input.nativeCurrency ?? input.currency;
+  const thbMinor =
+    input.thbAmountMinor ??
+    (nativeCurrency === "THB"
+      ? nativeMinor
+      : input.fxRate != null && input.fxRate > 0
+        ? Math.round(nativeMinor * input.fxRate)
+        : nativeMinor);
+  applyOptimisticHomeIncome(thbMinor);
+  applyAccountDelta(nativeMinor, input.accountId);
   applyMovementsAdd({
     id: input.id ?? crypto.randomUUID(),
     description: input.description,
     category: null,
     transactionType: "income",
     direction: "credit",
-    amountMinor: input.amountMinor,
-    currency: input.currency,
+    amountMinor: thbMinor,
+    currency: "THB",
+    nativeAmountMinor: nativeMinor,
+    nativeCurrency,
+    accountId: input.accountId,
+    fxRate: input.fxRate ?? (nativeCurrency === "THB" ? 1 : null),
     occurredAt: new Date().toISOString(),
     source: "manual",
   });

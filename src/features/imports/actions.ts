@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { parseUiAmountToMinor, money } from "@/domain/money";
 import { ALLOWED_IMAGE_MIME, assertAllowedImageBytes } from "@/lib/media/image-magic";
@@ -21,9 +21,11 @@ import {
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
 } from "@/domain/finance";
+import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
+import { SAVED_REFRESH_PENDING_SV } from "@/features/finance/mutation-refresh";
 
 export type ActionResult<T = undefined> =
-  | { ok: true; data: T }
+  | { ok: true; data: T; refreshPending?: boolean; refreshPendingMessage?: string }
   | { ok: false; error: string };
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -88,6 +90,7 @@ const confirmSchema = z.object({
   maskedAccount: z.string().trim().max(32).optional().nullable(),
   direction: z.enum(["debit", "credit"]).optional().nullable(),
   fromOnboarding: z.boolean().optional(),
+  clientMutationId: z.string().uuid().optional(),
 });
 
 export async function confirmReceiptExpenseAction(
@@ -128,6 +131,7 @@ export async function confirmReceiptExpenseAction(
       source: input.source,
       maskedAccount: input.maskedAccount,
       direction: input.direction,
+      clientMutationId: input.clientMutationId,
     });
 
     if (input.fromOnboarding) {
@@ -139,42 +143,51 @@ export async function confirmReceiptExpenseAction(
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
-    const snap = await getTodaySnapshot();
-    const timeZone = snap.profile.timezone || "Asia/Bangkok";
-    const now = new Date();
-    const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
-    const living = projectLivingBudget({
-      cycle,
-      now,
-      timeZone,
-      bankBalanceMinor: snap.calculatedBalanceMinor,
-      cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
-      todaySpendingMinor: snap.todaySpendingMinor,
-      fundingConfirmed: snap.fundingConfirmed,
-    });
-    const pulse = calculateDayPulse({
-      safeToSpendToday: money(living.dayBudgetMinor, snap.currency),
-      spentToday: money(snap.todaySpendingMinor, snap.currency),
-    });
+    try {
+      const snap = await getTodaySnapshot();
+      const timeZone = snap.profile.timezone || "Asia/Bangkok";
+      const now = new Date();
+      const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
+      const living = projectLivingBudget({
+        cycle,
+        now,
+        timeZone,
+        bankBalanceMinor: snap.calculatedBalanceMinor,
+        cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
+        todaySpendingMinor: snap.todaySpendingMinor,
+        fundingConfirmed: snap.fundingConfirmed,
+      });
+      const pulse = calculateDayPulse({
+        safeToSpendToday: money(living.dayBudgetMinor, snap.currency),
+        spentToday: money(snap.todaySpendingMinor, snap.currency),
+      });
 
-    revalidatePath("/idag");
-    revalidatePath("/transaktioner");
-    revalidatePath("/analys");
-    revalidatePath("/plan");
-    revalidatePath("/importera");
-    revalidatePath("/konton");
-    revalidatePath("/fota");
+      revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 
-    return {
-      ok: true,
-      data: {
-        pulseStatus: pulse.status,
-        balanceAfterMinor:
-          snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
-        direction: tx.direction,
-        amountMinor: tx.amountMinor,
-      },
-    };
+      return {
+        ok: true,
+        data: {
+          pulseStatus: pulse.status,
+          balanceAfterMinor:
+            snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
+          direction: tx.direction,
+          amountMinor: tx.amountMinor,
+        },
+      };
+    } catch {
+      revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
+      return {
+        ok: true,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+        data: {
+          pulseStatus: "even",
+          balanceAfterMinor: tx.balanceAfterMinor ?? null,
+          direction: tx.direction,
+          amountMinor: tx.amountMinor,
+        },
+      };
+    }
   } catch (error) {
     void reportError("ocr.confirm", error);
     const message = error instanceof Error ? error.message : "";

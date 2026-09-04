@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,6 +12,7 @@ import {
   deleteObservationAction,
   uploadReceiptAction,
 } from "@/features/imports/actions";
+import { newClientMutationId } from "@/domain/finance";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import { compressImageForUpload } from "@/lib/media/compress-image";
@@ -75,8 +76,9 @@ export function ReceiptCaptureFlow({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
-
-  useEffect(() => {
+  const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
+  if (resumeKey !== seenResumeKey) {
+    setSeenResumeKey(resumeKey);
     if (initialPreview) {
       setPreview(initialPreview);
       setMode(
@@ -90,14 +92,12 @@ export function ReceiptCaptureFlow({
       );
       setError(null);
       setScanning(false);
-      return;
+    } else {
+      setPreview(null);
+      setMode(initialMode);
+      setAmountEditable(false);
     }
-    setPreview(null);
-    setMode(initialMode);
-    setAmountEditable(false);
-    // initialPreview is identified by resumeKey — do not reset on new object identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- resume payload is keyed
-  }, [resumeKey, initialMode]);
+  }
 
   const roomBefore = Math.max(0, remainingTodayMinor);
 
@@ -263,6 +263,7 @@ export function ReceiptCaptureFlow({
                 : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
+        clientMutationId: newClientMutationId(),
         source:
           preview.importKind === "bank_app"
             ? "bank_import"

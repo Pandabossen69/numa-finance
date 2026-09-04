@@ -20,11 +20,15 @@ import {
   parseUiAmountToMinor,
   type CurrencyCode,
 } from "@/domain/money";
+import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
-import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
+import {
+  financeTruthMessageSv,
+  shouldShowFinanceTruthBanner,
+} from "@/features/finance/finance-truth-copy";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
@@ -117,14 +121,16 @@ export function HomeDashboard({
     );
   }
 
-  const staleBanner =
-    error || view.truthStatus === "stale" || view.truthStatus === "unavailable"
-      ? financeTruthMessageSv({
-          truthStatus: view.truthStatus === "verified" ? "stale" : view.truthStatus,
-          verifiedAt: view.verifiedAt,
-          timeZone: view.timeZone,
-        })
-      : null;
+  const staleBanner = shouldShowFinanceTruthBanner({
+    truthStatus: view.truthStatus,
+    error,
+  })
+    ? financeTruthMessageSv({
+        truthStatus: view.truthStatus,
+        verifiedAt: view.verifiedAt,
+        timeZone: view.timeZone,
+      })
+    : null;
 
   const remainingTodayMinor = view.remainingTodayMinor;
   const todaySpendingMinor = view.todaySpendingMinor;
@@ -446,8 +452,8 @@ export function HomeDashboard({
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
-            onOptimisticSpend={(amountMinor) => applyOptimisticHomeSpend(amountMinor)}
-            onSpendFailed={(amountMinor) => revertOptimisticHomeSpend(amountMinor)}
+            onOptimisticSpend={(thbMinor) => applyOptimisticHomeSpend(thbMinor)}
+            onSpendFailed={(thbMinor) => revertOptimisticHomeSpend(thbMinor)}
           />
         </>
       ) : null}
@@ -642,7 +648,14 @@ function QuickExpense({
   onSpendFailed,
 }: {
   accountId: string | null;
-  accounts: Array<{ id: string; name: string; kindLabelSv?: string; kind?: string }>;
+  accounts: Array<{
+    id: string;
+    name: string;
+    kindLabelSv?: string;
+    kind?: string;
+    currency?: CurrencyCode;
+    fxRate?: number | null;
+  }>;
   currency: CurrencyCode;
   disabled: boolean;
   remainingTodayMinor: number;
@@ -652,15 +665,17 @@ function QuickExpense({
 }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
-  const [chosenAccountId, setChosenAccountId] = useState(accountId ?? "");
+  const [chosenAccountId, setChosenAccountId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   // Guard only — never flip a busy "saving…" flag; dial updates instantly.
   const guard = useSubmitGuard();
   const targetAccountId = chosenAccountId || accountId;
-
-  useEffect(() => {
-    if (accountId && !chosenAccountId) setChosenAccountId(accountId);
-  }, [accountId, chosenAccountId]);
+  const selectedAccount =
+    accounts.find((account) => account.id === targetAccountId) ?? null;
+  const nativeCurrency = selectedAccount?.currency ?? currency;
+  const fxRate =
+    selectedAccount?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -710,6 +725,7 @@ function QuickExpense({
                 {accounts.map((account) => (
                   <option key={account.id} value={account.id}>
                     {account.name}
+                    {account.currency ? ` · ${account.currency}` : ""}
                     {account.kindLabelSv ? ` · ${account.kindLabelSv}` : ""}
                   </option>
                 ))}
@@ -724,14 +740,19 @@ function QuickExpense({
               aria-label="Anteckning"
               className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
-            <input
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={currency}
-              aria-label="Belopp"
-              className="money min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
-            />
+            <label className="relative block">
+              <input
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                aria-label={`Belopp ${nativeCurrency}`}
+                className="money min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 pr-12 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[var(--numa-muted)]">
+                {nativeCurrency}
+              </span>
+            </label>
             <button
               type="button"
               disabled={!amount.trim()}
@@ -749,14 +770,25 @@ function QuickExpense({
                   setError("Beloppet måste vara större än 0");
                   return;
                 }
+                const thbMinor = nativeToThbMinor(
+                  amountMinor,
+                  nativeCurrency,
+                  fxRate,
+                );
+                if (thbMinor == null) {
+                  setError("Konto saknar växelkurs");
+                  return;
+                }
                 if (!guard.tryBegin()) return;
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
+                const mutationId = newClientMutationId();
                 setError(null);
+                setNotice(null);
                 setAmount("");
                 setNote("");
                 // Instant UI — dial + konton; server + rörelser catch up.
-                onOptimisticSpend(amountMinor);
+                onOptimisticSpend(thbMinor);
                 applyAccountDelta(-amountMinor, targetAccountId);
                 void (async () => {
                   try {
@@ -764,22 +796,32 @@ function QuickExpense({
                       accountId: targetAccountId,
                       amount: amountInput,
                       description,
+                      clientMutationId: mutationId,
                     });
                     if (!result.ok) {
-                      onSpendFailed(amountMinor);
+                      onSpendFailed(thbMinor);
                       applyAccountDelta(amountMinor, targetAccountId);
                       setError(result.error);
                       return;
                     }
                     adoptMutationFinance(result);
+                    if (result.refreshPending) {
+                      setNotice(
+                        result.refreshPendingMessage ?? "Sparat. Uppdaterar siffrorna…",
+                      );
+                    }
                     applyMovementsAdd({
                       id: result.id ?? crypto.randomUUID(),
                       description,
                       category: null,
                       transactionType: "expense",
                       direction: "debit",
-                      amountMinor,
-                      currency,
+                      amountMinor: thbMinor,
+                      currency: "THB",
+                      nativeAmountMinor: amountMinor,
+                      nativeCurrency,
+                      accountId: targetAccountId,
+                      fxRate,
                       occurredAt: new Date().toISOString(),
                       source: "manual",
                     });
@@ -792,6 +834,9 @@ function QuickExpense({
               Spara
             </button>
           </div>
+          {notice ? (
+            <p className="text-sm text-[var(--numa-muted)]">{notice}</p>
+          ) : null}
           {error ? (
             <p className="text-sm text-[var(--numa-danger)]" role="alert">
               {error}

@@ -9,7 +9,8 @@ import {
   createTransferAction,
 } from "@/features/finance/actions";
 import { SV } from "@/features/copy/labels-sv";
-import { parseUiAmountToMinor } from "@/domain/money";
+import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
+import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import {
   adoptMutationFinance,
   applyAccountDelta,
@@ -18,7 +19,6 @@ import {
   applyOptimisticHomeIncome,
   applyOptimisticHomeSpend,
   confirmOptimisticFinance,
-  lastHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
 export type ShellAccount = {
@@ -26,6 +26,7 @@ export type ShellAccount = {
   name: string;
   accountType: string;
   currency?: string;
+  fxRate?: number | null;
 };
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
@@ -171,22 +172,33 @@ function ExpenseForm({
             return;
           }
           const descriptionText = description.trim() || "Utgift";
-          const currency = lastHomeSnapshot()?.currency ?? "THB";
-          applyOptimisticHomeSpend(amountMinor);
+          const selected =
+            accounts.find((account) => account.id === chosenAccountId) ?? null;
+          const nativeCurrency = (selected?.currency ?? "THB") as CurrencyCode;
+          const fxRate =
+            selected?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
+          const thbMinor = nativeToThbMinor(amountMinor, nativeCurrency, fxRate);
+          if (thbMinor == null) {
+            setError("Konto saknar växelkurs");
+            return;
+          }
+          applyOptimisticHomeSpend(thbMinor);
           applyAccountDelta(-amountMinor, chosenAccountId);
           try {
             localStorage.setItem(LAST_CATEGORY_KEY, category);
           } catch {
             // ignore
           }
+          const mutationId = newClientMutationId();
           const result = await createExpenseAction({
             accountId: chosenAccountId,
             amount,
             category,
             description: description || undefined,
+            clientMutationId: mutationId,
           });
           if (!result.ok) {
-            applyOptimisticHomeSpend(-amountMinor);
+            applyOptimisticHomeSpend(-thbMinor);
             applyAccountDelta(amountMinor, chosenAccountId);
             setError(result.error);
             return;
@@ -198,8 +210,12 @@ function ExpenseForm({
             category,
             transactionType: "expense",
             direction: "debit",
-            amountMinor,
-            currency,
+            amountMinor: thbMinor,
+            currency: "THB",
+            nativeAmountMinor: amountMinor,
+            nativeCurrency,
+            accountId: chosenAccountId,
+            fxRate,
             occurredAt: new Date().toISOString(),
             source: "manual",
           });
@@ -217,7 +233,14 @@ function ExpenseForm({
           accounts={accounts}
         />
       ) : null}
-      <AmountField value={amount} onChange={setAmount} />
+      <AmountField
+        value={amount}
+        onChange={setAmount}
+        currency={
+          (accounts.find((account) => account.id === chosenAccountId)
+            ?.currency ?? "THB") as CurrencyCode
+        }
+      />
       <div className="numa-chip-scroll">
         {CATEGORIES.map((c) => (
           <button
@@ -281,29 +304,43 @@ function IncomeForm({
             return;
           }
           const descriptionText = description.trim() || "Inkomst";
-          const currency = lastHomeSnapshot()?.currency ?? "THB";
-          applyOptimisticHomeIncome(amountMinor);
+          const selected =
+            accounts.find((account) => account.id === targetId) ?? null;
+          const nativeCurrency = (selected?.currency ?? "THB") as CurrencyCode;
+          const fxRate =
+            selected?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
+          const thbMinor = nativeToThbMinor(amountMinor, nativeCurrency, fxRate);
+          if (thbMinor == null) {
+            setError("Konto saknar växelkurs");
+            return;
+          }
+          applyOptimisticHomeIncome(thbMinor);
           applyAccountDelta(amountMinor, targetId);
           const result = await createIncomeAction({
             accountId: targetId,
             amount,
             description: description || undefined,
+            clientMutationId: newClientMutationId(),
           });
           if (!result.ok) {
-            applyOptimisticHomeIncome(-amountMinor);
+            applyOptimisticHomeIncome(-thbMinor);
             applyAccountDelta(-amountMinor, targetId);
             setError(result.error);
             return;
           }
-          confirmOptimisticFinance();
+          adoptMutationFinance(result);
           applyMovementsAdd({
             id: result.id ?? crypto.randomUUID(),
             description: descriptionText,
             category: null,
             transactionType: "income",
             direction: "credit",
-            amountMinor,
-            currency,
+            amountMinor: thbMinor,
+            currency: "THB",
+            nativeAmountMinor: amountMinor,
+            nativeCurrency,
+            accountId: targetId,
+            fxRate,
             occurredAt: new Date().toISOString(),
             source: "manual",
           });
@@ -324,7 +361,14 @@ function IncomeForm({
           accounts={accounts}
         />
       ) : null}
-      <AmountField value={amount} onChange={setAmount} />
+      <AmountField
+        value={amount}
+        onChange={setAmount}
+        currency={
+          (accounts.find((account) => account.id === targetId)?.currency ??
+            "THB") as CurrencyCode
+        }
+      />
       <TextField
         value={description}
         onChange={setDescription}
@@ -458,7 +502,7 @@ function TransferForm({
           stöds inte ännu.
         </p>
       ) : null}
-      <AmountField value={amount} onChange={setAmount} />
+      <AmountField value={amount} onChange={setAmount} currency={fromCurrency} />
       <TextField
         value={description}
         onChange={setDescription}
@@ -494,6 +538,8 @@ function CashForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const fromCurrency =
+    accounts.find((account) => account.id === fromId)?.currency ?? "THB";
 
   if (cashAccounts.length === 0) {
     return (
@@ -571,7 +617,7 @@ function CashForm({
         onChange={setToId}
         accounts={cashAccounts.filter((a) => a.id !== fromId)}
       />
-      <AmountField value={amount} onChange={setAmount} />
+      <AmountField value={amount} onChange={setAmount} currency={fromCurrency} />
       <TextField
         value={description}
         onChange={setDescription}
@@ -590,24 +636,31 @@ function CashForm({
 function AmountField({
   value,
   onChange,
+  currency = "THB",
 }: {
   value: string;
   onChange: (v: string) => void;
+  currency?: string;
 }) {
   return (
     <label className="block">
       <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-        Belopp
+        Belopp · {currency}
       </span>
-      <input
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="0"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="money w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
-        aria-label="Belopp"
-      />
+      <div className="relative">
+        <input
+          inputMode="decimal"
+          autoComplete="off"
+          placeholder="0"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="money w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4 pr-16 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
+          aria-label={`Belopp ${currency}`}
+        />
+        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-[var(--numa-muted)]">
+          {currency}
+        </span>
+      </div>
     </label>
   );
 }
@@ -655,6 +708,7 @@ function AccountSelect({
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>
             {a.name}
+            {a.currency ? ` · ${a.currency}` : ""}
           </option>
         ))}
       </select>

@@ -11,6 +11,7 @@ export async function reportError(
     | "mutation.settle"
     | "mutation.expense"
     | "mutation.link"
+    | "mutation.refresh"
     | "ocr.upload"
     | "ocr.confirm"
     | "reconcile",

@@ -33,13 +33,16 @@ import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
   adoptMutationFinance,
+  lastAccountsSnapshot,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastPlanView,
   rememberPlanView,
+  subscribeAccountsSnapshot,
   subscribeHomeSnapshot,
   subscribePlanView,
 } from "@/features/home/last-snapshot";
+import { newClientMutationId, thbToNativeMinor } from "@/domain/finance";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
@@ -175,10 +178,30 @@ export function PlanEditor({
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
   const writeLockRef = useRef(false);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
+  const [seenFocusAdd, setSeenFocusAdd] = useState(focusAdd);
+  if (focusAdd !== seenFocusAdd) {
+    setSeenFocusAdd(focusAdd);
+    if (focusAdd) setAddKind(focusAdd);
+  }
+  const accountsView = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
+    lastAccountsSnapshot,
+  );
+  const settleAccounts = (accountsView?.accounts ?? []).map((account) => ({
+    id: account.id,
+    name: account.name,
+    currency: account.currency,
+  }));
+  const defaultSettleAccountId =
+    accountsView?.accounts.find((account) => account.isDefault)?.id ??
+    accountsView?.accounts[0]?.id ??
+    "";
+  const [settleAccountId, setSettleAccountId] = useState(defaultSettleAccountId);
+  const settleAccountIdOrDefault = settleAccountId || defaultSettleAccountId;
   const focusCardRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!focusAdd) return;
-    setAddKind(focusAdd);
     const id = window.setTimeout(() => {
       // "nearest" so a card already on screen does not yank the page.
       focusCardRef.current?.scrollIntoView({
@@ -223,22 +246,15 @@ export function PlanEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
 
-  // Adopt server/store props after commit — never during render.
-  // Render-phase setState here raced PlanScreen's useSyncExternalStore when a
-  // save finished (and previously when revalidatePath remounted /plan).
-  useEffect(() => {
-    if (busy) return;
-    if (incomingStamp === itemsStamp) return;
-    setLocalItems((current) => {
-      const adopted = adoptServerPlanItems(current, items);
-      const adoptedStamp = stampPlanItems(adopted);
-      // Stamp what we keep — not raw incoming — so a merge that prefers
-      // newer local rows cannot desync and re-trigger forever.
-      setItemsStamp(adoptedStamp);
-      if (adoptedStamp === stampPlanItems(current)) return current;
-      return adopted;
-    });
-  }, [busy, incomingStamp, itemsStamp, items]);
+  // Adopt server/store props during render when the incoming stamp moves.
+  if (!busy && incomingStamp !== itemsStamp) {
+    const adopted = adoptServerPlanItems(localItems, items);
+    const adoptedStamp = stampPlanItems(adopted);
+    setItemsStamp(adoptedStamp);
+    if (adoptedStamp !== stampPlanItems(localItems)) {
+      setLocalItems(adopted);
+    }
+  }
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
@@ -507,8 +523,26 @@ export function PlanEditor({
           timeZone,
         })
       : null;
+    const settleAccount = accountsView?.accounts.find(
+      (account) => account.id === settleAccountIdOrDefault,
+    );
+    const nativeSaldoDelta = (() => {
+      if (!preview) return 0;
+      if (!settleAccount || settleAccount.currency === "THB") {
+        return preview.saldoDeltaMinor;
+      }
+      const sign = preview.saldoDeltaMinor < 0 ? -1 : 1;
+      return (
+        sign *
+        thbToNativeMinor(
+          Math.abs(preview.saldoDeltaMinor),
+          settleAccount.currency,
+          settleAccount.fxRate,
+        )
+      );
+    })();
     if (preview) {
-      applyAccountDelta(preview.saldoDeltaMinor);
+      applyAccountDelta(nativeSaldoDelta, settleAccountIdOrDefault);
       applyOptimisticPlanSettle({
         saldoDeltaMinor: preview.saldoDeltaMinor,
         incomingDeltaMinor: preview.incomingDeltaMinor,
@@ -529,7 +563,7 @@ export function PlanEditor({
         settlePlanItem(rows, id, { settled, settledMinor, remainingDueAt }),
       revert: (rows) => {
         if (preview) {
-          applyAccountDelta(-preview.saldoDeltaMinor);
+          applyAccountDelta(-nativeSaldoDelta, settleAccountIdOrDefault);
           applyOptimisticPlanSettle({
             saldoDeltaMinor: -preview.saldoDeltaMinor,
             incomingDeltaMinor: -preview.incomingDeltaMinor,
@@ -552,6 +586,8 @@ export function PlanEditor({
           settled,
           targetSettledAmount,
           remainingDate,
+          accountId: settleAccountIdOrDefault || undefined,
+          clientMutationId: newClientMutationId(),
         }),
       reconcile: (rows, result) => {
         adoptMutationFinance(result);
@@ -804,6 +840,7 @@ export function PlanEditor({
                           confirmPlanLinkAction({
                             transactionId: suggestion.transactionId,
                             itemId: suggestion.planItemId,
+                            clientMutationId: newClientMutationId(),
                           }),
                         reconcile: (rows, result) => {
                           adoptMutationFinance(result);
@@ -857,6 +894,9 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
             onSavePartial={(id) => savePartialRow(id)}
+            settleAccounts={settleAccounts}
+            settleAccountId={settleAccountIdOrDefault}
+            onSettleAccountId={setSettleAccountId}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1023,6 +1063,9 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
             onSavePartial={(id) => savePartialRow(id)}
+            settleAccounts={settleAccounts}
+            settleAccountId={settleAccountIdOrDefault}
+            onSettleAccountId={setSettleAccountId}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1144,6 +1187,9 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
             onSavePartial={(id) => savePartialRow(id)}
+            settleAccounts={settleAccounts}
+            settleAccountId={settleAccountIdOrDefault}
+            onSettleAccountId={setSettleAccountId}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}

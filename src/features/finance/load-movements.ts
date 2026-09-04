@@ -34,8 +34,14 @@ export type MovementRow = {
   category: string | null;
   transactionType: string;
   direction: "debit" | "credit";
+  /** Canonical THB for list totals / Hem. */
   amountMinor: number;
   currency: CurrencyCode;
+  /** Native booking — edit prefills this, never the projected THB. */
+  nativeAmountMinor: number;
+  nativeCurrency: CurrencyCode;
+  accountId?: string | null;
+  fxRate?: number | null;
   occurredAt: string;
   source: string;
 };
@@ -144,8 +150,9 @@ export function buildMovementsSnapshot(input: {
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
     .map((tx) => {
       const projected = canonicalById.get(tx.id);
-      const amountMinor = projected?.amountMinor ?? tx.amountMinor;
-      const currency = (projected?.currency ?? tx.currency) as CurrencyCode;
+      const amountMinor = projected?.amountMinor ?? tx.thbMinor ?? tx.amountMinor;
+      const currency = (projected?.currency ??
+        (tx.thbMinor != null ? CANONICAL_CURRENCY : tx.currency)) as CurrencyCode;
       return {
         id: tx.id,
         description: humanizeMovementTitle(
@@ -157,6 +164,10 @@ export function buildMovementsSnapshot(input: {
         direction: tx.direction,
         amountMinor,
         currency,
+        nativeAmountMinor: tx.amountMinor,
+        nativeCurrency: tx.currency,
+        accountId: tx.accountId,
+        fxRate: tx.fxRate ?? checkpointByAccountId.get(tx.accountId)?.fxRate ?? null,
         occurredAt: tx.occurredAt,
         source: tx.source,
       };

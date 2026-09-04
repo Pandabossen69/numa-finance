@@ -1,5 +1,23 @@
 import type { FinanceTruthStatus } from "@/domain/finance";
 
+export type FinanceTruthBannerInput = {
+  truthStatus?: FinanceTruthStatus | "verified" | "stale" | "unavailable";
+  /** Save / refresh-pending copy must never trigger the truth banner. */
+  error?: string | null;
+  refreshPending?: boolean;
+};
+
+/**
+ * The Hem banner is only for missing/stale money truth.
+ * A successful write with "Sparat. Uppdaterar siffrorna…" is not a calculation failure.
+ */
+export function shouldShowFinanceTruthBanner(
+  input: FinanceTruthBannerInput,
+): boolean {
+  if (input.refreshPending) return false;
+  return input.truthStatus === "stale" || input.truthStatus === "unavailable";
+}
+
 /** Swedish fail-soft copy when money truth is missing or only last-known. */
 export function financeTruthMessageSv(input: {
   truthStatus?: FinanceTruthStatus | "verified" | "stale" | "unavailable";
