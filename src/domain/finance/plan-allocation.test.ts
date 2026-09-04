@@ -131,6 +131,41 @@ describe("plan payment allocations", () => {
     expect(coverage.unpaidMinor).toBe(0);
   });
 
+  it("keeps a partial synthetic and adds later external 5k + 10k", () => {
+    idAt = 0;
+    const item = bill({
+      settledMinor: 5_000_00,
+      remainingDueAt: "2026-08-28T12:00:00.000Z",
+    });
+    const synth = payment({
+      id: "synth-5",
+      amountMinor: 5_000_00,
+      source: "manual",
+      planItemId: "hyra",
+      ledgerOrigin: "plan_settle",
+    });
+    const second = payment({ id: "p2", amountMinor: 5_000_00 });
+    const third = payment({ id: "p3", amountMinor: 10_000_00 });
+    const txs = [synth, second, third];
+    const allocations: PlanPaymentAllocation[] = [];
+
+    const two = allocate(item, second, txs, allocations, "mut-2");
+    expect(two.ok).toBe(true);
+    if (!two.ok) return;
+    expect(two.voidedSyntheticIds).toEqual([]);
+    expect(synth.status).toBe("confirmed");
+    expect(item.settledMinor).toBe(10_000_00);
+    expect(two.remainingCanonicalMinor).toBe(10_000_00);
+
+    const three = allocate(item, third, txs, allocations, "mut-3");
+    expect(three.ok).toBe(true);
+    if (!three.ok) return;
+    expect(three.voidedSyntheticIds).toEqual([]);
+    expect(synth.status).toBe("confirmed");
+    expect(item.settledMinor).toBe(20_000_00);
+    expect(three.remainingCanonicalMinor).toBe(0);
+  });
+
   it("voids a synthetic full settlement exactly once when the real SMS is linked", () => {
     idAt = 0;
     const item = bill({

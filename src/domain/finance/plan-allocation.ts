@@ -1,4 +1,4 @@
-import { isPlanIncome } from "./plan-months";
+import { isPlanIncome, remainingOpenMinor, settledAmountMinor } from "./plan-months";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
 export type PlanPaymentAllocation = {
@@ -190,21 +190,30 @@ export function applyAllocateInMemory(params: {
     return { ok: false, error: "wrong_currency" };
   }
 
-  const remaining = remainingOpenFromAllocations(params.item, params.allocations);
-  if (amount > remaining) {
+  const allocatedBefore = allocatedSumCanonical(
+    params.allocations,
+    params.item.id,
+  );
+  const settledBefore = settledAmountMinor(params.item);
+  const remainingAfterSettle = params.item.amountMinor - settledBefore;
+  const remainingAfterAlloc = params.item.amountMinor - allocatedBefore;
+  const replaceSynthetics = remainingAfterSettle <= 0;
+  if (amount > (replaceSynthetics ? remainingAfterAlloc : remainingAfterSettle)) {
     return { ok: false, error: "over_allocation" };
   }
 
   const voidedSyntheticIds: string[] = [];
-  for (const row of params.transactions) {
-    if (
-      row.planItemId === params.item.id &&
-      row.ledgerOrigin === "plan_settle" &&
-      row.status === "confirmed"
-    ) {
-      row.status = "voided";
-      row.updatedAt = params.nowIso;
-      voidedSyntheticIds.push(row.id);
+  if (replaceSynthetics) {
+    for (const row of params.transactions) {
+      if (
+        row.planItemId === params.item.id &&
+        row.ledgerOrigin === "plan_settle" &&
+        row.status === "confirmed"
+      ) {
+        row.status = "voided";
+        row.updatedAt = params.nowIso;
+        voidedSyntheticIds.push(row.id);
+      }
     }
   }
 
@@ -224,7 +233,13 @@ export function applyAllocateInMemory(params: {
   tx.linkedPlanItemId = params.item.id;
   tx.updatedAt = params.nowIso;
 
-  const settled = allocatedSumCanonical(params.allocations, params.item.id);
+  const allocatedAfter = allocatedSumCanonical(
+    params.allocations,
+    params.item.id,
+  );
+  const settled = replaceSynthetics
+    ? allocatedAfter
+    : Math.min(params.item.amountMinor, settledBefore + amount);
   if (settled <= 0) {
     params.item.settledAt = null;
     params.item.settledMinor = null;
@@ -246,14 +261,11 @@ export function applyAllocateInMemory(params: {
     item: params.item,
     transactionId: tx.id,
     allocatedCanonicalMinor: amount,
-    remainingCanonicalMinor: remainingOpenFromAllocations(
-      params.item,
-      params.allocations,
-    ),
-    voidedSyntheticIds,
-    idempotent: false,
-  };
-}
+      remainingCanonicalMinor: remainingOpenMinor(params.item),
+      voidedSyntheticIds,
+      idempotent: false,
+    };
+  }
 
 export function allocateErrorMessageSv(error: AllocatePaymentError): string {
   switch (error) {
