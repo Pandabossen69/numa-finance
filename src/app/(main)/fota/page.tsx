@@ -12,6 +12,8 @@ import {
 } from "@/features/finance/load-home";
 import type { FotaBootSnapshot } from "@/features/home/last-snapshot";
 
+export const dynamic = "force-dynamic";
+
 export default async function FotaPage({
   searchParams,
 }: {

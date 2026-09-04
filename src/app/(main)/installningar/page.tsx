@@ -6,6 +6,8 @@ import { getProfile } from "@/lib/store/repository";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { currentUserIsNumaAdmin } from "@/features/auth/session";
 
+export const dynamic = "force-dynamic";
+
 export default function InstallningarPage() {
   return (
     <Suspense fallback={<InstallningarScreen data={null} />}>

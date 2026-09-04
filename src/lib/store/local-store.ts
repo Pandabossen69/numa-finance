@@ -66,7 +66,7 @@ export async function readStore(): Promise<NumaStoreData> {
   }
 
   try {
-    const raw = await fs.readFile(resolved.path!, "utf8");
+    const raw = await fs.readFile(/* turbopackIgnore: true */ resolved.path!, "utf8");
     const parsed = JSON.parse(raw) as NumaStoreData;
     if (parsed.version !== 1) {
       return createEmptyStore();

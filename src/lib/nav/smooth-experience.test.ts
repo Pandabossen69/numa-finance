@@ -52,6 +52,25 @@ describe("smooth nav and saves", () => {
     expect(prefetch).toContain('kind: "full"');
   });
 
+  it("marks every authenticated money page force-dynamic so CI build cannot prerender the store", () => {
+    const pages = [
+      "../../app/(main)/layout.tsx",
+      "../../app/(main)/idag/page.tsx",
+      "../../app/(main)/plan/page.tsx",
+      "../../app/(main)/analys/page.tsx",
+      "../../app/(main)/konton/page.tsx",
+      "../../app/(main)/transaktioner/page.tsx",
+      "../../app/(main)/importera/page.tsx",
+      "../../app/(main)/installningar/page.tsx",
+      "../../app/(main)/mer/page.tsx",
+      "../../app/(main)/fota/page.tsx",
+      "../../app/(main)/konton/ny/page.tsx",
+    ];
+    for (const rel of pages) {
+      expect(read(rel), rel).toContain('export const dynamic = "force-dynamic"');
+    }
+  });
+
   it("lets Hem, Rörelser, Lägg till and Saldo save without router.refresh", () => {
     const hem = read("../../components/home/HomeDashboard.tsx");
     const movements = read("../../components/movements/MovementsScreen.tsx");
