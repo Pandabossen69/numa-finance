@@ -71,4 +71,43 @@ describe("canonical THB conversion", () => {
     expect(all).toHaveLength(1);
     expect(all[0]?.amountMinor).toBe(160_00);
   });
+
+  it("keeps the locked THB amount when the live account rate changes", () => {
+    const locked: CanonicalTransaction = {
+      id: "sek-10",
+      userId: "u1",
+      accountId: "sek-1",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: 10_00,
+      currency: "SEK",
+      thbMinor: 35_00,
+      fxRate: 3.5,
+      occurredAt: "2026-08-26T08:00:00.000Z",
+      description: "ICA",
+      merchant: null,
+      category: null,
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      transferGroupId: null,
+      planItemId: null,
+      ledgerOrigin: "external",
+      linkedPlanItemId: null,
+      syncStatus: "saved",
+      createdAt: "2026-08-26T08:00:00.000Z",
+      updatedAt: "2026-08-26T08:00:00.000Z",
+    };
+    const later: BalanceCheckpoint = {
+      ...sekCheckpoint,
+      fxRate: 4,
+      thbMinor: 4_000_00,
+    };
+    const projected = toCanonicalThbTransaction(locked, new Map([["sek-1", later]]));
+    expect(projected?.amountMinor).toBe(35_00);
+    expect(locked.amountMinor).toBe(10_00);
+  });
 });

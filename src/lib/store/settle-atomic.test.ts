@@ -123,8 +123,33 @@ describe("atomic in-memory settlement", () => {
     });
     expect(result.skippedBecauseFunded).toBe(true);
     expect(result.bookedMinor).toBe(0);
+    expect(result.bookedNativeMinor).toBe(0);
     expect(txs.filter((tx) => tx.ledgerOrigin === "plan_settle")).toHaveLength(0);
     expect(item.settledMinor).toBe(20_000_00);
+  });
+
+  it("books a THB plan amount onto a SEK account as native SEK, not ฿ as SEK", () => {
+    const item = plan();
+    const txs: CanonicalTransaction[] = [];
+    const result = applySettleInMemory({
+      item,
+      transactions: txs,
+      accounts: [{ id: "nordea", isDefault: true, currency: "SEK", fxRate: 3.5 }],
+      settled: true,
+      targetSettledMinor: 20_000_00,
+      remainingDueAt: null,
+      accountId: "nordea",
+      nowIso: "2026-08-26T06:00:00.000Z",
+      newId: () => "synth-sek",
+      userId: "u1",
+    });
+    expect(result.bookedCanonicalMinor).toBe(20_000_00);
+    expect(result.bookedNativeMinor).toBe(5_714_29);
+    expect(result.bookedNativeMinor).not.toBe(20_000_00);
+    expect(txs[0]?.amountMinor).toBe(5_714_29);
+    expect(txs[0]?.currency).toBe("SEK");
+    expect(txs[0]?.thbMinor).toBe(20_000_00);
+    expect(txs[0]?.fxRate).toBe(3.5);
   });
 
   it("leaves flags and ledger untouched when booking cannot start", () => {
@@ -153,7 +178,35 @@ describe("atomic in-memory settlement", () => {
       settledMinor: 5_000_00,
       remainingDueAt: "2026-08-28T12:00:00.000Z",
     });
-    const txs: CanonicalTransaction[] = [];
+    const txs: CanonicalTransaction[] = [
+      {
+        id: "synth-1",
+        userId: "u1",
+        accountId: "bank",
+        counterAccountId: null,
+        direction: "debit",
+        transactionType: "expense",
+        amountMinor: 5_000_00,
+        currency: "THB",
+        thbMinor: 5_000_00,
+        occurredAt: "2026-08-26T05:00:00.000Z",
+        description: "Hyra",
+        merchant: "Hyra",
+        category: null,
+        source: "manual",
+        status: "confirmed",
+        balanceAfterMinor: null,
+        fingerprint: null,
+        sourceObservationId: null,
+        transferGroupId: null,
+        planItemId: "rent",
+        ledgerOrigin: "plan_settle",
+        linkedPlanItemId: null,
+        syncStatus: "saved",
+        createdAt: "2026-08-26T05:00:00.000Z",
+        updatedAt: "2026-08-26T05:00:00.000Z",
+      },
+    ];
     const result = applySettleInMemory({
       item,
       transactions: txs,
@@ -166,6 +219,6 @@ describe("atomic in-memory settlement", () => {
       userId: "u1",
     });
     expect(result.idempotent).toBe(true);
-    expect(txs).toHaveLength(0);
+    expect(txs.filter((tx) => tx.status === "confirmed")).toHaveLength(1);
   });
 });

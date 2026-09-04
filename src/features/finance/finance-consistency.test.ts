@@ -6,7 +6,6 @@ import {
   confirmOptimisticFinance,
   isHomeDirty,
   lastHomeSnapshot,
-  lastPlanSnapshot,
   rememberHomeSnapshot,
   rememberPlanSnapshot,
   syncHomeLivingFromPlan,

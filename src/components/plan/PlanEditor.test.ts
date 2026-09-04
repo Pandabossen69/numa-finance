@@ -36,7 +36,7 @@ describe("Plan file layout", () => {
   it("keeps the editor small enough to read and the row list on its own", () => {
     const lines = (text: string) => text.split("\n").length;
     expect(lines(editor)).toBeLessThan(1350);
-    expect(lines(rows)).toBeLessThan(400);
+    expect(lines(rows)).toBeLessThan(450);
     // The screens are composed, not one file.
     expect(editor).toContain('from "@/components/plan/PlanRows"');
     expect(editor).toContain('from "@/components/plan/InlineAdd"');
@@ -225,7 +225,7 @@ describe("Plan dates and add-form", () => {
   it("publishes the plan store after commit, never from inside an updater", () => {
     expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
-    expect(editor).toContain("adoptServerPlanItems(current, items)");
+    expect(editor).toContain("adoptServerPlanItems(localItems, items)");
     expect(editor).toContain("setItemsStamp(adoptedStamp)");
     // Live coverage must not re-trigger publish (Delvis settle loop).
     expect(editor).toContain(

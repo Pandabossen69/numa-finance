@@ -37,12 +37,12 @@ describe("plan create/save does not freeze the current route", () => {
     }
   });
 
-  it("adopts server props in an effect, not during render", () => {
-    expect(editor).toContain("Adopt server/store props after commit — never during render");
-    expect(editor).toMatch(/useEffect\(\(\) => \{\s*if \(busy\) return;/);
-    expect(editor).not.toMatch(
-      /if \(!busy && incomingStamp !== itemsStamp\) \{\s*setItemsStamp/,
+  it("adopts server props during render when the stamp moves", () => {
+    expect(editor).toContain(
+      "Adopt server/store props during render when the incoming stamp moves.",
     );
+    expect(editor).toContain("if (!busy && incomingStamp !== itemsStamp)");
+    expect(editor).toContain("adoptServerPlanItems(localItems, items)");
   });
 
   it("blocks a second write before React re-renders busy", () => {

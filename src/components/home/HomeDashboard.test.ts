@@ -40,7 +40,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
     expect(quickExpense).not.toContain("Sparar");
     expect(quickExpense).not.toContain("getHomeSnapshotAction");
-    expect(quickExpense).toContain("onOptimisticSpend(amountMinor)");
+    expect(quickExpense).toContain("onOptimisticSpend(thbMinor)");
   });
 
   it("paints signed Över on the dial, not a clamped 0", () => {
@@ -98,7 +98,7 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("labels QuickExpense amount and note for a11y", () => {
     expect(src).toContain('aria-label="Anteckning"');
-    expect(src).toContain('aria-label="Belopp"');
+    expect(src).toContain("aria-label={`Belopp ${nativeCurrency}`}");
     expect(src).toContain('aria-label="Konto för utgiften"');
   });
 

@@ -23,10 +23,12 @@ describe("smooth nav and saves", () => {
       money.indexOf("export async function voidTransactionAction"),
       money.indexOf("export async function createIncomeAction"),
     );
-    expect(expense).toContain("revalidateMoneyPaths");
+    expect(expense).toContain("refreshAfterDurableWrite");
     expect(expense).not.toContain("revalidatePath");
-    expect(update).not.toContain("revalidateMoneyPaths");
-    expect(voidTx).not.toContain("revalidateMoneyPaths");
+    expect(update).toContain("refreshAfterDurableWrite");
+    expect(update).not.toContain("revalidatePath");
+    expect(voidTx).toContain("refreshAfterDurableWrite");
+    expect(voidTx).not.toContain("revalidatePath");
 
     const moneyFn = money.slice(
       money.indexOf("function revalidateMoneyPaths()"),

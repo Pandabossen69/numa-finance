@@ -10,10 +10,8 @@ describe("createExpenseAction", () => {
       src.indexOf("const incomeSchema"),
     );
     expect(fn).toContain("createManualExpense");
-    expect(fn).toContain("refreshTodaySnapshot");
-    expect(fn).toContain("homeSnapshotFromToday");
-    expect(fn).toContain("planSnapshotFromToday");
-    expect(fn).toContain("accountsSnapshotFromToday");
+    expect(fn).toContain("refreshAfterDurableWrite");
+    expect(fn).toContain("clientMutationId: input.clientMutationId");
     expect(fn).toContain("accountId: input.accountId");
   });
 });

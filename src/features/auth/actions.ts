@@ -46,10 +46,10 @@ export async function signInAction(raw: {
 }
 
 /** Public self-signup is closed. New accounts are created by the NUMA admin. */
-export async function signUpAction(_raw?: {
-  email: string;
-  password: string;
-}): Promise<AuthResult> {
+export async function signUpAction(
+  _raw?: { email: string; password: string },
+): Promise<AuthResult> {
+  void _raw;
   return rejectPublicSignup();
 }
 

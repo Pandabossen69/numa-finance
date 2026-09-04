@@ -170,6 +170,8 @@ describe("buildMovementsSnapshot", () => {
     expect(view.items.find((row) => row.id === "coffee")?.amountMinor).toBe(88_00);
     expect(view.items.find((row) => row.id === "sek-exp")?.amountMinor).toBe(320_00);
     expect(view.items.find((row) => row.id === "sek-exp")?.currency).toBe("THB");
+    expect(view.items.find((row) => row.id === "sek-exp")?.nativeAmountMinor).toBe(100_00);
+    expect(view.items.find((row) => row.id === "sek-exp")?.nativeCurrency).toBe("SEK");
     expect(view.balanceMinor).toBe(50_000_00 - 1_200_00 + 2_000_00 - 88_00 + 3_200_00 - 320_00);
   });
 
