@@ -1,6 +1,7 @@
 import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
   computeClassifiedSpendingWindows,
+  resolveTodaySpendSplit,
   cumulativePlanSavingsMinor,
   hasCycleFundingEvidence,
   isSameZonedDay,
@@ -224,13 +225,14 @@ function shouldAdoptFinanceSnapshot(
 
 export function rememberHomeSnapshot(
   snap: HomeSnapshot,
-  opts?: { dirty?: boolean },
+  opts?: { dirty?: boolean; force?: boolean },
 ) {
   bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
   if (home === snap && homeDirty === nextDirty) return;
   if (
     !nextDirty &&
+    !opts?.force &&
     home &&
     !shouldAdoptFinanceSnapshot(home, snap, homeDirty)
   ) {
@@ -295,6 +297,18 @@ export function confirmOptimisticFinance() {
   }
 }
 
+/** Mutation result is the canonical revision — never lose it to a stale RSC echo. */
+export function adoptMutationFinance(result: {
+  home?: HomeSnapshot | null;
+  plan?: PlanSnapshot | null;
+  accounts?: AccountsSnapshot | null;
+}) {
+  if (result.home) rememberHomeSnapshot(result.home, { force: true });
+  if (result.plan) rememberPlanSnapshot(result.plan);
+  if (result.accounts) rememberAccountsSnapshot(result.accounts);
+  confirmOptimisticFinance();
+}
+
 /** Drop Analys cache when money truth moves — next visit refetches shared revision. */
 export function invalidateAnalysSnapshot() {
   analys = null;
@@ -306,6 +320,20 @@ export function invalidateAnalysSnapshot() {
  */
 export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
   if (!home) return;
+  const homeRev = home.financeRevision ?? "";
+  const planRev = snapshot.financeRevision ?? "";
+  const planIsLocal = planRev.endsWith(":local");
+  if (
+    home.verifiedAt &&
+    snapshot.verifiedAt &&
+    homeRev &&
+    planRev &&
+    !planIsLocal &&
+    planRev !== homeRev &&
+    snapshot.verifiedAt < home.verifiedAt
+  ) {
+    return;
+  }
   const now = new Date();
   const timeZone = snapshot.timeZone;
   const cycle = projectPayCycle(snapshot.items, now, timeZone);
@@ -318,17 +346,19 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
     cycleEndAt: cycle.endAt,
   });
   const ledgerCycleMinor = windows.cycle.total.amountMinor;
-  const ledgerTodayMinor = windows.today.discretionary.amountMinor;
-  const ledgerTodayPlannedPaidMinor = windows.today.plannedPaid.amountMinor;
+  const todaySplit = resolveTodaySpendSplit({
+    ledgerDiscretionaryMinor: windows.today.discretionary.amountMinor,
+    ledgerPlannedPaidMinor: windows.today.plannedPaid.amountMinor,
+    ledgerTotalMinor: windows.today.total.amountMinor,
+    homeDiscretionaryMinor: home.todaySpendingMinor,
+    homePlannedPaidMinor: home.todayPlannedPaidMinor,
+    homeDirty,
+  });
   const cycleSpendingMinor = homeDirty
     ? Math.max(home.cycleSpendingMinor, ledgerCycleMinor)
     : ledgerCycleMinor;
-  const todaySpendingMinor = homeDirty
-    ? Math.max(home.todaySpendingMinor, ledgerTodayMinor)
-    : ledgerTodayMinor;
-  const todayPlannedPaidMinor = homeDirty
-    ? Math.max(home.todayPlannedPaidMinor, ledgerTodayPlannedPaidMinor)
-    : ledgerTodayPlannedPaidMinor;
+  const todaySpendingMinor = todaySplit.discretionaryMinor;
+  const todayPlannedPaidMinor = todaySplit.plannedPaidMinor;
   const bankBalanceMinor = homeDirty
     ? home.calculatedBalanceMinor
     : (snapshot.bankBalanceMinor ?? home.calculatedBalanceMinor);

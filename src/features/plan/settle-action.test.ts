@@ -14,6 +14,10 @@ const sync = readFileSync(
   new URL("./sync-settle-ledger.ts", import.meta.url),
   "utf8",
 );
+const remote = readFileSync(
+  new URL("../../lib/store/supabase-repository.ts", import.meta.url),
+  "utf8",
+);
 
 /**
  * Betald / Mottagen / Delvis is a statement by the user. Nothing else in the
@@ -40,6 +44,17 @@ describe("settle state is written by user action only", () => {
     expect(settleFn).not.toContain("syncPlanItemSettleLedger");
     expect(settleFn).not.toContain("updatePlanItem(");
     expect(settleFn).toContain("refreshTodaySnapshot");
+  });
+
+  it("settles through one database RPC so a mid-step failure cannot desync", () => {
+    const fn = remote.slice(
+      remote.indexOf("export async function settlePlanItemAtomic"),
+      remote.indexOf("export async function linkTransactionToPlanItem"),
+    );
+    expect(fn.match(/\.rpc\(/g)?.length).toBe(1);
+    expect(fn).toContain("settle_plan_item");
+    expect(fn).not.toContain("updatePlanItem(");
+    expect(fn).not.toContain("createManualExpense");
   });
 
   it("keeps the matcher out of plan status and sorting", () => {

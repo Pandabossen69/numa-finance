@@ -1168,6 +1168,7 @@ export async function settlePlanItemAtomic(input: {
   accountId?: string | null;
 }): Promise<AtomicSettleResult> {
   const supabase = await createSupabaseServerClient();
+  // One RPC — Postgres rolls back if the flag write or ledger booking fails.
   const { data, error } = await supabase.rpc("settle_plan_item", {
     p_item_id: input.itemId,
     p_settled: input.settled,

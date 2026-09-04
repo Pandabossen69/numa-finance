@@ -12,12 +12,21 @@ import {
   createTransfer,
   ensureDefaultBankAccount,
   getProfile,
+  refreshTodaySnapshot,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
+import {
+  homeSnapshotFromToday,
+  planSnapshotFromToday,
+  accountsSnapshotFromToday,
+} from "@/features/finance/snapshot-from-today";
+import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { PlanSnapshot } from "@/features/finance/load-plan";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } from "@/domain/money";
 import {
   ACCOUNT_KINDS,
@@ -53,7 +62,13 @@ const expenseSchema = z.object({
 });
 
 export type ActionResult =
-  | { ok: true; id?: string }
+  | {
+      ok: true;
+      id?: string;
+      home?: HomeSnapshot;
+      plan?: PlanSnapshot;
+      accounts?: AccountsSnapshot;
+    }
   | { ok: false; error: string };
 
 export async function createAccountAction(
@@ -128,8 +143,15 @@ export async function createExpenseAction(
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
+    const snap = await refreshTodaySnapshot();
     revalidateMoneyPaths();
-    return { ok: true, id: tx.id };
+    return {
+      ok: true,
+      id: tx.id,
+      home: homeSnapshotFromToday(snap),
+      plan: planSnapshotFromToday(snap),
+      accounts: accountsSnapshotFromToday(snap),
+    };
   } catch (error) {
     const { reportError } = await import("@/lib/observe/report");
     void reportError("mutation.expense", error);

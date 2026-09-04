@@ -28,6 +28,7 @@ import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
+  adoptMutationFinance,
   applyAccountBalance,
   applyAccountDelta,
   applyMovementsAdd,
@@ -770,6 +771,7 @@ function QuickExpense({
                       setError(result.error);
                       return;
                     }
+                    adoptMutationFinance(result);
                     applyMovementsAdd({
                       id: result.id ?? crypto.randomUUID(),
                       description,

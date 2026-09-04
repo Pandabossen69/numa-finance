@@ -93,10 +93,6 @@ export function applySettleInMemory(params: {
       tx.status === "confirmed",
   );
   const alreadyBooked = liveSynths.reduce((sum, tx) => sum + tx.amountMinor, 0);
-  for (const tx of liveSynths) {
-    tx.status = "voided";
-    tx.updatedAt = params.nowIso;
-  }
 
   const accountId =
     params.accountId ??
@@ -108,6 +104,14 @@ export function applySettleInMemory(params: {
   let bookedMinor = 0;
   if (!funded && target > 0) {
     if (!accountId) throw new Error("Inget konto för bokningen");
+  }
+
+  for (const tx of liveSynths) {
+    tx.status = "voided";
+    tx.updatedAt = params.nowIso;
+  }
+
+  if (!funded && target > 0) {
     const account = params.accounts.find((a) => a.id === accountId);
     const income = isPlanIncome(params.item);
     params.transactions.push({

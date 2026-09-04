@@ -17,6 +17,10 @@ import {
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
+import {
+  isUniqueViolationMessage,
+  swedishFingerprintConflictError,
+} from "@/domain/finance";
 
 export type ActionResult<T = undefined> =
   | { ok: true; data: T }
@@ -173,10 +177,13 @@ export async function confirmReceiptExpenseAction(
     };
   } catch (error) {
     void reportError("ocr.confirm", error);
+    const message = error instanceof Error ? error.message : "";
+    if (isUniqueViolationMessage(message)) {
+      return { ok: false, error: swedishFingerprintConflictError() };
+    }
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte bekräfta köpet",
+      error: message || "Kunde inte bekräfta köpet",
     };
   }
 }

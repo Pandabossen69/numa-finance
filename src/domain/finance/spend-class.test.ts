@@ -4,6 +4,7 @@ import {
   appliesToPlannedPaidSpending,
   classifySpend,
   computeClassifiedSpendingWindows,
+  resolveTodaySpendSplit,
 } from "./spend-class";
 import type { CanonicalTransaction } from "./types";
 
@@ -137,5 +138,46 @@ describe("spend classification", () => {
     });
     expect(windows.today.discretionary.amountMinor).toBe(88_00);
     expect(windows.today.plannedPaid.amountMinor).toBe(0);
+  });
+});
+
+describe("resolveTodaySpendSplit", () => {
+  it("does not let an unclassified settle inflate Spenderat idag", () => {
+    const split = resolveTodaySpendSplit({
+      ledgerDiscretionaryMinor: 21_200_00,
+      ledgerPlannedPaidMinor: 0,
+      ledgerTotalMinor: 21_200_00,
+      homeDiscretionaryMinor: 1_200_00,
+      homePlannedPaidMinor: 20_000_00,
+      homeDirty: true,
+    });
+    expect(split.discretionaryMinor).toBe(1_200_00);
+    expect(split.plannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("keeps Hem split when the Plan ledger has not caught the settle row yet", () => {
+    const split = resolveTodaySpendSplit({
+      ledgerDiscretionaryMinor: 1_200_00,
+      ledgerPlannedPaidMinor: 0,
+      ledgerTotalMinor: 1_200_00,
+      homeDiscretionaryMinor: 1_200_00,
+      homePlannedPaidMinor: 20_000_00,
+      homeDirty: false,
+    });
+    expect(split.discretionaryMinor).toBe(1_200_00);
+    expect(split.plannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("trusts a classified ledger after the server snapshot lands", () => {
+    const split = resolveTodaySpendSplit({
+      ledgerDiscretionaryMinor: 1_288_00,
+      ledgerPlannedPaidMinor: 20_000_00,
+      ledgerTotalMinor: 21_288_00,
+      homeDiscretionaryMinor: 1_200_00,
+      homePlannedPaidMinor: 20_000_00,
+      homeDirty: false,
+    });
+    expect(split.discretionaryMinor).toBe(1_288_00);
+    expect(split.plannedPaidMinor).toBe(20_000_00);
   });
 });

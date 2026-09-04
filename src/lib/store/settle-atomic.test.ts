@@ -127,6 +127,27 @@ describe("atomic in-memory settlement", () => {
     expect(item.settledMinor).toBe(20_000_00);
   });
 
+  it("leaves flags and ledger untouched when booking cannot start", () => {
+    const item = plan();
+    const txs: CanonicalTransaction[] = [];
+    expect(() =>
+      applySettleInMemory({
+        item,
+        transactions: txs,
+        accounts: [],
+        settled: true,
+        targetSettledMinor: 20_000_00,
+        remainingDueAt: null,
+        nowIso: "2026-08-26T06:00:00.000Z",
+        newId: () => "should-not-exist",
+        userId: "u1",
+      }),
+    ).toThrow(/konto/i);
+    expect(item.settledMinor).toBeNull();
+    expect(item.settledAt).toBeNull();
+    expect(txs).toHaveLength(0);
+  });
+
   it("is a no-op when already at the target", () => {
     const item = plan({
       settledMinor: 5_000_00,

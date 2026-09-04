@@ -116,6 +116,58 @@ function addClassified(
  * Transfers and cash withdrawals never enter these buckets (appliesToSpending).
  * `transactions` must already be in the snapshot currency (canonical THB).
  */
+/**
+ * Decide Spenderat idag vs Betalda räkningar idag when the Plan ledger
+ * the client syncs from may be stale or missing origin/link fields.
+ *
+ * A planned settlement must never inflate discretionary spend. If Hem already
+ * booked planned-paid (optimistic settle or a prior server snapshot) and the
+ * incoming ledger either dropped those fields or has not caught up yet, keep
+ * the Hem split instead of treating the bill as lunch money.
+ */
+export function resolveTodaySpendSplit(input: {
+  ledgerDiscretionaryMinor: number;
+  ledgerPlannedPaidMinor: number;
+  ledgerTotalMinor: number;
+  homeDiscretionaryMinor: number;
+  homePlannedPaidMinor: number;
+  homeDirty: boolean;
+}): { discretionaryMinor: number; plannedPaidMinor: number } {
+  const ledgerDisc = Math.max(0, input.ledgerDiscretionaryMinor);
+  const ledgerPlanned = Math.max(0, input.ledgerPlannedPaidMinor);
+  const ledgerTotal = Math.max(0, input.ledgerTotalMinor);
+  const homeDisc = Math.max(0, input.homeDiscretionaryMinor);
+  const homePlanned = Math.max(0, input.homePlannedPaidMinor);
+
+  if (ledgerPlanned > 0) {
+    return {
+      discretionaryMinor: input.homeDirty ? Math.max(homeDisc, ledgerDisc) : ledgerDisc,
+      plannedPaidMinor: input.homeDirty
+        ? Math.max(homePlanned, ledgerPlanned)
+        : ledgerPlanned,
+    };
+  }
+
+  if (homePlanned > 0 && ledgerTotal >= homeDisc + homePlanned) {
+    return {
+      discretionaryMinor: Math.max(0, ledgerTotal - homePlanned),
+      plannedPaidMinor: homePlanned,
+    };
+  }
+
+  if (homePlanned > 0 && ledgerTotal <= homeDisc) {
+    return {
+      discretionaryMinor: input.homeDirty ? Math.max(homeDisc, ledgerDisc) : homeDisc,
+      plannedPaidMinor: homePlanned,
+    };
+  }
+
+  return {
+    discretionaryMinor: input.homeDirty ? Math.max(homeDisc, ledgerDisc) : ledgerDisc,
+    plannedPaidMinor: input.homeDirty ? Math.max(homePlanned, ledgerPlanned) : ledgerPlanned,
+  };
+}
+
 export function computeClassifiedSpendingWindows(params: {
   transactions: CanonicalTransaction[];
   currency: CanonicalTransaction["currency"];

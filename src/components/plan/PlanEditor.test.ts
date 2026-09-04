@@ -272,6 +272,8 @@ describe("Plan dates and add-form", () => {
 
   it("reconciles mutations locally and does not refresh the whole page", () => {
     expect(editor).toContain("rememberLivePlan");
+    expect(editor).toContain("adoptMutationFinance");
+    expect(editor).toContain("previous?.ledgerTransactions");
     expect(editor).toContain("publishItems");
     expect(plan).not.toContain("refreshQuiet");
     expect(plan).not.toContain("router.refresh");

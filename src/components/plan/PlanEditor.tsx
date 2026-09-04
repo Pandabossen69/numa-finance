@@ -35,13 +35,10 @@ import { SV } from "@/features/copy/labels-sv";
 import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
-  confirmOptimisticFinance,
+  adoptMutationFinance,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastPlanView,
-  rememberAccountsSnapshot,
-  rememberHomeSnapshot,
-  rememberPlanSnapshot,
   rememberPlanView,
   subscribeHomeSnapshot,
   subscribePlanView,
@@ -197,17 +194,24 @@ export function PlanEditor({
   }, [focusAdd]);
   function publishItems(next: PlanItem[]) {
     const previous = lastPlanSnapshot();
+    // After settle the store already has the canonical ledger + saldo.
+    // Re-publishing the first-paint props would drop ledgerOrigin and
+    // treat Hyra as Spenderat idag.
+    const liveLedger =
+      previous?.ledgerTransactions?.length
+        ? previous.ledgerTransactions
+        : ledgerTransactions;
     rememberLivePlan({
       items: next,
       currency,
       timeZone,
-      // Prop saldo only — live coverage mirrors this publish and must not
-      // re-enter the effect (that loop crashed Plan after Delvis settle).
-      bankBalanceMinor,
+      // Prop saldo only as fallback — live coverage must not re-enter
+      // this effect (that loop crashed Plan after Delvis settle).
+      bankBalanceMinor: previous?.bankBalanceMinor ?? bankBalanceMinor,
       spendingByMonthKey,
-      ledgerTransactions,
+      ledgerTransactions: liveLedger,
       financeRevision: previous?.financeRevision
-        ? `${previous.financeRevision}:local`
+        ? `${previous.financeRevision.replace(/:local$/, "")}:local`
         : `local:${Date.now()}`,
       verifiedAt: new Date().toISOString(),
       truthStatus: "stale",
@@ -553,10 +557,7 @@ export function PlanEditor({
           remainingDate,
         }),
       reconcile: (rows, result) => {
-        if (result.home) rememberHomeSnapshot(result.home);
-        if (result.plan) rememberPlanSnapshot(result.plan);
-        if (result.accounts) rememberAccountsSnapshot(result.accounts);
-        confirmOptimisticFinance();
+        adoptMutationFinance(result);
         return result.item ? mergeReturnedItem(rows, result.item) : rows;
       },
     }).then((ok) => {
@@ -808,12 +809,7 @@ export function PlanEditor({
                             itemId: suggestion.planItemId,
                           }),
                         reconcile: (rows, result) => {
-                          if (result.home) rememberHomeSnapshot(result.home);
-                          if (result.plan) rememberPlanSnapshot(result.plan);
-                          if (result.accounts) {
-                            rememberAccountsSnapshot(result.accounts);
-                          }
-                          confirmOptimisticFinance();
+                          adoptMutationFinance(result);
                           return result.item
                             ? mergeReturnedItem(rows, result.item)
                             : rows;

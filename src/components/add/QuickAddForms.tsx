@@ -11,6 +11,7 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { parseUiAmountToMinor } from "@/domain/money";
 import {
+  adoptMutationFinance,
   applyAccountDelta,
   applyLocalTransfer,
   applyMovementsAdd,
@@ -190,7 +191,7 @@ function ExpenseForm({
             setError(result.error);
             return;
           }
-          confirmOptimisticFinance();
+          adoptMutationFinance(result);
           applyMovementsAdd({
             id: result.id ?? crypto.randomUUID(),
             description: descriptionText,
