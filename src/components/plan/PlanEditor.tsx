@@ -155,9 +155,6 @@ export function PlanEditor({
     [monthKey],
   );
   const [localItems, setLocalItems] = useState(items);
-  const incomingStamp = stampPlanItems(items);
-  const [itemsStamp, setItemsStamp] = useState(incomingStamp);
-  const ownerId = localItems[0]?.userId ?? items[0]?.userId ?? "";
 
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
@@ -178,6 +175,10 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
+  const viewItems = busy
+    ? localItems
+    : adoptServerPlanItems(localItems, items);
+  const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
   const writeLockRef = useRef(false);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
@@ -265,45 +266,35 @@ export function PlanEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
 
-  // Adopt server/store props during render when the incoming stamp moves.
-  if (!busy && incomingStamp !== itemsStamp) {
-    const adopted = adoptServerPlanItems(localItems, items);
-    const adoptedStamp = stampPlanItems(adopted);
-    setItemsStamp(adoptedStamp);
-    if (adoptedStamp !== stampPlanItems(localItems)) {
-      setLocalItems(adopted);
-    }
-  }
-
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
   const importableFixed = useMemo(
     () =>
       importableFixedExpenses({
-        items: localItems,
+        items: viewItems,
         fromMonthKey: previousMonthKey,
         toMonthKey: monthKey,
         timeZone,
       }),
-    [localItems, previousMonthKey, monthKey, timeZone],
+    [viewItems, previousMonthKey, monthKey, timeZone],
   );
   const canImportFixed = !isPastMonth && importableFixed.length > 0;
 
   const projection = useMemo(
-    () => projectPlanForMonth(localItems, monthKey, timeZone),
-    [localItems, monthKey, timeZone],
+    () => projectPlanForMonth(viewItems, monthKey, timeZone),
+    [viewItems, monthKey, timeZone],
   );
 
   const coverage = useMemo(
     () =>
       projectCashCoverage({
-        planItems: localItems,
+        planItems: viewItems,
         transactions: ledgerTransactions,
         monthKey,
         timeZone,
         saldoMinor: coverageSaldoMinor,
       }),
-    [localItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
+    [viewItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
   );
   // Money only: keeps the card Summa in step with Hem's Kvar att betala so
   // cash already in the ledger is not counted twice. Never passed to the
@@ -332,21 +323,21 @@ export function PlanEditor({
     [projection.incomes, projection.items, ledgerTransactions, monthKey, timeZone],
   );
   const savingsTotalMinor = useMemo(
-    () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
-    [localItems, monthKey, timeZone],
+    () => cumulativePlanSavingsMinor(viewItems, monthKey, timeZone),
+    [viewItems, monthKey, timeZone],
   );
   const monthName = labelMonthNameSv(monthKey);
   const yearThroughKey = monthKeys[monthKeys.length - 1] ?? monthKey;
   const yearExtra = useMemo(
     () =>
       projectExtraSaldoSeries({
-        planItems: localItems,
+        planItems: viewItems,
         spendingByMonthKey,
         throughMonthKey: yearThroughKey,
         currentMonthKey,
         timeZone,
       }),
-    [localItems, spendingByMonthKey, yearThroughKey, currentMonthKey, timeZone],
+    [viewItems, spendingByMonthKey, yearThroughKey, currentMonthKey, timeZone],
   );
   const extraByMonth = useMemo(() => {
     const out: Record<string, number> = {};
@@ -358,10 +349,10 @@ export function PlanEditor({
   const savingsByMonth = useMemo(() => {
     const out: Record<string, number> = {};
     for (const key of monthKeys) {
-      out[key] = projectPlanForMonth(localItems, key, timeZone).savingsMinor;
+      out[key] = projectPlanForMonth(viewItems, key, timeZone).savingsMinor;
     }
     return out;
-  }, [localItems, monthKeys, timeZone]);
+  }, [viewItems, monthKeys, timeZone]);
   const [savingsAmount, setSavingsAmount] = useValueForKey(
     projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
     `${monthKey}:${projection.savingsMinor}`,
@@ -410,19 +401,14 @@ export function PlanEditor({
   }): Promise<boolean> {
     if (writeLockRef.current) return false;
     writeLockRef.current = true;
+    const base = viewItems;
     setError(null);
     setBusy(opts.busy);
-    setLocalItems((current) => {
-      const next = opts.apply(current);
-      return next;
-    });
+    setLocalItems(opts.apply(base));
     try {
       const result = await opts.action();
       if (!result.ok) {
-        setLocalItems((current) => {
-          const next = opts.revert(current);
-          return next;
-        });
+        setLocalItems(opts.revert(base));
         setError(result.error);
         return false;
       }
@@ -434,16 +420,11 @@ export function PlanEditor({
             : result.items
               ? mergeReturnedItems(current, result.items, new Set())
               : current;
-        // Keep stamp in step so adopting store props after unlock is a no-op.
-        setItemsStamp(stampPlanItems(next));
         return next;
       });
       return true;
     } catch (err) {
-      setLocalItems((current) => {
-        const next = opts.revert(current);
-        return next;
-      });
+      setLocalItems(opts.revert(base));
       setError(err instanceof Error ? err.message : "Något gick fel");
       return false;
     } finally {
@@ -527,7 +508,7 @@ export function PlanEditor({
       settledMinor = parsed;
       remainingDueAt = remainingDate ? `${remainingDate}T12:00:00.000Z` : null;
     }
-    const previous = localItems.find((row) => row.id === id);
+    const previous = viewItems.find((row) => row.id === id);
     const targetBookedMinor = !settled
       ? 0
       : settledMinor != null
@@ -536,7 +517,7 @@ export function PlanEditor({
     const preview = previous
       ? previewPlanSettleEffect({
           item: previous,
-          planItems: localItems,
+          planItems: viewItems,
           targetBookedMinor,
           transactions: ledgerTransactions,
           timeZone,
@@ -622,7 +603,7 @@ export function PlanEditor({
   }
 
   function savePartialRow(id: string) {
-    const item = localItems.find((row) => row.id === id);
+    const item = viewItems.find((row) => row.id === id);
     if (!item) return;
     const parsed = parsePlanAmount(partialAmount);
     if (typeof parsed !== "number") {
@@ -651,7 +632,7 @@ export function PlanEditor({
   }
 
   function markRemainder(id: string) {
-    const item = localItems.find((row) => row.id === id);
+    const item = viewItems.find((row) => row.id === id);
     if (!item) return;
     // Full Klar — omit target so the action settles the planned amount.
     settleRow(id, true);
@@ -701,7 +682,7 @@ export function PlanEditor({
   }
 
   function saveEditedItem(id: string, patch: Partial<PlanItem>) {
-    const previous = localItems.find((row) => row.id === id);
+    const previous = viewItems.find((row) => row.id === id);
     if (!previous) return;
     const next = applyPlanItemEdits(previous, {
       name: patch.name,
@@ -829,7 +810,7 @@ export function PlanEditor({
           </p>
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {linkSuggestions.map((suggestion) => {
-              const item = localItems.find((row) => row.id === suggestion.planItemId);
+              const item = viewItems.find((row) => row.id === suggestion.planItemId);
               const tx = ledgerTransactions.find(
                 (row) => row.id === suggestion.transactionId,
               );
@@ -930,7 +911,7 @@ export function PlanEditor({
                 setError(parsed.error);
                 return;
               }
-              const current = localItems.find((row) => row.id === id);
+              const current = viewItems.find((row) => row.id === id);
               if (current) {
                 const below = planAmountBelowSettledError(current, parsed);
                 if (below) {
@@ -945,7 +926,7 @@ export function PlanEditor({
               });
             }}
             onDelete={(id) => {
-              const previous = localItems.find((row) => row.id === id);
+              const previous = viewItems.find((row) => row.id === id);
               if (!previous) return;
               void runMutation({
                 busy: `delete:${id}`,
@@ -1099,7 +1080,7 @@ export function PlanEditor({
                 setError(parsed.error);
                 return;
               }
-              const current = localItems.find((row) => row.id === id);
+              const current = viewItems.find((row) => row.id === id);
               if (current) {
                 const below = planAmountBelowSettledError(current, parsed);
                 if (below) {
@@ -1114,7 +1095,7 @@ export function PlanEditor({
               });
             }}
             onDelete={(id) => {
-              const previous = localItems.find((row) => row.id === id);
+              const previous = viewItems.find((row) => row.id === id);
               if (!previous) return;
               void runMutation({
                 busy: `delete:${id}`,
@@ -1223,7 +1204,7 @@ export function PlanEditor({
                 setError(parsed.error);
                 return;
               }
-              const current = localItems.find((row) => row.id === id);
+              const current = viewItems.find((row) => row.id === id);
               if (current) {
                 const below = planAmountBelowSettledError(current, parsed);
                 if (below) {
@@ -1238,7 +1219,7 @@ export function PlanEditor({
               });
             }}
             onDelete={(id) => {
-              const previous = localItems.find((row) => row.id === id);
+              const previous = viewItems.find((row) => row.id === id);
               if (!previous) return;
               void runMutation({
                 busy: `delete:${id}`,

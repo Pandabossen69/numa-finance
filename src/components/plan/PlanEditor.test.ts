@@ -226,7 +226,8 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
     expect(editor).toContain("adoptServerPlanItems(localItems, items)");
-    expect(editor).toContain("setItemsStamp(adoptedStamp)");
+    expect(editor).toContain("const viewItems = busy");
+    expect(editor).not.toContain("setItemsStamp");
     // Live coverage must not re-trigger publish (Delvis settle loop).
     expect(editor).toContain(
       "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]",
