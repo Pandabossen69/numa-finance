@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildMovementsSnapshot } from "./load-movements";
+import {
+  buildMovementsSnapshot,
+  mergeMovementNativeFromServer,
+  movementEditPrefill,
+} from "./load-movements";
 import type {
   Account,
   BalanceCheckpoint,
@@ -196,5 +200,98 @@ describe("buildMovementsSnapshot", () => {
     expect(view.items).toHaveLength(1);
     expect(view.monthExpenseMinor).toBe(0);
     expect(view.allExpenseMinor).toBe(0);
+  });
+});
+
+describe("movementEditPrefill", () => {
+  it("prefills native SEK when the row still has native fields", () => {
+    expect(
+      movementEditPrefill({
+        amountMinor: 70_00,
+        currency: "THB",
+        nativeAmountMinor: 20_00,
+        nativeCurrency: "SEK",
+        fxRate: 3.5,
+      }),
+    ).toEqual({ amountMinor: 20_00, currency: "SEK" });
+  });
+
+  it("recovers 20 SEK from 70 THB when a stale cache copied THB into native", () => {
+    expect(
+      movementEditPrefill(
+        {
+          amountMinor: 70_00,
+          currency: "THB",
+          nativeAmountMinor: 70_00,
+          nativeCurrency: "THB",
+          fxRate: 3.5,
+        },
+        "SEK",
+      ),
+    ).toEqual({ amountMinor: 20_00, currency: "SEK" });
+  });
+});
+
+describe("mergeMovementNativeFromServer", () => {
+  it("restores native booking on dirty client rows from the server snapshot", () => {
+    const stale = {
+      currency: "THB" as const,
+      hasBankTruth: true,
+      balanceMinor: 0,
+      monthIncomeMinor: 0,
+      monthExpenseMinor: 70_00,
+      monthNetMinor: -70_00,
+      allIncomeMinor: 0,
+      allExpenseMinor: 70_00,
+      allNetMinor: -70_00,
+      monthCategories: [],
+      timeZone: tz,
+      monthKey: "2026-09",
+      items: [
+        {
+          id: "sek-exp",
+          description: "SEK kaffe",
+          category: null,
+          transactionType: "expense",
+          direction: "debit" as const,
+          amountMinor: 70_00,
+          currency: "THB" as const,
+          nativeAmountMinor: 70_00,
+          nativeCurrency: "THB" as const,
+          accountId: "nordea",
+          fxRate: 3.5,
+          occurredAt: "2026-09-04T05:00:00.000Z",
+          source: "manual",
+        },
+      ],
+    };
+    const fresh = buildMovementsSnapshot({
+      accounts: [sek],
+      transactions: [
+        tx({
+          id: "sek-exp",
+          accountId: "nordea",
+          amountMinor: 20_00,
+          currency: "SEK",
+          thbMinor: 70_00,
+          fxRate: 3.5,
+          occurredAt: "2026-09-04T05:00:00.000Z",
+          description: "SEK kaffe",
+        }),
+      ],
+      checkpoints: [
+        checkpoint("nordea", 1_000_00, {
+          currency: "SEK",
+          fxRate: 3.5,
+          thbMinor: 3_500_00,
+        }),
+      ],
+      timeZone: tz,
+      now,
+    });
+    const merged = mergeMovementNativeFromServer(stale, fresh);
+    expect(merged.items[0]?.nativeAmountMinor).toBe(20_00);
+    expect(merged.items[0]?.nativeCurrency).toBe("SEK");
+    expect(merged.items[0]?.amountMinor).toBe(70_00);
   });
 });
