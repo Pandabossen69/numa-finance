@@ -1,6 +1,7 @@
 import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { loadErrorMessageSv } from "@/lib/async";
 import { reportError } from "@/lib/observe/report";
@@ -13,6 +14,7 @@ export type PlanSnapshot = {
   bankBalanceMinor: number | null;
   spendingByMonthKey: Record<string, number>;
   ledgerTransactions: CanonicalTransaction[];
+  accounts?: AccountsSnapshot;
   financeRevision: string;
   verifiedAt: string;
   truthStatus: "verified" | "stale" | "unavailable";

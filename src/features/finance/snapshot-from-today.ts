@@ -116,6 +116,7 @@ export function planSnapshotFromToday(snap: TodaySnapshot): PlanSnapshot {
     bankBalanceMinor: snap.calculatedBalanceMinor,
     spendingByMonthKey: snap.monthSpendingByKey ?? {},
     ledgerTransactions: snap.ledgerTransactions ?? [],
+    accounts: accountsSnapshotFromToday(snap),
     financeRevision: snap.financeRevision,
     verifiedAt: snap.verifiedAt,
     truthStatus: "verified",

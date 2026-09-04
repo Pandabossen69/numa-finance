@@ -229,6 +229,9 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("setItemsStamp(adoptedStamp)");
     // Live coverage must not re-trigger publish (Delvis settle loop).
     expect(editor).toContain(
+      "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]",
+    );
+    expect(editor).not.toContain(
       "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]",
     );
     expect(editor).not.toContain(

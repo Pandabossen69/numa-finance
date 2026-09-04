@@ -34,6 +34,7 @@ import {
   applyOptimisticPlanSettle,
   adoptMutationFinance,
   lastAccountsSnapshot,
+  rememberAccountsSnapshot,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastPlanView,
@@ -105,6 +106,7 @@ export function PlanEditor({
   bankBalanceMinor = null,
   spendingByMonthKey = EMPTY_MONTH_SPEND,
   ledgerTransactions = EMPTY_LEDGER,
+  accounts = null,
   focusAdd = null,
   stepHint = null,
 }: {
@@ -114,6 +116,7 @@ export function PlanEditor({
   bankBalanceMinor?: number | null;
   spendingByMonthKey?: Record<string, number>;
   ledgerTransactions?: CanonicalTransaction[];
+  accounts?: import("@/features/finance/load-accounts").AccountsSnapshot | null;
   focusAdd?: null | "income" | "fixed";
   stepHint?: string | null;
 }) {
@@ -183,11 +186,17 @@ export function PlanEditor({
     setSeenFocusAdd(focusAdd);
     if (focusAdd) setAddKind(focusAdd);
   }
-  const accountsView = useSyncExternalStore(
+  const storedAccounts = useSyncExternalStore(
     subscribeAccountsSnapshot,
     lastAccountsSnapshot,
     lastAccountsSnapshot,
   );
+  useEffect(() => {
+    if (accounts && lastAccountsSnapshot() == null) {
+      rememberAccountsSnapshot(accounts);
+    }
+  }, [accounts]);
+  const accountsView = storedAccounts ?? accounts;
   const settleAccounts = (accountsView?.accounts ?? []).map((account) => ({
     id: account.id,
     name: account.name,
@@ -221,6 +230,14 @@ export function PlanEditor({
       previous?.ledgerTransactions?.length
         ? previous.ledgerTransactions
         : ledgerTransactions;
+    if (
+      previous &&
+      stampPlanItems(previous.items) === stampPlanItems(next) &&
+      previous.currency === currency &&
+      previous.timeZone === timeZone
+    ) {
+      return;
+    }
     rememberLivePlan({
       items: next,
       currency,
@@ -241,10 +258,12 @@ export function PlanEditor({
   // Publish after commit. Writing to the plan store inside a setState
   // updater ran during render and updated PlanScreen mid-render, which React
   // rejects and which could repaint the list under the user's finger.
+  // Do not depend on ledgerTransactions — Koppla updates that prop and
+  // re-publishing adopted rows looped Plan ("Too many re-renders").
   useEffect(() => {
     publishItems(localItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
+  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
 
   // Adopt server/store props during render when the incoming stamp moves.
   if (!busy && incomingStamp !== itemsStamp) {
