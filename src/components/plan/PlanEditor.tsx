@@ -16,7 +16,6 @@ import {
   suggestPlanLinks,
   applyPlanItemEdits,
   previewPlanSettleEffect,
-  remainingOpenMinor,
   planAmountBelowSettledError,
   resolveAdditionalSettlement,
   projectCashCoverage,
@@ -30,8 +29,6 @@ import {
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
-import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { SV } from "@/features/copy/labels-sv";
 import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
