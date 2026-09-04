@@ -53,6 +53,7 @@ import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import type { TodaySnapshot } from "./types-snapshot";
 import { assembleTodaySnapshot } from "./assemble-today-snapshot";
 import type { AtomicLinkResult, AtomicSettleResult } from "./settle-atomic";
+import { fxFieldsForWrite, recomputeThbFromLockedRate } from "./transaction-fx";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
@@ -426,12 +427,17 @@ export async function createManualExpense(input: {
   planItemId?: string | null;
   ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
   linkedPlanItemId?: string | null;
+  clientMutationId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
   }
 
   const userId = await requireUserId();
+  if (input.clientMutationId) {
+    const existing = await findTransactionByMutationId(input.clientMutationId);
+    if (existing) return existing;
+  }
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
 
@@ -449,8 +455,15 @@ export async function createManualExpense(input: {
     }
   }
 
-  const supabase = await createSupabaseServerClient();
   const ts = new Date().toISOString();
+  const checkpoint = await latestCheckpointForAccount(input.accountId);
+  const fx = fxFieldsForWrite({
+    nativeMinor: input.amountMinor,
+    currency: account.currency,
+    checkpoint,
+    nowIso: ts,
+  });
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("transactions")
     .insert({
@@ -460,6 +473,11 @@ export async function createManualExpense(input: {
       transaction_type: "expense",
       amount_minor: input.amountMinor,
       currency: account.currency,
+      thb_minor: fx.thbMinor,
+      fx_rate: fx.fxRate,
+      fx_as_of: fx.fxAsOf,
+      fx_source: fx.fxSource,
+      client_mutation_id: input.clientMutationId ?? null,
       occurred_at: input.occurredAt ?? ts,
       description: input.description?.trim() || "Utgift",
       merchant: input.merchant ?? null,
@@ -479,12 +497,31 @@ export async function createManualExpense(input: {
     .single();
 
   if (error) {
+    if (input.clientMutationId && isUniqueViolationMessage(error.message)) {
+      const existing = await findTransactionByMutationId(input.clientMutationId);
+      if (existing) return existing;
+    }
     if (isUniqueViolationMessage(error.message) && input.fingerprint) {
       throw new Error(swedishFingerprintConflictError());
     }
     throw new Error(error.message);
   }
   return mapTransaction(data);
+}
+
+async function findTransactionByMutationId(
+  clientMutationId: string,
+): Promise<CanonicalTransaction | null> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("client_mutation_id", clientMutationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapTransaction(data) : null;
 }
 
 export async function createManualIncome(input: {
@@ -499,11 +536,16 @@ export async function createManualIncome(input: {
   planItemId?: string | null;
   ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
   linkedPlanItemId?: string | null;
+  clientMutationId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
   }
   const userId = await requireUserId();
+  if (input.clientMutationId) {
+    const existing = await findTransactionByMutationId(input.clientMutationId);
+    if (existing) return existing;
+  }
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
 
@@ -516,6 +558,13 @@ export async function createManualIncome(input: {
 
   const supabase = await createSupabaseServerClient();
   const ts = new Date().toISOString();
+  const checkpoint = await latestCheckpointForAccount(input.accountId);
+  const fx = fxFieldsForWrite({
+    nativeMinor: input.amountMinor,
+    currency: account.currency,
+    checkpoint,
+    nowIso: ts,
+  });
   const { data, error } = await supabase
     .from("transactions")
     .insert({
@@ -525,6 +574,11 @@ export async function createManualIncome(input: {
       transaction_type: "income",
       amount_minor: input.amountMinor,
       currency: account.currency,
+      thb_minor: fx.thbMinor,
+      fx_rate: fx.fxRate,
+      fx_as_of: fx.fxAsOf,
+      fx_source: fx.fxSource,
+      client_mutation_id: input.clientMutationId ?? null,
       occurred_at: input.occurredAt ?? ts,
       description: input.description?.trim() || "Insättning",
       source: input.source ?? "manual",
@@ -541,6 +595,10 @@ export async function createManualIncome(input: {
     .select("*")
     .single();
   if (error) {
+    if (input.clientMutationId && isUniqueViolationMessage(error.message)) {
+      const existing = await findTransactionByMutationId(input.clientMutationId);
+      if (existing) return existing;
+    }
     if (isUniqueViolationMessage(error.message) && input.fingerprint) {
       throw new Error(swedishFingerprintConflictError());
     }
@@ -578,6 +636,13 @@ export async function createTransfer(input: {
   const transferGroupId = crypto.randomUUID();
   const outId = crypto.randomUUID();
   const inId = crypto.randomUUID();
+  const checkpoint = await latestCheckpointForAccount(from.id);
+  const fx = fxFieldsForWrite({
+    nativeMinor: input.amountMinor,
+    currency: from.currency,
+    checkpoint,
+    nowIso: ts,
+  });
 
   // Single multi-row insert — both legs commit together or neither does.
   const { data: rows, error } = await supabase
@@ -592,6 +657,10 @@ export async function createTransfer(input: {
         transaction_type: "transfer",
         amount_minor: input.amountMinor,
         currency: from.currency,
+        thb_minor: fx.thbMinor,
+        fx_rate: fx.fxRate,
+        fx_as_of: fx.fxAsOf,
+        fx_source: fx.fxSource,
         occurred_at: occurredAt,
         description,
         source: "manual",
@@ -608,6 +677,10 @@ export async function createTransfer(input: {
         transaction_type: "transfer",
         amount_minor: input.amountMinor,
         currency: to.currency,
+        thb_minor: fx.thbMinor,
+        fx_rate: fx.fxRate,
+        fx_as_of: fx.fxAsOf,
+        fx_source: fx.fxSource,
         occurred_at: occurredAt,
         description,
         source: "manual",
@@ -664,6 +737,13 @@ export async function createCashWithdrawal(input: {
   const transferGroupId = crypto.randomUUID();
   const outId = crypto.randomUUID();
   const inId = crypto.randomUUID();
+  const checkpoint = await latestCheckpointForAccount(from.id);
+  const fx = fxFieldsForWrite({
+    nativeMinor: input.amountMinor,
+    currency: from.currency,
+    checkpoint,
+    nowIso: ts,
+  });
 
   const { data: rows, error } = await supabase
     .from("transactions")
@@ -677,6 +757,10 @@ export async function createCashWithdrawal(input: {
         transaction_type: "cash_withdrawal",
         amount_minor: input.amountMinor,
         currency: from.currency,
+        thb_minor: fx.thbMinor,
+        fx_rate: fx.fxRate,
+        fx_as_of: fx.fxAsOf,
+        fx_source: fx.fxSource,
         occurred_at: occurredAt,
         description,
         source: "manual",
@@ -693,6 +777,10 @@ export async function createCashWithdrawal(input: {
         transaction_type: "cash_withdrawal",
         amount_minor: input.amountMinor,
         currency: to.currency,
+        thb_minor: fx.thbMinor,
+        fx_rate: fx.fxRate,
+        fx_as_of: fx.fxAsOf,
+        fx_source: fx.fxSource,
         occurred_at: occurredAt,
         description,
         source: "manual",
@@ -779,14 +867,35 @@ export async function updateTransaction(input: {
   occurredAt?: string;
 }): Promise<CanonicalTransaction> {
   const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const nowIso = new Date().toISOString();
   const patch: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+    updated_at: nowIso,
   };
   if (input.amountMinor != null) {
     if (input.amountMinor <= 0) {
       throw new Error("Beloppet måste vara större än noll");
     }
+    const { data: current, error: readError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("id", input.id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!current) throw new Error("Rörelsen hittades inte");
+    const existing = mapTransaction(current);
+    const fx = recomputeThbFromLockedRate({
+      nativeMinor: input.amountMinor,
+      currency: existing.currency,
+      fxRate: existing.fxRate,
+      nowIso,
+    });
     patch.amount_minor = input.amountMinor;
+    patch.thb_minor = fx.thbMinor;
+    patch.fx_rate = fx.fxRate;
+    patch.fx_as_of = fx.fxAsOf;
+    patch.fx_source = fx.fxSource;
   }
   if (input.description != null) {
     patch.description = input.description.trim() || "Utgift";
@@ -794,7 +903,6 @@ export async function updateTransaction(input: {
   if (input.category !== undefined) patch.category = input.category;
   if (input.occurredAt != null) patch.occurred_at = input.occurredAt;
 
-  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("transactions")
     .update(patch)
@@ -1089,6 +1197,12 @@ export const listPlanItems = cache(async (): Promise<PlanItem[]> => {
   return (data ?? []).map(mapPlanItem);
 });
 
+function itemFromSaveRpc(data: unknown): PlanItem {
+  const payload = data as { item?: Parameters<typeof mapPlanItem>[0] } | null;
+  if (!payload?.item) throw new Error("Kunde inte spara planposten");
+  return mapPlanItem(payload.item);
+}
+
 export async function createPlanItem(input: {
   name: string;
   kind: PlanCategoryKind;
@@ -1098,25 +1212,25 @@ export async function createPlanItem(input: {
   nextDueAt?: string | null;
 }): Promise<PlanItem> {
   if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
-  const userId = await requireUserId();
+  await requireUserId();
   await ensureProfile();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("plan_items")
-    .insert({
-      user_id: userId,
-      name: input.name.trim(),
-      kind: input.kind,
-      amount_minor: input.amountMinor,
-      currency: input.currency,
-      cadence: input.cadence ?? "monthly",
-      next_due_at: input.nextDueAt ?? null,
-      is_active: true,
-    })
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("save_plan_item", {
+    p_id: null,
+    p_name: input.name.trim(),
+    p_kind: input.kind,
+    p_amount_minor: input.amountMinor,
+    p_currency: input.currency,
+    p_cadence: input.cadence ?? "monthly",
+    p_next_due_at: input.nextDueAt ?? null,
+    p_is_active: true,
+    p_settled_at: null,
+    p_settled_minor: null,
+    p_remaining_due_at: null,
+    p_sync_ledger: true,
+  });
   if (error) throw new Error(error.message);
-  return mapPlanItem(data);
+  return itemFromSaveRpc(data);
 }
 
 export async function updatePlanItem(input: {
@@ -1130,34 +1244,27 @@ export async function updatePlanItem(input: {
   settledMinor?: number | null;
   remainingDueAt?: string | null;
 }): Promise<PlanItem> {
-  const userId = await requireUserId();
-  const patch: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (input.name != null) patch.name = input.name.trim();
-  if (input.kind != null) patch.kind = input.kind;
-  if (input.amountMinor != null) {
-    if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
-    patch.amount_minor = input.amountMinor;
+  if (input.amountMinor != null && input.amountMinor < 0) {
+    throw new Error("Belopp kan inte vara negativt");
   }
-  if (input.nextDueAt !== undefined) patch.next_due_at = input.nextDueAt;
-  if (input.isActive != null) patch.is_active = input.isActive;
-  if (input.settledAt !== undefined) patch.settled_at = input.settledAt;
-  if (input.settledMinor !== undefined) patch.settled_minor = input.settledMinor;
-  if (input.remainingDueAt !== undefined) {
-    patch.remaining_due_at = input.remainingDueAt;
-  }
-
+  await requireUserId();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("plan_items")
-    .update(patch)
-    .eq("user_id", userId)
-    .eq("id", input.id)
-    .select("*")
-    .single();
+  const { data, error } = await supabase.rpc("save_plan_item", {
+    p_id: input.id,
+    p_name: input.name?.trim() ?? null,
+    p_kind: input.kind ?? null,
+    p_amount_minor: input.amountMinor ?? null,
+    p_currency: null,
+    p_cadence: null,
+    p_next_due_at: input.nextDueAt ?? null,
+    p_is_active: input.isActive ?? null,
+    p_settled_at: input.settledAt ?? null,
+    p_settled_minor: input.settledMinor ?? null,
+    p_remaining_due_at: input.remainingDueAt ?? null,
+    p_sync_ledger: true,
+  });
   if (error) throw new Error(error.message);
-  return mapPlanItem(data);
+  return itemFromSaveRpc(data);
 }
 
 export async function settlePlanItemAtomic(input: {
@@ -1166,6 +1273,7 @@ export async function settlePlanItemAtomic(input: {
   targetSettledMinor?: number | null;
   remainingDueAt?: string | null;
   accountId?: string | null;
+  clientMutationId?: string | null;
 }): Promise<AtomicSettleResult> {
   const supabase = await createSupabaseServerClient();
   // One RPC — Postgres rolls back if the flag write or ledger booking fails.
@@ -1175,6 +1283,7 @@ export async function settlePlanItemAtomic(input: {
     p_target_settled_minor: input.targetSettledMinor ?? null,
     p_remaining_due_at: input.remainingDueAt ?? null,
     p_account_id: input.accountId ?? null,
+    p_client_mutation_id: input.clientMutationId ?? null,
   });
   if (error) throw new Error(error.message);
   const payload = data as {
@@ -1182,15 +1291,26 @@ export async function settlePlanItemAtomic(input: {
     idempotent?: boolean;
     item?: Parameters<typeof mapPlanItem>[0];
     booked_minor?: number;
+    booked_native_minor?: number;
+    booked_canonical_minor?: number;
     saldo_delta?: number;
+    saldo_delta_native?: number;
     account_id?: string | null;
     skipped_because_funded?: boolean;
   } | null;
   if (!payload?.item) throw new Error("Kunde inte uppdatera Klar");
+  const bookedCanonical = Number(
+    payload.booked_canonical_minor ?? payload.booked_minor ?? 0,
+  );
   return {
     item: mapPlanItem(payload.item),
-    bookedMinor: Number(payload.booked_minor ?? 0),
+    bookedMinor: bookedCanonical,
+    bookedNativeMinor: Number(payload.booked_native_minor ?? bookedCanonical),
+    bookedCanonicalMinor: bookedCanonical,
     saldoDeltaMinor: Number(payload.saldo_delta ?? 0),
+    nativeSaldoDeltaMinor: Number(
+      payload.saldo_delta_native ?? payload.saldo_delta ?? 0,
+    ),
     accountId: payload.account_id ?? null,
     skippedBecauseFunded: Boolean(payload.skipped_because_funded),
     idempotent: Boolean(payload.idempotent),
@@ -1200,16 +1320,32 @@ export async function settlePlanItemAtomic(input: {
 export async function linkTransactionToPlanItem(input: {
   transactionId: string;
   itemId: string;
+  clientMutationId?: string | null;
 }): Promise<AtomicLinkResult> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc("link_transaction_to_plan_item", {
     p_transaction_id: input.transactionId,
     p_item_id: input.itemId,
+    p_client_mutation_id: input.clientMutationId ?? null,
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const message = error.message.toLowerCase();
+    if (message.includes("wrong direction")) {
+      throw new Error("Rörelsen går åt fel håll för den här planposten");
+    }
+    if (message.includes("wrong currency")) {
+      throw new Error("Rörelsen är i en annan valuta än planposten");
+    }
+    if (message.includes("over allocation")) {
+      throw new Error("Beloppet är större än det som är kvar att koppla");
+    }
+    throw new Error(error.message);
+  }
   const payload = data as {
     item?: Parameters<typeof mapPlanItem>[0];
     transaction_id?: string;
+    allocated_canonical_minor?: number;
+    idempotent?: boolean;
   } | null;
   if (!payload?.item || !payload.transaction_id) {
     throw new Error("Kunde inte koppla transaktionen");
@@ -1217,11 +1353,30 @@ export async function linkTransactionToPlanItem(input: {
   return {
     item: mapPlanItem(payload.item),
     transactionId: payload.transaction_id,
+    allocatedCanonicalMinor: Number(payload.allocated_canonical_minor ?? 0),
+    idempotent: Boolean(payload.idempotent),
   };
 }
 
 export async function deletePlanItem(id: string): Promise<void> {
-  await updatePlanItem({ id, isActive: false });
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("delete_plan_item", { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+export async function purgeExpiredObservations(input?: {
+  now?: Date;
+  retentionDays?: number;
+}): Promise<{ purged: number }> {
+  const { createSupabaseServiceRoleClient } = await import("@/lib/supabase/admin");
+  const supabase = createSupabaseServiceRoleClient();
+  const { data, error } = await supabase.rpc("purge_expired_source_images", {
+    p_now: (input?.now ?? new Date()).toISOString(),
+    p_retention_days: input?.retentionDays ?? 30,
+  });
+  if (error) throw new Error(error.message);
+  const payload = data as { purged?: number } | null;
+  return { purged: Number(payload?.purged ?? 0) };
 }
 
 export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
@@ -1729,9 +1884,26 @@ export async function confirmReceiptExpense(
   input: ConfirmReceiptInput,
 ): Promise<CanonicalTransaction> {
   const userId = await requireUserId();
+  if (input.clientMutationId) {
+    const existing = await findTransactionByMutationId(input.clientMutationId);
+    if (existing) return existing;
+  }
   const observation = await getObservation(input.observationId);
   if (!observation || observation.userId !== userId) {
     throw new Error("Importen hittades inte");
+  }
+  if (observation.status === "processed") {
+    const supabaseExisting = await createSupabaseServerClient();
+    const { data: existingRow } = await supabaseExisting
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source_observation_id", input.observationId)
+      .neq("status", "voided")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingRow) return mapTransaction(existingRow);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -2125,6 +2297,7 @@ export async function confirmReceiptExpense(
           fingerprint,
           balanceAfterMinor,
           occurredAt: movedAt,
+          clientMutationId: input.clientMutationId,
         })
       : await createManualExpense({
           accountId: account.id,
@@ -2136,6 +2309,7 @@ export async function confirmReceiptExpense(
           fingerprint,
           balanceAfterMinor,
           occurredAt: movedAt,
+          clientMutationId: input.clientMutationId,
         });
 
   // Receipt OCR must not mint sms_* tip checkpoints — only bank-SMS with saldo.

@@ -1,4 +1,6 @@
 import {
+  allocateErrorMessageSv,
+  applyAllocateInMemory,
   assertCurrencyAllowedForKind,
   NEXT_INCOME_NAME,
   hoursSince,
@@ -23,6 +25,7 @@ import {
 import { type CurrencyCode } from "@/domain/money";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
+import { observationsDueForPurge } from "@/features/imports/observation-retention";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 import { readStore, updateStore } from "./local-store";
 import { inferAccountKind } from "./account-kind-infer";
@@ -37,6 +40,7 @@ import {
   type AtomicLinkResult,
   type AtomicSettleResult,
 } from "./settle-atomic";
+import { fxFieldsForWrite, recomputeThbFromLockedRate } from "./transaction-fx";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -342,12 +346,19 @@ export async function createManualExpense(input: {
   planItemId?: string | null;
   ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
   linkedPlanItemId?: string | null;
+  clientMutationId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
   }
 
   const store = await readStore();
+  if (input.clientMutationId) {
+    const existing = store.transactions.find(
+      (t) => t.clientMutationId === input.clientMutationId,
+    );
+    if (existing) return existing;
+  }
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
   if (
@@ -377,6 +388,13 @@ export async function createManualExpense(input: {
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
+    const checkpoint = latestCheckpointForAccount(s, input.accountId);
+    const fx = fxFieldsForWrite({
+      nativeMinor: input.amountMinor,
+      currency: account.currency,
+      checkpoint,
+      nowIso: ts,
+    });
     const tx: CanonicalTransaction = {
       id: newId(),
       userId: LOCAL_DEMO_USER_ID,
@@ -386,6 +404,11 @@ export async function createManualExpense(input: {
       transactionType: "expense",
       amountMinor: input.amountMinor,
       currency: account.currency,
+      thbMinor: fx.thbMinor,
+      fxRate: fx.fxRate,
+      fxAsOf: fx.fxAsOf,
+      fxSource: fx.fxSource,
+      clientMutationId: input.clientMutationId ?? null,
       occurredAt: input.occurredAt ?? ts,
       description: input.description?.trim() || "Utgift",
       merchant: input.merchant ?? null,
@@ -421,11 +444,18 @@ export async function createManualIncome(input: {
   planItemId?: string | null;
   ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
   linkedPlanItemId?: string | null;
+  clientMutationId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
   }
   const store = await readStore();
+  if (input.clientMutationId) {
+    const existing = store.transactions.find(
+      (t) => t.clientMutationId === input.clientMutationId,
+    );
+    if (existing) return existing;
+  }
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
 
@@ -447,6 +477,13 @@ export async function createManualIncome(input: {
 
   const updated = await updateStore((s) => {
     const ts = nowIso();
+    const checkpoint = latestCheckpointForAccount(s, input.accountId);
+    const fx = fxFieldsForWrite({
+      nativeMinor: input.amountMinor,
+      currency: account.currency,
+      checkpoint,
+      nowIso: ts,
+    });
     const tx: CanonicalTransaction = {
       id: newId(),
       userId: LOCAL_DEMO_USER_ID,
@@ -456,6 +493,11 @@ export async function createManualIncome(input: {
       transactionType: "income",
       amountMinor: input.amountMinor,
       currency: account.currency,
+      thbMinor: fx.thbMinor,
+      fxRate: fx.fxRate,
+      fxAsOf: fx.fxAsOf,
+      fxSource: fx.fxSource,
+      clientMutationId: input.clientMutationId ?? null,
       occurredAt: input.occurredAt ?? ts,
       description: input.description?.trim() || "Insättning",
       merchant: null,
@@ -507,6 +549,13 @@ export async function createTransfer(input: {
     const description = input.description?.trim() || "Överföring";
     const transferGroupId = newId();
 
+    const checkpoint = latestCheckpointForAccount(s, from.id);
+    const fx = fxFieldsForWrite({
+      nativeMinor: input.amountMinor,
+      currency: from.currency,
+      checkpoint,
+      nowIso: ts,
+    });
     const out: CanonicalTransaction = {
       id: newId(),
       userId: LOCAL_DEMO_USER_ID,
@@ -516,6 +565,10 @@ export async function createTransfer(input: {
       transactionType: "transfer",
       amountMinor: input.amountMinor,
       currency: from.currency,
+      thbMinor: fx.thbMinor,
+      fxRate: fx.fxRate,
+      fxAsOf: fx.fxAsOf,
+      fxSource: fx.fxSource,
       occurredAt,
       description,
       merchant: null,
@@ -585,6 +638,13 @@ export async function createCashWithdrawal(input: {
     const occurredAt = input.occurredAt ?? ts;
     const description = input.description?.trim() || "Kontantuttag";
     const transferGroupId = newId();
+    const checkpoint = latestCheckpointForAccount(s, from.id);
+    const fx = fxFieldsForWrite({
+      nativeMinor: input.amountMinor,
+      currency: from.currency,
+      checkpoint,
+      nowIso: ts,
+    });
     const out: CanonicalTransaction = {
       id: newId(),
       userId: LOCAL_DEMO_USER_ID,
@@ -594,6 +654,10 @@ export async function createCashWithdrawal(input: {
       transactionType: "cash_withdrawal",
       amountMinor: input.amountMinor,
       currency: from.currency,
+      thbMinor: fx.thbMinor,
+      fxRate: fx.fxRate,
+      fxAsOf: fx.fxAsOf,
+      fxSource: fx.fxSource,
       occurredAt,
       description,
       merchant: null,
@@ -678,7 +742,17 @@ export async function updateTransaction(input: {
     if (tx.status === "voided") throw new Error("Borttagen rörelse kan inte ändras");
     if (input.amountMinor != null) {
       if (input.amountMinor <= 0) throw new Error("Beloppet måste vara större än noll");
+      const fx = recomputeThbFromLockedRate({
+        nativeMinor: input.amountMinor,
+        currency: tx.currency,
+        fxRate: tx.fxRate,
+        nowIso: nowIso(),
+      });
       tx.amountMinor = input.amountMinor;
+      tx.thbMinor = fx.thbMinor;
+      tx.fxRate = fx.fxRate;
+      tx.fxAsOf = fx.fxAsOf;
+      tx.fxSource = fx.fxSource;
     }
     if (input.description != null) {
       tx.description = input.description.trim() || tx.description;
@@ -1635,6 +1709,38 @@ export async function updatePlanItem(input: {
     if (input.settledMinor !== undefined) item.settledMinor = input.settledMinor;
     if (input.remainingDueAt !== undefined) item.remainingDueAt = input.remainingDueAt;
     item.updatedAt = nowIso();
+    const shouldReconcile =
+      (item.settledMinor ?? 0) > 0 ||
+      s.transactions.some(
+        (tx) =>
+          tx.planItemId === item.id &&
+          tx.ledgerOrigin === "plan_settle" &&
+          tx.status === "confirmed",
+      );
+    if (shouldReconcile) {
+      applySettleInMemory({
+        item,
+        transactions: s.transactions,
+        allocations: s.planAllocations ?? [],
+        accounts: s.accounts
+          .filter((account) => account.isActive)
+          .map((account) => {
+            const checkpoint = latestCheckpointForAccount(s, account.id);
+            return {
+              id: account.id,
+              isDefault: account.isDefault,
+              currency: account.currency,
+              fxRate: checkpoint?.fxRate ?? (account.currency === "THB" ? 1 : null),
+            };
+          }),
+        settled: (item.settledMinor ?? 0) > 0,
+        targetSettledMinor: item.settledMinor ?? 0,
+        remainingDueAt: item.remainingDueAt ?? null,
+        nowIso: nowIso(),
+        newId,
+        userId: LOCAL_DEMO_USER_ID,
+      });
+    }
     found = item;
   });
   return found!;
@@ -1646,15 +1752,37 @@ export async function settlePlanItemAtomic(input: {
   targetSettledMinor?: number | null;
   remainingDueAt?: string | null;
   accountId?: string | null;
+  clientMutationId?: string | null;
 }): Promise<AtomicSettleResult> {
   let result: AtomicSettleResult | null = null;
   await updateStore((s) => {
+    if (input.clientMutationId) {
+      const cached = (s.mutationKeys ?? []).find(
+        (row) => row.mutationId === input.clientMutationId,
+      );
+      if (cached) {
+        result = cached.result as AtomicSettleResult;
+        return;
+      }
+    }
     const item = (s.planItems ?? []).find((p) => p.id === input.itemId);
     if (!item) throw new Error("Planposten hittades inte");
+    const accounts = s.accounts
+      .filter((a) => a.isActive)
+      .map((account) => {
+        const checkpoint = latestCheckpointForAccount(s, account.id);
+        return {
+          id: account.id,
+          isDefault: account.isDefault,
+          currency: account.currency,
+          fxRate: checkpoint?.fxRate ?? (account.currency === "THB" ? 1 : null),
+        };
+      });
     result = applySettleInMemory({
       item,
       transactions: s.transactions,
-      accounts: s.accounts.filter((a) => a.isActive),
+      allocations: s.planAllocations ?? [],
+      accounts,
       settled: input.settled,
       targetSettledMinor: input.targetSettledMinor ?? null,
       remainingDueAt: input.remainingDueAt ?? null,
@@ -1662,7 +1790,18 @@ export async function settlePlanItemAtomic(input: {
       nowIso: nowIso(),
       newId,
       userId: LOCAL_DEMO_USER_ID,
+      clientMutationId: input.clientMutationId ?? null,
     });
+    if (input.clientMutationId) {
+      s.mutationKeys = s.mutationKeys ?? [];
+      s.mutationKeys.push({
+        userId: LOCAL_DEMO_USER_ID,
+        mutationId: input.clientMutationId,
+        kind: "settle",
+        result,
+        createdAt: nowIso(),
+      });
+    }
   });
   if (!result) throw new Error("Kunde inte uppdatera Klar");
   return result;
@@ -1671,39 +1810,35 @@ export async function settlePlanItemAtomic(input: {
 export async function linkTransactionToPlanItem(input: {
   transactionId: string;
   itemId: string;
+  clientMutationId?: string | null;
 }): Promise<AtomicLinkResult> {
   let result: AtomicLinkResult | null = null;
   await updateStore((s) => {
-    const ts = nowIso();
     const tx = s.transactions.find((row) => row.id === input.transactionId);
     const item = (s.planItems ?? []).find((p) => p.id === input.itemId);
     if (!tx) throw new Error("Rörelsen hittades inte");
     if (!item) throw new Error("Planposten hittades inte");
-    if (tx.ledgerOrigin === "plan_settle" || tx.planItemId) {
-      throw new Error("Kan inte koppla en syntetisk bokning");
+    s.planAllocations = s.planAllocations ?? [];
+    const allocated = applyAllocateInMemory({
+      item,
+      transaction: tx,
+      transactions: s.transactions,
+      allocations: s.planAllocations,
+      accounts: s.accounts.filter((a) => a.isActive),
+      userId: LOCAL_DEMO_USER_ID,
+      nowIso: nowIso(),
+      newId,
+      clientMutationId: input.clientMutationId ?? null,
+    });
+    if (!allocated.ok) {
+      throw new Error(allocateErrorMessageSv(allocated.error));
     }
-    for (const row of s.transactions) {
-      if (
-        row.planItemId === item.id &&
-        row.ledgerOrigin === "plan_settle" &&
-        row.status === "confirmed"
-      ) {
-        row.status = "voided";
-        row.updatedAt = ts;
-      }
-    }
-    tx.linkedPlanItemId = item.id;
-    tx.updatedAt = ts;
-    const already = item.settledMinor ?? 0;
-    const target = Math.min(item.amountMinor, already + tx.amountMinor);
-    item.settledAt = target >= item.amountMinor ? (item.settledAt ?? ts) : null;
-    item.settledMinor = target > 0 ? target : null;
-    item.remainingDueAt =
-      target > 0 && target < item.amountMinor
-        ? (item.remainingDueAt ?? item.nextDueAt)
-        : null;
-    item.updatedAt = ts;
-    result = { item: { ...item }, transactionId: tx.id };
+    result = {
+      item: { ...allocated.item },
+      transactionId: allocated.transactionId,
+      allocatedCanonicalMinor: allocated.allocatedCanonicalMinor,
+      idempotent: allocated.idempotent,
+    };
   });
   if (!result) throw new Error("Kunde inte koppla transaktionen");
   return result;
@@ -1711,6 +1846,20 @@ export async function linkTransactionToPlanItem(input: {
 
 export async function deletePlanItem(id: string): Promise<void> {
   await updateStore((s) => {
+    const ts = nowIso();
+    for (const tx of s.transactions) {
+      if (
+        tx.planItemId === id &&
+        tx.ledgerOrigin === "plan_settle" &&
+        tx.status === "confirmed"
+      ) {
+        tx.status = "voided";
+        tx.updatedAt = ts;
+      }
+    }
+    s.planAllocations = (s.planAllocations ?? []).filter(
+      (row) => row.planItemId !== id,
+    );
     const item = (s.planItems ?? []).find((p) => p.id === id);
     if (!item) throw new Error("Planposten hittades inte");
     item.isActive = false;
@@ -1742,6 +1891,31 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
     cadence: "income",
     nextDueAt: isoDate,
   });
+}
+
+export async function purgeExpiredObservations(input?: {
+  now?: Date;
+  retentionDays?: number;
+}): Promise<{ purged: number }> {
+  let purged = 0;
+  await updateStore((s) => {
+    const due = observationsDueForPurge(
+      s.observations,
+      input?.now ?? new Date(),
+      input?.retentionDays ?? 30,
+    );
+    const ids = new Set(due.map((row) => row.id));
+    for (const row of s.observations) {
+      if (!ids.has(row.id)) continue;
+      row.storagePath = null;
+      row.notes = row.notes
+        ? `${row.notes} · Bild raderad efter 30 dagar`
+        : "Bild raderad efter 30 dagar";
+      row.updatedAt = nowIso();
+      purged += 1;
+    }
+  });
+  return { purged };
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {

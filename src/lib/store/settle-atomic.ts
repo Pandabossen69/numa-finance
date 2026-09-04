@@ -1,13 +1,20 @@
 import {
+  allocatedCanonicalFromLinks,
+  allocatedSumCanonical,
   isPlanIncome,
+  thbToNativeMinor,
   type CanonicalTransaction,
   type PlanItem,
+  type PlanPaymentAllocation,
 } from "@/domain/finance";
 
 export type AtomicSettleResult = {
   item: PlanItem;
   bookedMinor: number;
+  bookedNativeMinor: number;
+  bookedCanonicalMinor: number;
   saldoDeltaMinor: number;
+  nativeSaldoDeltaMinor: number;
   accountId: string | null;
   skippedBecauseFunded: boolean;
   idempotent: boolean;
@@ -16,6 +23,15 @@ export type AtomicSettleResult = {
 export type AtomicLinkResult = {
   item: PlanItem;
   transactionId: string;
+  allocatedCanonicalMinor?: number;
+  idempotent?: boolean;
+};
+
+export type SettleAccount = {
+  id: string;
+  isDefault: boolean;
+  currency: string;
+  fxRate?: number | null;
 };
 
 /**
@@ -25,7 +41,8 @@ export type AtomicLinkResult = {
 export function applySettleInMemory(params: {
   item: PlanItem;
   transactions: CanonicalTransaction[];
-  accounts: Array<{ id: string; isDefault: boolean; currency: string }>;
+  allocations?: PlanPaymentAllocation[];
+  accounts: SettleAccount[];
   settled: boolean;
   targetSettledMinor: number | null;
   remainingDueAt: string | null;
@@ -33,58 +50,43 @@ export function applySettleInMemory(params: {
   nowIso: string;
   newId: () => string;
   userId: string;
+  clientMutationId?: string | null;
 }): AtomicSettleResult {
   const amount = params.item.amountMinor;
   if (amount <= 0) throw new Error("Planposten har inget belopp");
 
-  const target = !params.settled
-    ? 0
+  const allocated = Math.max(
+    allocatedSumCanonical(params.allocations ?? [], params.item.id),
+    allocatedCanonicalFromLinks(params.item, params.transactions),
+  );
+
+  const requested = !params.settled
+    ? allocated
     : params.targetSettledMinor == null
       ? amount
-      : Math.max(0, Math.min(amount, Math.round(params.targetSettledMinor)));
+      : Math.max(allocated, Math.min(amount, Math.round(params.targetSettledMinor)));
 
   let settledAt: string | null;
   let settledMinor: number | null;
   let remainingDueAt: string | null;
-  if (target <= 0) {
+  if (requested <= 0) {
     settledAt = null;
     settledMinor = null;
     remainingDueAt = null;
-  } else if (target >= amount) {
+  } else if (requested >= amount) {
     settledAt = params.item.settledAt ?? params.nowIso;
     settledMinor = amount;
     remainingDueAt = null;
   } else {
     settledAt = null;
-    settledMinor = target;
+    settledMinor = requested;
     remainingDueAt =
       params.remainingDueAt ??
       params.item.remainingDueAt ??
       params.item.nextDueAt;
   }
 
-  if (
-    (params.item.settledMinor ?? 0) === (settledMinor ?? 0) &&
-    params.item.settledAt === settledAt &&
-    params.item.remainingDueAt === remainingDueAt
-  ) {
-    return {
-      item: params.item,
-      bookedMinor: 0,
-      saldoDeltaMinor: 0,
-      accountId: null,
-      skippedBecauseFunded: false,
-      idempotent: true,
-    };
-  }
-
-  const funded = params.transactions.some(
-    (tx) =>
-      tx.status === "confirmed" &&
-      tx.linkedPlanItemId === params.item.id &&
-      tx.ledgerOrigin !== "plan_settle" &&
-      !tx.planItemId,
-  );
+  const synthTarget = Math.max(0, requested - allocated);
 
   const liveSynths = params.transactions.filter(
     (tx) =>
@@ -92,7 +94,14 @@ export function applySettleInMemory(params: {
       tx.ledgerOrigin === "plan_settle" &&
       tx.status === "confirmed",
   );
-  const alreadyBooked = liveSynths.reduce((sum, tx) => sum + tx.amountMinor, 0);
+  const alreadyBookedThb = liveSynths.reduce(
+    (sum, tx) => sum + (tx.thbMinor ?? tx.amountMinor),
+    0,
+  );
+  const alreadyBookedNative = liveSynths.reduce(
+    (sum, tx) => sum + tx.amountMinor,
+    0,
+  );
 
   const accountId =
     params.accountId ??
@@ -101,9 +110,23 @@ export function applySettleInMemory(params: {
     params.accounts[0]?.id ??
     null;
 
-  let bookedMinor = 0;
-  if (!funded && target > 0) {
-    if (!accountId) throw new Error("Inget konto för bokningen");
+  if (
+    (params.item.settledMinor ?? 0) === (settledMinor ?? 0) &&
+    params.item.settledAt === settledAt &&
+    params.item.remainingDueAt === remainingDueAt &&
+    alreadyBookedThb === synthTarget
+  ) {
+    return {
+      item: params.item,
+      bookedMinor: 0,
+      bookedNativeMinor: 0,
+      bookedCanonicalMinor: 0,
+      saldoDeltaMinor: 0,
+      nativeSaldoDeltaMinor: 0,
+      accountId: null,
+      skippedBecauseFunded: allocated > 0 && synthTarget === 0,
+      idempotent: true,
+    };
   }
 
   for (const tx of liveSynths) {
@@ -111,8 +134,15 @@ export function applySettleInMemory(params: {
     tx.updatedAt = params.nowIso;
   }
 
-  if (!funded && target > 0) {
+  let bookedThb = 0;
+  let bookedNative = 0;
+  if (synthTarget > 0) {
+    if (!accountId) throw new Error("Inget konto för bokningen");
     const account = params.accounts.find((a) => a.id === accountId);
+    const currency = (account?.currency ?? "THB") as CanonicalTransaction["currency"];
+    const fxRate = currency === "THB" ? 1 : account?.fxRate ?? null;
+    bookedNative = thbToNativeMinor(synthTarget, currency, fxRate);
+    bookedThb = synthTarget;
     const income = isPlanIncome(params.item);
     params.transactions.push({
       id: params.newId(),
@@ -121,8 +151,13 @@ export function applySettleInMemory(params: {
       counterAccountId: null,
       direction: income ? "credit" : "debit",
       transactionType: income ? "income" : "expense",
-      amountMinor: target,
-      currency: (account?.currency as CanonicalTransaction["currency"]) ?? "THB",
+      amountMinor: bookedNative,
+      currency,
+      thbMinor: bookedThb,
+      fxRate,
+      fxAsOf: params.nowIso,
+      fxSource: "settlement",
+      clientMutationId: params.clientMutationId ?? null,
       occurredAt: params.nowIso,
       description: params.item.name.trim() || "Planpost",
       merchant: params.item.name.trim() || null,
@@ -140,15 +175,15 @@ export function applySettleInMemory(params: {
       createdAt: params.nowIso,
       updatedAt: params.nowIso,
     });
-    bookedMinor = target;
   }
 
   const kindIncome = isPlanIncome(params.item);
-  const saldoDeltaMinor = funded
-    ? 0
-    : kindIncome
-      ? bookedMinor - alreadyBooked
-      : -(bookedMinor - alreadyBooked);
+  const saldoDeltaMinor = kindIncome
+    ? bookedThb - alreadyBookedThb
+    : -(bookedThb - alreadyBookedThb);
+  const nativeSaldoDeltaMinor = kindIncome
+    ? bookedNative - alreadyBookedNative
+    : -(bookedNative - alreadyBookedNative);
 
   params.item.settledAt = settledAt;
   params.item.settledMinor = settledMinor;
@@ -157,10 +192,13 @@ export function applySettleInMemory(params: {
 
   return {
     item: { ...params.item },
-    bookedMinor: funded ? 0 : bookedMinor,
+    bookedMinor: bookedThb,
+    bookedNativeMinor: bookedNative,
+    bookedCanonicalMinor: bookedThb,
     saldoDeltaMinor,
+    nativeSaldoDeltaMinor,
     accountId,
-    skippedBecauseFunded: funded,
+    skippedBecauseFunded: synthTarget === 0 && allocated > 0,
     idempotent: false,
   };
 }

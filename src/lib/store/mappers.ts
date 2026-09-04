@@ -66,6 +66,11 @@ type DbTransaction = {
   transaction_type: CanonicalTransaction["transactionType"];
   amount_minor: number;
   currency: CurrencyCode;
+  thb_minor?: number | null;
+  fx_rate?: number | string | null;
+  fx_as_of?: string | null;
+  fx_source?: string | null;
+  client_mutation_id?: string | null;
   occurred_at: string;
   description: string;
   merchant: string | null;
@@ -178,6 +183,14 @@ export function mapTransaction(row: DbTransaction): CanonicalTransaction {
     transactionType: row.transaction_type,
     amountMinor: Number(row.amount_minor),
     currency: row.currency,
+    thbMinor: row.thb_minor == null ? null : Number(row.thb_minor),
+    fxRate:
+      row.fx_rate == null || row.fx_rate === ""
+        ? null
+        : Number(row.fx_rate),
+    fxAsOf: row.fx_as_of ?? null,
+    fxSource: row.fx_source ?? null,
+    clientMutationId: row.client_mutation_id ?? null,
     occurredAt: row.occurred_at,
     description: row.description,
     merchant: row.merchant,

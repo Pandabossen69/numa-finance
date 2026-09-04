@@ -7,7 +7,7 @@ import {
 } from "./plan-months";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 import { type LedgerMatchTx } from "./cash-coverage";
-import { explicitlyLinkedPlanItemIds } from "./plan-link";
+import { allocatedCanonicalFromLinks } from "./plan-allocation";
 import type { PlanItem } from "./types";
 
 export type PlanSettleKind = "income" | "expense";
@@ -76,10 +76,11 @@ export function planItemAlreadyFundedInLedger(params: {
   void params.monthKey;
   void params.timeZone;
   void params.planItems;
-  const linked = explicitlyLinkedPlanItemIds(
+  const allocated = allocatedCanonicalFromLinks(
+    params.item,
     params.transactions.filter(isExternalLedgerTx),
   );
-  return linked.has(params.item.id);
+  return allocated >= params.item.amountMinor && params.item.amountMinor > 0;
 }
 
 export function monthKeyForPlanSettle(
@@ -107,23 +108,24 @@ export function previewPlanSettleEffect(params: {
   if (!kind) return null;
   const target = Math.max(0, Math.round(params.targetBookedMinor));
   const previous = settledAmountMinor(params.item);
-  const monthKey = monthKeyForPlanSettle(params.item, params.timeZone);
-  const funded = planItemAlreadyFundedInLedger({
-    item: params.item,
-    planItems: params.planItems,
-    transactions: params.transactions,
-    kind,
-    monthKey,
-    timeZone: params.timeZone,
-  });
-  const flagDelta = target - previous;
-  const bookedDelta = funded ? 0 : flagDelta;
+  const allocated = allocatedCanonicalFromLinks(
+    params.item,
+    params.transactions.filter(isExternalLedgerTx),
+  );
+  const previousSynth = Math.max(0, previous - allocated);
+  const nextSynth = Math.max(0, target - allocated);
+  const bookedDelta = nextSynth - previousSynth;
+  const claimedBefore = Math.max(previous, allocated);
+  const claimedAfter = Math.max(target, allocated);
+  const coverageDelta =
+    Math.max(0, params.item.amountMinor - claimedAfter) -
+    Math.max(0, params.item.amountMinor - claimedBefore);
   return {
     kind,
     targetBookedMinor: target,
     saldoDeltaMinor: signedPlanSettleSaldoDelta(kind, bookedDelta),
-    incomingDeltaMinor: kind === "income" && !funded ? -flagDelta : 0,
-    unpaidDeltaMinor: kind === "expense" && !funded ? -flagDelta : 0,
-    skippedBecauseFunded: funded,
+    incomingDeltaMinor: kind === "income" ? coverageDelta : 0,
+    unpaidDeltaMinor: kind === "expense" ? coverageDelta : 0,
+    skippedBecauseFunded: nextSynth === 0 && allocated > 0,
   };
 }

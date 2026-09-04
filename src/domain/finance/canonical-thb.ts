@@ -28,9 +28,13 @@ export function amountToThbMinor(
 }
 
 export function transactionToThbMinor(
-  tx: Pick<CanonicalTransaction, "amountMinor" | "currency" | "accountId">,
+  tx: Pick<
+    CanonicalTransaction,
+    "amountMinor" | "currency" | "accountId" | "thbMinor"
+  >,
   checkpointByAccountId: ReadonlyMap<string, FxCheckpoint | null>,
 ): number | null {
+  if (tx.thbMinor != null) return tx.thbMinor;
   return amountToThbMinor(
     tx.amountMinor,
     tx.currency,
@@ -48,7 +52,9 @@ export function toCanonicalThbTransaction(
 ): CanonicalTransaction | null {
   const thb = transactionToThbMinor(tx, checkpointByAccountId);
   if (thb == null) return null;
-  if (tx.currency === CANONICAL_CURRENCY) return tx;
+  if (tx.currency === CANONICAL_CURRENCY && (tx.thbMinor == null || tx.thbMinor === tx.amountMinor)) {
+    return tx;
+  }
   return {
     ...tx,
     amountMinor: thb,

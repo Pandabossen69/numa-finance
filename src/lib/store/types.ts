@@ -5,10 +5,11 @@ import type {
   ExtractedTransactionCandidate,
   ExtractionRun,
   PlanItem,
+  PlanPaymentAllocation,
   Profile,
   ReconciliationIssue,
   SourceObservation,
-} from "@/domain/finance/types";
+} from "@/domain/finance";
 
 export type NumaStoreData = {
   version: 1;
@@ -21,6 +22,14 @@ export type NumaStoreData = {
   candidates: ExtractedTransactionCandidate[];
   reconciliationIssues: ReconciliationIssue[];
   planItems: PlanItem[];
+  planAllocations: PlanPaymentAllocation[];
+  mutationKeys: Array<{
+    userId: string;
+    mutationId: string;
+    kind: string;
+    result: unknown;
+    createdAt: string;
+  }>;
 };
 
 export const LOCAL_DEMO_USER_ID = "00000000-0000-4000-8000-000000000001";
@@ -50,6 +59,8 @@ export function createEmptyStore(): NumaStoreData {
     candidates: [],
     reconciliationIssues: [],
     planItems: [],
+    planAllocations: [],
+    mutationKeys: [],
   };
 }
 
@@ -92,8 +103,14 @@ export function normalizeStore(data: NumaStoreData): NumaStoreData {
       (tx) => ({
         ...tx,
         planItemId: tx.planItemId ?? null,
+        thbMinor: tx.thbMinor ?? (tx.currency === "THB" ? tx.amountMinor : null),
+        fxRate: tx.fxRate ?? (tx.currency === "THB" ? 1 : null),
       }),
     ),
+    planAllocations: Array.isArray(data.planAllocations)
+      ? data.planAllocations
+      : [],
+    mutationKeys: Array.isArray(data.mutationKeys) ? data.mutationKeys : [],
     profile: {
       ...data.profile,
       onboardingSaldoAt: data.profile.onboardingSaldoAt ?? null,

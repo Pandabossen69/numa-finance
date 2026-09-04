@@ -19,4 +19,6 @@ export * from "./plan-settle-ledger";
 export * from "./finance-revision";
 export * from "./spend-class";
 export * from "./canonical-thb";
+export * from "./native-fx";
+export * from "./plan-allocation";
 export * from "./plan-link";

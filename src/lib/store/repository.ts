@@ -279,6 +279,12 @@ export async function deletePlanItem(id: string) {
   return api().deletePlanItem(id);
 }
 
+export async function purgeExpiredObservations(
+  input?: Parameters<typeof local.purgeExpiredObservations>[0],
+) {
+  return api().purgeExpiredObservations(input);
+}
+
 export async function setNextIncomeDate(isoDate: string) {
   return api().setNextIncomeDate(isoDate);
 }

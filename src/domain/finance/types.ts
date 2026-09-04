@@ -145,6 +145,17 @@ export type CanonicalTransaction = {
   transactionType: TransactionType;
   amountMinor: number;
   currency: CurrencyCode;
+  /**
+   * Canonical THB locked when the row was written.
+   * Null on legacy rows — readers fall back to the live checkpoint.
+   */
+  thbMinor?: number | null;
+  /** THB per 1 major unit of `currency`, locked at write. */
+  fxRate?: number | null;
+  fxAsOf?: string | null;
+  fxSource?: string | null;
+  /** Client idempotency key. Retrying the same key must not insert again. */
+  clientMutationId?: string | null;
   occurredAt: string;
   description: string;
   merchant: string | null;

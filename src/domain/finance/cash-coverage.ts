@@ -10,8 +10,9 @@ import {
   projectPlanForMonth,
   remainingDueIso,
   remainingOpenMinor,
-  sumCountsTowardCashMinor,
+  settledAmountMinor,
 } from "./plan-months";
+import { allocatedCanonicalFromLinks } from "./plan-allocation";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
 /** One-line formula shown on Plan and Hem. */
@@ -45,6 +46,8 @@ export type LedgerMatchTx = Pick<
   ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
   /** User-confirmed link. Heuristic matches must not write this. */
   linkedPlanItemId?: string | null;
+  currency?: CanonicalTransaction["currency"];
+  thbMinor?: number | null;
 };
 
 export type PlanMatchPair = { itemId: string; txId: string; score: number };
@@ -80,20 +83,8 @@ export function projectCashCoverage(params: {
 }): CashCoverageView {
   const { planItems, transactions, monthKey, timeZone, saldoMinor } = params;
   const plan = projectPlanForMonth(planItems, monthKey, timeZone);
-  const incomingMinor = remainingPlanAmount(
-    plan.incomes,
-    transactions,
-    "income",
-    monthKey,
-    timeZone,
-  );
-  const unpaidMinor = remainingPlanAmount(
-    plan.items,
-    transactions,
-    "expense",
-    monthKey,
-    timeZone,
-  );
+  const incomingMinor = remainingPlanAmount(plan.incomes, transactions);
+  const unpaidMinor = remainingPlanAmount(plan.items, transactions);
   return {
     monthKey,
     saldoMinor,
@@ -106,18 +97,16 @@ export function projectCashCoverage(params: {
 function remainingPlanAmount(
   items: PlanItem[],
   transactions: LedgerMatchTx[],
-  _kind: "income" | "expense",
-  _monthKey: string,
-  _timeZone: string,
 ): number {
-  // Settle flags (remainingOpenMinor) plus user-confirmed links only.
-  // The ±7-day heuristic must never silently drop an obligation.
-  const linked = new Set<string>();
-  for (const tx of transactions) {
-    if (tx.status !== "confirmed") continue;
-    if (tx.linkedPlanItemId) linked.add(tx.linkedPlanItemId);
+  // Settle flags plus confirmed allocation amounts — never a heuristic match,
+  // and never treat a partial link as a full settlement.
+  let sum = 0;
+  for (const item of items) {
+    const allocated = allocatedCanonicalFromLinks(item, transactions);
+    const claimed = Math.max(settledAmountMinor(item), allocated);
+    sum += Math.max(0, item.amountMinor - claimed);
   }
-  return sumCountsTowardCashMinor(items, linked);
+  return sum;
 }
 
 /**
