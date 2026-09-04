@@ -196,7 +196,9 @@ export function assembleTodaySnapshot(input: {
     flexibleMinor: cycle.flexibleMinor || projection.flexibleMinor,
     daysUntilIncome: daysUntilNextIncome,
     recentTransactions,
-    ledgerTransactions: canonicalTx,
+    // Native ledger. Spend windows above use canonicalTx. Rörelser edit
+    // prefills amountMinor/currency from these rows — never the projected THB.
+    ledgerTransactions: transactions,
     planItems,
     currency,
     progress: null,

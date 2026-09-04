@@ -44,7 +44,8 @@ export function transactionToThbMinor(
 
 /**
  * Project a ledger row into canonical THB for spend / funding / revision.
- * Native amount and currency stay on the original row for account displays.
+ * This copy overwrites amountMinor/currency with THB. Keep the original row
+ * (or TodaySnapshot.ledgerTransactions) when a screen must prefill native.
  */
 export function toCanonicalThbTransaction(
   tx: CanonicalTransaction,

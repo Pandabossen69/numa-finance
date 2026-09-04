@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { buildMovementsSnapshot } from "@/features/finance/load-movements";
+import { movementsSnapshotFromToday } from "@/features/finance/snapshot-from-today";
 import {
   applyMovementsEdit,
   clearClientSessionCaches,
   lastMovementsSnapshot,
   rememberMovementsSnapshot,
 } from "@/features/home/last-snapshot";
+import { assembleTodaySnapshot } from "@/lib/store/assemble-today-snapshot";
 import {
   lockFxAtWrite,
   nativeToThbMinor,
   thbToNativeMinor,
   toCanonicalThbTransaction,
 } from "./index";
-import type { Account, BalanceCheckpoint, CanonicalTransaction } from "./types";
+import type { Account, BalanceCheckpoint, CanonicalTransaction, Profile } from "./types";
 
 const tz = "Asia/Bangkok";
 const now = new Date("2026-09-04T08:00:00.000Z");
@@ -243,5 +245,54 @@ describe("native / canonical currency boundary", () => {
     const projected = toCanonicalThbTransaction(created, new Map([["nordea", laterRate]]));
     expect(projected?.amountMinor).toBe(35_00);
     expect(created.amountMinor).toBe(10_00);
+  });
+
+  it("keeps native SEK on the Hem snapshot so Rörelser edit does not prefill THB", () => {
+    const created = tx({
+      id: "sek-10",
+      accountId: "nordea",
+      amountMinor: 10_00,
+      currency: "SEK",
+      thbMinor: 35_00,
+      fxRate: 3.5,
+      occurredAt: "2026-09-04T05:00:00.000Z",
+      description: "SEK kaffe",
+    });
+    const profile: Profile = {
+      id: "u1",
+      displayName: "Hugo",
+      timezone: tz,
+      primaryCurrency: "THB",
+      referenceCurrency: "THB",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      onboardingSaldoAt: "2026-08-01T00:00:00.000Z",
+      onboardingCompletedAt: "2026-08-01T00:00:00.000Z",
+      gettingStartedCompletedAt: null,
+      gettingStartedCollapsed: false,
+    };
+    const cp = checkpoint("nordea", 1_000_00, {
+      currency: "SEK",
+      fxRate: 3.5,
+      thbMinor: 3_500_00,
+    });
+    const snap = assembleTodaySnapshot({
+      profile,
+      accounts: [sekAccount],
+      planItems: [],
+      primary: sekAccount,
+      checkpoint: cp,
+      checkpoints: [cp],
+      transactions: [created],
+      now,
+    });
+    expect(snap.ledgerTransactions[0]?.amountMinor).toBe(10_00);
+    expect(snap.ledgerTransactions[0]?.currency).toBe("SEK");
+    expect(snap.ledgerTransactions[0]?.thbMinor).toBe(35_00);
+
+    const movements = movementsSnapshotFromToday(snap, now);
+    expect(movements.items[0]?.nativeAmountMinor).toBe(10_00);
+    expect(movements.items[0]?.nativeCurrency).toBe("SEK");
+    expect(movements.items[0]?.amountMinor).toBe(35_00);
   });
 });
