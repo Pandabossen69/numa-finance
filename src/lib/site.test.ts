@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasPreviewEscape,
   isCanonicalAppHost,
   isProductionAppHost,
   productionUrlForPath,
   shouldRedirectToProduction,
+  withPreviewQuery,
 } from "./site";
 
 describe("canonical production host", () => {
@@ -34,6 +36,16 @@ describe("canonical production host", () => {
         params,
       ),
     ).toBe(false);
+    expect(
+      shouldRedirectToProduction(
+        "numa-finance-git-foo.vercel.app",
+        new URLSearchParams(),
+        "numa_preview=1",
+      ),
+    ).toBe(false);
+    expect(hasPreviewEscape(params)).toBe(true);
+    expect(withPreviewQuery("/idag")).toBe("/idag?preview=1");
+    expect(withPreviewQuery("/idag?foo=bar")).toBe("/idag?foo=bar&preview=1");
   });
 
   it("builds production URLs", () => {

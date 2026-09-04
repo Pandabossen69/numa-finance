@@ -25,13 +25,21 @@ describe("settle state is written by user action only", () => {
     const writers = actions.match(/settledAt(?:,|\s*[:=])/g) ?? [];
     expect(writers.length).toBeGreaterThan(0);
     expect(actions).toContain("if (input.settled)");
-    expect(actions).toContain("let settledAt: string | null = null");
-    expect(actions).toContain("let settledMinor: number | null = null");
-    expect(actions).toContain("syncPlanItemSettleLedger");
+    expect(actions).toContain("settlePlanItemAtomic");
+    expect(actions).toContain("refreshTodaySnapshot");
+    expect(actions).toContain("homeSnapshotFromToday");
     expect(actions).toContain("revalidateSettleCaches");
     expect(actions).toContain('revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max")');
     // No matcher anywhere near the write path.
     expect(actions).not.toContain("matchPlanItemsToLedger");
+    const settleFn = actions.slice(
+      actions.indexOf("export async function setPlanItemSettledAction"),
+      actions.indexOf("export async function confirmPlanLinkAction"),
+    );
+    expect(settleFn).toContain("settlePlanItemAtomic");
+    expect(settleFn).not.toContain("syncPlanItemSettleLedger");
+    expect(settleFn).not.toContain("updatePlanItem(");
+    expect(settleFn).toContain("refreshTodaySnapshot");
   });
 
   it("keeps the matcher out of plan status and sorting", () => {

@@ -9,6 +9,7 @@ import {
 } from "@/components/add/QuickAddForms";
 import {
   confirmReceiptExpenseAction,
+  deleteObservationAction,
   uploadReceiptAction,
 } from "@/features/imports/actions";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
@@ -451,6 +452,10 @@ export function ReceiptCaptureFlow({
         <p className="text-center text-xs text-[var(--numa-faint)]">
           {copy.footer}
         </p>
+        <p className="mx-auto max-w-[40ch] text-center text-xs leading-relaxed text-[var(--numa-faint)]">
+          Bilden skickas till AI för att läsa belopp. Vi sparar den i högst 30
+          dagar. Du kan radera den när som helst.
+        </p>
 
         {error ? (
           <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
@@ -725,6 +730,20 @@ export function ReceiptCaptureFlow({
           }}
         >
           Ta ny bild
+        </button>
+        <button
+          type="button"
+          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
+          aria-label="Radera uppladdad bild"
+          onClick={() => {
+            const observationId = preview.observationId;
+            URL.revokeObjectURL(preview.previewUrl);
+            setPreview(null);
+            setAmountEditable(false);
+            void deleteObservationAction(observationId);
+          }}
+        >
+          Radera bilden
         </button>
       </div>
     </form>

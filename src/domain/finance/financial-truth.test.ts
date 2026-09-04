@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { projectCashCoverage } from "./cash-coverage";
+import { computeClassifiedSpendingWindows } from "./spend-class";
 import { projectLivingBudget } from "./living-budget";
+import type { CanonicalTransaction } from "./types";
 import { projectPayCycle } from "./pay-cycle";
 import {
   MONTHLY_SAVE_NAME,
@@ -179,15 +181,19 @@ describe("financial truth — Plan failure must not become zero", () => {
       new URL("../../lib/store/supabase-repository.ts", import.meta.url),
       "utf8",
     );
-    const start = repo.indexOf("export const getTodaySnapshot");
+    const start = repo.indexOf("async function loadTodaySnapshotUncached");
     const end = repo.indexOf("export async function getUserProgress");
     const snapshotFn = repo.slice(start, end === -1 ? undefined : end);
     expect(snapshotFn).not.toMatch(
       /listPlanItems\(\)\.catch\(\s*\(\)\s*=>\s*\[\]/,
     );
     expect(snapshotFn).toMatch(/loadPlanItems:\s*listPlanItems/);
-    expect(snapshotFn).toContain("financeRevision");
-    expect(snapshotFn).toContain("verifiedAt");
+    const assemble = readFileSync(
+      new URL("../../lib/store/assemble-today-snapshot.ts", import.meta.url),
+      "utf8",
+    );
+    expect(assemble).toContain("financeRevision");
+    expect(assemble).toContain("verifiedAt");
   });
 });
 
@@ -327,5 +333,139 @@ describe("financial truth — live audit regression scenario", () => {
     const afterUndo = auditView(unpaid, lunchMinor);
     expect(afterUndo.cycle.expenseMinor).toBe(25_000_00);
     expect(afterUndo.living.remainingFreeMinor).toBe(30_800_00);
+  });
+
+  it("settling rent does not change discretionary Spenderat idag", () => {
+    const lunch: CanonicalTransaction = {
+      id: "lunch",
+      userId: "u1",
+      accountId: "cash",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: lunchMinor,
+      currency: "THB",
+      occurredAt: "2026-08-26T04:00:00.000Z",
+      description: "Lunch",
+      merchant: null,
+      category: "Mat",
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      transferGroupId: null,
+      planItemId: null,
+      ledgerOrigin: "external",
+      linkedPlanItemId: null,
+      syncStatus: "saved",
+      createdAt: "2026-08-26T04:00:00.000Z",
+      updatedAt: "2026-08-26T04:00:00.000Z",
+    };
+    const settle: CanonicalTransaction = {
+      ...lunch,
+      id: "settle-rent",
+      amountMinor: 20_000_00,
+      occurredAt: "2026-08-26T06:00:00.000Z",
+      description: "Hyra",
+      category: null,
+      ledgerOrigin: "plan_settle",
+      planItemId: "rent",
+    };
+    const before = computeClassifiedSpendingWindows({
+      transactions: [lunch],
+      currency: "THB",
+      now: auditNow,
+      timeZone: tz,
+      cycleStartAt: "2026-08-25T00:00:00.000Z",
+      cycleEndAt: "2026-09-25T00:00:00.000Z",
+    });
+    const after = computeClassifiedSpendingWindows({
+      transactions: [lunch, settle],
+      currency: "THB",
+      now: auditNow,
+      timeZone: tz,
+      cycleStartAt: "2026-08-25T00:00:00.000Z",
+      cycleEndAt: "2026-09-25T00:00:00.000Z",
+    });
+    expect(before.today.discretionary.amountMinor).toBe(lunchMinor);
+    expect(after.today.discretionary.amountMinor).toBe(lunchMinor);
+    expect(after.today.plannedPaid.amountMinor).toBe(20_000_00);
+    const paid = auditItems({
+      settledMinor: 20_000_00,
+      settledAt: "2026-08-26T10:00:00.000Z",
+    });
+    const livingBefore = projectLivingBudget({
+      cycle: projectPayCycle(auditItems(), auditNow, tz),
+      now: auditNow,
+      timeZone: tz,
+      bankBalanceMinor: bankStart,
+      cycleSpendingMinor: lunchMinor,
+      todaySpendingMinor: lunchMinor,
+      fundingConfirmed: true,
+    });
+    const livingAfter = projectLivingBudget({
+      cycle: projectPayCycle(paid, auditNow, tz),
+      now: auditNow,
+      timeZone: tz,
+      bankBalanceMinor: bankStart - 20_000_00,
+      cycleSpendingMinor: after.cycle.total.amountMinor,
+      todaySpendingMinor: lunchMinor,
+      fundingConfirmed: true,
+    });
+    expect(livingAfter.remainingFreeMinor).toBe(30_800_00);
+    expect(livingAfter.remainingTodayMinor).toBe(livingBefore.remainingTodayMinor);
+    expect(livingAfter.remainingTodayMinor).toBe(
+      livingAfter.dayBudgetMinor - lunchMinor,
+    );
+  });
+
+  it("88 THB cash expense increases discretionary today and period by exactly 88", () => {
+    const lunch: CanonicalTransaction = {
+      id: "lunch",
+      userId: "u1",
+      accountId: "primary",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: lunchMinor,
+      currency: "THB",
+      occurredAt: "2026-08-26T04:00:00.000Z",
+      description: "Lunch",
+      merchant: null,
+      category: "Mat",
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      transferGroupId: null,
+      planItemId: null,
+      ledgerOrigin: "external",
+      linkedPlanItemId: null,
+      syncStatus: "saved",
+      createdAt: "2026-08-26T04:00:00.000Z",
+      updatedAt: "2026-08-26T04:00:00.000Z",
+    };
+    const cash: CanonicalTransaction = {
+      ...lunch,
+      id: "cash-88",
+      accountId: "cash",
+      amountMinor: 88_00,
+      occurredAt: "2026-08-26T07:00:00.000Z",
+      description: "Kaffe",
+    };
+    const windows = computeClassifiedSpendingWindows({
+      transactions: [lunch, cash],
+      currency: "THB",
+      now: auditNow,
+      timeZone: tz,
+      cycleStartAt: "2026-08-25T00:00:00.000Z",
+      cycleEndAt: "2026-09-25T00:00:00.000Z",
+    });
+    expect(windows.today.discretionary.amountMinor).toBe(lunchMinor + 88_00);
+    expect(windows.cycle.discretionary.amountMinor).toBe(lunchMinor + 88_00);
+    const view = auditView(auditItems(), windows.cycle.total.amountMinor);
+    expect(view.living.remainingFreeMinor).toBe(30_800_00 - 88_00);
   });
 });

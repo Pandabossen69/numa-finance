@@ -293,9 +293,19 @@ export function HomeDashboard({
                           wrap={false}
                         />
                       </div>
-                      <p className="numa-metric-hint">Sänker bara idag</p>
+                      <p className="numa-metric-hint">{SV.spenderatIdagHint}</p>
                     </div>
                   </div>
+                  {view.todayPlannedPaidMinor > 0 ? (
+                    <p className="px-1 text-center text-[12px] text-[var(--numa-faint)]">
+                      {SV.betaldaRakningarIdag}{" "}
+                      <span className="font-semibold text-[var(--numa-ink)]">
+                        {formatMoney(
+                          money(view.todayPlannedPaidMinor, currency),
+                        )}
+                      </span>
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <div className="space-y-3 py-6 text-center">
@@ -430,6 +440,7 @@ export function HomeDashboard({
 
           <QuickExpense
             accountId={view.primaryAccountId}
+            accounts={accountsView?.accounts ?? accounts?.accounts ?? []}
             currency={currency}
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
@@ -621,6 +632,7 @@ function UpdateBalanceLink({
 
 function QuickExpense({
   accountId,
+  accounts,
   currency,
   disabled,
   remainingTodayMinor,
@@ -629,6 +641,7 @@ function QuickExpense({
   onSpendFailed,
 }: {
   accountId: string | null;
+  accounts: Array<{ id: string; name: string; kindLabelSv?: string; kind?: string }>;
   currency: CurrencyCode;
   disabled: boolean;
   remainingTodayMinor: number;
@@ -638,9 +651,15 @@ function QuickExpense({
 }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [chosenAccountId, setChosenAccountId] = useState(accountId ?? "");
   const [error, setError] = useState<string | null>(null);
   // Guard only — never flip a busy "saving…" flag; dial updates instantly.
   const guard = useSubmitGuard();
+  const targetAccountId = chosenAccountId || accountId;
+
+  useEffect(() => {
+    if (accountId && !chosenAccountId) setChosenAccountId(accountId);
+  }, [accountId, chosenAccountId]);
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -676,6 +695,26 @@ function QuickExpense({
         </p>
       ) : (
         <>
+          {accounts.length > 1 ? (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[var(--numa-muted)]">
+                Konto
+              </span>
+              <select
+                value={targetAccountId ?? ""}
+                onChange={(e) => setChosenAccountId(e.target.value)}
+                aria-label="Konto för utgiften"
+                className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base outline-none focus:border-[var(--numa-accent)]"
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                    {account.kindLabelSv ? ` · ${account.kindLabelSv}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-[1fr_7.5rem_auto]">
             <input
               value={note}
@@ -697,7 +736,7 @@ function QuickExpense({
               disabled={!amount.trim()}
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
-                if (guard.isRunning() || !accountId) return;
+                if (guard.isRunning() || !targetAccountId) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -717,17 +756,17 @@ function QuickExpense({
                 setNote("");
                 // Instant UI — dial + konton; server + rörelser catch up.
                 onOptimisticSpend(amountMinor);
-                applyAccountDelta(-amountMinor, accountId);
+                applyAccountDelta(-amountMinor, targetAccountId);
                 void (async () => {
                   try {
                     const result = await createExpenseAction({
-                      accountId,
+                      accountId: targetAccountId,
                       amount: amountInput,
                       description,
                     });
                     if (!result.ok) {
                       onSpendFailed(amountMinor);
-                      applyAccountDelta(amountMinor, accountId);
+                      applyAccountDelta(amountMinor, targetAccountId);
                       setError(result.error);
                       return;
                     }

@@ -1,26 +1,14 @@
 import {
   assertCurrencyAllowedForKind,
-  calculateAccountBalance,
-  calculatePlanTotals,
-  calculateSafeToSpend,
-  computeSpendingWindows,
-  filterTransactionsAfterCheckpoint,
-  formatRelativeVerificationSv,
-  monthKeyFromDate,
   NEXT_INCOME_NAME,
-  projectPayCycle,
-  projectPlanForMonth,
   resolveSmsTipBalanceMinor,
   shouldWriteSmsTipCheckpoint,
-  spendingByMonthKey,
   startOfZonedDay,
   decideSmsBatchConfirm,
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
   collectPairedVoidIds,
-  hasCycleFundingEvidence,
   resolveSmsBatchOccurredAt,
-  totalSaldoThbMinor,
   zonedDayKey,
   type Account,
   type AccountKind,
@@ -32,9 +20,8 @@ import {
   type Profile,
   type SourceObservation,
   type TransactionSource,
-  computeFinanceRevision,
 } from "@/domain/finance";
-import { money, type CurrencyCode } from "@/domain/money";
+import { type CurrencyCode } from "@/domain/money";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { getAuthUser } from "@/lib/supabase/auth-user";
@@ -64,7 +51,8 @@ import {
 import { assertUserOwnsStoragePath, buildUserStoragePath } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import type { TodaySnapshot } from "./types-snapshot";
-import { emptyTodaySnapshot } from "./empty-snapshot";
+import { assembleTodaySnapshot } from "./assemble-today-snapshot";
+import type { AtomicLinkResult, AtomicSettleResult } from "./settle-atomic";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 
 import { cache } from "react";
@@ -436,6 +424,8 @@ export async function createManualExpense(input: {
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
   planItemId?: string | null;
+  ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
+  linkedPlanItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -481,6 +471,9 @@ export async function createManualExpense(input: {
       fingerprint: input.fingerprint ?? null,
       balance_after_minor: input.balanceAfterMinor ?? null,
       plan_item_id: input.planItemId ?? null,
+      ledger_origin:
+        input.ledgerOrigin ?? (input.planItemId ? "plan_settle" : "external"),
+      linked_plan_item_id: input.linkedPlanItemId ?? null,
     })
     .select("*")
     .single();
@@ -504,6 +497,8 @@ export async function createManualIncome(input: {
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
   planItemId?: string | null;
+  ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
+  linkedPlanItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -539,6 +534,9 @@ export async function createManualIncome(input: {
       balance_after_minor: input.balanceAfterMinor ?? null,
       source_observation_id: input.sourceObservationId ?? null,
       plan_item_id: input.planItemId ?? null,
+      ledger_origin:
+        input.ledgerOrigin ?? (input.planItemId ? "plan_settle" : "external"),
+      linked_plan_item_id: input.linkedPlanItemId ?? null,
     })
     .select("*")
     .single();
@@ -990,6 +988,30 @@ export async function listObservations(): Promise<SourceObservation[]> {
   return (data ?? []).map(mapObservation);
 }
 
+const MEDIA_BUCKET = "numa-source-media";
+
+export async function deleteObservation(observationId: string): Promise<void> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("source_observations")
+    .select("id, storage_path")
+    .eq("user_id", userId)
+    .eq("id", observationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Importen hittades inte");
+  if (data.storage_path) {
+    await supabase.storage.from(MEDIA_BUCKET).remove([data.storage_path]);
+  }
+  const { error: delError } = await supabase
+    .from("source_observations")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", observationId);
+  if (delError) throw new Error(delError.message);
+}
+
 export async function getObservation(
   observationId: string,
 ): Promise<SourceObservation | null> {
@@ -1019,8 +1041,6 @@ export async function listObservationCandidates(
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapCandidate);
 }
-
-const MEDIA_BUCKET = "numa-source-media";
 
 export async function getObservationMediaUrl(
   storagePath: string,
@@ -1140,6 +1160,65 @@ export async function updatePlanItem(input: {
   return mapPlanItem(data);
 }
 
+export async function settlePlanItemAtomic(input: {
+  itemId: string;
+  settled: boolean;
+  targetSettledMinor?: number | null;
+  remainingDueAt?: string | null;
+  accountId?: string | null;
+}): Promise<AtomicSettleResult> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("settle_plan_item", {
+    p_item_id: input.itemId,
+    p_settled: input.settled,
+    p_target_settled_minor: input.targetSettledMinor ?? null,
+    p_remaining_due_at: input.remainingDueAt ?? null,
+    p_account_id: input.accountId ?? null,
+  });
+  if (error) throw new Error(error.message);
+  const payload = data as {
+    ok?: boolean;
+    idempotent?: boolean;
+    item?: Parameters<typeof mapPlanItem>[0];
+    booked_minor?: number;
+    saldo_delta?: number;
+    account_id?: string | null;
+    skipped_because_funded?: boolean;
+  } | null;
+  if (!payload?.item) throw new Error("Kunde inte uppdatera Klar");
+  return {
+    item: mapPlanItem(payload.item),
+    bookedMinor: Number(payload.booked_minor ?? 0),
+    saldoDeltaMinor: Number(payload.saldo_delta ?? 0),
+    accountId: payload.account_id ?? null,
+    skippedBecauseFunded: Boolean(payload.skipped_because_funded),
+    idempotent: Boolean(payload.idempotent),
+  };
+}
+
+export async function linkTransactionToPlanItem(input: {
+  transactionId: string;
+  itemId: string;
+}): Promise<AtomicLinkResult> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("link_transaction_to_plan_item", {
+    p_transaction_id: input.transactionId,
+    p_item_id: input.itemId,
+  });
+  if (error) throw new Error(error.message);
+  const payload = data as {
+    item?: Parameters<typeof mapPlanItem>[0];
+    transaction_id?: string;
+  } | null;
+  if (!payload?.item || !payload.transaction_id) {
+    throw new Error("Kunde inte koppla transaktionen");
+  }
+  return {
+    item: mapPlanItem(payload.item),
+    transactionId: payload.transaction_id,
+  };
+}
+
 export async function deletePlanItem(id: string): Promise<void> {
   await updatePlanItem({ id, isActive: false });
 }
@@ -1166,176 +1245,35 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
   });
 }
 
-export const getTodaySnapshot = cache(async (): Promise<TodaySnapshot> => {
+async function loadTodaySnapshotUncached(): Promise<TodaySnapshot> {
   const bundle = await fetchMenuSnapshotBundle({
     loadProfile: getProfile,
     loadAccounts: listAccounts,
     // Fail closed: a Plan read error must NOT become "empty plan" / 0 obligations.
     loadPlanItems: listPlanItems,
     loadCheckpoint: latestCheckpointForAccount,
-    loadTransactions: (accountId, options) =>
-      listTransactions(accountId, options),
+    loadTransactions: (options) =>
+      listTransactions(options.accountId, {
+        sinceIso: options.sinceIso,
+      }),
   });
-  const { profile, accounts, planItems, primary, checkpoint } = bundle;
-  const accountTx = bundle.transactions;
-
-  if (!primary) {
-    return emptyTodaySnapshot(profile, accounts, null, planItems);
-  }
-
-  const timezone = profile.timezone;
-  const now = new Date();
-  const monthKey = monthKeyFromDate(now, timezone);
-  const cycle = projectPayCycle(planItems, now, timezone);
-
-  const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
-  let calculated = null;
-  if (checkpoint) {
-    try {
-      calculated = calculateAccountBalance({
-        checkpoint,
-        transactionsAfterCheckpoint: after,
-      });
-    } catch (error) {
-      console.error("[numa] balance calc failed", error);
-    }
-  }
-
-  // Σ THB across all accounts — Över / Hem / Plan use this as saldo source.
-  // Same post-checkpoint calc as Konton for every account (not checkpoint-only).
-  const otherAccounts = accounts.filter((a) => a.id !== primary.id);
-  const [otherCheckpoints, allLedgerTx] = await Promise.all([
-    Promise.all(otherAccounts.map((a) => latestCheckpointForAccount(a.id))),
-    otherAccounts.length > 0
-      ? listTransactions()
-      : Promise.resolve([] as Awaited<ReturnType<typeof listTransactions>>),
-  ]);
-  const txsByOtherAccount = new Map<string, typeof allLedgerTx>();
-  for (const tx of allLedgerTx) {
-    if (tx.accountId === primary.id) continue;
-    const list = txsByOtherAccount.get(tx.accountId);
-    if (list) list.push(tx);
-    else txsByOtherAccount.set(tx.accountId, [tx]);
-  }
-  const calculatedBalanceMinor = totalSaldoThbMinor([
-    {
-      account: primary,
-      nativeMinor: calculated?.amountMinor ?? null,
-      checkpoint,
-    },
-    ...otherAccounts.map((account, i) => {
-      const cp = otherCheckpoints[i] ?? null;
-      let nativeMinor: number | null = null;
-      if (cp) {
-        const afterOther = filterTransactionsAfterCheckpoint(
-          txsByOtherAccount.get(account.id) ?? [],
-          cp,
-        );
-        try {
-          nativeMinor =
-            calculateAccountBalance({
-              checkpoint: cp,
-              transactionsAfterCheckpoint: afterOther,
-            })?.amountMinor ?? null;
-        } catch (error) {
-          console.error("[numa] secondary balance calc failed", error);
-          nativeMinor = cp.balanceMinor;
-        }
-      }
-      return { account, nativeMinor, checkpoint: cp };
-    }),
-  ]);
-
-  // Ledger spend stays in the primary account's currency; totals/Över are THB.
-  const ledgerCurrency = primary.currency;
-  const currency = "THB" as CurrencyCode;
-  const projection = projectPlanForMonth(planItems, monthKey, timezone);
-  const totals = calculatePlanTotals(planItems, currency, now, 0, timezone);
-  // Cycle expenses + savings; buffer separate (avoid double-count).
-  const reservedMinor = cycle.reservedMinor + cycle.savingsMinor;
-  const bufferMinor = cycle.bufferMinor;
-  const daysUntilNextIncome = Math.max(
-    1,
-    cycle.startAt ? cycle.daysLeft : totals.daysUntilNextIncome || 1,
-  );
-  const {
-    today: todaySpending,
-    month: monthSpending,
-    cycle: cycleSpending,
-  } = computeSpendingWindows({
-    transactions: accountTx,
-    currency: ledgerCurrency,
-    now,
-    timeZone: timezone || "Asia/Bangkok",
-    cycleStartAt: cycle.startAt,
-    cycleEndAt: cycle.endAt,
+  return assembleTodaySnapshot({
+    profile: bundle.profile,
+    accounts: bundle.accounts,
+    planItems: bundle.planItems,
+    primary: bundle.primary,
+    checkpoint: bundle.checkpoint,
+    checkpoints: bundle.checkpoints,
+    transactions: bundle.transactions,
   });
-  const fundingConfirmed = hasCycleFundingEvidence({
-    cycleStartAt: cycle.startAt,
-    cycleEndAt: cycle.endAt,
-    transactions: accountTx,
-  });
-  // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
-  const safe =
-    calculatedBalanceMinor != null
-      ? calculateSafeToSpend({
-          available: money(calculatedBalanceMinor, currency),
-          reserved: money(reservedMinor, currency),
-          safetyBuffer: money(bufferMinor, currency),
-          daysUntilNextIncome,
-          flexiblePlanRemaining:
-            cycle.flexibleMinor > 0 ? money(cycle.flexibleMinor, currency) : undefined,
-        })
-      : null;
+}
 
-  let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
-  if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (checkpoint && calculated) balanceKind = "calculated";
-  else if (checkpoint) balanceKind = "verified_checkpoint_only";
-  else if (calculatedBalanceMinor != null) balanceKind = "calculated";
+/** Fresh read after a mutation — bypasses the request-scoped React cache. */
+export async function refreshTodaySnapshot(): Promise<TodaySnapshot> {
+  return loadTodaySnapshotUncached();
+}
 
-  return {
-    profile,
-    accounts,
-    primaryAccount: primary,
-    checkpoint,
-    // null (not 0): unknown saldo must not look like an empty wallet
-    calculatedBalanceMinor,
-    balanceKind,
-    verificationLabel: checkpoint
-      ? formatRelativeVerificationSv(checkpoint.verifiedAt, now)
-      : null,
-    todaySpendingMinor: todaySpending.amountMinor,
-    monthSpendingMinor: monthSpending.amountMinor,
-    cycleSpendingMinor: cycleSpending.amountMinor,
-    monthSpendingByKey: spendingByMonthKey({
-      transactions: accountTx,
-      currency: ledgerCurrency,
-      timeZone: timezone || "Asia/Bangkok",
-    }),
-    fundingConfirmed,
-    safeToSpendTodayMinor: safe?.today.amountMinor ?? 0,
-    safeToSpendWeekMinor: safe?.week.amountMinor ?? 0,
-    freeMinor: safe?.free.amountMinor ?? 0,
-    reservedMinor: cycle.expenseMinor || projection.totalPlannedMinor,
-    bufferMinor,
-    flexibleMinor: cycle.flexibleMinor || projection.flexibleMinor,
-    daysUntilIncome: daysUntilNextIncome,
-    recentTransactions: accountTx.slice(0, 8),
-    ledgerTransactions: accountTx,
-    planItems,
-    currency,
-    progress: null,
-    financeRevision: computeFinanceRevision({
-      planItems,
-      ledgerTransactions: accountTx,
-      calculatedBalanceMinor,
-      cycleSpendingMinor: cycleSpending.amountMinor,
-      todaySpendingMinor: todaySpending.amountMinor,
-    }),
-    verifiedAt: now.toISOString(),
-  };
-});
+export const getTodaySnapshot = cache(loadTodaySnapshotUncached);
 
 export async function getUserProgress(): Promise<UserProgress | null> {
   const userId = await requireUserId();
@@ -1444,6 +1382,38 @@ export async function uploadReceiptAndExtract(input: {
   const userId = await requireUserId();
   await ensureProfile();
   const supabase = await createSupabaseServerClient();
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count, error: rateError } = await supabase
+    .from("source_observations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", hourAgo);
+  if (rateError) throw new Error(rateError.message);
+  if ((count ?? 0) >= 20) {
+    throw new Error("För många bilder den här timmen. Försök igen senare.");
+  }
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: orphans } = await supabase
+    .from("source_observations")
+    .select("id, storage_path")
+    .eq("user_id", userId)
+    .in("status", ["uploaded", "extracting"])
+    .lt("created_at", dayAgo);
+  if (orphans && orphans.length > 0) {
+    const paths = orphans
+      .map((row) => row.storage_path as string | null)
+      .filter((path): path is string => Boolean(path));
+    if (paths.length > 0) {
+      await supabase.storage.from(MEDIA_BUCKET).remove(paths);
+    }
+    await supabase
+      .from("source_observations")
+      .delete()
+      .in(
+        "id",
+        orphans.map((row) => row.id as string),
+      );
+  }
   const storagePath = buildUserStoragePath(userId, input.fileName);
   assertUserOwnsStoragePath(userId, storagePath);
 

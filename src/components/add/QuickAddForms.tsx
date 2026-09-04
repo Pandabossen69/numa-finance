@@ -98,6 +98,7 @@ export function QuickAddForms({
       {mode === "expense" ? (
         <ExpenseForm
           accountId={primaryAccountId}
+          accounts={accounts}
           onSuccess={() => handleSuccess()}
         />
       ) : null}
@@ -128,11 +129,14 @@ export function QuickAddForms({
 
 function ExpenseForm({
   accountId,
+  accounts,
   onSuccess,
 }: {
   accountId: string;
+  accounts: ShellAccount[];
   onSuccess?: () => void;
 }) {
+  const [chosenAccountId, setChosenAccountId] = useState(accountId);
   const [amount, setAmount] = useState("");
   const storedCategory = useSyncExternalStore(
     subscribeLastExpenseCategory,
@@ -168,21 +172,21 @@ function ExpenseForm({
           const descriptionText = description.trim() || "Utgift";
           const currency = lastHomeSnapshot()?.currency ?? "THB";
           applyOptimisticHomeSpend(amountMinor);
-          applyAccountDelta(-amountMinor);
+          applyAccountDelta(-amountMinor, chosenAccountId);
           try {
             localStorage.setItem(LAST_CATEGORY_KEY, category);
           } catch {
             // ignore
           }
           const result = await createExpenseAction({
-            accountId,
+            accountId: chosenAccountId,
             amount,
             category,
             description: description || undefined,
           });
           if (!result.ok) {
             applyOptimisticHomeSpend(-amountMinor);
-            applyAccountDelta(amountMinor);
+            applyAccountDelta(amountMinor, chosenAccountId);
             setError(result.error);
             return;
           }
@@ -204,6 +208,14 @@ function ExpenseForm({
         });
       }}
     >
+      {accounts.length > 0 ? (
+        <AccountSelect
+          label="Konto"
+          value={chosenAccountId}
+          onChange={setChosenAccountId}
+          accounts={accounts}
+        />
+      ) : null}
       <AmountField value={amount} onChange={setAmount} />
       <div className="numa-chip-scroll">
         {CATEGORIES.map((c) => (

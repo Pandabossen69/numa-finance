@@ -8,17 +8,30 @@ import type {
 import type { CurrencyCode } from "@/domain/money";
 import type { UserProgress } from "./types-progress";
 
+export type SnapshotAccountBalance = {
+  accountId: string;
+  nativeMinor: number | null;
+  thbMinor: number | null;
+  fxRate: number | null;
+  fxSource: string | null;
+};
+
 export type TodaySnapshot = {
   profile: Profile;
   accounts: Account[];
   primaryAccount: Account | null;
   checkpoint: BalanceCheckpoint | null;
+  /** Native + THB balances for every account, same revision as Hem/Plan. */
+  accountBalances: SnapshotAccountBalance[];
   calculatedBalanceMinor: number | null;
   balanceKind: "verified_checkpoint_only" | "calculated" | "unknown";
   verificationLabel: string | null;
+  /** Discretionary confirmed spend today — excludes planned-bill settlements. */
   todaySpendingMinor: number;
+  /** Planned-bill payments booked or linked today (Betalda räkningar idag). */
+  todayPlannedPaidMinor: number;
   monthSpendingMinor: number;
-  /** Confirmed spending since active pay-cycle start (bounded by end). */
+  /** All confirmed expenses since active pay-cycle start (bounded by end). */
   cycleSpendingMinor: number;
   /** Calendar-month spend totals for extra saldo (Bangkok month keys). */
   monthSpendingByKey: Record<string, number>;

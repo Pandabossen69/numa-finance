@@ -6,10 +6,8 @@ import {
   settledAmountMinor,
 } from "./plan-months";
 import { NEXT_INCOME_NAME } from "./plan-totals";
-import {
-  matchPlanItemsToLedger,
-  type LedgerMatchTx,
-} from "./cash-coverage";
+import { type LedgerMatchTx } from "./cash-coverage";
+import { explicitlyLinkedPlanItemIds } from "./plan-link";
 import type { PlanItem } from "./types";
 
 export type PlanSettleKind = "income" | "expense";
@@ -57,12 +55,13 @@ export function signedPlanSettleSaldoDelta(
  */
 export function isExternalLedgerTx(tx: LedgerMatchTx): boolean {
   if (tx.status !== "confirmed") return false;
+  if (tx.ledgerOrigin === "plan_settle") return false;
   return tx.planItemId == null || tx.planItemId === "";
 }
 
 /**
- * Probe the row as open. If a real ledger hit already matches, Hem saldo
- * already has the money — do not book a second credit/debit.
+ * True only when the user confirmed a transaction↔plan link.
+ * The ±7-day heuristic must never skip a settle booking.
  */
 export function planItemAlreadyFundedInLedger(params: {
   item: PlanItem;
@@ -73,26 +72,14 @@ export function planItemAlreadyFundedInLedger(params: {
   monthKey: string;
   timeZone: string;
 }): boolean {
-  const { item, kind, monthKey, timeZone } = params;
-  const probe = (row: PlanItem): PlanItem =>
-    row.id === item.id
-      ? {
-          ...row,
-          settledAt: null,
-          settledMinor: null,
-          remainingDueAt: remainingDueIso(row) ?? row.nextDueAt,
-        }
-      : row;
-  const items = (params.planItems ?? [item]).map(probe);
-  const external = params.transactions.filter(isExternalLedgerTx);
-  const matched = matchPlanItemsToLedger({
-    items,
-    transactions: external,
-    kind,
-    monthKey,
-    timeZone,
-  });
-  return matched.has(item.id);
+  void params.kind;
+  void params.monthKey;
+  void params.timeZone;
+  void params.planItems;
+  const linked = explicitlyLinkedPlanItemIds(
+    params.transactions.filter(isExternalLedgerTx),
+  );
+  return linked.has(params.item.id);
 }
 
 export function monthKeyForPlanSettle(

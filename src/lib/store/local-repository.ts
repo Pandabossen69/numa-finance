@@ -1,25 +1,12 @@
-import { computeFinanceRevision } from "@/domain/finance";
 import {
   assertCurrencyAllowedForKind,
-  calculateAccountBalance,
-  calculatePlanTotals,
-  calculateSafeToSpend,
   NEXT_INCOME_NAME,
-  computeSpendingWindows,
-  filterTransactionsAfterCheckpoint,
-  formatRelativeVerificationSv,
   hoursSince,
-  monthKeyFromDate,
-  projectPayCycle,
-  projectPlanForMonth,
   resolveSmsTipBalanceMinor,
   shouldWriteSmsTipCheckpoint,
-  spendingByMonthKey,
   decideSmsBatchConfirm,
   collectPairedVoidIds,
-  hasCycleFundingEvidence,
   resolveSmsBatchOccurredAt,
-  totalSaldoThbMinor,
   zonedDayKey,
   type Account,
   type AccountKind,
@@ -33,7 +20,7 @@ import {
   type SourceObservation,
   type TransactionSource,
 } from "@/domain/finance";
-import { money, type CurrencyCode } from "@/domain/money";
+import { type CurrencyCode } from "@/domain/money";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
@@ -44,6 +31,12 @@ import { assertUserOwnsStoragePath, buildUserStoragePath } from "./isolation";
 import type { ConfirmReceiptInput, ReceiptUploadResult } from "./receipt-types";
 import { emptyUserProgress, type UserProgress } from "./types-progress";
 import type { TodaySnapshot } from "./types-snapshot";
+import { assembleTodaySnapshot } from "./assemble-today-snapshot";
+import {
+  applySettleInMemory,
+  type AtomicLinkResult,
+  type AtomicSettleResult,
+} from "./settle-atomic";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -347,6 +340,8 @@ export async function createManualExpense(input: {
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
   planItemId?: string | null;
+  ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
+  linkedPlanItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -402,6 +397,9 @@ export async function createManualExpense(input: {
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
       planItemId: input.planItemId ?? null,
+      ledgerOrigin:
+        input.ledgerOrigin ?? (input.planItemId ? "plan_settle" : "external"),
+      linkedPlanItemId: input.linkedPlanItemId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -421,6 +419,8 @@ export async function createManualIncome(input: {
   fingerprint?: string | null;
   balanceAfterMinor?: number | null;
   planItemId?: string | null;
+  ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
+  linkedPlanItemId?: string | null;
 }): Promise<CanonicalTransaction> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -467,6 +467,9 @@ export async function createManualIncome(input: {
       sourceObservationId: input.sourceObservationId ?? null,
       transferGroupId: null,
       planItemId: input.planItemId ?? null,
+      ledgerOrigin:
+        input.ledgerOrigin ?? (input.planItemId ? "plan_settle" : "external"),
+      linkedPlanItemId: input.linkedPlanItemId ?? null,
       syncStatus: "saved",
       createdAt: ts,
       updatedAt: ts,
@@ -764,6 +767,13 @@ export async function listObservations(): Promise<SourceObservation[]> {
   return [...store.observations].sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
   );
+}
+
+export async function deleteObservation(observationId: string): Promise<void> {
+  await updateStore((s) => {
+    s.observations = s.observations.filter((o) => o.id !== observationId);
+    s.candidates = s.candidates.filter((c) => c.observationId !== observationId);
+  });
 }
 
 export async function getObservation(
@@ -1630,6 +1640,75 @@ export async function updatePlanItem(input: {
   return found!;
 }
 
+export async function settlePlanItemAtomic(input: {
+  itemId: string;
+  settled: boolean;
+  targetSettledMinor?: number | null;
+  remainingDueAt?: string | null;
+  accountId?: string | null;
+}): Promise<AtomicSettleResult> {
+  let result: AtomicSettleResult | null = null;
+  await updateStore((s) => {
+    const item = (s.planItems ?? []).find((p) => p.id === input.itemId);
+    if (!item) throw new Error("Planposten hittades inte");
+    result = applySettleInMemory({
+      item,
+      transactions: s.transactions,
+      accounts: s.accounts.filter((a) => a.isActive),
+      settled: input.settled,
+      targetSettledMinor: input.targetSettledMinor ?? null,
+      remainingDueAt: input.remainingDueAt ?? null,
+      accountId: input.accountId ?? null,
+      nowIso: nowIso(),
+      newId,
+      userId: LOCAL_DEMO_USER_ID,
+    });
+  });
+  if (!result) throw new Error("Kunde inte uppdatera Klar");
+  return result;
+}
+
+export async function linkTransactionToPlanItem(input: {
+  transactionId: string;
+  itemId: string;
+}): Promise<AtomicLinkResult> {
+  let result: AtomicLinkResult | null = null;
+  await updateStore((s) => {
+    const ts = nowIso();
+    const tx = s.transactions.find((row) => row.id === input.transactionId);
+    const item = (s.planItems ?? []).find((p) => p.id === input.itemId);
+    if (!tx) throw new Error("Rörelsen hittades inte");
+    if (!item) throw new Error("Planposten hittades inte");
+    if (tx.ledgerOrigin === "plan_settle" || tx.planItemId) {
+      throw new Error("Kan inte koppla en syntetisk bokning");
+    }
+    for (const row of s.transactions) {
+      if (
+        row.planItemId === item.id &&
+        row.ledgerOrigin === "plan_settle" &&
+        row.status === "confirmed"
+      ) {
+        row.status = "voided";
+        row.updatedAt = ts;
+      }
+    }
+    tx.linkedPlanItemId = item.id;
+    tx.updatedAt = ts;
+    const already = item.settledMinor ?? 0;
+    const target = Math.min(item.amountMinor, already + tx.amountMinor);
+    item.settledAt = target >= item.amountMinor ? (item.settledAt ?? ts) : null;
+    item.settledMinor = target > 0 ? target : null;
+    item.remainingDueAt =
+      target > 0 && target < item.amountMinor
+        ? (item.remainingDueAt ?? item.nextDueAt)
+        : null;
+    item.updatedAt = ts;
+    result = { item: { ...item }, transactionId: tx.id };
+  });
+  if (!result) throw new Error("Kunde inte koppla transaktionen");
+  return result;
+}
+
 export async function deletePlanItem(id: string): Promise<void> {
   await updateStore((s) => {
     const item = (s.planItems ?? []).find((p) => p.id === id);
@@ -1671,187 +1750,21 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   const accounts = store.accounts.filter((a) => a.isActive);
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
   const planItems = (store.planItems ?? []).filter((p) => p.isActive);
-
-  if (!primary) {
-    return {
-      profile,
-      accounts,
-      primaryAccount: null,
-      checkpoint: null,
-      calculatedBalanceMinor: null,
-      balanceKind: "unknown",
-      verificationLabel: null,
-      todaySpendingMinor: 0,
-      monthSpendingMinor: 0,
-      cycleSpendingMinor: 0,
-      monthSpendingByKey: {},
-      fundingConfirmed: false,
-      safeToSpendTodayMinor: 0,
-      safeToSpendWeekMinor: 0,
-      freeMinor: 0,
-      reservedMinor: 0,
-      bufferMinor: 0,
-      flexibleMinor: 0,
-      daysUntilIncome: 0,
-      recentTransactions: [],
-      ledgerTransactions: [],
-      planItems,
-      currency: profile.primaryCurrency,
-      progress: null,
-      financeRevision: computeFinanceRevision({
-        planItems,
-        ledgerTransactions: [],
-        calculatedBalanceMinor: null,
-        cycleSpendingMinor: 0,
-        todaySpendingMinor: 0,
-      }),
-      verifiedAt: new Date().toISOString(),
-    };
-  }
-
-  const checkpoint = latestCheckpointForAccount(store, primary.id);
-
-  const accountTx = store.transactions
-    .filter((t) => t.accountId === primary.id)
-    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
-  const after = filterTransactionsAfterCheckpoint(accountTx, checkpoint);
-  let calculated = null;
-  // Spending is computed even without a checkpoint (cycle mode needs it).
-  // Saldo stays null when unknown — never fake ฿0.
-  if (checkpoint) {
-    try {
-      calculated = calculateAccountBalance({
-        checkpoint,
-        transactionsAfterCheckpoint: after,
-      });
-    } catch (error) {
-      console.error("[numa] balance calc failed", error);
-    }
-  }
-
-  const timezone = profile.timezone || "Asia/Bangkok";
-  const now = new Date();
-  const otherAccounts = accounts.filter((a) => a.id !== primary.id);
-  const calculatedBalanceMinor = totalSaldoThbMinor([
-    {
-      account: primary,
-      nativeMinor: calculated?.amountMinor ?? null,
-      checkpoint,
-    },
-    ...otherAccounts.map((account) => {
-      const cp = latestCheckpointForAccount(store, account.id);
-      let nativeMinor: number | null = null;
-      if (cp) {
-        const accountTxs = store.transactions.filter(
-          (t) => t.accountId === account.id,
-        );
-        const afterOther = filterTransactionsAfterCheckpoint(accountTxs, cp);
-        try {
-          nativeMinor =
-            calculateAccountBalance({
-              checkpoint: cp,
-              transactionsAfterCheckpoint: afterOther,
-            })?.amountMinor ?? null;
-        } catch (error) {
-          console.error("[numa] secondary balance calc failed", error);
-          nativeMinor = cp.balanceMinor;
-        }
-      }
-      return { account, nativeMinor, checkpoint: cp };
-    }),
-  ]);
-
-  const ledgerCurrency = primary.currency;
-  const currency = "THB" as CurrencyCode;
-  const monthKey = monthKeyFromDate(now, timezone);
-  const projection = projectPlanForMonth(planItems, monthKey, timezone);
-  const cycle = projectPayCycle(planItems, now, timezone);
-  const totals = calculatePlanTotals(planItems, currency, now, 0, timezone);
-  // Cycle expenses + savings; buffer separate (avoid double-count).
-  const reservedMinor = cycle.reservedMinor + cycle.savingsMinor;
-  const bufferMinor = cycle.bufferMinor;
-  const daysUntilNextIncome = Math.max(
-    1,
-    cycle.startAt ? cycle.daysLeft : totals.daysUntilNextIncome || 1,
+  const checkpoints = accounts.map((account) =>
+    latestCheckpointForAccount(store, account.id),
   );
-  const {
-    today: todaySpending,
-    month: monthSpending,
-    cycle: cycleSpending,
-  } = computeSpendingWindows({
-    transactions: accountTx,
-    currency: ledgerCurrency,
-    now,
-    timeZone: timezone,
-    cycleStartAt: cycle.startAt,
-    cycleEndAt: cycle.endAt,
-  });
-  const fundingConfirmed = hasCycleFundingEvidence({
-    cycleStartAt: cycle.startAt,
-    cycleEndAt: cycle.endAt,
-    transactions: accountTx,
-  });
-  // Unknown saldo must not feed safe-to-spend as fake ฿0 available.
-  const safe =
-    calculatedBalanceMinor != null
-      ? calculateSafeToSpend({
-          available: money(calculatedBalanceMinor, currency),
-          reserved: money(reservedMinor, currency),
-          safetyBuffer: money(bufferMinor, currency),
-          daysUntilNextIncome,
-          flexiblePlanRemaining:
-            cycle.flexibleMinor > 0 ? money(cycle.flexibleMinor, currency) : undefined,
-        })
-      : null;
-
-  let balanceKind: TodaySnapshot["balanceKind"] = "unknown";
-  if (checkpoint && after.length === 0) balanceKind = "verified_checkpoint_only";
-  else if (checkpoint && calculated) balanceKind = "calculated";
-  else if (checkpoint) balanceKind = "verified_checkpoint_only";
-  else if (calculatedBalanceMinor != null) balanceKind = "calculated";
-
-  return {
+  const checkpoint = primary
+    ? latestCheckpointForAccount(store, primary.id)
+    : null;
+  return assembleTodaySnapshot({
     profile,
     accounts,
-    primaryAccount: primary,
-    checkpoint,
-    calculatedBalanceMinor,
-    balanceKind,
-    verificationLabel: checkpoint
-      ? formatRelativeVerificationSv(checkpoint.verifiedAt, now)
-      : null,
-    todaySpendingMinor: todaySpending.amountMinor,
-    monthSpendingMinor: monthSpending.amountMinor,
-    cycleSpendingMinor: cycleSpending.amountMinor,
-    monthSpendingByKey: spendingByMonthKey({
-      transactions: accountTx,
-      currency: ledgerCurrency,
-      timeZone: timezone,
-    }),
-    fundingConfirmed,
-    safeToSpendTodayMinor: safe?.today.amountMinor ?? 0,
-    safeToSpendWeekMinor: safe?.week.amountMinor ?? 0,
-    freeMinor: safe?.free.amountMinor ?? 0,
-    reservedMinor: cycle.expenseMinor || projection.totalPlannedMinor,
-    bufferMinor,
-    flexibleMinor: cycle.flexibleMinor || projection.flexibleMinor,
-    daysUntilIncome: daysUntilNextIncome,
-    recentTransactions: [...accountTx]
-      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-      .slice(0, 8),
-    ledgerTransactions: accountTx,
     planItems,
-    currency,
-    progress: null,
-    financeRevision: computeFinanceRevision({
-      planItems,
-      ledgerTransactions: accountTx,
-      calculatedBalanceMinor,
-      cycleSpendingMinor: cycleSpending.amountMinor,
-      todaySpendingMinor: todaySpending.amountMinor,
-    }),
-    verifiedAt: now.toISOString(),
-  };
+    primary,
+    checkpoint,
+    checkpoints,
+    transactions: store.transactions,
+  });
 }
 
 export { hoursSince };

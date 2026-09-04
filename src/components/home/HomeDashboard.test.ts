@@ -66,7 +66,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     const start = src.indexOf("function QuickExpense");
     const end = src.indexOf("\nfunction ", start + 1);
     const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
-    expect(quickExpense).toContain("if (guard.isRunning() || !accountId) return");
+    expect(quickExpense).toContain("if (guard.isRunning() || !targetAccountId) return");
     expect(quickExpense).toContain("useSubmitGuard");
     expect(quickExpense).toContain("guard.tryBegin()");
     expect(quickExpense).toContain("guard.end()");
@@ -99,6 +99,7 @@ describe("Hem PWA hint and HIGH copy", () => {
   it("labels QuickExpense amount and note for a11y", () => {
     expect(src).toContain('aria-label="Anteckning"');
     expect(src).toContain('aria-label="Belopp"');
+    expect(src).toContain('aria-label="Konto för utgiften"');
   });
 
   it("labels days until income as idag / N dagar kvar, not a bare 4 dagar", () => {

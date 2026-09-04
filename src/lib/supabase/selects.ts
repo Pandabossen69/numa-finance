@@ -89,6 +89,8 @@ export const LEDGER_TRANSACTION_SELECT = [
   "source_observation_id",
   "transfer_group_id",
   "plan_item_id",
+  "ledger_origin",
+  "linked_plan_item_id",
   "sync_status",
   "created_at",
   "updated_at",

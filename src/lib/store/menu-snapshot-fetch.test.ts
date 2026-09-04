@@ -171,7 +171,7 @@ describe("menu snapshot query contract", () => {
         events.push("checkpoint:end");
         return null;
       },
-      loadTransactions: async (_accountId, options) => {
+      loadTransactions: async (options) => {
         events.push("tx:start");
         txSince.push(options.sinceIso);
         return [] as CanonicalTransaction[];
@@ -228,7 +228,7 @@ describe("menu snapshot query contract", () => {
       loadAccounts: async () => [account],
       loadPlanItems: async () => [] as PlanItem[],
       loadCheckpoint: async () => oldCheckpoint,
-      loadTransactions: async (_accountId, options) => {
+      loadTransactions: async (options) => {
         txSince.push(options.sinceIso);
         return [] as CanonicalTransaction[];
       },

@@ -53,6 +53,8 @@ function tx(
     updatedAt: occurredAt,
     transferGroupId: null,
     planItemId: partial.planItemId ?? null,
+    ledgerOrigin: partial.ledgerOrigin,
+    linkedPlanItemId: partial.linkedPlanItemId ?? null,
     amountMinor: partial.amountMinor,
     occurredAt,
     direction: partial.direction ?? "debit",
@@ -118,6 +120,7 @@ describe("projectCashCoverage", () => {
       description: "Netflix",
       direction: "debit",
       transactionType: "expense",
+      linkedPlanItemId: "netflix",
     });
     const view = projectCashCoverage({
       planItems: items,
@@ -265,8 +268,10 @@ describe("projectCashCoverage", () => {
       timeZone: tz,
       saldoMinor: 58_000_00,
     });
-    expect(view.incomingMinor).toBe(0);
-    expect(view.overMinor).toBe(58_000_00);
+    // Heuristic may suggest a link, but Över must keep CSN as incoming
+    // until the user confirms or marks Mottagen.
+    expect(view.incomingMinor).toBe(57_500_00);
+    expect(view.overMinor).toBe(58_000_00 + 57_500_00);
   });
 
   it("drops received Trukks from Kommer in when a credit hits the ledger", () => {
@@ -305,9 +310,9 @@ describe("projectCashCoverage", () => {
       timeZone: tz,
       saldoMinor: 150_000_00,
     });
-    expect(view.incomingMinor).toBe(0);
+    expect(view.incomingMinor).toBe(134_000_00);
     expect(view.unpaidMinor).toBe(40_000_00);
-    expect(view.overMinor).toBe(110_000_00);
+    expect(view.overMinor).toBe(244_000_00);
   });
 
   it("does not assign the same ledger row to two plan items", () => {
@@ -348,7 +353,8 @@ describe("projectCashCoverage", () => {
       timeZone: tz,
       saldoMinor: 0,
     });
-    expect(view.unpaidMinor).toBe(5_000_00);
+    // Similar amounts must not silently drop the other obligation.
+    expect(view.unpaidMinor).toBe(10_000_00);
   });
 
   it("treats missing saldo as 0 in Över without inventing a cash figure", () => {
@@ -617,5 +623,42 @@ describe("projectCashCoverage", () => {
       saldoMinor: 21_000_00,
     });
     expect(view.incomingMinor).toBe(31_000_00);
+  });
+
+  it("drops only the explicitly linked obligation, not a sibling with the same amount", () => {
+    const items = [
+      item({
+        id: "hyra",
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 10_000_00,
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        id: "el",
+        name: "El",
+        kind: "mandatory",
+        amountMinor: 10_000_00,
+        nextDueAt: "2026-08-27T12:00:00.000Z",
+      }),
+    ];
+    const bank = tx({
+      id: "sms-hyra",
+      amountMinor: 10_000_00,
+      occurredAt: "2026-08-25T09:00:00.000Z",
+      description: "Hyra",
+      source: "sms",
+      linkedPlanItemId: "hyra",
+      ledgerOrigin: "external",
+    });
+    const view = projectCashCoverage({
+      planItems: items,
+      transactions: [bank],
+      monthKey: "2026-08",
+      timeZone: tz,
+      saldoMinor: 40_000_00,
+    });
+    expect(view.unpaidMinor).toBe(10_000_00);
+    expect(view.overMinor).toBe(30_000_00);
   });
 });

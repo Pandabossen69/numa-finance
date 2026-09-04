@@ -77,6 +77,8 @@ type DbTransaction = {
   source_observation_id: string | null;
   transfer_group_id?: string | null;
   plan_item_id?: string | null;
+  ledger_origin?: CanonicalTransaction["ledgerOrigin"] | null;
+  linked_plan_item_id?: string | null;
   sync_status: CanonicalTransaction["syncStatus"];
   created_at: string;
   updated_at: string;
@@ -188,6 +190,11 @@ export function mapTransaction(row: DbTransaction): CanonicalTransaction {
     sourceObservationId: row.source_observation_id,
     transferGroupId: row.transfer_group_id ?? null,
     planItemId: row.plan_item_id ?? null,
+    ledgerOrigin:
+      row.ledger_origin === "plan_settle" || row.plan_item_id
+        ? "plan_settle"
+        : "external",
+    linkedPlanItemId: row.linked_plan_item_id ?? null,
     syncStatus: row.sync_status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

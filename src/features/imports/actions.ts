@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { parseUiAmountToMinor, money } from "@/domain/money";
+import { ALLOWED_IMAGE_MIME, assertAllowedImageBytes } from "@/lib/media/image-magic";
+import { reportError } from "@/lib/observe/report";
 import { calculateDayPulse } from "@/domain/gamification";
 import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
@@ -21,13 +23,6 @@ export type ActionResult<T = undefined> =
   | { ok: false; error: string };
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-]);
 
 export async function uploadReceiptAction(
   formData: FormData,
@@ -40,8 +35,8 @@ export async function uploadReceiptAction(
     if (file.size <= 0 || file.size > MAX_BYTES) {
       return { ok: false, error: "Bilden måste vara mellan 1 byte och 8 MB" };
     }
-    const mimeType = file.type || "image/jpeg";
-    if (!ALLOWED.has(mimeType) && !mimeType.startsWith("image/")) {
+    const claimed = file.type || "image/jpeg";
+    if (!ALLOWED_IMAGE_MIME.has(claimed) && !claimed.startsWith("image/")) {
       return { ok: false, error: "Endast bildfiler stöds" };
     }
 
@@ -51,6 +46,7 @@ export async function uploadReceiptAction(
       mode === "bank_app" || mode === "bunq" || mode === "revolut";
 
     const bytes = new Uint8Array(await file.arrayBuffer());
+    const mimeType = assertAllowedImageBytes(bytes, claimed);
     const result = await uploadReceiptAndExtract({
       fileName: file.name || (preferBankApp ? "bank-app.jpg" : "bank-sms.jpg"),
       mimeType,
@@ -65,6 +61,7 @@ export async function uploadReceiptAction(
     revalidatePath("/idag");
     return { ok: true, data: result };
   } catch (error) {
+    void reportError("ocr.upload", error);
     return {
       ok: false,
       error:
@@ -175,10 +172,30 @@ export async function confirmReceiptExpenseAction(
       },
     };
   } catch (error) {
+    void reportError("ocr.confirm", error);
     return {
       ok: false,
       error:
         error instanceof Error ? error.message : "Kunde inte bekräfta köpet",
+    };
+  }
+}
+
+export async function deleteObservationAction(
+  observationId: string,
+): Promise<ActionResult> {
+  try {
+    const id = z.string().uuid().parse(observationId);
+    const { deleteObservation } = await import("@/lib/store/repository");
+    await deleteObservation(id);
+    revalidatePath("/fota");
+    revalidatePath("/importera");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    void reportError("ocr.upload", error);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte radera bilden",
     };
   }
 }

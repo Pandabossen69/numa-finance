@@ -1,6 +1,6 @@
 import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
-  computeSpendingWindows,
+  computeClassifiedSpendingWindows,
   cumulativePlanSavingsMinor,
   hasCycleFundingEvidence,
   isSameZonedDay,
@@ -309,7 +309,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
   const now = new Date();
   const timeZone = snapshot.timeZone;
   const cycle = projectPayCycle(snapshot.items, now, timeZone);
-  const { today, cycle: ledgerCycleSpend } = computeSpendingWindows({
+  const windows = computeClassifiedSpendingWindows({
     transactions: snapshot.ledgerTransactions,
     currency: snapshot.currency,
     now,
@@ -317,14 +317,18 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
     cycleStartAt: cycle.startAt,
     cycleEndAt: cycle.endAt,
   });
-  const ledgerCycleMinor = ledgerCycleSpend.amountMinor;
-  const ledgerTodayMinor = today.amountMinor;
+  const ledgerCycleMinor = windows.cycle.total.amountMinor;
+  const ledgerTodayMinor = windows.today.discretionary.amountMinor;
+  const ledgerTodayPlannedPaidMinor = windows.today.plannedPaid.amountMinor;
   const cycleSpendingMinor = homeDirty
     ? Math.max(home.cycleSpendingMinor, ledgerCycleMinor)
     : ledgerCycleMinor;
   const todaySpendingMinor = homeDirty
     ? Math.max(home.todaySpendingMinor, ledgerTodayMinor)
     : ledgerTodayMinor;
+  const todayPlannedPaidMinor = homeDirty
+    ? Math.max(home.todayPlannedPaidMinor, ledgerTodayPlannedPaidMinor)
+    : ledgerTodayPlannedPaidMinor;
   const bankBalanceMinor = homeDirty
     ? home.calculatedBalanceMinor
     : (snapshot.bankBalanceMinor ?? home.calculatedBalanceMinor);
@@ -361,6 +365,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       ...home,
       calculatedBalanceMinor: bankBalanceMinor,
       todaySpendingMinor,
+      todayPlannedPaidMinor,
       cycleSpendingMinor,
       safeToSpendTodayMinor: living.remainingTodayMinor,
       cycleStartLabelSv: cycle.startLabelSv,
@@ -661,13 +666,16 @@ export function applyOptimisticPlanSettle(input: {
   unpaidDeltaMinor: number;
   /** Expense settle booked to ledger — counts once in cycle spend, not flexible twice. */
   cycleSpendingDeltaMinor?: number;
+  /** Planned-bill payments booked today — never the discretionary day envelope. */
+  todayPlannedPaidDeltaMinor?: number;
 }): HomeSnapshot | null {
   if (
     !home ||
     (input.saldoDeltaMinor === 0 &&
       input.incomingDeltaMinor === 0 &&
       input.unpaidDeltaMinor === 0 &&
-      (input.cycleSpendingDeltaMinor ?? 0) === 0)
+      (input.cycleSpendingDeltaMinor ?? 0) === 0 &&
+      (input.todayPlannedPaidDeltaMinor ?? 0) === 0)
   ) {
     return home;
   }
@@ -719,6 +727,8 @@ export function applyOptimisticPlanSettle(input: {
       unpaidMinor,
       overMinor,
       cycleSpendingMinor,
+      todayPlannedPaidMinor:
+        previous.todayPlannedPaidMinor + (input.todayPlannedPaidDeltaMinor ?? 0),
       remainingFreeMinor,
       freeToSpendMinor,
       planExpenseMinor,
@@ -989,9 +999,10 @@ export function applyLocalExpense(input: {
   description: string;
   category?: string | null;
   currency: CurrencyCode;
+  accountId?: string | null;
 }) {
   applyOptimisticHomeSpend(input.amountMinor);
-  applyAccountDelta(-input.amountMinor);
+  applyAccountDelta(-input.amountMinor, input.accountId);
   applyMovementsAdd({
     id: input.id ?? crypto.randomUUID(),
     description: input.description,

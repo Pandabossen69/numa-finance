@@ -1,19 +1,10 @@
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
-import {
-  extraSaldoHintSv,
-  cumulativePlanSavingsMinor,
-  labelMonthSv,
-  monthKeyFromDate,
-  planWealthTotalMinor,
-  projectCashCoverage,
-  projectExtraSaldo,
-  projectLivingBudget,
-  projectPayCycle,
-} from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { loadErrorMessageSv } from "@/lib/async";
+import { reportError } from "@/lib/observe/report";
 import { getTodaySnapshot } from "@/lib/store/repository";
+import { homeSnapshotFromToday } from "./snapshot-from-today";
 
 export type HomeSnapshot = {
   userId: string;
@@ -27,6 +18,7 @@ export type HomeSnapshot = {
   calculatedBalanceMinor: number | null;
   verificationLabel: string | null;
   todaySpendingMinor: number;
+  todayPlannedPaidMinor: number;
   monthSpendingMinor: number;
   cycleSpendingMinor: number;
   safeToSpendTodayMinor: number;
@@ -86,94 +78,11 @@ export const getCachedTodaySnapshot = cache(getTodaySnapshot);
 export async function loadHomeSnapshot(): Promise<HomeSnapshotResult> {
   try {
     const snap = await getCachedTodaySnapshot();
-    const timeZone = snap.profile.timezone || "Asia/Bangkok";
-    const now = new Date();
-    const monthKey = monthKeyFromDate(now, timeZone);
-    const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
-    const cycleSpendingMinor = snap.cycleSpendingMinor ?? 0;
-    const living = projectLivingBudget({
-      cycle,
-      now,
-      timeZone,
-      bankBalanceMinor: snap.calculatedBalanceMinor,
-      cycleSpendingMinor,
-      todaySpendingMinor: snap.todaySpendingMinor,
-      fundingConfirmed: snap.fundingConfirmed,
-    });
-
-    const extra = projectExtraSaldo({
-      planItems: snap.planItems ?? [],
-      spendingByMonthKey: snap.monthSpendingByKey ?? {},
-      monthKey,
-      currentMonthKey: monthKey,
-      timeZone,
-    });
-    const coverage = projectCashCoverage({
-      planItems: snap.planItems ?? [],
-      transactions: snap.ledgerTransactions ?? [],
-      monthKey,
-      timeZone,
-      saldoMinor: snap.calculatedBalanceMinor,
-    });
-    const savingsTotalMinor = cumulativePlanSavingsMinor(
-      snap.planItems ?? [],
-      monthKey,
-      timeZone,
-    );
-
-    return {
-      ok: true,
-      data: {
-        userId: snap.profile.id,
-        displayName: snap.profile.displayName,
-        timeZone,
-        primaryAccountId: snap.primaryAccount?.id ?? null,
-        currency: snap.currency,
-        monthKey,
-        monthLabelSv: labelMonthSv(monthKey),
-        hasBankTruth: snap.calculatedBalanceMinor != null,
-        calculatedBalanceMinor: snap.calculatedBalanceMinor,
-        verificationLabel: snap.verificationLabel,
-        todaySpendingMinor: snap.todaySpendingMinor,
-        monthSpendingMinor: snap.monthSpendingMinor,
-        cycleSpendingMinor,
-        // Prefer living-budget hero number over legacy STS dual engine.
-        safeToSpendTodayMinor: living.remainingTodayMinor,
-        cycleStartLabelSv: cycle.startLabelSv,
-        cycleEndLabelSv: living.cycleEndLabelSv,
-        cycleEndInferred: living.cycleEndInferred,
-        cycleIsActive: cycle.isActive && snap.fundingConfirmed,
-        livingMode: living.mode,
-        needsAvailableInput: living.needsAvailableInput,
-        usesBankBalance: living.usesBankBalance,
-        planIncomeMinor: cycle.incomeMinor,
-        planExpenseMinor: cycle.expenseMinor,
-        planSavingsMinor: cycle.savingsMinor,
-        freeToSpendMinor: cycle.freeToSpendMinor,
-        remainingFreeMinor: living.remainingFreeMinor,
-        spendDaysLeft: living.daysUntilHorizon,
-        dayBudgetMinor: living.dayBudgetMinor,
-        remainingTodayMinor: living.remainingTodayMinor,
-        daysUntilIncome: living.daysUntilHorizon,
-        nextIncomeLabelSv: living.nextIncomeLabelSv,
-        extraSaldoMinor: extra.extraSaldoMinor,
-        extraSaldoDrawnMinor: extra.drawnMinor,
-        extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
-        extraCarriedInMinor: extra.carriedInMinor,
-        savingsTotalMinor,
-        wealthTotalMinor: planWealthTotalMinor(coverage.overMinor, savingsTotalMinor),
-        monthResultMinor: extra.monthResultMinor,
-        incomingMinor: coverage.incomingMinor,
-        unpaidMinor: coverage.unpaidMinor,
-        overMinor: coverage.overMinor,
-        financeRevision: snap.financeRevision,
-        verifiedAt: snap.verifiedAt,
-        truthStatus: "verified",
-      },
-    };
+    return { ok: true, data: homeSnapshotFromToday(snap) };
   } catch (error) {
     unstable_rethrow(error);
     console.error("[numa] loadHomeSnapshot failed", error);
+    void reportError("loader.home", error);
     return {
       ok: false,
       error: loadErrorMessageSv(error, "Kunde inte hämta din ekonomi"),

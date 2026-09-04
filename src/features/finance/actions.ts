@@ -131,6 +131,8 @@ export async function createExpenseAction(
     revalidateMoneyPaths();
     return { ok: true, id: tx.id };
   } catch (error) {
+    const { reportError } = await import("@/lib/observe/report");
+    void reportError("mutation.expense", error);
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte spara utgift",

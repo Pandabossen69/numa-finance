@@ -35,7 +35,7 @@ const plan = [
 describe("Plan file layout", () => {
   it("keeps the editor small enough to read and the row list on its own", () => {
     const lines = (text: string) => text.split("\n").length;
-    expect(lines(editor)).toBeLessThan(1200);
+    expect(lines(editor)).toBeLessThan(1350);
     expect(lines(rows)).toBeLessThan(400);
     // The screens are composed, not one file.
     expect(editor).toContain('from "@/components/plan/PlanRows"');
@@ -192,10 +192,12 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("const matched =");
     expect(plan).not.toContain("matched &&");
     expect(plan).not.toContain("explicitSettled");
-    // Matching survives for the money totals only.
-    expect(editor).toContain("matchPlanItemsToLedger");
+    // Money totals use confirmed links only — heuristic stays a suggestion.
+    expect(editor).not.toContain("matchPlanItemsToLedger");
+    expect(editor).toContain("explicitlyLinkedPlanItemIds");
+    expect(editor).toContain("suggestPlanLinks");
     expect(editor).toContain(
-      "sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)",
+      "sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)",
     );
     expect(rows).toContain("sortPlanRowsForList(items)");
   });

@@ -75,6 +75,13 @@ export type PlanItem = {
 
 export type SyncStatus = "saved" | "pending_sync" | "synced" | "failed";
 
+/**
+ * Where a ledger row came from.
+ * - external: bank/SMS/manual/import — never looks like a synthetic settle
+ * - plan_settle: Mottagen/Betald booking written by settle RPC
+ */
+export type LedgerOrigin = "external" | "plan_settle";
+
 export type Profile = {
   id: string;
   displayName: string;
@@ -152,8 +159,19 @@ export type CanonicalTransaction = {
   /**
    * Synthetic Mottagen/Betald booking for this plan row.
    * Null on bank/SMS/manual rows. Only these rows may be voided on Ångra.
+   * Do not set this on imported transactions — use linkedPlanItemId.
    */
   planItemId?: string | null;
+  /**
+   * How this row was created. Synthetic settles are `plan_settle`.
+   * Missing/legacy rows with planItemId are treated as plan_settle.
+   */
+  ledgerOrigin?: LedgerOrigin;
+  /**
+   * User-confirmed link from a real imported/manual row to a plan obligation.
+   * Never written by the silent ±7-day heuristic.
+   */
+  linkedPlanItemId?: string | null;
   syncStatus: SyncStatus;
   createdAt: string;
   updatedAt: string;

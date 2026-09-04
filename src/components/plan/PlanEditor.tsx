@@ -12,7 +12,8 @@ import {
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
-  matchPlanItemsToLedger,
+  explicitlyLinkedPlanItemIds,
+  suggestPlanLinks,
   applyPlanItemEdits,
   previewPlanSettleEffect,
   remainingOpenMinor,
@@ -34,9 +35,13 @@ import { SV } from "@/features/copy/labels-sv";
 import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
+  confirmOptimisticFinance,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastPlanView,
+  rememberAccountsSnapshot,
+  rememberHomeSnapshot,
+  rememberPlanSnapshot,
   rememberPlanView,
   subscribeHomeSnapshot,
   subscribePlanView,
@@ -64,6 +69,7 @@ import {
   deletePlanItemAction,
   importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
+  confirmPlanLinkAction,
   setPlanItemSettledAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
@@ -92,7 +98,8 @@ type BusyKey =
   | "add-extra"
   | `edit:${string}`
   | `delete:${string}`
-  | `settle:${string}`;
+  | `settle:${string}`
+  | `link:${string}`;
 
 export function PlanEditor({
   items,
@@ -265,27 +272,28 @@ export function PlanEditor({
   // Money only: keeps the card Summa in step with Hem's Kvar att betala so
   // cash already in the ledger is not counted twice. Never passed to the
   // rows — a match must not paint a chip or move a row.
-  const matchedIncomeIds = useMemo(
-    () =>
-      matchPlanItemsToLedger({
+  const linkedPlanIds = useMemo(
+    () => explicitlyLinkedPlanItemIds(ledgerTransactions),
+    [ledgerTransactions],
+  );
+  const linkSuggestions = useMemo(
+    () => [
+      ...suggestPlanLinks({
         items: projection.incomes,
         transactions: ledgerTransactions,
         kind: "income",
         monthKey,
         timeZone,
       }),
-    [projection.incomes, ledgerTransactions, monthKey, timeZone],
-  );
-  const matchedExpenseIds = useMemo(
-    () =>
-      matchPlanItemsToLedger({
+      ...suggestPlanLinks({
         items: projection.items,
         transactions: ledgerTransactions,
         kind: "expense",
         monthKey,
         timeZone,
       }),
-    [projection.items, ledgerTransactions, monthKey, timeZone],
+    ],
+    [projection.incomes, projection.items, ledgerTransactions, monthKey, timeZone],
   );
   const savingsTotalMinor = useMemo(
     () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
@@ -508,6 +516,10 @@ export function PlanEditor({
           preview.kind === "expense" && !preview.skippedBecauseFunded
             ? -preview.saldoDeltaMinor
             : 0,
+        todayPlannedPaidDeltaMinor:
+          preview.kind === "expense" && !preview.skippedBecauseFunded
+            ? -preview.saldoDeltaMinor
+            : 0,
       });
     }
     void runMutation({
@@ -525,6 +537,10 @@ export function PlanEditor({
               preview.kind === "expense" && !preview.skippedBecauseFunded
                 ? preview.saldoDeltaMinor
                 : 0,
+            todayPlannedPaidDeltaMinor:
+              preview.kind === "expense" && !preview.skippedBecauseFunded
+                ? preview.saldoDeltaMinor
+                : 0,
           });
         }
         return previous ? replaceItemById(rows, id, previous) : rows;
@@ -537,22 +553,10 @@ export function PlanEditor({
           remainingDate,
         }),
       reconcile: (rows, result) => {
-        const actual = result.settleLedger;
-        if (preview && actual) {
-          const saldoFix = actual.saldoDeltaMinor - preview.saldoDeltaMinor;
-          const fundedMismatch =
-            actual.skippedBecauseFunded && !preview.skippedBecauseFunded;
-          if (saldoFix !== 0 || fundedMismatch) {
-            applyAccountDelta(saldoFix);
-            applyOptimisticPlanSettle({
-              saldoDeltaMinor: saldoFix,
-              incomingDeltaMinor: fundedMismatch
-                ? -preview.incomingDeltaMinor
-                : 0,
-              unpaidDeltaMinor: fundedMismatch ? -preview.unpaidDeltaMinor : 0,
-            });
-          }
-        }
+        if (result.home) rememberHomeSnapshot(result.home);
+        if (result.plan) rememberPlanSnapshot(result.plan);
+        if (result.accounts) rememberAccountsSnapshot(result.accounts);
+        confirmOptimisticFinance();
         return result.item ? mergeReturnedItem(rows, result.item) : rows;
       },
     }).then((ok) => {
@@ -763,11 +767,74 @@ export function PlanEditor({
         </p>
       ) : null}
 
+      {linkSuggestions.length > 0 ? (
+        <section className="space-y-2" aria-label="Förslag att koppla">
+          <p className="px-1 text-sm font-semibold tracking-tight">Förslag</p>
+          <p className="px-1 text-xs leading-snug text-[var(--numa-faint)]">
+            Liknande belopp nära datumet. Koppla bara om det är rätt räkning —
+            NUMA gissar inte åt dig.
+          </p>
+          <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
+            {linkSuggestions.map((suggestion) => {
+              const item = localItems.find((row) => row.id === suggestion.planItemId);
+              const tx = ledgerTransactions.find(
+                (row) => row.id === suggestion.transactionId,
+              );
+              if (!item || !tx) return null;
+              return (
+                <li
+                  key={`${suggestion.planItemId}:${suggestion.transactionId}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <p className="truncate text-xs text-[var(--numa-faint)]">
+                      {tx.description || tx.merchant || "Rörelse"} ·{" "}
+                      {(tx.amountMinor / 100).toLocaleString("sv-SE")} {tx.currency}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="numa-press shrink-0 rounded-full bg-[var(--numa-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--numa-card)]"
+                    aria-label={`Koppla ${item.name} till transaktionen`}
+                    onClick={() => {
+                      void runMutation({
+                        busy: `link:${suggestion.planItemId}`,
+                        apply: (rows) => rows,
+                        revert: (rows) => rows,
+                        action: () =>
+                          confirmPlanLinkAction({
+                            transactionId: suggestion.transactionId,
+                            itemId: suggestion.planItemId,
+                          }),
+                        reconcile: (rows, result) => {
+                          if (result.home) rememberHomeSnapshot(result.home);
+                          if (result.plan) rememberPlanSnapshot(result.plan);
+                          if (result.accounts) {
+                            rememberAccountsSnapshot(result.accounts);
+                          }
+                          confirmOptimisticFinance();
+                          return result.item
+                            ? mergeReturnedItem(rows, result.item)
+                            : rows;
+                        },
+                      });
+                    }}
+                  >
+                    Koppla
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       <div className="animate-rise-delay-2 grid gap-4">
         <PlanCard
           title="Intäkter"
           totalLabel="Kvar att få"
-          totalMinor={sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)}
+          totalMinor={sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)}
           currency={currency}
           banner={focusAdd === "income" ? stepHint : null}
           cardRef={focusAdd === "income" ? focusCardRef : undefined}
@@ -887,7 +954,7 @@ export function PlanEditor({
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."
           totalLabel="Kvar att betala"
-          totalMinor={sumCountsTowardCashMinor(projection.fixedItems, matchedExpenseIds)}
+          totalMinor={sumCountsTowardCashMinor(projection.fixedItems, linkedPlanIds)}
           currency={currency}
           banner={focusAdd === "fixed" ? stepHint : null}
           cardRef={focusAdd === "fixed" ? focusCardRef : undefined}
@@ -1056,7 +1123,7 @@ export function PlanEditor({
         <PlanCard
           title="Extra utgifter"
           totalLabel="Kvar att betala"
-          totalMinor={sumCountsTowardCashMinor(projection.extraItems, matchedExpenseIds)}
+          totalMinor={sumCountsTowardCashMinor(projection.extraItems, linkedPlanIds)}
           currency={currency}
         >
           <PlanRows

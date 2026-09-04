@@ -1,6 +1,8 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { PREVIEW_COOKIE, withPreviewQuery } from "@/lib/site";
 import { z } from "zod";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { loadOnboardingState } from "@/features/onboarding/load";
@@ -61,7 +63,9 @@ export async function signOutAction(): Promise<void> {
     }
   }
   await clearOnboardingCookie();
-  redirect("/logga-in");
+  const jar = await cookies();
+  const preview = jar.get(PREVIEW_COOKIE)?.value === "1";
+  redirect(preview ? withPreviewQuery("/logga-in") : "/logga-in");
 }
 
 function swedishAuthError(message: string): string {

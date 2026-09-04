@@ -42,7 +42,12 @@ export type LedgerMatchTx = Pick<
 > & {
   /** Present on synthetic settle bookings — excluded from "already funded" probes. */
   planItemId?: string | null;
+  ledgerOrigin?: CanonicalTransaction["ledgerOrigin"];
+  /** User-confirmed link. Heuristic matches must not write this. */
+  linkedPlanItemId?: string | null;
 };
+
+export type PlanMatchPair = { itemId: string; txId: string; score: number };
 
 export type CashCoverageView = {
   monthKey: string;
@@ -62,9 +67,9 @@ export type CashCoverageView = {
 /**
  * Cash coverage for a calendar month (Bangkok civil dates).
  *
- * Paid plan rows that already hit the ledger are dropped from remaining —
- * they live in saldo and must not be subtracted again. Savings is a separate
- * pile, not "kvar att betala".
+ * Paid plan rows are dropped from remaining only when the user marked them
+ * Klar / Delvis or confirmed an explicit transaction↔plan link. The ±7-day
+ * heuristic is suggestion-only and must never silently remove an obligation.
  */
 export function projectCashCoverage(params: {
   planItems: PlanItem[];
@@ -101,46 +106,50 @@ export function projectCashCoverage(params: {
 function remainingPlanAmount(
   items: PlanItem[],
   transactions: LedgerMatchTx[],
-  kind: "income" | "expense",
-  monthKey: string,
-  timeZone: string,
+  _kind: "income" | "expense",
+  _monthKey: string,
+  _timeZone: string,
 ): number {
-  const matched = matchPlanItemsToLedger({
-    items,
-    transactions,
-    kind,
-    monthKey,
-    timeZone,
-  });
-  return sumCountsTowardCashMinor(items, matched);
+  // Settle flags (remainingOpenMinor) plus user-confirmed links only.
+  // The ±7-day heuristic must never silently drop an obligation.
+  const linked = new Set<string>();
+  for (const tx of transactions) {
+    if (tx.status !== "confirmed") continue;
+    if (tx.linkedPlanItemId) linked.add(tx.linkedPlanItemId);
+  }
+  return sumCountsTowardCashMinor(items, linked);
 }
 
 /**
  * 1:1 greedy match: kind + near date + similar amount (name is a tie-break).
  * Each ledger row and each plan row is used at most once.
  *
- * Money only. This keeps Över from subtracting cash that already left the
- * account, and it is a guess — never a claim that the user paid the row.
- * It must not reach the Plan list chips, sorting, or the settle flags.
+ * Suggestion only — never a claim that the user paid the row, and never
+ * applied to Över / Kvar att betala / Kommer in. It must not reach the Plan list
+ * chips, sorting, or the settle flags.
  */
-export function matchPlanItemsToLedger(params: {
+/**
+ * Suggestion pairs only. Callers must not apply these to unpaid / incoming
+ * or settle flags — that requires an explicit user confirm.
+ */
+export function matchPlanItemPairs(params: {
   items: PlanItem[];
   transactions: LedgerMatchTx[];
   kind: "income" | "expense";
   monthKey: string;
   timeZone: string;
-}): Set<string> {
+}): PlanMatchPair[] {
   const { items, transactions, kind, monthKey, timeZone } = params;
   const eligibleTx = transactions.filter((tx) => {
-    // Settle bookings live in saldo via flags. They must not "pay" a sibling bill.
     if (tx.planItemId) return false;
+    if (tx.ledgerOrigin === "plan_settle") return false;
+    if (tx.linkedPlanItemId) return false;
     if (!isKindHit(tx, kind)) return false;
     const txMonth = monthKeyFromDate(new Date(tx.occurredAt), timeZone);
     return isNearbyMonth(txMonth, monthKey);
   });
 
-  type Pair = { itemId: string; txId: string; score: number };
-  const pairs: Pair[] = [];
+  const pairs: PlanMatchPair[] = [];
   for (const item of items) {
     if (isPlanSavings(item) || item.amountMinor <= 0) continue;
     if (isPlanSettled(item) || isPlanPartiallySettled(item)) continue;
@@ -156,12 +165,25 @@ export function matchPlanItemsToLedger(params: {
   pairs.sort((a, b) => b.score - a.score);
   const usedItems = new Set<string>();
   const usedTx = new Set<string>();
+  const chosen: PlanMatchPair[] = [];
   for (const pair of pairs) {
     if (usedItems.has(pair.itemId) || usedTx.has(pair.txId)) continue;
     usedItems.add(pair.itemId);
     usedTx.add(pair.txId);
+    chosen.push(pair);
   }
-  return usedItems;
+  return chosen;
+}
+
+/** Item ids from the suggestion matcher. Never a claim that the bill is paid. */
+export function matchPlanItemsToLedger(params: {
+  items: PlanItem[];
+  transactions: LedgerMatchTx[];
+  kind: "income" | "expense";
+  monthKey: string;
+  timeZone: string;
+}): Set<string> {
+  return new Set(matchPlanItemPairs(params).map((pair) => pair.itemId));
 }
 
 function isNearbyMonth(txMonth: string, monthKey: string): boolean {

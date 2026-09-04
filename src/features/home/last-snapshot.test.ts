@@ -103,6 +103,7 @@ function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
     calculatedBalanceMinor: 10_000_00,
     verificationLabel: null,
     todaySpendingMinor: 200_00,
+    todayPlannedPaidMinor: 0,
     monthSpendingMinor: 1_000_00,
     cycleSpendingMinor: 400_00,
     safeToSpendTodayMinor: 800_00,

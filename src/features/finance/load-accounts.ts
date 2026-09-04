@@ -9,6 +9,7 @@ import {
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { loadErrorMessageSv } from "@/lib/async";
+import { reportError } from "@/lib/observe/report";
 import {
   getLatestCheckpoint,
   listAccounts,
@@ -114,6 +115,7 @@ export const loadAccountsSnapshot = cache(
     } catch (error) {
       unstable_rethrow(error);
       console.error("[numa] loadAccountsSnapshot failed", error);
+      void reportError("loader.accounts", error);
       return {
         ok: false,
         error: loadErrorMessageSv(error, "Kunde inte hämta saldon"),

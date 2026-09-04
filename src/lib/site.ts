@@ -1,6 +1,37 @@
 /** Stable production URL — always prefer this over Vercel preview links. */
 export const PRODUCTION_HOST = "numa-finance.vercel.app";
 export const PRODUCTION_ORIGIN = `https://${PRODUCTION_HOST}`;
+export const PREVIEW_COOKIE = "numa_preview";
+export const PREVIEW_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
+export function hasPreviewQuery(
+  searchParams?: URLSearchParams | { get(name: string): string | null } | null,
+): boolean {
+  return searchParams?.get("preview") === "1";
+}
+
+export function hasPreviewCookie(cookieHeader?: string | null): boolean {
+  if (!cookieHeader) return false;
+  return cookieHeader.split(";").some((part) => {
+    const [name, value] = part.trim().split("=");
+    return name === PREVIEW_COOKIE && value === "1";
+  });
+}
+
+export function hasPreviewEscape(
+  searchParams?: URLSearchParams | { get(name: string): string | null } | null,
+  cookieHeader?: string | null,
+): boolean {
+  return hasPreviewQuery(searchParams) || hasPreviewCookie(cookieHeader);
+}
+
+export function withPreviewQuery(path: string): string {
+  const [pathname, search = ""] = path.split("?");
+  const params = new URLSearchParams(search);
+  params.set("preview", "1");
+  const next = params.toString();
+  return `${pathname}?${next}`;
+}
 
 export function isCanonicalAppHost(hostname: string): boolean {
   const host = hostname.toLowerCase().split(":")[0] ?? "";
@@ -23,8 +54,9 @@ export function isProductionAppHost(hostname: string): boolean {
 export function shouldRedirectToProduction(
   hostname: string,
   searchParams?: URLSearchParams | { get(name: string): string | null },
+  cookieHeader?: string | null,
 ): boolean {
-  if (searchParams?.get("preview") === "1") return false;
+  if (hasPreviewEscape(searchParams, cookieHeader)) return false;
   if (isCanonicalAppHost(hostname)) return false;
   const host = hostname.toLowerCase().split(":")[0] ?? "";
   return host.endsWith(".vercel.app");
