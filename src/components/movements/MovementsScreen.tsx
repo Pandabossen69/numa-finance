@@ -13,11 +13,11 @@ import {
 import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   mergeMovementNativeFromServer,
   movementEditPrefill,
-  type MovementsSnapshot,
-} from "@/features/finance/load-movements";
+} from "@/features/finance/movement-native";
 import {
   adoptMutationFinance,
   applyMovementsEdit,
