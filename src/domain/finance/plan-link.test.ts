@@ -114,4 +114,103 @@ describe("explicit plan linking", () => {
       }),
     ).toBe(false);
   });
+
+  it("suggests several partial external payments against one open bill", () => {
+    const bill = item({
+      id: "nota",
+      name: "Testnota 20k",
+      kind: "mandatory",
+      amountMinor: 20_000_00,
+      nextDueAt: "2026-09-04T12:00:00.000Z",
+    });
+    const first = tx({
+      id: "pay-5a",
+      amountMinor: 5_000_00,
+      occurredAt: "2026-09-04T09:00:00.000Z",
+      description: "Testnota del 1",
+    });
+    const second = tx({
+      id: "pay-5b",
+      amountMinor: 5_000_00,
+      occurredAt: "2026-09-04T10:00:00.000Z",
+      description: "Testnota del 2",
+    });
+    const last = tx({
+      id: "pay-10",
+      amountMinor: 10_000_00,
+      occurredAt: "2026-09-04T11:00:00.000Z",
+      description: "Testnota del 3",
+    });
+    const suggestions = suggestPlanLinks({
+      items: [bill],
+      transactions: [first, second, last],
+      kind: "expense",
+      monthKey: "2026-09",
+      timeZone: tz,
+    });
+    expect(suggestions.map((row) => row.transactionId).sort()).toEqual([
+      "pay-10",
+      "pay-5a",
+      "pay-5b",
+    ]);
+    expect(new Set(suggestions.map((row) => row.planItemId))).toEqual(
+      new Set(["nota"]),
+    );
+  });
+
+  it("still suggests a real SMS after synthetic full settlement", () => {
+    const bill = item({
+      id: "sms-nota",
+      name: "Testnota SMS 20k",
+      kind: "mandatory",
+      amountMinor: 20_000_00,
+      nextDueAt: "2026-09-04T12:00:00.000Z",
+      settledAt: "2026-09-04T08:00:00.000Z",
+      settledMinor: 20_000_00,
+    });
+    const real = tx({
+      id: "sms-20k",
+      amountMinor: 20_000_00,
+      occurredAt: "2026-09-04T09:00:00.000Z",
+      description: "Testnota SMS 20k",
+    });
+    const suggestions = suggestPlanLinks({
+      items: [bill],
+      transactions: [real],
+      kind: "expense",
+      monthKey: "2026-09",
+      timeZone: tz,
+    });
+    expect(suggestions).toEqual([
+      expect.objectContaining({
+        planItemId: "sms-nota",
+        transactionId: "sms-20k",
+      }),
+    ]);
+  });
+
+  it("does not suggest lunch-sized amounts against a large remaining bill", () => {
+    const bill = item({
+      id: "hyra",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 20_000_00,
+      nextDueAt: "2026-09-04T12:00:00.000Z",
+    });
+    const lunch = tx({
+      id: "lunch",
+      amountMinor: 120_00,
+      occurredAt: "2026-09-04T09:00:00.000Z",
+      description: "Lunch",
+    });
+    expect(
+      suggestPlanLinks({
+        items: [bill],
+        transactions: [lunch],
+        kind: "expense",
+        monthKey: "2026-09",
+        timeZone: tz,
+      }),
+    ).toEqual([]);
+  });
 });

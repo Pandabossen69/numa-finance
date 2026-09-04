@@ -3,16 +3,17 @@ import { calendarDaysBetween } from "./datetime";
 import {
   addMonthsKey,
   isPlanIncome,
-  isPlanPartiallySettled,
   isPlanSavings,
-  isPlanSettled,
   monthKeyFromDate,
   projectPlanForMonth,
   remainingDueIso,
   remainingOpenMinor,
   settledAmountMinor,
 } from "./plan-months";
-import { allocatedCanonicalFromLinks } from "./plan-allocation";
+import {
+  allocatedCanonicalFromLinks,
+  canonicalAmountForLink,
+} from "./plan-allocation";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
 /** One-line formula shown on Plan and Hem. */
@@ -141,7 +142,12 @@ export function matchPlanItemPairs(params: {
   const pairs: PlanMatchPair[] = [];
   for (const item of items) {
     if (isPlanSavings(item) || item.amountMinor <= 0) continue;
-    if (isPlanSettled(item) || isPlanPartiallySettled(item)) continue;
+    // Allocation model: keep suggesting while real links have not filled the
+    // bill. Synthetic Klar / Delvis must stay linkable so a later SMS can
+    // replace the booking. Fully funded by confirmed links is done.
+    if (allocatedCanonicalFromLinks(item, transactions) >= item.amountMinor) {
+      continue;
+    }
     if (kind === "income" && !isPlanIncome(item)) continue;
     if (kind === "expense" && isPlanIncome(item)) continue;
     for (const tx of eligibleTx) {
@@ -152,12 +158,10 @@ export function matchPlanItemPairs(params: {
   }
 
   pairs.sort((a, b) => b.score - a.score);
-  const usedItems = new Set<string>();
   const usedTx = new Set<string>();
   const chosen: PlanMatchPair[] = [];
   for (const pair of pairs) {
-    if (usedItems.has(pair.itemId) || usedTx.has(pair.txId)) continue;
-    usedItems.add(pair.itemId);
+    if (usedTx.has(pair.txId)) continue;
     usedTx.add(pair.txId);
     chosen.push(pair);
   }
@@ -207,13 +211,31 @@ function pairScore(item: PlanItem, tx: LedgerMatchTx, timeZone: string): number 
   const dayDiff = Math.abs(calendarDaysBetween(dueIso, tx.occurredAt, timeZone));
   if (dayDiff > DATE_WINDOW_DAYS) return null;
 
-  const planAmount = remainingOpenMinor(item) > 0 ? remainingOpenMinor(item) : item.amountMinor;
-  const amountDiff = Math.abs(planAmount - tx.amountMinor);
+  let txCanonical: number;
+  try {
+    txCanonical = canonicalAmountForLink(tx);
+  } catch {
+    return null;
+  }
+  if (txCanonical <= 0) return null;
+
+  const remaining = remainingOpenMinor(item);
+  const planAmount = remaining > 0 ? remaining : item.amountMinor;
+  if (planAmount <= 0) return null;
+
+  const amountDiff = Math.abs(planAmount - txCanonical);
   const tolerance = amountToleranceMinor(planAmount);
-  if (amountDiff > tolerance) return null;
+  const nearRemaining = amountDiff <= tolerance;
+  const named = nameBonus(item, tx) > 0;
+  const significantPartial =
+    txCanonical <= planAmount &&
+    txCanonical >= Math.max(AMOUNT_FLOOR_MINOR, Math.round(planAmount * 0.2));
+  if (!nearRemaining && !(txCanonical <= planAmount && (named || significantPartial))) {
+    return null;
+  }
 
   const dateScore = 1 - dayDiff / (DATE_WINDOW_DAYS + 1);
-  const amountScore = 1 - amountDiff / (tolerance + 1);
+  const amountScore = 1 - Math.min(amountDiff, planAmount) / (planAmount + 1);
   return dateScore * 2 + amountScore * 2 + nameBonus(item, tx);
 }
 
