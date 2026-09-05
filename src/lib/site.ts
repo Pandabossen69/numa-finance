@@ -33,23 +33,37 @@ export function withPreviewQuery(path: string): string {
   return `${pathname}?${next}`;
 }
 
+export function hostnameWithoutPort(hostname: string): string {
+  return hostname.toLowerCase().split(":")[0] ?? "";
+}
+
 export function isCanonicalAppHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().split(":")[0] ?? "";
+  const host = hostnameWithoutPort(hostname);
   if (host === PRODUCTION_HOST) return true;
   if (host === "localhost" || host === "127.0.0.1") return true;
   return false;
 }
 
+/**
+ * This project's Vercel preview / unique deployment aliases.
+ * Production is `numa-finance.vercel.app` (dot, not a trailing hyphen).
+ */
+export function isProjectVercelAlias(hostname: string): boolean {
+  const host = hostnameWithoutPort(hostname);
+  return host.endsWith(".vercel.app") && host.startsWith("numa-finance-");
+}
+
 /** True when the PWA / browser is already on the shared production host. */
 export function isProductionAppHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().split(":")[0] ?? "";
-  return host === PRODUCTION_HOST;
+  return hostnameWithoutPort(hostname) === PRODUCTION_HOST;
 }
 
 /**
- * Temporary Vercel URLs (preview deploys / team *.vercel.app) should bounce
- * to production so the phone home-screen app always hits the live build.
- * Escape hatch: ?preview=1 (for intentional PR testing).
+ * Bounce leftover team / other-app *.vercel.app hosts to production so an
+ * installed phone app cannot stick on a random URL. This project's own
+ * preview and deployment aliases must stay put — otherwise PR acceptance
+ * and in-preview login land on production.
+ * Escape hatch for other hosts: ?preview=1 or numa_preview=1.
  */
 export function shouldRedirectToProduction(
   hostname: string,
@@ -58,7 +72,8 @@ export function shouldRedirectToProduction(
 ): boolean {
   if (hasPreviewEscape(searchParams, cookieHeader)) return false;
   if (isCanonicalAppHost(hostname)) return false;
-  const host = hostname.toLowerCase().split(":")[0] ?? "";
+  if (isProjectVercelAlias(hostname)) return false;
+  const host = hostnameWithoutPort(hostname);
   return host.endsWith(".vercel.app");
 }
 

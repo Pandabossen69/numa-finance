@@ -8,8 +8,8 @@ import {
 } from "@/lib/site";
 
 /**
- * Safety net if middleware missed a temporary Vercel host (e.g. old SW).
- * Sends the installed phone app to the stable production URL.
+ * Safety net if middleware missed a leftover team / other-app Vercel host
+ * (e.g. old SW). This project's preview aliases stay on the current host.
  */
 export function CanonicalHostRedirect() {
   useEffect(() => {
