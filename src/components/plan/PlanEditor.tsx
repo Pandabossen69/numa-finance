@@ -26,6 +26,7 @@ import {
   sumCountsTowardCashMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
+  planWriteUserError,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
@@ -410,7 +411,7 @@ export function PlanEditor({
       const result = await opts.action();
       if (!result.ok) {
         setLocalItems(opts.revert(base));
-        setError(result.error);
+        setError(planWriteUserError(result.error, "Kunde inte spara planposten"));
         return false;
       }
       setLocalItems((current) => {
@@ -426,7 +427,7 @@ export function PlanEditor({
       return true;
     } catch (err) {
       setLocalItems(opts.revert(base));
-      setError(err instanceof Error ? err.message : "Något gick fel");
+      setError(planWriteUserError(err, "Något gick fel"));
       return false;
     } finally {
       writeLockRef.current = false;

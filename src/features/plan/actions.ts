@@ -16,6 +16,12 @@ import {
   planSettleTargetMinor,
   planAmountBelowSettledError,
   type PlanItem,
+  PLAN_KIND_INVALID_SV,
+  PLAN_SAVE_FAILED_SV,
+  PLAN_UPDATE_FAILED_SV,
+  isExpectedPlanWriteError,
+  planWriteUserError,
+  toSafePlanLogError,
 } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
@@ -111,6 +117,29 @@ function profileTimeZone(timezone: string | null | undefined): string {
   return timezone || "Asia/Bangkok";
 }
 
+function planWriteFailure(
+  error: unknown,
+  fallback: string,
+  op:
+    | "create"
+    | "create_income"
+    | "create_extra"
+    | "update"
+    | "update_amount"
+    | "import_fixed",
+): { ok: false; error: string } {
+  if (error instanceof z.ZodError) {
+    if (error.issues.some((issue) => issue.path.includes("kind"))) {
+      return { ok: false, error: PLAN_KIND_INVALID_SV };
+    }
+    return { ok: false, error: fallback };
+  }
+  if (!isExpectedPlanWriteError(error)) {
+    void reportError("mutation.plan", toSafePlanLogError(error), { op });
+  }
+  return { ok: false, error: planWriteUserError(error, fallback) };
+}
+
 /** Profile + plan rows only — never the full Hem snapshot. */
 async function planWriteContext() {
   const [profile, planItems] = await Promise.all([getProfile(), listPlanItems()]);
@@ -149,10 +178,7 @@ export async function createPlanItemAction(
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte spara hinken",
-    };
+    return planWriteFailure(error, PLAN_SAVE_FAILED_SV, "create");
   }
 }
 
@@ -178,10 +204,7 @@ export async function createPlanIncomeAction(
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte spara intäkten",
-    };
+    return planWriteFailure(error, "Kunde inte spara intäkten", "create_income");
   }
 }
 
@@ -216,10 +239,7 @@ export async function createPlanExtraAction(
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte spara extra utgiften",
-    };
+    return planWriteFailure(error, "Kunde inte spara extra utgiften", "create_extra");
   }
 }
 
@@ -492,10 +512,7 @@ export async function updatePlanItemAmountAction(raw: {
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte uppdatera",
-    };
+    return planWriteFailure(error, PLAN_UPDATE_FAILED_SV, "update_amount");
   }
 }
 
@@ -564,10 +581,7 @@ export async function updatePlanItemAction(
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte uppdatera",
-    };
+    return planWriteFailure(error, PLAN_UPDATE_FAILED_SV, "update");
   }
 }
 
@@ -614,9 +628,10 @@ export async function importFixedExpensesFromPreviousMonthAction(
     revalidatePlanPaths();
     return { ok: true, items };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte läsa in fasta utgifter",
-    };
+    return planWriteFailure(
+      error,
+      "Kunde inte läsa in fasta utgifter",
+      "import_fixed",
+    );
   }
 }

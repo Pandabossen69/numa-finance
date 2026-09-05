@@ -26,6 +26,7 @@ import {
   type ExtractionRun,
   type PlanCategoryKind,
   type PlanItem,
+  parsePlanCategoryKind,
   type Profile,
   type SourceObservation,
   type TransactionSource,
@@ -1801,7 +1802,7 @@ export async function createPlanItem(input: {
       id: newId(),
       userId: LOCAL_DEMO_USER_ID,
       name: input.name.trim(),
-      kind: input.kind,
+      kind: parsePlanCategoryKind(input.kind),
       amountMinor: input.amountMinor,
       currency: input.currency,
       cadence: input.cadence ?? "monthly",
@@ -1835,7 +1836,7 @@ export async function updatePlanItem(input: {
     const item = (s.planItems ?? []).find((p) => p.id === input.id);
     if (!item) throw new Error("Planposten hittades inte");
     if (input.name != null) item.name = input.name.trim();
-    if (input.kind != null) item.kind = input.kind;
+    if (input.kind != null) item.kind = parsePlanCategoryKind(input.kind);
     if (input.amountMinor != null) {
       if (input.amountMinor < 0) throw new Error("Belopp kan inte vara negativt");
       item.amountMinor = input.amountMinor;

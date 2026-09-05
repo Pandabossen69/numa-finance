@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./plan-category-kind";
 export * from "./account-kind";
 export * from "./balance";
 export * from "./safe-to-spend";
