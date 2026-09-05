@@ -25,6 +25,10 @@ import {
   type ExtractedTransactionCandidate,
   type PlanCategoryKind,
   type PlanItem,
+  parsePlanCategoryKind,
+  planWriteUserError,
+  PLAN_SAVE_FAILED_SV,
+  PLAN_UPDATE_FAILED_SV,
   type Profile,
   type SourceObservation,
   type TransactionSource,
@@ -1399,7 +1403,7 @@ export async function createPlanItem(input: {
   const { data, error } = await supabase.rpc("save_plan_item", {
     p_id: null,
     p_name: input.name.trim(),
-    p_kind: input.kind,
+    p_kind: parsePlanCategoryKind(input.kind),
     p_amount_minor: input.amountMinor,
     p_currency: input.currency,
     p_cadence: input.cadence ?? "monthly",
@@ -1410,7 +1414,7 @@ export async function createPlanItem(input: {
     p_remaining_due_at: null,
     p_sync_ledger: true,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(planWriteUserError(error, PLAN_SAVE_FAILED_SV));
   return itemFromSaveRpc(data);
 }
 
@@ -1433,7 +1437,7 @@ export async function updatePlanItem(input: {
   const { data, error } = await supabase.rpc("save_plan_item", {
     p_id: input.id,
     p_name: input.name?.trim() ?? null,
-    p_kind: input.kind ?? null,
+    p_kind: input.kind == null ? null : parsePlanCategoryKind(input.kind),
     p_amount_minor: input.amountMinor ?? null,
     p_currency: null,
     p_cadence: null,
@@ -1444,7 +1448,7 @@ export async function updatePlanItem(input: {
     p_remaining_due_at: input.remainingDueAt ?? null,
     p_sync_ledger: true,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(planWriteUserError(error, PLAN_UPDATE_FAILED_SV));
   return itemFromSaveRpc(data);
 }
 

@@ -10,6 +10,7 @@ export async function reportError(
     | "loader.accounts"
     | "mutation.settle"
     | "mutation.expense"
+    | "mutation.plan"
     | "mutation.link"
     | "mutation.refresh"
     | "ocr.upload"

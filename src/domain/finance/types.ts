@@ -42,7 +42,15 @@ export type ReconciliationState =
   | "discrepancy"
   | "stale_verification";
 
-export type PlanCategoryKind = "mandatory" | "expected" | "flexible" | "goal" | "buffer";
+export const PLAN_CATEGORY_KINDS = [
+  "mandatory",
+  "expected",
+  "flexible",
+  "goal",
+  "buffer",
+] as const;
+
+export type PlanCategoryKind = (typeof PLAN_CATEGORY_KINDS)[number];
 
 export type PlanItem = {
   id: string;
