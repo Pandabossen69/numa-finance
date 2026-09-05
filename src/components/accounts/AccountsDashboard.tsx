@@ -76,7 +76,8 @@ export function AccountsDashboard({
         }
       />
 
-      {view.accounts.length === 0 ? (
+      {view.accounts.length === 0 &&
+      (view.archivedAccounts ?? []).length === 0 ? (
         <MerSection className="animate-rise-delay-1">
           <MerListGroup>
             <MerListRow className="space-y-3 py-5">
@@ -151,7 +152,7 @@ export function AccountsDashboard({
                           </span>
                           {account.isDefault ? (
                             <span className="numa-chip numa-chip-mint align-middle">
-                              Primär
+                              Förvalt
                             </span>
                           ) : null}
                         </p>
@@ -197,26 +198,67 @@ export function AccountsDashboard({
                         />
                         <button
                           type="button"
-                          className="text-[13px] font-semibold text-[var(--numa-muted)]"
+                          className="min-h-11 text-[13px] font-semibold text-[var(--numa-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
                           onClick={() => setOpenVerifyId(null)}
                         >
                           Stäng
                         </button>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        className="numa-btn numa-btn-soft w-full"
-                        onClick={() => setOpenVerifyId(account.id)}
-                      >
-                        Uppdatera saldo
-                      </button>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          className="numa-btn numa-btn-soft w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
+                          onClick={() => setOpenVerifyId(account.id)}
+                        >
+                          Uppdatera saldo
+                        </button>
+                        <Link
+                          href={`/konton/${account.id}`}
+                          prefetch
+                          onMouseEnter={() => prefetch(`/konton/${account.id}`)}
+                          onFocus={() => prefetch(`/konton/${account.id}`)}
+                          aria-label={`Hantera ${account.name}`}
+                          className="numa-btn numa-btn-soft w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
+                        >
+                          Hantera
+                        </Link>
+                      </div>
                     )}
                   </MerListRow>
                 </MerListGroup>
               </MerSection>
             );
           })}
+
+          {(view.archivedAccounts ?? []).length > 0 ? (
+            <MerSection title="Arkiverade konton" className="pt-2">
+              <MerListGroup>
+                {(view.archivedAccounts ?? []).map((account) => (
+                  <MerListRow key={account.id} className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[15px] font-semibold tracking-tight">
+                        {account.name}
+                      </p>
+                      <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
+                        {account.kindLabelSv} · {account.currency} · historik sparad
+                      </p>
+                    </div>
+                    <Link
+                      href={`/konton/${account.id}`}
+                      prefetch
+                      onMouseEnter={() => prefetch(`/konton/${account.id}`)}
+                      onFocus={() => prefetch(`/konton/${account.id}`)}
+                      aria-label={`Återställ eller hantera ${account.name}`}
+                      className="numa-btn numa-btn-soft min-h-11 shrink-0 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
+                    >
+                      Återställ
+                    </Link>
+                  </MerListRow>
+                ))}
+              </MerListGroup>
+            </MerSection>
+          ) : null}
         </div>
       )}
     </div>

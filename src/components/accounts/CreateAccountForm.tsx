@@ -7,6 +7,8 @@ import { createAccountAction } from "@/features/finance/actions";
 import {
   ACCOUNT_KIND_LABEL_SV,
   ACCOUNT_KINDS,
+  DEFAULT_ACCOUNT_COPY_SV,
+  DEFAULT_ACCOUNT_HELP_SV,
   currenciesForAccountKind,
   defaultCurrencyForKind,
   defaultNameForKind,
@@ -192,7 +194,12 @@ export function CreateAccountForm({
           className="mt-1 h-4 w-4 accent-[var(--numa-accent)]"
         />
         <span className="text-sm leading-relaxed text-[var(--numa-muted)]">
-          Primärt konto för utgifter (Hem)
+          <span className="block font-medium text-[var(--numa-ink)]">
+            {DEFAULT_ACCOUNT_COPY_SV}
+          </span>
+          <span className="mt-1 block text-xs text-[var(--numa-faint)]">
+            {DEFAULT_ACCOUNT_HELP_SV}
+          </span>
         </span>
       </label>
 

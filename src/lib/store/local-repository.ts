@@ -1,7 +1,15 @@
 import {
   allocateErrorMessageSv,
   applyAllocateInMemory,
+  accountTypeForKind,
+  assertAccountAcceptsWrites,
   assertCurrencyAllowedForKind,
+  evaluateArchiveAccount,
+  evaluateCurrencyChange,
+  evaluateDeleteAccount,
+  evaluateKindChange,
+  evaluateRestoreAccount,
+  requireLifecycle,
   NEXT_INCOME_NAME,
   hoursSince,
   resolveSmsTipBalanceMinor,
@@ -28,6 +36,7 @@ import { rankForOnTrackDays } from "@/domain/gamification";
 import { observationsDueForPurge } from "@/features/imports/observation-retention";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 import { readStore, updateStore } from "./local-store";
+import { accountLifecycleFacts } from "./account-lifecycle-store";
 import { inferAccountKind } from "./account-kind-infer";
 import { resolveCheckpointFx } from "./checkpoint-fx";
 import { assertUserOwnsStoragePath, buildUserStoragePath } from "./isolation";
@@ -102,6 +111,11 @@ export async function setGettingStartedCollapsed(collapsed: boolean): Promise<vo
 export async function listAccounts(): Promise<Account[]> {
   const store = await readStore();
   return store.accounts.filter((a) => a.isActive);
+}
+
+export async function listArchivedAccounts(): Promise<Account[]> {
+  const store = await readStore();
+  return store.accounts.filter((a) => !a.isActive);
 }
 
 export async function getAccount(accountId: string): Promise<Account | null> {
@@ -236,6 +250,122 @@ export async function createAccount(input: {
   return created.accounts[created.accounts.length - 1]!;
 }
 
+function localLifecycleFacts(store: NumaStoreData, account: Account) {
+  return accountLifecycleFacts({
+    account,
+    actorUserId: LOCAL_DEMO_USER_ID,
+    activeCount: store.accounts.filter((row) => row.isActive).length,
+    transactions: store.transactions.filter((tx) => tx.accountId === account.id),
+    checkpoint: latestCheckpointForAccount(store, account.id),
+  });
+}
+
+export async function updateAccount(input: {
+  id: string;
+  name?: string;
+  kind?: AccountKind;
+  currency?: CurrencyCode;
+  makeDefault?: boolean;
+}): Promise<Account> {
+  const store = await readStore();
+  const account = store.accounts.find((row) => row.id === input.id) ?? null;
+  if (!account) throw new Error("Kontot hittades inte");
+  const facts = localLifecycleFacts(store, account);
+  requireLifecycle(assertAccountAcceptsWrites(account));
+
+  const nextKind = input.kind ?? account.kind;
+  const nextCurrency = input.currency ?? account.currency;
+  if (input.kind != null && input.kind !== account.kind) {
+    requireLifecycle(evaluateKindChange(facts, input.kind, nextCurrency));
+  }
+  if (input.currency != null && input.currency !== account.currency) {
+    requireLifecycle(evaluateCurrencyChange(facts, nextKind, input.currency));
+  }
+  if (input.makeDefault === false && account.isDefault) {
+    throw new Error(
+      "Välj ett annat förvalt konto först. Förvalt konto kan inte lämnas utan ersättare.",
+    );
+  }
+
+  const updated = await updateStore((s) => {
+    const row = s.accounts.find((item) => item.id === input.id);
+    if (!row) throw new Error("Kontot hittades inte");
+    const ts = nowIso();
+    if (input.name != null) row.name = input.name.trim();
+    if (input.kind != null) {
+      row.kind = input.kind;
+      row.accountType = accountTypeForKind(input.kind, row.accountType);
+    }
+    if (input.currency != null && input.currency !== row.currency) {
+      row.currency = input.currency;
+      const latest = latestCheckpointForAccount(s, row.id);
+      if (latest) {
+        latest.currency = input.currency;
+        if (input.currency === "THB") {
+          latest.thbMinor = latest.balanceMinor;
+          latest.fxRate = 1;
+          latest.fxSource = "identity";
+        } else {
+          latest.thbMinor = null;
+          latest.fxRate = null;
+          latest.fxSource = null;
+        }
+      }
+    }
+    if (input.makeDefault) {
+      for (const item of s.accounts) item.isDefault = item.id === row.id;
+    }
+    row.updatedAt = ts;
+  });
+  const next = updated.accounts.find((row) => row.id === input.id);
+  if (!next) throw new Error("Kontot hittades inte");
+  return next;
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  const store = await readStore();
+  const account = store.accounts.find((row) => row.id === id) ?? null;
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(evaluateDeleteAccount(localLifecycleFacts(store, account)));
+  await updateStore((s) => {
+    s.accounts = s.accounts.filter((row) => row.id !== id);
+    s.checkpoints = s.checkpoints.filter((row) => row.accountId !== id);
+  });
+}
+
+export async function archiveAccount(id: string): Promise<Account> {
+  const store = await readStore();
+  const account = store.accounts.find((row) => row.id === id) ?? null;
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(evaluateArchiveAccount(localLifecycleFacts(store, account)));
+  const updated = await updateStore((s) => {
+    const row = s.accounts.find((item) => item.id === id);
+    if (!row) throw new Error("Kontot hittades inte");
+    row.isActive = false;
+    row.isDefault = false;
+    row.updatedAt = nowIso();
+  });
+  const next = updated.accounts.find((row) => row.id === id);
+  if (!next) throw new Error("Kontot hittades inte");
+  return next;
+}
+
+export async function restoreAccount(id: string): Promise<Account> {
+  const store = await readStore();
+  const account = store.accounts.find((row) => row.id === id) ?? null;
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(evaluateRestoreAccount(localLifecycleFacts(store, account)));
+  const updated = await updateStore((s) => {
+    const row = s.accounts.find((item) => item.id === id);
+    if (!row) throw new Error("Kontot hittades inte");
+    row.isActive = true;
+    row.updatedAt = nowIso();
+  });
+  const next = updated.accounts.find((row) => row.id === id);
+  if (!next) throw new Error("Kontot hittades inte");
+  return next;
+}
+
 export async function createCheckpoint(input: {
   accountId: string;
   balanceMinor: number;
@@ -250,6 +380,7 @@ export async function createCheckpoint(input: {
   const store = await readStore();
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
 
   const fx = await resolveCheckpointFx({
     currency: account.currency,
@@ -361,6 +492,7 @@ export async function createManualExpense(input: {
   }
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
   if (
     input.sourceObservationId &&
     !store.observations.some(
@@ -458,6 +590,7 @@ export async function createManualIncome(input: {
   }
   const account = store.accounts.find((a) => a.id === input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
 
   if (input.fingerprint) {
     const known = await listConfirmedFingerprints();
@@ -537,6 +670,8 @@ export async function createTransfer(input: {
   const from = store.accounts.find((a) => a.id === input.fromAccountId);
   const to = store.accounts.find((a) => a.id === input.toAccountId);
   if (!from || !to) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(from));
+  requireLifecycle(assertAccountAcceptsWrites(to));
   if (from.currency !== to.currency) {
     throw new Error("Överföring mellan olika valutor kräver FX (ej i fas 0)");
   }
@@ -622,8 +757,10 @@ export async function createCashWithdrawal(input: {
   const store = await readStore();
   const from = store.accounts.find((a) => a.id === input.fromAccountId);
   if (!from) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(from));
   const to = store.accounts.find((a) => a.id === input.toAccountId);
   if (!to) throw new Error("Kontantkontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(to));
   if (to.accountType !== "cash") {
     throw new Error("Kontantuttag måste gå till ett konto av typen Kontanter");
   }

@@ -138,6 +138,7 @@ export function accountsSnapshotFromToday(snap: TodaySnapshot): AccountsSnapshot
       kindLabelSv: ACCOUNT_KIND_LABEL_SV[account.kind],
       currency: account.currency,
       isDefault: account.isDefault,
+      isActive: account.isActive,
       calculatedMinor: bal?.nativeMinor ?? null,
       thbMinor: bal?.thbMinor ?? null,
       fxRate: bal?.fxRate ?? null,
@@ -149,7 +150,7 @@ export function accountsSnapshotFromToday(snap: TodaySnapshot): AccountsSnapshot
     if (row.thbMinor == null) continue;
     totalThbMinor = (totalThbMinor ?? 0) + row.thbMinor;
   }
-  return { accounts, totalThbMinor };
+  return { accounts, archivedAccounts: [], totalThbMinor };
 }
 
 export function movementsSnapshotFromToday(

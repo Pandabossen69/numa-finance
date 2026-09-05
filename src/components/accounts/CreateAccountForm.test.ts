@@ -20,8 +20,10 @@ describe("CreateAccountForm", () => {
     expect(src).not.toMatch(/currency:\s*"SEK"/);
   });
 
-  it("labels the default-account checkbox for Hem", () => {
-    expect(src).toContain("Primärt konto för utgifter (Hem)");
+  it("labels the default-account checkbox as suggested for new expenses", () => {
+    expect(src).toContain("DEFAULT_ACCOUNT_COPY_SV");
+    expect(src).toContain("DEFAULT_ACCOUNT_HELP_SV");
+    expect(src).not.toContain("Primärt konto för utgifter (Hem)");
     expect(src).not.toContain("Använd på Idag");
   });
 

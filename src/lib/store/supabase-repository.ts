@@ -1,5 +1,13 @@
 import {
+  accountTypeForKind,
+  assertAccountAcceptsWrites,
   assertCurrencyAllowedForKind,
+  evaluateArchiveAccount,
+  evaluateCurrencyChange,
+  evaluateDeleteAccount,
+  evaluateKindChange,
+  evaluateRestoreAccount,
+  requireLifecycle,
   NEXT_INCOME_NAME,
   resolveSmsTipBalanceMinor,
   shouldWriteSmsTipCheckpoint,
@@ -34,6 +42,7 @@ import {
   numaSelect,
 } from "@/lib/supabase/selects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { accountLifecycleFacts } from "./account-lifecycle-store";
 import { inferAccountKind } from "./account-kind-infer";
 import { resolveCheckpointFx } from "./checkpoint-fx";
 import { fetchMenuSnapshotBundle } from "./menu-snapshot-fetch";
@@ -218,6 +227,171 @@ export async function getAccount(accountId: string): Promise<Account | null> {
   return data ? mapAccount(data) : null;
 }
 
+export const listArchivedAccounts = cache(async (): Promise<Account[]> => {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .select(numaSelect(ACCOUNT_SELECT))
+    .eq("user_id", userId)
+    .eq("is_active", false)
+    .order("updated_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapAccount);
+});
+
+async function remoteLifecycleFacts(account: Account) {
+  const userId = await requireUserId();
+  const [active, transactions, checkpoint] = await Promise.all([
+    listAccounts(),
+    listTransactions(account.id),
+    latestCheckpointForAccount(account.id),
+  ]);
+  return accountLifecycleFacts({
+    account,
+    actorUserId: userId,
+    activeCount: active.length,
+    transactions,
+    checkpoint,
+  });
+}
+
+export async function updateAccount(input: {
+  id: string;
+  name?: string;
+  kind?: AccountKind;
+  currency?: CurrencyCode;
+  makeDefault?: boolean;
+}): Promise<Account> {
+  const userId = await requireUserId();
+  const account = await getAccount(input.id);
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
+  const facts = await remoteLifecycleFacts(account);
+
+  const nextKind = input.kind ?? account.kind;
+  const nextCurrency = input.currency ?? account.currency;
+  if (input.kind != null && input.kind !== account.kind) {
+    requireLifecycle(evaluateKindChange(facts, input.kind, nextCurrency));
+  }
+  if (input.currency != null && input.currency !== account.currency) {
+    requireLifecycle(evaluateCurrencyChange(facts, nextKind, input.currency));
+  }
+  if (input.makeDefault === false && account.isDefault) {
+    throw new Error(
+      "Välj ett annat förvalt konto först. Förvalt konto kan inte lämnas utan ersättare.",
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const now = new Date().toISOString();
+
+  if (input.makeDefault) {
+    const { error: clearError } = await supabase
+      .from("accounts")
+      .update({ is_default: false, updated_at: now })
+      .eq("user_id", userId)
+      .eq("is_default", true);
+    if (clearError) throw new Error(clearError.message);
+  }
+
+  const patch: Record<string, unknown> = { updated_at: now };
+  if (input.name != null) patch.name = input.name.trim();
+  if (input.kind != null) {
+    patch.kind = input.kind;
+    patch.account_type = accountTypeForKind(input.kind, account.accountType);
+  }
+  if (input.currency != null) patch.currency = input.currency;
+  if (input.makeDefault) patch.is_default = true;
+
+  const { data, error } = await supabase
+    .from("accounts")
+    .update(patch)
+    .eq("user_id", userId)
+    .eq("id", input.id)
+    .select(numaSelect(ACCOUNT_SELECT))
+    .single();
+  if (error) throw new Error(error.message);
+
+  if (input.currency != null && input.currency !== account.currency) {
+    const latest = await latestCheckpointForAccount(input.id);
+    if (latest) {
+      const { error: cpError } = await supabase
+        .from("balance_checkpoints")
+        .update({
+          currency: input.currency,
+          thb_minor: input.currency === "THB" ? latest.balanceMinor : null,
+          fx_rate: input.currency === "THB" ? 1 : null,
+          fx_source: input.currency === "THB" ? "identity" : null,
+        })
+        .eq("user_id", userId)
+        .eq("id", latest.id);
+      if (cpError) throw new Error(cpError.message);
+    }
+  }
+
+  return mapAccount(data);
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  const userId = await requireUserId();
+  const account = await getAccount(id);
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(evaluateDeleteAccount(await remoteLifecycleFacts(account)));
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("accounts")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function archiveAccount(id: string): Promise<Account> {
+  const userId = await requireUserId();
+  const account = await getAccount(id);
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(evaluateArchiveAccount(await remoteLifecycleFacts(account)));
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .update({
+      is_active: false,
+      is_default: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("id", id)
+    .select(numaSelect(ACCOUNT_SELECT))
+    .single();
+  if (error) throw new Error(error.message);
+  return mapAccount(data);
+}
+
+export async function restoreAccount(id: string): Promise<Account> {
+  const userId = await requireUserId();
+  const account = await getAccount(id);
+  if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(evaluateRestoreAccount(await remoteLifecycleFacts(account)));
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .update({
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("id", id)
+    .select(numaSelect(ACCOUNT_SELECT))
+    .single();
+  if (error) throw new Error(error.message);
+  return mapAccount(data);
+}
+
 export async function ensureDefaultBankAccount(input?: {
   maskedIdentifier?: string | null;
   currency?: CurrencyCode;
@@ -380,6 +554,7 @@ export async function createCheckpoint(input: {
   const userId = await requireUserId();
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
 
   const fx = await resolveCheckpointFx({
     currency: account.currency,
@@ -440,6 +615,7 @@ export async function createManualExpense(input: {
   }
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
 
   if (input.sourceObservationId) {
     const obs = await getObservation(input.sourceObservationId);
@@ -548,6 +724,7 @@ export async function createManualIncome(input: {
   }
   const account = await getAccount(input.accountId);
   if (!account) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(account));
 
   if (input.fingerprint) {
     const known = await listConfirmedFingerprints();
@@ -625,6 +802,8 @@ export async function createTransfer(input: {
   const from = await getAccount(input.fromAccountId);
   const to = await getAccount(input.toAccountId);
   if (!from || !to) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(from));
+  requireLifecycle(assertAccountAcceptsWrites(to));
   if (from.currency !== to.currency) {
     throw new Error("Överföring mellan olika valutor stöds inte ännu");
   }
@@ -721,8 +900,10 @@ export async function createCashWithdrawal(input: {
   const userId = await requireUserId();
   const from = await getAccount(input.fromAccountId);
   if (!from) throw new Error("Kontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(from));
   const to = await getAccount(input.toAccountId);
   if (!to) throw new Error("Kontantkontot hittades inte");
+  requireLifecycle(assertAccountAcceptsWrites(to));
   if (to.accountType !== "cash") {
     throw new Error("Kontantuttag måste gå till ett konto av typen Kontanter");
   }

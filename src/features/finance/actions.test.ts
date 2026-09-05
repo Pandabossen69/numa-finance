@@ -15,3 +15,17 @@ describe("createExpenseAction", () => {
     expect(fn).toContain("accountId: input.accountId");
   });
 });
+
+describe("account management actions", () => {
+  it("updates, deletes, archives and restores through owned repository writes", () => {
+    expect(src).toContain("export async function updateAccountAction");
+    expect(src).toContain("export async function deleteAccountAction");
+    expect(src).toContain("export async function archiveAccountAction");
+    expect(src).toContain("export async function restoreAccountAction");
+    expect(src).toContain("await updateAccount(");
+    expect(src).toContain("await deleteAccount(");
+    expect(src).toContain("await archiveAccount(");
+    expect(src).toContain("await restoreAccount(");
+  });
+});
+

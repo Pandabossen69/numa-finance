@@ -80,6 +80,7 @@ function accountRow(
     kindLabelSv: "Thai-bank",
     currency,
     isDefault: partial.isDefault ?? true,
+    isActive: true,
     calculatedMinor,
     thbMinor: partial.thbMinor ?? (currency === "THB" ? calculatedMinor : null),
     fxRate:
@@ -257,6 +258,7 @@ describe("last view memory", () => {
     rememberMovementsView({ filter: "expense", period: "all" });
     rememberAccountsSnapshot({
       accounts: [accountRow()],
+      archivedAccounts: [],
       totalThbMinor: 100_00,
     });
     rememberMerSnapshot({
