@@ -6,10 +6,13 @@ import {
   ARCHIVE_REQUIRES_ZERO_SV,
   ARCHIVE_UNKNOWN_SALDO_SV,
   ARCHIVED_NO_NEW_TX_SV,
+  CHOOSE_OTHER_DEFAULT_SV,
   CURRENCY_LOCKED_SV,
   DEFAULT_ACCOUNT_BLOCK_SV,
   DEFAULT_ACCOUNT_COPY_SV,
   DEFAULT_ACCOUNT_HELP_SV,
+  DELETE_REQUIRES_ZERO_SV,
+  DELETE_UNKNOWN_SALDO_SV,
   HAS_HISTORY_DELETE_SV,
   LAST_ACTIVE_ACCOUNT_SV,
   NOT_ARCHIVED_SV,
@@ -81,6 +84,22 @@ describe("empty delete", () => {
       accountHasLedgerHistory([{ status: "voided" }, { status: "confirmed" }]),
     ).toBe(true);
   });
+
+  it("blocks deleting an empty account when saldo is not zero", () => {
+    expect(
+      evaluateDeleteAccount(
+        facts({ hasLedgerHistory: false, balanceMinor: 111_00 }),
+      ),
+    ).toEqual({ ok: false, error: DELETE_REQUIRES_ZERO_SV });
+  });
+
+  it("blocks deleting an empty account when saldo is unknown", () => {
+    expect(
+      evaluateDeleteAccount(
+        facts({ hasLedgerHistory: false, balanceMinor: null }),
+      ),
+    ).toEqual({ ok: false, error: DELETE_UNKNOWN_SALDO_SV });
+  });
 });
 
 describe("archive with history", () => {
@@ -123,10 +142,20 @@ describe("default and last-active blocks", () => {
       error: DEFAULT_ACCOUNT_BLOCK_SV,
     });
     expect(
+      evaluateDeleteAccount(
+        facts({
+          isDefault: true,
+          hasLedgerHistory: false,
+          balanceMinor: 111_00,
+        }),
+      ),
+    ).toEqual({ ok: false, error: DEFAULT_ACCOUNT_BLOCK_SV });
+    expect(
       evaluateArchiveAccount(
         facts({ isDefault: true, hasLedgerHistory: true, balanceMinor: 0 }),
       ),
     ).toEqual({ ok: false, error: DEFAULT_ACCOUNT_BLOCK_SV });
+    expect(CHOOSE_OTHER_DEFAULT_SV).toBe("Välj ett annat förvalt konto först.");
   });
 
   it("blocks retiring the last active account", () => {

@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   ACCOUNT_KIND_LABEL_SV,
   ACCOUNT_KINDS,
+  CHOOSE_OTHER_DEFAULT_SV,
   CURRENCY_LOCKED_SV,
+  DEFAULT_ACCOUNT_BLOCK_SV,
   DEFAULT_ACCOUNT_COPY_SV,
   DEFAULT_ACCOUNT_HELP_SV,
+  DELETE_REQUIRES_ZERO_SV,
+  DELETE_UNKNOWN_SALDO_SV,
   currenciesForAccountKind,
   defaultCurrencyForKind,
   type AccountKind,
@@ -248,7 +252,13 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         {pending && confirm == null ? "Sparar…" : "Spara ändringar"}
       </button>
 
-      {account.hasLedgerHistory ? (
+      {account.isDefault ? (
+        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
+          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+            {CHOOSE_OTHER_DEFAULT_SV} {DEFAULT_ACCOUNT_BLOCK_SV}
+          </p>
+        </div>
+      ) : account.hasLedgerHistory ? (
         <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
           {confirm === "archive" ? (
             <div className="space-y-3">
@@ -293,13 +303,13 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
             </>
           )}
         </div>
-      ) : (
+      ) : account.calculatedMinor === 0 ? (
         <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
           {confirm === "delete" ? (
             <div className="space-y-3">
               <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
                 Radera {account.name}? Det går inte att ångra. Inga transaktioner
-                finns på kontot.
+                finns på kontot, och saldot är 0.
               </p>
               <button
                 type="button"
@@ -331,6 +341,14 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
               Radera konto
             </button>
           )}
+        </div>
+      ) : (
+        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
+          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+            {account.calculatedMinor == null
+              ? DELETE_UNKNOWN_SALDO_SV
+              : DELETE_REQUIRES_ZERO_SV}
+          </p>
         </div>
       )}
     </form>

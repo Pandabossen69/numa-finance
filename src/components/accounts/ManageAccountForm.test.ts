@@ -18,11 +18,31 @@ describe("ManageAccountForm", () => {
     expect(src).toContain("account.hasLedgerHistory");
   });
 
-  it("deletes empty accounts only after confirmation", () => {
+  it("deletes empty zero-saldo accounts only after confirmation", () => {
     expect(src).toContain("deleteAccountAction");
     expect(src).toContain("Radera konto");
     expect(src).toContain("Ja, radera konto");
-    expect(src).toContain("Det går inte att ångra");
+    expect(src).toContain("account.calculatedMinor === 0");
+    expect(src).toContain("saldot är 0");
+  });
+
+  it("never shows the delete flow on the default account", () => {
+    expect(src).toContain("account.isDefault");
+    expect(src).toContain("CHOOSE_OTHER_DEFAULT_SV");
+    expect(src).toContain("DEFAULT_ACCOUNT_BLOCK_SV");
+    const defaultBranch = src.slice(
+      src.indexOf("{account.isDefault ? ("),
+      src.indexOf(") : account.hasLedgerHistory ? ("),
+    );
+    expect(defaultBranch).toContain("CHOOSE_OTHER_DEFAULT_SV");
+    expect(defaultBranch).not.toContain("Radera konto");
+    expect(defaultBranch).not.toContain("Ja, radera konto");
+    expect(defaultBranch).not.toContain("setConfirm(\"delete\")");
+  });
+
+  it("hides delete when an empty account still has saldo", () => {
+    expect(src).toContain("DELETE_REQUIRES_ZERO_SV");
+    expect(src).toContain("DELETE_UNKNOWN_SALDO_SV");
   });
 
   it("offers archive — not hard delete — when history exists", () => {

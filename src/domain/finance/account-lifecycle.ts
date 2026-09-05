@@ -21,6 +21,12 @@ export const ARCHIVE_REQUIRES_ZERO_SV =
   "Saldo måste vara 0 innan du arkiverar. Flytta eller töm pengarna först — till exempel med en överföring eller Uppdatera saldo.";
 export const ARCHIVE_UNKNOWN_SALDO_SV =
   "Uppdatera saldot till 0 innan du arkiverar. Flytta eller töm pengarna först.";
+export const DELETE_REQUIRES_ZERO_SV =
+  "Saldo måste vara 0 innan du raderar. Flytta eller töm pengarna först — till exempel med en överföring eller Uppdatera saldo.";
+export const DELETE_UNKNOWN_SALDO_SV =
+  "Uppdatera saldot till 0 innan du raderar. Flytta eller töm pengarna först.";
+export const CHOOSE_OTHER_DEFAULT_SV =
+  "Välj ett annat förvalt konto först.";
 export const CURRENCY_LOCKED_SV =
   "Valutan är låst eftersom kontot har transaktioner. Historisk växelkurs och THB-värde behålls.";
 export const ARCHIVED_NO_NEW_TX_SV =
@@ -83,7 +89,7 @@ function assertCanRetire(facts: AccountLifecycleFacts): LifecycleDecision {
   return { ok: true };
 }
 
-/** Empty (no ledger rows) accounts may be hard-deleted after confirmation. */
+/** Empty (no ledger rows) accounts may be hard-deleted only at saldo 0. */
 export function evaluateDeleteAccount(
   facts: AccountLifecycleFacts,
 ): LifecycleDecision {
@@ -91,6 +97,12 @@ export function evaluateDeleteAccount(
   if (!retire.ok) return retire;
   if (facts.hasLedgerHistory) {
     return { ok: false, error: HAS_HISTORY_DELETE_SV };
+  }
+  if (facts.balanceMinor == null) {
+    return { ok: false, error: DELETE_UNKNOWN_SALDO_SV };
+  }
+  if (facts.balanceMinor !== 0) {
+    return { ok: false, error: DELETE_REQUIRES_ZERO_SV };
   }
   return { ok: true };
 }
