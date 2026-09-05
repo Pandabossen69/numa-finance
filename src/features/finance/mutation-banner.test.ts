@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  applyMovementsAdd,
   applyMovementsEdit,
+  applyOptimisticHomeSpend,
   adoptMutationFinance,
   clearClientSessionCaches,
   lastHomeSnapshot,
@@ -137,5 +139,68 @@ describe("mutation result vs Hem truth banner", () => {
     expect(
       financeTruthMessageSv({ truthStatus: lastHomeSnapshot()?.truthStatus }).title,
     ).toBe("");
+  });
+
+  it("does not set beräkningsfel after a successful SEK expense save", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        cycleSpendingMinor: 38_817_00,
+        todaySpendingMinor: 70_00,
+        calculatedBalanceMinor: 10_000_00,
+        remainingTodayMinor: 730_00,
+        remainingFreeMinor: 11_183_00,
+      }),
+    );
+    rememberMovementsSnapshot({
+      ...movements,
+      monthExpenseMinor: 38_817_00,
+      allExpenseMinor: 38_817_00,
+    });
+
+    applyOptimisticHomeSpend(3_50);
+
+    const afterOptimistic = lastHomeSnapshot();
+    expect(afterOptimistic?.cycleSpendingMinor).toBe(38_820_50);
+    expect(afterOptimistic?.todaySpendingMinor).toBe(73_50);
+    expect(afterOptimistic?.truthStatus).toBe("verified");
+    expect(
+      shouldShowFinanceTruthBanner({
+        truthStatus: afterOptimistic?.truthStatus,
+      }),
+    ).toBe(false);
+    expect(
+      financeTruthMessageSv({ truthStatus: afterOptimistic?.truthStatus }).title,
+    ).toBe("");
+
+    adoptMutationFinance({
+      home: {
+        ...afterOptimistic!,
+        financeRevision: "after-sek-save",
+        verifiedAt: "2026-09-05T08:20:00.000Z",
+        truthStatus: "verified",
+      },
+    });
+    applyMovementsAdd({
+      id: "qa79-cloud-save",
+      description: "QA79 cloud save",
+      category: null,
+      transactionType: "expense",
+      direction: "debit",
+      amountMinor: 3_50,
+      currency: "THB",
+      nativeAmountMinor: 1_00,
+      nativeCurrency: "SEK",
+      accountId: "test-sek",
+      fxRate: 3.5,
+      occurredAt: "2026-09-05T08:20:00.000Z",
+      source: "manual",
+    });
+
+    const afterSave = lastHomeSnapshot();
+    expect(afterSave?.cycleSpendingMinor).toBe(38_820_50);
+    expect(afterSave?.truthStatus).toBe("verified");
+    expect(
+      shouldShowFinanceTruthBanner({ truthStatus: afterSave?.truthStatus }),
+    ).toBe(false);
   });
 });

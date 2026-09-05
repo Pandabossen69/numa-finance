@@ -244,7 +244,15 @@ export function rememberHomeSnapshot(
     ? {
         ...snap,
         verifiedAt: new Date().toISOString(),
-        truthStatus: snap.truthStatus === "unavailable" ? "unavailable" : "stale",
+        // Dirty only blocks a stale RSC echo. A successful local
+        // calculation (optimistic SEK/THB spend) stays verified so Hem
+        // does not flash "Vi kan inte räkna just nu." after a durable save.
+        truthStatus:
+          snap.truthStatus === "unavailable"
+            ? "unavailable"
+            : snap.truthStatus === "verified"
+              ? "verified"
+              : "stale",
       }
     : snap;
   homeDirty = nextDirty;
