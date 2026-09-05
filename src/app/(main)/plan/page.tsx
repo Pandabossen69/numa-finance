@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { loadPlanSnapshot } from "@/features/finance/load-plan";
 import { loadGettingStartedView } from "@/features/getting-started/load";
 import { PlanScreen } from "@/lib/route-islands";
@@ -18,6 +19,21 @@ export default async function PlanPage({
         : null;
   const focusAdd =
     steg === "inkomst" ? "income" : steg === "utgift" ? "fixed" : null;
+
+  return (
+    <Suspense fallback={<PlanScreen focusAdd={focusAdd} stepHint={hint} />}>
+      <PlanBody focusAdd={focusAdd} stepHint={hint} />
+    </Suspense>
+  );
+}
+
+async function PlanBody({
+  focusAdd,
+  stepHint,
+}: {
+  focusAdd: "income" | "fixed" | null;
+  stepHint: string | null;
+}) {
   const [result, gettingStarted] = await Promise.all([
     loadPlanSnapshot(),
     loadGettingStartedView(),
@@ -26,7 +42,7 @@ export default async function PlanPage({
   return (
     <PlanScreen
       focusAdd={focusAdd}
-      stepHint={hint}
+      stepHint={stepHint}
       initial={result.ok ? result.data : null}
       initialError={result.ok ? null : result.error}
       initialGettingStarted={gettingStarted}

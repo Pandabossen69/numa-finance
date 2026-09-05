@@ -28,6 +28,6 @@ describe("main first-load chrome", () => {
     expect(loading).toContain("ViewLoading");
     expect(loading).not.toContain("AppShell");
     expect(idagLoading).toContain("HomeViewLoading");
-    expect(idag).not.toContain("Suspense");
+    expect(idag).toContain("Suspense");
   });
 });
