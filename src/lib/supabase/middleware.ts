@@ -10,6 +10,7 @@ import {
 import { supabaseServerOptions } from "./options";
 import {
   isRscOrPrefetchRequest,
+  isSupabaseAuthTokenCookie,
   readAccessTokenExpiryMs,
   shouldSkipProxyGetUser,
 } from "./proxy-auth";
@@ -21,11 +22,7 @@ const AUTH_TIMEOUT_MS = 2_500;
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
   return request.cookies
     .getAll()
-    .some(
-      (c) =>
-        c.name.includes("auth-token") ||
-        (c.name.startsWith("sb-") && c.value.length > 0),
-    );
+    .some((c) => isSupabaseAuthTokenCookie(c.name) && c.value.length > 0);
 }
 
 async function withTimeout<T>(
@@ -126,9 +123,9 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // RSC / prefetch already carry a session cookie. Skip Auth getUser() so
-  // Hem/Plan/Mer/Analys do not share a ~2.5s network gate. Document loads
-  // still refresh. RLS still applies on every data read.
+  // RSC / prefetch: skip getUser() only when a real auth-token JWT parses
+  // and exp is more than 30s ahead. Unreadable or expired cookies stay on
+  // the ordinary Auth path. Document loads always refresh. RLS still applies.
   if (
     shouldSkipProxyGetUser({
       hasAuthCookie: true,

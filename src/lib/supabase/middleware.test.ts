@@ -10,9 +10,10 @@ describe("preview host and auth return", () => {
     expect(src).toMatch(/function redirectToProduction/);
   });
 
-  it("skips Auth getUser on RSC/prefetch when a session cookie is present", () => {
+  it("skips Auth getUser on RSC/prefetch only for a parsed fresh auth-token JWT", () => {
     expect(src).toContain("shouldSkipProxyGetUser");
     expect(src).toContain("isRscOrPrefetchRequest");
+    expect(src).toContain("isSupabaseAuthTokenCookie");
     expect(src).toContain("readAccessTokenExpiryMs");
     expect(src).toContain("AUTH_TIMEOUT_MS = 2_500");
   });
