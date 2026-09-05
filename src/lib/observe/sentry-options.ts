@@ -23,6 +23,10 @@ export function resolveSentryDsn(env: SentryEnvLike = process.env): string | und
   return dsn || undefined;
 }
 
+export function isSentryDsnConfigured(env: SentryEnvLike = process.env): boolean {
+  return Boolean(resolveSentryDsn(env));
+}
+
 export function resolveSentryEnvironment(env: SentryEnvLike = process.env): string {
   const explicit = env.SENTRY_ENVIRONMENT?.trim();
   if (explicit) return explicit;

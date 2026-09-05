@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getSentryInitOptions,
+  isSentryDsnConfigured,
   resolveSentryDsn,
   resolveSentryEnvironment,
   resolveSentryRelease,
@@ -53,6 +54,13 @@ describe("resolveSentryDsn", () => {
         NEXT_PUBLIC_SENTRY_DSN: "https://public@o1.ingest.sentry.io/3",
       }),
     ).toBe("https://public@o1.ingest.sentry.io/3");
+  });
+
+  it("treats blank DSN as missing", () => {
+    expect(isSentryDsnConfigured({ SENTRY_DSN: "   " })).toBe(false);
+    expect(
+      isSentryDsnConfigured({ SENTRY_DSN: "https://key@o1.ingest.sentry.io/1" }),
+    ).toBe(true);
   });
 });
 
