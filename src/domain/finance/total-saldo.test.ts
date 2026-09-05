@@ -74,7 +74,6 @@ describe("totalSaldoThbMinor", () => {
   });
 
   it("locks EUR with fxRate at write (does not need live rate)", () => {
-    const revolut = account({ id: "r", currency: "EUR", kind: "revolut" });
     const cp = checkpoint({
       accountId: "r",
       balanceMinor: 100_00,

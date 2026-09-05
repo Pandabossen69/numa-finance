@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signInAction } from "@/features/auth/actions";
+import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
 import { clearClientSessionCaches } from "@/features/home/last-snapshot";
 
@@ -31,7 +32,13 @@ export function AuthExperience() {
       // Identity just changed. Drop any in-memory snapshot from the previous
       // session so this account can never paint with someone else's numbers.
       clearClientSessionCaches();
-      router.replace(result.nextPath);
+      const preview =
+        typeof document !== "undefined" &&
+        hasPreviewEscape(
+          new URLSearchParams(window.location.search),
+          document.cookie,
+        );
+      router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath);
       router.refresh();
     });
   }

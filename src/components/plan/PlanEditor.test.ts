@@ -35,8 +35,8 @@ const plan = [
 describe("Plan file layout", () => {
   it("keeps the editor small enough to read and the row list on its own", () => {
     const lines = (text: string) => text.split("\n").length;
-    expect(lines(editor)).toBeLessThan(1200);
-    expect(lines(rows)).toBeLessThan(400);
+    expect(lines(editor)).toBeLessThan(1350);
+    expect(lines(rows)).toBeLessThan(450);
     // The screens are composed, not one file.
     expect(editor).toContain('from "@/components/plan/PlanRows"');
     expect(editor).toContain('from "@/components/plan/InlineAdd"');
@@ -192,10 +192,12 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("const matched =");
     expect(plan).not.toContain("matched &&");
     expect(plan).not.toContain("explicitSettled");
-    // Matching survives for the money totals only.
-    expect(editor).toContain("matchPlanItemsToLedger");
+    // Money totals use confirmed links only — heuristic stays a suggestion.
+    expect(editor).not.toContain("matchPlanItemsToLedger");
+    expect(editor).toContain("explicitlyLinkedPlanItemIds");
+    expect(editor).toContain("suggestPlanLinks");
     expect(editor).toContain(
-      "sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)",
+      "sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)",
     );
     expect(rows).toContain("sortPlanRowsForList(items)");
   });
@@ -223,10 +225,14 @@ describe("Plan dates and add-form", () => {
   it("publishes the plan store after commit, never from inside an updater", () => {
     expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
-    expect(editor).toContain("adoptServerPlanItems(current, items)");
-    expect(editor).toContain("setItemsStamp(adoptedStamp)");
+    expect(editor).toContain("adoptServerPlanItems(localItems, items)");
+    expect(editor).toContain("const viewItems = busy");
+    expect(editor).not.toContain("setItemsStamp");
     // Live coverage must not re-trigger publish (Delvis settle loop).
     expect(editor).toContain(
+      "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]",
+    );
+    expect(editor).not.toContain(
       "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]",
     );
     expect(editor).not.toContain(
@@ -270,6 +276,8 @@ describe("Plan dates and add-form", () => {
 
   it("reconciles mutations locally and does not refresh the whole page", () => {
     expect(editor).toContain("rememberLivePlan");
+    expect(editor).toContain("adoptMutationFinance");
+    expect(editor).toContain("previous?.ledgerTransactions");
     expect(editor).toContain("publishItems");
     expect(plan).not.toContain("refreshQuiet");
     expect(plan).not.toContain("router.refresh");

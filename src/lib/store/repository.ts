@@ -171,12 +171,23 @@ export async function getObservation(observationId: string) {
   return api().getObservation(observationId);
 }
 
+export async function deleteObservation(observationId: string) {
+  return api().deleteObservation(observationId);
+}
+
 export async function listObservationCandidates(observationId: string) {
   return api().listObservationCandidates(observationId);
 }
 
 export async function getObservationMediaUrl(storagePath: string) {
   return api().getObservationMediaUrl(storagePath);
+}
+
+export async function refreshTodaySnapshot(): Promise<TodaySnapshot> {
+  if (isSupabaseConfigured() && "refreshTodaySnapshot" in remote) {
+    return remote.refreshTodaySnapshot();
+  }
+  return api().getTodaySnapshot();
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
@@ -252,8 +263,26 @@ export async function updatePlanItem(
   return api().updatePlanItem(input);
 }
 
+export async function settlePlanItemAtomic(
+  input: Parameters<typeof local.settlePlanItemAtomic>[0],
+) {
+  return api().settlePlanItemAtomic(input);
+}
+
+export async function linkTransactionToPlanItem(
+  input: Parameters<typeof local.linkTransactionToPlanItem>[0],
+) {
+  return api().linkTransactionToPlanItem(input);
+}
+
 export async function deletePlanItem(id: string) {
   return api().deletePlanItem(id);
+}
+
+export async function purgeExpiredObservations(
+  input?: Parameters<typeof local.purgeExpiredObservations>[0],
+) {
+  return api().purgeExpiredObservations(input);
 }
 
 export async function setNextIncomeDate(isoDate: string) {

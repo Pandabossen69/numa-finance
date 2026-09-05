@@ -18,7 +18,8 @@ export type HomeViewModel = HomeSnapshot & {
 
 const CURRENCY: CurrencyCode = "THB";
 
-export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
+export function buildMockHomeViewModel(_now = new Date()): HomeViewModel {
+  void _now;
   const available = money(47_350_00, CURRENCY);
   const reserved = money(18_200_00, CURRENCY);
   const safetyBuffer = money(5_000_00, CURRENCY);
@@ -35,6 +36,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     daysUntilNextIncome: daysUntilIncome,
     flexiblePlanRemaining: money(8_800_00, CURRENCY),
   });
+  void safe;
 
   const afterSpend = calculateSafeToSpend({
     available: money(available.amountMinor - spentToday.amountMinor, CURRENCY),
@@ -65,6 +67,7 @@ export function buildMockHomeViewModel(now = new Date()): HomeViewModel {
     calculatedBalanceMinor: available.amountMinor,
     verificationLabel: "I morse",
     todaySpendingMinor: spentToday.amountMinor,
+    todayPlannedPaidMinor: 0,
     monthSpendingMinor: spentToday.amountMinor * 8,
     cycleSpendingMinor: cycleSpent,
     safeToSpendTodayMinor: afterSpend.today.amountMinor,

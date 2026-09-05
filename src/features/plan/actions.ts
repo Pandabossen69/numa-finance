@@ -15,7 +15,6 @@ import {
   NEXT_INCOME_NAME,
   planSettleTargetMinor,
   planAmountBelowSettledError,
-  settledAmountMinor,
   type PlanItem,
 } from "@/domain/finance";
 import { parseUiAmountToMinor } from "@/domain/money";
@@ -24,14 +23,27 @@ import {
   createPlanItem,
   deletePlanItem,
   getProfile,
+  linkTransactionToPlanItem,
   listPlanItems,
+  refreshTodaySnapshot,
   setNextIncomeDate,
+  settlePlanItemAtomic,
   updatePlanItem,
 } from "@/lib/store/repository";
 import {
-  syncPlanItemSettleLedger,
   type PlanSettleLedgerResult,
 } from "@/features/plan/sync-settle-ledger";
+import { reportError } from "@/lib/observe/report";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
+import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
+import type { PlanSnapshot } from "@/features/finance/load-plan";
+import {
+  accountsSnapshotFromToday,
+  homeSnapshotFromToday,
+  movementsSnapshotFromToday,
+  planSnapshotFromToday,
+} from "@/features/finance/snapshot-from-today";
 
 export type { PlanSettleLedgerResult };
 
@@ -41,6 +53,12 @@ export type ActionResult =
       item?: PlanItem;
       items?: PlanItem[];
       settleLedger?: PlanSettleLedgerResult;
+      refreshPending?: boolean;
+      refreshPendingMessage?: string;
+      home?: HomeSnapshot;
+      plan?: PlanSnapshot;
+      accounts?: AccountsSnapshot;
+      movements?: MovementsSnapshot;
     }
   | { ok: false; error: string };
 
@@ -255,16 +273,6 @@ export async function setMonthSavingsAction(
 export async function deletePlanItemAction(id: string): Promise<ActionResult> {
   try {
     const parsedId = z.string().uuid().parse(id);
-    const ctx = await planWriteContext();
-    const existing = ctx.planItems.find((p) => p.id === parsedId);
-    if (existing) {
-      await syncPlanItemSettleLedger({
-        item: existing,
-        planItems: ctx.planItems,
-        targetBookedMinor: 0,
-        timeZone: ctx.timeZone,
-      });
-    }
     await deletePlanItem(parsedId);
     revalidatePlanPaths();
     return { ok: true };
@@ -279,6 +287,8 @@ export async function deletePlanItemAction(id: string): Promise<ActionResult> {
 const settleSchema = z.object({
   id: z.string().uuid(),
   settled: z.boolean(),
+  accountId: z.string().uuid().optional(),
+  clientMutationId: z.string().uuid().optional(),
   /**
    * Cumulative settled total so far (absolute), in UI amount form.
    * Omit for full Klar (settled=true) or when undoing (settled=false).
@@ -314,61 +324,124 @@ export async function setPlanItemSettledAction(
       return { ok: false, error: "Den här posten kan inte markeras Klar." };
     }
 
-    let settledAt: string | null = null;
-    let settledMinor: number | null = null;
-    let remainingDueAt: string | null = null;
+    let requestedMinor: number | null = null;
     if (input.settled) {
-      let minor = existing.amountMinor;
       if (input.targetSettledAmount != null) {
-        minor = parseUiAmountToMinor(input.targetSettledAmount);
-        if (minor < 0) {
+        requestedMinor = parseUiAmountToMinor(input.targetSettledAmount);
+        if (requestedMinor < 0) {
           return { ok: false, error: "Belopp kan inte vara negativt" };
         }
-      }
-      if (minor <= 0) {
-        settledAt = null;
-        settledMinor = null;
-        remainingDueAt = null;
-      } else if (minor >= existing.amountMinor) {
-        settledAt = new Date().toISOString();
-        settledMinor = existing.amountMinor;
-        remainingDueAt = null;
       } else {
-        settledAt = null;
-        settledMinor = minor;
-        remainingDueAt = input.remainingDate
-          ? `${input.remainingDate}T12:00:00.000Z`
-          : (existing.remainingDueAt ?? existing.nextDueAt);
+        requestedMinor = existing.amountMinor;
       }
+    } else {
+      requestedMinor = 0;
     }
 
     const targetBookedMinor = planSettleTargetMinor(existing, {
       settled: input.settled,
-      requestedMinor: input.settled
-        ? input.targetSettledAmount != null
-          ? parseUiAmountToMinor(input.targetSettledAmount)
-          : existing.amountMinor
-        : 0,
+      requestedMinor,
     });
-    const settleLedger = await syncPlanItemSettleLedger({
-      item: existing,
-      planItems: ctx.planItems,
-      targetBookedMinor,
-      timeZone: ctx.timeZone,
-    });
+    const remainingDueAt =
+      input.settled &&
+      targetBookedMinor > 0 &&
+      targetBookedMinor < existing.amountMinor
+        ? input.remainingDate
+          ? `${input.remainingDate}T12:00:00.000Z`
+          : (existing.remainingDueAt ?? existing.nextDueAt)
+        : null;
 
-    const item = await updatePlanItem({
-      id: input.id,
-      settledAt,
-      settledMinor,
+    const atomic = await settlePlanItemAtomic({
+      itemId: input.id,
+      settled: input.settled && targetBookedMinor > 0,
+      targetSettledMinor: targetBookedMinor,
       remainingDueAt,
+      accountId: input.accountId ?? null,
+      clientMutationId: input.clientMutationId ?? null,
     });
-    revalidateSettleCaches();
-    return { ok: true, item, settleLedger };
+    try {
+      const snap = await refreshTodaySnapshot();
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item: atomic.item,
+        settleLedger: {
+          bookedMinor: atomic.bookedMinor,
+          saldoDeltaMinor: atomic.saldoDeltaMinor,
+          accountId: atomic.accountId,
+          skippedBecauseFunded: atomic.skippedBecauseFunded,
+        },
+        home: homeSnapshotFromToday(snap),
+        plan: planSnapshotFromToday(snap),
+        accounts: accountsSnapshotFromToday(snap),
+        movements: movementsSnapshotFromToday(snap),
+      };
+    } catch {
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item: atomic.item,
+        refreshPending: true,
+        refreshPendingMessage: "Sparat. Uppdaterar siffrorna…",
+        settleLedger: {
+          bookedMinor: atomic.bookedMinor,
+          saldoDeltaMinor: atomic.saldoDeltaMinor,
+          accountId: atomic.accountId,
+          skippedBecauseFunded: atomic.skippedBecauseFunded,
+        },
+      };
+    }
   } catch (error) {
+    void reportError("mutation.settle", error, { itemId: raw.id });
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte uppdatera Klar",
+    };
+  }
+}
+
+export async function confirmPlanLinkAction(raw: {
+  transactionId: string;
+  itemId: string;
+  clientMutationId?: string;
+}): Promise<ActionResult> {
+  try {
+    const transactionId = z.string().uuid().parse(raw.transactionId);
+    const itemId = z.string().uuid().parse(raw.itemId);
+    const clientMutationId = raw.clientMutationId
+      ? z.string().uuid().parse(raw.clientMutationId)
+      : undefined;
+    const linked = await linkTransactionToPlanItem({
+      transactionId,
+      itemId,
+      clientMutationId,
+    });
+    try {
+      const snap = await refreshTodaySnapshot();
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item: linked.item,
+        home: homeSnapshotFromToday(snap),
+        plan: planSnapshotFromToday(snap),
+        accounts: accountsSnapshotFromToday(snap),
+        movements: movementsSnapshotFromToday(snap),
+      };
+    } catch {
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item: linked.item,
+        refreshPending: true,
+        refreshPendingMessage: "Sparat. Uppdaterar siffrorna…",
+      };
+    }
+  } catch (error) {
+    void reportError("mutation.link", error);
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Kunde inte koppla transaktionen",
     };
   }
 }
@@ -416,14 +489,6 @@ export async function updatePlanItemAmountAction(raw: {
       settledMinor: edited?.settledMinor,
       remainingDueAt: edited?.remainingDueAt,
     });
-    if (existing) {
-      await syncPlanItemSettleLedger({
-        item,
-        planItems: ctx.planItems.map((row) => (row.id === item.id ? item : row)),
-        targetBookedMinor: settledAmountMinor(item),
-        timeZone: ctx.timeZone,
-      });
-    }
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
@@ -496,14 +561,6 @@ export async function updatePlanItemAction(
       settledMinor: edited?.settledMinor,
       remainingDueAt: edited?.remainingDueAt,
     });
-    if (existing) {
-      await syncPlanItemSettleLedger({
-        item,
-        planItems: ctx.planItems.map((row) => (row.id === item.id ? item : row)),
-        targetBookedMinor: settledAmountMinor(item),
-        timeZone: ctx.timeZone,
-      });
-    }
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {

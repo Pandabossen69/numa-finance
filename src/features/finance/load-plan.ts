@@ -1,8 +1,11 @@
 import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import { getCachedTodaySnapshot } from "@/features/finance/load-home";
 import { loadErrorMessageSv } from "@/lib/async";
+import { reportError } from "@/lib/observe/report";
+import { planSnapshotFromToday } from "./snapshot-from-today";
 
 export type PlanSnapshot = {
   items: PlanItem[];
@@ -11,6 +14,7 @@ export type PlanSnapshot = {
   bankBalanceMinor: number | null;
   spendingByMonthKey: Record<string, number>;
   ledgerTransactions: CanonicalTransaction[];
+  accounts?: AccountsSnapshot;
   financeRevision: string;
   verifiedAt: string;
   truthStatus: "verified" | "stale" | "unavailable";
@@ -23,23 +27,11 @@ export type PlanSnapshotResult =
 export async function loadPlanSnapshot(): Promise<PlanSnapshotResult> {
   try {
     const snap = await getCachedTodaySnapshot();
-    return {
-      ok: true,
-      data: {
-        items: snap.planItems ?? [],
-        currency: snap.currency,
-        timeZone: snap.profile.timezone || "Asia/Bangkok",
-        bankBalanceMinor: snap.calculatedBalanceMinor,
-        spendingByMonthKey: snap.monthSpendingByKey ?? {},
-        ledgerTransactions: snap.ledgerTransactions ?? [],
-        financeRevision: snap.financeRevision,
-        verifiedAt: snap.verifiedAt,
-        truthStatus: "verified",
-      },
-    };
+    return { ok: true, data: planSnapshotFromToday(snap) };
   } catch (error) {
     unstable_rethrow(error);
     console.error("[numa] loadPlanSnapshot failed", error);
+    void reportError("loader.plan", error);
     return {
       ok: false,
       error: loadErrorMessageSv(error, "Kunde inte ladda planen"),

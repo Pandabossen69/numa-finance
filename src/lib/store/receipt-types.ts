@@ -49,4 +49,5 @@ export type ConfirmReceiptInput = {
   source?: "receipt_camera" | "screenshot" | "bank_import";
   maskedAccount?: string | null;
   direction?: "debit" | "credit" | null;
+  clientMutationId?: string | null;
 };

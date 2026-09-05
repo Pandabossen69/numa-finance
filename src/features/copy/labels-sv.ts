@@ -4,9 +4,10 @@
  * Vocabulary (sticky day envelope):
  * - Dagsbudget: morning allowance for today (does not fall mid-day)
  * - Kvar idag: dagsbudget − spenderat idag
- * - Spenderat idag: confirmed expenses this calendar day (inkl. bank-SMS)
+ * - Spenderat idag: discretionary expenses this calendar day (not planned bills)
+ * - Betalda räkningar idag: planned-bill settlements booked today
  * - Kvar i perioden: free money left for the whole pay cycle
- * - Spenderat i perioden: spending since cycle start (inkl. bank-SMS)
+ * - Spenderat i perioden: all cycle spend including planned bills
  *
  * Vocabulary (cash vs plan — do not mix):
  * - På kontona: Σ THB across every wallet (cash, banks, Revolut…)
@@ -21,6 +22,14 @@ export const SV = {
   kvarIdag: "Kvar idag",
   dagsbudget: "Dagsbudget",
   spenderatIdag: "Spenderat idag",
+  spenderatIdagHint: "Rörliga utgifter — inte räkningar",
+  betaldaRakningarIdag: "Betalda räkningar idag",
+  planeradeUtgifter: "Planerade utgifter",
+  betaldaUtgifter: "Betalt",
+  kvarvarandeUtgifter: "Kvar att betala",
+  planeradeIntakter: "Planerade intäkter",
+  mottagnaIntakter: "Mottaget",
+  kvarvarandeIntakter: "Kommer in",
   kvarIPerioden: "Kvar i perioden",
   spenderatIPerioden: "Spenderat i perioden",
   extraSaldo: "Extra saldo",

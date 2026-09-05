@@ -23,6 +23,9 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toContain("Tillbaka");
     expect(src).not.toMatch(/välkommen/i);
     expect(src).toContain("result.nextPath");
+    expect(src).toContain("router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath)");
+    expect(src).not.toContain("PRODUCTION_ORIGIN");
+    expect(src).not.toContain("numa-finance.vercel.app");
     expect(src).not.toContain('router.replace("/idag")');
     expect(src).toContain('router.prefetch("/kom-igang")');
     expect(src).toContain('router.prefetch("/idag")');

@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  PREVIEW_COOKIE,
+  PREVIEW_COOKIE_MAX_AGE,
   PRODUCTION_ORIGIN,
+  hasPreviewEscape,
   shouldRedirectToProduction,
 } from "@/lib/site";
 import { supabaseServerOptions } from "./options";
@@ -41,11 +44,37 @@ async function withTimeout<T>(
   }
 }
 
+function previewCookieOptions() {
+  return {
+    path: "/",
+    maxAge: PREVIEW_COOKIE_MAX_AGE,
+    sameSite: "lax" as const,
+    secure: true,
+  };
+}
+
+function withPreviewOnUrl(url: URL, request: NextRequest) {
+  if (
+    hasPreviewEscape(request.nextUrl.searchParams, request.headers.get("cookie"))
+  ) {
+    url.searchParams.set("preview", "1");
+  }
+  return url;
+}
+
+function stampPreviewCookie(response: NextResponse, request: NextRequest) {
+  if (hasPreviewEscape(request.nextUrl.searchParams, request.headers.get("cookie"))) {
+    response.cookies.set(PREVIEW_COOKIE, "1", previewCookieOptions());
+  }
+  return response;
+}
+
 function redirectToLogin(request: NextRequest) {
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = "/logga-in";
   redirectUrl.search = "";
-  return NextResponse.redirect(redirectUrl);
+  withPreviewOnUrl(redirectUrl, request);
+  return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
 }
 
 function redirectToProduction(request: NextRequest) {
@@ -58,11 +87,20 @@ function redirectToProduction(request: NextRequest) {
 
 export async function updateSession(request: NextRequest) {
   const host = request.headers.get("host") ?? request.nextUrl.host;
-  if (shouldRedirectToProduction(host, request.nextUrl.searchParams)) {
+  if (
+    shouldRedirectToProduction(
+      host,
+      request.nextUrl.searchParams,
+      request.headers.get("cookie"),
+    )
+  ) {
     return redirectToProduction(request);
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  let supabaseResponse = stampPreviewCookie(
+    NextResponse.next({ request }),
+    request,
+  );
 
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some(
@@ -93,7 +131,10 @@ export async function updateSession(request: NextRequest) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        supabaseResponse = NextResponse.next({ request });
+        supabaseResponse = stampPreviewCookie(
+          NextResponse.next({ request }),
+          request,
+        );
         for (const { name, value, options } of cookiesToSet) {
           supabaseResponse.cookies.set(name, value, options);
         }
@@ -124,7 +165,8 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/idag";
     redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    withPreviewOnUrl(redirectUrl, request);
+    return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
   }
 
   // Legacy /lista → Rörelser. "/" → Hem.
@@ -132,14 +174,16 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/idag";
     redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    withPreviewOnUrl(redirectUrl, request);
+    return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
   }
   if (user && pathname === "/lista") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/transaktioner";
     redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    withPreviewOnUrl(redirectUrl, request);
+    return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
   }
 
-  return supabaseResponse;
+  return stampPreviewCookie(supabaseResponse, request);
 }

@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     // Same-origin paths so Safari / Chrome accept the PWA on localhost,
-    // preview, and production. CanonicalHostRedirect still sends preview
-    // hosts to numa-finance.vercel.app.
+    // preview, and production. CanonicalHostRedirect only bounces leftover
+    // team / other-app *.vercel.app hosts, not this project's aliases.
     id: "/",
     name: "NUMA",
     short_name: "NUMA",

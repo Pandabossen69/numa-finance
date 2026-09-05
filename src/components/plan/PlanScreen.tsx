@@ -103,6 +103,7 @@ export function PlanScreen({
             bankBalanceMinor={payload?.bankBalanceMinor ?? home?.calculatedBalanceMinor ?? null}
             spendingByMonthKey={payload?.spendingByMonthKey ?? {}}
             ledgerTransactions={payload?.ledgerTransactions ?? []}
+            accounts={payload?.accounts ?? null}
             focusAdd={focusAdd}
             stepHint={stepHint}
           />

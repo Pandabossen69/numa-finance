@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { CanonicalTransaction } from "@/domain/finance";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
@@ -36,6 +37,7 @@ import {
   revertOptimisticHomeSpend,
   subscribeHomeSnapshot,
   syncHomeCoverageFromPlan,
+  syncHomeLivingFromPlan,
 } from "./last-snapshot";
 
 const sampleMovements: MovementsSnapshot = {
@@ -103,6 +105,7 @@ function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
     calculatedBalanceMinor: 10_000_00,
     verificationLabel: null,
     todaySpendingMinor: 200_00,
+    todayPlannedPaidMinor: 0,
     monthSpendingMinor: 1_000_00,
     cycleSpendingMinor: 400_00,
     safeToSpendTodayMinor: 800_00,
@@ -314,6 +317,8 @@ describe("last view memory", () => {
           direction: "debit",
           amountMinor: 20_00,
           currency: "THB",
+          nativeAmountMinor: 20_00,
+          nativeCurrency: "THB",
           occurredAt: "2026-08-10T12:00:00.000Z",
           source: "manual",
         },
@@ -352,6 +357,8 @@ describe("last view memory", () => {
           direction: "debit",
           amountMinor: 20_00,
           currency: "THB",
+          nativeAmountMinor: 20_00,
+          nativeCurrency: "THB",
           occurredAt: new Date().toISOString(),
           source: "manual",
         },
@@ -384,6 +391,8 @@ describe("last view memory", () => {
           direction: "debit",
           amountMinor: 20_00,
           currency: "THB",
+          nativeAmountMinor: 20_00,
+          nativeCurrency: "THB",
           occurredAt: "2026-08-10T12:00:00.000Z",
           source: "manual",
         },
@@ -538,5 +547,154 @@ describe("last view memory", () => {
     expect(hasBoundSessionOwner()).toBe(false);
     expect(lastKnownChromeDisplayName()).toBeNull();
     expect(lastMerSnapshot()).toBeNull();
+  });
+
+  it("force-adopts a mutation snapshot even when verifiedAt is older", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        todaySpendingMinor: 21_200_00,
+        todayPlannedPaidMinor: 20_000_00,
+        financeRevision: "old",
+        verifiedAt: "2026-09-04T08:00:02.000Z",
+      }),
+      { dirty: true },
+    );
+    const server = homeSnap({
+      todaySpendingMinor: 1_200_00,
+      todayPlannedPaidMinor: 20_000_00,
+      remainingTodayMinor: 1_400_00,
+      financeRevision: "new",
+      verifiedAt: "2026-09-04T08:00:01.000Z",
+    });
+    rememberHomeSnapshot(server);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(21_200_00);
+    rememberHomeSnapshot(server, { force: true });
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
+    expect(lastHomeSnapshot()?.todayPlannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("does not treat an unclassified settle as Spenderat idag", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        todaySpendingMinor: 1_200_00,
+        todayPlannedPaidMinor: 20_000_00,
+        remainingTodayMinor: 1_428_00,
+        dayBudgetMinor: 2_628_00,
+        financeRevision: "after-settle",
+        verifiedAt: "2026-09-04T08:00:00.000Z",
+      }),
+      { dirty: true },
+    );
+    const lunch: CanonicalTransaction = {
+      id: "lunch",
+      userId: "user-hugo",
+      accountId: "acc",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: 1_200_00,
+      currency: "THB",
+      occurredAt: new Date().toISOString(),
+      description: "Lunch",
+      merchant: null,
+      category: "Mat",
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      transferGroupId: null,
+      planItemId: null,
+      ledgerOrigin: "external",
+      linkedPlanItemId: null,
+      syncStatus: "saved",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const settle: CanonicalTransaction = {
+      ...lunch,
+      id: "hyra",
+      amountMinor: 20_000_00,
+      description: "Hyra",
+      category: null,
+      ledgerOrigin: undefined,
+      planItemId: null,
+    };
+    syncHomeLivingFromPlan({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 34_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [lunch, settle],
+      financeRevision: "after-settle:local",
+      verifiedAt: "2026-09-04T08:00:01.000Z",
+      truthStatus: "stale",
+    });
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
+    expect(lastHomeSnapshot()?.todayPlannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("never lets a Plan ledger raise Spenderat idag", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        todaySpendingMinor: 1_200_00,
+        todayPlannedPaidMinor: 0,
+        remainingTodayMinor: 1_428_00,
+        dayBudgetMinor: 2_628_00,
+        financeRevision: "pre-settle",
+        verifiedAt: "2026-09-04T08:00:00.000Z",
+      }),
+    );
+    const lunch: CanonicalTransaction = {
+      id: "lunch",
+      userId: "user-hugo",
+      accountId: "acc",
+      counterAccountId: null,
+      direction: "debit",
+      transactionType: "expense",
+      amountMinor: 1_200_00,
+      currency: "THB",
+      occurredAt: new Date().toISOString(),
+      description: "Lunch",
+      merchant: null,
+      category: "Mat",
+      source: "manual",
+      status: "confirmed",
+      balanceAfterMinor: null,
+      fingerprint: null,
+      sourceObservationId: null,
+      transferGroupId: null,
+      planItemId: null,
+      ledgerOrigin: "external",
+      linkedPlanItemId: null,
+      syncStatus: "saved",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    syncHomeLivingFromPlan({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 34_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [
+        lunch,
+        {
+          ...lunch,
+          id: "hyra",
+          amountMinor: 20_000_00,
+          description: "Hyra",
+          category: null,
+          ledgerOrigin: undefined,
+          planItemId: null,
+        },
+      ],
+      financeRevision: "pre-settle:local",
+      verifiedAt: "2026-09-04T08:00:01.000Z",
+      truthStatus: "stale",
+    });
+    expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
+    expect(lastHomeSnapshot()?.todaySpendingMinor).not.toBe(21_200_00);
   });
 });

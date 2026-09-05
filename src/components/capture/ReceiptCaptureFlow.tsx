@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,8 +9,10 @@ import {
 } from "@/components/add/QuickAddForms";
 import {
   confirmReceiptExpenseAction,
+  deleteObservationAction,
   uploadReceiptAction,
 } from "@/features/imports/actions";
+import { newClientMutationId } from "@/domain/finance";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import { compressImageForUpload } from "@/lib/media/compress-image";
@@ -74,8 +76,9 @@ export function ReceiptCaptureFlow({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
-
-  useEffect(() => {
+  const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
+  if (resumeKey !== seenResumeKey) {
+    setSeenResumeKey(resumeKey);
     if (initialPreview) {
       setPreview(initialPreview);
       setMode(
@@ -89,14 +92,12 @@ export function ReceiptCaptureFlow({
       );
       setError(null);
       setScanning(false);
-      return;
+    } else {
+      setPreview(null);
+      setMode(initialMode);
+      setAmountEditable(false);
     }
-    setPreview(null);
-    setMode(initialMode);
-    setAmountEditable(false);
-    // initialPreview is identified by resumeKey — do not reset on new object identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- resume payload is keyed
-  }, [resumeKey, initialMode]);
+  }
 
   const roomBefore = Math.max(0, remainingTodayMinor);
 
@@ -262,6 +263,7 @@ export function ReceiptCaptureFlow({
                 : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
+        clientMutationId: newClientMutationId(),
         source:
           preview.importKind === "bank_app"
             ? "bank_import"
@@ -450,6 +452,10 @@ export function ReceiptCaptureFlow({
 
         <p className="text-center text-xs text-[var(--numa-faint)]">
           {copy.footer}
+        </p>
+        <p className="mx-auto max-w-[40ch] text-center text-xs leading-relaxed text-[var(--numa-faint)]">
+          Bilden skickas till AI för att läsa belopp. Vi sparar den i högst 30
+          dagar. Du kan radera den när som helst.
         </p>
 
         {error ? (
@@ -725,6 +731,20 @@ export function ReceiptCaptureFlow({
           }}
         >
           Ta ny bild
+        </button>
+        <button
+          type="button"
+          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
+          aria-label="Radera uppladdad bild"
+          onClick={() => {
+            const observationId = preview.observationId;
+            URL.revokeObjectURL(preview.previewUrl);
+            setPreview(null);
+            setAmountEditable(false);
+            void deleteObservationAction(observationId);
+          }}
+        >
+          Radera bilden
         </button>
       </div>
     </form>

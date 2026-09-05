@@ -22,6 +22,7 @@ import {
   type AnalysMonthView,
 } from "@/features/finance/analys-month";
 import { loadErrorMessageSv } from "@/lib/async";
+import { reportError } from "@/lib/observe/report";
 
 export type { AnalysLine } from "@/features/finance/analys-month";
 
@@ -221,6 +222,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
   } catch (error) {
     unstable_rethrow(error);
     console.error("[numa] loadAnalysSnapshot failed", error);
+    void reportError("loader.analys", error);
     return {
       ok: false,
       error: loadErrorMessageSv(error, "Kunde inte hämta analysen"),

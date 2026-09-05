@@ -1,13 +1,19 @@
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
+  CANONICAL_CURRENCY,
   spendingCategoriesByMonthKey,
   appliesToIncome,
   appliesToSpending,
   calculateAccountBalance,
+  checkpointMapForAccounts,
   filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
+  projectLedgerToCanonicalThb,
   totalSaldoThbMinor,
+  type Account,
+  type BalanceCheckpoint,
+  type CanonicalTransaction,
 } from "@/domain/finance";
 import {
   humanizeMovementTitle,
@@ -28,8 +34,14 @@ export type MovementRow = {
   category: string | null;
   transactionType: string;
   direction: "debit" | "credit";
+  /** Canonical THB for list totals / Hem. */
   amountMinor: number;
   currency: CurrencyCode;
+  /** Native booking — edit prefills this, never the projected THB. */
+  nativeAmountMinor: number;
+  nativeCurrency: CurrencyCode;
+  accountId?: string | null;
+  fxRate?: number | null;
   occurredAt: string;
   source: string;
 };
@@ -61,6 +73,135 @@ export type MovementsSnapshotResult =
   | { ok: true; data: MovementsSnapshot }
   | { ok: false; error: string };
 
+export {
+  mergeMovementNativeFromServer,
+  movementEditPrefill,
+} from "@/features/finance/movement-native";
+
+/**
+ * All-account Rörelser view: every confirmed row, totals in canonical THB.
+ * Transfers and cash withdrawals stay on the list but do not count as spend.
+ */
+export function buildMovementsSnapshot(input: {
+  accounts: Account[];
+  transactions: CanonicalTransaction[];
+  checkpoints: Array<BalanceCheckpoint | null>;
+  timeZone: string;
+  now?: Date;
+}): MovementsSnapshot {
+  const now = input.now ?? new Date();
+  const thisMonth = monthKeyFromDate(now, input.timeZone);
+  const checkpointByAccountId = checkpointMapForAccounts(
+    input.accounts,
+    input.checkpoints,
+  );
+
+  const txsByAccount = new Map<string, CanonicalTransaction[]>();
+  for (const tx of input.transactions) {
+    const list = txsByAccount.get(tx.accountId);
+    if (list) list.push(tx);
+    else txsByAccount.set(tx.accountId, [tx]);
+  }
+
+  const balanceMinor = totalSaldoThbMinor(
+    input.accounts.map((account, index) => {
+      const checkpoint = input.checkpoints[index] ?? null;
+      let nativeMinor: number | null = null;
+      if (checkpoint) {
+        const after = filterTransactionsAfterCheckpoint(
+          txsByAccount.get(account.id) ?? [],
+          checkpoint,
+        );
+        try {
+          nativeMinor =
+            calculateAccountBalance({
+              checkpoint,
+              transactionsAfterCheckpoint: after,
+            })?.amountMinor ?? null;
+        } catch (error) {
+          console.error("[numa] movements balance calc failed", error);
+        }
+      }
+      return { account, nativeMinor, checkpoint };
+    }),
+  );
+
+  const confirmed = input.transactions.filter((tx) => tx.status === "confirmed");
+  const canonical = projectLedgerToCanonicalThb(
+    confirmed,
+    checkpointByAccountId,
+  );
+  const canonicalById = new Map(canonical.map((tx) => [tx.id, tx]));
+
+  let monthIncomeMinor = 0;
+  let monthExpenseMinor = 0;
+  let allIncomeMinor = 0;
+  let allExpenseMinor = 0;
+
+  for (const tx of canonical) {
+    const inMonth =
+      monthKeyFromDate(new Date(tx.occurredAt), input.timeZone) === thisMonth;
+    if (appliesToSpending(tx)) {
+      allExpenseMinor += tx.amountMinor;
+      if (inMonth) monthExpenseMinor += tx.amountMinor;
+    }
+    if (appliesToIncome(tx)) {
+      allIncomeMinor += tx.amountMinor;
+      if (inMonth) monthIncomeMinor += tx.amountMinor;
+    }
+  }
+
+  const items: MovementRow[] = [...confirmed]
+    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
+    .map((tx) => {
+      const projected = canonicalById.get(tx.id);
+      const amountMinor = projected?.amountMinor ?? tx.thbMinor ?? tx.amountMinor;
+      const currency = (projected?.currency ??
+        (tx.thbMinor != null ? CANONICAL_CURRENCY : tx.currency)) as CurrencyCode;
+      return {
+        id: tx.id,
+        description: humanizeMovementTitle(
+          sanitizeMoneyDescription(tx.description),
+          tx.direction === "debit" ? -amountMinor : amountMinor,
+        ),
+        category: tx.category,
+        transactionType: tx.transactionType,
+        direction: tx.direction,
+        amountMinor,
+        currency,
+        nativeAmountMinor: tx.amountMinor,
+        nativeCurrency: tx.currency,
+        accountId: tx.accountId,
+        fxRate: tx.fxRate ?? checkpointByAccountId.get(tx.accountId)?.fxRate ?? null,
+        occurredAt: tx.occurredAt,
+        source: tx.source,
+      };
+    });
+
+  const monthCategories =
+    spendingCategoriesByMonthKey({
+      transactions: canonical,
+      currency: CANONICAL_CURRENCY,
+      timeZone: input.timeZone,
+    })[thisMonth] ?? [];
+
+  return {
+    currency: CANONICAL_CURRENCY,
+    hasBankTruth: balanceMinor != null,
+    balanceMinor,
+    monthIncomeMinor,
+    monthExpenseMinor,
+    monthNetMinor: monthIncomeMinor - monthExpenseMinor,
+    allIncomeMinor,
+    allExpenseMinor,
+    allNetMinor: allIncomeMinor - allExpenseMinor,
+    monthCategories,
+    items,
+    timeZone: input.timeZone,
+    monthKey: thisMonth,
+  };
+}
+
 /**
  * Rörelser: profile + full ledger for the list, Σ THB saldo like Hem/Konton.
  */
@@ -71,117 +212,19 @@ export const loadMovementsSnapshot = cache(
         getProfile(),
         listAccounts(),
       ]);
-      const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
       const [transactions, checkpoints] = await Promise.all([
         listTransactions(),
         Promise.all(accounts.map((account) => getLatestCheckpoint(account.id))),
       ]);
 
-      const timezone = profile.timezone || "Asia/Bangkok";
-      const thisMonth = monthKeyFromDate(new Date(), timezone);
-      const ledgerCurrency = (primary?.currency ??
-        profile.primaryCurrency) as CurrencyCode;
-
-      const txsByAccount = new Map<string, typeof transactions>();
-      for (const tx of transactions) {
-        const list = txsByAccount.get(tx.accountId);
-        if (list) list.push(tx);
-        else txsByAccount.set(tx.accountId, [tx]);
-      }
-
-      const balanceMinor = totalSaldoThbMinor(
-        accounts.map((account, index) => {
-          const checkpoint = checkpoints[index] ?? null;
-          let nativeMinor: number | null = null;
-          if (checkpoint) {
-            const after = filterTransactionsAfterCheckpoint(
-              txsByAccount.get(account.id) ?? [],
-              checkpoint,
-            );
-            try {
-              nativeMinor =
-                calculateAccountBalance({
-                  checkpoint,
-                  transactionsAfterCheckpoint: after,
-                })?.amountMinor ?? null;
-            } catch (error) {
-              console.error("[numa] movements balance calc failed", error);
-            }
-          }
-          return { account, nativeMinor, checkpoint };
-        }),
-      );
-
-      let monthIncomeMinor = 0;
-      let monthExpenseMinor = 0;
-      let allIncomeMinor = 0;
-      let allExpenseMinor = 0;
-
-      const confirmed = transactions.filter(
-        (t) =>
-          t.status === "confirmed" &&
-          t.currency === ledgerCurrency &&
-          (primary == null || t.accountId === primary.id),
-      );
-
-      for (const tx of confirmed) {
-        const inMonth =
-          monthKeyFromDate(new Date(tx.occurredAt), timezone) === thisMonth;
-        const isExpense = appliesToSpending(tx);
-        const isIncome = appliesToIncome(tx);
-
-        if (isExpense) {
-          allExpenseMinor += tx.amountMinor;
-          if (inMonth) monthExpenseMinor += tx.amountMinor;
-        }
-        if (isIncome) {
-          allIncomeMinor += tx.amountMinor;
-          if (inMonth) monthIncomeMinor += tx.amountMinor;
-        }
-      }
-
-      const items: MovementRow[] = [...confirmed]
-        .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-        .map((tx) => ({
-          id: tx.id,
-          description: humanizeMovementTitle(
-            sanitizeMoneyDescription(tx.description),
-            tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor,
-          ),
-          category: tx.category,
-          transactionType: tx.transactionType,
-          direction: tx.direction,
-          amountMinor: tx.amountMinor,
-          currency: tx.currency,
-          occurredAt: tx.occurredAt,
-          source: tx.source,
-        }));
-
-      // Same split Analys shows, from one shared function.
-      const monthCategories =
-        spendingCategoriesByMonthKey({
-          transactions: confirmed,
-          currency: ledgerCurrency,
-          timeZone: timezone,
-        })[thisMonth] ?? [];
-
       return {
         ok: true,
-        data: {
-          currency: "THB",
-          hasBankTruth: balanceMinor != null,
-          balanceMinor,
-          monthIncomeMinor,
-          monthExpenseMinor,
-          monthNetMinor: monthIncomeMinor - monthExpenseMinor,
-          allIncomeMinor,
-          allExpenseMinor,
-          allNetMinor: allIncomeMinor - allExpenseMinor,
-          monthCategories,
-          items,
-          timeZone: timezone,
-          monthKey: thisMonth,
-        },
+        data: buildMovementsSnapshot({
+          accounts,
+          transactions,
+          checkpoints,
+          timeZone: profile.timezone || "Asia/Bangkok",
+        }),
       };
     } catch (error) {
       unstable_rethrow(error);

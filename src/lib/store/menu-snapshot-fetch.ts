@@ -34,10 +34,10 @@ export type MenuSnapshotSources = {
   loadAccounts: () => Promise<Account[]>;
   loadPlanItems: () => Promise<PlanItem[]>;
   loadCheckpoint: (accountId: string) => Promise<BalanceCheckpoint | null>;
-  loadTransactions: (
-    accountId: string,
-    options: { sinceIso: string },
-  ) => Promise<CanonicalTransaction[]>;
+  loadTransactions: (options: {
+    sinceIso: string;
+    accountId?: string;
+  }) => Promise<CanonicalTransaction[]>;
 };
 
 export type MenuSnapshotBundle = {
@@ -46,6 +46,7 @@ export type MenuSnapshotBundle = {
   planItems: PlanItem[];
   primary: Account | null;
   checkpoint: BalanceCheckpoint | null;
+  checkpoints: Array<BalanceCheckpoint | null>;
   transactions: CanonicalTransaction[];
 };
 
@@ -60,9 +61,9 @@ function historySince(timeZone: string): Date {
  * Menu snapshot IO for a (possibly empty) invited account.
  *
  * Wave 1 (always, parallel): profile, accounts, plan items.
- * Checkpoint starts as soon as accounts resolve — it does not wait for plan items.
- * Wave 2 (account only, parallel): checkpoint + ledger in the spend window.
- * Never touches user_progress / progress_events.
+ * Checkpoints start as soon as accounts resolve — they do not wait for plan items.
+ * Wave 2 (account only, parallel): checkpoints + ledger in the spend window.
+ * Ledger includes every account. Never touches user_progress / progress_events.
  */
 export async function fetchMenuSnapshotBundle(
   sources: MenuSnapshotSources,
@@ -74,9 +75,9 @@ export async function fetchMenuSnapshotBundle(
 
   const accounts = await accountsP;
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
-  const checkpointP = primary
-    ? sources.loadCheckpoint(primary.id)
-    : Promise.resolve(null);
+  const checkpointsP = Promise.all(
+    accounts.map((account) => sources.loadCheckpoint(account.id)),
+  );
 
   const [profile, planItems] = await Promise.all([profileP, planItemsP]);
 
@@ -87,6 +88,7 @@ export async function fetchMenuSnapshotBundle(
       planItems,
       primary: null,
       checkpoint: null,
+      checkpoints: await checkpointsP,
       transactions: [],
     };
   }
@@ -101,24 +103,32 @@ export async function fetchMenuSnapshotBundle(
     historySince: since,
   });
 
-  const [checkpoint, spendTx] = await Promise.all([
-    checkpointP,
-    sources.loadTransactions(primary.id, {
+  const [checkpoints, spendTx] = await Promise.all([
+    checkpointsP,
+    sources.loadTransactions({
       sinceIso: spendWindow.spendSinceIso,
     }),
   ]);
+  const primaryIndex = accounts.findIndex((account) => account.id === primary.id);
+  const checkpoint = checkpoints[primaryIndex] ?? null;
+
+  const oldestCheckpoint = checkpoints.reduce<string | null>((oldest, row) => {
+    if (!row?.verifiedAt) return oldest;
+    if (!oldest || row.verifiedAt < oldest) return row.verifiedAt;
+    return oldest;
+  }, null);
 
   const ledger = snapshotLedgerWindow({
     monthStart,
     cycleStartAt: cycle.startAt,
-    checkpointVerifiedAt: checkpoint?.verifiedAt,
+    checkpointVerifiedAt: oldestCheckpoint,
     historySince: since,
   });
 
   const transactions =
     ledger.refetchFromCheckpoint &&
     ledger.saldoSinceIso !== spendWindow.spendSinceIso
-      ? await sources.loadTransactions(primary.id, {
+      ? await sources.loadTransactions({
           sinceIso: ledger.saldoSinceIso,
         })
       : spendTx;
@@ -129,6 +139,7 @@ export async function fetchMenuSnapshotBundle(
     planItems,
     primary,
     checkpoint,
+    checkpoints,
     transactions,
   };
 }

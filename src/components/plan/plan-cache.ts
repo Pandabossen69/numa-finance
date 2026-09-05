@@ -16,6 +16,7 @@ function takeSnapshot(data: {
   bankBalanceMinor: PlanSnapshot["bankBalanceMinor"];
   spendingByMonthKey: PlanSnapshot["spendingByMonthKey"];
   ledgerTransactions: PlanSnapshot["ledgerTransactions"];
+  accounts?: PlanSnapshot["accounts"];
   financeRevision: PlanSnapshot["financeRevision"];
   verifiedAt: PlanSnapshot["verifiedAt"];
   truthStatus: PlanSnapshot["truthStatus"];
@@ -27,6 +28,7 @@ function takeSnapshot(data: {
     bankBalanceMinor: data.bankBalanceMinor,
     spendingByMonthKey: data.spendingByMonthKey,
     ledgerTransactions: data.ledgerTransactions,
+    accounts: data.accounts,
     financeRevision: data.financeRevision,
     verifiedAt: data.verifiedAt,
     truthStatus: data.truthStatus,

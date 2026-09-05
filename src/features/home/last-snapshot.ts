@@ -1,6 +1,7 @@
 import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
-  computeSpendingWindows,
+  computeClassifiedSpendingWindows,
+  resolveTodaySpendSplit,
   cumulativePlanSavingsMinor,
   hasCycleFundingEvidence,
   isSameZonedDay,
@@ -8,9 +9,11 @@ import {
   perDayBudgetMinor,
   planWealthTotalMinor,
   projectCashCoverage,
+  projectLedgerToCanonicalThb,
   projectLivingBudget,
   projectPayCycle,
   remainingTodayOf,
+  type FxCheckpoint,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
@@ -224,13 +227,14 @@ function shouldAdoptFinanceSnapshot(
 
 export function rememberHomeSnapshot(
   snap: HomeSnapshot,
-  opts?: { dirty?: boolean },
+  opts?: { dirty?: boolean; force?: boolean },
 ) {
   bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
   if (home === snap && homeDirty === nextDirty) return;
   if (
     !nextDirty &&
+    !opts?.force &&
     home &&
     !shouldAdoptFinanceSnapshot(home, snap, homeDirty)
   ) {
@@ -240,7 +244,15 @@ export function rememberHomeSnapshot(
     ? {
         ...snap,
         verifiedAt: new Date().toISOString(),
-        truthStatus: snap.truthStatus === "unavailable" ? "unavailable" : "stale",
+        // Dirty only blocks a stale RSC echo. A successful local
+        // calculation (optimistic SEK/THB spend) stays verified so Hem
+        // does not flash "Vi kan inte räkna just nu." after a durable save.
+        truthStatus:
+          snap.truthStatus === "unavailable"
+            ? "unavailable"
+            : snap.truthStatus === "verified"
+              ? "verified"
+              : "stale",
       }
     : snap;
   homeDirty = nextDirty;
@@ -295,9 +307,51 @@ export function confirmOptimisticFinance() {
   }
 }
 
+/** Mutation result is the canonical revision — never lose it to a stale RSC echo. */
+export function adoptMutationFinance(result: {
+  home?: HomeSnapshot | null;
+  plan?: PlanSnapshot | null;
+  accounts?: AccountsSnapshot | null;
+  movements?: MovementsSnapshot | null;
+}) {
+  if (result.home) rememberHomeSnapshot(result.home, { force: true });
+  if (result.plan) rememberPlanSnapshot(result.plan);
+  if (result.accounts) rememberAccountsSnapshot(result.accounts);
+  if (result.movements) rememberMovementsSnapshot(result.movements);
+  confirmOptimisticFinance();
+}
+
 /** Drop Analys cache when money truth moves — next visit refetches shared revision. */
 export function invalidateAnalysSnapshot() {
   analys = null;
+}
+
+/**
+ * Plan ledger stays native for Rörelser edit. Spend windows must use the
+ * same locked THB projection as assembleTodaySnapshot — otherwise SEK
+ * rows are dropped by the THB currency filter and Hem-perioden lags.
+ */
+function canonicalSpendLedger(snapshot: PlanSnapshot) {
+  const map = new Map<string, FxCheckpoint | null>();
+  for (const row of snapshot.accounts?.accounts ?? []) {
+    map.set(row.id, {
+      accountId: row.id,
+      balanceMinor: row.calculatedMinor ?? 0,
+      thbMinor: row.thbMinor,
+      fxRate: row.fxRate,
+    });
+  }
+  for (const tx of snapshot.ledgerTransactions) {
+    if (map.has(tx.accountId)) continue;
+    if (tx.thbMinor == null && (tx.fxRate == null || tx.fxRate <= 0)) continue;
+    map.set(tx.accountId, {
+      accountId: tx.accountId,
+      balanceMinor: 0,
+      thbMinor: tx.thbMinor ?? null,
+      fxRate: tx.fxRate ?? null,
+    });
+  }
+  return projectLedgerToCanonicalThb(snapshot.ledgerTransactions, map);
 }
 
 /**
@@ -306,25 +360,51 @@ export function invalidateAnalysSnapshot() {
  */
 export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
   if (!home) return;
+  const homeRev = home.financeRevision ?? "";
+  const planRev = snapshot.financeRevision ?? "";
+  const planIsLocal = planRev.endsWith(":local");
+  if (
+    home.verifiedAt &&
+    snapshot.verifiedAt &&
+    homeRev &&
+    planRev &&
+    !planIsLocal &&
+    planRev !== homeRev &&
+    snapshot.verifiedAt < home.verifiedAt
+  ) {
+    return;
+  }
   const now = new Date();
   const timeZone = snapshot.timeZone;
   const cycle = projectPayCycle(snapshot.items, now, timeZone);
-  const { today, cycle: ledgerCycleSpend } = computeSpendingWindows({
-    transactions: snapshot.ledgerTransactions,
+  const spendLedger = canonicalSpendLedger(snapshot);
+  const windows = computeClassifiedSpendingWindows({
+    transactions: spendLedger,
     currency: snapshot.currency,
     now,
     timeZone,
     cycleStartAt: cycle.startAt,
     cycleEndAt: cycle.endAt,
   });
-  const ledgerCycleMinor = ledgerCycleSpend.amountMinor;
-  const ledgerTodayMinor = today.amountMinor;
+  const ledgerCycleMinor = windows.cycle.total.amountMinor;
   const cycleSpendingMinor = homeDirty
     ? Math.max(home.cycleSpendingMinor, ledgerCycleMinor)
     : ledgerCycleMinor;
-  const todaySpendingMinor = homeDirty
-    ? Math.max(home.todaySpendingMinor, ledgerTodayMinor)
-    : ledgerTodayMinor;
+  const todaySplit = resolveTodaySpendSplit({
+    ledgerDiscretionaryMinor: windows.today.discretionary.amountMinor,
+    ledgerPlannedPaidMinor: windows.today.plannedPaid.amountMinor,
+    ledgerTotalMinor: windows.today.total.amountMinor,
+    homeDiscretionaryMinor: home.todaySpendingMinor ?? 0,
+    homePlannedPaidMinor: home.todayPlannedPaidMinor ?? 0,
+    homeDirty,
+  });
+  // Plan ledger must never raise Spenderat idag. A settle row that lost
+  // origin/link fields classifies as lunch and produced 21 200 here.
+  const todaySpendingMinor = home.todaySpendingMinor ?? 0;
+  const todayPlannedPaidMinor = Math.max(
+    home.todayPlannedPaidMinor ?? 0,
+    todaySplit.plannedPaidMinor,
+  );
   const bankBalanceMinor = homeDirty
     ? home.calculatedBalanceMinor
     : (snapshot.bankBalanceMinor ?? home.calculatedBalanceMinor);
@@ -361,6 +441,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       ...home,
       calculatedBalanceMinor: bankBalanceMinor,
       todaySpendingMinor,
+      todayPlannedPaidMinor,
       cycleSpendingMinor,
       safeToSpendTodayMinor: living.remainingTodayMinor,
       cycleStartLabelSv: cycle.startLabelSv,
@@ -661,13 +742,16 @@ export function applyOptimisticPlanSettle(input: {
   unpaidDeltaMinor: number;
   /** Expense settle booked to ledger — counts once in cycle spend, not flexible twice. */
   cycleSpendingDeltaMinor?: number;
+  /** Planned-bill payments booked today — never the discretionary day envelope. */
+  todayPlannedPaidDeltaMinor?: number;
 }): HomeSnapshot | null {
   if (
     !home ||
     (input.saldoDeltaMinor === 0 &&
       input.incomingDeltaMinor === 0 &&
       input.unpaidDeltaMinor === 0 &&
-      (input.cycleSpendingDeltaMinor ?? 0) === 0)
+      (input.cycleSpendingDeltaMinor ?? 0) === 0 &&
+      (input.todayPlannedPaidDeltaMinor ?? 0) === 0)
   ) {
     return home;
   }
@@ -719,6 +803,8 @@ export function applyOptimisticPlanSettle(input: {
       unpaidMinor,
       overMinor,
       cycleSpendingMinor,
+      todayPlannedPaidMinor:
+        previous.todayPlannedPaidMinor + (input.todayPlannedPaidDeltaMinor ?? 0),
       remainingFreeMinor,
       freeToSpendMinor,
       planExpenseMinor,
@@ -915,11 +1001,16 @@ export function applyAccountBalance(
 export function applyMovementsAdd(row: MovementRow): MovementsSnapshot | null {
   if (!movements) return null;
   if (movements.items.some((tx) => tx.id === row.id)) return movements;
+  const normalized: MovementRow = {
+    ...row,
+    nativeAmountMinor: row.nativeAmountMinor ?? row.amountMinor,
+    nativeCurrency: row.nativeCurrency ?? row.currency,
+  };
   rememberMovementsSnapshot(
     recomputeMovements(
       movements,
-      [row, ...movements.items],
-      movementBalanceDelta(row),
+      [normalized, ...movements.items],
+      movementBalanceDelta(normalized),
     ),
     { dirty: true },
   );
@@ -938,7 +1029,10 @@ export function applyMovementsVoid(id: string): MovementsSnapshot | null {
     ),
     { dirty: true },
   );
-  applyAccountDelta(-movementBalanceDelta(item));
+  applyAccountDelta(
+    -signedNativeDelta(item, item.nativeAmountMinor ?? item.amountMinor),
+    item.accountId,
+  );
   if (item.transactionType === "expense") {
     applyHomeForExpenseDelta(item, -item.amountMinor);
   } else if (item.transactionType === "income") {
@@ -947,20 +1041,40 @@ export function applyMovementsVoid(id: string): MovementsSnapshot | null {
   return movements;
 }
 
+function signedNativeDelta(tx: MovementRow, nativeMinor: number): number {
+  if (tx.transactionType === "income" || tx.direction === "credit") {
+    return nativeMinor;
+  }
+  if (tx.transactionType === "expense" || tx.direction === "debit") {
+    return -nativeMinor;
+  }
+  return 0;
+}
+
 export function applyMovementsEdit(
   id: string,
   patch: {
     amountMinor: number;
     description: string;
     category?: string | null;
+    nativeAmountMinor?: number;
+    thbMinor?: number;
   },
 ): MovementsSnapshot | null {
   if (!movements) return null;
   const item = movements.items.find((tx) => tx.id === id);
   if (!item) return movements;
+  const nextNative = patch.nativeAmountMinor ?? patch.amountMinor;
+  const rate = item.fxRate ?? (item.nativeCurrency === "THB" ? 1 : null);
+  const nextThb =
+    patch.thbMinor ??
+    (item.nativeCurrency === "THB" || rate == null
+      ? nextNative
+      : Math.round(nextNative * rate));
   const nextItem: MovementRow = {
     ...item,
-    amountMinor: patch.amountMinor,
+    amountMinor: nextThb,
+    nativeAmountMinor: nextNative,
     description: patch.description,
     category: patch.category === undefined ? item.category : patch.category,
   };
@@ -974,7 +1088,10 @@ export function applyMovementsEdit(
     ),
     { dirty: true },
   );
-  applyAccountDelta(balanceDelta);
+  const nativeDelta =
+    signedNativeDelta(nextItem, nextNative) -
+    signedNativeDelta(item, item.nativeAmountMinor ?? item.amountMinor);
+  applyAccountDelta(nativeDelta, item.accountId);
   if (item.transactionType === "expense") {
     applyHomeForExpenseDelta(item, nextItem.amountMinor - item.amountMinor);
   } else if (item.transactionType === "income") {
@@ -989,17 +1106,35 @@ export function applyLocalExpense(input: {
   description: string;
   category?: string | null;
   currency: CurrencyCode;
+  accountId?: string | null;
+  thbAmountMinor?: number;
+  nativeAmountMinor?: number;
+  nativeCurrency?: CurrencyCode;
+  fxRate?: number | null;
 }) {
-  applyOptimisticHomeSpend(input.amountMinor);
-  applyAccountDelta(-input.amountMinor);
+  const nativeMinor = input.nativeAmountMinor ?? input.amountMinor;
+  const nativeCurrency = input.nativeCurrency ?? input.currency;
+  const thbMinor =
+    input.thbAmountMinor ??
+    (nativeCurrency === "THB"
+      ? nativeMinor
+      : input.fxRate != null && input.fxRate > 0
+        ? Math.round(nativeMinor * input.fxRate)
+        : nativeMinor);
+  applyOptimisticHomeSpend(thbMinor);
+  applyAccountDelta(-nativeMinor, input.accountId);
   applyMovementsAdd({
     id: input.id ?? crypto.randomUUID(),
     description: input.description,
     category: input.category ?? null,
     transactionType: "expense",
     direction: "debit",
-    amountMinor: input.amountMinor,
-    currency: input.currency,
+    amountMinor: thbMinor,
+    currency: "THB",
+    nativeAmountMinor: nativeMinor,
+    nativeCurrency,
+    accountId: input.accountId,
+    fxRate: input.fxRate ?? (nativeCurrency === "THB" ? 1 : null),
     occurredAt: new Date().toISOString(),
     source: "manual",
   });
@@ -1010,17 +1145,35 @@ export function applyLocalIncome(input: {
   amountMinor: number;
   description: string;
   currency: CurrencyCode;
+  accountId?: string | null;
+  thbAmountMinor?: number;
+  nativeAmountMinor?: number;
+  nativeCurrency?: CurrencyCode;
+  fxRate?: number | null;
 }) {
-  applyOptimisticHomeIncome(input.amountMinor);
-  applyAccountDelta(input.amountMinor);
+  const nativeMinor = input.nativeAmountMinor ?? input.amountMinor;
+  const nativeCurrency = input.nativeCurrency ?? input.currency;
+  const thbMinor =
+    input.thbAmountMinor ??
+    (nativeCurrency === "THB"
+      ? nativeMinor
+      : input.fxRate != null && input.fxRate > 0
+        ? Math.round(nativeMinor * input.fxRate)
+        : nativeMinor);
+  applyOptimisticHomeIncome(thbMinor);
+  applyAccountDelta(nativeMinor, input.accountId);
   applyMovementsAdd({
     id: input.id ?? crypto.randomUUID(),
     description: input.description,
     category: null,
     transactionType: "income",
     direction: "credit",
-    amountMinor: input.amountMinor,
-    currency: input.currency,
+    amountMinor: thbMinor,
+    currency: "THB",
+    nativeAmountMinor: nativeMinor,
+    nativeCurrency,
+    accountId: input.accountId,
+    fxRate: input.fxRate ?? (nativeCurrency === "THB" ? 1 : null),
     occurredAt: new Date().toISOString(),
     source: "manual",
   });

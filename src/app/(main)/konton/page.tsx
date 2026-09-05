@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
 import { loadAccountsSnapshot } from "@/features/finance/load-accounts";
 
+export const dynamic = "force-dynamic";
+
 export default function KontonPage() {
   return (
     <Suspense fallback={<AccountsDashboard data={null} />}>

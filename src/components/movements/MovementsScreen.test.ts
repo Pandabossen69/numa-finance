@@ -32,6 +32,19 @@ describe("Rörelser expense color", () => {
     expect(src).not.toContain("toFixed(2)");
   });
 
+  it("prefills native amount even when the dirty snapshot copied THB", () => {
+    expect(src).toContain("movementEditPrefill");
+    expect(src).toContain("mergeMovementNativeFromServer");
+    expect(src).toContain("@/features/finance/movement-native");
+    expect(src).toContain("lastAccountsSnapshot");
+    expect(src).toMatch(
+      /import type \{ MovementsSnapshot \} from ["']@\/features\/finance\/load-movements["']/,
+    );
+    expect(src).not.toContain(
+      "minorToUi(tx.nativeAmountMinor ?? tx.amountMinor)",
+    );
+  });
+
   it("gives Rörelser chips a 44px tap target", () => {
     expect(src).toContain("min-h-11 rounded-full");
     expect(src).not.toContain("min-h-10 rounded-full");

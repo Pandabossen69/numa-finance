@@ -2,6 +2,8 @@ import { CreateAccountForm } from "@/components/accounts/CreateAccountForm";
 import { MerBackLink } from "@/components/mer/MerHub";
 import { getProfile } from "@/lib/store/repository";
 
+export const dynamic = "force-dynamic";
+
 export default async function NyttKontoPage() {
   const profile = await getProfile();
 

@@ -18,12 +18,20 @@ import {
   voidTransaction,
 } from "@/lib/store/repository";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
+import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { PlanSnapshot } from "@/features/finance/load-plan";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } from "@/domain/money";
 import {
   ACCOUNT_KINDS,
   assertCurrencyAllowedForKind,
   type AccountKind,
 } from "@/domain/finance";
+import {
+  refreshAfterDurableWrite,
+  SAVED_REFRESH_PENDING_SV,
+} from "@/features/finance/mutation-refresh";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
 
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -50,10 +58,20 @@ const expenseSchema = z.object({
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
   category: z.string().trim().max(40).optional().nullable(),
+  clientMutationId: z.string().uuid().optional(),
 });
 
 export type ActionResult =
-  | { ok: true; id?: string }
+  | {
+      ok: true;
+      id?: string;
+      refreshPending?: boolean;
+      refreshPendingMessage?: string;
+      home?: HomeSnapshot;
+      plan?: PlanSnapshot;
+      accounts?: AccountsSnapshot;
+      movements?: MovementsSnapshot;
+    }
   | { ok: false; error: string };
 
 export async function createAccountAction(
@@ -122,15 +140,30 @@ export async function createExpenseAction(
       amountMinor,
       description: input.description,
       category: input.category,
+      clientMutationId: input.clientMutationId,
     });
 
     const profile = await getProfile();
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
-    revalidateMoneyPaths();
-    return { ok: true, id: tx.id };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        id: tx.id,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return {
+      ok: true,
+      id: tx.id,
+      ...refreshed.snapshots,
+    };
   } catch (error) {
+    const { reportError } = await import("@/lib/observe/report");
+    void reportError("mutation.expense", error);
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte spara utgift",
@@ -142,6 +175,7 @@ const incomeSchema = z.object({
   accountId: z.string().uuid(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
+  clientMutationId: z.string().uuid().optional(),
 });
 
 const transferSchema = z.object({
@@ -175,6 +209,7 @@ export async function updateTransactionAction(raw: {
   amount: string;
   description?: string;
   category?: string | null;
+  clientMutationId?: string;
 }): Promise<ActionResult> {
   try {
     const id = z.string().uuid().parse(raw.id);
@@ -188,7 +223,16 @@ export async function updateTransactionAction(raw: {
       description: raw.description,
       category: raw.category,
     });
-    return { ok: true };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        id,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, id, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,
@@ -201,7 +245,16 @@ export async function updateTransactionAction(raw: {
 export async function voidTransactionAction(id: string): Promise<ActionResult> {
   try {
     await voidTransaction(z.string().uuid().parse(id));
-    return { ok: true };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        id,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, id, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,
@@ -224,13 +277,22 @@ export async function createIncomeAction(
       accountId: input.accountId,
       amountMinor,
       description: input.description,
+      clientMutationId: input.clientMutationId,
     });
     const profile = await getProfile();
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
-    revalidateMoneyPaths();
-    return { ok: true, id: tx.id };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        id: tx.id,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, id: tx.id, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,

@@ -20,14 +20,19 @@ import {
   parseUiAmountToMinor,
   type CurrencyCode,
 } from "@/domain/money";
+import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
-import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
+import {
+  financeTruthMessageSv,
+  shouldShowFinanceTruthBanner,
+} from "@/features/finance/finance-truth-copy";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import {
+  adoptMutationFinance,
   applyAccountBalance,
   applyAccountDelta,
   applyMovementsAdd,
@@ -116,14 +121,16 @@ export function HomeDashboard({
     );
   }
 
-  const staleBanner =
-    error || view.truthStatus === "stale" || view.truthStatus === "unavailable"
-      ? financeTruthMessageSv({
-          truthStatus: view.truthStatus === "verified" ? "stale" : view.truthStatus,
-          verifiedAt: view.verifiedAt,
-          timeZone: view.timeZone,
-        })
-      : null;
+  const staleBanner = shouldShowFinanceTruthBanner({
+    truthStatus: view.truthStatus,
+    error,
+  })
+    ? financeTruthMessageSv({
+        truthStatus: view.truthStatus,
+        verifiedAt: view.verifiedAt,
+        timeZone: view.timeZone,
+      })
+    : null;
 
   const remainingTodayMinor = view.remainingTodayMinor;
   const todaySpendingMinor = view.todaySpendingMinor;
@@ -293,9 +300,19 @@ export function HomeDashboard({
                           wrap={false}
                         />
                       </div>
-                      <p className="numa-metric-hint">Sänker bara idag</p>
+                      <p className="numa-metric-hint">{SV.spenderatIdagHint}</p>
                     </div>
                   </div>
+                  {view.todayPlannedPaidMinor > 0 ? (
+                    <p className="px-1 text-center text-[12px] text-[var(--numa-faint)]">
+                      {SV.betaldaRakningarIdag}{" "}
+                      <span className="font-semibold text-[var(--numa-ink)]">
+                        {formatMoney(
+                          money(view.todayPlannedPaidMinor, currency),
+                        )}
+                      </span>
+                    </p>
+                  ) : null}
                 </>
               ) : (
                 <div className="space-y-3 py-6 text-center">
@@ -430,12 +447,13 @@ export function HomeDashboard({
 
           <QuickExpense
             accountId={view.primaryAccountId}
+            accounts={accountsView?.accounts ?? accounts?.accounts ?? []}
             currency={currency}
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
-            onOptimisticSpend={(amountMinor) => applyOptimisticHomeSpend(amountMinor)}
-            onSpendFailed={(amountMinor) => revertOptimisticHomeSpend(amountMinor)}
+            onOptimisticSpend={(thbMinor) => applyOptimisticHomeSpend(thbMinor)}
+            onSpendFailed={(thbMinor) => revertOptimisticHomeSpend(thbMinor)}
           />
         </>
       ) : null}
@@ -621,6 +639,7 @@ function UpdateBalanceLink({
 
 function QuickExpense({
   accountId,
+  accounts,
   currency,
   disabled,
   remainingTodayMinor,
@@ -629,6 +648,14 @@ function QuickExpense({
   onSpendFailed,
 }: {
   accountId: string | null;
+  accounts: Array<{
+    id: string;
+    name: string;
+    kindLabelSv?: string;
+    kind?: string;
+    currency?: CurrencyCode;
+    fxRate?: number | null;
+  }>;
   currency: CurrencyCode;
   disabled: boolean;
   remainingTodayMinor: number;
@@ -638,9 +665,17 @@ function QuickExpense({
 }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [chosenAccountId, setChosenAccountId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   // Guard only — never flip a busy "saving…" flag; dial updates instantly.
   const guard = useSubmitGuard();
+  const targetAccountId = chosenAccountId || accountId;
+  const selectedAccount =
+    accounts.find((account) => account.id === targetAccountId) ?? null;
+  const nativeCurrency = selectedAccount?.currency ?? currency;
+  const fxRate =
+    selectedAccount?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
 
   return (
     <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
@@ -676,6 +711,27 @@ function QuickExpense({
         </p>
       ) : (
         <>
+          {accounts.length > 1 ? (
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[var(--numa-muted)]">
+                Konto
+              </span>
+              <select
+                value={targetAccountId ?? ""}
+                onChange={(e) => setChosenAccountId(e.target.value)}
+                aria-label="Konto för utgiften"
+                className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base outline-none focus:border-[var(--numa-accent)]"
+              >
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                    {account.currency ? ` · ${account.currency}` : ""}
+                    {account.kindLabelSv ? ` · ${account.kindLabelSv}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-[1fr_7.5rem_auto]">
             <input
               value={note}
@@ -684,20 +740,25 @@ function QuickExpense({
               aria-label="Anteckning"
               className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
             />
-            <input
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={currency}
-              aria-label="Belopp"
-              className="money min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
-            />
+            <label className="relative block">
+              <input
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+                aria-label={`Belopp ${nativeCurrency}`}
+                className="money min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 pr-12 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[var(--numa-muted)]">
+                {nativeCurrency}
+              </span>
+            </label>
             <button
               type="button"
               disabled={!amount.trim()}
               className="numa-btn numa-btn-accent min-h-12 px-4"
               onClick={() => {
-                if (guard.isRunning() || !accountId) return;
+                if (guard.isRunning() || !targetAccountId) return;
                 let amountMinor: number;
                 try {
                   amountMinor = parseUiAmountToMinor(amount);
@@ -709,27 +770,45 @@ function QuickExpense({
                   setError("Beloppet måste vara större än 0");
                   return;
                 }
+                const thbMinor = nativeToThbMinor(
+                  amountMinor,
+                  nativeCurrency,
+                  fxRate,
+                );
+                if (thbMinor == null) {
+                  setError("Konto saknar växelkurs");
+                  return;
+                }
                 if (!guard.tryBegin()) return;
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
+                const mutationId = newClientMutationId();
                 setError(null);
+                setNotice(null);
                 setAmount("");
                 setNote("");
                 // Instant UI — dial + konton; server + rörelser catch up.
-                onOptimisticSpend(amountMinor);
-                applyAccountDelta(-amountMinor, accountId);
+                onOptimisticSpend(thbMinor);
+                applyAccountDelta(-amountMinor, targetAccountId);
                 void (async () => {
                   try {
                     const result = await createExpenseAction({
-                      accountId,
+                      accountId: targetAccountId,
                       amount: amountInput,
                       description,
+                      clientMutationId: mutationId,
                     });
                     if (!result.ok) {
-                      onSpendFailed(amountMinor);
-                      applyAccountDelta(amountMinor, accountId);
+                      onSpendFailed(thbMinor);
+                      applyAccountDelta(amountMinor, targetAccountId);
                       setError(result.error);
                       return;
+                    }
+                    adoptMutationFinance(result);
+                    if (result.refreshPending) {
+                      setNotice(
+                        result.refreshPendingMessage ?? "Sparat. Uppdaterar siffrorna…",
+                      );
                     }
                     applyMovementsAdd({
                       id: result.id ?? crypto.randomUUID(),
@@ -737,8 +816,12 @@ function QuickExpense({
                       category: null,
                       transactionType: "expense",
                       direction: "debit",
-                      amountMinor,
-                      currency,
+                      amountMinor: thbMinor,
+                      currency: "THB",
+                      nativeAmountMinor: amountMinor,
+                      nativeCurrency,
+                      accountId: targetAccountId,
+                      fxRate,
                       occurredAt: new Date().toISOString(),
                       source: "manual",
                     });
@@ -751,6 +834,9 @@ function QuickExpense({
               Spara
             </button>
           </div>
+          {notice ? (
+            <p className="text-sm text-[var(--numa-muted)]">{notice}</p>
+          ) : null}
           {error ? (
             <p className="text-sm text-[var(--numa-danger)]" role="alert">
               {error}

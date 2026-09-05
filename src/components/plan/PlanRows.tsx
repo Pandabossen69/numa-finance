@@ -46,6 +46,9 @@ export function PlanRows({
   onStartPartial,
   onCancelPartial,
   onSavePartial,
+  settleAccounts = [],
+  settleAccountId = "",
+  onSettleAccountId,
   onEditName,
   onEditAmount,
   onEditExtra,
@@ -78,6 +81,9 @@ export function PlanRows({
   onStartPartial: (item: PlanItem) => void;
   onCancelPartial: () => void;
   onSavePartial: (id: string) => void;
+  settleAccounts?: Array<{ id: string; name: string; currency: string }>;
+  settleAccountId?: string;
+  onSettleAccountId?: (id: string) => void;
   onEditName: (v: string) => void;
   onEditAmount: (v: string) => void;
   onEditExtra: (v: string) => void;
@@ -184,6 +190,25 @@ export function PlanRows({
                   className="money min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base font-semibold"
                 />
               </label>
+              {settleAccounts.length > 0 ? (
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-[var(--numa-muted)]">
+                    Konto
+                  </span>
+                  <select
+                    value={settleAccountId}
+                    onChange={(e) => onSettleAccountId?.(e.target.value)}
+                    aria-label="Konto för bokningen"
+                    className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base"
+                  >
+                    {settleAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} · {account.currency}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               {preview ? (
                 <div className="numa-partial-preview">
                   <p className="numa-section-title">Kvar</p>

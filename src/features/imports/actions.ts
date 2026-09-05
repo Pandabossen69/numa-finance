@@ -1,8 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { parseUiAmountToMinor, money } from "@/domain/money";
+import { ALLOWED_IMAGE_MIME, assertAllowedImageBytes } from "@/lib/media/image-magic";
+import { reportError } from "@/lib/observe/report";
 import { calculateDayPulse } from "@/domain/gamification";
 import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
@@ -15,19 +17,18 @@ import {
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
+import {
+  isUniqueViolationMessage,
+  swedishFingerprintConflictError,
+} from "@/domain/finance";
+import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
+import { SAVED_REFRESH_PENDING_SV } from "@/features/finance/mutation-refresh";
 
 export type ActionResult<T = undefined> =
-  | { ok: true; data: T }
+  | { ok: true; data: T; refreshPending?: boolean; refreshPendingMessage?: string }
   | { ok: false; error: string };
 
 const MAX_BYTES = 8 * 1024 * 1024;
-const ALLOWED = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "image/heif",
-]);
 
 export async function uploadReceiptAction(
   formData: FormData,
@@ -40,8 +41,8 @@ export async function uploadReceiptAction(
     if (file.size <= 0 || file.size > MAX_BYTES) {
       return { ok: false, error: "Bilden måste vara mellan 1 byte och 8 MB" };
     }
-    const mimeType = file.type || "image/jpeg";
-    if (!ALLOWED.has(mimeType) && !mimeType.startsWith("image/")) {
+    const claimed = file.type || "image/jpeg";
+    if (!ALLOWED_IMAGE_MIME.has(claimed) && !claimed.startsWith("image/")) {
       return { ok: false, error: "Endast bildfiler stöds" };
     }
 
@@ -51,6 +52,7 @@ export async function uploadReceiptAction(
       mode === "bank_app" || mode === "bunq" || mode === "revolut";
 
     const bytes = new Uint8Array(await file.arrayBuffer());
+    const mimeType = assertAllowedImageBytes(bytes, claimed);
     const result = await uploadReceiptAndExtract({
       fileName: file.name || (preferBankApp ? "bank-app.jpg" : "bank-sms.jpg"),
       mimeType,
@@ -65,6 +67,7 @@ export async function uploadReceiptAction(
     revalidatePath("/idag");
     return { ok: true, data: result };
   } catch (error) {
+    void reportError("ocr.upload", error);
     return {
       ok: false,
       error:
@@ -87,6 +90,7 @@ const confirmSchema = z.object({
   maskedAccount: z.string().trim().max(32).optional().nullable(),
   direction: z.enum(["debit", "credit"]).optional().nullable(),
   fromOnboarding: z.boolean().optional(),
+  clientMutationId: z.string().uuid().optional(),
 });
 
 export async function confirmReceiptExpenseAction(
@@ -127,6 +131,7 @@ export async function confirmReceiptExpenseAction(
       source: input.source,
       maskedAccount: input.maskedAccount,
       direction: input.direction,
+      clientMutationId: input.clientMutationId,
     });
 
     if (input.fromOnboarding) {
@@ -138,47 +143,79 @@ export async function confirmReceiptExpenseAction(
     await reclaimStalePlanSettleLedgers({
       timeZone: profile.timezone || "Asia/Bangkok",
     });
-    const snap = await getTodaySnapshot();
-    const timeZone = snap.profile.timezone || "Asia/Bangkok";
-    const now = new Date();
-    const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
-    const living = projectLivingBudget({
-      cycle,
-      now,
-      timeZone,
-      bankBalanceMinor: snap.calculatedBalanceMinor,
-      cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
-      todaySpendingMinor: snap.todaySpendingMinor,
-      fundingConfirmed: snap.fundingConfirmed,
-    });
-    const pulse = calculateDayPulse({
-      safeToSpendToday: money(living.dayBudgetMinor, snap.currency),
-      spentToday: money(snap.todaySpendingMinor, snap.currency),
-    });
+    try {
+      const snap = await getTodaySnapshot();
+      const timeZone = snap.profile.timezone || "Asia/Bangkok";
+      const now = new Date();
+      const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
+      const living = projectLivingBudget({
+        cycle,
+        now,
+        timeZone,
+        bankBalanceMinor: snap.calculatedBalanceMinor,
+        cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
+        todaySpendingMinor: snap.todaySpendingMinor,
+        fundingConfirmed: snap.fundingConfirmed,
+      });
+      const pulse = calculateDayPulse({
+        safeToSpendToday: money(living.dayBudgetMinor, snap.currency),
+        spentToday: money(snap.todaySpendingMinor, snap.currency),
+      });
 
-    revalidatePath("/idag");
-    revalidatePath("/transaktioner");
-    revalidatePath("/analys");
-    revalidatePath("/plan");
-    revalidatePath("/importera");
-    revalidatePath("/konton");
-    revalidatePath("/fota");
+      revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 
-    return {
-      ok: true,
-      data: {
-        pulseStatus: pulse.status,
-        balanceAfterMinor:
-          snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
-        direction: tx.direction,
-        amountMinor: tx.amountMinor,
-      },
-    };
+      return {
+        ok: true,
+        data: {
+          pulseStatus: pulse.status,
+          balanceAfterMinor:
+            snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
+          direction: tx.direction,
+          amountMinor: tx.amountMinor,
+        },
+      };
+    } catch {
+      revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
+      return {
+        ok: true,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+        data: {
+          pulseStatus: "even",
+          balanceAfterMinor: tx.balanceAfterMinor ?? null,
+          direction: tx.direction,
+          amountMinor: tx.amountMinor,
+        },
+      };
+    }
   } catch (error) {
+    void reportError("ocr.confirm", error);
+    const message = error instanceof Error ? error.message : "";
+    if (isUniqueViolationMessage(message)) {
+      return { ok: false, error: swedishFingerprintConflictError() };
+    }
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte bekräfta köpet",
+      error: message || "Kunde inte bekräfta köpet",
+    };
+  }
+}
+
+export async function deleteObservationAction(
+  observationId: string,
+): Promise<ActionResult> {
+  try {
+    const id = z.string().uuid().parse(observationId);
+    const { deleteObservation } = await import("@/lib/store/repository");
+    await deleteObservation(id);
+    revalidatePath("/fota");
+    revalidatePath("/importera");
+    return { ok: true, data: undefined };
+  } catch (error) {
+    void reportError("ocr.upload", error);
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte radera bilden",
     };
   }
 }

@@ -7,6 +7,8 @@ import { chromeDisplayName } from "@/domain/identity/display-name";
 import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Sync shell — never await session/profile here. An async layout blocked
  * Hem/Plan chrome (and every tab prefetch) until onboarding + profile settled.

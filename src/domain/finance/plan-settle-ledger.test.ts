@@ -54,6 +54,8 @@ function tx(
     updatedAt: "2026-08-25T09:00:00.000Z",
     transferGroupId: null,
     planItemId: partial.planItemId ?? null,
+    ledgerOrigin: partial.ledgerOrigin,
+    linkedPlanItemId: partial.linkedPlanItemId ?? null,
     amountMinor: partial.amountMinor,
     occurredAt: partial.occurredAt ?? "2026-08-25T09:00:00.000Z",
     direction: partial.direction ?? "credit",
@@ -97,8 +99,13 @@ describe("plan settle ledger math", () => {
     expect(undo?.incomingDeltaMinor).toBe(57_000_00);
   });
 
-  it("does not move saldo when a bank row already funded the plan item", () => {
-    const bank = tx({ id: "bank-csn", amountMinor: 57_000_00 });
+  it("does not move saldo when the user confirmed a transaction↔plan link", () => {
+    const bank = tx({
+      id: "bank-csn",
+      amountMinor: 57_000_00,
+      linkedPlanItemId: csn.id,
+      ledgerOrigin: "external",
+    });
     expect(
       planItemAlreadyFundedInLedger({
         item: csn,
@@ -118,6 +125,19 @@ describe("plan settle ledger math", () => {
     expect(preview?.skippedBecauseFunded).toBe(true);
     expect(preview?.saldoDeltaMinor).toBe(0);
     expect(preview?.incomingDeltaMinor).toBe(0);
+  });
+
+  it("does not treat a similar unlinked bank row as already funded", () => {
+    const bank = tx({ id: "bank-csn", amountMinor: 57_000_00 });
+    expect(
+      planItemAlreadyFundedInLedger({
+        item: csn,
+        transactions: [bank],
+        kind: "income",
+        monthKey: "2026-08",
+        timeZone: tz,
+      }),
+    ).toBe(false);
   });
 
   it("ignores a synthetic settle booking when deciding already-funded", () => {
@@ -259,7 +279,7 @@ describe("plan settle ledger math", () => {
         monthKey: "2026-08",
         timeZone: tz,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("books only the Delvis step-up", () => {

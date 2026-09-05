@@ -689,6 +689,14 @@ function LineList({
   // What is still left, the same sum Plan's card shows. A Betald row keeps
   // its figure and its chip but stops counting, exactly as it does on Plan.
   const totalMinor = lines.reduce((sum, line) => sum + line.remainingMinor, 0);
+  const plannedMinor = lines.reduce((sum, line) => sum + line.plannedMinor, 0);
+  const paidMinor = lines.reduce((sum, line) => sum + line.settledMinor, 0);
+  const plannedLabel =
+    settleKind === "income" ? SV.planeradeIntakter : SV.planeradeUtgifter;
+  const paidLabel =
+    settleKind === "income" ? SV.mottagnaIntakter : SV.betaldaUtgifter;
+  const remainingLabel =
+    settleKind === "income" ? SV.kvarvarandeIntakter : SV.kvarvarandeUtgifter;
 
   return (
     <div className="min-w-0 space-y-2">
@@ -697,9 +705,14 @@ function LineList({
           <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
             {title}
           </h3>
-          {subtitle ? (
-            <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">{subtitle}</p>
-          ) : null}
+          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+            {plannedLabel} {formatMoneyCompact(money(plannedMinor, currency))}
+            {" · "}
+            {paidLabel} {formatMoneyCompact(money(paidMinor, currency))}
+            {" · "}
+            {remainingLabel} {formatMoneyCompact(money(totalMinor, currency))}
+            {subtitle ? ` · ${subtitle}` : ""}
+          </p>
         </div>
         <div className="numa-money-line-amt text-[var(--numa-muted)]">
           <MoneyDisplay

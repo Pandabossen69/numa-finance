@@ -12,10 +12,10 @@ import {
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
-  matchPlanItemsToLedger,
+  explicitlyLinkedPlanItemIds,
+  suggestPlanLinks,
   applyPlanItemEdits,
   previewPlanSettleEffect,
-  remainingOpenMinor,
   planAmountBelowSettledError,
   resolveAdditionalSettlement,
   projectCashCoverage,
@@ -29,18 +29,21 @@ import {
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
-import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
-import { SV } from "@/features/copy/labels-sv";
 import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
+  adoptMutationFinance,
+  lastAccountsSnapshot,
+  rememberAccountsSnapshot,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastPlanView,
   rememberPlanView,
+  subscribeAccountsSnapshot,
   subscribeHomeSnapshot,
   subscribePlanView,
 } from "@/features/home/last-snapshot";
+import { newClientMutationId, thbToNativeMinor } from "@/domain/finance";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
@@ -64,6 +67,7 @@ import {
   deletePlanItemAction,
   importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
+  confirmPlanLinkAction,
   setPlanItemSettledAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
@@ -92,7 +96,8 @@ type BusyKey =
   | "add-extra"
   | `edit:${string}`
   | `delete:${string}`
-  | `settle:${string}`;
+  | `settle:${string}`
+  | `link:${string}`;
 
 export function PlanEditor({
   items,
@@ -101,6 +106,7 @@ export function PlanEditor({
   bankBalanceMinor = null,
   spendingByMonthKey = EMPTY_MONTH_SPEND,
   ledgerTransactions = EMPTY_LEDGER,
+  accounts = null,
   focusAdd = null,
   stepHint = null,
 }: {
@@ -110,6 +116,7 @@ export function PlanEditor({
   bankBalanceMinor?: number | null;
   spendingByMonthKey?: Record<string, number>;
   ledgerTransactions?: CanonicalTransaction[];
+  accounts?: import("@/features/finance/load-accounts").AccountsSnapshot | null;
   focusAdd?: null | "income" | "fixed";
   stepHint?: string | null;
 }) {
@@ -148,9 +155,6 @@ export function PlanEditor({
     [monthKey],
   );
   const [localItems, setLocalItems] = useState(items);
-  const incomingStamp = stampPlanItems(items);
-  const [itemsStamp, setItemsStamp] = useState(incomingStamp);
-  const ownerId = localItems[0]?.userId ?? items[0]?.userId ?? "";
 
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
@@ -171,13 +175,43 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
+  const viewItems = busy
+    ? localItems
+    : adoptServerPlanItems(localItems, items);
+  const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
   const writeLockRef = useRef(false);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
+  const [seenFocusAdd, setSeenFocusAdd] = useState(focusAdd);
+  if (focusAdd !== seenFocusAdd) {
+    setSeenFocusAdd(focusAdd);
+    if (focusAdd) setAddKind(focusAdd);
+  }
+  const storedAccounts = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
+    lastAccountsSnapshot,
+  );
+  useEffect(() => {
+    if (accounts && lastAccountsSnapshot() == null) {
+      rememberAccountsSnapshot(accounts);
+    }
+  }, [accounts]);
+  const accountsView = storedAccounts ?? accounts;
+  const settleAccounts = (accountsView?.accounts ?? []).map((account) => ({
+    id: account.id,
+    name: account.name,
+    currency: account.currency,
+  }));
+  const defaultSettleAccountId =
+    accountsView?.accounts.find((account) => account.isDefault)?.id ??
+    accountsView?.accounts[0]?.id ??
+    "";
+  const [settleAccountId, setSettleAccountId] = useState(defaultSettleAccountId);
+  const settleAccountIdOrDefault = settleAccountId || defaultSettleAccountId;
   const focusCardRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!focusAdd) return;
-    setAddKind(focusAdd);
     const id = window.setTimeout(() => {
       // "nearest" so a card already on screen does not yank the page.
       focusCardRef.current?.scrollIntoView({
@@ -190,17 +224,33 @@ export function PlanEditor({
   }, [focusAdd]);
   function publishItems(next: PlanItem[]) {
     const previous = lastPlanSnapshot();
+    // After settle the store already has the canonical ledger + saldo.
+    // Re-publishing the first-paint props would drop ledgerOrigin and
+    // treat Hyra as Spenderat idag.
+    const liveLedger =
+      previous?.ledgerTransactions?.length
+        ? previous.ledgerTransactions
+        : ledgerTransactions;
+    if (
+      previous &&
+      stampPlanItems(previous.items) === stampPlanItems(next) &&
+      previous.currency === currency &&
+      previous.timeZone === timeZone
+    ) {
+      return;
+    }
     rememberLivePlan({
       items: next,
       currency,
       timeZone,
-      // Prop saldo only — live coverage mirrors this publish and must not
-      // re-enter the effect (that loop crashed Plan after Delvis settle).
-      bankBalanceMinor,
+      // Prop saldo only as fallback — live coverage must not re-enter
+      // this effect (that loop crashed Plan after Delvis settle).
+      bankBalanceMinor: previous?.bankBalanceMinor ?? bankBalanceMinor,
       spendingByMonthKey,
-      ledgerTransactions,
+      ledgerTransactions: liveLedger,
+      accounts: previous?.accounts,
       financeRevision: previous?.financeRevision
-        ? `${previous.financeRevision}:local`
+        ? `${previous.financeRevision.replace(/:local$/, "")}:local`
         : `local:${Date.now()}`,
       verifiedAt: new Date().toISOString(),
       truthStatus: "stale",
@@ -210,99 +260,85 @@ export function PlanEditor({
   // Publish after commit. Writing to the plan store inside a setState
   // updater ran during render and updated PlanScreen mid-render, which React
   // rejects and which could repaint the list under the user's finger.
+  // Do not depend on ledgerTransactions — Koppla updates that prop and
+  // re-publishing adopted rows looped Plan ("Too many re-renders").
   useEffect(() => {
     publishItems(localItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey, ledgerTransactions]);
-
-  // Adopt server/store props after commit — never during render.
-  // Render-phase setState here raced PlanScreen's useSyncExternalStore when a
-  // save finished (and previously when revalidatePath remounted /plan).
-  useEffect(() => {
-    if (busy) return;
-    if (incomingStamp === itemsStamp) return;
-    setLocalItems((current) => {
-      const adopted = adoptServerPlanItems(current, items);
-      const adoptedStamp = stampPlanItems(adopted);
-      // Stamp what we keep — not raw incoming — so a merge that prefers
-      // newer local rows cannot desync and re-trigger forever.
-      setItemsStamp(adoptedStamp);
-      if (adoptedStamp === stampPlanItems(current)) return current;
-      return adopted;
-    });
-  }, [busy, incomingStamp, itemsStamp, items]);
+  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
   const importableFixed = useMemo(
     () =>
       importableFixedExpenses({
-        items: localItems,
+        items: viewItems,
         fromMonthKey: previousMonthKey,
         toMonthKey: monthKey,
         timeZone,
       }),
-    [localItems, previousMonthKey, monthKey, timeZone],
+    [viewItems, previousMonthKey, monthKey, timeZone],
   );
   const canImportFixed = !isPastMonth && importableFixed.length > 0;
 
   const projection = useMemo(
-    () => projectPlanForMonth(localItems, monthKey, timeZone),
-    [localItems, monthKey, timeZone],
+    () => projectPlanForMonth(viewItems, monthKey, timeZone),
+    [viewItems, monthKey, timeZone],
   );
 
   const coverage = useMemo(
     () =>
       projectCashCoverage({
-        planItems: localItems,
+        planItems: viewItems,
         transactions: ledgerTransactions,
         monthKey,
         timeZone,
         saldoMinor: coverageSaldoMinor,
       }),
-    [localItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
+    [viewItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
   );
   // Money only: keeps the card Summa in step with Hem's Kvar att betala so
   // cash already in the ledger is not counted twice. Never passed to the
   // rows — a match must not paint a chip or move a row.
-  const matchedIncomeIds = useMemo(
-    () =>
-      matchPlanItemsToLedger({
+  const linkedPlanIds = useMemo(
+    () => explicitlyLinkedPlanItemIds(ledgerTransactions),
+    [ledgerTransactions],
+  );
+  const linkSuggestions = useMemo(
+    () => [
+      ...suggestPlanLinks({
         items: projection.incomes,
         transactions: ledgerTransactions,
         kind: "income",
         monthKey,
         timeZone,
       }),
-    [projection.incomes, ledgerTransactions, monthKey, timeZone],
-  );
-  const matchedExpenseIds = useMemo(
-    () =>
-      matchPlanItemsToLedger({
+      ...suggestPlanLinks({
         items: projection.items,
         transactions: ledgerTransactions,
         kind: "expense",
         monthKey,
         timeZone,
       }),
-    [projection.items, ledgerTransactions, monthKey, timeZone],
+    ],
+    [projection.incomes, projection.items, ledgerTransactions, monthKey, timeZone],
   );
   const savingsTotalMinor = useMemo(
-    () => cumulativePlanSavingsMinor(localItems, monthKey, timeZone),
-    [localItems, monthKey, timeZone],
+    () => cumulativePlanSavingsMinor(viewItems, monthKey, timeZone),
+    [viewItems, monthKey, timeZone],
   );
   const monthName = labelMonthNameSv(monthKey);
   const yearThroughKey = monthKeys[monthKeys.length - 1] ?? monthKey;
   const yearExtra = useMemo(
     () =>
       projectExtraSaldoSeries({
-        planItems: localItems,
+        planItems: viewItems,
         spendingByMonthKey,
         throughMonthKey: yearThroughKey,
         currentMonthKey,
         timeZone,
       }),
-    [localItems, spendingByMonthKey, yearThroughKey, currentMonthKey, timeZone],
+    [viewItems, spendingByMonthKey, yearThroughKey, currentMonthKey, timeZone],
   );
   const extraByMonth = useMemo(() => {
     const out: Record<string, number> = {};
@@ -314,10 +350,10 @@ export function PlanEditor({
   const savingsByMonth = useMemo(() => {
     const out: Record<string, number> = {};
     for (const key of monthKeys) {
-      out[key] = projectPlanForMonth(localItems, key, timeZone).savingsMinor;
+      out[key] = projectPlanForMonth(viewItems, key, timeZone).savingsMinor;
     }
     return out;
-  }, [localItems, monthKeys, timeZone]);
+  }, [viewItems, monthKeys, timeZone]);
   const [savingsAmount, setSavingsAmount] = useValueForKey(
     projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
     `${monthKey}:${projection.savingsMinor}`,
@@ -366,19 +402,14 @@ export function PlanEditor({
   }): Promise<boolean> {
     if (writeLockRef.current) return false;
     writeLockRef.current = true;
+    const base = viewItems;
     setError(null);
     setBusy(opts.busy);
-    setLocalItems((current) => {
-      const next = opts.apply(current);
-      return next;
-    });
+    setLocalItems(opts.apply(base));
     try {
       const result = await opts.action();
       if (!result.ok) {
-        setLocalItems((current) => {
-          const next = opts.revert(current);
-          return next;
-        });
+        setLocalItems(opts.revert(base));
         setError(result.error);
         return false;
       }
@@ -390,16 +421,11 @@ export function PlanEditor({
             : result.items
               ? mergeReturnedItems(current, result.items, new Set())
               : current;
-        // Keep stamp in step so adopting store props after unlock is a no-op.
-        setItemsStamp(stampPlanItems(next));
         return next;
       });
       return true;
     } catch (err) {
-      setLocalItems((current) => {
-        const next = opts.revert(current);
-        return next;
-      });
+      setLocalItems(opts.revert(base));
       setError(err instanceof Error ? err.message : "Något gick fel");
       return false;
     } finally {
@@ -483,7 +509,7 @@ export function PlanEditor({
       settledMinor = parsed;
       remainingDueAt = remainingDate ? `${remainingDate}T12:00:00.000Z` : null;
     }
-    const previous = localItems.find((row) => row.id === id);
+    const previous = viewItems.find((row) => row.id === id);
     const targetBookedMinor = !settled
       ? 0
       : settledMinor != null
@@ -492,19 +518,41 @@ export function PlanEditor({
     const preview = previous
       ? previewPlanSettleEffect({
           item: previous,
-          planItems: localItems,
+          planItems: viewItems,
           targetBookedMinor,
           transactions: ledgerTransactions,
           timeZone,
         })
       : null;
+    const settleAccount = accountsView?.accounts.find(
+      (account) => account.id === settleAccountIdOrDefault,
+    );
+    const nativeSaldoDelta = (() => {
+      if (!preview) return 0;
+      if (!settleAccount || settleAccount.currency === "THB") {
+        return preview.saldoDeltaMinor;
+      }
+      const sign = preview.saldoDeltaMinor < 0 ? -1 : 1;
+      return (
+        sign *
+        thbToNativeMinor(
+          Math.abs(preview.saldoDeltaMinor),
+          settleAccount.currency,
+          settleAccount.fxRate,
+        )
+      );
+    })();
     if (preview) {
-      applyAccountDelta(preview.saldoDeltaMinor);
+      applyAccountDelta(nativeSaldoDelta, settleAccountIdOrDefault);
       applyOptimisticPlanSettle({
         saldoDeltaMinor: preview.saldoDeltaMinor,
         incomingDeltaMinor: preview.incomingDeltaMinor,
         unpaidDeltaMinor: preview.unpaidDeltaMinor,
         cycleSpendingDeltaMinor:
+          preview.kind === "expense" && !preview.skippedBecauseFunded
+            ? -preview.saldoDeltaMinor
+            : 0,
+        todayPlannedPaidDeltaMinor:
           preview.kind === "expense" && !preview.skippedBecauseFunded
             ? -preview.saldoDeltaMinor
             : 0,
@@ -516,12 +564,16 @@ export function PlanEditor({
         settlePlanItem(rows, id, { settled, settledMinor, remainingDueAt }),
       revert: (rows) => {
         if (preview) {
-          applyAccountDelta(-preview.saldoDeltaMinor);
+          applyAccountDelta(-nativeSaldoDelta, settleAccountIdOrDefault);
           applyOptimisticPlanSettle({
             saldoDeltaMinor: -preview.saldoDeltaMinor,
             incomingDeltaMinor: -preview.incomingDeltaMinor,
             unpaidDeltaMinor: -preview.unpaidDeltaMinor,
             cycleSpendingDeltaMinor:
+              preview.kind === "expense" && !preview.skippedBecauseFunded
+                ? preview.saldoDeltaMinor
+                : 0,
+            todayPlannedPaidDeltaMinor:
               preview.kind === "expense" && !preview.skippedBecauseFunded
                 ? preview.saldoDeltaMinor
                 : 0,
@@ -535,24 +587,11 @@ export function PlanEditor({
           settled,
           targetSettledAmount,
           remainingDate,
+          accountId: settleAccountIdOrDefault || undefined,
+          clientMutationId: newClientMutationId(),
         }),
       reconcile: (rows, result) => {
-        const actual = result.settleLedger;
-        if (preview && actual) {
-          const saldoFix = actual.saldoDeltaMinor - preview.saldoDeltaMinor;
-          const fundedMismatch =
-            actual.skippedBecauseFunded && !preview.skippedBecauseFunded;
-          if (saldoFix !== 0 || fundedMismatch) {
-            applyAccountDelta(saldoFix);
-            applyOptimisticPlanSettle({
-              saldoDeltaMinor: saldoFix,
-              incomingDeltaMinor: fundedMismatch
-                ? -preview.incomingDeltaMinor
-                : 0,
-              unpaidDeltaMinor: fundedMismatch ? -preview.unpaidDeltaMinor : 0,
-            });
-          }
-        }
+        adoptMutationFinance(result);
         return result.item ? mergeReturnedItem(rows, result.item) : rows;
       },
     }).then((ok) => {
@@ -565,7 +604,7 @@ export function PlanEditor({
   }
 
   function savePartialRow(id: string) {
-    const item = localItems.find((row) => row.id === id);
+    const item = viewItems.find((row) => row.id === id);
     if (!item) return;
     const parsed = parsePlanAmount(partialAmount);
     if (typeof parsed !== "number") {
@@ -594,7 +633,7 @@ export function PlanEditor({
   }
 
   function markRemainder(id: string) {
-    const item = localItems.find((row) => row.id === id);
+    const item = viewItems.find((row) => row.id === id);
     if (!item) return;
     // Full Klar — omit target so the action settles the planned amount.
     settleRow(id, true);
@@ -644,7 +683,7 @@ export function PlanEditor({
   }
 
   function saveEditedItem(id: string, patch: Partial<PlanItem>) {
-    const previous = localItems.find((row) => row.id === id);
+    const previous = viewItems.find((row) => row.id === id);
     if (!previous) return;
     const next = applyPlanItemEdits(previous, {
       name: patch.name,
@@ -763,11 +802,70 @@ export function PlanEditor({
         </p>
       ) : null}
 
+      {linkSuggestions.length > 0 ? (
+        <section className="space-y-2" aria-label="Förslag att koppla">
+          <p className="px-1 text-sm font-semibold tracking-tight">Förslag</p>
+          <p className="px-1 text-xs leading-snug text-[var(--numa-faint)]">
+            Liknande belopp nära datumet. Koppla bara om det är rätt räkning —
+            NUMA gissar inte åt dig.
+          </p>
+          <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
+            {linkSuggestions.map((suggestion) => {
+              const item = viewItems.find((row) => row.id === suggestion.planItemId);
+              const tx = ledgerTransactions.find(
+                (row) => row.id === suggestion.transactionId,
+              );
+              if (!item || !tx) return null;
+              return (
+                <li
+                  key={`${suggestion.planItemId}:${suggestion.transactionId}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <p className="truncate text-xs text-[var(--numa-faint)]">
+                      {tx.description || tx.merchant || "Rörelse"} ·{" "}
+                      {(tx.amountMinor / 100).toLocaleString("sv-SE")} {tx.currency}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="numa-press shrink-0 rounded-full bg-[var(--numa-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--numa-card)]"
+                    aria-label={`Koppla ${item.name} till transaktionen`}
+                    onClick={() => {
+                      void runMutation({
+                        busy: `link:${suggestion.planItemId}`,
+                        apply: (rows) => rows,
+                        revert: (rows) => rows,
+                        action: () =>
+                          confirmPlanLinkAction({
+                            transactionId: suggestion.transactionId,
+                            itemId: suggestion.planItemId,
+                            clientMutationId: newClientMutationId(),
+                          }),
+                        reconcile: (rows, result) => {
+                          adoptMutationFinance(result);
+                          return result.item
+                            ? mergeReturnedItem(rows, result.item)
+                            : rows;
+                        },
+                      });
+                    }}
+                  >
+                    Koppla
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
       <div className="animate-rise-delay-2 grid gap-4">
         <PlanCard
           title="Intäkter"
           totalLabel="Kvar att få"
-          totalMinor={sumCountsTowardCashMinor(projection.incomes, matchedIncomeIds)}
+          totalMinor={sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)}
           currency={currency}
           banner={focusAdd === "income" ? stepHint : null}
           cardRef={focusAdd === "income" ? focusCardRef : undefined}
@@ -797,6 +895,9 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
             onSavePartial={(id) => savePartialRow(id)}
+            settleAccounts={settleAccounts}
+            settleAccountId={settleAccountIdOrDefault}
+            onSettleAccountId={setSettleAccountId}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -811,7 +912,7 @@ export function PlanEditor({
                 setError(parsed.error);
                 return;
               }
-              const current = localItems.find((row) => row.id === id);
+              const current = viewItems.find((row) => row.id === id);
               if (current) {
                 const below = planAmountBelowSettledError(current, parsed);
                 if (below) {
@@ -826,7 +927,7 @@ export function PlanEditor({
               });
             }}
             onDelete={(id) => {
-              const previous = localItems.find((row) => row.id === id);
+              const previous = viewItems.find((row) => row.id === id);
               if (!previous) return;
               void runMutation({
                 busy: `delete:${id}`,
@@ -887,7 +988,7 @@ export function PlanEditor({
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."
           totalLabel="Kvar att betala"
-          totalMinor={sumCountsTowardCashMinor(projection.fixedItems, matchedExpenseIds)}
+          totalMinor={sumCountsTowardCashMinor(projection.fixedItems, linkedPlanIds)}
           currency={currency}
           banner={focusAdd === "fixed" ? stepHint : null}
           cardRef={focusAdd === "fixed" ? focusCardRef : undefined}
@@ -963,6 +1064,9 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
             onSavePartial={(id) => savePartialRow(id)}
+            settleAccounts={settleAccounts}
+            settleAccountId={settleAccountIdOrDefault}
+            onSettleAccountId={setSettleAccountId}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -977,7 +1081,7 @@ export function PlanEditor({
                 setError(parsed.error);
                 return;
               }
-              const current = localItems.find((row) => row.id === id);
+              const current = viewItems.find((row) => row.id === id);
               if (current) {
                 const below = planAmountBelowSettledError(current, parsed);
                 if (below) {
@@ -992,7 +1096,7 @@ export function PlanEditor({
               });
             }}
             onDelete={(id) => {
-              const previous = localItems.find((row) => row.id === id);
+              const previous = viewItems.find((row) => row.id === id);
               if (!previous) return;
               void runMutation({
                 busy: `delete:${id}`,
@@ -1056,7 +1160,7 @@ export function PlanEditor({
         <PlanCard
           title="Extra utgifter"
           totalLabel="Kvar att betala"
-          totalMinor={sumCountsTowardCashMinor(projection.extraItems, matchedExpenseIds)}
+          totalMinor={sumCountsTowardCashMinor(projection.extraItems, linkedPlanIds)}
           currency={currency}
         >
           <PlanRows
@@ -1084,6 +1188,9 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={() => setPartialId(null)}
             onSavePartial={(id) => savePartialRow(id)}
+            settleAccounts={settleAccounts}
+            settleAccountId={settleAccountIdOrDefault}
+            onSettleAccountId={setSettleAccountId}
             onEditName={setEditName}
             onEditAmount={setEditAmount}
             onEditExtra={setEditDate}
@@ -1098,7 +1205,7 @@ export function PlanEditor({
                 setError(parsed.error);
                 return;
               }
-              const current = localItems.find((row) => row.id === id);
+              const current = viewItems.find((row) => row.id === id);
               if (current) {
                 const below = planAmountBelowSettledError(current, parsed);
                 if (below) {
@@ -1113,7 +1220,7 @@ export function PlanEditor({
               });
             }}
             onDelete={(id) => {
-              const previous = localItems.find((row) => row.id === id);
+              const previous = viewItems.find((row) => row.id === id);
               if (!previous) return;
               void runMutation({
                 busy: `delete:${id}`,

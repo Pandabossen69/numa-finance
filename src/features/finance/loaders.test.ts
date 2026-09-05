@@ -67,8 +67,8 @@ describe("Hem / Plan / Analys loader contract", () => {
 describe("menu snapshot repository contract", () => {
   it("builds the snapshot through the parallel bundle and skips progress on the read path", () => {
     const snapshotFn = repo.slice(
-      repo.indexOf("export const getTodaySnapshot"),
-      (() => { const i = repo.indexOf("export const getTodaySnapshot"); const m = repo.slice(i+10).match(/\nexport (?:async )?function (\w+)/); return m ? i+10+repo.slice(i+10).indexOf(m[0]) : repo.length; })(),
+      repo.indexOf("async function loadTodaySnapshotUncached"),
+      (() => { const i = repo.indexOf("async function loadTodaySnapshotUncached"); const m = repo.slice(i+10).match(/\nexport (?:async )?function (\w+)/); return m ? i+10+repo.slice(i+10).indexOf(m[0]) : repo.length; })(),
     );
     expect(snapshotFn).toContain("fetchMenuSnapshotBundle");
     expect(snapshotFn).not.toContain("getUserProgress");
