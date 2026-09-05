@@ -18,3 +18,15 @@ describe("payload and cache config", () => {
     expect(src).toContain("stale-while-revalidate");
   });
 });
+
+describe("Sentry build wrapper", () => {
+  it("wraps Next config without hardcoding a DSN or auth token", () => {
+    expect(src).toContain('from "@sentry/nextjs/config"');
+    expect(src).toContain("withSentryConfig");
+    expect(src).toContain('tunnelRoute: "/sentry-tunnel"');
+    expect(src).toContain("numa-finance");
+    expect(src).not.toContain("env: {");
+    expect(src).not.toMatch(/https:\/\/[^"'` ]+@o\d+\.ingest/);
+    expect(src).not.toContain("sntrys_");
+  });
+});

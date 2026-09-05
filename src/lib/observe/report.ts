@@ -1,79 +1,70 @@
 /**
  * Best-effort production error reporting.
- * When `SENTRY_DSN` is set, events go to Sentry. Always logs locally.
+ * When the Sentry SDK is initialized (via `SENTRY_DSN`), events go to Sentry.
+ * Always logs locally. Extra is allowlisted so financial/PII payloads stay out.
  */
+
+import * as Sentry from "@sentry/nextjs";
+
+export type ReportScope =
+  | "loader.home"
+  | "loader.plan"
+  | "loader.analys"
+  | "loader.accounts"
+  | "mutation.settle"
+  | "mutation.expense"
+  | "mutation.link"
+  | "mutation.refresh"
+  | "ocr.upload"
+  | "ocr.confirm"
+  | "reconcile";
+
+const ALLOWED_EXTRA_KEYS = new Set(["itemId", "digest", "route", "status"]);
+
+export function sanitizeReportExtra(
+  extra?: Record<string, unknown>,
+): Record<string, string | number | boolean> | undefined {
+  if (!extra) return undefined;
+  const safe: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(extra)) {
+    if (!ALLOWED_EXTRA_KEYS.has(key)) continue;
+    if (typeof value === "boolean") {
+      safe[key] = value;
+      continue;
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      safe[key] = value;
+      continue;
+    }
+    if (typeof value === "string" && value.length > 0 && value.length <= 80) {
+      safe[key] = value;
+    }
+  }
+  return Object.keys(safe).length > 0 ? safe : undefined;
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 export async function reportError(
-  scope:
-    | "loader.home"
-    | "loader.plan"
-    | "loader.analys"
-    | "loader.accounts"
-    | "mutation.settle"
-    | "mutation.expense"
-    | "mutation.link"
-    | "mutation.refresh"
-    | "ocr.upload"
-    | "ocr.confirm"
-    | "reconcile",
+  scope: ReportScope,
   error: unknown,
   extra?: Record<string, unknown>,
 ): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack : undefined;
   console.error(`[numa] ${scope}`, message, extra ?? "");
 
-  const dsn = process.env.SENTRY_DSN;
-  if (!dsn) return;
-
   try {
-    const parsed = parseSentryDsn(dsn);
-    if (!parsed) return;
-    const event = {
-      event_id: crypto.randomUUID().replace(/-/g, ""),
-      timestamp: new Date().toISOString(),
-      platform: "node",
-      level: "error",
-      logger: "numa",
-      tags: { scope },
-      extra: extra ?? {},
-      exception: {
-        values: [
-          {
-            type: error instanceof Error ? error.name : "Error",
-            value: message,
-            stacktrace: stack
-              ? { frames: [{ filename: "numa", function: scope, vars: { stack } }] }
-              : undefined,
-          },
-        ],
-      },
-    };
-    const url = `${parsed.ingest}/api/${parsed.projectId}/store/?sentry_key=${parsed.publicKey}&sentry_version=7`;
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(event),
+    const safeExtra = sanitizeReportExtra(extra);
+    Sentry.withScope((current) => {
+      current.setTag("numa.scope", scope);
+      if (safeExtra) {
+        current.setContext("numa", safeExtra);
+      }
+      Sentry.captureException(toError(error));
     });
   } catch (sendError) {
     console.error("[numa] sentry report failed", sendError);
-  }
-}
-
-function parseSentryDsn(dsn: string): {
-  ingest: string;
-  publicKey: string;
-  projectId: string;
-} | null {
-  try {
-    const url = new URL(dsn);
-    const projectId = url.pathname.replace(/^\//, "");
-    if (!projectId) return null;
-    return {
-      ingest: `${url.protocol}//${url.host}`,
-      publicKey: url.username,
-      projectId,
-    };
-  } catch {
-    return null;
   }
 }

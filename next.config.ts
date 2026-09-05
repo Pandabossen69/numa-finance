@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   // Money tabs must not keep a 5‑minute stale RSC payload after a mutation.
@@ -39,4 +40,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const hasSourceMapAuth = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT ?? "numa-finance",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  telemetry: false,
+  widenClientFileUpload: hasSourceMapAuth,
+  sourcemaps: {
+    disable: !hasSourceMapAuth,
+  },
+  tunnelRoute: "/sentry-tunnel",
+});

@@ -1,5 +1,8 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 export default function MainError({
   error,
   reset,
@@ -7,13 +10,17 @@ export default function MainError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div className="space-y-4 pt-8 text-[var(--numa-ink)]">
       <p className="text-[1.65rem] font-semibold">NUMA</p>
       <h1 className="text-xl font-semibold tracking-tight">Något gick fel</h1>
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-        Skärmen kunde inte laddas. Det är oftast en tillfällig störning — prova
-        igen, eller laga appen om det upprepas.
+        Skärmen kunde inte laddas. Det är oftast en tillfällig störning — prova igen,
+        eller laga appen om det upprepas.
       </p>
       {error?.digest ? (
         <p className="text-xs text-[var(--numa-faint)]">Kod: {error.digest}</p>
