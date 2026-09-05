@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
+
+const sentryDsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN ?? "";
 
 const nextConfig: NextConfig = {
   // Money tabs must not keep a 5‑minute stale RSC payload after a mutation.
@@ -11,6 +14,11 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["date-fns-tz", "zod"],
   },
   poweredByHeader: false,
+  // DSN is a public ingest key. Map the existing Vercel SENTRY_DSN into the
+  // client bundle so browser errors work without a second env var.
+  env: {
+    SENTRY_DSN: sentryDsn,
+  },
   async redirects() {
     return [{ source: "/import", destination: "/fota", permanent: false }];
   },
@@ -39,4 +47,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const hasSourceMapAuth = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT ?? "numa-finance",
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  telemetry: false,
+  widenClientFileUpload: hasSourceMapAuth,
+  sourcemaps: {
+    disable: !hasSourceMapAuth,
+  },
+  tunnelRoute: "/sentry-tunnel",
+});
