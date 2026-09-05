@@ -8,6 +8,11 @@ import {
   shouldRedirectToProduction,
 } from "@/lib/site";
 import { supabaseServerOptions } from "./options";
+import {
+  isRscOrPrefetchRequest,
+  readAccessTokenExpiryMs,
+  shouldSkipProxyGetUser,
+} from "./proxy-auth";
 
 const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga"];
 
@@ -118,6 +123,41 @@ export async function updateSession(request: NextRequest) {
   // Fast path: no auth cookie → skip network round-trip to Supabase.
   if (!hasSupabaseAuthCookie(request)) {
     if (!isPublic) return redirectToLogin(request);
+    return supabaseResponse;
+  }
+
+  // RSC / prefetch already carry a session cookie. Skip Auth getUser() so
+  // Hem/Plan/Mer/Analys do not share a ~2.5s network gate. Document loads
+  // still refresh. RLS still applies on every data read.
+  if (
+    shouldSkipProxyGetUser({
+      hasAuthCookie: true,
+      isRscOrPrefetch: isRscOrPrefetchRequest(request.headers),
+      tokenExpiresAtMs: readAccessTokenExpiryMs(request.cookies.getAll()),
+      nowMs: Date.now(),
+    })
+  ) {
+    if (pathname === "/") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/idag";
+      redirectUrl.search = "";
+      withPreviewOnUrl(redirectUrl, request);
+      return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
+    }
+    if (pathname === "/lista") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/transaktioner";
+      redirectUrl.search = "";
+      withPreviewOnUrl(redirectUrl, request);
+      return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
+    }
+    if (pathname === "/logga-in") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/idag";
+      redirectUrl.search = "";
+      withPreviewOnUrl(redirectUrl, request);
+      return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
+    }
     return supabaseResponse;
   }
 

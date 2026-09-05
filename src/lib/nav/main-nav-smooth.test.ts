@@ -1,0 +1,97 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { isStaleNavArrival, optimisticNavPath } from "@/components/layout/nav";
+import { resolveVisibleTab, shouldHoldPreviousView } from "@/components/layout/view-hold";
+
+function read(rel: string) {
+  return readFileSync(new URL(rel, import.meta.url), "utf8");
+}
+
+describe("SMOOTH 01 root cause contracts", () => {
+  it("keeps last intent even after a stale intermediate URL lands", () => {
+    expect(
+      optimisticNavPath("/analys", { href: "/plan", fromPath: "/idag" }),
+    ).toBe("/plan");
+    expect(
+      isStaleNavArrival("/analys", { href: "/plan", fromPath: "/idag" }),
+    ).toBe(true);
+    expect(isStaleNavArrival("/plan", { href: "/plan", fromPath: "/idag" })).toBe(
+      false,
+    );
+  });
+
+  it("paints the dest shell on first visit instead of holding the previous tab", () => {
+    expect(
+      shouldHoldPreviousView({
+        loading: true,
+        leaving: false,
+        destTab: "/analys",
+        heldTab: "/idag",
+      }),
+    ).toBe(false);
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/analys",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+      }),
+    ).toBe("dest-loading");
+  });
+
+  it("ignores a stale RSC when the last tap is a different tab", () => {
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: false,
+        destTab: "/plan",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        intentMismatch: true,
+      }),
+    ).toBe("dest-loading");
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: false,
+        destTab: "/plan",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: true,
+        intentMismatch: true,
+      }),
+    ).toBe("dest");
+  });
+
+  it("streams Hem, Plan and Analys behind Suspense so the shell is not blocked", () => {
+    const idag = read("../../app/(main)/idag/page.tsx");
+    const plan = read("../../app/(main)/plan/page.tsx");
+    const analys = read("../../app/(main)/analys/page.tsx");
+    expect(idag).toContain("<Suspense");
+    expect(idag).toContain("IdagBody");
+    expect(plan).toContain("<Suspense");
+    expect(plan).toContain("PlanBody");
+    expect(analys).toContain("<Suspense");
+    expect(analys).toContain("AnalysBody");
+  });
+
+  it("lets Hem/Plan/Analys SSR so dest content does not wait on a client chunk", () => {
+    const islands = read("../route-islands.tsx");
+    const home = islands.slice(
+      islands.indexOf("export const HomeDashboard"),
+      islands.indexOf("export const ReceiptCaptureFlow"),
+    );
+    expect(home).toContain("ssr: true");
+    expect(home).not.toContain("ssr: false");
+  });
+
+  it("skips proxy getUser on RSC/prefetch so tab switches do not share a 2.5s Auth gate", () => {
+    const middleware = read("../supabase/middleware.ts");
+    expect(middleware).toContain("shouldSkipProxyGetUser");
+    expect(middleware).toContain("isRscOrPrefetchRequest");
+    expect(middleware).toContain("AUTH_TIMEOUT_MS = 2_500");
+  });
+});

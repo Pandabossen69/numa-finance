@@ -52,6 +52,17 @@ describe("smooth nav and saves", () => {
     expect(prefetch).toContain('kind: "full"');
   });
 
+  it("streams the four main tabs so navigation is not blocked on snapshots", () => {
+    const idag = read("../../app/(main)/idag/page.tsx");
+    const plan = read("../../app/(main)/plan/page.tsx");
+    const analys = read("../../app/(main)/analys/page.tsx");
+    const mer = read("../../app/(main)/mer/page.tsx");
+    expect(idag).toContain("<Suspense");
+    expect(plan).toContain("<Suspense");
+    expect(analys).toContain("<Suspense");
+    expect(mer).toContain("<Suspense");
+  });
+
   it("marks every authenticated money page force-dynamic so CI build cannot prerender the store", () => {
     const pages = [
       "../../app/(main)/layout.tsx",

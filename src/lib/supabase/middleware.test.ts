@@ -10,6 +10,13 @@ describe("preview host and auth return", () => {
     expect(src).toMatch(/function redirectToProduction/);
   });
 
+  it("skips Auth getUser on RSC/prefetch when a session cookie is present", () => {
+    expect(src).toContain("shouldSkipProxyGetUser");
+    expect(src).toContain("isRscOrPrefetchRequest");
+    expect(src).toContain("readAccessTokenExpiryMs");
+    expect(src).toContain("AUTH_TIMEOUT_MS = 2_500");
+  });
+
   it("keeps login and post-auth navigation on the request host", () => {
     const loginFn = src.slice(
       src.indexOf("function redirectToLogin"),
