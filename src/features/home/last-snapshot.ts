@@ -920,7 +920,11 @@ export function applyAccountDelta(
     totalThbMinor = (totalThbMinor ?? 0) + thb;
   }
   rememberAccountsSnapshot(
-    { accounts: nextAccounts, totalThbMinor },
+    {
+      accounts: nextAccounts,
+      archivedAccounts: accounts.archivedAccounts ?? [],
+      totalThbMinor,
+    },
     { dirty: true },
   );
   return accounts;
@@ -973,7 +977,11 @@ export function applyAccountBalance(
         totalThbMinor = (totalThbMinor ?? 0) + thb;
       }
       rememberAccountsSnapshot(
-        { accounts: nextAccounts, totalThbMinor },
+        {
+          accounts: nextAccounts,
+          archivedAccounts: accounts.archivedAccounts ?? [],
+          totalThbMinor,
+        },
         { dirty: true },
       );
       appliedThb = totalThbMinor;

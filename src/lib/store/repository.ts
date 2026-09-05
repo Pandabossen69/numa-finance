@@ -83,6 +83,28 @@ export async function createAccount(
   return api().createAccount(input);
 }
 
+export async function listArchivedAccounts() {
+  return api().listArchivedAccounts();
+}
+
+export async function updateAccount(
+  input: Parameters<typeof local.updateAccount>[0],
+) {
+  return api().updateAccount(input);
+}
+
+export async function deleteAccount(id: string) {
+  return api().deleteAccount(id);
+}
+
+export async function archiveAccount(id: string) {
+  return api().archiveAccount(id);
+}
+
+export async function restoreAccount(id: string) {
+  return api().restoreAccount(id);
+}
+
 export async function ensureDefaultBankAccount(
   input?: Parameters<typeof local.ensureDefaultBankAccount>[0],
 ) {

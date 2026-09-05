@@ -4,16 +4,20 @@ import { revalidateTag } from "next/cache";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { z } from "zod";
 import {
+  archiveAccount,
   createAccount,
   createCashWithdrawal,
   createCheckpoint,
   createManualExpense,
   createManualIncome,
   createTransfer,
+  deleteAccount,
   ensureDefaultBankAccount,
   getProfile,
+  restoreAccount,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
+  updateAccount,
   updateTransaction,
   voidTransaction,
 } from "@/lib/store/repository";
@@ -121,6 +125,76 @@ export async function createAccountAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte skapa konto",
+    };
+  }
+}
+
+const updateAccountSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(80),
+  kind: z.enum(ACCOUNT_KINDS),
+  currency: z.enum(CURRENCIES),
+  makeDefault: z.boolean().optional(),
+});
+
+export async function updateAccountAction(
+  raw: z.infer<typeof updateAccountSchema>,
+): Promise<ActionResult> {
+  try {
+    const input = updateAccountSchema.parse(raw);
+    assertCurrencyAllowedForKind(input.kind as AccountKind, input.currency);
+    await updateAccount({
+      id: input.id,
+      name: input.name,
+      kind: input.kind,
+      currency: input.currency,
+      makeDefault: input.makeDefault,
+    });
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte uppdatera kontot",
+    };
+  }
+}
+
+export async function deleteAccountAction(id: string): Promise<ActionResult> {
+  try {
+    await deleteAccount(z.string().uuid().parse(id));
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte radera kontot",
+    };
+  }
+}
+
+export async function archiveAccountAction(id: string): Promise<ActionResult> {
+  try {
+    await archiveAccount(z.string().uuid().parse(id));
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte arkivera kontot",
+    };
+  }
+}
+
+export async function restoreAccountAction(id: string): Promise<ActionResult> {
+  try {
+    await restoreAccount(z.string().uuid().parse(id));
+    revalidateMoneyPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte återställa kontot",
     };
   }
 }

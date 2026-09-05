@@ -22,3 +22,4 @@ export * from "./canonical-thb";
 export * from "./native-fx";
 export * from "./plan-allocation";
 export * from "./plan-link";
+export * from "./account-lifecycle";
