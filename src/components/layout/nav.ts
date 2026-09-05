@@ -65,11 +65,22 @@ export function isTabRoot(pathname: string): boolean {
   );
 }
 
-/** Highlight the tap target only while we are still on the page we left. */
+/**
+ * Last intent always wins. A stale intermediate URL (Analys landing after
+ * the user already tapped Plan) must not steal the highlight.
+ */
 export function optimisticNavPath(
   pathname: string,
   pending: { href: string; fromPath: string } | null,
 ): string {
-  if (pending && pending.fromPath === pathname) return pending.href;
+  if (pending) return pending.href;
   return pathname;
+}
+
+export function isStaleNavArrival(
+  pathname: string,
+  pending: { href: string; fromPath: string } | null,
+): boolean {
+  if (!pending) return false;
+  return !isNavActive(pathname, pending.href);
 }

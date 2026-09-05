@@ -6,7 +6,7 @@ import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function BottomNav() {
-  const { highlightPath, markIntent } = useNavIntent();
+  const { highlightPath, markIntent, pending } = useNavIntent();
   const { prefetch } = usePrefetchOnIntent();
 
   const left = PRIMARY_NAV.slice(0, 2);
@@ -34,6 +34,7 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
+            pending={Boolean(pending && activeFor(pending.href) && activeFor(tab.href))}
             onIntent={() => onIntent(tab.href)}
           />
         ))}
@@ -61,6 +62,7 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
+            pending={Boolean(pending && activeFor(pending.href) && activeFor(tab.href))}
             onIntent={() => onIntent(tab.href)}
           />
         ))}
@@ -74,12 +76,14 @@ function NavItem({
   label,
   icon,
   active,
+  pending,
   onIntent,
 }: {
   href: string;
   label: string;
   icon: NavIconName;
   active: boolean;
+  pending: boolean;
   onIntent: () => void;
 }) {
   return (
@@ -91,9 +95,10 @@ function NavItem({
             onFocus={onIntent}
             onClick={onIntent}
       aria-current={active ? "page" : undefined}
+      aria-busy={pending || undefined}
       className={`numa-press numa-bottom-nav-item relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
         active ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]" : "text-[var(--numa-faint)]"
-      }`}
+      }${pending ? " is-pending" : ""}`}
     >
       <NavIcon name={icon} active={active} />
       <span

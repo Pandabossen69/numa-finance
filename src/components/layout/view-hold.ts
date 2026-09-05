@@ -10,6 +10,7 @@ export function shouldHoldPreviousView(input: {
   leaving: boolean;
   destTab: string | null;
   heldTab: string | null;
+  intentMismatch?: boolean;
 }): boolean {
   return resolveVisibleTab({
     ...input,
@@ -21,8 +22,10 @@ export function shouldHoldPreviousView(input: {
 /**
  * What to paint while a tab transition is in flight.
  * - dest: cached destination (revisit or same-tab refresh — keep the view mounted)
- * - held: previous tab (first visit to dest)
- * - children: show the incoming tree (drill-in, first load, soft fallback)
+ * - dest-loading: destination shell immediately — never keep the previous tab
+ *   after the URL / last intent has already moved
+ * - held: unused for primary tabs (kept for unexpected non-root dest)
+ * - children: incoming tree (URL already on dest, drill-in, same-tab fallback)
  */
 export function resolveVisibleTab(input: {
   loading: boolean;
@@ -31,9 +34,22 @@ export function resolveVisibleTab(input: {
   heldTab: string | null;
   destIsTabRoot: boolean;
   hasDestCache: boolean;
-}): "dest" | "held" | "children" {
-  const inFlight = input.loading || input.leaving;
+  intentMismatch?: boolean;
+  pathTab?: string | null;
+}): "dest" | "held" | "children" | "dest-loading" {
+  const inFlight =
+    input.loading || input.leaving || Boolean(input.intentMismatch);
   if (!inFlight) return "children";
+
+  if (input.intentMismatch && input.destIsTabRoot) {
+    return input.hasDestCache ? "dest" : "dest-loading";
+  }
+
+  if (input.destTab && input.pathTab && input.destTab === input.pathTab) {
+    if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
+    return "children";
+  }
+
   const crossTab = Boolean(
     input.destTab && input.heldTab && input.destTab !== input.heldTab,
   );
@@ -42,8 +58,9 @@ export function resolveVisibleTab(input: {
     if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
     return "children";
   }
-  if (input.destIsTabRoot && input.hasDestCache) return "dest";
-  return "held";
+  if (!input.destIsTabRoot) return "children";
+  if (input.hasDestCache) return "dest";
+  return "dest-loading";
 }
 
 export function isViewLoadingNode(node: ReactNode): boolean {

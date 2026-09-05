@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { destLoadingForTab } from "@/components/layout/dest-loading";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { isTabRoot, primaryTab } from "@/components/layout/nav";
 import { ViewLoading } from "@/components/layout/ViewLoading";
@@ -17,9 +18,11 @@ import {
 } from "@/components/layout/view-hold";
 
 /**
- * Keep primary tabs mounted across revisits and hold the previous tab
- * while the next one streams — no blank column, no skeleton flash.
+ * Keep primary tabs mounted across revisits. First visit paints the dest
+ * shell immediately — holding the previous tab after the URL moved made
+ * the menu feel frozen (~3s on production).
  * Same-tab refresh (Spara on Plan) keeps the live view, not loading.tsx.
+ * Last intent wins: a stale RSC for an older tap never becomes visible.
  * Drill-in (Mer → Saldo) is not held.
  */
 /** Server snapshot false, client snapshot true — no mismatch either way. */
@@ -35,7 +38,10 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const destTab = primaryTab(destHref);
   const pathTab = primaryTab(pathname);
   const leaving = Boolean(pending && pending.fromPath === pathname);
-  const inFlight = loading || leaving;
+  const intentMismatch = Boolean(
+    pending && destTab && pathTab && destTab !== pathTab,
+  );
+  const inFlight = loading || leaving || intentMismatch;
   const [liveByTab, setLiveByTab] = useState<Record<string, ReactNode>>({});
   const hydrated = useSyncExternalStore(
     subscribeNever,
@@ -45,7 +51,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
 
   const [cache, setCache] = useState<Record<string, ReactNode>>({});
   const [readyAt, setReadyAt] = useState<string | null>(
-    loading || leaving ? null : pathname,
+    loading || leaving || intentMismatch ? null : pathname,
   );
   const [leaveSnapPath, setLeaveSnapPath] = useState<string | null>(null);
 
@@ -63,7 +69,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   }
 
   const sameTabRefresh = Boolean(
-    loading && !leaving && pathTab && destTab === pathTab && isTabRoot(pathname),
+    loading && !leaving && !intentMismatch && pathTab && destTab === pathTab && isTabRoot(pathname),
   );
   if (sameTabRefresh && pathTab) {
     const live = liveByTab[pathTab];
@@ -82,7 +88,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
 
   const heldTab = readyAt ? primaryTab(readyAt) : null;
   const destLive =
-    destTab === pathTab && !loading
+    destTab === pathTab && !loading && !intentMismatch
       ? children
       : destTab
         ? liveByTab[destTab]
@@ -94,9 +100,15 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     heldTab,
     destIsTabRoot: isTabRoot(destHref),
     hasDestCache: Boolean(destTab && (cache[destTab] || destLive)),
+    intentMismatch,
+    pathTab,
   });
   const visibleTab =
-    paint === "dest" ? destTab : paint === "held" ? heldTab : pathTab;
+    paint === "dest" || paint === "dest-loading"
+      ? destTab
+      : paint === "held"
+        ? heldTab
+        : pathTab;
 
   // Tabs stay mounted, so the window keeps the scroll offset of the tab you
   // came from. Switching after scrolling used to open the next tab halfway
@@ -132,10 +144,15 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     >
       {[...tabs].map((tab) => {
         const isCurrent = tab === pathTab;
-        const live = isCurrent && (paint === "children" || leaving);
+        const live = isCurrent && paint === "children" && !intentMismatch;
         const heldLive =
           sameTabRefresh && tab === pathTab ? liveByTab[pathTab] : undefined;
-        const node = live ? children : (heldLive ?? cache[tab]);
+        const destFallback =
+          paint === "dest-loading" && tab === destTab
+            ? destLoadingForTab(destTab)
+            : null;
+        const node =
+          live ? children : (heldLive ?? cache[tab] ?? destLiveFor(tab, destTab, destLive) ?? destFallback);
         if (node == null) return null;
         const visible = paint === "children" ? isCurrent : tab === visibleTab;
         return (
@@ -153,4 +170,13 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
       {showSoftFallback ? <ViewLoading /> : null}
     </div>
   );
+}
+
+function destLiveFor(
+  tab: string,
+  destTab: string | null,
+  destLive: ReactNode,
+): ReactNode {
+  if (tab !== destTab) return null;
+  return destLive;
 }

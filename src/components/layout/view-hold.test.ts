@@ -34,7 +34,7 @@ describe("isViewLoadingNode", () => {
 });
 
 describe("shouldHoldPreviousView", () => {
-  it("holds Hem while Analys streams", () => {
+  it("does not hold Hem while Analys streams — dest shell must paint immediately", () => {
     expect(
       shouldHoldPreviousView({
         loading: true,
@@ -42,7 +42,7 @@ describe("shouldHoldPreviousView", () => {
         destTab: "/analys",
         heldTab: "/idag",
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("does not hold once the destination is ready", () => {
@@ -82,7 +82,7 @@ describe("resolveVisibleTab", () => {
     ).toBe("dest");
   });
 
-  it("holds the previous tab on a first visit", () => {
+  it("shows dest loading on a first visit instead of the previous tab", () => {
     expect(
       resolveVisibleTab({
         loading: true,
@@ -92,7 +92,7 @@ describe("resolveVisibleTab", () => {
         destIsTabRoot: true,
         hasDestCache: false,
       }),
-    ).toBe("held");
+    ).toBe("dest-loading");
   });
 
   it("does not hold Mer drill-in even when dest cache exists", () => {
