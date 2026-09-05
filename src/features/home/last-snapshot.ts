@@ -9,9 +9,11 @@ import {
   perDayBudgetMinor,
   planWealthTotalMinor,
   projectCashCoverage,
+  projectLedgerToCanonicalThb,
   projectLivingBudget,
   projectPayCycle,
   remainingTodayOf,
+  type FxCheckpoint,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
@@ -317,6 +319,34 @@ export function invalidateAnalysSnapshot() {
 }
 
 /**
+ * Plan ledger stays native for Rörelser edit. Spend windows must use the
+ * same locked THB projection as assembleTodaySnapshot — otherwise SEK
+ * rows are dropped by the THB currency filter and Hem-perioden lags.
+ */
+function canonicalSpendLedger(snapshot: PlanSnapshot) {
+  const map = new Map<string, FxCheckpoint | null>();
+  for (const row of snapshot.accounts?.accounts ?? []) {
+    map.set(row.id, {
+      accountId: row.id,
+      balanceMinor: row.calculatedMinor ?? 0,
+      thbMinor: row.thbMinor,
+      fxRate: row.fxRate,
+    });
+  }
+  for (const tx of snapshot.ledgerTransactions) {
+    if (map.has(tx.accountId)) continue;
+    if (tx.thbMinor == null && (tx.fxRate == null || tx.fxRate <= 0)) continue;
+    map.set(tx.accountId, {
+      accountId: tx.accountId,
+      balanceMinor: 0,
+      thbMinor: tx.thbMinor ?? null,
+      fxRate: tx.fxRate ?? null,
+    });
+  }
+  return projectLedgerToCanonicalThb(snapshot.ledgerTransactions, map);
+}
+
+/**
  * Recompute Hem living-budget + coverage from Plan truth.
  * Runs even while homeDirty so settle/expense optimistic paths stay coherent.
  */
@@ -339,8 +369,9 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
   const now = new Date();
   const timeZone = snapshot.timeZone;
   const cycle = projectPayCycle(snapshot.items, now, timeZone);
+  const spendLedger = canonicalSpendLedger(snapshot);
   const windows = computeClassifiedSpendingWindows({
-    transactions: snapshot.ledgerTransactions,
+    transactions: spendLedger,
     currency: snapshot.currency,
     now,
     timeZone,

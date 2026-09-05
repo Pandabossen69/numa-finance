@@ -248,6 +248,7 @@ export function PlanEditor({
       bankBalanceMinor: previous?.bankBalanceMinor ?? bankBalanceMinor,
       spendingByMonthKey,
       ledgerTransactions: liveLedger,
+      accounts: previous?.accounts,
       financeRevision: previous?.financeRevision
         ? `${previous.financeRevision.replace(/:local$/, "")}:local`
         : `local:${Date.now()}`,
