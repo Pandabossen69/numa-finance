@@ -21,7 +21,7 @@ const remote = readFileSync(
 );
 const migration = readFileSync(
   new URL(
-    "../../../supabase/migrations/20260905140000_save_plan_item_kind_cast.sql",
+    "../../../supabase/migrations/20260905150337_save_plan_item_kind_cast.sql",
     import.meta.url,
   ),
   "utf8",
