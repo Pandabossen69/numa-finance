@@ -6,17 +6,20 @@
  * PostgREST checks iat.
  *
  * Causes we handle, without loosening exp:
- * - Small iat skew (NTP / issuer slightly ahead): one short wait + retry.
+ * - Small iat skew whose wait can pass iat within MAX_IAT_WAIT_MS:
+ *   wait past iat, then one retry.
  * - Valid iat + PGRST303: PostgREST first-request clock-cache bug;
  *   the same token succeeds on the next request.
  *
- * Abnormal future iat, millisecond claims, and expired tokens stay
- * fail-closed. This module never treats an unverified JWT as proof
- * of identity — it only decides whether one identical retry is safe.
+ * Missing or unparseable bearer, future iat that cannot be waited
+ * past in time, abnormal future iat, millisecond claims, and expired
+ * tokens stay fail-closed. This module never treats an unverified JWT
+ * as proof of identity — it only decides whether one identical retry
+ * is safe. Page loads are not stretched up to 30s.
  */
 
-export const JWT_IAT_SKEW_SECONDS = 30;
-const MAX_IAT_WAIT_MS = 2_000;
+export const MAX_IAT_WAIT_MS = 2_000;
+const IAT_PASS_BUFFER_MS = 50;
 const MS_CLAIM_THRESHOLD = 1e12;
 const MAX_PAYLOAD_CHARS = 8_192;
 
@@ -50,6 +53,17 @@ function numericClaim(value: unknown): number | null {
   return value;
 }
 
+/** Wait that lands strictly after `iat`, or null if that exceeds the cap. */
+export function waitMsToPassFutureIat(
+  iat: number,
+  nowSec: number,
+): number | null {
+  if (iat <= nowSec) return 0;
+  const waitMs = (iat - nowSec) * 1000 + IAT_PASS_BUFFER_MS;
+  if (waitMs > MAX_IAT_WAIT_MS) return null;
+  return waitMs;
+}
+
 export function classifyJwtTime(
   token: string,
   nowSec = Math.floor(Date.now() / 1000),
@@ -66,8 +80,9 @@ export function classifyJwtTime(
   if (exp <= nowSec) return "expired";
   if (iat == null) return "valid";
   if (iat <= nowSec) return "valid";
-  if (iat - nowSec <= JWT_IAT_SKEW_SECONDS) return "retryable_future_iat";
-  return "abnormal_future_iat";
+  return waitMsToPassFutureIat(iat, nowSec) == null
+    ? "abnormal_future_iat"
+    : "retryable_future_iat";
 }
 
 export function isJwtIssuedAtFutureError(body: string): boolean {
@@ -131,7 +146,7 @@ export function retryWaitMsForJwtIssuedAtFuture(params: {
   if (!isJwtIssuedAtFutureError(params.body)) return null;
 
   const token = params.accessToken;
-  if (!token) return 0;
+  if (!token) return null;
 
   const nowSec = params.nowSec ?? Math.floor(Date.now() / 1000);
   const verdict = classifyJwtTime(token, nowSec);
@@ -144,8 +159,8 @@ export function retryWaitMsForJwtIssuedAtFuture(params: {
   }
   if (verdict === "retryable_future_iat") {
     const iat = numericClaim(decodeJwtPayload(token)?.iat);
-    const skewSec = iat == null ? 0 : Math.max(iat - nowSec, 0);
-    return Math.min(skewSec * 1000 + 50, MAX_IAT_WAIT_MS);
+    if (iat == null) return null;
+    return waitMsToPassFutureIat(iat, nowSec);
   }
   return 0;
 }

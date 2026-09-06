@@ -5,8 +5,9 @@ import {
   classifyJwtTime,
   fetchWithJwtIssuedAtRetry,
   isJwtIssuedAtFutureError,
-  JWT_IAT_SKEW_SECONDS,
+  MAX_IAT_WAIT_MS,
   retryWaitMsForJwtIssuedAtFuture,
+  waitMsToPassFutureIat,
 } from "./jwt-issued-at";
 
 const NOW_SEC = 1_788_674_400;
@@ -27,6 +28,7 @@ function pgrst303Body(): string {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -41,13 +43,16 @@ describe("classifyJwtTime", () => {
     expect(classifyJwtTime(token, NOW_SEC)).toBe("valid");
   });
 
-  it("treats a small future iat as retryable clock skew, not as authenticated", () => {
+  it("treats a short future iat as retryable clock skew, not as authenticated", () => {
     const token = unsignedJwt({
-      iat: NOW_SEC + 5,
+      iat: NOW_SEC + 1,
       exp: NOW_SEC + 3600,
     });
     expect(classifyJwtTime(token, NOW_SEC)).toBe("retryable_future_iat");
-    expect(NOW_SEC + 5 - NOW_SEC).toBeLessThanOrEqual(JWT_IAT_SKEW_SECONDS);
+    const waitMs = waitMsToPassFutureIat(NOW_SEC + 1, NOW_SEC);
+    expect(waitMs).not.toBeNull();
+    expect(waitMs).toBeLessThanOrEqual(MAX_IAT_WAIT_MS);
+    expect(NOW_SEC * 1000 + (waitMs ?? 0)).toBeGreaterThan((NOW_SEC + 1) * 1000);
   });
 
   it("rejects a clearly abnormal future iat", () => {
@@ -96,21 +101,23 @@ describe("retryWaitMsForJwtIssuedAtFuture", () => {
       iat: NOW_SEC + 1,
       exp: NOW_SEC + 3600,
     });
-    expect(
-      retryWaitMsForJwtIssuedAtFuture({
-        status: 401,
-        body: "JWT issued at future",
-        accessToken: token,
-        nowSec: NOW_SEC,
-      }),
-    ).toBe(1_050);
+    const waitMs = retryWaitMsForJwtIssuedAtFuture({
+      status: 401,
+      body: "JWT issued at future",
+      accessToken: token,
+      nowSec: NOW_SEC,
+    });
+    expect(waitMs).toBe(1_050);
+    expect(NOW_SEC * 1000 + (waitMs ?? 0)).toBeGreaterThan((NOW_SEC + 1) * 1000);
   });
 
-  it("caps the wait for a 5s future iat still inside the skew window", () => {
+  it("does not retry a 5s future iat that cannot be waited past in time", () => {
     const token = unsignedJwt({
       iat: NOW_SEC + 5,
       exp: NOW_SEC + 3600,
     });
+    expect(classifyJwtTime(token, NOW_SEC)).toBe("abnormal_future_iat");
+    expect(waitMsToPassFutureIat(NOW_SEC + 5, NOW_SEC)).toBeNull();
     expect(
       retryWaitMsForJwtIssuedAtFuture({
         status: 401,
@@ -118,7 +125,27 @@ describe("retryWaitMsForJwtIssuedAtFuture", () => {
         accessToken: token,
         nowSec: NOW_SEC,
       }),
-    ).toBe(2_000);
+    ).toBeNull();
+  });
+
+  it("does not retry a missing or unparseable bearer token", () => {
+    const base = {
+      status: 401,
+      body: pgrst303Body(),
+      nowSec: NOW_SEC,
+    };
+    expect(
+      retryWaitMsForJwtIssuedAtFuture({ ...base, accessToken: null }),
+    ).toBeNull();
+    expect(
+      retryWaitMsForJwtIssuedAtFuture({ ...base, accessToken: "not-a-jwt" }),
+    ).toBeNull();
+    expect(
+      retryWaitMsForJwtIssuedAtFuture({
+        ...base,
+        accessToken: unsignedJwt({ sub: "user" }),
+      }),
+    ).toBeNull();
   });
 
   it("does not retry expired or abnormal future iat or other 401s", () => {
@@ -198,6 +225,85 @@ describe("fetchWithJwtIssuedAtRetry", () => {
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(await response.json()).toEqual({ ok: true });
+  });
+
+  it("waits past a one-second future iat before exactly one retry", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_SEC * 1000));
+    const token = unsignedJwt({
+      iat: NOW_SEC + 1,
+      exp: NOW_SEC + 3600,
+    });
+    const fetchMock = vi
+      .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
+      .mockResolvedValueOnce(
+        new Response(pgrst303Body(), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    await Promise.resolve();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1_049);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(Date.now()).toBeLessThan((NOW_SEC + 1) * 1000 + 50);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(Date.now()).toBeGreaterThan((NOW_SEC + 1) * 1000);
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry PGRST303 when the bearer token is missing", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(pgrst303Body(), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+    );
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry a 5s future iat that still sits ahead after max wait", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = unsignedJwt({
+      iat: now + 5,
+      exp: now + 3600,
+    });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(pgrst303Body(), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    expect(response.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("does not retry an expired token presented as JWT issued at future", async () => {
