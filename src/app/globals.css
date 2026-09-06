@@ -1569,6 +1569,11 @@ button.numa-chip:disabled {
   color: var(--numa-ink);
 }
 
+.numa-bottom-nav-item.is-pending,
+.numa-side-nav-item.is-pending {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--numa-accent) 40%, transparent);
+}
+
 .numa-fab {
   background: linear-gradient(
     155deg,
@@ -1828,6 +1833,11 @@ button.numa-chip:disabled {
   .numa-side-nav-item,
   .numa-view-hold {
     transition: none !important;
+  }
+
+  .numa-bottom-nav-item.is-pending,
+  .numa-side-nav-item.is-pending {
+    box-shadow: none;
   }
 
   .numa-press:active,

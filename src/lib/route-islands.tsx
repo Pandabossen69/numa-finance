@@ -10,23 +10,23 @@ import {
 /** Route-boundary islands — keep heavy screens off the first shared JS. */
 export const HomeDashboard = nextDynamic(
   () => import("@/components/home/HomeDashboard").then((mod) => mod.HomeDashboard),
-  { ssr: false, loading: () => <HomeViewLoading /> },
+  { ssr: true, loading: () => <HomeViewLoading /> },
 );
 
 export const PlanEditor = nextDynamic(
   () => import("@/components/plan/PlanEditor").then((mod) => mod.PlanEditor),
-  { ssr: false, loading: () => <ViewLoading /> },
+  { ssr: true, loading: () => <ViewLoading /> },
 );
 
 export const PlanScreen = nextDynamic(
   () => import("@/components/plan/PlanScreen").then((mod) => mod.PlanScreen),
-  { ssr: false, loading: () => <ViewLoading /> },
+  { ssr: true, loading: () => <ViewLoading /> },
 );
 
 export const AnalysDashboard = nextDynamic(
   () =>
     import("@/components/analys/AnalysDashboard").then((mod) => mod.AnalysDashboard),
-  { ssr: false, loading: () => <AnalysViewLoading /> },
+  { ssr: true, loading: () => <AnalysViewLoading /> },
 );
 
 export const ReceiptCaptureFlow = nextDynamic(

@@ -8,13 +8,13 @@ describe("optimisticNavPath", () => {
     ).toBe("/plan");
   });
 
-  it("drops the pending href once the pathname has changed", () => {
+  it("keeps last intent after a stale intermediate URL lands", () => {
     expect(
       optimisticNavPath("/plan", { href: "/plan", fromPath: "/idag" }),
     ).toBe("/plan");
     expect(
       optimisticNavPath("/analys", { href: "/plan", fromPath: "/idag" }),
-    ).toBe("/analys");
+    ).toBe("/plan");
   });
 
   it("falls back to the real pathname when nothing is pending", () => {

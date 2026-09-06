@@ -8,6 +8,12 @@ import {
   shouldRedirectToProduction,
 } from "@/lib/site";
 import { supabaseServerOptions } from "./options";
+import {
+  isRscOrPrefetchRequest,
+  isSupabaseAuthTokenCookie,
+  readAccessTokenExpiryMs,
+  shouldSkipProxyGetUser,
+} from "./proxy-auth";
 
 const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga"];
 
@@ -16,11 +22,7 @@ const AUTH_TIMEOUT_MS = 2_500;
 function hasSupabaseAuthCookie(request: NextRequest): boolean {
   return request.cookies
     .getAll()
-    .some(
-      (c) =>
-        c.name.includes("auth-token") ||
-        (c.name.startsWith("sb-") && c.value.length > 0),
-    );
+    .some((c) => isSupabaseAuthTokenCookie(c.name) && c.value.length > 0);
 }
 
 async function withTimeout<T>(
@@ -118,6 +120,41 @@ export async function updateSession(request: NextRequest) {
   // Fast path: no auth cookie → skip network round-trip to Supabase.
   if (!hasSupabaseAuthCookie(request)) {
     if (!isPublic) return redirectToLogin(request);
+    return supabaseResponse;
+  }
+
+  // RSC / prefetch: skip getUser() only when a real auth-token JWT parses
+  // and exp is more than 30s ahead. Unreadable or expired cookies stay on
+  // the ordinary Auth path. Document loads always refresh. RLS still applies.
+  if (
+    shouldSkipProxyGetUser({
+      hasAuthCookie: true,
+      isRscOrPrefetch: isRscOrPrefetchRequest(request.headers),
+      tokenExpiresAtMs: readAccessTokenExpiryMs(request.cookies.getAll()),
+      nowMs: Date.now(),
+    })
+  ) {
+    if (pathname === "/") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/idag";
+      redirectUrl.search = "";
+      withPreviewOnUrl(redirectUrl, request);
+      return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
+    }
+    if (pathname === "/lista") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/transaktioner";
+      redirectUrl.search = "";
+      withPreviewOnUrl(redirectUrl, request);
+      return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
+    }
+    if (pathname === "/logga-in") {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/idag";
+      redirectUrl.search = "";
+      withPreviewOnUrl(redirectUrl, request);
+      return stampPreviewCookie(NextResponse.redirect(redirectUrl), request);
+    }
     return supabaseResponse;
   }
 

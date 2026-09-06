@@ -6,7 +6,7 @@ import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function SideNav({ displayName }: { displayName: React.ReactNode }) {
-  const { highlightPath, markIntent } = useNavIntent();
+  const { highlightPath, markIntent, pending } = useNavIntent();
   const { prefetch } = usePrefetchOnIntent();
 
   return (
@@ -46,11 +46,12 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
                 onMouseEnter={() => prefetch(item.href)}
                 onFocus={() => prefetch(item.href)}
                 onClick={() => markIntent(item.href)}
+                aria-busy={Boolean(pending && active) || undefined}
                 className={`numa-press numa-side-nav-item relative min-h-11 rounded-2xl px-1.5 py-3 ${
                   active
                     ? "is-active text-[var(--numa-ink)]"
                     : "text-[var(--numa-muted)] hover:bg-[var(--numa-card)] hover:text-[var(--numa-ink)]"
-                }`}
+                }${pending && active ? " is-pending" : ""}`}
               >
                 {active ? (
                   <span

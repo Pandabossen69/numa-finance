@@ -12,6 +12,9 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("inert");
     expect(src).toContain("sameTabRefresh");
     expect(src).toContain("liveByTab");
+    expect(src).toContain("intentMismatch");
+    expect(src).toContain("dest-loading");
+    expect(src).toContain("destLoadingForTab");
   });
 
   it("opens a tab at its top instead of the last tab's scroll position", () => {

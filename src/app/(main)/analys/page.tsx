@@ -1,9 +1,18 @@
+import { Suspense } from "react";
 import { AnalysDashboard } from "@/lib/route-islands";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 
 export const dynamic = "force-dynamic";
 
-export default async function AnalysPage() {
+export default function AnalysPage() {
+  return (
+    <Suspense fallback={<AnalysDashboard data={null} />}>
+      <AnalysBody />
+    </Suspense>
+  );
+}
+
+async function AnalysBody() {
   const result = await loadAnalysSnapshot();
   return (
     <AnalysDashboard
