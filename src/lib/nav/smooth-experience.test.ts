@@ -47,9 +47,10 @@ describe("smooth nav and saves", () => {
     expect(gettingStarted).not.toContain('revalidatePath("/", "layout")');
   });
 
-  it("prefetches force-dynamic tabs as full RSC payloads", () => {
+  it("prefetches force-dynamic tabs as loading shells instead of full snapshots", () => {
     const prefetch = read("./prefetch-intent.ts");
-    expect(prefetch).toContain('kind: "full"');
+    expect(prefetch).toContain("router.prefetch(href)");
+    expect(prefetch).not.toContain('kind: "full"');
   });
 
   it("streams the four main tabs so navigation is not blocked on snapshots", () => {

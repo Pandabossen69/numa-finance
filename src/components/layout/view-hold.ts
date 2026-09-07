@@ -11,6 +11,7 @@ export function shouldHoldPreviousView(input: {
   destTab: string | null;
   heldTab: string | null;
   intentMismatch?: boolean;
+  outletStale?: boolean;
 }): boolean {
   return resolveVisibleTab({
     ...input,
@@ -36,9 +37,17 @@ export function resolveVisibleTab(input: {
   hasDestCache: boolean;
   intentMismatch?: boolean;
   pathTab?: string | null;
+  /**
+   * URL already matches dest, but `children` is still the previous page.
+   * Next.js updates the pathname before the dest RSC/loading slot arrives.
+   */
+  outletStale?: boolean;
 }): "dest" | "held" | "children" | "dest-loading" {
   const inFlight =
-    input.loading || input.leaving || Boolean(input.intentMismatch);
+    input.loading ||
+    input.leaving ||
+    Boolean(input.intentMismatch) ||
+    Boolean(input.outletStale);
   if (!inFlight) return "children";
 
   if (input.intentMismatch && input.destIsTabRoot) {
@@ -46,6 +55,9 @@ export function resolveVisibleTab(input: {
   }
 
   if (input.destTab && input.pathTab && input.destTab === input.pathTab) {
+    if (input.outletStale && input.destIsTabRoot) {
+      return input.hasDestCache ? "dest" : "dest-loading";
+    }
     if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
     return "children";
   }

@@ -14,7 +14,6 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
       <div className="sticky top-0 flex h-dvh flex-col gap-10 py-[max(2.5rem,var(--numa-safe-top))] pr-2">
         <Link
           href="/idag"
-          prefetch
           onPointerDown={() => prefetch("/idag")}
           onMouseEnter={() => prefetch("/idag")}
           className="group block min-w-0 px-1"
@@ -38,7 +37,6 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch
                 onPointerDown={() => {
                   prefetch(item.href);
                   markIntent(item.href);
@@ -73,7 +71,6 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
         <div className="space-y-2">
           <Link
             href="/fota"
-            prefetch
             onPointerDown={() => {
               prefetch("/fota");
               markIntent("/fota");

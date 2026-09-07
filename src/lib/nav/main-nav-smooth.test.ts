@@ -94,4 +94,65 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(middleware).toContain("isRscOrPrefetchRequest");
     expect(middleware).toContain("AUTH_TIMEOUT_MS = 2_500");
   });
+
+  it("resolves dest-shell paint synchronously so URL-ahead children cannot freeze the previous tab", () => {
+    const samples: number[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      const started = performance.now();
+      const paint = resolveVisibleTab({
+        loading: false,
+        leaving: false,
+        destTab: "/plan",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        pathTab: "/plan",
+        outletStale: true,
+      });
+      samples.push(performance.now() - started);
+      expect(paint).toBe("dest-loading");
+    }
+    const p50 = [...samples].sort((a, b) => a - b)[1];
+    expect(p50).toBeLessThan(1);
+  });
+
+  it("keeps dest shell after the URL moves while children are still the previous page", () => {
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: false,
+        destTab: "/analys",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        pathTab: "/analys",
+        outletStale: true,
+      }),
+    ).toBe("dest-loading");
+    const outlet = read("../../components/layout/LastViewOutlet.tsx");
+    expect(outlet).toContain("outletStale");
+    expect(outlet).toContain("awaitingHref");
+  });
+
+  it("does not let Plan await searchParams before the Suspense shell", () => {
+    const plan = read("../../app/(main)/plan/page.tsx");
+    const beforeSuspense = plan.slice(0, plan.indexOf("<Suspense"));
+    expect(beforeSuspense).not.toContain("await searchParams");
+    expect(plan).toContain("PlanFromParams");
+  });
+
+  it("does not force full Link prefetch on the four main tabs", () => {
+    const bottom = read("../../components/layout/BottomNav.tsx");
+    const side = read("../../components/layout/SideNav.tsx");
+    expect(bottom).not.toMatch(/href=\{href\}\s+prefetch\b/);
+    expect(side).not.toMatch(/href=\{item\.href\}\s+prefetch\b/);
+  });
+
+  it("keeps fail-closed proxy skip and JWT iat retry", () => {
+    const proxyAuth = read("../supabase/proxy-auth.ts");
+    const jwt = read("../supabase/jwt-issued-at.ts");
+    expect(proxyAuth).toContain("if (input.tokenExpiresAtMs == null) return false");
+    expect(jwt).toContain("fetchWithJwtIssuedAtRetry");
+    expect(jwt).toContain("initWithFetchMemoizationBypass");
+  });
 });

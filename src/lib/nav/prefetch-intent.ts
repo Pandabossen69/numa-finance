@@ -9,13 +9,16 @@ export function canPrefetchHref(href: string): boolean {
   return href.startsWith("/") && !href.startsWith("//");
 }
 
-/** force-dynamic tabs need `kind: "full"` or prefetch only warms loading.tsx. */
+/**
+ * Auto/partial prefetch only. `kind: "full"` fetched the entire Hem/Plan/Analys
+ * snapshot and Next waited for that in-flight payload before swapping the
+ * outlet — old content stayed until 2.6–3.6s of RSC/data arrived.
+ * Default prefetch warms loading.tsx so the dest shell can paint immediately.
+ */
 export function prefetchHref(router: AppRouterInstance, href: string) {
   if (!canPrefetchHref(href)) return;
   try {
-    router.prefetch(href, {
-      kind: "full",
-    } as Parameters<typeof router.prefetch>[1]);
+    router.prefetch(href);
   } catch {
     // Prefetch is best-effort.
   }

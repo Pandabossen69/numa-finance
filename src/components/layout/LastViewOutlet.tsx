@@ -19,8 +19,9 @@ import {
 
 /**
  * Keep primary tabs mounted across revisits. First visit paints the dest
- * shell immediately — holding the previous tab after the URL moved made
- * the menu feel frozen (~3s on production).
+ * shell immediately. URL can move before dest children arrive — keep the
+ * dest shell (or dest cache) until the outlet actually swaps, otherwise
+ * the previous page stays visible for the whole RSC/snapshot (~3s).
  * Same-tab refresh (Spara on Plan) keeps the live view, not loading.tsx.
  * Last intent wins: a stale RSC for an older tap never becomes visible.
  * Drill-in (Mer → Saldo) is not held.
@@ -34,14 +35,37 @@ const useIsomorphicLayoutEffect =
 export function LastViewOutlet({ children }: { children: ReactNode }) {
   const { pathname, pending } = useNavIntent();
   const loading = isViewLoadingNode(children);
-  const destHref = pending?.href ?? pathname;
+  const [awaitingHref, setAwaitingHref] = useState<string | null>(null);
+  const childrenAtAwaitRef = useRef<ReactNode>(null);
+  if (pending?.href && awaitingHref !== pending.href) {
+    setAwaitingHref(pending.href);
+    childrenAtAwaitRef.current = children;
+  }
+  const destHref = pending?.href ?? awaitingHref ?? pathname;
   const destTab = primaryTab(destHref);
   const pathTab = primaryTab(pathname);
   const leaving = Boolean(pending && pending.fromPath === pathname);
   const intentMismatch = Boolean(
     pending && destTab && pathTab && destTab !== pathTab,
   );
-  const inFlight = loading || leaving || intentMismatch;
+  const outletStale = Boolean(
+    awaitingHref &&
+      destTab &&
+      pathTab === destTab &&
+      destTab === primaryTab(awaitingHref) &&
+      childrenAtAwaitRef.current != null &&
+      children === childrenAtAwaitRef.current,
+  );
+  if (
+    awaitingHref &&
+    destTab === pathTab &&
+    destTab === primaryTab(awaitingHref) &&
+    children !== childrenAtAwaitRef.current
+  ) {
+    setAwaitingHref(null);
+    childrenAtAwaitRef.current = null;
+  }
+  const inFlight = loading || leaving || intentMismatch || outletStale;
   const [liveByTab, setLiveByTab] = useState<Record<string, ReactNode>>({});
   const hydrated = useSyncExternalStore(
     subscribeNever,
@@ -88,7 +112,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
 
   const heldTab = readyAt ? primaryTab(readyAt) : null;
   const destLive =
-    destTab === pathTab && !loading && !intentMismatch
+    destTab === pathTab && !loading && !intentMismatch && !outletStale
       ? children
       : destTab
         ? liveByTab[destTab]
@@ -102,6 +126,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     hasDestCache: Boolean(destTab && (cache[destTab] || destLive)),
     intentMismatch,
     pathTab,
+    outletStale,
   });
   const visibleTab =
     paint === "dest" || paint === "dest-loading"

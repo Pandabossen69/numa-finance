@@ -120,4 +120,31 @@ describe("resolveVisibleTab", () => {
       }),
     ).toBe("dest");
   });
+
+  it("paints dest shell when the URL already moved but children are still the previous page", () => {
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: false,
+        destTab: "/analys",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        pathTab: "/analys",
+        outletStale: true,
+      }),
+    ).toBe("dest-loading");
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: false,
+        destTab: "/plan",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: true,
+        pathTab: "/plan",
+        outletStale: true,
+      }),
+    ).toBe("dest");
+  });
 });
