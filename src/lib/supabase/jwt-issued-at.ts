@@ -14,8 +14,13 @@
  * Missing or unparseable bearer, future iat that cannot be waited
  * past in time, abnormal future iat, millisecond claims, and expired
  * tokens stay fail-closed. This module never treats an unverified JWT
- * as proof of identity — it only decides whether one identical retry
- * is safe. Page loads are not stretched up to 30s.
+ * as proof of identity — it only decides whether one retry is safe.
+ * Page loads are not stretched up to 30s.
+ *
+ * Next.js 16 memoizes GET `fetch` with the same URL and options for
+ * one RSC render (`createDedupeFetch`). `cache: "no-store"` is not
+ * part of that key. The retry therefore passes an AbortController
+ * `signal`, the documented opt-out, so it hits PostgREST again.
  */
 
 export const MAX_IAT_WAIT_MS = 2_000;
@@ -24,15 +29,9 @@ const MS_CLAIM_THRESHOLD = 1e12;
 const MAX_PAYLOAD_CHARS = 8_192;
 
 export type JwtTimeVerdict =
-  | "valid"
-  | "retryable_future_iat"
-  | "abnormal_future_iat"
-  | "expired"
-  | "invalid";
+  "valid" | "retryable_future_iat" | "abnormal_future_iat" | "expired" | "invalid";
 
-export function decodeJwtPayload(
-  token: string,
-): Record<string, unknown> | null {
+export function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const parts = token.split(".");
   if (parts.length !== 3 || !parts[1]) return null;
   try {
@@ -54,10 +53,7 @@ function numericClaim(value: unknown): number | null {
 }
 
 /** Wait that lands strictly after `iat`, or null if that exceeds the cap. */
-export function waitMsToPassFutureIat(
-  iat: number,
-  nowSec: number,
-): number | null {
+export function waitMsToPassFutureIat(iat: number, nowSec: number): number | null {
   if (iat <= nowSec) return 0;
   const waitMs = (iat - nowSec) * 1000 + IAT_PASS_BUFFER_MS;
   if (waitMs > MAX_IAT_WAIT_MS) return null;
@@ -165,6 +161,17 @@ export function retryWaitMsForJwtIssuedAtFuture(params: {
   return 0;
 }
 
+/**
+ * Next.js 16 request memoization (`createDedupeFetch`) returns the
+ * first GET response for identical URL + options. It ignores `cache`
+ * and opts out only when `options.signal` is set (or the request is
+ * non-GET / keepalive). Use this only on the single PGRST303 retry.
+ */
+export function initWithFetchMemoizationBypass(init?: RequestInit): RequestInit {
+  if (init?.signal) return init;
+  return { ...init, signal: new AbortController().signal };
+}
+
 export async function fetchWithJwtIssuedAtRetry(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -187,5 +194,5 @@ export async function fetchWithJwtIssuedAtRetry(
       setTimeout(resolve, waitMs);
     });
   }
-  return fetch(input, init);
+  return fetch(input, initWithFetchMemoizationBypass(init));
 }

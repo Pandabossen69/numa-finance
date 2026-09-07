@@ -4,6 +4,7 @@ import {
   accessTokenFromFetch,
   classifyJwtTime,
   fetchWithJwtIssuedAtRetry,
+  initWithFetchMemoizationBypass,
   isJwtIssuedAtFutureError,
   MAX_IAT_WAIT_MS,
   retryWaitMsForJwtIssuedAtFuture,
@@ -13,9 +14,9 @@ import {
 const NOW_SEC = 1_788_674_400;
 
 function unsignedJwt(claims: Record<string, unknown>): string {
-  const header = Buffer.from(
-    JSON.stringify({ alg: "none", typ: "JWT" }),
-  ).toString("base64url");
+  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString(
+    "base64url",
+  );
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   return `${header}.${payload}.sig`;
 }
@@ -25,6 +26,89 @@ function pgrst303Body(): string {
     code: "PGRST303",
     message: "JWT issued at future",
   });
+}
+
+/**
+ * Same GET-dedupe rules as Next.js 16 `createDedupeFetch`:
+ * signal / non-GET / keepalive opt out; `cache` is not in the key.
+ * React.cache is a no-op in the client React build Vitest loads, so
+ * the real helper cannot be used here.
+ */
+function createNextRequestDedupeFetch(
+  originalFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
+): typeof fetch {
+  const headersToExclude = new Set(["traceparent", "tracestate"]);
+  const simpleCacheKey = '["GET",[],null,"follow",null,null,null,null]';
+  const byUrl = new Map<string, Array<[string, Promise<Response>, Response | null]>>();
+
+  function generateCacheKey(request: Request): string {
+    const filteredHeaders = Array.from(request.headers.entries()).filter(
+      ([key]) => !headersToExclude.has(key.toLowerCase()),
+    );
+    return JSON.stringify([
+      request.method,
+      filteredHeaders,
+      request.mode,
+      request.redirect,
+      request.credentials,
+      request.referrer,
+      request.referrerPolicy,
+      request.integrity,
+    ]);
+  }
+
+  return function dedupeFetch(resource, options) {
+    if (options?.signal) {
+      return originalFetch(resource, options);
+    }
+
+    let url: string;
+    let cacheKey: string;
+    if (typeof resource === "string" && !options) {
+      cacheKey = simpleCacheKey;
+      url = resource;
+    } else {
+      const request =
+        typeof resource === "string" || resource instanceof URL
+          ? new Request(resource, options)
+          : resource;
+      if ((request.method !== "GET" && request.method !== "HEAD") || request.keepalive) {
+        return originalFetch(resource, options);
+      }
+      cacheKey = generateCacheKey(request);
+      url = request.url;
+    }
+
+    let cacheEntries = byUrl.get(url);
+    if (!cacheEntries) {
+      cacheEntries = [];
+      byUrl.set(url, cacheEntries);
+    }
+    for (let i = 0; i < cacheEntries.length; i += 1) {
+      const [key, promise] = cacheEntries[i]!;
+      if (key === cacheKey) {
+        return promise.then(() => {
+          const cached = cacheEntries[i]![2];
+          if (!cached) throw new Error("No cached response");
+          return cached.clone();
+        });
+      }
+    }
+
+    const promise = originalFetch(resource, options);
+    const entry: [string, Promise<Response>, Response | null] = [cacheKey, promise, null];
+    cacheEntries.push(entry);
+    return promise.then((response) => {
+      entry[2] = response.clone();
+      return response;
+    });
+  };
+}
+
+function networkFetchMock(
+  impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
+) {
+  return vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(impl);
 }
 
 afterEach(() => {
@@ -134,9 +218,7 @@ describe("retryWaitMsForJwtIssuedAtFuture", () => {
       body: pgrst303Body(),
       nowSec: NOW_SEC,
     };
-    expect(
-      retryWaitMsForJwtIssuedAtFuture({ ...base, accessToken: null }),
-    ).toBeNull();
+    expect(retryWaitMsForJwtIssuedAtFuture({ ...base, accessToken: null })).toBeNull();
     expect(
       retryWaitMsForJwtIssuedAtFuture({ ...base, accessToken: "not-a-jwt" }),
     ).toBeNull();
@@ -250,10 +332,9 @@ describe("fetchWithJwtIssuedAtRetry", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const pending = fetchWithJwtIssuedAtRetry(
-      "http://127.0.0.1/rest/v1/profiles",
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
+    const pending = fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     await Promise.resolve();
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
@@ -277,9 +358,7 @@ describe("fetchWithJwtIssuedAtRetry", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await fetchWithJwtIssuedAtRetry(
-      "http://127.0.0.1/rest/v1/profiles",
-    );
+    const response = await fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles");
     expect(response.status).toBe(401);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -337,6 +416,194 @@ describe("fetchWithJwtIssuedAtRetry", () => {
   });
 });
 
+describe("Next.js request memoization vs JWT retry", () => {
+  function validToken(): string {
+    const now = Math.floor(Date.now() / 1000);
+    return unsignedJwt({ iat: now - 2, exp: now + 3600 });
+  }
+
+  it("counts a real second PostgREST call when GET would otherwise be memoized", async () => {
+    const token = validToken();
+    const network = networkFetchMock(async () => {
+      throw new Error("unexpected extra network call");
+    });
+    network
+      .mockResolvedValueOnce(
+        new Response(pgrst303Body(), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
+
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+
+    expect(network).toHaveBeenCalledTimes(2);
+    expect(network.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+  });
+
+  it("would stay on the memoized 401 if the retry reused the same GET options", async () => {
+    const token = validToken();
+    const network = networkFetchMock(async () => {
+      return new Response(pgrst303Body(), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    const deduped = createNextRequestDedupeFetch(network);
+    const url = "http://127.0.0.1/rest/v1/profiles";
+    const init = { headers: { Authorization: `Bearer ${token}` } };
+
+    const first = await deduped(url, init);
+    const sameOptions = await deduped(url, init);
+    const noStore = await deduped(url, { ...init, cache: "no-store" });
+
+    expect(first.status).toBe(401);
+    expect(sameOptions.status).toBe(401);
+    expect(noStore.status).toBe(401);
+    expect(network).toHaveBeenCalledTimes(1);
+
+    const bypassed = await deduped(url, initWithFetchMemoizationBypass(init));
+    expect(bypassed.status).toBe(401);
+    expect(network).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not treat cache: no-store as a memoization opt-out", () => {
+    const withNoStore = { cache: "no-store" as RequestCache };
+    const bypassed = initWithFetchMemoizationBypass(withNoStore);
+    expect(bypassed.cache).toBe("no-store");
+    expect(bypassed.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("keeps an existing caller signal instead of replacing it", () => {
+    const signal = new AbortController().signal;
+    expect(initWithFetchMemoizationBypass({ signal }).signal).toBe(signal);
+  });
+
+  it("returns a normal success without a second network call", async () => {
+    const token = validToken();
+    const network = networkFetchMock(async () => {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
+
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    expect(response.status).toBe(200);
+    expect(network).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits past a one-second future iat, then makes exactly one new network call", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_SEC * 1000));
+    const token = unsignedJwt({
+      iat: NOW_SEC + 1,
+      exp: NOW_SEC + 3600,
+    });
+    const network = networkFetchMock(async () => {
+      throw new Error("unexpected extra network call");
+    });
+    network
+      .mockResolvedValueOnce(
+        new Response(pgrst303Body(), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
+
+    const pending = fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    await Promise.resolve();
+    expect(network).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1_049);
+    expect(network).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(Date.now()).toBeGreaterThan((NOW_SEC + 1) * 1000);
+
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(network).toHaveBeenCalledTimes(2);
+    expect(network.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("does not retry a 5s future iat under memoized GET", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = unsignedJwt({ iat: now + 5, exp: now + 3600 });
+    const network = networkFetchMock(async () => {
+      return new Response(pgrst303Body(), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
+
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    expect(response.status).toBe(401);
+    expect(network).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry a missing bearer under memoized GET", async () => {
+    const network = networkFetchMock(async () => {
+      return new Response(pgrst303Body(), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
+
+    const response = await fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles");
+    expect(response.status).toBe(401);
+    expect(network).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry an expired token under memoized GET", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = unsignedJwt({ iat: now - 4000, exp: now - 10 });
+    const network = networkFetchMock(async () => {
+      return new Response(pgrst303Body(), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
+
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    expect(response.status).toBe(401);
+    expect(network).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("Analys JWT error path", () => {
   it("keeps loader.analys as the reporter and retries only on the server REST client", () => {
     const analys = readFileSync(
@@ -350,5 +617,18 @@ describe("Analys JWT error path", () => {
     expect(auth).toContain("auth.getSession()");
     expect(server).toContain("fetchWithJwtIssuedAtRetry");
     expect(server).not.toContain("autoRefreshToken: true");
+    const home = readFileSync(
+      new URL("../../features/finance/load-home.ts", import.meta.url),
+      "utf8",
+    );
+    const plan = readFileSync(
+      new URL("../../features/finance/load-plan.ts", import.meta.url),
+      "utf8",
+    );
+    expect(home).toContain("getCachedTodaySnapshot");
+    expect(plan).toContain("getCachedTodaySnapshot");
+    expect(
+      readFileSync(new URL("./jwt-issued-at.ts", import.meta.url), "utf8"),
+    ).toContain("initWithFetchMemoizationBypass");
   });
 });
