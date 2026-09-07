@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isSupabaseConfigured } from "./config";
+import { fetchWithJwtIssuedAtRetry } from "./jwt-issued-at";
 import { supabaseServerOptions } from "./options";
 
 /** One cookie-backed client per request — snapshot used to build a new one per query. */
@@ -17,6 +18,9 @@ export const createSupabaseServerClient = cache(async () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       ...supabaseServerOptions,
+      global: {
+        fetch: fetchWithJwtIssuedAtRetry,
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();
