@@ -94,11 +94,13 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(movements).not.toContain("ssr: false");
   });
 
-  it("skips proxy getUser on RSC/prefetch so tab switches do not share a 2.5s Auth gate", () => {
+  it("skips proxy getUser on a fresh JWT so open and tab switches are not a 2.5s Auth gate", () => {
     const middleware = read("../supabase/middleware.ts");
+    const proxyAuth = read("../supabase/proxy-auth.ts");
     expect(middleware).toContain("shouldSkipProxyGetUser");
-    expect(middleware).toContain("isRscOrPrefetchRequest");
+    expect(middleware).toContain("including the first document");
     expect(middleware).toContain("AUTH_TIMEOUT_MS = 2_500");
+    expect(proxyAuth).not.toContain("if (!input.hasAuthCookie || !input.isRscOrPrefetch)");
   });
 
   it("does not let Plan or Fota await searchParams before the Suspense shell", () => {

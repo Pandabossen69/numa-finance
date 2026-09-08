@@ -10,12 +10,13 @@ describe("preview host and auth return", () => {
     expect(src).toMatch(/function redirectToProduction/);
   });
 
-  it("skips Auth getUser on RSC/prefetch only for a parsed fresh auth-token JWT", () => {
+  it("skips Auth getUser on a fresh JWT including the first document", () => {
     expect(src).toContain("shouldSkipProxyGetUser");
     expect(src).toContain("isRscOrPrefetchRequest");
     expect(src).toContain("isSupabaseAuthTokenCookie");
     expect(src).toContain("readAccessTokenExpiryMs");
     expect(src).toContain("AUTH_TIMEOUT_MS = 2_500");
+    expect(src).toContain("including the first document");
   });
 
   it("keeps login and post-auth navigation on the request host", () => {

@@ -123,9 +123,10 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // RSC / prefetch: skip getUser() only when a real auth-token JWT parses
-  // and exp is more than 30s ahead. Unreadable or expired cookies stay on
-  // the ordinary Auth path. Document loads always refresh. RLS still applies.
+  // Skip getUser() when a real auth-token JWT parses and exp is more
+  // than 30s ahead — including the first document. Chrome must not wait
+  // 2.5s Auth on open. Unreadable or expired cookies stay on getUser().
+  // RLS still applies on every snapshot.
   if (
     shouldSkipProxyGetUser({
       hasAuthCookie: true,

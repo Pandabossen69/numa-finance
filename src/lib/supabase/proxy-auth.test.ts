@@ -42,18 +42,19 @@ describe("proxy Auth fast path", () => {
     );
   });
 
-  it("never skips getUser on a full document request", () => {
+  it("skips getUser on a document request when the parsed JWT is fresh", () => {
+    const now = 1_700_000_000_000;
     expect(
       shouldSkipProxyGetUser({
         hasAuthCookie: true,
         isRscOrPrefetch: false,
-        tokenExpiresAtMs: Date.now() + 60_000,
-        nowMs: Date.now(),
+        tokenExpiresAtMs: now + 120_000,
+        nowMs: now,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("skips getUser on RSC only when the parsed JWT exp is more than 30s ahead", () => {
+  it("skips getUser when the parsed JWT exp is more than 30s ahead", () => {
     const now = 1_700_000_000_000;
     expect(
       shouldSkipProxyGetUser({

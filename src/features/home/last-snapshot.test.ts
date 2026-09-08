@@ -23,6 +23,7 @@ import {
   lastKnownChromeDisplayName,
   hasBoundSessionOwner,
   clearClientSessionCaches,
+  hydrateLastKnownFromPersist,
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
@@ -549,6 +550,33 @@ describe("last view memory", () => {
     expect(hasBoundSessionOwner()).toBe(false);
     expect(lastKnownChromeDisplayName()).toBeNull();
     expect(lastMerSnapshot()).toBeNull();
+  });
+
+  it("rehydrates last-known Hem after a cold client boot", async () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    await Promise.resolve();
+    const raw = map.get("numa.lastKnown.v1");
+    expect(raw).toContain("640");
+    clearClientSessionCaches();
+    expect(lastHomeSnapshot()).toBeNull();
+    if (raw) map.set("numa.lastKnown.v1", raw);
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(640_00);
+    expect(lastKnownChromeDisplayName()).toBe("Hugo");
+    Reflect.deleteProperty(globalThis, "localStorage");
   });
 
   it("force-adopts a mutation snapshot even when verifiedAt is older", () => {

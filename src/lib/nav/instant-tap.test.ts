@@ -74,6 +74,15 @@ describe("instant tap — phone-width dest paint", () => {
     ).toBe(false);
   });
 
+  it("persists last-known Hem so a cold open paints without RSC", () => {
+    const persist = read("../../features/home/last-snapshot-persist.ts");
+    const last = read("../../features/home/last-snapshot.ts");
+    expect(persist).toContain("numa.lastKnown.v1");
+    expect(last).toContain("hydrateLastKnownFromPersist");
+    expect(last).toContain("writePersistedLastKnown");
+    expect(last).toContain("clearPersistedLastKnown");
+  });
+
   it("does not sleep JWT iat on the menu fetch path", () => {
     const jwt = read("../supabase/jwt-issued-at.ts");
     const fetchFn = jwt.slice(jwt.indexOf("export async function fetchWithJwtIssuedAtRetry"));
