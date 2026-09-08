@@ -87,7 +87,7 @@ describe("visible Plan / Analys history", () => {
       planItems: [],
       ledgerTransactions: [],
       financeRevision: "empty:u:0",
-    } as AnalysSnapshot;
+    } as unknown as AnalysSnapshot;
     expect(canPaintAnalysHistory(empty, null, null)).toBe(false);
     expect(canPaintAnalysHistory(null, null, null)).toBe(false);
     expect(canPaintAnalysHistory(empty, empty, null)).toBe(true);
