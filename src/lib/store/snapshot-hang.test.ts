@@ -34,6 +34,8 @@ describe("cold Hem/Analys hang contract", () => {
     );
     expect(once).toContain("api().getProfile()");
     expect(once).toContain("api().listAccounts()");
+    expect(once).toContain("listPlanItems");
+    expect(once).toContain("emptyTodaySnapshot(profile, accounts, null, planItems)");
   });
 
   it("does not keep Hem Suspense open on accounts or Kom igång", () => {

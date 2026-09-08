@@ -32,6 +32,7 @@ import {
   readPersistedLastKnown,
   writePersistedLastKnown,
 } from "@/features/home/last-snapshot-persist";
+import { isPlaceholderEmptyRevision } from "@/lib/store/empty-snapshot";
 
 export type { PlanSnapshot } from "@/features/finance/load-plan";
 
@@ -546,6 +547,14 @@ export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
   if (analys && !shouldAdoptFinanceSnapshot(analys, snap, false)) {
     return;
   }
+  if (
+    analys &&
+    (analys.planItems?.length ?? 0) > 0 &&
+    (snap.planItems?.length ?? 0) === 0 &&
+    isPlaceholderEmptyRevision(snap.financeRevision)
+  ) {
+    return;
+  }
   analys = snap;
   schedulePersist();
 }
@@ -561,6 +570,14 @@ function planStamp(snapshot: PlanSnapshot): string {
 export function rememberPlanSnapshot(snapshot: PlanSnapshot) {
   if (plan === snapshot) return;
   if (plan && !shouldAdoptFinanceSnapshot(plan, snapshot, false)) {
+    return;
+  }
+  if (
+    plan &&
+    plan.items.length > 0 &&
+    snapshot.items.length === 0 &&
+    isPlaceholderEmptyRevision(snapshot.financeRevision)
+  ) {
     return;
   }
   if (plan && planStamp(plan) === planStamp(snapshot)) {

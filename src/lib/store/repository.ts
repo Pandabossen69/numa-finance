@@ -221,9 +221,16 @@ async function loadTodaySnapshotOnce(): Promise<TodaySnapshot> {
     api().getProfile(),
     api().listAccounts(),
   ]);
-  // Brand-new users have no ledger — skip plan roll, progress, and tx windows.
+  // No accounts: still load plan rows. A failed/empty account read must
+  // not blank August/September history on Plan and Analys.
   if (accounts.length === 0) {
-    return emptyTodaySnapshot(profile, accounts);
+    const planItems = await api()
+      .listPlanItems()
+      .catch((error) => {
+        console.warn("[numa] plan items after empty accounts", error);
+        return [];
+      });
+    return emptyTodaySnapshot(profile, accounts, null, planItems);
   }
   // Do not await due-rolling on the login path — it was an extra plan-items
   // round-trip before the timed snapshot even started.

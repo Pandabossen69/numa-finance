@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { projectCashCoverage } from "@/domain/finance";
 import { createEmptyStore } from "./types";
-import { emptyTodaySnapshot } from "./empty-snapshot";
+import {
+  emptyTodaySnapshot,
+  isPlaceholderEmptyRevision,
+} from "./empty-snapshot";
 
 describe("new user empty snapshot", () => {
   it("starts with no plan, accounts, or transactions and zero coverage", () => {
@@ -40,5 +43,31 @@ describe("new user empty snapshot", () => {
     expect(coverage.unpaidMinor).toBe(0);
     expect(coverage.overMinor).toBe(0);
     expect(coverage.saldoMinor).toBeNull();
+    expect(isPlaceholderEmptyRevision(snap.financeRevision)).toBe(true);
+    expect(isPlaceholderEmptyRevision("real-rev")).toBe(false);
+  });
+
+  it("can keep existing plan rows when accounts failed to load", () => {
+    const store = createEmptyStore();
+    const snap = emptyTodaySnapshot(store.profile, [], null, [
+      {
+        id: "hyra",
+        userId: store.profile.id,
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 20_000_00,
+        currency: "THB",
+        cadence: "monthly",
+        nextDueAt: "2026-08-01T00:00:00.000Z",
+        isActive: true,
+        settledAt: null,
+        settledMinor: null,
+        remainingDueAt: null,
+        createdAt: "2026-08-01T00:00:00.000Z",
+        updatedAt: "2026-08-01T00:00:00.000Z",
+      },
+    ]);
+    expect(snap.planItems).toHaveLength(1);
+    expect(snap.financeRevision).toBe(`empty:${store.profile.id}:1`);
   });
 });

@@ -72,6 +72,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
   try {
     storage.setItem(LAST_KNOWN_STORAGE_KEY, JSON.stringify(payload));
   } catch {
+    const previous = readPersistedLastKnown();
     try {
       storage.setItem(
         LAST_KNOWN_STORAGE_KEY,
@@ -79,11 +80,11 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
           v: 1,
           userId: payload.userId,
           home: payload.home,
-          plan: null,
-          analys: null,
+          plan: previous?.plan ?? payload.plan,
+          analys: previous?.analys ?? payload.analys,
           mer: payload.mer,
           accounts: payload.accounts,
-          movements: null,
+          movements: previous?.movements ?? payload.movements,
           gettingStarted: payload.gettingStarted,
           planView: payload.planView,
           analysScope: payload.analysScope,
@@ -91,7 +92,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
         } satisfies PersistedLastKnown),
       );
     } catch {
-      // Quota — next remember retries.
+      // Quota — next remember retries. Never blank Plan/Analys on purpose.
     }
   }
 }
