@@ -11,7 +11,8 @@ describe("destLoadingForTab", () => {
     expect(src).toContain('case "/plan"');
     expect(src).toContain("<PlanScreen />");
     expect(src).toContain('case "/analys"');
-    expect(src).toContain("<AnalysDashboard data={null} />");
+    expect(src).toContain("lastAnalysSnapshot()");
+    expect(src).toContain("<AnalysDashboard data={lastAnalysSnapshot()} />");
     expect(src).toContain('case "/mer"');
     expect(src).toContain("<MerScreen data={null} />");
     expect(src).toContain('case "/transaktioner"');

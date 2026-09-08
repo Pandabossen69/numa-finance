@@ -3,7 +3,10 @@
 import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
 import { FotaScreen } from "@/components/capture/FotaScreen";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
-import { lastHomeSnapshot } from "@/features/home/last-snapshot";
+import {
+  lastAnalysSnapshot,
+  lastHomeSnapshot,
+} from "@/features/home/last-snapshot";
 import { ViewLoading } from "@/components/layout/ViewLoading";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
@@ -22,7 +25,7 @@ export function destLoadingForTab(tab: string | null) {
     case "/plan":
       return <PlanScreen />;
     case "/analys":
-      return <AnalysDashboard data={null} />;
+      return <AnalysDashboard data={lastAnalysSnapshot()} />;
     case "/mer":
       return <MerScreen data={null} />;
     case "/transaktioner":

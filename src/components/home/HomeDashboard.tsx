@@ -45,6 +45,7 @@ import {
   rememberAccountsSnapshot,
   rememberGettingStarted,
   rememberHomeSnapshot,
+  subscribeGettingStarted,
   revertOptimisticHomeSpend,
   subscribeAccountsSnapshot,
   subscribeHomeSnapshot,
@@ -76,6 +77,11 @@ export function HomeDashboard({
     subscribeAccountsSnapshot,
     lastAccountsSnapshot,
     lastAccountsSnapshot,
+  );
+  const storedGettingStarted = useSyncExternalStore(
+    subscribeGettingStarted,
+    lastGettingStarted,
+    lastGettingStarted,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
   const view = (sameOwner ? stored : null) ?? snap ?? lastHomeSnapshot();
@@ -447,7 +453,9 @@ export function HomeDashboard({
         </>
       ) : null}
 
-      {gettingStarted?.visible ? <GettingStartedCard view={gettingStarted} /> : null}
+      {(gettingStarted ?? storedGettingStarted)?.visible ? (
+        <GettingStartedCard view={(gettingStarted ?? storedGettingStarted)!} />
+      ) : null}
     </div>
   );
 }

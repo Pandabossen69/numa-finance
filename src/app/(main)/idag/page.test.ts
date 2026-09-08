@@ -17,8 +17,9 @@ describe("/idag first paint", () => {
     expect(loading).not.toContain("HomeViewLoading");
   });
 
-  it("shows Kom igång on Hem for new users", () => {
-    expect(page).toContain("loadGettingStartedView");
-    expect(page).toContain("gettingStarted");
+  it("does not block Hem money on accounts or Kom igång", () => {
+    expect(page).not.toContain("loadGettingStartedView");
+    expect(page).not.toContain("loadAccountsSnapshot");
+    expect(page).toContain("loadHomeSnapshot");
   });
 });

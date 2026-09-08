@@ -116,6 +116,8 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
     expect(src).toContain("GettingStartedCard");
+    expect(src).toContain("lastGettingStarted");
+    expect(src).toContain("subscribeGettingStarted");
     expect(src).toContain("läget just nu");
     expect(src).not.toMatch(/välkommen till din resa/i);
   });

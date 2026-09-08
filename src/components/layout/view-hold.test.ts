@@ -2,6 +2,7 @@ import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
+  AnalysPending,
   AnalysViewLoading,
   HemPending,
   HomeViewLoading,
@@ -17,6 +18,7 @@ describe("isViewLoadingNode", () => {
   it("recognizes ViewLoading, Suspense, and the data marker", () => {
     expect(isViewLoadingNode(createElement(ViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(AnalysViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(AnalysPending))).toBe(true);
     expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(HemPending))).toBe(true);
     expect(isViewLoadingNode(createElement(MovementsViewLoading))).toBe(true);

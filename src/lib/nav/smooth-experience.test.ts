@@ -61,7 +61,9 @@ describe("smooth nav and saves", () => {
     expect(idag).toContain("readLastHomeCookie");
     expect(idag).toContain("HemPending");
     expect(plan).toContain("<Suspense fallback={<ViewLoading />}>");
-    expect(analys).toContain("<Suspense fallback={<AnalysViewLoading />}>");
+    expect(analys).toContain("AnalysPending");
+    expect(analys).toContain("readLastHomeCookie");
+    expect(analys).not.toContain("AnalysViewLoading");
     expect(mer).toContain("<Suspense fallback={<MerViewLoading />}>");
   });
 

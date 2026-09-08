@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { AnalysViewLoading } from "@/components/layout/ViewLoading";
+import { AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import {
   DestinationWarmup,
@@ -27,6 +27,7 @@ import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
+  lastHomeSnapshot,
   lastPlanView,
   rememberPlanView,
   subscribePlanView,
@@ -120,7 +121,7 @@ export function AnalysDashboard({
   }, [view, scope, activeMonthKey]);
 
   if (!view || !month || !activeMonthKey) {
-    if (!error) return <AnalysViewLoading />;
+    if (!error) return <AnalysPending home={lastHomeSnapshot()} />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
         <p className="text-sm font-semibold">{financeTruthMessageSv({ truthStatus: "unavailable" }).title}</p>

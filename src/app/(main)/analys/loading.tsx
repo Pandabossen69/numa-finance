@@ -1,5 +1,7 @@
-import { AnalysViewLoading } from "@/components/layout/ViewLoading";
+import { AnalysPending } from "@/components/layout/ViewLoading";
+import { readLastHomeCookie } from "@/features/home/last-home-cookie.server";
 
-export default function AnalysLoading() {
-  return <AnalysViewLoading />;
+export default async function AnalysLoading() {
+  const last = await readLastHomeCookie();
+  return <AnalysPending home={last} />;
 }

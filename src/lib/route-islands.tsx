@@ -2,7 +2,7 @@
 
 import nextDynamic from "next/dynamic";
 import {
-  AnalysViewLoading,
+  AnalysPending,
   HemPending,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
@@ -26,7 +26,7 @@ export const PlanScreen = nextDynamic(
 export const AnalysDashboard = nextDynamic(
   () =>
     import("@/components/analys/AnalysDashboard").then((mod) => mod.AnalysDashboard),
-  { ssr: true, loading: () => <AnalysViewLoading /> },
+  { ssr: true, loading: () => <AnalysPending /> },
 );
 
 export const ReceiptCaptureFlow = nextDynamic(

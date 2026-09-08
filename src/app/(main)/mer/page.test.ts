@@ -63,6 +63,8 @@ describe("Mer HIGH regress", () => {
     expect(mer).toContain("/transaktioner");
     expect(mer).toContain("/konton");
     expect(merPage).toContain("Suspense");
+    expect(merPage).toContain("MER_TIMEOUT_MS");
+    expect(merPage).toContain("withTimeout");
     expect(merPage).toContain("<Suspense fallback={<MerViewLoading />}>");
     expect(merPage).not.toContain("<Suspense fallback={<MerScreen data={null} />}>");
   });

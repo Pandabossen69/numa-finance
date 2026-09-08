@@ -1,13 +1,15 @@
 import { Suspense } from "react";
-import { AnalysViewLoading } from "@/components/layout/ViewLoading";
-import { AnalysDashboard } from "@/lib/route-islands";
+import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
+import { AnalysPending } from "@/components/layout/ViewLoading";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
+import { readLastHomeCookie } from "@/features/home/last-home-cookie.server";
 
 export const dynamic = "force-dynamic";
 
-export default function AnalysPage() {
+export default async function AnalysPage() {
+  const last = await readLastHomeCookie();
   return (
-    <Suspense fallback={<AnalysViewLoading />}>
+    <Suspense fallback={<AnalysPending home={last} />}>
       <AnalysBody />
     </Suspense>
   );

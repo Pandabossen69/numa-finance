@@ -42,6 +42,23 @@ describe("withTimeoutRetry", () => {
     expect(n).toBe(2);
   });
 
+  it("does not retry when retries is 0", async () => {
+    let n = 0;
+    await expect(
+      withTimeoutRetry(
+        async () => {
+          n += 1;
+          await new Promise((resolve) => setTimeout(resolve, 40));
+          return "late";
+        },
+        15,
+        "snap",
+        0,
+      ),
+    ).rejects.toThrow(/timed out after 15ms/);
+    expect(n).toBe(1);
+  });
+
   it("does not retry ordinary errors", async () => {
     let n = 0;
     await expect(
