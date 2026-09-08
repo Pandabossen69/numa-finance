@@ -6,6 +6,7 @@ import {
   AnalysViewLoading,
   HemPending,
   HomeViewLoading,
+  PlanPending,
   ViewLoading,
 } from "./ViewLoading";
 import {
@@ -21,6 +22,7 @@ describe("isViewLoadingNode", () => {
     expect(isViewLoadingNode(createElement(AnalysPending))).toBe(true);
     expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(HemPending))).toBe(true);
+    expect(isViewLoadingNode(createElement(PlanPending))).toBe(true);
     expect(
       isViewLoadingNode(
         createElement("div", { "data-numa-view-loading": "true" }, "x"),

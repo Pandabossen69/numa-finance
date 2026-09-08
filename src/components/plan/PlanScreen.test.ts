@@ -9,6 +9,9 @@ describe("PlanScreen", () => {
     expect(src).toContain("if (initial) {");
     expect(src).toContain("syncHomeLivingFromPlan");
     expect(src).not.toContain("warmupPlanPageData");
+    expect(src).toContain("resolveVisiblePlanSnapshot");
+    expect(src).toContain("canPaintPlanHistory");
+    expect(src).toContain("PlanPending");
     expect(src).toContain("PlanEditor");
     expect(src).toContain("route-islands");
     expect(src).toContain("Vad som kommer in och vad som måste ut.");

@@ -16,6 +16,11 @@ import {
   subscribePlanSnapshot,
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
+import {
+  canPaintPlanHistory,
+  resolveVisiblePlanSnapshot,
+} from "@/features/finance/visible-snapshot";
+import { PlanPending } from "@/components/layout/ViewLoading";
 import { PlanEditor } from "@/lib/route-islands";
 
 export function PlanScreen({
@@ -51,11 +56,12 @@ export function PlanScreen({
     if (initialGettingStarted) rememberGettingStarted(initialGettingStarted);
   }, [initial, initialGettingStarted]);
 
-  const payload = stored ?? initial;
+  const payload = resolveVisiblePlanSnapshot(stored, initial);
   const gettingStarted = storedGettingStarted ?? initialGettingStarted;
   const home = lastHomeSnapshot();
   const currency = payload?.currency ?? home?.currency ?? "THB";
   const timeZone = payload?.timeZone ?? home?.timeZone ?? "Asia/Bangkok";
+  const paintHistory = canPaintPlanHistory(payload, initial, error);
 
   return (
     <div className="numa-page numa-page-wide space-y-6">
@@ -72,7 +78,7 @@ export function PlanScreen({
       ) : gettingStarted?.visible ? (
         <GettingStartedCard view={gettingStarted} />
       ) : null}
-      {error && !payload ? (
+      {!paintHistory && error ? (
         <div className="numa-panel-strong space-y-3 p-5">
           <p className="text-sm font-semibold">
             {financeTruthMessageSv({ truthStatus: "unavailable" }).title}
@@ -80,6 +86,8 @@ export function PlanScreen({
           <p className="text-sm text-[var(--numa-muted)]">{error}</p>
           <RetryLoadButton />
         </div>
+      ) : !paintHistory ? (
+        <PlanPending />
       ) : (
         <section>
           <PlanEditor
