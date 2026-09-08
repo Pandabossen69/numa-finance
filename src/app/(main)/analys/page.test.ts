@@ -8,12 +8,12 @@ describe("/analys loading shell", () => {
   it("streams last-known money or AnalysPending, never empty mint cards", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("AnalysDashboard");
-    expect(page).toContain("readLastHomeCookie");
-    expect(page).toContain("AnalysPending");
+    expect(page).toContain("AnalysFirstPaint");
+    expect(page).not.toContain("readLastHomeCookie");
     expect(page).not.toContain("route-islands");
     expect(page).not.toContain("AnalysViewLoading");
-    expect(loading).toContain("readLastHomeCookie");
-    expect(loading).toContain("AnalysPending");
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("AnalysFirstPaint");
     expect(loading).not.toContain("AnalysViewLoading");
   });
 });

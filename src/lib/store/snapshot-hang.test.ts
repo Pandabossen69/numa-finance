@@ -44,14 +44,13 @@ describe("cold Hem/Analys hang contract", () => {
   });
 
   it("paints last-known money or a short pending, never empty mint cards", () => {
-    expect(idag).toContain("HemPending");
-    expect(idag).toContain("readLastHomeCookie");
+    expect(idag).toContain("HemFirstPaint");
+    expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
-    expect(analys).toContain("AnalysPending");
-    expect(analys).toContain("readLastHomeCookie");
+    expect(analys).toContain("AnalysFirstPaint");
     expect(analys).not.toContain("AnalysViewLoading");
-    expect(dest).toContain("<HomeDashboard snap={lastHomeSnapshot()} error={null} />");
-    expect(dest).toContain("<AnalysDashboard data={lastAnalysSnapshot()} />");
+    expect(dest).toContain("HemFirstPaint");
+    expect(dest).toContain("AnalysFirstPaint");
     expect(viewLoading).toContain("Hämtar läget…");
     expect(viewLoading).toContain("Hämtar analysen…");
     expect(viewLoading).toContain("remainingTodayMinor");

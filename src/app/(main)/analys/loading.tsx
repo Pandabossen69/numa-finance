@@ -1,7 +1,10 @@
-import { AnalysPending } from "@/components/layout/ViewLoading";
-import { readLastHomeCookie } from "@/features/home/last-home-cookie.server";
+import { AnalysFirstPaint } from "@/components/layout/HemFirstPaint";
+import { LoadingSlot } from "@/components/layout/LoadingSlot";
 
-export default async function AnalysLoading() {
-  const last = await readLastHomeCookie();
-  return <AnalysPending home={last} />;
+export default function AnalysLoading() {
+  return (
+    <LoadingSlot>
+      <AnalysFirstPaint />
+    </LoadingSlot>
+  );
 }

@@ -1,19 +1,13 @@
 import { Suspense } from "react";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
-import { HemPending } from "@/components/layout/ViewLoading";
+import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
 import { loadHomeSnapshot } from "@/features/finance/load-home";
-import { readLastHomeCookie } from "@/features/home/last-home-cookie.server";
 
 export const dynamic = "force-dynamic";
 
-export default async function IdagPage() {
-  const last = await readLastHomeCookie();
+export default function IdagPage() {
   return (
-    <Suspense
-      fallback={
-        last ? <HomeDashboard snap={last} error={null} /> : <HemPending />
-      }
-    >
+    <Suspense fallback={<HemFirstPaint />}>
       <IdagBody />
     </Suspense>
   );

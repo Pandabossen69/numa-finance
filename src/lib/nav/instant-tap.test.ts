@@ -84,8 +84,8 @@ describe("instant tap — phone-width dest paint", () => {
     expect(last).toContain("writePersistedLastKnown");
     expect(last).toContain("clearPersistedLastKnown");
     expect(cookie).toContain("numa.lastHome.v1");
-    expect(idag).toContain("readLastHomeCookie");
-    expect(idag).toContain("HemPending");
+    expect(idag).toContain("HemFirstPaint");
+    expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
   });
 

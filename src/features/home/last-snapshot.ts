@@ -136,7 +136,7 @@ export function hydrateLastKnownFromPersist() {
   persistPaused = true;
   if (data) {
     sessionOwnerId = data.userId;
-    home = data.home;
+    home = data.home ?? readLastHomeCookieFromDocument();
     plan = data.plan;
     analys = data.analys;
     mer = data.mer;
