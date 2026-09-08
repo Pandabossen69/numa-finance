@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
-import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
@@ -42,7 +41,7 @@ export function PlanScreen({
     lastGettingStarted,
     lastGettingStarted,
   );
-  const [error, setError] = useState<string | null>(initialError);
+  const error = initialError;
 
   useEffect(() => {
     if (initial) {
@@ -51,20 +50,6 @@ export function PlanScreen({
     }
     if (initialGettingStarted) rememberGettingStarted(initialGettingStarted);
   }, [initial, initialGettingStarted]);
-
-  useEffect(() => {
-    if (initial) return;
-    if (lastPlanSnapshot()) return;
-    let cancelled = false;
-    void warmupPlanPageData().then((result) => {
-      if (cancelled) return;
-      if (!result.ok && !lastPlanSnapshot()) setError(result.error);
-      else setError(null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [initial]);
 
   const payload = stored ?? initial;
   const gettingStarted = storedGettingStarted ?? initialGettingStarted;

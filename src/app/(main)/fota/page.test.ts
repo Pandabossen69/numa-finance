@@ -26,5 +26,8 @@ describe("/fota resume", () => {
     expect(src).toContain("FotaScreen");
     expect(src).toContain("loadCaptureResume");
     expect(src).toContain("initialPreview");
+    const beforeSuspense = src.slice(0, src.indexOf("<Suspense"));
+    expect(beforeSuspense).not.toContain("await searchParams");
+    expect(src).toContain("FotaFromParams");
   });
 });

@@ -42,7 +42,7 @@ export const MovementsScreen = nextDynamic(
     import("@/components/movements/MovementsScreen").then(
       (mod) => mod.MovementsScreen,
     ),
-  { ssr: false },
+  { ssr: true, loading: () => <ViewLoading /> },
 );
 
 export const OnboardingSaldoChoice = nextDynamic(

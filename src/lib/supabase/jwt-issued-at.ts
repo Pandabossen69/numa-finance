@@ -172,6 +172,40 @@ export function initWithFetchMemoizationBypass(init?: RequestInit): RequestInit 
   return { ...init, signal: new AbortController().signal };
 }
 
+type SharedIatWait = {
+  untilMs: number;
+  promise: Promise<void>;
+};
+
+let sharedIatWait: SharedIatWait | null = null;
+
+/** One clock wait per isolate so parallel PostgREST reads share the iat skew. */
+export function waitSharedJwtIssuedAt(waitMs: number): Promise<void> {
+  if (waitMs <= 0) return Promise.resolve();
+  const untilMs = Date.now() + waitMs;
+  if (sharedIatWait && untilMs <= sharedIatWait.untilMs + 25) {
+    return sharedIatWait.promise;
+  }
+  const extraMs = sharedIatWait
+    ? Math.max(0, untilMs - sharedIatWait.untilMs)
+    : waitMs;
+  const prev = sharedIatWait?.promise ?? Promise.resolve();
+  const promise = prev.then(
+    () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, extraMs);
+      }),
+  );
+  sharedIatWait = { untilMs, promise };
+  return promise.finally(() => {
+    if (sharedIatWait?.promise === promise) sharedIatWait = null;
+  });
+}
+
+export function resetSharedJwtIssuedAtWait() {
+  sharedIatWait = null;
+}
+
 export async function fetchWithJwtIssuedAtRetry(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -189,10 +223,8 @@ export async function fetchWithJwtIssuedAtRetry(
     accessToken: accessTokenFromFetch(input, init),
   });
   if (waitMs == null) return response;
-  if (waitMs > 0) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, waitMs);
-    });
-  }
+  // Immediate retry only. A 2s iat sleep blocked menu RSC and made
+  // tab taps sit on a spinner. Dest UI paints from last-known; this
+  // retry is background truth, never a nav gate.
   return fetch(input, initWithFetchMemoizationBypass(init));
 }

@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { HomeViewLoading } from "@/components/layout/ViewLoading";
 import { HomeDashboard } from "@/lib/route-islands";
 import { loadAccountsSnapshot } from "@/features/finance/load-accounts";
 import { loadHomeSnapshot } from "@/features/finance/load-home";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default function IdagPage() {
   return (
-    <Suspense fallback={<HomeDashboard snap={null} error={null} />}>
+    <Suspense fallback={<HomeViewLoading />}>
       <IdagBody />
     </Suspense>
   );

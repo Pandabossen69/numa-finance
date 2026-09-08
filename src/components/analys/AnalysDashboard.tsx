@@ -3,6 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysViewLoading } from "@/components/layout/ViewLoading";
+import { useNavIntent } from "@/components/layout/NavIntent";
 import {
   DestinationWarmup,
   usePrefetchOnIntent,
@@ -61,6 +62,7 @@ export function AnalysDashboard({
   error?: string | null;
 }) {
   const { prefetch } = usePrefetchOnIntent();
+  const { markIntent } = useNavIntent();
   const [scope, setScope] = useState<AnalysScope>(
     () => lastAnalysScope() ?? "period",
   );
@@ -597,9 +599,14 @@ export function AnalysDashboard({
           <h2 className="text-sm font-semibold tracking-tight">Senaste</h2>
           <Link
             href="/transaktioner"
-            prefetch
+            prefetch={false}
+            onPointerDown={() => {
+              prefetch("/transaktioner");
+              markIntent("/transaktioner");
+            }}
             onMouseEnter={() => prefetch("/transaktioner")}
             onFocus={() => prefetch("/transaktioner")}
+            onClick={() => markIntent("/transaktioner")}
             className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
           >
             Alla →

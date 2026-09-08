@@ -18,5 +18,8 @@ describe("Mer hub layout", () => {
     expect(src).toContain("onFocus");
     expect(src).toContain("usePrefetchOnIntent");
     expect(src).toContain("prefetchHref(href)");
+    expect(src).toContain("markIntent");
+    expect(src).toContain("isHoldRoot");
+    expect(src).toContain("prefetch={false}");
   });
 });

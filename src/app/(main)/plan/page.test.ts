@@ -30,8 +30,10 @@ describe("/plan getting-started hints", () => {
   it("paints last-known Plan and reconciles the cached snapshot in parallel", () => {
     expect(page).not.toContain("getCachedTodaySnapshot");
     expect(page).toContain("PlanScreen");
+    expect(page).toContain("<Suspense fallback={<ViewLoading />}>");
+    expect(page).not.toContain("<Suspense fallback={<PlanScreen />}>");
     expect(screen).toContain("lastPlanSnapshot");
-    expect(screen).toContain("warmupPlanPageData");
+    expect(screen).not.toContain("warmupPlanPageData");
     expect(warmup).toContain("loadPlanSnapshot");
     expect(warmup).toContain("Promise.all");
     expect(warmup).toContain("loadGettingStartedView");

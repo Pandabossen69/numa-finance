@@ -47,9 +47,10 @@ describe("smooth nav and saves", () => {
     expect(gettingStarted).not.toContain('revalidatePath("/", "layout")');
   });
 
-  it("prefetches force-dynamic tabs as full RSC payloads", () => {
+  it("prefetches force-dynamic tabs as loading shells instead of full snapshots", () => {
     const prefetch = read("./prefetch-intent.ts");
-    expect(prefetch).toContain('kind: "full"');
+    expect(prefetch).toContain("router.prefetch(href)");
+    expect(prefetch).not.toMatch(/prefetch\(href,\s*\{/);
   });
 
   it("streams the four main tabs so navigation is not blocked on snapshots", () => {
@@ -57,10 +58,10 @@ describe("smooth nav and saves", () => {
     const plan = read("../../app/(main)/plan/page.tsx");
     const analys = read("../../app/(main)/analys/page.tsx");
     const mer = read("../../app/(main)/mer/page.tsx");
-    expect(idag).toContain("<Suspense");
-    expect(plan).toContain("<Suspense");
-    expect(analys).toContain("<Suspense");
-    expect(mer).toContain("<Suspense");
+    expect(idag).toContain("<Suspense fallback={<HomeViewLoading />}>");
+    expect(plan).toContain("<Suspense fallback={<ViewLoading />}>");
+    expect(analys).toContain("<Suspense fallback={<AnalysViewLoading />}>");
+    expect(mer).toContain("<Suspense fallback={<MerViewLoading />}>");
   });
 
   it("marks every authenticated money page force-dynamic so CI build cannot prerender the store", () => {

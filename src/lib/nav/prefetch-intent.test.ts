@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-import { canPrefetchHref } from "./prefetch-intent";
+import { describe, expect, it, vi } from "vitest";
+import { canPrefetchHref, prefetchHref } from "./prefetch-intent";
 
 describe("prefetch-intent", () => {
   it("prefetches in-app paths and skips production https links", () => {
@@ -13,8 +13,19 @@ describe("prefetch-intent", () => {
   it("warms destinations on hover, focus, and visibility", () => {
     const src = readFileSync(new URL("./prefetch-intent.ts", import.meta.url), "utf8");
     expect(src).toContain("router.prefetch");
-    expect(src).toContain('kind: "full"');
     expect(src).toContain("visibilitychange");
     expect(src).toContain("usePrefetchOnIntent");
+    expect(src).toContain("scheduleIdleWarm");
+    expect(src).toContain("requestIdleCallback");
+  });
+
+  it("calls router.prefetch with only the href so comments cannot imply a full payload", () => {
+    const prefetch = vi.fn();
+    prefetchHref({ prefetch } as never, "/plan");
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    expect(prefetch).toHaveBeenCalledWith("/plan");
+    expect(prefetch.mock.calls[0][1]).toBeUndefined();
+    prefetchHref({ prefetch } as never, "https://example.com");
+    expect(prefetch).toHaveBeenCalledTimes(1);
   });
 });

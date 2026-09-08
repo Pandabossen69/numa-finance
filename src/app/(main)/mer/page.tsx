@@ -1,6 +1,7 @@
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { MerScreen } from "@/components/mer/MerScreen";
+import { MerViewLoading } from "@/components/mer/MerViewLoading";
 import { chromeDisplayName } from "@/domain/identity/display-name";
 import { getProfile } from "@/lib/store/repository";
 import { currentUserIsNumaAdmin } from "@/features/auth/session";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default function MerPage() {
   return (
-    <Suspense fallback={<MerScreen data={null} />}>
+    <Suspense fallback={<MerViewLoading />}>
       <MerBody />
     </Suspense>
   );

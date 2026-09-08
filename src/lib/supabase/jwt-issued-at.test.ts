@@ -7,8 +7,10 @@ import {
   initWithFetchMemoizationBypass,
   isJwtIssuedAtFutureError,
   MAX_IAT_WAIT_MS,
+  resetSharedJwtIssuedAtWait,
   retryWaitMsForJwtIssuedAtFuture,
   waitMsToPassFutureIat,
+  waitSharedJwtIssuedAt,
 } from "./jwt-issued-at";
 
 const NOW_SEC = 1_788_674_400;
@@ -115,6 +117,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  resetSharedJwtIssuedAtWait();
 });
 
 describe("classifyJwtTime", () => {
@@ -309,12 +312,11 @@ describe("fetchWithJwtIssuedAtRetry", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
-  it("waits past a one-second future iat before exactly one retry", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(NOW_SEC * 1000));
+  it("retries a one-second future iat immediately without sleeping", async () => {
+    const now = Math.floor(Date.now() / 1000);
     const token = unsignedJwt({
-      iat: NOW_SEC + 1,
-      exp: NOW_SEC + 3600,
+      iat: now + 1,
+      exp: now + 3600,
     });
     const fetchMock = vi
       .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
@@ -332,19 +334,10 @@ describe("fetchWithJwtIssuedAtRetry", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const pending = fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await Promise.resolve();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1_049);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(Date.now()).toBeLessThan((NOW_SEC + 1) * 1000 + 50);
-
-    await vi.advanceTimersByTimeAsync(1);
-    expect(Date.now()).toBeGreaterThan((NOW_SEC + 1) * 1000);
-    const response = await pending;
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -509,12 +502,11 @@ describe("Next.js request memoization vs JWT retry", () => {
     expect(network).toHaveBeenCalledTimes(1);
   });
 
-  it("waits past a one-second future iat, then makes exactly one new network call", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(NOW_SEC * 1000));
+  it("retries a memoized one-second future iat immediately without sleeping", async () => {
+    const now = Math.floor(Date.now() / 1000);
     const token = unsignedJwt({
-      iat: NOW_SEC + 1,
-      exp: NOW_SEC + 3600,
+      iat: now + 1,
+      exp: now + 3600,
     });
     const network = networkFetchMock(async () => {
       throw new Error("unexpected extra network call");
@@ -534,21 +526,30 @@ describe("Next.js request memoization vs JWT retry", () => {
       );
     vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
 
-    const pending = fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await Promise.resolve();
-    expect(network).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1_049);
-    expect(network).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(1);
-    expect(Date.now()).toBeGreaterThan((NOW_SEC + 1) * 1000);
-
-    const response = await pending;
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
     expect(response.status).toBe(200);
     expect(network).toHaveBeenCalledTimes(2);
     expect(network.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("shares one iat wait across parallel PostgREST reads", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_SEC * 1000));
+    const first = waitSharedJwtIssuedAt(1_050);
+    const second = waitSharedJwtIssuedAt(1_050);
+    await vi.advanceTimersByTimeAsync(1_049);
+    let settled = false;
+    void Promise.all([first, second]).then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.all([first, second]);
+    expect(settled).toBe(true);
   });
 
   it("does not retry a 5s future iat under memoized GET", async () => {
@@ -630,5 +631,8 @@ describe("Analys JWT error path", () => {
     expect(
       readFileSync(new URL("./jwt-issued-at.ts", import.meta.url), "utf8"),
     ).toContain("initWithFetchMemoizationBypass");
+    expect(
+      readFileSync(new URL("./jwt-issued-at.ts", import.meta.url), "utf8"),
+    ).toContain("waitSharedJwtIssuedAt");
   });
 });

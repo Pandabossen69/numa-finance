@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isNavActive, isTabRoot, optimisticNavPath, PRIMARY_NAV, primaryTab } from "./nav";
+import {
+  holdKey,
+  isHoldRoot,
+  isNavActive,
+  isTabRoot,
+  optimisticNavPath,
+  PRIMARY_NAV,
+  primaryTab,
+} from "./nav";
 
 describe("optimisticNavPath", () => {
   it("uses the pending href while still on the page that was clicked", () => {
@@ -48,6 +56,19 @@ describe("isTabRoot", () => {
     expect(isTabRoot("/plan")).toBe(true);
     expect(isTabRoot("/analys")).toBe(true);
     expect(isTabRoot("/fota")).toBe(true);
+  });
+});
+
+describe("holdKey / isHoldRoot", () => {
+  it("holds Konton and Transaktioner as their own dest, not Mer", () => {
+    expect(holdKey("/konton")).toBe("/konton");
+    expect(holdKey("/transaktioner")).toBe("/transaktioner");
+    expect(holdKey("/konton/ny")).toBe("/mer");
+    expect(isHoldRoot("/konton")).toBe(true);
+    expect(isHoldRoot("/transaktioner")).toBe(true);
+    expect(isHoldRoot("/fota")).toBe(true);
+    expect(isHoldRoot("/konton/ny")).toBe(false);
+    expect(isHoldRoot("/importera")).toBe(false);
   });
 });
 

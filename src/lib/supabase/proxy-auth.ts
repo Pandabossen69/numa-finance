@@ -39,8 +39,12 @@ export function readAccessTokenExpiryMs(
   const raw = combineAuthCookieValue(cookies);
   if (!raw) return null;
   const session = parseSessionJson(raw);
-  if (!session || typeof session.access_token !== "string") return null;
-  return jwtExpiryMs(session.access_token);
+  if (!session) return null;
+  if (typeof session.access_token === "string") {
+    const fromJwt = jwtExpiryMs(session.access_token);
+    if (fromJwt != null) return fromJwt;
+  }
+  return expiryMsFromSessionClaim(session.expires_at);
 }
 
 function combineAuthCookieValue(
@@ -92,6 +96,11 @@ function parseSessionJson(
     }
   }
   return null;
+}
+
+function expiryMsFromSessionClaim(expiresAt: unknown): number | null {
+  if (typeof expiresAt !== "number" || !Number.isFinite(expiresAt)) return null;
+  return expiresAt > 1e12 ? expiresAt : expiresAt * 1000;
 }
 
 function jwtExpiryMs(token: string): number | null {

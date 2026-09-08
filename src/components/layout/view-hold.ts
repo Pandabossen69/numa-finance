@@ -1,4 +1,5 @@
 import { isValidElement, Suspense, type ReactNode } from "react";
+import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
   AnalysViewLoading,
   HomeViewLoading,
@@ -11,6 +12,7 @@ export function shouldHoldPreviousView(input: {
   destTab: string | null;
   heldTab: string | null;
   intentMismatch?: boolean;
+  outletStale?: boolean;
 }): boolean {
   return resolveVisibleTab({
     ...input,
@@ -36,9 +38,17 @@ export function resolveVisibleTab(input: {
   hasDestCache: boolean;
   intentMismatch?: boolean;
   pathTab?: string | null;
+  /**
+   * URL already matches dest, but `children` is still the previous page.
+   * Next.js updates the pathname before the dest RSC/loading slot arrives.
+   */
+  outletStale?: boolean;
 }): "dest" | "held" | "children" | "dest-loading" {
   const inFlight =
-    input.loading || input.leaving || Boolean(input.intentMismatch);
+    input.loading ||
+    input.leaving ||
+    Boolean(input.intentMismatch) ||
+    Boolean(input.outletStale);
   if (!inFlight) return "children";
 
   if (input.intentMismatch && input.destIsTabRoot) {
@@ -46,7 +56,13 @@ export function resolveVisibleTab(input: {
   }
 
   if (input.destTab && input.pathTab && input.destTab === input.pathTab) {
-    if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
+    // URL already matches dest. Next often swaps in loading.tsx here
+    // (Analys → Transaktioner sat 10s on a skeleton). Last-known / dest
+    // shell must paint — never the loading slot — until dest children
+    // actually arrive.
+    if ((input.outletStale || input.loading) && input.destIsTabRoot) {
+      return input.hasDestCache ? "dest" : "dest-loading";
+    }
     return "children";
   }
 
@@ -71,7 +87,8 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
-    node.type === HomeViewLoading
+    node.type === HomeViewLoading ||
+    node.type === MovementsViewLoading
   ) {
     return true;
   }

@@ -1,11 +1,24 @@
 import { Suspense } from "react";
+import { ViewLoading } from "@/components/layout/ViewLoading";
 import { loadPlanSnapshot } from "@/features/finance/load-plan";
 import { loadGettingStartedView } from "@/features/getting-started/load";
 import { PlanScreen } from "@/lib/route-islands";
 
 export const dynamic = "force-dynamic";
 
-export default async function PlanPage({
+export default function PlanPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ steg?: string }>;
+}) {
+  return (
+    <Suspense fallback={<ViewLoading />}>
+      <PlanFromParams searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function PlanFromParams({
   searchParams,
 }: {
   searchParams?: Promise<{ steg?: string }>;
@@ -20,11 +33,7 @@ export default async function PlanPage({
   const focusAdd =
     steg === "inkomst" ? "income" : steg === "utgift" ? "fixed" : null;
 
-  return (
-    <Suspense fallback={<PlanScreen focusAdd={focusAdd} stepHint={hint} />}>
-      <PlanBody focusAdd={focusAdd} stepHint={hint} />
-    </Suspense>
-  );
+  return <PlanBody focusAdd={focusAdd} stepHint={hint} />;
 }
 
 async function PlanBody({

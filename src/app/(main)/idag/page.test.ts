@@ -9,6 +9,8 @@ describe("/idag first paint", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("HomeDashboard");
     expect(page).toContain("route-islands");
+    expect(page).toContain("<Suspense fallback={<HomeViewLoading />}>");
+    expect(page).not.toContain("HomeDashboard snap={null}");
     expect(loading).toContain("HomeViewLoading");
   });
 

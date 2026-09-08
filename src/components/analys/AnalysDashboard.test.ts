@@ -145,6 +145,8 @@ describe("Analys month result color", () => {
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
     expect(src).toContain("DestinationWarmup");
+    expect(src).toContain("markIntent(\"/transaktioner\")");
+    expect(src).toContain("prefetch={false}");
   });
 
   it("shows where the month's money went, from the shared split", () => {
