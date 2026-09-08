@@ -14,6 +14,7 @@ describe("Hem first paint", () => {
     expect(src).toContain("readLastHomeCookieFromDocument");
     expect(src).toContain("HemPending");
     expect(src).toContain("HomeDashboard");
+    expect(src).toContain("PlanFirstPaint");
     expect(src).not.toContain("HomeViewLoading");
     expect(src).not.toContain("AnalysViewLoading");
   });

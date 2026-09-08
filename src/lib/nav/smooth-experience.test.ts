@@ -60,7 +60,8 @@ describe("smooth nav and saves", () => {
     const mer = read("../../app/(main)/mer/page.tsx");
     expect(idag).toContain("HemFirstPaint");
     expect(idag).not.toContain("readLastHomeCookie");
-    expect(plan).toContain("<Suspense fallback={<ViewLoading />}>");
+    expect(plan).toContain("<Suspense fallback={<PlanFirstPaint />}>");
+    expect(plan).not.toContain("ViewLoading");
     expect(analys).toContain("AnalysFirstPaint");
     expect(analys).not.toContain("readLastHomeCookie");
     expect(analys).not.toContain("AnalysViewLoading");

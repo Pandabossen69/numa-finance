@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const page = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+const loading = readFileSync(new URL("./loading.tsx", import.meta.url), "utf8");
 const screen = readFileSync(
   new URL("../../../components/plan/PlanScreen.tsx", import.meta.url),
   "utf8",
@@ -30,8 +31,11 @@ describe("/plan getting-started hints", () => {
   it("paints last-known Plan and reconciles the cached snapshot in parallel", () => {
     expect(page).not.toContain("getCachedTodaySnapshot");
     expect(page).toContain("PlanScreen");
-    expect(page).toContain("<Suspense fallback={<ViewLoading />}>");
-    expect(page).not.toContain("<Suspense fallback={<PlanScreen />}>");
+    expect(page).toContain("<Suspense fallback={<PlanFirstPaint />}>");
+    expect(page).not.toContain("ViewLoading");
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("PlanFirstPaint");
+    expect(loading).not.toContain("ViewLoading");
     expect(screen).toContain("lastPlanSnapshot");
     expect(screen).not.toContain("warmupPlanPageData");
     expect(warmup).toContain("loadPlanSnapshot");

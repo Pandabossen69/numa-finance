@@ -1,5 +1,10 @@
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import { PlanFirstPaint } from "@/components/layout/HemFirstPaint";
+import { LoadingSlot } from "@/components/layout/LoadingSlot";
 
 export default function PlanLoading() {
-  return <ViewLoading />;
+  return (
+    <LoadingSlot>
+      <PlanFirstPaint />
+    </LoadingSlot>
+  );
 }

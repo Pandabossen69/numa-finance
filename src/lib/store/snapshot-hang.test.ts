@@ -52,6 +52,7 @@ describe("cold Hem/Analys hang contract", () => {
     expect(analys).toContain("AnalysFirstPaint");
     expect(analys).not.toContain("AnalysViewLoading");
     expect(dest).toContain("HemFirstPaint");
+    expect(dest).toContain("PlanFirstPaint");
     expect(dest).toContain("AnalysFirstPaint");
     expect(viewLoading).toContain("Hämtar läget…");
     expect(viewLoading).toContain("Hämtar planen…");

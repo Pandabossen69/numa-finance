@@ -16,5 +16,8 @@ describe("route islands", () => {
     expect(src).toContain("PlanEditor");
     expect(src).toContain("PlanScreen");
     expect(src).toContain("AnalysDashboard");
+    expect(src).toContain("PlanPending");
+    expect(main).toContain("HemPending");
+    expect(main).toContain("AnalysPending");
   });
 });

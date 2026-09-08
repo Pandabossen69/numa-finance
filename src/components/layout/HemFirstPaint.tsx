@@ -40,12 +40,17 @@ export function AnalysFirstPaint() {
   return <AnalysPending home={home} />;
 }
 
+/** Last-known Plan rows, or PlanPending — never an empty month. */
+export function PlanFirstPaint() {
+  return <PlanScreen />;
+}
+
 /** Parent (main)/loading.tsx — pick dest last-known from the URL. */
 export function MainFirstPaint() {
   const pathname = usePathname() ?? "";
   const tab = holdKey(pathname);
   if (tab === "/analys") return <AnalysFirstPaint />;
-  if (tab === "/plan") return <PlanScreen />;
+  if (tab === "/plan") return <PlanFirstPaint />;
   if (tab === "/mer") return <MerScreen data={lastMerSnapshot()} />;
   return <HemFirstPaint />;
 }
