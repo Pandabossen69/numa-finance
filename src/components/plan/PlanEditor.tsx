@@ -12,7 +12,6 @@ import {
   labelMonthNameSv,
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
-  explicitlyLinkedPlanItemIds,
   applyPlanItemEdits,
   previewPlanSettleEffect,
   planAmountBelowSettledError,
@@ -22,7 +21,7 @@ import {
   projectPlanForMonth,
   remainingDueIso,
   settledAmountMinor,
-  sumCountsTowardCashMinor,
+  sumRemainingCashMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
   planWriteUserError,
@@ -296,13 +295,8 @@ export function PlanEditor({
       }),
     [viewItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
   );
-  // Money only: keeps the card Summa in step with Hem's Kvar att betala so
-  // cash already in the ledger is not counted twice. Never passed to the
-  // rows — a match must not paint a chip or move a row.
-  const linkedPlanIds = useMemo(
-    () => explicitlyLinkedPlanItemIds(ledgerTransactions),
-    [ledgerTransactions],
-  );
+  // Same remaining as Över: settle flags + confirmed link amounts.
+  // Never passed to the rows — a match must not paint a chip or move a row.
   const savingsTotalMinor = useMemo(
     () => cumulativePlanSavingsMinor(viewItems, monthKey, timeZone),
     [viewItems, monthKey, timeZone],
@@ -471,6 +465,10 @@ export function PlanEditor({
     remainingDate?: string,
   ) {
     if (isTempPlanId(id)) return;
+    if (settled && (accountsView?.accounts.length ?? 0) === 0) {
+      setError("Inget konto för bokningen");
+      return;
+    }
     let settledMinor: number | null | undefined;
     let remainingDueAt: string | null | undefined;
     if (!settled) {
@@ -786,7 +784,7 @@ export function PlanEditor({
         <PlanCard
           title="Intäkter"
           totalLabel="Kvar att få"
-          totalMinor={sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)}
+          totalMinor={sumRemainingCashMinor(projection.incomes, ledgerTransactions)}
           currency={currency}
           banner={focusAdd === "income" ? stepHint : null}
           cardRef={focusAdd === "income" ? focusCardRef : undefined}
@@ -909,7 +907,7 @@ export function PlanEditor({
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."
           totalLabel="Kvar att betala"
-          totalMinor={sumCountsTowardCashMinor(projection.fixedItems, linkedPlanIds)}
+          totalMinor={sumRemainingCashMinor(projection.fixedItems, ledgerTransactions)}
           currency={currency}
           banner={focusAdd === "fixed" ? stepHint : null}
           cardRef={focusAdd === "fixed" ? focusCardRef : undefined}
@@ -1081,7 +1079,7 @@ export function PlanEditor({
         <PlanCard
           title="Extra utgifter"
           totalLabel="Kvar att betala"
-          totalMinor={sumCountsTowardCashMinor(projection.extraItems, linkedPlanIds)}
+          totalMinor={sumRemainingCashMinor(projection.extraItems, ledgerTransactions)}
           currency={currency}
         >
           <PlanRows

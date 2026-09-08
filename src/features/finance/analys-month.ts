@@ -11,7 +11,7 @@ import {
   projectCashCoverage,
   projectExtraSaldo,
   projectPlanForMonth,
-  remainingOpenMinor,
+  remainingCashMinor,
   settledAmountMinor,
   type CashCoverageView,
   type LedgerMatchTx,
@@ -67,7 +67,7 @@ export function labelIncomeDate(iso: string | null, timeZone: string): string {
  */
 export function toAnalysLine(
   item: PlanItem,
-  options: { id?: string; detail: string },
+  options: { id?: string; detail: string; transactions?: readonly LedgerMatchTx[] },
 ): AnalysLine {
   return {
     id: options.id ?? item.id,
@@ -77,7 +77,7 @@ export function toAnalysLine(
     status: planRowView(item).status,
     plannedMinor: item.amountMinor,
     settledMinor: settledAmountMinor(item),
-    remainingMinor: remainingOpenMinor(item),
+    remainingMinor: remainingCashMinor(item, options.transactions ?? []),
   };
 }
 
@@ -141,10 +141,14 @@ export function buildAnalysMonth(input: {
     monthResultMinor: extra.monthResultMinor,
     spentMinor: extra.spentMinor,
     incomes: month.incomes.map((i) =>
-      toAnalysLine(i, { detail: labelIncomeDate(i.nextDueAt, timeZone) }),
+      toAnalysLine(i, {
+        detail: labelIncomeDate(i.nextDueAt, timeZone),
+        transactions: ledgerTransactions,
+      }),
     ),
     expenses: month.items.map((item) =>
       toAnalysLine(item, {
+        transactions: ledgerTransactions,
         detail: isRecurringMonthly(item)
           ? item.nextDueAt != null
             ? `Varje månad · ${labelDayOfMonthSv(dayOfMonthFromIso(item.nextDueAt))}`

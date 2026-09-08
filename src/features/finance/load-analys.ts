@@ -119,13 +119,17 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const remainingTodayMinor = living.remainingTodayMinor;
 
     const cycleIncomes: AnalysLine[] = cycle.incomes.map((i) =>
-      toAnalysLine(i, { detail: labelIncomeDate(i.nextDueAt, timeZone) }),
+      toAnalysLine(i, {
+        detail: labelIncomeDate(i.nextDueAt, timeZone),
+        transactions: ledgerTransactions,
+      }),
     );
 
     const cycleExpenses: AnalysLine[] = cycle.expenses.map(({ item, dueAt }) =>
       toAnalysLine(item, {
         id: `${item.id}:${dueAt}`,
         detail: labelIncomeDate(dueAt, timeZone),
+        transactions: ledgerTransactions,
       }),
     );
 
@@ -133,12 +137,16 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       .filter(
         (p) =>
           p.isActive &&
-          p.kind === "goal" &&
           p.name !== NEXT_INCOME_NAME &&
           !isPlanIncome(p) &&
-          !isPlanSavings(p),
+          (p.kind === "goal" || isPlanSavings(p)),
       )
-      .map((g) => toAnalysLine(g, { detail: "Mål" }));
+      .map((g) =>
+        toAnalysLine(g, {
+          detail: isPlanSavings(g) ? "Sparande" : "Mål",
+          transactions: ledgerTransactions,
+        }),
+      );
 
 
     const formulaSteps =

@@ -95,19 +95,30 @@ export function projectCashCoverage(params: {
   };
 }
 
+/** Open cash after settle flags and confirmed links — same rule as Över. */
+export function remainingCashMinor(
+  item: PlanItem,
+  transactions: readonly LedgerMatchTx[] = [],
+): number {
+  const allocated = allocatedCanonicalFromLinks(item, transactions);
+  const claimed = Math.max(settledAmountMinor(item), allocated);
+  return Math.max(0, item.amountMinor - claimed);
+}
+
+export function sumRemainingCashMinor(
+  items: readonly PlanItem[],
+  transactions: readonly LedgerMatchTx[] = [],
+): number {
+  let sum = 0;
+  for (const item of items) sum += remainingCashMinor(item, transactions);
+  return sum;
+}
+
 function remainingPlanAmount(
   items: PlanItem[],
   transactions: LedgerMatchTx[],
 ): number {
-  // Settle flags plus confirmed allocation amounts — never a heuristic match,
-  // and never treat a partial link as a full settlement.
-  let sum = 0;
-  for (const item of items) {
-    const allocated = allocatedCanonicalFromLinks(item, transactions);
-    const claimed = Math.max(settledAmountMinor(item), allocated);
-    sum += Math.max(0, item.amountMinor - claimed);
-  }
-  return sum;
+  return sumRemainingCashMinor(items, transactions);
 }
 
 /**
