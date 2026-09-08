@@ -1,5 +1,10 @@
-import { AnalysViewLoading } from "@/components/layout/ViewLoading";
+import { AnalysFirstPaint } from "@/components/layout/HemFirstPaint";
+import { LoadingSlot } from "@/components/layout/LoadingSlot";
 
 export default function AnalysLoading() {
-  return <AnalysViewLoading />;
+  return (
+    <LoadingSlot>
+      <AnalysFirstPaint />
+    </LoadingSlot>
+  );
 }

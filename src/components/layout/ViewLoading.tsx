@@ -1,5 +1,8 @@
 "use client";
 
+import { formatMoneyCompact, money } from "@/domain/money";
+import type { HomeSnapshot } from "@/features/finance/load-home";
+
 /**
  * Soft page placeholder — mint panels that match Hem/Plan/Analys layout.
  * Client so LastViewOutlet can recognize the type across tab holds.
@@ -17,6 +20,22 @@ export function ViewLoading() {
       <div className="numa-skel h-[11.5rem] w-full" />
       <div className="numa-skel h-16 w-full" />
       <div className="numa-skel h-16 w-full" />
+    </div>
+  );
+}
+
+/** Calm pending — never the huge empty mint cards that look broken. */
+export function HemPending() {
+  return (
+    <div
+      className="numa-page numa-page-wide space-y-2 pt-1"
+      data-numa-view-loading="true"
+      aria-busy="true"
+      aria-label="Hämtar läget"
+    >
+      <p className="text-sm font-medium text-[var(--numa-muted)]">Hämtar läget…</p>
+      <div className="numa-skel h-2.5 w-36 !rounded-full" />
+      <div className="numa-skel h-2.5 w-24 !rounded-full" />
     </div>
   );
 }
@@ -40,6 +59,48 @@ export function HomeViewLoading() {
         <div className="numa-skel h-[5.25rem] w-full" />
       </div>
       <div className="numa-skel h-24 w-full" />
+    </div>
+  );
+}
+
+/** Calm pending — last-known money when we have it, never empty mint cards. */
+export function AnalysPending({
+  home = null,
+}: {
+  home?: HomeSnapshot | null;
+}) {
+  return (
+    <div
+      className="numa-page numa-page-wide space-y-2 pt-1"
+      data-numa-view-loading="true"
+      aria-busy="true"
+      aria-label="Hämtar analysen"
+    >
+      {home ? (
+        <>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--numa-muted)]">
+            Kvar idag
+          </p>
+          <p className="text-2xl font-semibold tabular-nums">
+            {formatMoneyCompact(money(home.remainingTodayMinor, home.currency))}
+          </p>
+          <p className="text-sm text-[var(--numa-muted)]">
+            {formatMoneyCompact(money(home.remainingFreeMinor, home.currency))}{" "}
+            kvar i perioden
+          </p>
+          <p className="text-sm font-medium text-[var(--numa-muted)]">
+            Hämtar analysen…
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-[var(--numa-muted)]">
+            Hämtar analysen…
+          </p>
+          <div className="numa-skel h-2.5 w-36 !rounded-full" />
+          <div className="numa-skel h-2.5 w-24 !rounded-full" />
+        </>
+      )}
     </div>
   );
 }

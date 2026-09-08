@@ -3,8 +3,11 @@ import { Suspense } from "react";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { MerViewLoading } from "@/components/mer/MerViewLoading";
 import { chromeDisplayName } from "@/domain/identity/display-name";
+import { withTimeout } from "@/lib/async";
 import { getProfile } from "@/lib/store/repository";
 import { currentUserIsNumaAdmin } from "@/features/auth/session";
+
+const MER_TIMEOUT_MS = 3_000;
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +21,16 @@ export default function MerPage() {
 
 async function MerBody() {
   const [profileResult, isAdmin] = await Promise.all([
-    getProfile()
+    withTimeout(getProfile(), MER_TIMEOUT_MS, "merProfile")
       .then((profile) => ({ ok: true as const, profile }))
       .catch((error) => {
         unstable_rethrow(error);
         console.error("[numa] mer profile failed", error);
         return { ok: false as const, profile: null };
       }),
-    currentUserIsNumaAdmin(),
+    withTimeout(currentUserIsNumaAdmin(), MER_TIMEOUT_MS, "merAdmin").catch(
+      () => false,
+    ),
   ]);
   if (!profileResult.profile) {
     return <MerScreen data={null} />;

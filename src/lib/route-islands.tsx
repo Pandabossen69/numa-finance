@@ -2,15 +2,15 @@
 
 import nextDynamic from "next/dynamic";
 import {
-  AnalysViewLoading,
-  HomeViewLoading,
+  AnalysPending,
+  HemPending,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
 
 /** Route-boundary islands — keep heavy screens off the first shared JS. */
 export const HomeDashboard = nextDynamic(
   () => import("@/components/home/HomeDashboard").then((mod) => mod.HomeDashboard),
-  { ssr: true, loading: () => <HomeViewLoading /> },
+  { ssr: true, loading: () => <HemPending /> },
 );
 
 export const PlanEditor = nextDynamic(
@@ -26,7 +26,7 @@ export const PlanScreen = nextDynamic(
 export const AnalysDashboard = nextDynamic(
   () =>
     import("@/components/analys/AnalysDashboard").then((mod) => mod.AnalysDashboard),
-  { ssr: true, loading: () => <AnalysViewLoading /> },
+  { ssr: true, loading: () => <AnalysPending /> },
 );
 
 export const ReceiptCaptureFlow = nextDynamic(

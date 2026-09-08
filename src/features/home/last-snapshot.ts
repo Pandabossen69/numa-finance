@@ -26,6 +26,12 @@ import type {
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
+import { readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
+import {
+  clearPersistedLastKnown,
+  readPersistedLastKnown,
+  writePersistedLastKnown,
+} from "@/features/home/last-snapshot-persist";
 
 export type { PlanSnapshot } from "@/features/finance/load-plan";
 
@@ -96,7 +102,62 @@ const planViewListeners = new Set<() => void>();
 
 function emit(listeners: Set<() => void>) {
   for (const listener of listeners) listener();
+  schedulePersist();
 }
+
+let persistPaused = false;
+let persistQueued = false;
+
+function schedulePersist() {
+  if (persistPaused || persistQueued) return;
+  persistQueued = true;
+  queueMicrotask(() => {
+    persistQueued = false;
+    if (persistPaused) return;
+    writePersistedLastKnown({
+      v: 1,
+      userId: sessionOwnerId,
+      home,
+      plan,
+      analys,
+      mer,
+      accounts,
+      movements,
+      gettingStarted,
+      planView,
+      analysScope,
+      movementsView,
+    });
+  });
+}
+
+export function hydrateLastKnownFromPersist() {
+  const data = readPersistedLastKnown();
+  persistPaused = true;
+  if (data) {
+    sessionOwnerId = data.userId;
+    home = data.home ?? readLastHomeCookieFromDocument();
+    plan = data.plan;
+    analys = data.analys;
+    mer = data.mer;
+    accounts = data.accounts;
+    movements = data.movements;
+    gettingStarted = data.gettingStarted;
+    planView = data.planView;
+    analysScope = data.analysScope;
+    movementsView = data.movementsView;
+    persistPaused = false;
+    return;
+  }
+  const cookieHome = readLastHomeCookieFromDocument();
+  if (cookieHome) {
+    sessionOwnerId = cookieHome.userId;
+    home = cookieHome;
+  }
+  persistPaused = false;
+}
+
+hydrateLastKnownFromPersist();
 
 export function subscribeHomeSnapshot(listener: () => void) {
   homeListeners.add(listener);
@@ -168,6 +229,7 @@ export function bindSessionOwner(userId: string) {
 export function clearClientSessionCaches() {
   wipeSessionCaches();
   sessionOwnerId = null;
+  clearPersistedLastKnown();
 }
 
 export function hasBoundSessionOwner(): boolean {
@@ -485,6 +547,7 @@ export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
     return;
   }
   analys = snap;
+  schedulePersist();
 }
 
 export function lastAnalysSnapshot(): AnalysSnapshot | null {
@@ -555,6 +618,7 @@ export function lastPlanView(): { monthKey: string; viewYear: number } | null {
 
 export function rememberAnalysScope(scope: "period" | "month") {
   analysScope = scope;
+  schedulePersist();
 }
 
 export function lastAnalysScope(): "period" | "month" | null {
@@ -595,6 +659,7 @@ export function rememberMovementsView(view: {
   period: MovementsPeriod;
 }) {
   movementsView = view;
+  schedulePersist();
 }
 
 export function lastMovementsView(): {
@@ -626,6 +691,7 @@ export function lastAccountsSnapshot(): AccountsSnapshot | null {
 export function rememberMerSnapshot(snap: MerSnapshot) {
   bindSessionOwner(snap.userId);
   mer = snap;
+  schedulePersist();
 }
 
 export function lastMerSnapshot(): MerSnapshot | null {
@@ -651,6 +717,7 @@ export function lastImporteraRows(): ImporteraRow[] | null {
 export function rememberSettingsSnapshot(snap: SettingsSnapshot) {
   bindSessionOwner(snap.userId);
   settings = snap;
+  schedulePersist();
 }
 
 export function lastSettingsSnapshot(): SettingsSnapshot | null {

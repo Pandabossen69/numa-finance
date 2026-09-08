@@ -6,11 +6,11 @@ const src = readFileSync(new URL("./dest-loading.tsx", import.meta.url), "utf8")
 describe("destLoadingForTab", () => {
   it("paints last-known screens, not empty skeletons, for every instant dest", () => {
     expect(src).toContain('case "/idag"');
-    expect(src).toContain("<HomeDashboard snap={null} error={null} />");
+    expect(src).toContain("<HemFirstPaint />");
     expect(src).toContain('case "/plan"');
     expect(src).toContain("<PlanScreen />");
     expect(src).toContain('case "/analys"');
-    expect(src).toContain("<AnalysDashboard data={null} />");
+    expect(src).toContain("<AnalysFirstPaint />");
     expect(src).toContain('case "/mer"');
     expect(src).toContain("<MerScreen data={null} />");
     expect(src).toContain('case "/transaktioner"');

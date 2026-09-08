@@ -12,8 +12,12 @@ export type { TodaySnapshot };
 export type { ReceiptUploadResult, ConfirmReceiptInput } from "./receipt-types";
 export type { UserProgress } from "./types-progress";
 
-/** Data queries only — auth is warmed before this timer starts. */
-const SNAPSHOT_TIMEOUT_MS = 12_000;
+/**
+ * Whole Hem/Analys snapshot — profile + accounts + ledger.
+ * Profile/accounts used to sit outside this timer, so a hung PostgREST
+ * read left empty mint cards for 49s–149s. One try, then fail to last-known.
+ */
+const SNAPSHOT_TIMEOUT_MS = 3_000;
 
 function api() {
   const supabase = isSupabaseConfigured();
@@ -212,7 +216,7 @@ export async function refreshTodaySnapshot(): Promise<TodaySnapshot> {
   return api().getTodaySnapshot();
 }
 
-export async function getTodaySnapshot(): Promise<TodaySnapshot> {
+async function loadTodaySnapshotOnce(): Promise<TodaySnapshot> {
   const [profile, accounts] = await Promise.all([
     api().getProfile(),
     api().listAccounts(),
@@ -224,18 +228,20 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   // Do not await due-rolling on the login path — it was an extra plan-items
   // round-trip before the timed snapshot even started.
   void ensurePlanDuesRolled();
-  // Auth/profile are request-cached; do not serialize them in front of the
-  // parallel menu reads (accounts / plan items / checkpoint / ledger).
+  return api().getTodaySnapshot();
+}
+
+export async function getTodaySnapshot(): Promise<TodaySnapshot> {
   try {
     return await withTimeoutRetry(
-      () => api().getTodaySnapshot(),
+      () => loadTodaySnapshotOnce(),
       SNAPSHOT_TIMEOUT_MS,
       "getTodaySnapshot",
-      1,
+      0,
     );
   } catch (error) {
     if (isTimeoutError(error)) {
-      console.warn("[numa] snapshot timed out after retry");
+      console.warn("[numa] snapshot timed out");
     }
     throw error;
   }

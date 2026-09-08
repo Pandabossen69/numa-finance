@@ -1,7 +1,13 @@
 import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
-import { AnalysViewLoading, HomeViewLoading, ViewLoading } from "./ViewLoading";
+import {
+  AnalysPending,
+  AnalysViewLoading,
+  HemPending,
+  HomeViewLoading,
+  ViewLoading,
+} from "./ViewLoading";
 import {
   isViewLoadingNode,
   resolveVisibleTab,
@@ -12,9 +18,26 @@ describe("isViewLoadingNode", () => {
   it("recognizes ViewLoading, Suspense, and the data marker", () => {
     expect(isViewLoadingNode(createElement(ViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(AnalysViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(AnalysPending))).toBe(true);
     expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(HemPending))).toBe(true);
+    expect(
+      isViewLoadingNode(
+        createElement("div", { "data-numa-view-loading": "true" }, "x"),
+      ),
+    ).toBe(true);
     expect(isViewLoadingNode(createElement(MovementsViewLoading))).toBe(true);
-    expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(true);
+    expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(false);
+    expect(
+      isViewLoadingNode(
+        createElement(Suspense, { fallback: createElement(HemPending) }, "Hem"),
+      ),
+    ).toBe(false);
+    expect(
+      isViewLoadingNode(
+        createElement(Suspense, { fallback: createElement(ViewLoading) }),
+      ),
+    ).toBe(true);
     expect(
       isViewLoadingNode(
         createElement("div", { "data-numa-view-loading": true }, "x"),

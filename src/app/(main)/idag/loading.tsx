@@ -1,5 +1,10 @@
-import { HomeViewLoading } from "@/components/layout/ViewLoading";
+import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
+import { LoadingSlot } from "@/components/layout/LoadingSlot";
 
 export default function IdagLoading() {
-  return <HomeViewLoading />;
+  return (
+    <LoadingSlot>
+      <HemFirstPaint />
+    </LoadingSlot>
+  );
 }

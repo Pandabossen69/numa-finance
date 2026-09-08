@@ -8,14 +8,19 @@ describe("/idag first paint", () => {
   it("streams Hem behind Suspense so the shell is not blocked on the snapshot", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("HomeDashboard");
-    expect(page).toContain("route-islands");
-    expect(page).toContain("<Suspense fallback={<HomeViewLoading />}>");
-    expect(page).not.toContain("HomeDashboard snap={null}");
-    expect(loading).toContain("HomeViewLoading");
+    expect(page).toContain("HemFirstPaint");
+    expect(page).not.toContain("readLastHomeCookie");
+    expect(page).not.toContain("route-islands");
+    expect(page).not.toContain("HomeViewLoading");
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("HemFirstPaint");
+    expect(loading).not.toContain("HomeViewLoading");
+    expect(loading).not.toContain("ViewLoading");
   });
 
-  it("shows Kom igång on Hem for new users", () => {
-    expect(page).toContain("loadGettingStartedView");
-    expect(page).toContain("gettingStarted");
+  it("does not block Hem money on accounts or Kom igång", () => {
+    expect(page).not.toContain("loadGettingStartedView");
+    expect(page).not.toContain("loadAccountsSnapshot");
+    expect(page).toContain("loadHomeSnapshot");
   });
 });

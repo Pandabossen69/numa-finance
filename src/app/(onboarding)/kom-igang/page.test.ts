@@ -55,8 +55,8 @@ const imports = readFileSync(
   new URL("../../../features/imports/actions.ts", import.meta.url),
   "utf8",
 );
-const idag = readFileSync(
-  new URL("../../(main)/idag/page.tsx", import.meta.url),
+const hem = readFileSync(
+  new URL("../../../components/home/HomeDashboard.tsx", import.meta.url),
   "utf8",
 );
 const adminPage = readFileSync(
@@ -122,7 +122,8 @@ describe("first-run onboarding", () => {
   });
 
   it("keeps Kom igång as a Hem checklist, not a feature tour", () => {
-    expect(idag).toContain("loadGettingStartedView");
+    expect(hem).toContain("GettingStartedCard");
+    expect(hem).toContain("lastGettingStarted");
     expect(checklistMigration).toContain("getting_started_completed_at");
     expect(checklistMigration).toContain("getting_started_collapsed");
     expect(checklistMigration).not.toContain("drop policy");

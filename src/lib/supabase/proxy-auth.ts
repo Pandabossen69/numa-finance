@@ -12,18 +12,20 @@ export function isRscOrPrefetchRequest(headers: {
 }
 
 /**
- * Skip the Auth network on RSC / prefetch only when a real auth-token
- * cookie parsed to a JWT whose exp is more than 30s ahead. Missing,
- * unreadable, or expired tokens take the ordinary getUser() path.
- * Document requests always call getUser() so refresh cookies stay current.
+ * Skip the Auth network when a real auth-token cookie parsed to a JWT
+ * whose exp is more than 30s ahead. Missing, unreadable, or expired
+ * tokens take the ordinary getUser() path (fail-closed).
+ *
+ * Document / RSC / prefetch all use this. Chrome must not wait 2.5s
+ * Auth on open. Refresh still runs when exp is inside the 30s window.
  */
 export function shouldSkipProxyGetUser(input: {
   hasAuthCookie: boolean;
-  isRscOrPrefetch: boolean;
+  isRscOrPrefetch?: boolean;
   tokenExpiresAtMs: number | null;
   nowMs: number;
 }): boolean {
-  if (!input.hasAuthCookie || !input.isRscOrPrefetch) return false;
+  if (!input.hasAuthCookie) return false;
   if (input.tokenExpiresAtMs == null) return false;
   return input.tokenExpiresAtMs - input.nowMs > FRESH_SKEW_MS;
 }

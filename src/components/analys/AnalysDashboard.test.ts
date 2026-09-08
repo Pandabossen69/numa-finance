@@ -141,7 +141,9 @@ describe("Analys month result color", () => {
   it("shows last-known Analys while a remount has no snapshot", () => {
     expect(src).toContain("lastAnalysSnapshot");
     expect(src).toContain("rememberAnalysSnapshot");
-    expect(src).toContain("AnalysViewLoading");
+    expect(src).toContain("AnalysPending");
+    expect(src).toContain("lastHomeSnapshot");
+    expect(src).not.toContain("AnalysViewLoading");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
     expect(src).toContain("DestinationWarmup");

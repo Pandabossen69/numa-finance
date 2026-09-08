@@ -23,6 +23,7 @@ import {
   lastKnownChromeDisplayName,
   hasBoundSessionOwner,
   clearClientSessionCaches,
+  hydrateLastKnownFromPersist,
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
@@ -39,6 +40,7 @@ import {
   syncHomeCoverageFromPlan,
   syncHomeLivingFromPlan,
 } from "./last-snapshot";
+import { serializeLastHomeCookie } from "./last-home-cookie";
 
 const sampleMovements: MovementsSnapshot = {
   currency: "THB",
@@ -549,6 +551,78 @@ describe("last view memory", () => {
     expect(hasBoundSessionOwner()).toBe(false);
     expect(lastKnownChromeDisplayName()).toBeNull();
     expect(lastMerSnapshot()).toBeNull();
+  });
+
+  it("rehydrates last-known Hem after a cold client boot", async () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    await Promise.resolve();
+    const raw = map.get("numa.lastKnown.v1");
+    expect(raw).toContain("640");
+    clearClientSessionCaches();
+    expect(lastHomeSnapshot()).toBeNull();
+    if (raw) map.set("numa.lastKnown.v1", raw);
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(640_00);
+    expect(lastKnownChromeDisplayName()).toBe("Hugo");
+    Reflect.deleteProperty(globalThis, "localStorage");
+  });
+
+  it("fills Hem from the cookie when persist has no home", () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    map.set(
+      "numa.lastKnown.v1",
+      JSON.stringify({
+        v: 1,
+        userId: "user-test",
+        home: null,
+        plan: null,
+        analys: null,
+        mer: null,
+        accounts: null,
+        movements: null,
+        gettingStarted: null,
+        planView: null,
+        analysScope: null,
+        movementsView: null,
+      }),
+    );
+    const encoded = serializeLastHomeCookie(
+      homeSnap({ remainingTodayMinor: 333_00, displayName: "Test" }),
+    );
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { cookie: `numa.lastHome.v1=${encoded}` },
+    });
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(333_00);
+    expect(lastHomeSnapshot()?.displayName).toBe("Test");
+    Reflect.deleteProperty(globalThis, "localStorage");
+    Reflect.deleteProperty(globalThis, "document");
   });
 
   it("force-adopts a mutation snapshot even when verifiedAt is older", () => {

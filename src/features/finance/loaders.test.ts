@@ -73,6 +73,22 @@ describe("menu snapshot repository contract", () => {
     expect(snapshotFn).toContain("fetchMenuSnapshotBundle");
     expect(snapshotFn).not.toContain("getUserProgress");
     expect(repository).not.toContain("await api().getProfile()");
+    expect(repository).toContain("SNAPSHOT_TIMEOUT_MS = 3_000");
+    expect(repository).toContain("loadTodaySnapshotOnce");
+    expect(repository).toContain("getTodaySnapshot");
+    const once = repository.slice(
+      repository.indexOf("async function loadTodaySnapshotOnce"),
+      repository.indexOf("export async function getTodaySnapshot"),
+    );
+    expect(once).toContain("api().getProfile()");
+    expect(once).toContain("api().listAccounts()");
+    expect(once).toContain("api().getTodaySnapshot()");
+    const timed = repository.slice(
+      repository.indexOf("export async function getTodaySnapshot"),
+      repository.indexOf("export async function getLatestCheckpoint"),
+    );
+    expect(timed).toContain("loadTodaySnapshotOnce()");
+    expect(timed).toMatch(/,\s*0\s*,?\s*\)/);
   });
 
   it("projects only the columns the menu mappers need", () => {

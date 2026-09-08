@@ -1,7 +1,9 @@
 import { isValidElement, Suspense, type ReactNode } from "react";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
+  AnalysPending,
   AnalysViewLoading,
+  HemPending,
   HomeViewLoading,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
@@ -83,11 +85,28 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   if (node == null || typeof node === "boolean") return false;
   if (Array.isArray(node)) return node.some(isViewLoadingNode);
   if (!isValidElement(node)) return false;
-  if (node.type === Suspense) return true;
+  if (node.type === Suspense) {
+    const boundary = node.props as {
+      fallback?: ReactNode;
+      children?: ReactNode;
+    };
+    // Route pages are <Suspense fallback={pending}><Body /></Suspense>.
+    // Treating every Suspense as loading kept LastViewOutlet on dest-loading
+    // after login (last-known wiped) — empty Hem until a remount.
+    if (boundary.children != null && !isViewLoadingNode(boundary.children)) {
+      return false;
+    }
+    return (
+      isViewLoadingNode(boundary.fallback) ||
+      isViewLoadingNode(boundary.children)
+    );
+  }
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
+    node.type === AnalysPending ||
     node.type === HomeViewLoading ||
+    node.type === HemPending ||
     node.type === MovementsViewLoading
   ) {
     return true;

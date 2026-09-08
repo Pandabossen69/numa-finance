@@ -16,7 +16,8 @@ describe("Hem PWA hint and HIGH copy", () => {
   });
 
   it("shows the Hem-shaped skeleton while snapshot is empty", () => {
-    expect(src).toContain("HomeViewLoading");
+    expect(src).toContain("HemPending");
+    expect(src).not.toContain("HomeViewLoading");
   });
 
   it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {
@@ -115,6 +116,8 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
     expect(src).toContain("GettingStartedCard");
+    expect(src).toContain("lastGettingStarted");
+    expect(src).toContain("subscribeGettingStarted");
     expect(src).toContain("läget just nu");
     expect(src).not.toMatch(/välkommen till din resa/i);
   });

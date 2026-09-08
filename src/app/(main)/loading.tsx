@@ -1,5 +1,10 @@
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import { MainFirstPaint } from "@/components/layout/HemFirstPaint";
+import { LoadingSlot } from "@/components/layout/LoadingSlot";
 
 export default function MainLoading() {
-  return <ViewLoading />;
+  return (
+    <LoadingSlot>
+      <MainFirstPaint />
+    </LoadingSlot>
+  );
 }

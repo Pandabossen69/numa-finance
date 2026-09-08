@@ -1,13 +1,13 @@
 import { Suspense } from "react";
-import { AnalysViewLoading } from "@/components/layout/ViewLoading";
-import { AnalysDashboard } from "@/lib/route-islands";
+import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
+import { AnalysFirstPaint } from "@/components/layout/HemFirstPaint";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 
 export const dynamic = "force-dynamic";
 
 export default function AnalysPage() {
   return (
-    <Suspense fallback={<AnalysViewLoading />}>
+    <Suspense fallback={<AnalysFirstPaint />}>
       <AnalysBody />
     </Suspense>
   );

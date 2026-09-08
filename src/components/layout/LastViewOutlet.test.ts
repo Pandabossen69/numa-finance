@@ -16,6 +16,7 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("intentMismatch");
     expect(src).toContain("dest-loading");
     expect(src).toContain("destLoadingForTab");
+    expect(src).toContain("data-numa-hidden-live");
     expect(src).toContain("outletStale");
     expect(src).toContain("isOutletStale");
     expect(src).toContain("clearIntent");
