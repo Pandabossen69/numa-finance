@@ -21,8 +21,10 @@ import {
   lastPlanView,
   lastSettingsSnapshot,
   lastKnownChromeDisplayName,
+  lastSessionOwnerId,
   hasBoundSessionOwner,
   clearClientSessionCaches,
+  readOwnedHomeCookie,
   hydrateLastKnownFromPersist,
   rememberAccountsSnapshot,
   rememberAnalysScope,
@@ -613,6 +615,8 @@ describe("last view memory", () => {
       isAdmin: false,
     });
     expect(lastHomeSnapshot()).toBeNull();
+    expect(lastSessionOwnerId()).toBe("user-christian");
+    expect(readOwnedHomeCookie()?.userId).not.toBe("user-hugo");
     expect(lastMerSnapshot()?.displayName).toBe("Christian Hultz");
     expect(lastKnownChromeDisplayName()).toBe("Christian Hultz");
     clearClientSessionCaches();

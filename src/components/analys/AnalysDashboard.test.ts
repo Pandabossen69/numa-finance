@@ -120,7 +120,7 @@ describe("Analys month result color", () => {
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
     );
-    expect(monthBuilder).toContain("remainingMinor: remainingOpenMinor(item)");
+    expect(monthBuilder).toContain("remainingMinor: remainingCashMinor(item, options.transactions ?? [])");
     // No caller can hand the list a total that contradicts its rows.
     expect(src).not.toContain("totalMinor={cycle.incomeMinor}");
     expect(src).not.toContain("totalMinor={cycle.expenseMinor}");

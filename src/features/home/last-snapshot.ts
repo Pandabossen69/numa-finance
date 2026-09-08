@@ -223,6 +223,7 @@ function wipeSessionCaches() {
 export function bindSessionOwner(userId: string) {
   if (sessionOwnerId && sessionOwnerId !== userId) {
     wipeSessionCaches();
+    clearPersistedLastKnown();
   }
   sessionOwnerId = userId;
 }
@@ -231,6 +232,18 @@ export function clearClientSessionCaches() {
   wipeSessionCaches();
   sessionOwnerId = null;
   clearPersistedLastKnown();
+}
+
+export function lastSessionOwnerId(): string | null {
+  return sessionOwnerId;
+}
+
+/** Cookie fallback only for the bound owner — never the previous account. */
+export function readOwnedHomeCookie(): HomeSnapshot | null {
+  const cookie = readLastHomeCookieFromDocument();
+  if (!cookie) return null;
+  if (sessionOwnerId && cookie.userId !== sessionOwnerId) return null;
+  return cookie;
 }
 
 export function hasBoundSessionOwner(): boolean {
@@ -564,7 +577,7 @@ export function lastAnalysSnapshot(): AnalysSnapshot | null {
 }
 
 function planStamp(snapshot: PlanSnapshot): string {
-  return `${stampPlanItems(snapshot.items)}:${snapshot.bankBalanceMinor}:${snapshot.ledgerTransactions.length}:${snapshot.currency}:${snapshot.timeZone}`;
+  return `${stampPlanItems(snapshot.items)}:${snapshot.bankBalanceMinor}:${snapshot.ledgerTransactions.length}:${snapshot.currency}:${snapshot.timeZone}:${snapshot.financeRevision ?? ""}`;
 }
 
 export function rememberPlanSnapshot(snapshot: PlanSnapshot) {
@@ -634,6 +647,7 @@ export function lastPlanView(): { monthKey: string; viewYear: number } | null {
 }
 
 export function rememberAnalysScope(scope: "period" | "month") {
+  if (analysScope === scope) return;
   analysScope = scope;
   schedulePersist();
 }

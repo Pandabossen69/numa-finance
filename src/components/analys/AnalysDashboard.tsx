@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -78,8 +78,12 @@ export function AnalysDashboard({
     lastPlanView,
     () => null,
   );
-  if (data) rememberAnalysSnapshot(data);
-  rememberAnalysScope(scope);
+  useEffect(() => {
+    if (data) rememberAnalysSnapshot(data);
+  }, [data]);
+  useEffect(() => {
+    rememberAnalysScope(scope);
+  }, [scope]);
   const view = resolveVisibleAnalysSnapshot(lastAnalysSnapshot(), data);
   const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 

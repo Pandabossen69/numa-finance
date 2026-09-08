@@ -8,18 +8,18 @@ import { MerScreen } from "@/components/mer/MerScreen";
 import { PlanScreen } from "@/components/plan/PlanScreen";
 import { AnalysPending, HemPending } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
-import { readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
 import {
   lastAnalysSnapshot,
   lastHomeSnapshot,
   lastMerSnapshot,
+  readOwnedHomeCookie,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
 const subscribeNever = () => () => {};
 
 function readHome() {
-  return lastHomeSnapshot() ?? readLastHomeCookieFromDocument();
+  return lastHomeSnapshot() ?? readOwnedHomeCookie();
 }
 
 /** Last-known Hem money, or a two-line pending — never empty mint cards. */
