@@ -1,5 +1,5 @@
 import type { PlanListStatus } from "@/domain/finance";
-import { SV, planDoneLabel, type PlanSettleKind } from "@/features/copy/labels-sv";
+import { planDoneLabel, planPartialLabel, type PlanSettleKind } from "@/features/copy/labels-sv";
 
 /**
  * What a settled row is called and how it looks, decided once.
@@ -13,7 +13,7 @@ export function planChipLabel(
   kind: PlanSettleKind,
 ): string | null {
   if (status === "settled") return planDoneLabel(kind);
-  if (status === "partial") return SV.delvis;
+  if (status === "partial") return planPartialLabel(kind);
   return null;
 }
 

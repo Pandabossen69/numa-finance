@@ -244,8 +244,8 @@ export function PlanRows({
                   onClick={() => onSavePartial(item.id)}
                 >
                   {pendingId === item.id && pendingAction === "settle"
-                    ? "Sparar…"
-                    : "Spara"}
+                    ? "Bokar…"
+                    : "Boka"}
                 </button>
                 <button
                   type="button"
@@ -272,7 +272,9 @@ export function PlanRows({
         if (status === "open") {
           menuItems.push({
             label: doneLabel,
-            disabled: pendingId === item.id && pendingAction === "settle",
+            disabled:
+              (pendingId === item.id && pendingAction === "settle") ||
+              settleAccounts.length === 0,
             onSelect: () => onSettle(item.id, true),
           });
           menuItems.push({
@@ -292,7 +294,9 @@ export function PlanRows({
         } else if (status === "partial") {
           menuItems.push({
             label: doneLabel,
-            disabled: pendingId === item.id && pendingAction === "settle",
+            disabled:
+              (pendingId === item.id && pendingAction === "settle") ||
+              settleAccounts.length === 0,
             onSelect: () => onMarkRemainder(item.id),
           });
           menuItems.push({
@@ -304,7 +308,9 @@ export function PlanRows({
           });
           menuItems.push({
             label: markRestLabel,
-            disabled: pendingId === item.id && pendingAction === "settle",
+            disabled:
+              (pendingId === item.id && pendingAction === "settle") ||
+              settleAccounts.length === 0,
             onSelect: () => onMarkRemainder(item.id),
           });
           menuItems.push({
@@ -403,16 +409,20 @@ export function PlanRows({
                     align="end"
                     wrap={false}
                   />
-                  {canUndo ? (
+                  {status === "open" && settleAccounts.length > 0 ? (
                     <button
                       type="button"
-                      className={`${planChipClass(status)} self-end`}
+                      className="numa-btn numa-btn-soft min-h-10 self-end px-3 text-sm"
                       disabled={pendingId === item.id && pendingAction === "settle"}
-                      aria-label={`Ångra ${settled ? doneLabel : partialLabel}`}
-                      onClick={() => onSettle(item.id, false)}
+                      onClick={() => onSettle(item.id, true)}
                     >
-                      {planChipLabel(status, settleKind)}
+                      {doneLabel}
                     </button>
+                  ) : null}
+                  {canUndo ? (
+                    <span className={`${planChipClass(status)} self-end`}>
+                      {planChipLabel(status, settleKind)}
+                    </span>
                   ) : null}
                 </div>
                 <div className="numa-plan-menu">

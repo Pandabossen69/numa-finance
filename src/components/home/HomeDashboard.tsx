@@ -22,7 +22,6 @@ import {
 import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   financeTruthMessageSv,
@@ -517,9 +516,7 @@ function AvailableNowCard({
               } catch {
                 // Snapshot below fills in the living numbers.
               }
-              void getHomeSnapshotAction().then((next) => {
-                if (next.ok) rememberHomeSnapshot(next.data);
-              });
+              adoptMutationFinance(result);
             })();
           }}
         >
@@ -603,9 +600,7 @@ function UpdateBalanceLink({
               } catch {
                 // Snapshot below fills in the living numbers.
               }
-              void getHomeSnapshotAction().then((next) => {
-                if (next.ok) rememberHomeSnapshot(next.data);
-              });
+              adoptMutationFinance(result);
             })();
           }}
         >

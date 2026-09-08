@@ -454,7 +454,20 @@ export async function createCheckpointAction(raw: {
       fxSource: manualRate != null ? "manual" : null,
     });
 
-    return { ok: true, thbMinor: checkpoint.thbMinor ?? undefined };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        thbMinor: checkpoint.thbMinor ?? undefined,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return {
+      ok: true,
+      thbMinor: checkpoint.thbMinor ?? undefined,
+      ...refreshed.snapshots,
+    };
   } catch (error) {
     return {
       ok: false,
@@ -510,8 +523,15 @@ export async function setAvailableNowAction(raw: {
       await stampOnboardingCompletedAt();
     }
 
-    revalidateMoneyPaths();
-    return { ok: true };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,

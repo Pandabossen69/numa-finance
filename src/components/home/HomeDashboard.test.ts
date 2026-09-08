@@ -31,6 +31,8 @@ describe("Hem PWA hint and HIGH copy", () => {
     );
     expect(adopt).not.toContain("warmupPlanPageData");
     expect(adopt).not.toContain("getHomeSnapshotAction");
+    expect(src).not.toContain("getHomeSnapshotAction");
+    expect(src).toContain("adoptMutationFinance(result)");
     const quickBody = src.slice(src.indexOf("function QuickExpense"));
     expect(quickBody).not.toContain("getHomeSnapshotAction");
     expect(quickBody).not.toContain("warmupPlanPageData");
