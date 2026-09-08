@@ -58,10 +58,10 @@ describe("smooth nav and saves", () => {
     const plan = read("../../app/(main)/plan/page.tsx");
     const analys = read("../../app/(main)/analys/page.tsx");
     const mer = read("../../app/(main)/mer/page.tsx");
-    expect(idag).toContain("<Suspense");
-    expect(plan).toContain("<Suspense");
-    expect(analys).toContain("<Suspense");
-    expect(mer).toContain("<Suspense");
+    expect(idag).toContain("<Suspense fallback={<HomeViewLoading />}>");
+    expect(plan).toContain("<Suspense fallback={<ViewLoading />}>");
+    expect(analys).toContain("<Suspense fallback={<AnalysViewLoading />}>");
+    expect(mer).toContain("<Suspense fallback={<MerViewLoading />}>");
   });
 
   it("marks every authenticated money page force-dynamic so CI build cannot prerender the store", () => {

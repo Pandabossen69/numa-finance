@@ -7,8 +7,10 @@ import {
   initWithFetchMemoizationBypass,
   isJwtIssuedAtFutureError,
   MAX_IAT_WAIT_MS,
+  resetSharedJwtIssuedAtWait,
   retryWaitMsForJwtIssuedAtFuture,
   waitMsToPassFutureIat,
+  waitSharedJwtIssuedAt,
 } from "./jwt-issued-at";
 
 const NOW_SEC = 1_788_674_400;
@@ -115,6 +117,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  resetSharedJwtIssuedAtWait();
 });
 
 describe("classifyJwtTime", () => {
@@ -551,6 +554,23 @@ describe("Next.js request memoization vs JWT retry", () => {
     expect(network.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("shares one iat wait across parallel PostgREST reads", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(NOW_SEC * 1000));
+    const first = waitSharedJwtIssuedAt(1_050);
+    const second = waitSharedJwtIssuedAt(1_050);
+    await vi.advanceTimersByTimeAsync(1_049);
+    let settled = false;
+    void Promise.all([first, second]).then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await Promise.all([first, second]);
+    expect(settled).toBe(true);
+  });
+
   it("does not retry a 5s future iat under memoized GET", async () => {
     const now = Math.floor(Date.now() / 1000);
     const token = unsignedJwt({ iat: now + 5, exp: now + 3600 });
@@ -630,5 +650,8 @@ describe("Analys JWT error path", () => {
     expect(
       readFileSync(new URL("./jwt-issued-at.ts", import.meta.url), "utf8"),
     ).toContain("initWithFetchMemoizationBypass");
+    expect(
+      readFileSync(new URL("./jwt-issued-at.ts", import.meta.url), "utf8"),
+    ).toContain("waitSharedJwtIssuedAt");
   });
 });

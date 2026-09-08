@@ -134,6 +134,20 @@ describe("proxy Auth fast path", () => {
     ).toBeNull();
   });
 
+  it("falls back to session expires_at when the JWT payload has no exp", () => {
+    expect(
+      readAccessTokenExpiryMs([
+        {
+          name: "sb-xxx-auth-token",
+          value: JSON.stringify({
+            access_token: jwtWithPayload({ sub: "u1" }),
+            expires_at: 1_800_000_000,
+          }),
+        },
+      ]),
+    ).toBe(1_800_000_000_000);
+  });
+
   it("reads JWT exp from a valid chunked auth-token cookie", () => {
     expect(
       readAccessTokenExpiryMs([

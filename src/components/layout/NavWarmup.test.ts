@@ -7,6 +7,7 @@ describe("NavWarmup", () => {
   it("warms Hem, Plan and Analys so tab switches can paint dest shells", () => {
     expect(src).toContain("PRIMARY_NAV");
     expect(src).toContain("warmHrefs");
+    expect(src).toContain("scheduleIdleWarm");
     expect(src).toContain("/transaktioner");
     expect(src).toContain("/fota");
   });

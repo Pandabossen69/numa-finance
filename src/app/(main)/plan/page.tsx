@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { ViewLoading } from "@/components/layout/ViewLoading";
 import { loadPlanSnapshot } from "@/features/finance/load-plan";
 import { loadGettingStartedView } from "@/features/getting-started/load";
 import { PlanScreen } from "@/lib/route-islands";
@@ -11,7 +12,7 @@ export default function PlanPage({
   searchParams?: Promise<{ steg?: string }>;
 }) {
   return (
-    <Suspense fallback={<PlanScreen />}>
+    <Suspense fallback={<ViewLoading />}>
       <PlanFromParams searchParams={searchParams} />
     </Suspense>
   );

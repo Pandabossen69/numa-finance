@@ -29,6 +29,23 @@ export function warmHrefs(router: AppRouterInstance, hrefs: readonly string[]) {
   for (const href of hrefs) prefetchHref(router, href);
 }
 
+/** Idle so first paint / first tap is not competing with 7 route prefetches. */
+export function scheduleIdleWarm(fn: () => void): () => void {
+  let idleId = 0;
+  let timeoutId = 0;
+  if (typeof requestIdleCallback === "function") {
+    idleId = requestIdleCallback(fn, { timeout: 1_500 });
+  } else {
+    timeoutId = window.setTimeout(fn, 250);
+  }
+  return () => {
+    if (idleId && typeof cancelIdleCallback === "function") {
+      cancelIdleCallback(idleId);
+    }
+    if (timeoutId) window.clearTimeout(timeoutId);
+  };
+}
+
 export function usePrefetchOnIntent() {
   const router = useRouter();
   return {
@@ -37,24 +54,28 @@ export function usePrefetchOnIntent() {
   };
 }
 
-/** Prefetch destinations on mount and when the tab becomes visible again. */
+/** Prefetch destinations on idle and when the tab becomes visible again. */
 export function DestinationWarmup({ hrefs }: { hrefs: readonly string[] }) {
   const router = useRouter();
   const key = hrefs.join("\0");
 
   useEffect(() => {
     let cancelled = false;
+    let cancelIdle = () => {};
     const warm = () => {
       if (cancelled) return;
       warmHrefs(router, hrefs);
     };
-    warm();
+    cancelIdle = scheduleIdleWarm(warm);
     const onVisible = () => {
-      if (document.visibilityState === "visible") warm();
+      if (document.visibilityState !== "visible") return;
+      cancelIdle();
+      cancelIdle = scheduleIdleWarm(warm);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      cancelIdle();
       document.removeEventListener("visibilitychange", onVisible);
     };
     // hrefs is compared via key so callers can pass inline arrays.

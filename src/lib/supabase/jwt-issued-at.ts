@@ -172,6 +172,40 @@ export function initWithFetchMemoizationBypass(init?: RequestInit): RequestInit 
   return { ...init, signal: new AbortController().signal };
 }
 
+type SharedIatWait = {
+  untilMs: number;
+  promise: Promise<void>;
+};
+
+let sharedIatWait: SharedIatWait | null = null;
+
+/** One clock wait per isolate so parallel PostgREST reads share the iat skew. */
+export function waitSharedJwtIssuedAt(waitMs: number): Promise<void> {
+  if (waitMs <= 0) return Promise.resolve();
+  const untilMs = Date.now() + waitMs;
+  if (sharedIatWait && untilMs <= sharedIatWait.untilMs + 25) {
+    return sharedIatWait.promise;
+  }
+  const extraMs = sharedIatWait
+    ? Math.max(0, untilMs - sharedIatWait.untilMs)
+    : waitMs;
+  const prev = sharedIatWait?.promise ?? Promise.resolve();
+  const promise = prev.then(
+    () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, extraMs);
+      }),
+  );
+  sharedIatWait = { untilMs, promise };
+  return promise.finally(() => {
+    if (sharedIatWait?.promise === promise) sharedIatWait = null;
+  });
+}
+
+export function resetSharedJwtIssuedAtWait() {
+  sharedIatWait = null;
+}
+
 export async function fetchWithJwtIssuedAtRetry(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -190,9 +224,7 @@ export async function fetchWithJwtIssuedAtRetry(
   });
   if (waitMs == null) return response;
   if (waitMs > 0) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, waitMs);
-    });
+    await waitSharedJwtIssuedAt(waitMs);
   }
   return fetch(input, initWithFetchMemoizationBypass(init));
 }

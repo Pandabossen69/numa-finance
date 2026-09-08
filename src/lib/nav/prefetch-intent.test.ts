@@ -15,6 +15,8 @@ describe("prefetch-intent", () => {
     expect(src).toContain("router.prefetch");
     expect(src).toContain("visibilitychange");
     expect(src).toContain("usePrefetchOnIntent");
+    expect(src).toContain("scheduleIdleWarm");
+    expect(src).toContain("requestIdleCallback");
   });
 
   it("calls router.prefetch with only the href so comments cannot imply a full payload", () => {

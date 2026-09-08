@@ -91,20 +91,9 @@ export function HomeDashboard({
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);
     }
-    void warmupPlanPageData();
+    // Do not warmup Plan here. That server action is another full
+    // getTodaySnapshot and raced the Hem RSC on every tab paint.
   }, [snap, accounts, gettingStarted]);
-
-  useEffect(() => {
-    if (stored || snap) return;
-    let cancelled = false;
-    void getHomeSnapshotAction().then((result) => {
-      if (cancelled || !result.ok) return;
-      rememberHomeSnapshot(result.data);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [stored, snap]);
 
   if (!view) {
     if (!error) return <HomeViewLoading />;

@@ -9,6 +9,8 @@ describe("/analys loading shell", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("AnalysDashboard");
     expect(page).toContain("route-islands");
+    expect(page).toContain("<Suspense fallback={<AnalysViewLoading />}>");
+    expect(page).not.toContain("<Suspense fallback={<AnalysDashboard");
     expect(loading).toContain("AnalysViewLoading");
   });
 });
