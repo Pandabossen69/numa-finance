@@ -5,6 +5,7 @@ import {
   AnalysViewLoading,
   HemPending,
   HomeViewLoading,
+  PlanPending,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
 
@@ -104,6 +105,7 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
+    node.type === PlanPending ||
     node.type === AnalysPending ||
     node.type === HomeViewLoading ||
     node.type === HemPending ||

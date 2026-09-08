@@ -224,13 +224,13 @@ async function loadTodaySnapshotOnce(): Promise<TodaySnapshot> {
   // No accounts: still load plan rows. A failed/empty account read must
   // not blank August/September history on Plan and Analys.
   if (accounts.length === 0) {
-    const planItems = await api()
-      .listPlanItems()
-      .catch((error) => {
-        console.warn("[numa] plan items after empty accounts", error);
-        return [];
-      });
-    return emptyTodaySnapshot(profile, accounts, null, planItems);
+    try {
+      const planItems = await api().listPlanItems();
+      return emptyTodaySnapshot(profile, accounts, null, planItems);
+    } catch (error) {
+      console.warn("[numa] plan items after empty accounts", error);
+      throw error;
+    }
   }
   // Do not await due-rolling on the login path — it was an extra plan-items
   // round-trip before the timed snapshot even started.
@@ -244,7 +244,7 @@ export async function getTodaySnapshot(): Promise<TodaySnapshot> {
       () => loadTodaySnapshotOnce(),
       SNAPSHOT_TIMEOUT_MS,
       "getTodaySnapshot",
-      0,
+      1,
     );
   } catch (error) {
     if (isTimeoutError(error)) {

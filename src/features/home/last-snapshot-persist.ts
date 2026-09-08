@@ -1,4 +1,5 @@
 import { writeLastHomeCookie } from "@/features/home/last-home-cookie";
+import { isPlaceholderEmptyRevision } from "@/lib/store/empty-snapshot";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -68,11 +69,28 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
     v: 1,
     movements: slimMovements(data.movements),
   };
+  const previous = readPersistedLastKnown();
+  if (
+    previous?.plan &&
+    previous.plan.items.length > 0 &&
+    (payload.plan?.items.length ?? 0) === 0 &&
+    (!payload.plan || isPlaceholderEmptyRevision(payload.plan.financeRevision))
+  ) {
+    payload.plan = previous.plan;
+  }
+  if (
+    previous?.analys &&
+    (previous.analys.planItems?.length ?? 0) > 0 &&
+    (payload.analys?.planItems?.length ?? 0) === 0 &&
+    (!payload.analys ||
+      isPlaceholderEmptyRevision(payload.analys.financeRevision))
+  ) {
+    payload.analys = previous.analys;
+  }
   writeLastHomeCookie(payload.home);
   try {
     storage.setItem(LAST_KNOWN_STORAGE_KEY, JSON.stringify(payload));
   } catch {
-    const previous = readPersistedLastKnown();
     try {
       storage.setItem(
         LAST_KNOWN_STORAGE_KEY,
