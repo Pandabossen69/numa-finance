@@ -192,10 +192,12 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("const matched =");
     expect(plan).not.toContain("matched &&");
     expect(plan).not.toContain("explicitSettled");
-    // Money totals use confirmed links only — heuristic stays a suggestion.
+    // Money totals use confirmed links only. No Koppla suggestion list.
     expect(editor).not.toContain("matchPlanItemsToLedger");
     expect(editor).toContain("explicitlyLinkedPlanItemIds");
-    expect(editor).toContain("suggestPlanLinks");
+    expect(editor).not.toContain("suggestPlanLinks");
+    expect(editor).not.toContain("confirmPlanLinkAction");
+    expect(editor).not.toContain("Koppla");
     expect(editor).toContain(
       "sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)",
     );
