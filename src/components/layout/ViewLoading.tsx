@@ -21,6 +21,22 @@ export function ViewLoading() {
   );
 }
 
+/** Calm pending — never the huge empty mint cards that look broken. */
+export function HemPending() {
+  return (
+    <div
+      className="numa-page numa-page-wide space-y-2 pt-1"
+      data-numa-view-loading="true"
+      aria-busy="true"
+      aria-label="Hämtar läget"
+    >
+      <p className="text-sm font-medium text-[var(--numa-muted)]">Hämtar läget…</p>
+      <div className="numa-skel h-2.5 w-36 !rounded-full" />
+      <div className="numa-skel h-2.5 w-24 !rounded-full" />
+    </div>
+  );
+}
+
 /** Hem-shaped shell so /idag never paints an empty content column. */
 export function HomeViewLoading() {
   return (

@@ -1,7 +1,12 @@
 import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
-import { AnalysViewLoading, HomeViewLoading, ViewLoading } from "./ViewLoading";
+import {
+  AnalysViewLoading,
+  HemPending,
+  HomeViewLoading,
+  ViewLoading,
+} from "./ViewLoading";
 import {
   isViewLoadingNode,
   resolveVisibleTab,
@@ -13,6 +18,7 @@ describe("isViewLoadingNode", () => {
     expect(isViewLoadingNode(createElement(ViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(AnalysViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(HemPending))).toBe(true);
     expect(isViewLoadingNode(createElement(MovementsViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(true);
     expect(

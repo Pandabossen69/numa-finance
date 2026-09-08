@@ -3,6 +3,7 @@
 import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
 import { FotaScreen } from "@/components/capture/FotaScreen";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
+import { lastHomeSnapshot } from "@/features/home/last-snapshot";
 import { ViewLoading } from "@/components/layout/ViewLoading";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
@@ -17,7 +18,7 @@ import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 export function destLoadingForTab(tab: string | null) {
   switch (tab) {
     case "/idag":
-      return <HomeDashboard snap={null} error={null} />;
+      return <HomeDashboard snap={lastHomeSnapshot()} error={null} />;
     case "/plan":
       return <PlanScreen />;
     case "/analys":

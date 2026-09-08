@@ -27,7 +27,8 @@ describe("main first-load chrome", () => {
   it("keeps loading.tsx as content-only so the shell is not nested", () => {
     expect(loading).toContain("ViewLoading");
     expect(loading).not.toContain("AppShell");
-    expect(idagLoading).toContain("HomeViewLoading");
+    expect(idagLoading).toContain("HemPending");
+    expect(idagLoading).toContain("readLastHomeCookie");
     expect(idag).toContain("Suspense");
   });
 });

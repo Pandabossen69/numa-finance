@@ -8,10 +8,13 @@ describe("/idag first paint", () => {
   it("streams Hem behind Suspense so the shell is not blocked on the snapshot", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("HomeDashboard");
-    expect(page).toContain("route-islands");
-    expect(page).toContain("<Suspense fallback={<HomeViewLoading />}>");
-    expect(page).not.toContain("HomeDashboard snap={null}");
-    expect(loading).toContain("HomeViewLoading");
+    expect(page).toContain("readLastHomeCookie");
+    expect(page).toContain("HemPending");
+    expect(page).not.toContain("route-islands");
+    expect(page).not.toContain("HomeViewLoading");
+    expect(loading).toContain("readLastHomeCookie");
+    expect(loading).toContain("HemPending");
+    expect(loading).not.toContain("HomeViewLoading");
   });
 
   it("shows Kom igång on Hem for new users", () => {

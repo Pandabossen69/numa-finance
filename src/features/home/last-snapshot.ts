@@ -26,6 +26,7 @@ import type {
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
+import { readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
 import {
   clearPersistedLastKnown,
   readPersistedLastKnown,
@@ -132,19 +133,27 @@ function schedulePersist() {
 
 export function hydrateLastKnownFromPersist() {
   const data = readPersistedLastKnown();
-  if (!data) return;
   persistPaused = true;
-  sessionOwnerId = data.userId;
-  home = data.home;
-  plan = data.plan;
-  analys = data.analys;
-  mer = data.mer;
-  accounts = data.accounts;
-  movements = data.movements;
-  gettingStarted = data.gettingStarted;
-  planView = data.planView;
-  analysScope = data.analysScope;
-  movementsView = data.movementsView;
+  if (data) {
+    sessionOwnerId = data.userId;
+    home = data.home;
+    plan = data.plan;
+    analys = data.analys;
+    mer = data.mer;
+    accounts = data.accounts;
+    movements = data.movements;
+    gettingStarted = data.gettingStarted;
+    planView = data.planView;
+    analysScope = data.analysScope;
+    movementsView = data.movementsView;
+    persistPaused = false;
+    return;
+  }
+  const cookieHome = readLastHomeCookieFromDocument();
+  if (cookieHome) {
+    sessionOwnerId = cookieHome.userId;
+    home = cookieHome;
+  }
   persistPaused = false;
 }
 

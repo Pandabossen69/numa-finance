@@ -3,14 +3,14 @@
 import nextDynamic from "next/dynamic";
 import {
   AnalysViewLoading,
-  HomeViewLoading,
+  HemPending,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
 
 /** Route-boundary islands — keep heavy screens off the first shared JS. */
 export const HomeDashboard = nextDynamic(
   () => import("@/components/home/HomeDashboard").then((mod) => mod.HomeDashboard),
-  { ssr: true, loading: () => <HomeViewLoading /> },
+  { ssr: true, loading: () => <HemPending /> },
 );
 
 export const PlanEditor = nextDynamic(

@@ -16,7 +16,8 @@ describe("Hem PWA hint and HIGH copy", () => {
   });
 
   it("shows the Hem-shaped skeleton while snapshot is empty", () => {
-    expect(src).toContain("HomeViewLoading");
+    expect(src).toContain("HemPending");
+    expect(src).not.toContain("HomeViewLoading");
   });
 
   it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {

@@ -50,7 +50,7 @@ import {
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
-import { HomeViewLoading } from "@/components/layout/ViewLoading";
+import { HemPending } from "@/components/layout/ViewLoading";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
   return formatMoneyCompact(money(amountMinor, currency));
@@ -70,7 +70,7 @@ export function HomeDashboard({
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
     lastHomeSnapshot,
-    lastHomeSnapshot,
+    () => null,
   );
   const accountsView = useSyncExternalStore(
     subscribeAccountsSnapshot,
@@ -96,7 +96,7 @@ export function HomeDashboard({
   }, [snap, accounts, gettingStarted]);
 
   if (!view) {
-    if (!error) return <HomeViewLoading />;
+    if (!error) return <HemPending />;
     const truth = financeTruthMessageSv({
       truthStatus: "unavailable",
       verifiedAt: null,

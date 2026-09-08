@@ -2,6 +2,7 @@ import { isValidElement, Suspense, type ReactNode } from "react";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
   AnalysViewLoading,
+  HemPending,
   HomeViewLoading,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
@@ -88,6 +89,7 @@ export function isViewLoadingNode(node: ReactNode): boolean {
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
     node.type === HomeViewLoading ||
+    node.type === HemPending ||
     node.type === MovementsViewLoading
   ) {
     return true;

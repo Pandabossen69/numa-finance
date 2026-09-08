@@ -100,7 +100,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   }, [intent, pathname, childrenFrozen, frozenFor, loading, clearIntent]);
 
   useIsomorphicLayoutEffect(() => {
-    if (!loading && pathTab && isHoldRoot(pathname)) {
+    if (!loading && pathTab && isHoldRoot(pathname) && !isViewLoadingNode(children)) {
       setLiveByTab((prev) =>
         prev[pathTab] === children ? prev : { ...prev, [pathTab]: children },
       );
@@ -109,6 +109,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
 
   useIsomorphicLayoutEffect(() => {
     if (!inFlight && isHoldRoot(pathname) && pathTab && readyAt !== pathname) {
+      if (isViewLoadingNode(children)) return;
       setReadyAt(pathname);
       setCache((current) => ({ ...current, [pathTab]: children }));
     }

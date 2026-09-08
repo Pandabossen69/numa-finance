@@ -1,3 +1,4 @@
+import { writeLastHomeCookie } from "@/features/home/last-home-cookie";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -67,6 +68,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
     v: 1,
     movements: slimMovements(data.movements),
   };
+  writeLastHomeCookie(payload.home);
   try {
     storage.setItem(LAST_KNOWN_STORAGE_KEY, JSON.stringify(payload));
   } catch {
@@ -95,6 +97,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
 }
 
 export function clearPersistedLastKnown(): void {
+  writeLastHomeCookie(null);
   const storage = persistStorage();
   if (!storage) return;
   try {
