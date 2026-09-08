@@ -37,6 +37,7 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 onPointerDown={() => {
                   prefetch(item.href);
                   markIntent(item.href);
@@ -71,6 +72,7 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
         <div className="space-y-2">
           <Link
             href="/fota"
+            prefetch={false}
             onPointerDown={() => {
               prefetch("/fota");
               markIntent("/fota");

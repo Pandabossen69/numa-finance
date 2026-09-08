@@ -44,6 +44,48 @@ export function primaryTab(pathname: string): string | null {
 }
 
 /**
+ * Cache key for last-view hold. Konton and Transaktioner are instant
+ * destinations of their own — they must not share Mer's parked tree.
+ */
+export function holdKey(pathname: string): string | null {
+  if (
+    pathname === "/transaktioner" ||
+    pathname.startsWith("/transaktioner/")
+  ) {
+    return "/transaktioner";
+  }
+  if (pathname === "/konton") return "/konton";
+  if (
+    pathname === "/fota" ||
+    pathname.startsWith("/fota/") ||
+    pathname.startsWith("/lagg-till")
+  ) {
+    return "/fota";
+  }
+  return primaryTab(pathname);
+}
+
+/**
+ * Destinations that paint last-known/cache/shell on tap.
+ * /konton/ny and other Mer drill-ins stay live children.
+ */
+export function isHoldRoot(pathname: string): boolean {
+  const key = holdKey(pathname);
+  if (!key) return false;
+  if (key === "/konton") return pathname === "/konton";
+  if (key === "/transaktioner") return pathname === "/transaktioner";
+  if (key === "/mer") return pathname === "/mer";
+  if (key === "/fota") {
+    return (
+      pathname === "/fota" ||
+      pathname.startsWith("/fota/") ||
+      pathname.startsWith("/lagg-till")
+    );
+  }
+  return isTabRoot(pathname);
+}
+
+/**
  * True on the tab root (Hem/Plan/Analys/Mer/Fota), not Mer drill-in.
  * Keep-alive caches only these so /konton does not overwrite Mer.
  */

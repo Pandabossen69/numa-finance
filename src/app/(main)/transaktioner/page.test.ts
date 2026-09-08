@@ -8,6 +8,8 @@ describe("/transaktioner instant shell", () => {
   it("streams last-known Rörelser while the snapshot loads", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("MovementsScreen");
+    expect(page).toContain('from "@/components/movements/MovementsScreen"');
+    expect(page).not.toContain("route-islands");
     expect(page).toContain("data={null}");
     expect(loading).toContain("MovementsViewLoading");
   });

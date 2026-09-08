@@ -223,8 +223,8 @@ export async function fetchWithJwtIssuedAtRetry(
     accessToken: accessTokenFromFetch(input, init),
   });
   if (waitMs == null) return response;
-  if (waitMs > 0) {
-    await waitSharedJwtIssuedAt(waitMs);
-  }
+  // Immediate retry only. A 2s iat sleep blocked menu RSC and made
+  // tab taps sit on a spinner. Dest UI paints from last-known; this
+  // retry is background truth, never a nav gate.
   return fetch(input, initWithFetchMemoizationBypass(init));
 }

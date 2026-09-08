@@ -41,6 +41,7 @@ export function BottomNav() {
         <div className="flex flex-col items-center justify-end gap-0.5 pb-0.5">
           <Link
             href="/fota"
+            prefetch={false}
             onPointerDown={() => onIntent("/fota")}
             onMouseEnter={() => prefetch("/fota")}
             onFocus={() => prefetch("/fota")}
@@ -88,6 +89,7 @@ function NavItem({
   return (
     <Link
             href={href}
+            prefetch={false}
             onPointerDown={onIntent}
             onMouseEnter={onIntent}
             onFocus={onIntent}

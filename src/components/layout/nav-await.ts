@@ -1,4 +1,4 @@
-import { primaryTab } from "@/components/layout/nav";
+import { holdKey } from "@/components/layout/nav";
 
 export type NavAwaitSnapshot = {
   href: string;
@@ -26,7 +26,7 @@ export function isOutletStale(input: {
   if (!input.awaitHref || !input.destTab || !input.childrenFrozen) return false;
   return (
     input.pathTab === input.destTab &&
-    input.destTab === primaryTab(input.awaitHref)
+    input.destTab === holdKey(input.awaitHref)
   );
 }
 
@@ -36,7 +36,9 @@ export function destChildrenArrived(input: {
   pathname: string;
   childrenFrozen: boolean;
   hadFreeze: boolean;
+  loading?: boolean;
 }): boolean {
   if (!input.awaitHref || input.childrenFrozen || !input.hadFreeze) return false;
-  return primaryTab(input.pathname) === primaryTab(input.awaitHref);
+  if (input.loading) return false;
+  return holdKey(input.pathname) === holdKey(input.awaitHref);
 }

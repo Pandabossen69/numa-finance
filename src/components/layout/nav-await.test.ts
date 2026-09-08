@@ -98,6 +98,15 @@ describe("nav await contracts", () => {
         hadFreeze: true,
       }),
     ).toBe(false);
+    expect(
+      destChildrenArrived({
+        awaitHref: "/plan",
+        pathname: "/plan",
+        childrenFrozen: false,
+        hadFreeze: true,
+        loading: true,
+      }),
+    ).toBe(false);
   });
 
   it("keeps same-tab refresh on the live dest cache instead of dest-loading", () => {

@@ -1,5 +1,6 @@
 import { createElement, Suspense } from "react";
 import { describe, expect, it } from "vitest";
+import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import { AnalysViewLoading, HomeViewLoading, ViewLoading } from "./ViewLoading";
 import {
   isViewLoadingNode,
@@ -12,6 +13,7 @@ describe("isViewLoadingNode", () => {
     expect(isViewLoadingNode(createElement(ViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(AnalysViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(HomeViewLoading))).toBe(true);
+    expect(isViewLoadingNode(createElement(MovementsViewLoading))).toBe(true);
     expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(true);
     expect(
       isViewLoadingNode(
@@ -117,6 +119,33 @@ describe("resolveVisibleTab", () => {
         heldTab: "/plan",
         destIsTabRoot: true,
         hasDestCache: true,
+      }),
+    ).toBe("dest");
+  });
+
+  it("paints dest shell when URL already matches dest but loading.tsx is the outlet", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/transaktioner",
+        heldTab: "/analys",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        pathTab: "/transaktioner",
+        outletStale: false,
+      }),
+    ).toBe("dest-loading");
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/transaktioner",
+        heldTab: "/analys",
+        destIsTabRoot: true,
+        hasDestCache: true,
+        pathTab: "/transaktioner",
+        outletStale: false,
       }),
     ).toBe("dest");
   });

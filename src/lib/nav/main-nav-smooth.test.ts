@@ -78,7 +78,7 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(analys).toContain("AnalysBody");
   });
 
-  it("lets Hem/Plan/Analys SSR so dest content does not wait on a client chunk", () => {
+  it("lets Hem/Plan/Analys/Rörelser SSR so dest content does not wait on a client chunk", () => {
     const islands = read("../route-islands.tsx");
     const home = islands.slice(
       islands.indexOf("export const HomeDashboard"),
@@ -86,6 +86,12 @@ describe("SMOOTH 01 root cause contracts", () => {
     );
     expect(home).toContain("ssr: true");
     expect(home).not.toContain("ssr: false");
+    const movements = islands.slice(
+      islands.indexOf("export const MovementsScreen"),
+      islands.indexOf("export const OnboardingSaldoChoice"),
+    );
+    expect(movements).toContain("ssr: true");
+    expect(movements).not.toContain("ssr: false");
   });
 
   it("skips proxy getUser on RSC/prefetch so tab switches do not share a 2.5s Auth gate", () => {
@@ -95,25 +101,32 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(middleware).toContain("AUTH_TIMEOUT_MS = 2_500");
   });
 
-  it("does not let Plan await searchParams before the Suspense shell", () => {
+  it("does not let Plan or Fota await searchParams before the Suspense shell", () => {
     const plan = read("../../app/(main)/plan/page.tsx");
-    const beforeSuspense = plan.slice(0, plan.indexOf("<Suspense"));
-    expect(beforeSuspense).not.toContain("await searchParams");
+    const fota = read("../../app/(main)/fota/page.tsx");
+    const planBefore = plan.slice(0, plan.indexOf("<Suspense"));
+    const fotaBefore = fota.slice(0, fota.indexOf("<Suspense"));
+    expect(planBefore).not.toContain("await searchParams");
+    expect(fotaBefore).not.toContain("await searchParams");
     expect(plan).toContain("PlanFromParams");
+    expect(fota).toContain("FotaFromParams");
   });
 
   it("does not force full Link prefetch on the four main tabs", () => {
     const bottom = read("../../components/layout/BottomNav.tsx");
     const side = read("../../components/layout/SideNav.tsx");
-    expect(bottom).not.toMatch(/href=\{href\}\s+prefetch\b/);
-    expect(side).not.toMatch(/href=\{item\.href\}\s+prefetch\b/);
+    expect(bottom).toContain("prefetch={false}");
+    expect(side).toContain("prefetch={false}");
   });
 
-  it("keeps fail-closed proxy skip and JWT iat retry", () => {
+  it("keeps fail-closed proxy skip and retries JWT iat without sleeping", () => {
     const proxyAuth = read("../supabase/proxy-auth.ts");
     const jwt = read("../supabase/jwt-issued-at.ts");
     expect(proxyAuth).toContain("if (input.tokenExpiresAtMs == null) return false");
     expect(jwt).toContain("fetchWithJwtIssuedAtRetry");
     expect(jwt).toContain("initWithFetchMemoizationBypass");
+    const fetchFn = jwt.slice(jwt.indexOf("export async function fetchWithJwtIssuedAtRetry"));
+    expect(fetchFn).not.toContain("waitSharedJwtIssuedAt");
+    expect(fetchFn).not.toContain("setTimeout");
   });
 });

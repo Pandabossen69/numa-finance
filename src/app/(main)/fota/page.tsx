@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { FotaScreen } from "@/components/capture/FotaScreen";
-import { FotaViewLoading } from "@/components/capture/FotaViewLoading";
 import {
   isObservationId,
   parseFotaMode,
@@ -14,23 +13,25 @@ import type { FotaBootSnapshot } from "@/features/home/last-snapshot";
 
 export const dynamic = "force-dynamic";
 
-export default async function FotaPage({
+export default function FotaPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ mode?: string; observation?: string }>;
+}) {
+  return (
+    <Suspense fallback={<FotaScreen data={null} />}>
+      <FotaFromParams searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function FotaFromParams({
   searchParams,
 }: {
   searchParams?: Promise<{ mode?: string; observation?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const observationId = isObservationId(params.observation)
-    ? params.observation
-    : null;
-
-  return (
-    <Suspense
-      fallback={observationId ? <FotaViewLoading /> : <FotaScreen data={null} />}
-    >
-      <FotaBody params={params} />
-    </Suspense>
-  );
+  return <FotaBody params={params} />;
 }
 
 async function FotaBody({

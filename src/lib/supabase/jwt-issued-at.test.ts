@@ -312,12 +312,11 @@ describe("fetchWithJwtIssuedAtRetry", () => {
     expect(await response.json()).toEqual({ ok: true });
   });
 
-  it("waits past a one-second future iat before exactly one retry", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(NOW_SEC * 1000));
+  it("retries a one-second future iat immediately without sleeping", async () => {
+    const now = Math.floor(Date.now() / 1000);
     const token = unsignedJwt({
-      iat: NOW_SEC + 1,
-      exp: NOW_SEC + 3600,
+      iat: now + 1,
+      exp: now + 3600,
     });
     const fetchMock = vi
       .fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>()
@@ -335,19 +334,10 @@ describe("fetchWithJwtIssuedAtRetry", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
 
-    const pending = fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await Promise.resolve();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1_049);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(Date.now()).toBeLessThan((NOW_SEC + 1) * 1000 + 50);
-
-    await vi.advanceTimersByTimeAsync(1);
-    expect(Date.now()).toBeGreaterThan((NOW_SEC + 1) * 1000);
-    const response = await pending;
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
     expect(response.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -512,12 +502,11 @@ describe("Next.js request memoization vs JWT retry", () => {
     expect(network).toHaveBeenCalledTimes(1);
   });
 
-  it("waits past a one-second future iat, then makes exactly one new network call", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(NOW_SEC * 1000));
+  it("retries a memoized one-second future iat immediately without sleeping", async () => {
+    const now = Math.floor(Date.now() / 1000);
     const token = unsignedJwt({
-      iat: NOW_SEC + 1,
-      exp: NOW_SEC + 3600,
+      iat: now + 1,
+      exp: now + 3600,
     });
     const network = networkFetchMock(async () => {
       throw new Error("unexpected extra network call");
@@ -537,18 +526,10 @@ describe("Next.js request memoization vs JWT retry", () => {
       );
     vi.stubGlobal("fetch", createNextRequestDedupeFetch(network));
 
-    const pending = fetchWithJwtIssuedAtRetry("http://127.0.0.1/rest/v1/profiles", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    await Promise.resolve();
-    expect(network).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1_049);
-    expect(network).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(1);
-    expect(Date.now()).toBeGreaterThan((NOW_SEC + 1) * 1000);
-
-    const response = await pending;
+    const response = await fetchWithJwtIssuedAtRetry(
+      "http://127.0.0.1/rest/v1/profiles",
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
     expect(response.status).toBe(200);
     expect(network).toHaveBeenCalledTimes(2);
     expect(network.mock.calls[1]?.[1]?.signal).toBeInstanceOf(AbortSignal);

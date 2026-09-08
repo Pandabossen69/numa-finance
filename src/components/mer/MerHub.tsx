@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useNavIntent } from "@/components/layout/NavIntent";
+import { isHoldRoot } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function MerBackLink({
@@ -12,13 +14,20 @@ export function MerBackLink({
   label?: string;
 }) {
   const { prefetch: prefetchHref } = usePrefetchOnIntent();
+  const { markIntent } = useNavIntent();
   return (
     <Link
       href={href}
-      prefetch
-      onPointerDown={() => prefetchHref(href)}
+      prefetch={false}
+      onPointerDown={() => {
+        prefetchHref(href);
+        if (isHoldRoot(href)) markIntent(href);
+      }}
       onMouseEnter={() => prefetchHref(href)}
       onFocus={() => prefetchHref(href)}
+      onClick={() => {
+        if (isHoldRoot(href)) markIntent(href);
+      }}
       className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
     >
       <ChevronLeft className="opacity-70" />
@@ -151,13 +160,20 @@ export function MerListLink({
   tone?: MerIconTone;
 }) {
   const { prefetch: prefetchHref } = usePrefetchOnIntent();
+  const { markIntent } = useNavIntent();
   return (
     <Link
       href={href}
-      prefetch
-      onPointerDown={() => prefetchHref(href)}
+      prefetch={false}
+      onPointerDown={() => {
+        prefetchHref(href);
+        if (isHoldRoot(href)) markIntent(href);
+      }}
       onMouseEnter={() => prefetchHref(href)}
       onFocus={() => prefetchHref(href)}
+      onClick={() => {
+        if (isHoldRoot(href)) markIntent(href);
+      }}
       className="group flex min-h-[3.25rem] items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3.5 last:border-b-0 numa-press hover:bg-[var(--numa-card)] active:bg-[var(--numa-accent-soft)]"
     >
       {icon ? <MerIcon tone={tone}>{icon}</MerIcon> : null}

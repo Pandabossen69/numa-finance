@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { MovementsScreen } from "@/lib/route-islands";
+import { MovementsScreen } from "@/components/movements/MovementsScreen";
 import { loadMovementsSnapshot } from "@/features/finance/load-movements";
 
 export const dynamic = "force-dynamic";

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
-import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
   updateTransactionAction,
   voidTransactionAction,
@@ -24,6 +23,8 @@ import {
   applyMovementsVoid,
   isMovementsDirty,
   lastAccountsSnapshot,
+  lastAnalysSnapshot,
+  lastHomeSnapshot,
   lastMovementsSnapshot,
   lastMovementsView,
   rememberMovementsSnapshot,
@@ -79,6 +80,28 @@ function minorToUi(amountMinor: number): string {
   return minorToUiAmount(amountMinor);
 }
 
+/** Page-shaped dest shell when RSC has not arrived and no last-known list. */
+function pendingMovementsShell(): MovementsSnapshot {
+  const home = lastHomeSnapshot();
+  const analys = lastAnalysSnapshot();
+  const timeZone = home?.timeZone ?? analys?.timeZone ?? "Asia/Bangkok";
+  return {
+    currency: home?.currency ?? analys?.currency ?? "THB",
+    hasBankTruth: false,
+    balanceMinor: null,
+    monthIncomeMinor: 0,
+    monthExpenseMinor: 0,
+    monthNetMinor: 0,
+    allIncomeMinor: 0,
+    allExpenseMinor: 0,
+    allNetMinor: 0,
+    monthCategories: [],
+    items: [],
+    timeZone,
+    monthKey: home?.monthKey ?? analys?.currentMonthKey ?? monthKeyFromDate(new Date(), timeZone),
+  };
+}
+
 export function MovementsScreen({
   data,
   error,
@@ -132,7 +155,8 @@ export function MovementsScreen({
   }, [data]);
 
   rememberMovementsView({ filter, period });
-  const view = stored ?? data ?? lastMovementsSnapshot();
+  const view =
+    stored ?? data ?? lastMovementsSnapshot() ?? (error ? null : pendingMovementsShell());
 
   const filtered = useMemo(() => {
     if (!view) return [];
@@ -149,7 +173,6 @@ export function MovementsScreen({
   }, [view, filter, period]);
 
   if (!view) {
-    if (!error) return <MovementsViewLoading />;
     return (
       <div className="space-y-2">
         <p className="font-semibold">Kunde inte ladda</p>

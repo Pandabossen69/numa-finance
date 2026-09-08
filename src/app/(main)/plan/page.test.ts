@@ -33,7 +33,7 @@ describe("/plan getting-started hints", () => {
     expect(page).toContain("<Suspense fallback={<ViewLoading />}>");
     expect(page).not.toContain("<Suspense fallback={<PlanScreen />}>");
     expect(screen).toContain("lastPlanSnapshot");
-    expect(screen).toContain("warmupPlanPageData");
+    expect(screen).not.toContain("warmupPlanPageData");
     expect(warmup).toContain("loadPlanSnapshot");
     expect(warmup).toContain("Promise.all");
     expect(warmup).toContain("loadGettingStartedView");

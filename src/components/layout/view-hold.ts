@@ -1,4 +1,5 @@
 import { isValidElement, Suspense, type ReactNode } from "react";
+import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import {
   AnalysViewLoading,
   HomeViewLoading,
@@ -55,10 +56,13 @@ export function resolveVisibleTab(input: {
   }
 
   if (input.destTab && input.pathTab && input.destTab === input.pathTab) {
-    if (input.outletStale && input.destIsTabRoot) {
+    // URL already matches dest. Next often swaps in loading.tsx here
+    // (Analys → Transaktioner sat 10s on a skeleton). Last-known / dest
+    // shell must paint — never the loading slot — until dest children
+    // actually arrive.
+    if ((input.outletStale || input.loading) && input.destIsTabRoot) {
       return input.hasDestCache ? "dest" : "dest-loading";
     }
-    if (input.loading && input.destIsTabRoot && input.hasDestCache) return "dest";
     return "children";
   }
 
@@ -83,7 +87,8 @@ export function isViewLoadingNode(node: ReactNode): boolean {
   if (
     node.type === ViewLoading ||
     node.type === AnalysViewLoading ||
-    node.type === HomeViewLoading
+    node.type === HomeViewLoading ||
+    node.type === MovementsViewLoading
   ) {
     return true;
   }

@@ -11,7 +11,7 @@ import {
 import { destLoadingForTab } from "@/components/layout/dest-loading";
 import { destChildrenArrived, isOutletStale } from "@/components/layout/nav-await";
 import { useNavIntent } from "@/components/layout/NavIntent";
-import { isTabRoot, primaryTab } from "@/components/layout/nav";
+import { holdKey, isHoldRoot } from "@/components/layout/nav";
 import { ViewLoading } from "@/components/layout/ViewLoading";
 import {
   isViewLoadingNode,
@@ -37,8 +37,8 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const { pathname, pending, intent, clearIntent } = useNavIntent();
   const loading = isViewLoadingNode(children);
   const destHref = pending?.href ?? intent?.href ?? pathname;
-  const destTab = primaryTab(destHref);
-  const pathTab = primaryTab(pathname);
+  const destTab = holdKey(destHref);
+  const pathTab = holdKey(pathname);
   const leaving = Boolean(pending && pending.fromPath === pathname);
   const intentMismatch = Boolean(
     pending && destTab && pathTab && destTab !== pathTab,
@@ -77,7 +77,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
       }
       return;
     }
-    const stillOnFrom = primaryTab(pathname) === primaryTab(intent.fromPath);
+    const stillOnFrom = holdKey(pathname) === holdKey(intent.fromPath);
     if (stillOnFrom && frozenFor !== intent.href) {
       setFrozenFor(intent.href);
       setFrozenChildren(children);
@@ -91,15 +91,16 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
         pathname,
         childrenFrozen,
         hadFreeze: Boolean(intent && frozenFor === intent.href),
+        loading,
       })
     ) {
       return;
     }
     clearIntent();
-  }, [intent, pathname, childrenFrozen, frozenFor, clearIntent]);
+  }, [intent, pathname, childrenFrozen, frozenFor, loading, clearIntent]);
 
   useIsomorphicLayoutEffect(() => {
-    if (!loading && pathTab && isTabRoot(pathname)) {
+    if (!loading && pathTab && isHoldRoot(pathname)) {
       setLiveByTab((prev) =>
         prev[pathTab] === children ? prev : { ...prev, [pathTab]: children },
       );
@@ -107,7 +108,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   }, [loading, pathTab, pathname, children]);
 
   useIsomorphicLayoutEffect(() => {
-    if (!inFlight && isTabRoot(pathname) && pathTab && readyAt !== pathname) {
+    if (!inFlight && isHoldRoot(pathname) && pathTab && readyAt !== pathname) {
       setReadyAt(pathname);
       setCache((current) => ({ ...current, [pathTab]: children }));
     }
@@ -120,7 +121,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
       !outletStale &&
       pathTab &&
       destTab === pathTab &&
-      isTabRoot(pathname),
+      isHoldRoot(pathname),
   );
 
   useIsomorphicLayoutEffect(() => {
@@ -142,7 +143,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     }
   }, [leaving, pathTab, pathname, leaveSnapPath, children]);
 
-  const heldTab = readyAt ? primaryTab(readyAt) : null;
+  const heldTab = readyAt ? holdKey(readyAt) : null;
   const destLive =
     destTab === pathTab && !loading && !intentMismatch && !outletStale
       ? children
@@ -154,7 +155,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     leaving,
     destTab,
     heldTab,
-    destIsTabRoot: isTabRoot(destHref),
+    destIsTabRoot: isHoldRoot(destHref),
     hasDestCache: Boolean(destTab && (cache[destTab] || destLive)),
     intentMismatch,
     pathTab,
