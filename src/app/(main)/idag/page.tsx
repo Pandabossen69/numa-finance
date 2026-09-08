@@ -20,8 +20,8 @@ export default async function IdagPage() {
 }
 
 async function IdagBody() {
-  // Money only. Accounts + Kom igång used to hang this Suspense for 49s+
-  // because loadAccountsSnapshot has no timeout. Persist fills those.
+  // Money only. Extra Hem panels used to hang this Suspense for tens of
+  // seconds because those loaders had no timeout. Persist fills them.
   const result = await loadHomeSnapshot();
   return (
     <HomeDashboard
