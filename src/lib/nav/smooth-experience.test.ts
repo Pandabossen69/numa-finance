@@ -50,7 +50,7 @@ describe("smooth nav and saves", () => {
   it("prefetches force-dynamic tabs as loading shells instead of full snapshots", () => {
     const prefetch = read("./prefetch-intent.ts");
     expect(prefetch).toContain("router.prefetch(href)");
-    expect(prefetch).not.toContain('kind: "full"');
+    expect(prefetch).not.toMatch(/prefetch\(href,\s*\{/);
   });
 
   it("streams the four main tabs so navigation is not blocked on snapshots", () => {

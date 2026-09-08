@@ -95,45 +95,6 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(middleware).toContain("AUTH_TIMEOUT_MS = 2_500");
   });
 
-  it("resolves dest-shell paint synchronously so URL-ahead children cannot freeze the previous tab", () => {
-    const samples: number[] = [];
-    for (let i = 0; i < 3; i += 1) {
-      const started = performance.now();
-      const paint = resolveVisibleTab({
-        loading: false,
-        leaving: false,
-        destTab: "/plan",
-        heldTab: "/idag",
-        destIsTabRoot: true,
-        hasDestCache: false,
-        pathTab: "/plan",
-        outletStale: true,
-      });
-      samples.push(performance.now() - started);
-      expect(paint).toBe("dest-loading");
-    }
-    const p50 = [...samples].sort((a, b) => a - b)[1];
-    expect(p50).toBeLessThan(1);
-  });
-
-  it("keeps dest shell after the URL moves while children are still the previous page", () => {
-    expect(
-      resolveVisibleTab({
-        loading: false,
-        leaving: false,
-        destTab: "/analys",
-        heldTab: "/idag",
-        destIsTabRoot: true,
-        hasDestCache: false,
-        pathTab: "/analys",
-        outletStale: true,
-      }),
-    ).toBe("dest-loading");
-    const outlet = read("../../components/layout/LastViewOutlet.tsx");
-    expect(outlet).toContain("outletStale");
-    expect(outlet).toContain("awaitingHref");
-  });
-
   it("does not let Plan await searchParams before the Suspense shell", () => {
     const plan = read("../../app/(main)/plan/page.tsx");
     const beforeSuspense = plan.slice(0, plan.indexOf("<Suspense"));

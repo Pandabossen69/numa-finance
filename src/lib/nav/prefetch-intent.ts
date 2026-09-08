@@ -10,10 +10,11 @@ export function canPrefetchHref(href: string): boolean {
 }
 
 /**
- * Auto/partial prefetch only. `kind: "full"` fetched the entire Hem/Plan/Analys
- * snapshot and Next waited for that in-flight payload before swapping the
- * outlet — old content stayed until 2.6–3.6s of RSC/data arrived.
- * Default prefetch warms loading.tsx so the dest shell can paint immediately.
+ * Auto/partial prefetch only. A full-payload prefetch fetched the entire
+ * Hem/Plan/Analys snapshot and Next waited for that in-flight payload
+ * before swapping the outlet — old content stayed until 2.6–3.6s of
+ * RSC/data arrived. Default prefetch warms loading.tsx so the dest
+ * shell can paint immediately.
  */
 export function prefetchHref(router: AppRouterInstance, href: string) {
   if (!canPrefetchHref(href)) return;

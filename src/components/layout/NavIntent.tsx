@@ -17,7 +17,10 @@ type NavIntentValue = {
   pathname: string;
   highlightPath: string;
   pending: Pending | null;
+  /** Survives URL match until dest children arrive. */
+  intent: Pending | null;
   markIntent: (href: string) => void;
+  clearIntent: () => void;
 };
 
 const NavIntentContext = createContext<NavIntentValue | null>(null);
@@ -25,28 +28,37 @@ const NavIntentContext = createContext<NavIntentValue | null>(null);
 export function NavIntentProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [pending, setPending] = useState<Pending | null>(null);
+  const [intent, setIntent] = useState<Pending | null>(null);
   const resolvedPending =
     pending &&
     (pending.href === pathname || isNavActive(pathname, pending.href))
       ? null
       : pending;
-  const highlightPath = optimisticNavPath(pathname, resolvedPending);
+  const highlightPath = optimisticNavPath(pathname, resolvedPending ?? intent);
 
   const markIntent = useCallback(
     (href: string) => {
-      setPending({ href, fromPath: pathname });
+      const next = { href, fromPath: pathname };
+      setPending(next);
+      setIntent(next);
     },
     [pathname],
   );
+
+  const clearIntent = useCallback(() => {
+    setIntent(null);
+  }, []);
 
   const value = useMemo(
     () => ({
       pathname,
       highlightPath,
       pending: resolvedPending,
+      intent,
       markIntent,
+      clearIntent,
     }),
-    [pathname, highlightPath, resolvedPending, markIntent],
+    [pathname, highlightPath, resolvedPending, intent, markIntent, clearIntent],
   );
 
   return (

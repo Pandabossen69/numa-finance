@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { destLoadingForTab } from "@/components/layout/dest-loading";
+import { destChildrenArrived, isOutletStale } from "@/components/layout/nav-await";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { isTabRoot, primaryTab } from "@/components/layout/nav";
 import { ViewLoading } from "@/components/layout/ViewLoading";
@@ -33,38 +34,27 @@ const useIsomorphicLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function LastViewOutlet({ children }: { children: ReactNode }) {
-  const { pathname, pending } = useNavIntent();
+  const { pathname, pending, intent, clearIntent } = useNavIntent();
   const loading = isViewLoadingNode(children);
-  const [awaitingHref, setAwaitingHref] = useState<string | null>(null);
-  const childrenAtAwaitRef = useRef<ReactNode>(null);
-  if (pending?.href && awaitingHref !== pending.href) {
-    setAwaitingHref(pending.href);
-    childrenAtAwaitRef.current = children;
-  }
-  const destHref = pending?.href ?? awaitingHref ?? pathname;
+  const destHref = pending?.href ?? intent?.href ?? pathname;
   const destTab = primaryTab(destHref);
   const pathTab = primaryTab(pathname);
   const leaving = Boolean(pending && pending.fromPath === pathname);
   const intentMismatch = Boolean(
     pending && destTab && pathTab && destTab !== pathTab,
   );
-  const outletStale = Boolean(
-    awaitingHref &&
-      destTab &&
-      pathTab === destTab &&
-      destTab === primaryTab(awaitingHref) &&
-      childrenAtAwaitRef.current != null &&
-      children === childrenAtAwaitRef.current,
+
+  const [frozenFor, setFrozenFor] = useState<string | null>(null);
+  const [frozenChildren, setFrozenChildren] = useState<ReactNode>(null);
+  const childrenFrozen = Boolean(
+    intent && frozenFor === intent.href && children === frozenChildren,
   );
-  if (
-    awaitingHref &&
-    destTab === pathTab &&
-    destTab === primaryTab(awaitingHref) &&
-    children !== childrenAtAwaitRef.current
-  ) {
-    setAwaitingHref(null);
-    childrenAtAwaitRef.current = null;
-  }
+  const outletStale = isOutletStale({
+    awaitHref: intent?.href ?? null,
+    pathTab,
+    destTab,
+    childrenFrozen,
+  });
   const inFlight = loading || leaving || intentMismatch || outletStale;
   const [liveByTab, setLiveByTab] = useState<Record<string, ReactNode>>({});
   const hydrated = useSyncExternalStore(
@@ -80,6 +70,35 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
   const [leaveSnapPath, setLeaveSnapPath] = useState<string | null>(null);
 
   useIsomorphicLayoutEffect(() => {
+    if (!intent) {
+      if (frozenFor !== null) {
+        setFrozenFor(null);
+        setFrozenChildren(null);
+      }
+      return;
+    }
+    const stillOnFrom = primaryTab(pathname) === primaryTab(intent.fromPath);
+    if (stillOnFrom && frozenFor !== intent.href) {
+      setFrozenFor(intent.href);
+      setFrozenChildren(children);
+    }
+  }, [intent, pathname, children, frozenFor]);
+
+  useIsomorphicLayoutEffect(() => {
+    if (
+      !destChildrenArrived({
+        awaitHref: intent?.href ?? null,
+        pathname,
+        childrenFrozen,
+        hadFreeze: Boolean(intent && frozenFor === intent.href),
+      })
+    ) {
+      return;
+    }
+    clearIntent();
+  }, [intent, pathname, childrenFrozen, frozenFor, clearIntent]);
+
+  useIsomorphicLayoutEffect(() => {
     if (!loading && pathTab && isTabRoot(pathname)) {
       setLiveByTab((prev) =>
         prev[pathTab] === children ? prev : { ...prev, [pathTab]: children },
@@ -87,28 +106,41 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
     }
   }, [loading, pathTab, pathname, children]);
 
-  if (!inFlight && isTabRoot(pathname) && pathTab && readyAt !== pathname) {
-    setReadyAt(pathname);
-    setCache((current) => ({ ...current, [pathTab]: children }));
-  }
+  useIsomorphicLayoutEffect(() => {
+    if (!inFlight && isTabRoot(pathname) && pathTab && readyAt !== pathname) {
+      setReadyAt(pathname);
+      setCache((current) => ({ ...current, [pathTab]: children }));
+    }
+  }, [inFlight, pathname, pathTab, readyAt, children]);
 
   const sameTabRefresh = Boolean(
-    loading && !leaving && !intentMismatch && pathTab && destTab === pathTab && isTabRoot(pathname),
+    loading &&
+      !leaving &&
+      !intentMismatch &&
+      !outletStale &&
+      pathTab &&
+      destTab === pathTab &&
+      isTabRoot(pathname),
   );
-  if (sameTabRefresh && pathTab) {
+
+  useIsomorphicLayoutEffect(() => {
+    if (!sameTabRefresh || !pathTab) return;
     const live = liveByTab[pathTab];
     if (live != null && cache[pathTab] !== live) {
       setCache((current) => ({ ...current, [pathTab]: live }));
     }
-  }
+  }, [sameTabRefresh, pathTab, liveByTab, cache]);
 
-  if (leaving && pathTab && leaveSnapPath !== pathname) {
-    setLeaveSnapPath(pathname);
-    setCache((current) => ({ ...current, [pathTab]: children }));
-  }
-  if (!leaving && leaveSnapPath !== null) {
-    setLeaveSnapPath(null);
-  }
+  useIsomorphicLayoutEffect(() => {
+    if (leaving && pathTab && leaveSnapPath !== pathname) {
+      setLeaveSnapPath(pathname);
+      setCache((current) => ({ ...current, [pathTab]: children }));
+      return;
+    }
+    if (!leaving && leaveSnapPath !== null) {
+      setLeaveSnapPath(null);
+    }
+  }, [leaving, pathTab, pathname, leaveSnapPath, children]);
 
   const heldTab = readyAt ? primaryTab(readyAt) : null;
   const destLive =
@@ -137,7 +169,7 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
 
   // Tabs stay mounted, so the window keeps the scroll offset of the tab you
   // came from. Switching after scrolling used to open the next tab halfway
-  // down, with its title and controls above the fold.
+  // down, with its title and Perioden/Månad switch above the fold.
   const shownTabRef = useRef<string | null>(null);
   useIsomorphicLayoutEffect(() => {
     if (!visibleTab || shownTabRef.current === visibleTab) return;

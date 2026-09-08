@@ -16,7 +16,20 @@ describe("LastViewOutlet keep-alive", () => {
     expect(src).toContain("dest-loading");
     expect(src).toContain("destLoadingForTab");
     expect(src).toContain("outletStale");
-    expect(src).toContain("awaitingHref");
+    expect(src).toContain("isOutletStale");
+    expect(src).toContain("clearIntent");
+  });
+
+  it("does not set state or mutate refs during render", () => {
+    const body = src.slice(src.indexOf("export function LastViewOutlet"));
+    const renderOnly = body.replace(
+      /useIsomorphicLayoutEffect\(\(\) => \{[\s\S]*?\}, \[[^\]]*\]\);/g,
+      "",
+    );
+    expect(renderOnly).not.toMatch(/\bset(ReadyAt|Cache|LeaveSnapPath|FrozenFor|FrozenChildren|AwaitingHref|LiveByTab)\(/);
+    expect(renderOnly).not.toContain(".current =");
+    expect(body).not.toContain("childrenAtAwaitRef");
+    expect(src).toContain("useIsomorphicLayoutEffect");
   });
 
   it("opens a tab at its top instead of the last tab's scroll position", () => {
