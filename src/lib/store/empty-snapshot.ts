@@ -6,6 +6,12 @@ import type { TodaySnapshot } from "./types-snapshot";
  * Shape a brand-new NUMA user sees: no accounts, no plan, no ledger.
  * Mot planen / Över / Saldo stay empty/zero until they fill their own data.
  */
+export function isPlaceholderEmptyRevision(
+  revision: string | undefined | null,
+): boolean {
+  return typeof revision === "string" && revision.startsWith("empty:");
+}
+
 export function emptyTodaySnapshot(
   profile: Profile,
   accounts: Account[] = [],
