@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
@@ -41,7 +41,7 @@ export function PlanScreen({
     lastGettingStarted,
     lastGettingStarted,
   );
-  const [error, setError] = useState<string | null>(initialError);
+  const error = initialError;
 
   useEffect(() => {
     if (initial) {
