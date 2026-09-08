@@ -27,7 +27,17 @@ describe("isViewLoadingNode", () => {
       ),
     ).toBe(true);
     expect(isViewLoadingNode(createElement(MovementsViewLoading))).toBe(true);
-    expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(true);
+    expect(isViewLoadingNode(createElement(Suspense, null, "x"))).toBe(false);
+    expect(
+      isViewLoadingNode(
+        createElement(Suspense, { fallback: createElement(HemPending) }, "Hem"),
+      ),
+    ).toBe(false);
+    expect(
+      isViewLoadingNode(
+        createElement(Suspense, { fallback: createElement(ViewLoading) }),
+      ),
+    ).toBe(true);
     expect(
       isViewLoadingNode(
         createElement("div", { "data-numa-view-loading": true }, "x"),

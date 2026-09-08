@@ -226,6 +226,13 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
         );
       })}
       {paint === "children" && !pathTab ? children : null}
+      {paint !== "children" &&
+      destTab === pathTab &&
+      !isViewLoadingNode(children) ? (
+        <div hidden inert className="numa-view-park" data-numa-hidden-live="">
+          {children}
+        </div>
+      ) : null}
       {showSoftFallback ? <ViewLoading /> : null}
     </div>
   );
