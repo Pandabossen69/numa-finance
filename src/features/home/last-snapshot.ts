@@ -968,6 +968,12 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
     },
     { dirty: true },
   );
+  if (plan) {
+    rememberPlanSnapshot({
+      ...plan,
+      bankBalanceMinor: balanceMinor,
+    });
+  }
   return home;
 }
 

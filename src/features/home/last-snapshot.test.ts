@@ -476,6 +476,30 @@ describe("last view memory", () => {
     expect(lastMovementsSnapshot()?.balanceMinor).toBe(250_00);
   });
 
+  it("writes a new saldo into last-known Plan without a second snapshot", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 100_00 }));
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 100_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "test-rev",
+      verifiedAt: "2026-08-26T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ calculatedMinor: 100_00 })],
+      totalThbMinor: 100_00,
+    });
+
+    applyAccountBalance("a1", 250_00);
+
+    expect(lastPlanSnapshot()?.bankBalanceMinor).toBe(250_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(250_00);
+  });
+
   it("does not treat a bare EUR verify as THB on Hem", () => {
     rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 15_800_00 }));
     rememberAccountsSnapshot({
