@@ -237,8 +237,10 @@ export function applyAllocateInMemory(params: {
     params.allocations,
     params.item.id,
   );
+  // Never paint Delvis over Betald. A smaller linked bank row funds Över
+  // but must not rewrite the user's tap.
   const settled = replaceSynthetics
-    ? allocatedAfter
+    ? Math.max(settledBefore, allocatedAfter)
     : Math.min(params.item.amountMinor, settledBefore + amount);
   if (settled <= 0) {
     params.item.settledAt = null;

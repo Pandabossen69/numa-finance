@@ -18,6 +18,14 @@ const remote = readFileSync(
   new URL("../../lib/store/supabase-repository.ts", import.meta.url),
   "utf8",
 );
+const memorySettle = readFileSync(
+  new URL("../../lib/store/settle-atomic.ts", import.meta.url),
+  "utf8",
+);
+const unsettleSql = readFileSync(
+  new URL("../../../supabase/migrations/20260908113737_unsettle_ignores_allocated_floor.sql", import.meta.url),
+  "utf8",
+);
 
 /**
  * Betald / Mottagen / Delvis is a statement by the user. Nothing else in the
@@ -80,6 +88,15 @@ describe("settle state is written by user action only", () => {
     expect(sync).toContain("updateTransaction");
     expect(sync).not.toContain("matchPlanItemsToLedger");
     expect(sync).toContain("Never voids a row without plan_item_id");
+  });
+
+  it("lets Ångra clear Delvis even when a bank row is still linked", () => {
+    expect(memorySettle).toContain("const requested = !params.settled");
+    expect(memorySettle).toContain("? 0");
+    expect(memorySettle).not.toContain("? allocated");
+    expect(unsettleSql).toContain("v_target := 0");
+    expect(unsettleSql).not.toContain("v_target := v_allocated");
+    expect(unsettleSql).toContain("greatest(v_settled_before, numa_internal.plan_allocated_sum");
   });
 
   it("documents the matcher as money-only", () => {

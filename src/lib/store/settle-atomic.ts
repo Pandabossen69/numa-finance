@@ -60,8 +60,10 @@ export function applySettleInMemory(params: {
     allocatedCanonicalFromLinks(params.item, params.transactions),
   );
 
+  // Ångra is a user tap: clear the chip even if a bank row is still linked.
+  // Allocated cash still keeps Över honest; it must not resurrect Delvis.
   const requested = !params.settled
-    ? allocated
+    ? 0
     : params.targetSettledMinor == null
       ? amount
       : Math.max(allocated, Math.min(amount, Math.round(params.targetSettledMinor)));
