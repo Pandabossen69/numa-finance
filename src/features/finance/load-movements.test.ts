@@ -119,6 +119,10 @@ describe("loadMovementsSnapshot", () => {
     expect(src).not.toMatch(/from ["']@\/features\/finance\/load-home["']/);
     expect(src).not.toContain("getTodaySnapshot");
     expect(src).toContain("listTransactions");
+    expect(src).toContain("MOVEMENTS_LEDGER_SINCE_ISO");
+    expect(src).toContain("MOVEMENTS_LEDGER_LIMIT");
+    expect(src).toContain("sinceIso: MOVEMENTS_LEDGER_SINCE_ISO");
+    expect(src).toContain("limit: MOVEMENTS_LEDGER_LIMIT");
     expect(src).toContain("buildMovementsSnapshot");
     expect(src).toContain("projectLedgerToCanonicalThb");
     expect(src).not.toContain("t.accountId === primary.id");

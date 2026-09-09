@@ -158,7 +158,7 @@ export async function listTransactions(
   if (isSupabaseConfigured()) {
     return remote.listTransactions(accountId, options);
   }
-  return local.listTransactions(accountId);
+  return local.listTransactions(accountId, options);
 }
 
 export async function listTransactionsByPlanItemId(planItemId: string) {

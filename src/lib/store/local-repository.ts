@@ -831,11 +831,20 @@ export async function createCashWithdrawal(input: {
 
 export async function listTransactions(
   accountId?: string,
+  options?: { sinceIso?: string; limit?: number },
 ): Promise<CanonicalTransaction[]> {
   const store = await readStore();
-  return store.transactions
+  let rows = store.transactions
     .filter((t) => (accountId ? t.accountId === accountId : true))
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+  if (options?.sinceIso) {
+    const since = Date.parse(options.sinceIso);
+    rows = rows.filter((t) => Date.parse(t.occurredAt) >= since);
+  }
+  if (options?.limit != null) {
+    rows = rows.slice(0, options.limit);
+  }
+  return rows;
 }
 
 export async function listTransactionsByPlanItemId(
