@@ -96,6 +96,8 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     if (!spaOwnedRef.current) return;
     if (spaTabKey(routerPathname) == null) {
       spaOwnedRef.current = false;
+      // Drop keep-alive when App Router lands on Fota / Mer drill-ins.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to router leaving SPA tabs
       setSpaPath(null);
     }
   }, [routerPathname]);
@@ -212,7 +214,9 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     [pathname],
   );
 
-  navigateRef.current = navigateSpaTab;
+  useEffect(() => {
+    navigateRef.current = navigateSpaTab;
+  }, [navigateSpaTab]);
 
   const value = useMemo(
     () => ({

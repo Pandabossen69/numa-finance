@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import { AnalysRouteClient } from "@/components/analys/AnalysRouteClient";
 import { HemRouteClient } from "@/components/home/HemRouteClient";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -23,19 +23,15 @@ export function TabKeepAlive({ children }: { children: ReactNode }) {
   const { pathname } = useNavIntent();
   const active = spaTabKey(pathname);
 
-  // Stable element trees — parent re-renders on tab switch must not rebuild
-  // Plan/Analys/etc. (that was a ~500ms main-thread stall after DOM paint).
-  const panelBodiesRef = useRef<Record<SpaTabHref, ReactNode> | null>(null);
-  if (panelBodiesRef.current == null) {
-    panelBodiesRef.current = {
-      "/idag": <HemRouteClient />,
-      "/plan": <PlanRouteClient />,
-      "/analys": <AnalysRouteClient />,
-      "/mer": <MerRouteClient />,
-      "/transaktioner": <MovementsRouteClient />,
-    };
-  }
-  const panelBodies = panelBodiesRef.current;
+  // Stable element trees — lazy useState so a tab switch re-render does not
+  // rebuild Plan/Analys (that was a ~500ms main-thread stall after DOM paint).
+  const [panelBodies] = useState<Record<SpaTabHref, ReactNode>>(() => ({
+    "/idag": <HemRouteClient />,
+    "/plan": <PlanRouteClient />,
+    "/analys": <AnalysRouteClient />,
+    "/mer": <MerRouteClient />,
+    "/transaktioner": <MovementsRouteClient />,
+  }));
 
   useLayoutEffect(() => {
     if (!active) return;

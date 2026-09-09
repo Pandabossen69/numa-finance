@@ -5,12 +5,14 @@ const page = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
 const loading = readFileSync(new URL("./loading.tsx", import.meta.url), "utf8");
 
 describe("/transaktioner instant shell", () => {
-  it("streams last-known Rörelser while the snapshot loads", () => {
-    expect(page).toContain("Suspense");
-    expect(page).toContain("MovementsScreen");
-    expect(page).toContain('from "@/components/movements/MovementsScreen"');
+  it("paints last-known Rörelser client-first under keep-alive", () => {
+    expect(page).toContain("MovementsRouteClient");
+    expect(page).not.toContain("Suspense");
+    expect(page).not.toContain("loadMovementsSnapshot");
     expect(page).not.toContain("route-islands");
-    expect(page).toContain("data={null}");
-    expect(loading).toContain("MovementsViewLoading");
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("MovementsScreen");
+    expect(loading).toContain("data={null}");
+    expect(loading).not.toContain("MovementsViewLoading");
   });
 });

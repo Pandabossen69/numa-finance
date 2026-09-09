@@ -31,6 +31,8 @@ describe("main first-load chrome", () => {
     expect(loading).not.toContain("AppShell");
     expect(idagLoading).toContain("LoadingSlot");
     expect(idagLoading).toContain("HemFirstPaint");
-    expect(idag).toContain("Suspense");
+    expect(idag).toContain("HemRouteClient");
+    expect(idag).not.toContain("Suspense");
+    expect(idag).not.toContain("AppShell");
   });
 });

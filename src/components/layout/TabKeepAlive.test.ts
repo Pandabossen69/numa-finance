@@ -11,8 +11,8 @@ describe("TabKeepAlive", () => {
     expect(src).toContain("SPA_TAB_HREFS");
     expect(src).toContain("hidden={!visible}");
     expect(src).toContain("SPA_TAB_HREFS.map");
-    expect(src).toContain("panelBodiesRef");
-    expect(src).toContain("useRef");
+    expect(src).toContain("useState");
+    expect(src).toContain("panelBodies");
     expect(src).not.toMatch(/mounted.*useState/);
     // Park class is display:none and must not wrap SPA panels.
     expect(src).not.toMatch(/data-numa-spa-tab[\s\S]*numa-view-park/);

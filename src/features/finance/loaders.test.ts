@@ -31,6 +31,10 @@ const planPage = readFileSync(
   new URL("../../app/(main)/plan/page.tsx", import.meta.url),
   "utf8",
 );
+const planAction = readFileSync(
+  new URL("../../components/plan/load-plan.ts", import.meta.url),
+  "utf8",
+);
 
 describe("Hem / Plan / Analys loader contract", () => {
   it("shares one React-cached snapshot and never waits on gamification tables", () => {
@@ -58,9 +62,11 @@ describe("Hem / Plan / Analys loader contract", () => {
   });
 
   it("lets Plan load its snapshot without a serial getting-started waterfall", () => {
-    expect(planPage).toContain("loadPlanSnapshot");
-    expect(planPage).toContain("Promise.all");
-    expect(planPage).toContain("loadGettingStartedView");
+    expect(planPage).toContain("PlanRouteClient");
+    expect(planPage).not.toContain("await searchParams");
+    expect(planAction).toContain("loadPlanSnapshot");
+    expect(planAction).toContain("Promise.all");
+    expect(planAction).toContain("loadGettingStartedView");
   });
 });
 
