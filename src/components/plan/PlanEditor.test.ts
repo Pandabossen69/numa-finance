@@ -157,11 +157,11 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("planChipClass(status)");
     expect(rows).toContain("planChipLabel(status, settleKind)");
     expect(rows).toContain("<button");
-    // The dead span is gone: a chip only exists when the user tapped it, and
-    // then it must be an Ångra control.
-    expect(rows).not.toContain('<span className="numa-chip numa-chip-mint self-end">');
-    expect(rows).toContain("onClick={() => onSettle(item.id, false)}");
-    expect(rows).not.toContain("onClick={() => onSettle(item.id, true)}");
+    // Status chip is read-only. Ångra lives in the overflow; Betald is a real button.
+    expect(rows).toContain("<span className={`${planChipClass(status)} self-end`}>");
+    expect(rows).not.toContain("onClick={() => onSettle(item.id, false)}");
+    expect(rows).toContain("onClick={() => onSettle(item.id, true)}");
+    expect(rows).toContain("onSelect: () => onSettle(item.id, false)");
     expect(rows).toContain("numa-plan-list");
     expect(rows).toContain("numa-plan-figures");
     expect(rows).toContain("wrap={false}");
@@ -174,7 +174,7 @@ describe("Plan dates and add-form", () => {
   it("puts Betald last, Delvis just above, and lets Ångra undo both", () => {
     expect(rows).toContain("sortPlanRowsForList");
     expect(rows).toContain("canUndo");
-    expect(rows).toContain("aria-label={`Ångra ${settled ? doneLabel : partialLabel}`}");
+    expect(rows).toContain("onSelect: () => onSettle(item.id, false)");
     expect(rows).toContain("SV.angraKlar");
   });
 
@@ -192,12 +192,13 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("const matched =");
     expect(plan).not.toContain("matched &&");
     expect(plan).not.toContain("explicitSettled");
-    // Money totals use confirmed links only — heuristic stays a suggestion.
+    // Money totals use confirmed links only. No Koppla suggestion list.
     expect(editor).not.toContain("matchPlanItemsToLedger");
-    expect(editor).toContain("explicitlyLinkedPlanItemIds");
-    expect(editor).toContain("suggestPlanLinks");
+    expect(editor).not.toContain("suggestPlanLinks");
+    expect(editor).not.toContain("confirmPlanLinkAction");
+    expect(editor).not.toContain("Koppla");
     expect(editor).toContain(
-      "sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)",
+      "sumRemainingCashMinor(projection.incomes, ledgerTransactions)",
     );
     expect(rows).toContain("sortPlanRowsForList(items)");
   });
@@ -249,7 +250,7 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("coverage={coverage}");
     expect(piles).toContain("coverage.incomingMinor");
     expect(piles).toContain("coverage.unpaidMinor");
-    expect(editor).toContain("sumCountsTowardCashMinor");
+    expect(editor).toContain("sumRemainingCashMinor");
   });
 
   it("uses a calendar date on new and existing incomes and expenses", () => {
@@ -271,6 +272,7 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("remainingDueIso(item)");
     expect(rows).toContain("Lägg till mottaget");
     expect(rows).toContain("Markera resten mottagen");
+    expect(rows).toMatch(/status === "partial"[\s\S]*label: doneLabel/);
     expect(rows).toContain("onMarkRemainder");
   });
 

@@ -24,13 +24,15 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("applyOptimisticHomeSpend");
     expect(src).toContain("applyMovementsAdd");
     expect(src).toContain("applyAccountDelta");
-    expect(src).toContain("warmupPlanPageData");
+    expect(src).not.toContain("warmupPlanPageData");
     const adopt = src.slice(
       src.indexOf("export function HomeDashboard"),
       src.indexOf("function AvailableNowCard"),
     );
     expect(adopt).not.toContain("warmupPlanPageData");
     expect(adopt).not.toContain("getHomeSnapshotAction");
+    expect(src).not.toContain("getHomeSnapshotAction");
+    expect(src).toContain("adoptMutationFinance(result)");
     const quickBody = src.slice(src.indexOf("function QuickExpense"));
     expect(quickBody).not.toContain("getHomeSnapshotAction");
     expect(quickBody).not.toContain("warmupPlanPageData");

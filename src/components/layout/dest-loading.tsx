@@ -5,11 +5,11 @@ import { FotaScreen } from "@/components/capture/FotaScreen";
 import {
   AnalysFirstPaint,
   HemFirstPaint,
+  PlanFirstPaint,
 } from "@/components/layout/HemFirstPaint";
 import { ViewLoading } from "@/components/layout/ViewLoading";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
-import { PlanScreen } from "@/components/plan/PlanScreen";
 
 /**
  * First-visit dest paint. These screens read last-known snapshots and
@@ -21,7 +21,7 @@ export function destLoadingForTab(tab: string | null) {
     case "/idag":
       return <HemFirstPaint />;
     case "/plan":
-      return <PlanScreen />;
+      return <PlanFirstPaint />;
     case "/analys":
       return <AnalysFirstPaint />;
     case "/mer":

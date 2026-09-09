@@ -8,7 +8,7 @@ describe("destLoadingForTab", () => {
     expect(src).toContain('case "/idag"');
     expect(src).toContain("<HemFirstPaint />");
     expect(src).toContain('case "/plan"');
-    expect(src).toContain("<PlanScreen />");
+    expect(src).toContain("<PlanFirstPaint />");
     expect(src).toContain('case "/analys"');
     expect(src).toContain("<AnalysFirstPaint />");
     expect(src).toContain('case "/mer"');

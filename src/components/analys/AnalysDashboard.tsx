@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -52,6 +52,10 @@ import { SV, type PlanSettleKind } from "@/features/copy/labels-sv";
 import type { PlanListStatus } from "@/domain/finance";
 import type { AnalysLine, AnalysSnapshot } from "@/features/finance/load-analys";
 import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
+import {
+  canPaintAnalysHistory,
+  resolveVisibleAnalysSnapshot,
+} from "@/features/finance/visible-snapshot";
 
 type AnalysScope = "period" | "month";
 
@@ -74,9 +78,13 @@ export function AnalysDashboard({
     lastPlanView,
     () => null,
   );
-  if (data) rememberAnalysSnapshot(data);
-  rememberAnalysScope(scope);
-  const view = data ?? lastAnalysSnapshot();
+  useEffect(() => {
+    if (data) rememberAnalysSnapshot(data);
+  }, [data]);
+  useEffect(() => {
+    rememberAnalysScope(scope);
+  }, [scope]);
+  const view = resolveVisibleAnalysSnapshot(lastAnalysSnapshot(), data);
   const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 
   // Same numbers as the server sends for today's month, recomputed locally for
@@ -120,7 +128,12 @@ export function AnalysDashboard({
       .slice(0, 8);
   }, [view, scope, activeMonthKey]);
 
-  if (!view || !month || !activeMonthKey) {
+  if (
+    !view ||
+    !month ||
+    !activeMonthKey ||
+    !canPaintAnalysHistory(view, data, error)
+  ) {
     if (!error) return <AnalysPending home={lastHomeSnapshot()} />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">

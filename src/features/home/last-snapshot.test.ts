@@ -21,8 +21,10 @@ import {
   lastPlanView,
   lastSettingsSnapshot,
   lastKnownChromeDisplayName,
+  lastSessionOwnerId,
   hasBoundSessionOwner,
   clearClientSessionCaches,
+  readOwnedHomeCookie,
   hydrateLastKnownFromPersist,
   rememberAccountsSnapshot,
   rememberAnalysScope,
@@ -255,6 +257,50 @@ describe("last view memory", () => {
     expect(lastPlanSnapshot()?.currency).toBe("THB");
   });
 
+  it("does not replace Plan history with a placeholder empty snapshot", () => {
+    rememberPlanSnapshot({
+      items: [
+        {
+          id: "hyra",
+          userId: "user-hugo",
+          name: "Hyra",
+          kind: "mandatory",
+          amountMinor: 20_000_00,
+          currency: "THB",
+          cadence: "monthly",
+          nextDueAt: "2026-08-01T00:00:00.000Z",
+          isActive: true,
+          settledAt: null,
+          settledMinor: null,
+          remainingDueAt: null,
+          createdAt: "2026-08-01T00:00:00.000Z",
+          updatedAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 10_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "real-rev",
+      verifiedAt: "2026-09-08T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: null,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "empty:user-hugo:0",
+      verifiedAt: "1970-01-01T00:00:00.000Z",
+      truthStatus: "verified",
+    });
+    expect(lastPlanSnapshot()?.items).toHaveLength(1);
+    expect(lastPlanSnapshot()?.items[0]?.name).toBe("Hyra");
+  });
+
   it("keeps Rörelser, Saldo, Mer, Fota, Importera and Inställningar", () => {
     rememberMovementsSnapshot(sampleMovements);
     rememberMovementsView({ filter: "expense", period: "all" });
@@ -432,6 +478,30 @@ describe("last view memory", () => {
     expect(lastMovementsSnapshot()?.balanceMinor).toBe(250_00);
   });
 
+  it("writes a new saldo into last-known Plan without a second snapshot", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 100_00 }));
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 100_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "test-rev",
+      verifiedAt: "2026-08-26T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ calculatedMinor: 100_00 })],
+      totalThbMinor: 100_00,
+    });
+
+    applyAccountBalance("a1", 250_00);
+
+    expect(lastPlanSnapshot()?.bankBalanceMinor).toBe(250_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(250_00);
+  });
+
   it("does not treat a bare EUR verify as THB on Hem", () => {
     rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 15_800_00 }));
     rememberAccountsSnapshot({
@@ -545,6 +615,8 @@ describe("last view memory", () => {
       isAdmin: false,
     });
     expect(lastHomeSnapshot()).toBeNull();
+    expect(lastSessionOwnerId()).toBe("user-christian");
+    expect(readOwnedHomeCookie()?.userId).not.toBe("user-hugo");
     expect(lastMerSnapshot()?.displayName).toBe("Christian Hultz");
     expect(lastKnownChromeDisplayName()).toBe("Christian Hultz");
     clearClientSessionCaches();

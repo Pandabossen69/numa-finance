@@ -11,9 +11,11 @@ const mainLoading = readFileSync(
 describe("Hem first paint", () => {
   it("reads last-known Hem from persist or cookie, never empty mint cards", () => {
     expect(src).toContain("lastHomeSnapshot()");
-    expect(src).toContain("readLastHomeCookieFromDocument");
+    expect(src).toContain("readOwnedHomeCookie");
+    expect(src).not.toContain("readLastHomeCookieFromDocument");
     expect(src).toContain("HemPending");
     expect(src).toContain("HomeDashboard");
+    expect(src).toContain("PlanFirstPaint");
     expect(src).not.toContain("HomeViewLoading");
     expect(src).not.toContain("AnalysViewLoading");
   });

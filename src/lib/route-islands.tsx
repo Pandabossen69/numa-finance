@@ -4,6 +4,7 @@ import nextDynamic from "next/dynamic";
 import {
   AnalysPending,
   HemPending,
+  PlanPending,
   ViewLoading,
 } from "@/components/layout/ViewLoading";
 
@@ -15,12 +16,12 @@ export const HomeDashboard = nextDynamic(
 
 export const PlanEditor = nextDynamic(
   () => import("@/components/plan/PlanEditor").then((mod) => mod.PlanEditor),
-  { ssr: true, loading: () => <ViewLoading /> },
+  { ssr: true, loading: () => <PlanPending /> },
 );
 
 export const PlanScreen = nextDynamic(
   () => import("@/components/plan/PlanScreen").then((mod) => mod.PlanScreen),
-  { ssr: true, loading: () => <ViewLoading /> },
+  { ssr: true, loading: () => <PlanPending /> },
 );
 
 export const AnalysDashboard = nextDynamic(

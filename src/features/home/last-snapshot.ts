@@ -32,6 +32,7 @@ import {
   readPersistedLastKnown,
   writePersistedLastKnown,
 } from "@/features/home/last-snapshot-persist";
+import { isPlaceholderEmptyRevision } from "@/lib/store/empty-snapshot";
 
 export type { PlanSnapshot } from "@/features/finance/load-plan";
 
@@ -222,6 +223,7 @@ function wipeSessionCaches() {
 export function bindSessionOwner(userId: string) {
   if (sessionOwnerId && sessionOwnerId !== userId) {
     wipeSessionCaches();
+    clearPersistedLastKnown();
   }
   sessionOwnerId = userId;
 }
@@ -230,6 +232,18 @@ export function clearClientSessionCaches() {
   wipeSessionCaches();
   sessionOwnerId = null;
   clearPersistedLastKnown();
+}
+
+export function lastSessionOwnerId(): string | null {
+  return sessionOwnerId;
+}
+
+/** Cookie fallback only for the bound owner — never the previous account. */
+export function readOwnedHomeCookie(): HomeSnapshot | null {
+  const cookie = readLastHomeCookieFromDocument();
+  if (!cookie) return null;
+  if (sessionOwnerId && cookie.userId !== sessionOwnerId) return null;
+  return cookie;
 }
 
 export function hasBoundSessionOwner(): boolean {
@@ -546,6 +560,14 @@ export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
   if (analys && !shouldAdoptFinanceSnapshot(analys, snap, false)) {
     return;
   }
+  if (
+    analys &&
+    (analys.planItems?.length ?? 0) > 0 &&
+    (snap.planItems?.length ?? 0) === 0 &&
+    isPlaceholderEmptyRevision(snap.financeRevision)
+  ) {
+    return;
+  }
   analys = snap;
   schedulePersist();
 }
@@ -555,12 +577,20 @@ export function lastAnalysSnapshot(): AnalysSnapshot | null {
 }
 
 function planStamp(snapshot: PlanSnapshot): string {
-  return `${stampPlanItems(snapshot.items)}:${snapshot.bankBalanceMinor}:${snapshot.ledgerTransactions.length}:${snapshot.currency}:${snapshot.timeZone}`;
+  return `${stampPlanItems(snapshot.items)}:${snapshot.bankBalanceMinor}:${snapshot.ledgerTransactions.length}:${snapshot.currency}:${snapshot.timeZone}:${snapshot.financeRevision ?? ""}`;
 }
 
 export function rememberPlanSnapshot(snapshot: PlanSnapshot) {
   if (plan === snapshot) return;
   if (plan && !shouldAdoptFinanceSnapshot(plan, snapshot, false)) {
+    return;
+  }
+  if (
+    plan &&
+    plan.items.length > 0 &&
+    snapshot.items.length === 0 &&
+    isPlaceholderEmptyRevision(snapshot.financeRevision)
+  ) {
     return;
   }
   if (plan && planStamp(plan) === planStamp(snapshot)) {
@@ -617,6 +647,7 @@ export function lastPlanView(): { monthKey: string; viewYear: number } | null {
 }
 
 export function rememberAnalysScope(scope: "period" | "month") {
+  if (analysScope === scope) return;
   analysScope = scope;
   schedulePersist();
 }
@@ -951,6 +982,12 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
     },
     { dirty: true },
   );
+  if (plan) {
+    rememberPlanSnapshot({
+      ...plan,
+      bankBalanceMinor: balanceMinor,
+    });
+  }
   return home;
 }
 

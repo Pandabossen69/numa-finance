@@ -8,18 +8,18 @@ import { MerScreen } from "@/components/mer/MerScreen";
 import { PlanScreen } from "@/components/plan/PlanScreen";
 import { AnalysPending, HemPending } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
-import { readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
 import {
   lastAnalysSnapshot,
   lastHomeSnapshot,
   lastMerSnapshot,
+  readOwnedHomeCookie,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
 const subscribeNever = () => () => {};
 
 function readHome() {
-  return lastHomeSnapshot() ?? readLastHomeCookieFromDocument();
+  return lastHomeSnapshot() ?? readOwnedHomeCookie();
 }
 
 /** Last-known Hem money, or a two-line pending — never empty mint cards. */
@@ -40,12 +40,17 @@ export function AnalysFirstPaint() {
   return <AnalysPending home={home} />;
 }
 
+/** Last-known Plan rows, or PlanPending — never an empty month. */
+export function PlanFirstPaint() {
+  return <PlanScreen />;
+}
+
 /** Parent (main)/loading.tsx — pick dest last-known from the URL. */
 export function MainFirstPaint() {
   const pathname = usePathname() ?? "";
   const tab = holdKey(pathname);
   if (tab === "/analys") return <AnalysFirstPaint />;
-  if (tab === "/plan") return <PlanScreen />;
+  if (tab === "/plan") return <PlanFirstPaint />;
   if (tab === "/mer") return <MerScreen data={lastMerSnapshot()} />;
   return <HemFirstPaint />;
 }

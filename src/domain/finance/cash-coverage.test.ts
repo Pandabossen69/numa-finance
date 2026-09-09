@@ -3,6 +3,8 @@ import {
   CASH_COVERAGE_HINT_SV,
   matchPlanItemsToLedger,
   projectCashCoverage,
+  remainingCashMinor,
+  sumRemainingCashMinor,
 } from "./cash-coverage";
 import { monthLivingSaldoMinor, projectExtraSaldo } from "./month-carryover";
 import type { CanonicalTransaction, PlanItem } from "./types";
@@ -94,6 +96,25 @@ describe("projectCashCoverage", () => {
     expect(view.overMinor).toBe(15_000_00 + 100_000_00 - 20_000_00);
     expect(view.overMinor).toBe(95_000_00);
     expect(CASH_COVERAGE_HINT_SV).toMatch(/På kontona \+ kommer in/);
+  });
+
+  it("keeps a partial bank link as remainder, not a zeroed card total", () => {
+    const hyra = item({
+      id: "hyra",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 20_000_00,
+      nextDueAt: "2026-08-30T05:00:00.000Z",
+    });
+    const link = tx({
+      id: "tx-hyra",
+      amountMinor: 5_000_00,
+      occurredAt: "2026-08-05T08:00:00.000Z",
+      linkedPlanItemId: "hyra",
+    });
+    expect(remainingCashMinor(hyra, [link])).toBe(15_000_00);
+    expect(sumRemainingCashMinor([hyra], [link])).toBe(15_000_00);
+    expect(sumRemainingCashMinor([hyra], [])).toBe(20_000_00);
   });
 
   it("does not subtract a paid plan expense again after it hits the ledger", () => {

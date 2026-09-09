@@ -63,6 +63,22 @@ export function HomeViewLoading() {
   );
 }
 
+/** Calm pending — never empty August/September lists. */
+export function PlanPending() {
+  return (
+    <div
+      className="numa-page numa-page-wide space-y-2 pt-1"
+      data-numa-view-loading="true"
+      aria-busy="true"
+      aria-label="Hämtar planen"
+    >
+      <p className="text-sm font-medium text-[var(--numa-muted)]">Hämtar planen…</p>
+      <div className="numa-skel h-2.5 w-36 !rounded-full" />
+      <div className="numa-skel h-2.5 w-24 !rounded-full" />
+    </div>
+  );
+}
+
 /** Calm pending — last-known money when we have it, never empty mint cards. */
 export function AnalysPending({
   home = null,

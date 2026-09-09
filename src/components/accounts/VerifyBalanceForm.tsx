@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { createCheckpointAction } from "@/features/finance/actions";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
-import { applyAccountBalance } from "@/features/home/last-snapshot";
+import {
+  adoptMutationFinance,
+  applyAccountBalance,
+} from "@/features/home/last-snapshot";
 
 export function VerifyBalanceForm({
   accountId,
@@ -32,31 +35,24 @@ export function VerifyBalanceForm({
         setError("Ogiltigt belopp");
         return;
       }
-      const balanceInput = balance;
-      const fxInput = fxRate;
-      // Patch Hem/Konton immediately; persist in the background.
-      applyAccountBalance(accountId, balanceMinor, {
-        thbMinor: currency === "THB" ? balanceMinor : undefined,
-        currency,
-      });
-      setBalance("");
-      setFxRate("");
       const result = await createCheckpointAction({
         accountId,
-        balance: balanceInput,
+        balance,
         source: "manual_verification",
-        fxRate: needsFx ? fxInput || null : null,
+        fxRate: needsFx ? fxRate || null : null,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      if (result.thbMinor != null && currency !== "THB") {
-        applyAccountBalance(accountId, balanceMinor, {
-          thbMinor: result.thbMinor,
-          currency,
-        });
-      }
+      applyAccountBalance(accountId, balanceMinor, {
+        thbMinor:
+          result.thbMinor ?? (currency === "THB" ? balanceMinor : undefined),
+        currency,
+      });
+      adoptMutationFinance(result);
+      setBalance("");
+      setFxRate("");
     });
   }
 

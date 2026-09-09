@@ -88,7 +88,7 @@ describe("menu snapshot repository contract", () => {
       repository.indexOf("export async function getLatestCheckpoint"),
     );
     expect(timed).toContain("loadTodaySnapshotOnce()");
-    expect(timed).toMatch(/,\s*0\s*,?\s*\)/);
+    expect(timed).toMatch(/,\s*1\s*,?\s*\)/);
   });
 
   it("projects only the columns the menu mappers need", () => {

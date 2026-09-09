@@ -199,6 +199,24 @@ describe("plan payment allocations", () => {
     expect(txs.filter((row) => row.status === "confirmed")).toHaveLength(1);
   });
 
+  it("does not downgrade Betald to Delvis when a smaller bank row is linked", () => {
+    idAt = 0;
+    const item = bill({
+      settledAt: "2026-08-25T12:00:00.000Z",
+      settledMinor: 20_000_00,
+    });
+    const smaller = payment({ id: "sms-small", amountMinor: 5_000_00 });
+    const txs = [smaller];
+    const allocations: PlanPaymentAllocation[] = [];
+    const linked = allocate(item, smaller, txs, allocations, "link-small");
+    expect(linked.ok).toBe(true);
+    if (!linked.ok) return;
+    expect(item.settledMinor).toBe(20_000_00);
+    expect(item.settledAt).toBe("2026-08-25T12:00:00.000Z");
+    expect(item.remainingDueAt).toBeNull();
+    expect(allocations).toHaveLength(1);
+  });
+
   it("rejects the wrong direction, wrong currency and over-allocation without voiding", () => {
     idAt = 0;
     const item = bill();

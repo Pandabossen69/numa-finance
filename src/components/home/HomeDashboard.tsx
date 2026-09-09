@@ -11,7 +11,6 @@ import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
-import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
   formatMoney,
@@ -23,7 +22,6 @@ import {
 import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   financeTruthMessageSv,
@@ -518,10 +516,7 @@ function AvailableNowCard({
               } catch {
                 // Snapshot below fills in the living numbers.
               }
-              void getHomeSnapshotAction().then((next) => {
-                if (next.ok) rememberHomeSnapshot(next.data);
-              });
-              void warmupPlanPageData();
+              adoptMutationFinance(result);
             })();
           }}
         >
@@ -605,10 +600,7 @@ function UpdateBalanceLink({
               } catch {
                 // Snapshot below fills in the living numbers.
               }
-              void getHomeSnapshotAction().then((next) => {
-                if (next.ok) rememberHomeSnapshot(next.data);
-              });
-              void warmupPlanPageData();
+              adoptMutationFinance(result);
             })();
           }}
         >
