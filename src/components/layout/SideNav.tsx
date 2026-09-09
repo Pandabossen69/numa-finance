@@ -6,16 +6,35 @@ import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function SideNav({ displayName }: { displayName: React.ReactNode }) {
-  const { highlightPath, markIntent, pending } = useNavIntent();
+  const { highlightPath, markIntent, pending, navigateSpaTab } = useNavIntent();
   const { prefetch } = usePrefetchOnIntent();
+
+  function onIntent(href: string) {
+    if (navigateSpaTab(href)) return;
+    prefetch(href);
+    markIntent(href);
+  }
+
+  function onTabClick(
+    href: string,
+    event: React.MouseEvent<HTMLAnchorElement>,
+  ) {
+    if (navigateSpaTab(href)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
 
   return (
     <aside className="hidden w-56 shrink-0 md:block">
       <div className="sticky top-0 flex h-dvh flex-col gap-10 py-[max(2.5rem,var(--numa-safe-top))] pr-2">
         <Link
           href="/idag"
-          onPointerDown={() => prefetch("/idag")}
-          onMouseEnter={() => prefetch("/idag")}
+          onPointerDown={() => onIntent("/idag")}
+          onMouseEnter={() => {
+            if (!navigateSpaTab("/idag")) prefetch("/idag");
+          }}
+          onClick={(event) => onTabClick("/idag", event)}
           className="group block min-w-0 px-1"
         >
           <p className="numa-section-title">Personlig ekonomi</p>
@@ -30,7 +49,7 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
           </p>
         </Link>
 
-        <nav className="flex flex-1 flex-col gap-0.5" aria-label="Sido­navigering">
+        <nav className="flex flex-1 flex-col gap-0.5" aria-label="Sidonavigering">
           {PRIMARY_NAV.map((item) => {
             const active = isNavActive(highlightPath, item.href);
             return (
@@ -38,13 +57,12 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 prefetch={false}
-                onPointerDown={() => {
-                  prefetch(item.href);
-                  markIntent(item.href);
+                onPointerDown={() => onIntent(item.href)}
+                onMouseEnter={() => {
+                  if (!navigateSpaTab(item.href)) prefetch(item.href);
                 }}
-                onMouseEnter={() => prefetch(item.href)}
-                onFocus={() => prefetch(item.href)}
-                onClick={() => markIntent(item.href)}
+                onFocus={() => onIntent(item.href)}
+                onClick={(event) => onTabClick(item.href, event)}
                 aria-busy={Boolean(pending && active) || undefined}
                 className={`numa-press numa-side-nav-item relative min-h-11 rounded-2xl px-1.5 py-3 ${
                   active

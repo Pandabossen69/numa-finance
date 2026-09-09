@@ -99,6 +99,7 @@ const analysListeners = new Set<() => void>();
 const gettingStartedListeners = new Set<() => void>();
 const movementsListeners = new Set<() => void>();
 const accountsListeners = new Set<() => void>();
+const merListeners = new Set<() => void>();
 const planViewListeners = new Set<() => void>();
 
 function emit(listeners: Set<() => void>) {
@@ -217,6 +218,7 @@ function wipeSessionCaches() {
   emit(gettingStartedListeners);
   emit(movementsListeners);
   emit(accountsListeners);
+  emit(merListeners);
   emit(planViewListeners);
 }
 
@@ -698,12 +700,20 @@ export function lastAccountsSnapshot(): AccountsSnapshot | null {
 
 export function rememberMerSnapshot(snap: MerSnapshot) {
   bindSessionOwner(snap.userId);
+  if (mer === snap) return;
   mer = snap;
-  schedulePersist();
+  emit(merListeners);
 }
 
 export function lastMerSnapshot(): MerSnapshot | null {
   return mer;
+}
+
+export function subscribeMerSnapshot(listener: () => void) {
+  merListeners.add(listener);
+  return () => {
+    merListeners.delete(listener);
+  };
 }
 
 export function rememberFotaBoot(snap: FotaBootSnapshot) {

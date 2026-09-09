@@ -6,6 +6,7 @@ import { LastViewOutlet } from "@/components/layout/LastViewOutlet";
 import { NavIntentProvider } from "@/components/layout/NavIntent";
 import { NavWarmup } from "@/components/layout/NavWarmup";
 import { SideNav } from "@/components/layout/SideNav";
+import { TabKeepAlive } from "@/components/layout/TabKeepAlive";
 
 /**
  * Canonical NUMA shell — soft client navigation with prefetch warmup.
@@ -39,7 +40,9 @@ export function AppShell({
             </header>
 
             <main className="mx-auto w-full min-w-0 max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">
-              <LastViewOutlet>{children}</LastViewOutlet>
+              <TabKeepAlive>
+                <LastViewOutlet>{children}</LastViewOutlet>
+              </TabKeepAlive>
             </main>
           </div>
         </div>

@@ -6,7 +6,7 @@ import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function BottomNav() {
-  const { highlightPath, markIntent, pending } = useNavIntent();
+  const { highlightPath, markIntent, pending, navigateSpaTab } = useNavIntent();
   const { prefetch } = usePrefetchOnIntent();
 
   const left = PRIMARY_NAV.slice(0, 2);
@@ -17,8 +17,20 @@ export function BottomNav() {
   }
 
   function onIntent(href: string) {
+    // SPA keep-alive paints this tick — do not pile RSC prefetches on rapid taps.
+    if (navigateSpaTab(href)) return;
     prefetch(href);
     markIntent(href);
+  }
+
+  function onTabClick(
+    href: string,
+    event: React.MouseEvent<HTMLAnchorElement>,
+  ) {
+    if (navigateSpaTab(href)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 
   return (
@@ -34,8 +46,11 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            pending={Boolean(pending && activeFor(pending.href) && activeFor(tab.href))}
+            pending={Boolean(
+              pending && activeFor(pending.href) && activeFor(tab.href),
+            )}
             onIntent={() => onIntent(tab.href)}
+            onClick={(event) => onTabClick(tab.href, event)}
           />
         ))}
         <div className="flex flex-col items-center justify-end gap-0.5 pb-0.5">
@@ -62,8 +77,11 @@ export function BottomNav() {
             label={tab.label}
             icon={tab.icon}
             active={activeFor(tab.href)}
-            pending={Boolean(pending && activeFor(pending.href) && activeFor(tab.href))}
+            pending={Boolean(
+              pending && activeFor(pending.href) && activeFor(tab.href),
+            )}
             onIntent={() => onIntent(tab.href)}
+            onClick={(event) => onTabClick(tab.href, event)}
           />
         ))}
       </div>
@@ -78,6 +96,7 @@ function NavItem({
   active,
   pending,
   onIntent,
+  onClick,
 }: {
   href: string;
   label: string;
@@ -85,19 +104,22 @@ function NavItem({
   active: boolean;
   pending: boolean;
   onIntent: () => void;
+  onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
   return (
     <Link
-            href={href}
-            prefetch={false}
-            onPointerDown={onIntent}
-            onMouseEnter={onIntent}
-            onFocus={onIntent}
-            onClick={onIntent}
+      href={href}
+      prefetch={false}
+      onPointerDown={onIntent}
+      onMouseEnter={onIntent}
+      onFocus={onIntent}
+      onClick={onClick}
       aria-current={active ? "page" : undefined}
       aria-busy={pending || undefined}
       className={`numa-press numa-bottom-nav-item relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
-        active ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]" : "text-[var(--numa-faint)]"
+        active
+          ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]"
+          : "text-[var(--numa-faint)]"
       }${pending ? " is-pending" : ""}`}
     >
       <NavIcon name={icon} active={active} />
@@ -114,7 +136,6 @@ function NavItem({
 
 function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
   const stroke = active ? "var(--numa-ink)" : "currentColor";
-  const fill = "none";
   const common = {
     width: 22,
     height: 22,
@@ -125,7 +146,7 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
   switch (name) {
     case "home":
       return (
-        <svg {...common} fill={fill}>
+        <svg {...common} fill="none">
           <path
             d="M4.5 10.5 12 4.5l7.5 6V19a1.5 1.5 0 0 1-1.5 1.5h-3.25v-5.25h-5.5V20.5H6A1.5 1.5 0 0 1 4.5 19v-8.5Z"
             stroke={stroke}
@@ -136,7 +157,7 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
       );
     case "plan":
       return (
-        <svg {...common} fill={fill}>
+        <svg {...common} fill="none">
           <rect
             x="4.5"
             y="6"
@@ -151,7 +172,6 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
             stroke={stroke}
             strokeWidth="1.7"
             strokeLinecap="round"
-            fill="none"
           />
         </svg>
       );
