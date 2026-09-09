@@ -95,6 +95,7 @@ let settings: SettingsSnapshot | null = null;
 
 const homeListeners = new Set<() => void>();
 const planListeners = new Set<() => void>();
+const analysListeners = new Set<() => void>();
 const gettingStartedListeners = new Set<() => void>();
 const movementsListeners = new Set<() => void>();
 const accountsListeners = new Set<() => void>();
@@ -547,11 +548,18 @@ export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
     return;
   }
   analys = snap;
-  schedulePersist();
+  emit(analysListeners);
 }
 
 export function lastAnalysSnapshot(): AnalysSnapshot | null {
   return analys;
+}
+
+export function subscribeAnalysSnapshot(listener: () => void) {
+  analysListeners.add(listener);
+  return () => {
+    analysListeners.delete(listener);
+  };
 }
 
 function planStamp(snapshot: PlanSnapshot): string {
