@@ -4,11 +4,19 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./layout.tsx", import.meta.url), "utf8");
 
 describe("PWA viewport", () => {
-  it("covers the notch and uses a translucent status bar on cream", () => {
+  it("covers the notch and uses a translucent status bar on the dark shell", () => {
     expect(src).toContain('viewportFit: "cover"');
     expect(src).toContain('statusBarStyle: "black-translucent"');
-    expect(src).toContain('themeColor: "#ece4d6"');
+    expect(src).toContain('themeColor: "#05090b"');
+    expect(src).toContain('colorScheme: "dark"');
     expect(src).not.toContain('statusBarStyle: "default"');
+  });
+
+  it("points Safari and the tab icon at the Steel + Orange brand art", () => {
+    expect(src).toContain("/icons/icon-192.png");
+    expect(src).toContain("/icons/icon-512.png");
+    expect(src).toContain("/apple-touch-icon.png");
+    expect(src).toContain("/favicon.ico");
   });
 });
 

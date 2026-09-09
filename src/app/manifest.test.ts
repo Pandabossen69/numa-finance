@@ -11,7 +11,13 @@ describe("PWA manifest", () => {
     expect(web.start_url).toBe("/idag");
     expect(web.scope).toBe("/");
     expect(web.display).toBe("standalone");
-    expect(web.background_color).toBe("#ece4d6");
+    expect(web.background_color).toBe("#05090b");
+    expect(web.theme_color).toBe("#05090b");
+    expect(web.icons?.map((icon) => icon.src)).toEqual([
+      "/icons/icon-192.png",
+      "/icons/icon-512.png",
+      "/icons/icon-maskable-512.png",
+    ]);
     expect(src).not.toContain("PRODUCTION_ORIGIN");
   });
 });

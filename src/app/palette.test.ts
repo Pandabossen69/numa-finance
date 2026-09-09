@@ -10,18 +10,19 @@ function token(name: string): string {
 }
 
 describe("NUMA vision palette", () => {
-  it("keeps the canvas limestone, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#ece4d6");
+  it("keeps the canvas dark Steel + Orange, never paper white", () => {
+    expect(token("--numa-bg")).toBe("#05090b");
+    expect(token("--numa-bg-lift")).toBe("#0e1a1f");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
-    expect(token("--numa-card")).toBe("#fcfbf7");
+    expect(token("--numa-card")).toBe("#0d171b");
     expect(css).not.toMatch(/linear-gradient\(\s*165deg,\s*#ffffff/);
     expect(css).not.toContain("#f7fcf9");
     expect(css).not.toContain("#c8d6ce");
   });
 
   it("tints living, park and income/spend as separate families", () => {
-    expect(token("--numa-spend")).toBe("#8a5844");
+    expect(token("--numa-spend")).toBe("#f29a61");
     expect(token("--numa-spend")).not.toBe(token("--numa-alarm"));
     expect(token("--numa-spend")).not.toBe(token("--numa-danger"));
     expect(css).toContain(".numa-panel-strong");
@@ -32,18 +33,19 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-piles-board");
     expect(css).toContain(".numa-day-metrics");
     expect(css).not.toContain("rgba(255, 255, 255, 0.75)");
-    expect(token("--numa-accent")).toBe("#127a62");
+    expect(token("--numa-accent")).toBe("#f0a15e");
+    expect(token("--numa-steel")).toBe("#8ec5d8");
   });
 
   it("keeps over-budget clay alarm distinct from destroy red", () => {
-    expect(token("--numa-alarm")).toBe("#a3611f");
-    expect(token("--numa-danger")).toBe("#b42318");
+    expect(token("--numa-alarm")).toBe("#f3ad65");
+    expect(token("--numa-danger")).toBe("#ff756f");
     expect(token("--numa-alarm")).not.toBe(token("--numa-danger"));
     expect(token("--numa-alarm")).not.toBe(token("--numa-spend"));
   });
 
   it("names every shared surface, edge and shadow as a token", () => {
-    expect(token("--numa-field")).toBe("#f6f1e7");
+    expect(token("--numa-field")).toBe("#071115");
     expect(token("--numa-field")).not.toBe(token("--numa-card"));
     expect(token("--numa-border-contrast")).toContain("rgba");
     expect(token("--numa-sheet-highlight")).toContain("rgba");
@@ -53,7 +55,7 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-toast-shadow")).toContain("rgba");
     expect(token("--numa-chip-neutral")).toContain("rgba");
     expect(token("--numa-scan-sweep")).toContain("rgba");
-    expect(token("--numa-danger-ink")).toBe("#8e1b12");
+    expect(token("--numa-danger-ink")).toBe("#ffc1bc");
   });
 
   it("keeps the day dial colours in tokens, not in the SVG", () => {
@@ -205,11 +207,12 @@ describe("NUMA vision palette", () => {
     );
   });
 
-  it("gives Hem a living wash login does not use", () => {
+  it("gives Hem a Steel + Orange wash login does not use", () => {
     expect(css).toContain(".numa-day-stage");
     expect(css).toContain("var(--numa-accent-glow)");
-    expect(css).toContain("var(--numa-sun)");
-    expect(css).toContain(".auth-mark::after");
+    expect(css).toContain("var(--numa-steel-soft)");
+    expect(css).toContain(".auth-mark-icon");
+    expect(css).not.toContain(".auth-mark::after");
   });
 
   it("keeps cards round and cream so numbers sit on a clear sheet", () => {
