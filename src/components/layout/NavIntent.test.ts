@@ -21,3 +21,10 @@ describe("NavIntent", () => {
     expect(src).toContain("setSpaPath");
   });
 });
+
+  it("intercepts in-app SPA tab links so App Router soft-nav never starts", () => {
+    expect(src).toContain("pointerdown");
+    expect(src).toContain("addEventListener(\"click\"");
+    expect(src).toContain("paintSpaPanelsNow");
+    expect(src).toContain("numa-view-park");
+  });

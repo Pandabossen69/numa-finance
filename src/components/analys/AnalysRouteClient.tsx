@@ -22,6 +22,8 @@ export function AnalysRouteClient() {
 
   useEffect(() => {
     let cancelled = false;
+    // Quiet menu warm owns background refresh when cache is warm.
+    if (lastAnalysSnapshot()) return;
     void getAnalysSnapshotAction().then((result) => {
       if (cancelled) return;
       if (result.ok) {

@@ -8,8 +8,12 @@ describe("TabKeepAlive", () => {
   it("mounts SPA panels once and parks RSC children while a tab is active", () => {
     expect(src).toContain("useNavIntent");
     expect(src).toContain("spaTabKey");
-    expect(src).toContain("mounted");
+    expect(src).toContain("SPA_TAB_HREFS");
     expect(src).toContain("hidden={!visible}");
+    expect(src).toContain("SPA_TAB_HREFS.map");
+    expect(src).not.toMatch(/mounted.*useState/);
+    // Park class is display:none and must not wrap SPA panels.
+    expect(src).not.toMatch(/data-numa-spa-tab[\s\S]*numa-view-park/);
     expect(src).toContain("data-numa-rsc-shadow");
     expect(src).toContain("if (!active)");
     expect(src).toContain("{children}");

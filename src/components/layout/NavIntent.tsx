@@ -34,7 +34,10 @@ function pathOnly(href: string): string {
   return (href.split("?")[0] ?? href).split("#")[0] ?? href;
 }
 
-/** Flip keep-alive panels in the DOM before React reconciles — same tick as the tap. */
+/**
+ * Flip keep-alive panels in the DOM before React reconciles — same tick as
+ * the tap. Must not depend on React state or `.numa-view-park` (display:none).
+ */
 function paintSpaPanelsNow(dest: string) {
   if (typeof document === "undefined") return;
   const destKey = spaTabKey(dest);
@@ -46,6 +49,8 @@ function paintSpaPanelsNow(dest: string) {
     el.toggleAttribute("hidden", !on);
     if (on) el.removeAttribute("inert");
     else el.setAttribute("inert", "");
+    // Belt-and-suspenders: never leave display:none from an older park class.
+    el.classList.remove("numa-view-park");
     el.setAttribute("data-numa-spa-visible", on ? "1" : "0");
   }
   const links = document.querySelectorAll<HTMLElement>(
@@ -61,12 +66,21 @@ function paintSpaPanelsNow(dest: string) {
   }
 }
 
+function spaHrefFromAnchor(anchor: HTMLAnchorElement): string | null {
+  if (anchor.target === "_blank" || anchor.hasAttribute("download")) return null;
+  const href = anchor.getAttribute("href");
+  if (!href || href.startsWith("#") || href.startsWith("mailto:")) return null;
+  if (!isSpaTabHref(href)) return null;
+  return pathOnly(href);
+}
+
 export function NavIntentProvider({ children }: { children: ReactNode }) {
   const routerPathname = usePathname() ?? "/idag";
   const [spaPath, setSpaPath] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [intent, setIntent] = useState<Pending | null>(null);
   const spaOwnedRef = useRef(false);
+  const navigateRef = useRef<(href: string) => boolean>(() => false);
 
   const pathname = spaPath ?? routerPathname;
 
@@ -94,6 +108,41 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Capture any in-app SPA tab link (Analys→Plan, header NUMA, Next <Link>)
+  // so App Router soft-nav never starts a 3–10s force-dynamic RSC round-trip.
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const href = spaHrefFromAnchor(anchor);
+      if (!href) return;
+      navigateRef.current(href);
+    };
+    const onClick = (event: MouseEvent) => {
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      const href = spaHrefFromAnchor(anchor);
+      if (!href) return;
+      event.preventDefault();
+      event.stopPropagation();
+      navigateRef.current(href);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("click", onClick, true);
+    };
   }, []);
 
   const resolvedPending =
@@ -153,6 +202,8 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     },
     [pathname],
   );
+
+  navigateRef.current = navigateSpaTab;
 
   const value = useMemo(
     () => ({

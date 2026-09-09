@@ -56,6 +56,8 @@ function PlanRouteBody({
 
   useEffect(() => {
     let cancelled = false;
+    // Quiet menu warm owns background refresh when cache is warm.
+    if (lastPlanSnapshot()) return;
     void getPlanPageDataAction().then((result) => {
       if (cancelled) return;
       if (result.ok) {

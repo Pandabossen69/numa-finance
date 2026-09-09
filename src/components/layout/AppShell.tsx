@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { LastViewOutlet } from "@/components/layout/LastViewOutlet";
 import { NavIntentProvider } from "@/components/layout/NavIntent";
@@ -26,7 +25,7 @@ export function AppShell({
           <SideNav displayName={displayName} />
           <div className="min-w-0 flex-1">
             <header className="min-w-0 pb-3 pt-[max(0.95rem,var(--numa-safe-top))] md:hidden">
-              <Link href="/idag" className="numa-press block min-h-11 min-w-0">
+              <a href="/idag" className="numa-press block min-h-11 min-w-0">
                 <span className="numa-brand-mark inline-flex items-baseline gap-0">
                   NUMA
                 </span>
@@ -36,7 +35,7 @@ export function AppShell({
                 >
                   {displayName}
                 </span>
-              </Link>
+              </a>
             </header>
 
             <main className="mx-auto w-full min-w-0 max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">

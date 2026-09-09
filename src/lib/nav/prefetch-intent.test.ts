@@ -21,10 +21,13 @@ describe("prefetch-intent", () => {
 
   it("calls router.prefetch with only the href so comments cannot imply a full payload", () => {
     const prefetch = vi.fn();
+    prefetchHref({ prefetch } as never, "/fota");
+    expect(prefetch).toHaveBeenCalledTimes(1);
+    expect(prefetch).toHaveBeenCalledWith("/fota");
+    expect(prefetch.mock.calls[0][1]).toBeUndefined();
+    // SPA keep-alive tabs must not RSC-prefetch — that raced taps for seconds.
     prefetchHref({ prefetch } as never, "/plan");
     expect(prefetch).toHaveBeenCalledTimes(1);
-    expect(prefetch).toHaveBeenCalledWith("/plan");
-    expect(prefetch.mock.calls[0][1]).toBeUndefined();
     prefetchHref({ prefetch } as never, "https://example.com");
     expect(prefetch).toHaveBeenCalledTimes(1);
   });

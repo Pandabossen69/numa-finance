@@ -35,7 +35,7 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
           href="/idag"
           onPointerDown={() => onIntent("/idag")}
           onMouseEnter={() => {
-            if (!navigateSpaTab("/idag")) prefetch("/idag");
+            /* SPA tabs are already mounted — no RSC prefetch / no hover navigate */
           }}
           onClick={(event) => onTabClick("/idag", event)}
           className="group block min-w-0 px-1"

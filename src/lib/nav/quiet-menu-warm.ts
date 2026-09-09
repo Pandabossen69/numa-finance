@@ -67,9 +67,9 @@ export function scheduleQuietMenuWarm() {
   };
 
   if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(start, { timeout: 1_500 });
+    requestIdleCallback(start, { timeout: 300 });
   } else {
-    window.setTimeout(start, 250);
+    window.setTimeout(start, 50);
   }
 }
 

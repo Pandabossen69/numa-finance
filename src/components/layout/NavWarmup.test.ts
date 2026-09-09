@@ -4,11 +4,9 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./NavWarmup.tsx", import.meta.url), "utf8");
 
 describe("NavWarmup", () => {
-  it("warms Hem, Plan and Analys so tab switches can paint dest shells", () => {
-    expect(src).toContain("PRIMARY_NAV");
-    expect(src).toContain("warmHrefs");
-    expect(src).toContain("scheduleIdleWarm");
-    expect(src).toContain("/transaktioner");
-    expect(src).toContain("/fota");
+  it("does not RSC-prefetch SPA keep-alive tabs", () => {
+    expect(src).toContain("isSpaTabHref");
+    expect(src).toContain("scheduleQuietMenuWarm");
+    expect(src).toContain("filter((href) => !isSpaTabHref(href))");
   });
 });

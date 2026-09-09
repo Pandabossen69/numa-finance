@@ -22,6 +22,8 @@ export function MerRouteClient() {
 
   useEffect(() => {
     let cancelled = false;
+    // Quiet menu warm owns background refresh when cache is warm.
+    if (lastMerSnapshot()) return;
     void getMerSnapshotAction().then((result) => {
       if (cancelled) return;
       if (result.ok) {

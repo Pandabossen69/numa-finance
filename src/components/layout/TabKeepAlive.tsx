@@ -1,39 +1,42 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { AnalysRouteClient } from "@/components/analys/AnalysRouteClient";
 import { HemRouteClient } from "@/components/home/HemRouteClient";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { MerRouteClient } from "@/components/mer/MerRouteClient";
 import { MovementsRouteClient } from "@/components/movements/MovementsRouteClient";
 import { PlanRouteClient } from "@/components/plan/PlanRouteClient";
-import { spaTabKey, type SpaTabHref } from "@/lib/nav/spa-tabs";
+import { SPA_TAB_HREFS, spaTabKey, type SpaTabHref } from "@/lib/nav/spa-tabs";
 
 /**
  * True SPA keep-alive for primary tabs (NextStep Sales pattern).
- * Panels mount once and stay mounted; taps only toggle visibility.
- * Next `children` back soft-nav for non-SPA routes and cold hydration.
+ *
+ * All five panels mount with the shell and stay mounted. Taps only flip the
+ * `hidden` attribute (see paintSpaPanelsNow). Lazy first-mount was a multi-
+ * second stall: the DOM paint helper could not reveal a panel React had not
+ * created yet. Do NOT use `.numa-view-park` (`display: none`) here — that
+ * class survived the DOM paint and kept the dest invisible until React
+ * caught up (often seconds while server actions resolved).
  */
 export function TabKeepAlive({ children }: { children: ReactNode }) {
   const { pathname } = useNavIntent();
   const active = spaTabKey(pathname);
-  const [mounted, setMounted] = useState<Set<SpaTabHref>>(() => {
-    const initial = new Set<SpaTabHref>();
-    if (active) initial.add(active);
-    return initial;
-  });
 
-  useEffect(() => {
-    if (!active) return;
-    setMounted((prev) => {
-      if (prev.has(active)) return prev;
-      const next = new Set(prev);
-      next.add(active);
-      return next;
-    });
-  }, [active]);
+  // Stable element trees — parent re-renders on tab switch must not rebuild
+  // Plan/Analys/etc. (that was a ~500ms main-thread stall after DOM paint).
+  const panelBodiesRef = useRef<Record<SpaTabHref, ReactNode> | null>(null);
+  if (panelBodiesRef.current == null) {
+    panelBodiesRef.current = {
+      "/idag": <HemRouteClient />,
+      "/plan": <PlanRouteClient />,
+      "/analys": <AnalysRouteClient />,
+      "/mer": <MerRouteClient />,
+      "/transaktioner": <MovementsRouteClient />,
+    };
+  }
+  const panelBodies = panelBodiesRef.current;
 
-  // Scroll reset in layout effect so it does not delay the panel paint.
   useLayoutEffect(() => {
     if (!active) return;
     window.scrollTo(0, 0);
@@ -45,21 +48,11 @@ export function TabKeepAlive({ children }: { children: ReactNode }) {
 
   return (
     <div className="numa-tab-keep-alive relative min-w-0">
-      <SpaPanel tab="/idag" active={active} mounted={mounted}>
-        <HemRouteClient />
-      </SpaPanel>
-      <SpaPanel tab="/plan" active={active} mounted={mounted}>
-        <PlanRouteClient />
-      </SpaPanel>
-      <SpaPanel tab="/analys" active={active} mounted={mounted}>
-        <AnalysRouteClient />
-      </SpaPanel>
-      <SpaPanel tab="/mer" active={active} mounted={mounted}>
-        <MerRouteClient />
-      </SpaPanel>
-      <SpaPanel tab="/transaktioner" active={active} mounted={mounted}>
-        <MovementsRouteClient />
-      </SpaPanel>
+      {SPA_TAB_HREFS.map((tab) => (
+        <SpaPanel key={tab} tab={tab} active={active}>
+          {panelBodies[tab]}
+        </SpaPanel>
+      ))}
       <div hidden inert className="numa-view-park" data-numa-rsc-shadow="">
         {children}
       </div>
@@ -67,24 +60,21 @@ export function TabKeepAlive({ children }: { children: ReactNode }) {
   );
 }
 
+
 function SpaPanel({
   tab,
   active,
-  mounted,
   children,
 }: {
   tab: SpaTabHref;
   active: SpaTabHref;
-  mounted: Set<SpaTabHref>;
   children: ReactNode;
 }) {
-  if (!mounted.has(tab)) return null;
   const visible = active === tab;
   return (
     <div
       hidden={!visible}
       inert={!visible ? true : undefined}
-      className={visible ? undefined : "numa-view-park"}
       data-numa-spa-tab={tab}
       data-numa-spa-visible={visible ? "1" : "0"}
     >
