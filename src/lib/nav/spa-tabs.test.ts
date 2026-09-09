@@ -43,6 +43,31 @@ describe("SPA keep-alive primary tabs", () => {
     expect(side).toContain("if (navigateSpaTab(href))");
   });
 
+  it("does not let SideNav navigateSpaTab on mouse enter or hover", () => {
+    const side = read("../../components/layout/SideNav.tsx");
+    expect(side).not.toMatch(/onMouseEnter=\{[^}]*navigateSpaTab/);
+    expect(side).not.toMatch(/onMouseEnter=\{\(\) => onIntent/);
+    expect(side).toContain('prefetch={false}');
+    const idagLink = side.slice(
+      side.indexOf('href="/idag"'),
+      side.indexOf("className=\"group block"),
+    );
+    expect(idagLink).toContain("prefetch={false}");
+    expect(idagLink).not.toContain("onMouseEnter");
+    expect(idagLink).not.toContain("navigateSpaTab");
+  });
+
+  it("skips cold fetch on Plan/Analys/Movements/Mer when last-known exists", () => {
+    const plan = read("../../components/plan/PlanRouteClient.tsx");
+    const analys = read("../../components/analys/AnalysRouteClient.tsx");
+    const movements = read("../../components/movements/MovementsRouteClient.tsx");
+    const mer = read("../../components/mer/MerRouteClient.tsx");
+    expect(plan).toContain("if (lastPlanSnapshot()) return;");
+    expect(analys).toContain("if (lastAnalysSnapshot()) return;");
+    expect(movements).toContain("if (lastMovementsSnapshot()) return;");
+    expect(mer).toContain("if (lastMerSnapshot()) return;");
+  });
+
   it("wraps the shell outlet in TabKeepAlive with the five route clients", () => {
     const shell = read("../../components/layout/AppShell.tsx");
     const keepAlive = read("../../components/layout/TabKeepAlive.tsx");

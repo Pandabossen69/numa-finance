@@ -28,7 +28,24 @@ describe("prefetch-intent", () => {
     // SPA keep-alive tabs must not RSC-prefetch — that raced taps for seconds.
     prefetchHref({ prefetch } as never, "/plan");
     expect(prefetch).toHaveBeenCalledTimes(1);
+    prefetchHref({ prefetch } as never, "/analys");
+    prefetchHref({ prefetch } as never, "/idag");
+    prefetchHref({ prefetch } as never, "/mer");
+    prefetchHref({ prefetch } as never, "/transaktioner");
+    expect(prefetch).toHaveBeenCalledTimes(1);
     prefetchHref({ prefetch } as never, "https://example.com");
     expect(prefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("bails out of SPA keep-alive routes before router.prefetch", () => {
+    const src = readFileSync(new URL("./prefetch-intent.ts", import.meta.url), "utf8");
+    expect(src).toContain("isSpaTabHref(href)");
+    const prefetchFn = src.slice(
+      src.indexOf("export function prefetchHref"),
+      src.indexOf("export function warmHrefs"),
+    );
+    expect(prefetchFn.indexOf("isSpaTabHref")).toBeLessThan(
+      prefetchFn.indexOf("router.prefetch"),
+    );
   });
 });

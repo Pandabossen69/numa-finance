@@ -70,8 +70,16 @@ function spaHrefFromAnchor(anchor: HTMLAnchorElement): string | null {
   if (anchor.target === "_blank" || anchor.hasAttribute("download")) return null;
   const href = anchor.getAttribute("href");
   if (!href || href.startsWith("#") || href.startsWith("mailto:")) return null;
-  if (!isSpaTabHref(href)) return null;
-  return pathOnly(href);
+  let path = href;
+  try {
+    const url = new URL(href, window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    path = url.pathname;
+  } catch {
+    return null;
+  }
+  if (!isSpaTabHref(path)) return null;
+  return pathOnly(path);
 }
 
 export function NavIntentProvider({ children }: { children: ReactNode }) {
@@ -135,6 +143,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       if (!href) return;
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       navigateRef.current(href);
     };
     document.addEventListener("pointerdown", onPointerDown, true);

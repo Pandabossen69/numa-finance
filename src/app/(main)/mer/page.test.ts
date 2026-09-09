@@ -77,6 +77,7 @@ describe("Mer HIGH regress", () => {
     expect(merPage).not.toContain("<Suspense fallback={<MerViewLoading />}>");
     expect(merPage).not.toContain("<Suspense fallback={<MerScreen data={null} />}>");
     expect(merClient).toContain("lastMerSnapshot");
+    expect(merClient).toContain("if (lastMerSnapshot()) return;");
     expect(merClient).toContain("getMerSnapshotAction");
     expect(merSnapshot).toContain("MER_TIMEOUT_MS");
     expect(merSnapshot).toContain("withTimeout");

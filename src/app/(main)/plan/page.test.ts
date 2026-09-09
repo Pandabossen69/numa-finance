@@ -35,6 +35,7 @@ describe("/plan getting-started hints", () => {
     expect(page).toContain("PlanRouteClient");
     expect(page).not.toContain("<Suspense fallback={<ViewLoading />}>");
     expect(routeClient).toContain("lastPlanSnapshot");
+    expect(routeClient).toContain("if (lastPlanSnapshot()) return;");
     expect(routeClient).toContain("getPlanPageDataAction");
     expect(routeClient).toContain("rememberPlanSnapshot");
     expect(screen).toContain("lastPlanSnapshot");

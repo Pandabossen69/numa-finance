@@ -149,6 +149,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("DestinationWarmup");
     expect(src).toContain("markIntent(\"/transaktioner\")");
     expect(src).toContain("prefetch={false}");
+    expect(src).not.toMatch(/href="\/plan"[\s\S]{0,120}prefetch\n/);
   });
 
   it("shows where the month's money went, from the shared split", () => {

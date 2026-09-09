@@ -413,7 +413,7 @@ export function AnalysDashboard({
             </div>
             <Link
               href="/plan"
-              prefetch
+              prefetch={false}
               onMouseEnter={() => prefetch("/plan")}
               onFocus={() => prefetch("/plan")}
               className="numa-tap shrink-0 text-xs font-semibold text-[var(--numa-accent)]"
@@ -558,7 +558,7 @@ export function AnalysDashboard({
           <h2 className="text-sm font-semibold tracking-tight">Mål</h2>
           <Link
             href="/plan"
-            prefetch
+            prefetch={false}
             onMouseEnter={() => prefetch("/plan")}
             onFocus={() => prefetch("/plan")}
             className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"

@@ -36,6 +36,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(loading).not.toContain("MovementsViewLoading");
     expect(client).toContain("getMovementsSnapshotAction");
     expect(client).toContain("lastMovementsSnapshot");
+    expect(client).toContain("if (lastMovementsSnapshot()) return;");
     expect(client).toContain("if (!lastMovementsSnapshot()) setError");
   });
 

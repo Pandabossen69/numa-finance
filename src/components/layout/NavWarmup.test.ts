@@ -8,5 +8,7 @@ describe("NavWarmup", () => {
     expect(src).toContain("isSpaTabHref");
     expect(src).toContain("scheduleQuietMenuWarm");
     expect(src).toContain("filter((href) => !isSpaTabHref(href))");
+    expect(src).not.toMatch(/warmHrefs\([\s\S]*PRIMARY_NAV\.map\(\(item\) => item\.href\)\s*,/);
+    expect(src).toContain("scheduleIdleWarm(warm)");
   });
 });

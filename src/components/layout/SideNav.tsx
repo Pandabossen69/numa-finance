@@ -33,10 +33,8 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
       <div className="sticky top-0 flex h-dvh flex-col gap-10 py-[max(2.5rem,var(--numa-safe-top))] pr-2">
         <Link
           href="/idag"
+          prefetch={false}
           onPointerDown={() => onIntent("/idag")}
-          onMouseEnter={() => {
-            /* SPA tabs are already mounted — no RSC prefetch / no hover navigate */
-          }}
           onClick={(event) => onTabClick("/idag", event)}
           className="group block min-w-0 px-1"
         >
