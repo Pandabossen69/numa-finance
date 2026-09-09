@@ -66,16 +66,17 @@ describe("SMOOTH 01 root cause contracts", () => {
     ).toBe("dest");
   });
 
-  it("streams Hem, Plan and Analys behind Suspense so the shell is not blocked", () => {
+  it("streams Hem behind Suspense; Plan/Analys are client-first last-known", () => {
     const idag = read("../../app/(main)/idag/page.tsx");
     const plan = read("../../app/(main)/plan/page.tsx");
     const analys = read("../../app/(main)/analys/page.tsx");
     expect(idag).toContain("<Suspense");
     expect(idag).toContain("IdagBody");
-    expect(plan).toContain("<Suspense");
-    expect(plan).toContain("PlanBody");
-    expect(analys).toContain("<Suspense");
-    expect(analys).toContain("AnalysBody");
+    expect(plan).toContain("PlanRouteClient");
+    expect(plan).not.toContain("await searchParams");
+    expect(plan).not.toContain("PlanBody");
+    expect(analys).toContain("AnalysRouteClient");
+    expect(analys).not.toContain("AnalysBody");
   });
 
   it("lets Hem/Plan/Analys/Rörelser SSR so dest content does not wait on a client chunk", () => {
@@ -103,14 +104,10 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(proxyAuth).not.toContain("if (!input.hasAuthCookie || !input.isRscOrPrefetch)");
   });
 
-  it("does not let Plan or Fota await searchParams before the Suspense shell", () => {
-    const plan = read("../../app/(main)/plan/page.tsx");
+  it("does not let Fota await searchParams before the Suspense shell", () => {
     const fota = read("../../app/(main)/fota/page.tsx");
-    const planBefore = plan.slice(0, plan.indexOf("<Suspense"));
     const fotaBefore = fota.slice(0, fota.indexOf("<Suspense"));
-    expect(planBefore).not.toContain("await searchParams");
     expect(fotaBefore).not.toContain("await searchParams");
-    expect(plan).toContain("PlanFromParams");
     expect(fota).toContain("FotaFromParams");
   });
 
