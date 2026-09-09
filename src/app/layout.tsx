@@ -36,8 +36,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    // Translucent so cream canvas + --numa-safe-top cover the notch in
-    // Safari and home-screen PWA the same way (opaque "default" double-pads).
+    // Translucent so the dark NUMA shell covers the notch in Safari and PWA.
     statusBarStyle: "black-translucent",
     title: "NUMA",
   },
@@ -56,8 +55,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Allow pinch-zoom; inputs use 16px so iOS won't auto-zoom on focus.
   viewportFit: "cover",
-  themeColor: "#ece4d6",
-  colorScheme: "light",
+  themeColor: "#05090b",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({

@@ -12,8 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/idag",
     scope: "/",
     display: "standalone",
-    background_color: "#ece4d6",
-    theme_color: "#ece4d6",
+    background_color: "#05090b",
+    theme_color: "#05090b",
     lang: "sv",
     orientation: "portrait-primary",
     icons: [
