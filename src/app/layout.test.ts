@@ -10,6 +10,13 @@ describe("PWA viewport", () => {
     expect(src).toContain('themeColor: "#ece4d6"');
     expect(src).not.toContain('statusBarStyle: "default"');
   });
+
+  it("points Safari and the tab icon at the owl brand art", () => {
+    expect(src).toContain("/icons/icon-192.png");
+    expect(src).toContain("/icons/icon-512.png");
+    expect(src).toContain("/apple-touch-icon.png");
+    expect(src).toContain("/favicon.ico");
+  });
 });
 
 describe("root font loading", () => {

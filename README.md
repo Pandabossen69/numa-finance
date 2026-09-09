@@ -27,6 +27,8 @@ npm run dev
 
 Öppna [http://localhost:3000](http://localhost:3000) — du skickas till `/idag`.
 
+`npm run icons` resizes the checked-in owl in `public/icons/source-icon.png`. It never rebuilds the old green-circle placeholder.
+
 ### Useful commands
 
 ```bash

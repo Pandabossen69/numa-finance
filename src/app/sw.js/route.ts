@@ -17,7 +17,8 @@ function isStaticAsset(url) {
   return (
     path.startsWith("/_next/static/") ||
     path.startsWith("/icons/") ||
-    path === "/favicon.ico"
+    path === "/favicon.ico" ||
+    path === "/apple-touch-icon.png"
   );
 }
 

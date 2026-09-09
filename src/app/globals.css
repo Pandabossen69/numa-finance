@@ -1914,6 +1914,7 @@ button.numa-chip:disabled {
 .auth-mark {
   display: inline-flex;
   align-items: center;
+  gap: 0.65rem;
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.09em;
@@ -1922,14 +1923,12 @@ button.numa-chip:disabled {
   color: var(--numa-muted);
 }
 
-.auth-mark::after {
-  content: "";
-  display: inline-block;
-  width: 0.34rem;
-  height: 0.34rem;
-  margin-left: 0.4rem;
-  border-radius: 999px;
-  background: var(--numa-accent);
+.auth-mark-owl {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  border-radius: 0.62rem;
 }
 
 /*
