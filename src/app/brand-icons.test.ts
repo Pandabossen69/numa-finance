@@ -12,13 +12,13 @@ function pngSize(buf: Buffer) {
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
-describe("NUMA owl brand icons", () => {
-  it("checks in the production owl as the source of truth", () => {
+describe("NUMA Steel + Orange brand icons", () => {
+  it("checks in the production Steel + Orange icon as the source of truth", () => {
     const source = readFileSync(join(root, "public/icons/source-icon.png"));
     const { width, height } = pngSize(source);
-    expect(width).toBe(1280);
-    expect(height).toBe(720);
-    expect(source.length).toBeGreaterThan(80_000);
+    expect(width).toBe(1024);
+    expect(height).toBe(1024);
+    expect(source.length).toBeGreaterThan(100_000);
   });
 
   it("ships real 192 / 512 / maskable / mark / apple-touch PNGs", () => {
@@ -41,12 +41,14 @@ describe("NUMA owl brand icons", () => {
     expect(readFileSync(join(root, "src/app/favicon.ico")).length).toBeGreaterThan(1_000);
   });
 
-  it("cannot regenerate the old solid-circle placeholder", () => {
+  it("regenerates from the Steel + Orange source, not the old placeholders", () => {
     const script = readFileSync(join(root, "scripts/generate-icons.cjs"), "utf8");
     expect(script).toContain("source-icon.png");
-    expect(script).toContain("#127a62");
+    expect(script).toContain("Steel + Orange");
+    expect(script).toContain("#050607");
     expect(script).not.toContain("inCircle");
     expect(script).not.toContain("simple monochrome mark");
+    expect(script).not.toContain("owl");
     expect(script).not.toMatch(/createPng\(/);
   });
 });

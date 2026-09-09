@@ -209,7 +209,7 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-day-stage");
     expect(css).toContain("var(--numa-accent-glow)");
     expect(css).toContain("var(--numa-sun)");
-    expect(css).toContain(".auth-mark-owl");
+    expect(css).toContain(".auth-mark-icon");
     expect(css).not.toContain(".auth-mark::after");
   });
 

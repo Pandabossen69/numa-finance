@@ -11,7 +11,7 @@ describe("PWA viewport", () => {
     expect(src).not.toContain('statusBarStyle: "default"');
   });
 
-  it("points Safari and the tab icon at the owl brand art", () => {
+  it("points Safari and the tab icon at the Steel + Orange brand art", () => {
     expect(src).toContain("/icons/icon-192.png");
     expect(src).toContain("/icons/icon-512.png");
     expect(src).toContain("/apple-touch-icon.png");

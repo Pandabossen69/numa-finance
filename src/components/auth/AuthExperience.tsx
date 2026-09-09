@@ -51,7 +51,7 @@ export function AuthExperience() {
         <div className="auth-hero">
           <p className="auth-mark">
             <img
-              className="auth-mark-owl"
+              className="auth-mark-icon"
               src="/icons/mark.png"
               alt=""
               width={40}

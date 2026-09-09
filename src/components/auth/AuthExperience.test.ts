@@ -17,7 +17,7 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).toContain("auth-card");
     expect(src).toContain("auth-mark");
     expect(src).toContain('src="/icons/mark.png"');
-    expect(src).toContain("auth-mark-owl");
+    expect(src).toContain("auth-mark-icon");
     expect(src).toContain("auth-frame");
     expect(src).toContain("auth-hero");
     expect(src).toContain("Vad du kan använda idag.");

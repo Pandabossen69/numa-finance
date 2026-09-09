@@ -1923,7 +1923,7 @@ button.numa-chip:disabled {
   color: var(--numa-muted);
 }
 
-.auth-mark-owl {
+.auth-mark-icon {
   display: block;
   width: 2.5rem;
   height: 2.5rem;
