@@ -27,16 +27,20 @@ export async function signInAction(raw: {
   try {
     const input = authSchema.parse(raw);
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: input.email,
       password: input.password,
     });
     if (error) {
       return { ok: false, error: swedishAuthError(error.message) };
     }
+    const userId = data.user?.id;
+    if (!userId) {
+      return { ok: false, error: "Kunde inte logga in" };
+    }
     const state = await loadOnboardingState();
     await persistOnboardingPhaseCookie(state.phase);
-    return { ok: true, nextPath: state.nextPath };
+    return { ok: true, nextPath: state.nextPath, userId };
   } catch (error) {
     return {
       ok: false,

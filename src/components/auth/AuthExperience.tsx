@@ -14,7 +14,7 @@ import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
 import {
-  clearClientSessionCaches,
+  bindSessionOwner,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
@@ -67,15 +67,16 @@ export function AuthExperience() {
         setBooting(true);
       });
       paintLoginBoot();
-      // Identity just changed. Drop any in-memory snapshot from the previous
-      // session so this account can never paint with someone else's numbers.
-      clearClientSessionCaches();
+      // Wipe last-known only when the account actually changed — same-user
+      // re-login must keep Plan/Analys/Hem caches so menus stay ~0ms (NextStep).
+      bindSessionOwner(result.userId);
       kickPostLoginWarm();
       const preview =
         typeof document !== "undefined" &&
         hasPreviewEscape(new URLSearchParams(window.location.search), document.cookie);
+      // Soft replace without refresh — avoid a force-dynamic RSC round-trip
+      // while the branded boot overlay is up.
       router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath);
-      router.refresh();
     });
   }
 
