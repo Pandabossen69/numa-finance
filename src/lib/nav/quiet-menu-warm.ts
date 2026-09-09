@@ -54,8 +54,13 @@ async function runQuietWarm(generation: number) {
 }
 
 /** Idle warm so Hem's first paint is not competing with Plan/Analys/Rörelser. */
-export function scheduleQuietMenuWarm() {
+export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
   if (typeof window === "undefined") return;
+  if (opts?.restart) {
+    warmGeneration += 1;
+    scheduled = false;
+    inflight = null;
+  }
   if (scheduled && inflight) return;
   scheduled = true;
 

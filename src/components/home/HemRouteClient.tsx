@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
@@ -40,9 +41,11 @@ export function HemRouteClient() {
         if (!isHomeDirty()) rememberHomeSnapshot(result.data);
         setError(null);
         scheduleQuietMenuWarm();
+        clearLoginBoot();
         return;
       }
       if (!lastHomeSnapshot()) setError(result.error);
+      clearLoginBoot();
     });
     return () => {
       cancelled = true;
@@ -50,7 +53,10 @@ export function HemRouteClient() {
   }, []);
 
   useEffect(() => {
-    if (stored) scheduleQuietMenuWarm();
+    if (stored) {
+      scheduleQuietMenuWarm();
+      clearLoginBoot();
+    }
   }, [stored]);
 
   if (!stored && !error) {
@@ -58,10 +64,6 @@ export function HemRouteClient() {
   }
 
   return (
-    <HomeDashboard
-      snap={stored}
-      error={error}
-      gettingStarted={storedGettingStarted}
-    />
+    <HomeDashboard snap={stored} error={error} gettingStarted={storedGettingStarted} />
   );
 }

@@ -2,10 +2,7 @@ import { createElement, Suspense } from "react";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { HemPending } from "@/components/layout/ViewLoading";
-import {
-  isViewLoadingNode,
-  resolveVisibleTab,
-} from "@/components/layout/view-hold";
+import { isViewLoadingNode, resolveVisibleTab } from "@/components/layout/view-hold";
 
 const idag = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
 const hemClient = readFileSync(
@@ -77,7 +74,8 @@ describe("login → Hem first mount", () => {
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("lastHomeSnapshot");
     expect(keepAlive).toContain("HemRouteClient");
-    expect(keepAlive).toContain('tab="/idag"');
+    expect(keepAlive).toContain('"/idag": <HemRouteClient />');
+    expect(keepAlive).toContain("data-numa-spa-tab");
     expect(hold).not.toContain("if (node.type === Suspense) return true;");
     expect(outlet).toContain("data-numa-hidden-live");
   });

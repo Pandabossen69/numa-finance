@@ -15,6 +15,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("rememberAnalysSnapshot");
     expect(warm).toContain("rememberMovementsSnapshot");
     expect(warm).toContain("isMovementsDirty");
+    expect(warm).toContain("opts?.restart");
     expect(home).toContain("scheduleQuietMenuWarm");
     const adoptStart = home.indexOf("useEffect(() => {");
     const adoptEnd = home.indexOf("}, [snap, accounts, gettingStarted]);");
