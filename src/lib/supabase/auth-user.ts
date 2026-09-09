@@ -19,9 +19,9 @@ function metadataDisplayNameOf(user: {
 }
 
 /**
- * One session read per request. Proxy already verified the JWT with
- * auth.getUser(); RSC uses the local cookie session so Hem/Plan/Analys
- * do not pay a second Auth round-trip on every tab switch.
+ * One cookie-session read per request for ordinary RSC/RLS work.
+ * `session.user` is not a verified server identity — do not use it for
+ * admin decisions or service-role. See `verified-identity.ts`.
  */
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   if (!isSupabaseConfigured()) return null;
