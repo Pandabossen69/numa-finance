@@ -66,12 +66,16 @@ describe("SMOOTH 01 root cause contracts", () => {
     ).toBe("dest");
   });
 
-  it("streams Hem behind Suspense; Plan/Analys are client-first last-known", () => {
+  it("keeps Hem/Plan/Analys client-first under SPA keep-alive", () => {
     const idag = read("../../app/(main)/idag/page.tsx");
     const plan = read("../../app/(main)/plan/page.tsx");
     const analys = read("../../app/(main)/analys/page.tsx");
-    expect(idag).toContain("<Suspense");
-    expect(idag).toContain("IdagBody");
+    const hemClient = read("../../components/home/HemRouteClient.tsx");
+    expect(idag).toContain("HemRouteClient");
+    expect(idag).not.toContain("<Suspense");
+    expect(idag).not.toContain("IdagBody");
+    expect(hemClient).toContain("HemFirstPaint");
+    expect(hemClient).toContain("lastHomeSnapshot");
     expect(plan).toContain("PlanRouteClient");
     expect(plan).not.toContain("await searchParams");
     expect(plan).not.toContain("PlanBody");

@@ -8,7 +8,16 @@ describe("NavIntent", () => {
     expect(src).toContain("intent");
     expect(src).toContain("clearIntent");
     expect(src).toContain("setIntent(next)");
-    expect(src).toContain("optimisticNavPath(pathname, resolvedPending ?? intent)");
+    expect(src).toContain("optimisticNavPath(");
+    expect(src).toContain("resolvedPending ?? intent");
     expect(src).not.toContain("setAwaitingHref");
+  });
+
+  it("exposes SPA keep-alive navigation for primary tabs", () => {
+    expect(src).toContain("spaActive");
+    expect(src).toContain("navigateSpaTab");
+    expect(src).toContain("isSpaTabHref");
+    expect(src).toContain("window.history.pushState");
+    expect(src).toContain("setSpaPath");
   });
 });

@@ -17,15 +17,17 @@ const warmup = readFileSync(
 
 describe("/plan getting-started hints", () => {
   it("opens the matching add form and keeps one spoken Swedish hint", () => {
-    expect(page).toContain('steg === "inkomst"');
-    expect(page).toContain('steg === "utgift"');
-    expect(page).toContain("Här lägger du in det som kommer in.");
-    expect(page).toContain("Här lägger du in det som måste betalas.");
-    expect(screen).toContain("Vad som kommer in och vad som måste ut.");
-    expect(page).toContain("focusAdd={focusAdd}");
-    expect(page).toContain("stepHint={hint}");
     expect(page).toContain("PlanRouteClient");
+    expect(page).not.toContain("await searchParams");
     expect(page).not.toMatch(/välkommen/i);
+    expect(routeClient).toContain('steg === "inkomst"');
+    expect(routeClient).toContain('steg === "utgift"');
+    expect(routeClient).toContain("Här lägger du in det som kommer in.");
+    expect(routeClient).toContain("Här lägger du in det som måste betalas.");
+    expect(routeClient).toContain("useSearchParams");
+    expect(routeClient).toContain("focusAdd={focusAdd}");
+    expect(routeClient).toContain("stepHint={stepHint}");
+    expect(screen).toContain("Vad som kommer in och vad som måste ut.");
   });
 
   it("paints last-known Plan client-first and quiet-refreshes in the background", () => {

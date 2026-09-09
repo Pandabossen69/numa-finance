@@ -79,14 +79,18 @@ describe("instant tap — phone-width dest paint", () => {
     const last = read("../../features/home/last-snapshot.ts");
     const cookie = read("../../features/home/last-home-cookie.ts");
     const idag = read("../../app/(main)/idag/page.tsx");
+    const hemClient = read("../../components/home/HemRouteClient.tsx");
     expect(persist).toContain("numa.lastKnown.v1");
     expect(last).toContain("hydrateLastKnownFromPersist");
     expect(last).toContain("writePersistedLastKnown");
     expect(last).toContain("clearPersistedLastKnown");
     expect(cookie).toContain("numa.lastHome.v1");
-    expect(idag).toContain("HemFirstPaint");
+    expect(idag).toContain("HemRouteClient");
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
+    expect(hemClient).toContain("HemFirstPaint");
+    expect(hemClient).toContain("lastHomeSnapshot");
+    expect(hemClient).not.toContain("readLastHomeCookie");
   });
 
   it("does not sleep JWT iat on the menu fetch path", () => {

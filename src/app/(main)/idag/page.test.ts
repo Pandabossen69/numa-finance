@@ -3,15 +3,27 @@ import { describe, expect, it } from "vitest";
 
 const page = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
 const loading = readFileSync(new URL("./loading.tsx", import.meta.url), "utf8");
+const hemClient = readFileSync(
+  new URL("../../../components/home/HemRouteClient.tsx", import.meta.url),
+  "utf8",
+);
+const homeSnapshot = readFileSync(
+  new URL("../../../features/finance/home-snapshot.ts", import.meta.url),
+  "utf8",
+);
 
 describe("/idag first paint", () => {
-  it("streams Hem behind Suspense so the shell is not blocked on the snapshot", () => {
-    expect(page).toContain("Suspense");
-    expect(page).toContain("HomeDashboard");
-    expect(page).toContain("HemFirstPaint");
+  it("paints Hem client-first so the shell is not blocked on the snapshot", () => {
+    expect(page).toContain("HemRouteClient");
+    expect(page).not.toContain("Suspense");
+    expect(page).not.toContain("IdagBody");
     expect(page).not.toContain("readLastHomeCookie");
     expect(page).not.toContain("route-islands");
     expect(page).not.toContain("HomeViewLoading");
+    expect(hemClient).toContain("HemFirstPaint");
+    expect(hemClient).toContain("HomeDashboard");
+    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("lastHomeSnapshot");
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("HemFirstPaint");
     expect(loading).not.toContain("HomeViewLoading");
@@ -21,6 +33,9 @@ describe("/idag first paint", () => {
   it("does not block Hem money on accounts or Kom igång", () => {
     expect(page).not.toContain("loadGettingStartedView");
     expect(page).not.toContain("loadAccountsSnapshot");
-    expect(page).toContain("loadHomeSnapshot");
+    expect(hemClient).not.toContain("loadGettingStartedView");
+    expect(hemClient).not.toContain("loadAccountsSnapshot");
+    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(homeSnapshot).toContain("loadHomeSnapshot");
   });
 });
