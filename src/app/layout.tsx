@@ -26,12 +26,25 @@ export const metadata: Metadata = {
   title: "NUMA",
   description: "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
   applicationName: "NUMA",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     // Translucent so cream canvas + --numa-safe-top cover the notch in
     // Safari and home-screen PWA the same way (opaque "default" double-pads).
     statusBarStyle: "black-translucent",
     title: "NUMA",
+  },
+  openGraph: {
+    title: "NUMA",
+    description: "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "NUMA" }],
   },
   formatDetection: {
     telephone: false,

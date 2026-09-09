@@ -49,7 +49,16 @@ export function AuthExperience() {
 
       <div className="auth-frame">
         <div className="auth-hero">
-          <p className="auth-mark">NUMA</p>
+          <p className="auth-mark">
+            <img
+              className="auth-mark-owl"
+              src="/icons/mark.png"
+              alt=""
+              width={40}
+              height={40}
+            />
+            NUMA
+          </p>
           <p className="auth-welcome-line">Vad du kan använda idag.</p>
         </div>
 

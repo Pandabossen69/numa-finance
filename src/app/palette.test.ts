@@ -209,7 +209,8 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-day-stage");
     expect(css).toContain("var(--numa-accent-glow)");
     expect(css).toContain("var(--numa-sun)");
-    expect(css).toContain(".auth-mark::after");
+    expect(css).toContain(".auth-mark-owl");
+    expect(css).not.toContain(".auth-mark::after");
   });
 
   it("keeps cards round and cream so numbers sit on a clear sheet", () => {
