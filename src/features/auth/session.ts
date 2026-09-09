@@ -6,7 +6,10 @@ import {
   getVerifiedServerUser,
   type VerifiedIdentity,
 } from "@/lib/supabase/verified-identity";
-import { authorizeAdminCreateUser } from "@/features/admin/create-user";
+import {
+  ADMIN_NOT_FOUND_SV,
+  authorizeAdminCreateUser,
+} from "@/features/admin/create-user";
 
 export const getSessionUser = getAuthUser;
 
@@ -27,8 +30,11 @@ export async function requireVerifiedAdminForMutation(): Promise<
   { ok: true; identity: VerifiedIdentity } | { ok: false; error: string }
 > {
   const identity = await getVerifiedServerUser();
-  const allowed = authorizeAdminCreateUser(identity?.email);
-  if (!identity || !allowed.ok) {
+  if (!identity) {
+    return { ok: false, error: ADMIN_NOT_FOUND_SV };
+  }
+  const allowed = authorizeAdminCreateUser(identity.email);
+  if (!allowed.ok) {
     return allowed;
   }
   return { ok: true, identity };
