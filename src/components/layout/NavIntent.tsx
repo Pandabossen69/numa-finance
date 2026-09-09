@@ -6,8 +6,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
-  useTransition,
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
@@ -17,20 +17,14 @@ import { isSpaTabHref, spaTabKey } from "@/lib/nav/spa-tabs";
 type Pending = { href: string; fromPath: string };
 
 type NavIntentValue = {
-  /** Visible path — SPA override wins over Next pathname. */
   pathname: string;
   routerPathname: string;
   highlightPath: string;
   pending: Pending | null;
-  /** Survives URL match until dest children arrive (RSC path only). */
   intent: Pending | null;
   spaActive: boolean;
   markIntent: (href: string) => void;
   clearIntent: () => void;
-  /**
-   * Instant primary-tab switch: pushState + keep-alive, no App Router RSC.
-   * Returns true when the tap was handled as SPA.
-   */
   navigateSpaTab: (href: string) => boolean;
 };
 
@@ -40,34 +34,61 @@ function pathOnly(href: string): string {
   return (href.split("?")[0] ?? href).split("#")[0] ?? href;
 }
 
+/** Flip keep-alive panels in the DOM before React reconciles — same tick as the tap. */
+function paintSpaPanelsNow(dest: string) {
+  if (typeof document === "undefined") return;
+  const destKey = spaTabKey(dest);
+  if (!destKey) return;
+  const panels = document.querySelectorAll<HTMLElement>("[data-numa-spa-tab]");
+  for (const el of panels) {
+    const tab = el.getAttribute("data-numa-spa-tab");
+    const on = tab != null && spaTabKey(tab) === destKey;
+    el.toggleAttribute("hidden", !on);
+    if (on) el.removeAttribute("inert");
+    else el.setAttribute("inert", "");
+    el.setAttribute("data-numa-spa-visible", on ? "1" : "0");
+  }
+  const links = document.querySelectorAll<HTMLElement>(
+    "nav.numa-bottom-nav a[href], aside a[href]",
+  );
+  for (const link of links) {
+    const href = link.getAttribute("href");
+    if (!href || !isSpaTabHref(href)) continue;
+    const on = spaTabKey(href) === destKey;
+    if (on) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+    link.classList.toggle("is-active", on);
+  }
+}
+
 export function NavIntentProvider({ children }: { children: ReactNode }) {
   const routerPathname = usePathname() ?? "/idag";
   const [spaPath, setSpaPath] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [intent, setIntent] = useState<Pending | null>(null);
-  const [, startTransition] = useTransition();
+  const spaOwnedRef = useRef(false);
 
   const pathname = spaPath ?? routerPathname;
 
   useEffect(() => {
-    if (!spaPath) return;
+    if (!spaOwnedRef.current) return;
     if (spaTabKey(routerPathname) == null) {
-      setSpaPath(null);
-      return;
-    }
-    if (spaTabKey(routerPathname) === spaTabKey(spaPath)) {
+      spaOwnedRef.current = false;
       setSpaPath(null);
     }
-  }, [routerPathname, spaPath]);
+  }, [routerPathname]);
 
   useEffect(() => {
     const onPop = () => {
-      const next = window.location.pathname;
+      const next = pathOnly(window.location.pathname);
       if (spaTabKey(next)) {
-        setSpaPath(pathOnly(next));
+        spaOwnedRef.current = true;
+        paintSpaPanelsNow(next);
+        setSpaPath(next);
         setPending(null);
         setIntent(null);
       } else {
+        spaOwnedRef.current = false;
         setSpaPath(null);
       }
     };
@@ -104,28 +125,33 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     (href: string) => {
       if (!isSpaTabHref(href)) return false;
       const dest = pathOnly(href);
-      const from = pathname;
-      if (spaTabKey(dest) === spaTabKey(from) && pathOnly(from) === dest) {
+      const destKey = spaTabKey(dest);
+      if (!destKey) return false;
+
+      // Prefer live DOM as source of truth — React state can lag behind
+      // pointerdown paints during rapid taps.
+      const painted = document.querySelector(
+        `[data-numa-spa-tab="${destKey}"][data-numa-spa-visible="1"]`,
+      );
+      if (painted && pathOnly(pathname) === dest) {
         setPending(null);
         setIntent(null);
         return true;
       }
-      markIntent(dest);
+
+      spaOwnedRef.current = true;
+      paintSpaPanelsNow(dest);
       setSpaPath(dest);
-      startTransition(() => {
-        try {
-          window.history.pushState({ numaSpa: true, href: dest }, "", dest);
-        } catch {
-          // pushState can fail in odd webviews — SPA paint still applies.
-        }
-      });
-      queueMicrotask(() => {
-        setPending(null);
-        setIntent(null);
-      });
+      setPending(null);
+      setIntent(null);
+      try {
+        window.history.pushState({ numaSpa: true, href: dest }, "", dest);
+      } catch {
+        // ignore
+      }
       return true;
     },
-    [markIntent, pathname],
+    [pathname],
   );
 
   const value = useMemo(

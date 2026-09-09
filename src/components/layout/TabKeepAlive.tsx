@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { AnalysRouteClient } from "@/components/analys/AnalysRouteClient";
 import { HemRouteClient } from "@/components/home/HemRouteClient";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -31,7 +31,11 @@ export function TabKeepAlive({ children }: { children: ReactNode }) {
       next.add(active);
       return next;
     });
-    // Reset window scroll when switching SPA tabs (panels stay mounted).
+  }, [active]);
+
+  // Scroll reset in layout effect so it does not delay the panel paint.
+  useLayoutEffect(() => {
+    if (!active) return;
     window.scrollTo(0, 0);
   }, [active]);
 

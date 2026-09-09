@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
+import { isSpaTabHref } from "@/lib/nav/spa-tabs";
 
 export function BottomNav() {
   const { highlightPath, markIntent, pending, navigateSpaTab } = useNavIntent();
@@ -17,7 +18,7 @@ export function BottomNav() {
   }
 
   function onIntent(href: string) {
-    // SPA keep-alive paints this tick — do not pile RSC prefetches on rapid taps.
+    // SPA keep-alive: paint dest in this pointerdown turn.
     if (navigateSpaTab(href)) return;
     prefetch(href);
     markIntent(href);
@@ -27,10 +28,13 @@ export function BottomNav() {
     href: string,
     event: React.MouseEvent<HTMLAnchorElement>,
   ) {
-    if (navigateSpaTab(href)) {
+    // pointerdown already switched; only block the browser/Next navigation.
+    if (isSpaTabHref(href)) {
       event.preventDefault();
       event.stopPropagation();
+      return;
     }
+    markIntent(href);
   }
 
   return (
@@ -106,13 +110,12 @@ function NavItem({
   onIntent: () => void;
   onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
+  // Plain <a> — Next <Link> soft-nav races SPA keep-alive and can no-op
+  // when returning to the cold-load tab (router pathname never moved).
   return (
-    <Link
+    <a
       href={href}
-      prefetch={false}
       onPointerDown={onIntent}
-      onMouseEnter={onIntent}
-      onFocus={onIntent}
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       aria-busy={pending || undefined}
@@ -130,7 +133,7 @@ function NavItem({
       >
         {label}
       </span>
-    </Link>
+    </a>
   );
 }
 

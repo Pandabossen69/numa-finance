@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
+import { isSpaTabHref } from "@/lib/nav/spa-tabs";
 
 export function SideNav({ displayName }: { displayName: React.ReactNode }) {
   const { highlightPath, markIntent, pending, navigateSpaTab } = useNavIntent();
@@ -19,10 +20,12 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
     href: string,
     event: React.MouseEvent<HTMLAnchorElement>,
   ) {
-    if (navigateSpaTab(href)) {
+    if (isSpaTabHref(href)) {
       event.preventDefault();
       event.stopPropagation();
+      return;
     }
+    markIntent(href);
   }
 
   return (
@@ -53,17 +56,13 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
           {PRIMARY_NAV.map((item) => {
             const active = isNavActive(highlightPath, item.href);
             return (
-              <Link
+              <a
                 key={item.href}
                 href={item.href}
-                prefetch={false}
                 onPointerDown={() => onIntent(item.href)}
-                onMouseEnter={() => {
-                  if (!navigateSpaTab(item.href)) prefetch(item.href);
-                }}
-                onFocus={() => onIntent(item.href)}
                 onClick={(event) => onTabClick(item.href, event)}
                 aria-busy={Boolean(pending && active) || undefined}
+                aria-current={active ? "page" : undefined}
                 className={`numa-press numa-side-nav-item relative min-h-11 rounded-2xl px-1.5 py-3 ${
                   active
                     ? "is-active text-[var(--numa-ink)]"
@@ -82,7 +81,7 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
                 <span className="mt-0.5 block pl-3 text-xs text-[var(--numa-faint)]">
                   {item.hint}
                 </span>
-              </Link>
+              </a>
             );
           })}
         </nav>
