@@ -60,19 +60,19 @@
   --numa-pill-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
   --numa-toast-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
   --numa-chip-neutral: rgba(226, 239, 240, 0.08);
-  /* Day dial: steel when the day still has money, copper when overspent. */
-  --numa-dial-mint-from: #8fd9e8;
-  --numa-dial-mint-to: #36b49f;
+  /* Day dial: calm smoked core so cream digits stay crisp; steel lives on the arc. */
+  --numa-dial-mint-from: #6fa9bc;
+  --numa-dial-mint-to: #2f9a8a;
   --numa-dial-clay-from: #ffbf7d;
   --numa-dial-clay-to: #d96c3b;
-  --numa-dial-core-from: rgba(255, 252, 244, 0.96);
-  --numa-dial-core-to: rgba(143, 217, 232, 0.5);
-  --numa-dial-core-over-from: rgba(255, 241, 224, 0.94);
-  --numa-dial-core-over-to: rgba(255, 191, 125, 0.56);
-  --numa-dial-track: rgba(142, 197, 216, 0.18);
-  --numa-dial-halo: rgba(94, 205, 224, 0.2);
-  --numa-dial-halo-over: rgba(240, 140, 72, 0.25);
-  --numa-dial-inner-line: rgba(255, 255, 255, 0.74);
+  --numa-dial-core-from: rgba(14, 24, 28, 0.97);
+  --numa-dial-core-to: rgba(38, 62, 72, 0.9);
+  --numa-dial-core-over-from: rgba(26, 18, 12, 0.96);
+  --numa-dial-core-over-to: rgba(86, 48, 26, 0.78);
+  --numa-dial-track: rgba(120, 168, 184, 0.14);
+  --numa-dial-halo: rgba(110, 168, 184, 0.12);
+  --numa-dial-halo-over: rgba(240, 140, 72, 0.2);
+  --numa-dial-inner-line: rgba(255, 255, 255, 0.12);
   --numa-scan-sweep: rgba(93, 207, 225, 0.34);
   --numa-nav: rgba(7, 15, 18, 0.84);
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -526,8 +526,9 @@ body {
   position: relative;
   isolation: isolate;
   cursor: default;
+  /* Quiet card wash — no bright cyan bloom behind the dial. */
   background:
-    radial-gradient(ellipse 92% 60% at 22% 0%, var(--numa-steel-soft), transparent 64%),
+    radial-gradient(ellipse 92% 60% at 22% 0%, rgba(58, 96, 110, 0.14), transparent 64%),
     radial-gradient(ellipse 86% 56% at 80% 18%, var(--numa-accent-glow), transparent 72%),
     var(--numa-card);
   box-shadow:
@@ -586,21 +587,23 @@ body {
   z-index: -1;
   border-radius: inherit;
   background:
-    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.82), transparent 30%),
-    radial-gradient(circle at 50% 62%, var(--numa-steel-soft), transparent 68%);
+    radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.12), transparent 34%),
+    radial-gradient(circle at 50% 62%, rgba(58, 96, 110, 0.28), transparent 70%);
   box-shadow:
-    0 18px 44px var(--numa-steel-glow),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.58);
+    0 16px 36px rgba(0, 0, 0, 0.42),
+    0 0 28px rgba(90, 145, 160, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   content: "";
 }
 
 .numa-day-dial.is-over::before {
   background:
-    radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.76), transparent 30%),
-    radial-gradient(circle at 50% 62%, rgba(168, 107, 58, 0.1), transparent 68%);
+    radial-gradient(circle at 34% 22%, rgba(255, 236, 214, 0.1), transparent 34%),
+    radial-gradient(circle at 50% 62%, rgba(140, 78, 40, 0.22), transparent 70%);
   box-shadow:
-    0 18px 42px rgba(124, 77, 42, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+    0 16px 34px rgba(0, 0, 0, 0.4),
+    0 0 24px rgba(180, 100, 50, 0.1),
+    inset 0 0 0 1px rgba(255, 220, 180, 0.1);
 }
 
 .numa-day-dial svg {
@@ -731,7 +734,7 @@ body {
 
 .numa-day-dial-arc {
   animation: none;
-  filter: drop-shadow(0 2px 3px var(--numa-steel-glow));
+  filter: drop-shadow(0 1px 2px rgba(90, 145, 160, 0.28));
   transition: stroke-dasharray 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -757,12 +760,15 @@ body {
   letter-spacing: -0.045em;
 }
 
-.money-hero .numa-money-unit {
+.money-hero .numa-money-unit,
+.money-hero .money-currency {
   align-self: flex-end;
   padding-bottom: 0.25rem;
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.06em;
+  /* Soft steel-ink, not neon cyan competing with the amount. */
+  color: color-mix(in srgb, var(--numa-muted) 72%, var(--numa-steel) 28%);
 }
 
 @keyframes numa-scan {
@@ -1589,12 +1595,7 @@ button.numa-chip:disabled {
 }
 
 .numa-fab {
-  background: linear-gradient(
-    155deg,
-    #ffd0a0 0%,
-    var(--numa-accent) 44%,
-    #d96c3b 100%
-  );
+  background: linear-gradient(155deg, #ffd0a0 0%, var(--numa-accent) 44%, #d96c3b 100%);
   box-shadow:
     0 12px 28px rgba(240, 140, 72, 0.26),
     0 2px 6px rgba(0, 0, 0, 0.28),
@@ -1917,8 +1918,7 @@ button.numa-chip:disabled {
   width: 100%;
   max-width: 26.5rem;
   margin: 0 auto;
-  padding: max(1.5rem, var(--numa-safe-top)) 1.15rem
-    max(1.5rem, var(--numa-safe-bottom));
+  padding: max(1.5rem, var(--numa-safe-top)) 1.15rem max(1.5rem, var(--numa-safe-bottom));
 }
 
 .auth-hero {
@@ -2219,7 +2219,8 @@ button.numa-chip:disabled {
 .auth-field:-webkit-autofill:hover,
 .auth-field:-webkit-autofill:focus {
   border-color: color-mix(in srgb, var(--numa-steel) 44%, var(--numa-border-strong));
-  box-shadow: 0 0 0 1000px color-mix(in srgb, var(--numa-steel-soft) 46%, var(--numa-field)) inset;
+  box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--numa-steel-soft) 46%, var(--numa-field)) inset;
   -webkit-text-fill-color: var(--numa-ink);
 }
 
@@ -2286,12 +2287,7 @@ button.numa-chip:disabled {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: linear-gradient(
-    155deg,
-    #ffd0a0 0%,
-    var(--numa-accent) 48%,
-    #d96c3b 100%
-  );
+  background: linear-gradient(155deg, #ffd0a0 0%, var(--numa-accent) 48%, #d96c3b 100%);
   box-shadow:
     0 1px 0 var(--numa-button-highlight) inset,
     var(--numa-shadow-ink);
@@ -2340,6 +2336,42 @@ button.numa-chip:disabled {
   letter-spacing: 0.01em;
   line-height: 1.55;
   text-align: center;
+}
+
+/* Login boot — branded hold after a successful sign-in, before Hem paints. */
+.auth-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-boot-frame {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.auth-boot-title {
+  margin: 0;
+  font-size: 1.32rem;
+  font-weight: 680;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+}
+
+.auth-boot-sub {
+  margin: 0;
+  max-width: 22ch;
+  color: var(--numa-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
 }
 
 @media (min-width: 768px) {

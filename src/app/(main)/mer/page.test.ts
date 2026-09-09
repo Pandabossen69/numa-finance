@@ -2,6 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const merPage = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+const merClient = readFileSync(
+  new URL("../../../components/mer/MerRouteClient.tsx", import.meta.url),
+  "utf8",
+);
+const merSnapshot = readFileSync(
+  new URL("../../../features/finance/mer-snapshot.ts", import.meta.url),
+  "utf8",
+);
 const mer = readFileSync(
   new URL("../../../components/mer/MerScreen.tsx", import.meta.url),
   "utf8",
@@ -51,8 +59,11 @@ describe("Mer HIGH regress", () => {
   });
 
   it("gates Ny användare on the admin email check", () => {
-    expect(merPage).toContain("currentUserIsNumaAdmin");
+    expect(merPage).toContain("MerRouteClient");
+    expect(merClient).toContain("getMerSnapshotAction");
+    expect(merSnapshot).toContain("currentUserIsNumaAdmin");
     expect(mer).toContain("Ny användare");
+    expect(mer).toContain("view.isAdmin");
     expect(settingsPage).toContain("currentUserIsNumaAdmin");
     expect(settings).toContain("/installningar/ny-anvandare");
   });
@@ -62,16 +73,19 @@ describe("Mer HIGH regress", () => {
     expect(mer).toContain("DestinationWarmup");
     expect(mer).toContain("/transaktioner");
     expect(mer).toContain("/konton");
-    expect(merPage).toContain("Suspense");
-    expect(merPage).toContain("MER_TIMEOUT_MS");
-    expect(merPage).toContain("withTimeout");
-    expect(merPage).toContain("<Suspense fallback={<MerViewLoading />}>");
+    expect(merPage).toContain("MerRouteClient");
+    expect(merPage).not.toContain("<Suspense fallback={<MerViewLoading />}>");
     expect(merPage).not.toContain("<Suspense fallback={<MerScreen data={null} />}>");
+    expect(merClient).toContain("lastMerSnapshot");
+    expect(merClient).toContain("if (lastMerSnapshot()) return;");
+    expect(merClient).toContain("getMerSnapshotAction");
+    expect(merSnapshot).toContain("MER_TIMEOUT_MS");
+    expect(merSnapshot).toContain("withTimeout");
   });
 
   it("never paints Användare as a Mer fallback", () => {
-    expect(merPage).toContain("chromeDisplayName");
-    expect(merPage).not.toContain('?? "Användare"');
+    expect(merSnapshot).toContain("chromeDisplayName");
+    expect(merSnapshot).not.toContain('?? "Användare"');
     expect(mer).toContain("Inloggad som");
     expect(mer).toContain('?? "Inloggad"');
     expect(mer).toContain('(view.displayName ?? "·").charAt(0)');

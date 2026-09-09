@@ -12,6 +12,7 @@ import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
+import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 import { formatDaysUntilSv } from "@/domain/finance";
 import {
   formatMoney,
@@ -97,8 +98,9 @@ export function HomeDashboard({
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);
     }
-    // Do not warmup Plan here. That server action is another full
-    // getTodaySnapshot and raced the Hem RSC on every tab paint.
+    // Quiet NextStep-style warm: fill Plan/Analys/Rörelser last-known after
+    // Hem paints. Idle + never clears on failure — not the old racing warmup.
+    if (snap) scheduleQuietMenuWarm();
   }, [snap, accounts, gettingStarted]);
 
   if (!view) {

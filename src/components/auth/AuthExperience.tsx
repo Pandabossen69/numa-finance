@@ -1,11 +1,30 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
+import {
+  LOGIN_BOOT_TIMEOUT_MS,
+  LoginBoot,
+  clearLoginBoot,
+  paintLoginBoot,
+} from "@/components/auth/LoginBoot";
 import { signInAction } from "@/features/auth/actions";
+import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
-import { clearClientSessionCaches } from "@/features/home/last-snapshot";
+import {
+  bindSessionOwner,
+  rememberHomeSnapshot,
+} from "@/features/home/last-snapshot";
+import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
+
+function kickPostLoginWarm() {
+  scheduleQuietMenuWarm({ restart: true });
+  void getHomeSnapshotAction().then((result) => {
+    if (result.ok) rememberHomeSnapshot(result.data);
+  });
+}
 
 export function AuthExperience() {
   const router = useRouter();
@@ -13,6 +32,7 @@ export function AuthExperience() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [booting, setBooting] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -20,31 +40,49 @@ export function AuthExperience() {
     router.prefetch("/idag");
   }, [router]);
 
+  useEffect(() => {
+    if (!booting) return;
+    const id = window.setTimeout(() => {
+      setBooting(false);
+      clearLoginBoot();
+    }, LOGIN_BOOT_TIMEOUT_MS);
+    return () => window.clearTimeout(id);
+  }, [booting]);
+
   function submitLogin(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    clearLoginBoot();
     startTransition(async () => {
       const result = await signInAction({ email, password });
       if (!result.ok) {
+        clearLoginBoot();
+        setBooting(false);
         setError(result.error);
         return;
       }
-      // Identity just changed. Drop any in-memory snapshot from the previous
-      // session so this account can never paint with someone else's numbers.
-      clearClientSessionCaches();
+      // Paint the branded boot screen in this turn — before navigation
+      // so /idag (Hem) is not a blank white wait.
+      flushSync(() => {
+        setBooting(true);
+      });
+      paintLoginBoot();
+      // Wipe last-known only when the account actually changed — same-user
+      // re-login must keep Plan/Analys/Hem caches so menus stay ~0ms (NextStep).
+      bindSessionOwner(result.userId);
+      kickPostLoginWarm();
       const preview =
         typeof document !== "undefined" &&
-        hasPreviewEscape(
-          new URLSearchParams(window.location.search),
-          document.cookie,
-        );
+        hasPreviewEscape(new URLSearchParams(window.location.search), document.cookie);
+      // Soft replace without refresh — avoid a force-dynamic RSC round-trip
+      // while the branded boot overlay is up.
       router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath);
-      router.refresh();
     });
   }
 
   return (
-    <div className="auth-stage">
+    <div className="auth-stage" aria-busy={booting || pending || undefined}>
+      {booting ? <LoginBoot announced={false} /> : null}
       <div className="auth-glow" aria-hidden />
 
       <div className="auth-frame">

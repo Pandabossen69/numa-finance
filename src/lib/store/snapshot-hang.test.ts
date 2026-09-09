@@ -6,8 +6,16 @@ const idag = readFileSync(
   new URL("../../app/(main)/idag/page.tsx", import.meta.url),
   "utf8",
 );
+const hemClient = readFileSync(
+  new URL("../../components/home/HemRouteClient.tsx", import.meta.url),
+  "utf8",
+);
 const analys = readFileSync(
   new URL("../../app/(main)/analys/page.tsx", import.meta.url),
+  "utf8",
+);
+const analysClient = readFileSync(
+  new URL("../../components/analys/AnalysRouteClient.tsx", import.meta.url),
   "utf8",
 );
 const dest = readFileSync(
@@ -37,18 +45,24 @@ describe("cold Hem/Analys hang contract", () => {
   });
 
   it("does not keep Hem Suspense open on accounts or Kom igång", () => {
-    expect(idag).toContain("loadHomeSnapshot");
+    expect(idag).toContain("HemRouteClient");
     expect(idag).not.toContain("loadAccountsSnapshot");
     expect(idag).not.toContain("loadGettingStartedView");
     expect(idag).not.toContain("Promise.all");
+    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).not.toContain("loadAccountsSnapshot");
+    expect(hemClient).not.toContain("loadGettingStartedView");
   });
 
   it("paints last-known money or a short pending, never empty mint cards", () => {
-    expect(idag).toContain("HemFirstPaint");
+    expect(idag).toContain("HemRouteClient");
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
-    expect(analys).toContain("AnalysFirstPaint");
+    expect(hemClient).toContain("HemFirstPaint");
+    expect(hemClient).toContain("lastHomeSnapshot");
+    expect(analys).toContain("AnalysRouteClient");
     expect(analys).not.toContain("AnalysViewLoading");
+    expect(analysClient).toContain("lastAnalysSnapshot");
     expect(dest).toContain("HemFirstPaint");
     expect(dest).toContain("AnalysFirstPaint");
     expect(viewLoading).toContain("Hämtar läget…");

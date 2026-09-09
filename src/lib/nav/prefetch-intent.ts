@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { isSpaTabHref } from "@/lib/nav/spa-tabs";
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 /** In-app paths only — skip https:// production links from Mer. */
@@ -18,6 +19,8 @@ export function canPrefetchHref(href: string): boolean {
  */
 export function prefetchHref(router: AppRouterInstance, href: string) {
   if (!canPrefetchHref(href)) return;
+  // SPA keep-alive owns these — RSC prefetch races and can stall taps 3–10s.
+  if (isSpaTabHref(href)) return;
   try {
     router.prefetch(href);
   } catch {

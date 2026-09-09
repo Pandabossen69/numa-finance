@@ -25,12 +25,49 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toContain("Tillbaka");
     expect(src).not.toMatch(/välkommen/i);
     expect(src).toContain("result.nextPath");
-    expect(src).toContain("router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath)");
+    expect(src).toContain(
+      "router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath)",
+    );
     expect(src).not.toContain("PRODUCTION_ORIGIN");
     expect(src).not.toContain("numa-finance.vercel.app");
     expect(src).not.toContain('router.replace("/idag")');
     expect(src).toContain('router.prefetch("/kom-igang")');
     expect(src).toContain('router.prefetch("/idag")');
+  });
+});
+
+describe("AuthExperience — login boot", () => {
+  it("paints a branded NUMA boot overlay in the success turn before replace", () => {
+    expect(src).toContain("LoginBoot");
+    expect(src).toContain("paintLoginBoot");
+    expect(src).toContain("flushSync");
+    expect(src).toContain("kickPostLoginWarm");
+    expect(src).toContain("scheduleQuietMenuWarm");
+    expect(src).toContain("getHomeSnapshotAction");
+    expect(src).toContain("rememberHomeSnapshot");
+    expect(src).toContain("LOGIN_BOOT_TIMEOUT_MS");
+    expect(src).toContain("aria-busy={booting || pending || undefined}");
+
+    const success = src.slice(
+      src.indexOf("if (!result.ok)"),
+      src.indexOf("router.replace(preview"),
+    );
+    expect(success).toContain("flushSync");
+    expect(success).toContain("setBooting(true)");
+    expect(success).toContain("paintLoginBoot");
+    expect(success).toContain("kickPostLoginWarm");
+    expect(success.indexOf("paintLoginBoot")).toBeLessThan(
+      success.indexOf("kickPostLoginWarm"),
+    );
+    expect(success).toContain("bindSessionOwner(result.userId)");
+    expect(success).not.toContain("clearClientSessionCaches");
+    expect(success).not.toContain("router.refresh()");
+
+    const failStart = src.indexOf("if (!result.ok)");
+    const fail = src.slice(failStart, src.indexOf("return;", failStart));
+    expect(fail).toContain("clearLoginBoot");
+    expect(fail).toContain("setBooting(false)");
+    expect(fail).toContain("setError(result.error)");
   });
 });
 

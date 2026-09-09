@@ -58,13 +58,22 @@ describe("smooth nav and saves", () => {
     const plan = read("../../app/(main)/plan/page.tsx");
     const analys = read("../../app/(main)/analys/page.tsx");
     const mer = read("../../app/(main)/mer/page.tsx");
-    expect(idag).toContain("HemFirstPaint");
+    const hemClient = read("../../components/home/HemRouteClient.tsx");
+    const merClient = read("../../components/mer/MerRouteClient.tsx");
+    expect(idag).toContain("HemRouteClient");
     expect(idag).not.toContain("readLastHomeCookie");
-    expect(plan).toContain("<Suspense fallback={<ViewLoading />}>");
-    expect(analys).toContain("AnalysFirstPaint");
+    expect(idag).not.toContain("<Suspense");
+    expect(hemClient).toContain("HemFirstPaint");
+    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(plan).toContain("PlanRouteClient");
+    expect(plan).not.toContain("<Suspense fallback={<ViewLoading />}>");
+    expect(analys).toContain("AnalysRouteClient");
     expect(analys).not.toContain("readLastHomeCookie");
     expect(analys).not.toContain("AnalysViewLoading");
-    expect(mer).toContain("<Suspense fallback={<MerViewLoading />}>");
+    expect(mer).toContain("MerRouteClient");
+    expect(mer).not.toContain("<Suspense fallback={<MerViewLoading />}>");
+    expect(merClient).toContain("getMerSnapshotAction");
+    expect(merClient).toContain("lastMerSnapshot");
   });
 
   it("marks every authenticated money page force-dynamic so CI build cannot prerender the store", () => {

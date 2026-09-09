@@ -3,22 +3,26 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PRIMARY_NAV } from "@/components/layout/nav";
+import { isSpaTabHref } from "@/lib/nav/spa-tabs";
 import { scheduleIdleWarm, warmHrefs } from "@/lib/nav/prefetch-intent";
+import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
+/** Non-SPA destinations only — primary tabs are keep-alive panels. */
 const WARM_HREFS = [
-  ...PRIMARY_NAV.map((item) => item.href),
   "/fota",
-  "/transaktioner",
   "/lagg-till",
 ] as const;
 
 /**
- * Prefetch primary destinations on idle so the first tap is not competing
- * with seven route prefetches. Pointerdown still warms the dest immediately.
- * Dest cache in LastViewOutlet covers revisits.
+ * Warm non-SPA routes on idle. Primary tabs use SPA keep-alive + quiet
+ * menu bundle — RSC prefetch of /plan|/analys was racing taps (3–10s).
  */
 export function NavWarmup() {
   const router = useRouter();
+
+  useEffect(() => {
+    scheduleQuietMenuWarm();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +30,11 @@ export function NavWarmup() {
 
     const warm = () => {
       if (cancelled) return;
-      warmHrefs(router, WARM_HREFS);
+      const hrefs = [
+        ...PRIMARY_NAV.map((item) => item.href).filter((href) => !isSpaTabHref(href)),
+        ...WARM_HREFS,
+      ];
+      warmHrefs(router, hrefs);
     };
 
     cancelIdle = scheduleIdleWarm(warm);

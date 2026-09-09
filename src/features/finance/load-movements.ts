@@ -1,6 +1,7 @@
 import { unstable_rethrow } from "next/navigation";
 import { cache } from "react";
 import {
+  APP_PLAN_START_MONTH,
   CANONICAL_CURRENCY,
   spendingCategoriesByMonthKey,
   appliesToIncome,
@@ -27,6 +28,12 @@ import {
   listAccounts,
   listTransactions,
 } from "@/lib/store/repository";
+
+/** Same history window as Hem/Plan/Analys — never pull the entire ledger. */
+export const MOVEMENTS_LEDGER_SINCE_ISO = `${APP_PLAN_START_MONTH}-01T00:00:00.000Z`;
+
+/** Hard cap so Analys → Transaktioner cannot sit on an unbounded PostgREST read. */
+export const MOVEMENTS_LEDGER_LIMIT = 2_500;
 
 export type MovementRow = {
   id: string;
@@ -203,7 +210,7 @@ export function buildMovementsSnapshot(input: {
 }
 
 /**
- * Rörelser: profile + full ledger for the list, Σ THB saldo like Hem/Konton.
+ * Rörelser: profile + bounded ledger (plan history window), Σ THB saldo like Hem/Konton.
  */
 export const loadMovementsSnapshot = cache(
   async (): Promise<MovementsSnapshotResult> => {
@@ -213,7 +220,10 @@ export const loadMovementsSnapshot = cache(
         listAccounts(),
       ]);
       const [transactions, checkpoints] = await Promise.all([
-        listTransactions(),
+        listTransactions(undefined, {
+          sinceIso: MOVEMENTS_LEDGER_SINCE_ISO,
+          limit: MOVEMENTS_LEDGER_LIMIT,
+        }),
         Promise.all(accounts.map((account) => getLatestCheckpoint(account.id))),
       ]);
 

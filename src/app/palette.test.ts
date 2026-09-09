@@ -77,6 +77,19 @@ describe("NUMA vision palette", () => {
     }
   });
 
+  it("keeps the day dial core smoked dark so cream digits stay readable", () => {
+    // Bright cyan wash made the hero amount melt into the circle.
+    expect(token("--numa-dial-core-from")).toBe("rgba(14, 24, 28, 0.97)");
+    expect(token("--numa-dial-core-to")).toBe("rgba(38, 62, 72, 0.9)");
+    expect(token("--numa-dial-core-to")).not.toContain("143, 217, 232");
+    expect(token("--numa-dial-mint-from")).toBe("#6fa9bc");
+    expect(token("--numa-dial-halo")).toBe("rgba(110, 168, 184, 0.12)");
+    expect(css).toContain("Quiet card wash — no bright cyan bloom behind the dial.");
+    expect(css).toContain(
+      "Soft steel-ink, not neon cyan competing with the amount.",
+    );
+  });
+
   it("fades the Plan month strip only on overflowing edges", () => {
     expect(css).toContain(".numa-month-strip");
     expect(css).toContain(".numa-month-strip.is-overflow-start.is-overflow-end");

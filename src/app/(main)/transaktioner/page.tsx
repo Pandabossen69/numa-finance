@@ -1,23 +1,12 @@
-import { Suspense } from "react";
-import { MovementsScreen } from "@/components/movements/MovementsScreen";
-import { loadMovementsSnapshot } from "@/features/finance/load-movements";
+import { MovementsRouteClient } from "@/components/movements/MovementsRouteClient";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Client-first Rörelser. The old RSC body awaited an unbounded ledger read
+ * (Analys → Transaktioner sat ~10s on loading.tsx). Last-known paints now;
+ * the bounded fetch catches up quietly.
+ */
 export default function TransaktionerPage() {
-  return (
-    <Suspense fallback={<MovementsScreen data={null} />}>
-      <TransaktionerBody />
-    </Suspense>
-  );
-}
-
-async function TransaktionerBody() {
-  const result = await loadMovementsSnapshot();
-  return (
-    <MovementsScreen
-      data={result.ok ? result.data : null}
-      error={result.ok ? null : result.error}
-    />
-  );
+  return <MovementsRouteClient />;
 }

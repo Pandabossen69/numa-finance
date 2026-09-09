@@ -845,7 +845,7 @@ function ModePicker({
 
       {onboarding ? null : (
       <p className="text-center text-xs text-[var(--numa-faint)]">
-        <Link href="/transaktioner" className="numa-tap font-semibold text-[var(--numa-accent)]">
+        <Link href="/transaktioner" prefetch={false} className="numa-tap font-semibold text-[var(--numa-accent)]">
           Se rörelser
         </Link>
       </p>
