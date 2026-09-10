@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { clearNumaRuntimeCache, nextLagaPhase, type LagaPhase } from "@/lib/pwa/repair";
+import {
+  clearNumaRuntimeCache,
+  nextLagaPhase,
+  type LagaPhase,
+} from "@/lib/pwa/repair";
 
 export function RepairAppButton() {
   const [pending, startTransition] = useTransition();
   const [phase, setPhase] = useState<LagaPhase>("idle");
 
-  function runRepair() {
+  function runUpdate() {
     setPhase("running");
     startTransition(async () => {
       try {
@@ -25,10 +29,10 @@ export function RepairAppButton() {
       {phase === "idle" || phase === "error" ? (
         <button
           type="button"
-          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)] transition hover:bg-[var(--numa-accent-ink)]"
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[#1a120c] transition hover:brightness-105"
           onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
         >
-          Laga appen nu
+          Uppdatera appen
         </button>
       ) : null}
       {phase === "confirm" ? (
@@ -36,10 +40,10 @@ export function RepairAppButton() {
           <button
             type="button"
             disabled={pending}
-            onClick={runRepair}
-            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)] transition hover:bg-[var(--numa-accent-ink)] disabled:opacity-60"
+            onClick={runUpdate}
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[#1a120c] transition hover:brightness-105 disabled:opacity-60"
           >
-            Ja, rensa cache
+            Uppdatera nu
           </button>
           <button
             type="button"
@@ -51,15 +55,15 @@ export function RepairAppButton() {
         </div>
       ) : null}
       {phase === "running" || pending ? (
-        <p className="text-[12px] text-[var(--numa-muted)]">Rensar cache…</p>
+        <p className="text-[12px] text-[var(--numa-muted)]">Uppdaterar…</p>
       ) : phase === "error" ? (
         <p className="text-[12px] text-[var(--numa-muted)]">
-          Kunde inte rensa. Prova igen.
+          Kunde inte uppdatera. Prova igen.
         </p>
       ) : (
         <p className="text-[12px] leading-relaxed text-[var(--numa-faint)]">
-          Rensar gammal cache som kan göra Hem tom. Tar en sekund — bara när du
-          själv trycker.
+          Hämtar senaste versionen och rensar gammal cache. Dina konton påverkas
+          inte.
         </p>
       )}
     </div>

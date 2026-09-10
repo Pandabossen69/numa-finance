@@ -13,7 +13,7 @@ export default function MainError({
       <h1 className="text-xl font-semibold tracking-tight">Något gick fel</h1>
       <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
         Skärmen kunde inte laddas. Det är oftast en tillfällig störning — prova
-        igen, eller laga appen om det upprepas.
+        igen, eller uppdatera appen om det upprepas.
       </p>
       {error?.digest ? (
         <p className="text-xs text-[var(--numa-faint)]">Kod: {error.digest}</p>
@@ -33,10 +33,10 @@ export default function MainError({
           Till Hem
         </a>
         <a
-          href="/installningar"
+          href="/laga"
           className="text-center text-sm font-medium text-[var(--numa-accent)]"
         >
-          Laga appen →
+          Uppdatera appen →
         </a>
       </div>
     </div>
