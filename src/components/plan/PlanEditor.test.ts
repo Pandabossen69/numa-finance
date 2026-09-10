@@ -271,6 +271,7 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("remainingDueIso(item)");
     expect(rows).toContain("Lägg till mottaget");
     expect(rows).toContain("Markera resten mottagen");
+    expect(rows).toMatch(/status === "partial"[\s\S]*label: doneLabel/);
     expect(rows).toContain("onMarkRemainder");
   });
 

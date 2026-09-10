@@ -80,6 +80,58 @@ describe("atomic in-memory settlement", () => {
     expect(txs.filter((tx) => tx.status === "voided")).toHaveLength(1);
   });
 
+  it("clears Delvis on Ångra even when a smaller bank row is still linked", () => {
+    const item = plan({
+      settledMinor: 5_000_00,
+      remainingDueAt: "2026-08-28T12:00:00.000Z",
+    });
+    const txs: CanonicalTransaction[] = [
+      {
+        id: "bank-part",
+        userId: "u1",
+        accountId: "bank",
+        counterAccountId: null,
+        direction: "debit",
+        transactionType: "expense",
+        amountMinor: 5_000_00,
+        currency: "THB",
+        thbMinor: 5_000_00,
+        occurredAt: "2026-08-26T03:00:00.000Z",
+        description: "KMobil abb",
+        merchant: "KMobil",
+        category: null,
+        source: "sms",
+        status: "confirmed",
+        balanceAfterMinor: null,
+        fingerprint: "fp-kmobil",
+        sourceObservationId: null,
+        transferGroupId: null,
+        planItemId: null,
+        ledgerOrigin: "external",
+        linkedPlanItemId: "rent",
+        syncStatus: "synced",
+        createdAt: "2026-08-26T03:00:00.000Z",
+        updatedAt: "2026-08-26T03:00:00.000Z",
+      },
+    ];
+    const undone = applySettleInMemory({
+      item,
+      transactions: txs,
+      accounts: [account],
+      settled: false,
+      targetSettledMinor: 0,
+      remainingDueAt: null,
+      nowIso: "2026-08-26T07:00:00.000Z",
+      newId: () => "unused",
+      userId: "u1",
+    });
+    expect(undone.item.settledMinor).toBeNull();
+    expect(undone.item.settledAt).toBeNull();
+    expect(undone.item.remainingDueAt).toBeNull();
+    expect(txs.filter((tx) => tx.status === "confirmed")).toHaveLength(1);
+    expect(txs[0]?.linkedPlanItemId).toBe("rent");
+  });
+
   it("does not write a synthetic when an external row is already linked", () => {
     const item = plan();
     const txs: CanonicalTransaction[] = [
