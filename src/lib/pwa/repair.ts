@@ -1,4 +1,8 @@
 export const NUMA_SW_KILL_FLAG = "numa.swKill.v8";
+/** Suppresses PwaRegister's standalone auto-reload during/after repair. */
+export const NUMA_REPAIR_QUIET_FLAG = "numa.repairQuiet.v1";
+/** Long enough for /laga → Hem navigation; not a retry loop. */
+export const REPAIR_QUIET_MS = 20_000;
 
 export type LagaPhase = "idle" | "confirm" | "running" | "done" | "error";
 export type LagaEvent = "ask" | "cancel" | "success" | "fail";
@@ -24,16 +28,73 @@ export function lagaStartsIdle(): boolean {
 }
 
 /**
- * Refresh the installed app shell without tearing down the controller mid-nav.
+ * Primitive snapshot for useSyncExternalStore.
+ * Returning a new object each call caused max-update-depth on /laga.
+ */
+export function readLagaHostSnapshot(
+  hostname: string,
+  frozen: boolean,
+): string | null {
+  return frozen ? hostname : null;
+}
+
+/** Repeated "Uppdatera nu" must not start a second repair. */
+export function shouldAcceptRepairStart(alreadyStarted: boolean): boolean {
+  return !alreadyStarted;
+}
+
+/**
+ * Standalone PWA auto-reload after a new worker takes control.
+ * Must stay false during repair so /laga is not reloaded instead of Hem.
+ */
+export function shouldReloadOnControllerChange(input: {
+  hadController: boolean;
+  standalone: boolean;
+  repairQuiet: boolean;
+}): boolean {
+  return input.hadController && input.standalone && !input.repairQuiet;
+}
+
+export function beginRepairQuietWindow(now = Date.now()): void {
+  try {
+    sessionStorage.setItem(NUMA_REPAIR_QUIET_FLAG, String(now));
+  } catch {
+    // ignore
+  }
+}
+
+/** True while a repair navigation is in flight — PwaRegister must not reload. */
+export function isRepairQuietWindowActive(now = Date.now()): boolean {
+  try {
+    const raw = sessionStorage.getItem(NUMA_REPAIR_QUIET_FLAG);
+    if (!raw) return false;
+    const started = Number(raw);
+    if (!Number.isFinite(started)) {
+      sessionStorage.removeItem(NUMA_REPAIR_QUIET_FLAG);
+      return false;
+    }
+    if (now - started > REPAIR_QUIET_MS) {
+      sessionStorage.removeItem(NUMA_REPAIR_QUIET_FLAG);
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Wipe Cache Storage + local repair flags.
  *
- * Important (iOS home-screen): unregistering the service worker and then
- * immediately calling location.replace("/idag") often surfaces Safari's
- * "This page couldn't load" interstitial in standalone mode. We instead:
- * 1. wipe Cache Storage
- * 2. ask the existing worker to update + skipWaiting
- * 3. let the caller navigate with {@link navigateAfterRepair}
+ * Do NOT call registration.update() or post skip-waiting here. The worker
+ * already skipWaiting()s on install; update() would activate it and fire
+ * PwaRegister's controllerchange → location.reload() while still on /laga.
+ * Cache wipe + a calm navigate to Hem is enough; PwaRegister still picks up
+ * new /sw.js on the next focus/pageshow.
  */
 export async function clearNumaRuntimeCache(): Promise<void> {
+  beginRepairQuietWindow();
+
   try {
     localStorage.removeItem(NUMA_SW_KILL_FLAG);
     sessionStorage.removeItem("numa.blankGuard.v1");
@@ -46,20 +107,6 @@ export async function clearNumaRuntimeCache(): Promise<void> {
     await Promise.all(keys.map((key) => caches.delete(key)));
   }
 
-  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(
-      regs.map(async (reg) => {
-        try {
-          await reg.update();
-        } catch {
-          // ignore network/update failures — cache wipe still helps
-        }
-        reg.waiting?.postMessage({ type: "SKIP_WAITING" });
-      }),
-    );
-  }
-
   try {
     localStorage.setItem(NUMA_SW_KILL_FLAG, "done");
   } catch {
@@ -68,14 +115,15 @@ export async function clearNumaRuntimeCache(): Promise<void> {
 }
 
 /**
- * Same-origin hard navigation that survives iOS standalone after a repair.
- * Uses absolute URL + assign (not replace) after a short settle delay.
+ * Leave /laga for Hem after repair. Quiet window stays active so a late
+ * controllerchange cannot reload back onto Uppdatera appen.
  */
 export function navigateAfterRepair(path = "/idag"): void {
   if (typeof window === "undefined") return;
+  beginRepairQuietWindow();
   const url = new URL(path, window.location.origin);
   url.searchParams.set("r", String(Date.now()));
   window.setTimeout(() => {
     window.location.assign(url.href);
-  }, 250);
+  }, 150);
 }

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
+import {
+  isRepairQuietWindowActive,
+  shouldReloadOnControllerChange,
+} from "@/lib/pwa/repair";
 
 /**
  * NextStep-inspired update loop for daily home-screen users:
@@ -30,6 +34,17 @@ export function PwaRegister() {
 
     function reloadOnce() {
       if (cancelled || reloading) return;
+      // /laga just finished a cache wipe + navigate — reloading here sends the
+      // user back to Uppdatera appen ("samma sida igen") or a blank dead-end.
+      if (
+        !shouldReloadOnControllerChange({
+          hadController: true,
+          standalone: true,
+          repairQuiet: isRepairQuietWindowActive(),
+        })
+      ) {
+        return;
+      }
       reloading = true;
       window.location.reload();
     }
@@ -111,12 +126,18 @@ export function PwaRegister() {
         });
 
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (!hadController) return;
-          if (standalone) {
+          if (
+            shouldReloadOnControllerChange({
+              hadController,
+              standalone,
+              repairQuiet: isRepairQuietWindowActive(),
+            })
+          ) {
             reloadOnce();
             return;
           }
-          markReady();
+          if (!hadController) return;
+          if (!standalone) markReady();
         });
 
         checkUpdate();

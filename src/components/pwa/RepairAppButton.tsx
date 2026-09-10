@@ -1,25 +1,31 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import {
   clearNumaRuntimeCache,
   navigateAfterRepair,
   nextLagaPhase,
+  shouldAcceptRepairStart,
   type LagaPhase,
 } from "@/lib/pwa/repair";
 
 export function RepairAppButton() {
   const [pending, startTransition] = useTransition();
   const [phase, setPhase] = useState<LagaPhase>("idle");
+  const repairStartedRef = useRef(false);
 
   function runUpdate() {
+    if (!shouldAcceptRepairStart(repairStartedRef.current)) return;
+    repairStartedRef.current = true;
     setPhase("running");
     startTransition(async () => {
       try {
         await clearNumaRuntimeCache();
         setPhase((current) => nextLagaPhase(current, "success"));
+        // Same path as /laga — go to Hem, not back onto Uppdatera.
         navigateAfterRepair("/idag");
       } catch {
+        repairStartedRef.current = false;
         setPhase((current) => nextLagaPhase(current, "fail"));
       }
     });
@@ -57,6 +63,13 @@ export function RepairAppButton() {
       ) : null}
       {phase === "running" || pending ? (
         <p className="text-[12px] text-[var(--numa-muted)]">Uppdaterar…</p>
+      ) : phase === "done" ? (
+        <a
+          href="/idag"
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)]"
+        >
+          Öppna Hem
+        </a>
       ) : phase === "error" ? (
         <p className="text-[12px] text-[var(--numa-muted)]">
           Kunde inte uppdatera. Prova igen.
