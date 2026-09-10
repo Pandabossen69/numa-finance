@@ -1575,23 +1575,29 @@ button.numa-chip:disabled {
   backdrop-filter: blur(26px) saturate(1.35);
 }
 
-/* Soft hairline — fades at the sides so the dock doesn't read as a hard slab. */
+/* Soft top wash + side-faded hairline — no hard slab edge. */
 .numa-bottom-nav::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 8%;
-  right: 8%;
-  height: 1px;
+  inset: 0 0 auto;
+  height: 1.5rem;
+  pointer-events: none;
   background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 22%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.1) 78%,
+    180deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(255, 255, 255, 0.02) 45%,
     transparent 100%
   );
-  pointer-events: none;
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 18%,
+      rgba(255, 255, 255, 0.14) 50%,
+      rgba(255, 255, 255, 0.12) 82%,
+      transparent 100%
+    )
+    1;
 }
 
 .numa-bottom-nav-item {
@@ -1610,13 +1616,13 @@ button.numa-chip:disabled {
 .numa-bottom-nav-item.is-active::after {
   content: "";
   position: absolute;
-  bottom: 0.38rem;
+  bottom: max(0.42rem, calc(var(--numa-safe-bottom) * 0.15));
   left: 50%;
   width: 0.22rem;
   height: 0.22rem;
   border-radius: 999px;
   background: var(--numa-accent);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--numa-accent) 55%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--numa-accent) 48%, transparent);
   transform: translateX(-50%);
 }
 
