@@ -29,7 +29,7 @@ export function RepairAppButton() {
       {phase === "idle" || phase === "error" ? (
         <button
           type="button"
-          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[#1a120c] transition hover:brightness-105"
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)] transition hover:brightness-105"
           onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
         >
           Uppdatera appen
@@ -41,7 +41,7 @@ export function RepairAppButton() {
             type="button"
             disabled={pending}
             onClick={runUpdate}
-            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[#1a120c] transition hover:brightness-105 disabled:opacity-60"
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--numa-accent)] text-sm font-semibold text-[var(--numa-card)] transition hover:brightness-105 disabled:opacity-60"
           >
             Uppdatera nu
           </button>
