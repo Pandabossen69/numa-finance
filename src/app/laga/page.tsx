@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import {
   clearNumaRuntimeCache,
+  navigateAfterRepair,
   nextLagaPhase,
   type LagaPhase,
 } from "@/lib/pwa/repair";
@@ -19,8 +20,8 @@ function readHostInfo(): { host: string; frozen: boolean } {
 }
 
 /**
- * Forces a fresh app shell: unregister SW, wipe Cache Storage, reload.
- * Cache clears only after an explicit confirm. No auto-bounce into a blank Hem.
+ * Forces a fresh app shell: wipe Cache Storage, nudge the service worker
+ * to activate, then hard-navigate to Hem. Cache clears only after confirm.
  * Frozen preview installs get a short host warning — this page cannot rewrite
  * the iOS home-screen target.
  */
@@ -37,10 +38,10 @@ export default function LagaPage() {
     try {
       await clearNumaRuntimeCache();
       setPhase((current) => nextLagaPhase(current, "success"));
-      window.setTimeout(() => {
-        if (isFrozenHomescreenHost(window.location.hostname)) return;
-        window.location.replace(`/idag?r=${Date.now()}`);
-      }, 350);
+      if (isFrozenHomescreenHost(window.location.hostname)) return;
+      // Absolute assign after settle — avoids iOS standalone dead-end page
+      // after service-worker churn (see navigateAfterRepair).
+      navigateAfterRepair("/idag");
     } catch {
       setPhase((current) => nextLagaPhase(current, "fail"));
     }

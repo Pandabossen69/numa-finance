@@ -13,7 +13,10 @@ describe("/laga page", () => {
     expect(src).toContain("isFrozenHomescreenHost");
     expect(src).toContain('nextLagaPhase(current, "ask")');
     expect(src).toContain("clearNumaRuntimeCache");
+    expect(src).toContain("navigateAfterRepair");
     expect(src).toContain("BRAND_MARK");
+    expect(src).not.toContain("location.replace");
+    expect(src).not.toContain("unregister");
 
     expect(src).not.toContain("Laga appen");
     expect(src).not.toContain("Ja, rensa cache");

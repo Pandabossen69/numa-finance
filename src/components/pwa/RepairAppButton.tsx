@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import {
   clearNumaRuntimeCache,
+  navigateAfterRepair,
   nextLagaPhase,
   type LagaPhase,
 } from "@/lib/pwa/repair";
@@ -17,7 +18,7 @@ export function RepairAppButton() {
       try {
         await clearNumaRuntimeCache();
         setPhase((current) => nextLagaPhase(current, "success"));
-        window.location.replace(`/idag?repair=${Date.now()}`);
+        navigateAfterRepair("/idag");
       } catch {
         setPhase((current) => nextLagaPhase(current, "fail"));
       }
