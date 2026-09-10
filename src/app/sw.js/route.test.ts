@@ -6,6 +6,7 @@ const src = readFileSync(new URL("./route.ts", import.meta.url), "utf8");
 
 describe("sw.js", () => {
   it("stamps a build id and skipWaiting without caching HTML", () => {
+    expect(src).toContain("resolveSwBuildId");
     expect(src).toContain("numa-sw ${BUILD_ID}");
     expect(src).toContain("skipWaiting");
     expect(src).toContain("caches.delete");

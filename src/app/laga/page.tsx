@@ -1,25 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   clearNumaRuntimeCache,
   nextLagaPhase,
   type LagaPhase,
 } from "@/lib/pwa/repair";
+import { isStandaloneDisplay } from "@/lib/pwa/display";
+import {
+  isFrozenHomescreenHost,
+  isProductionAppHost,
+  PRODUCTION_HOST,
+  PRODUCTION_ORIGIN,
+} from "@/lib/site";
 
 /**
  * Repair page — cache is cleared only after an explicit confirm.
- * The three destinations stay available so we never auto-bounce into a blank Hem.
+ * Destinations stay available so we never auto-bounce into a blank Hem.
+ * If the home-screen icon is stuck on a frozen preview host, show that
+ * clearly: /laga cannot magically rewrite the iOS icon target.
  */
 export default function LagaPage() {
   const [phase, setPhase] = useState<LagaPhase>("idle");
   const [cacheBust] = useState(() => Date.now());
+  const [hostInfo, setHostInfo] = useState<{
+    host: string;
+    frozen: boolean;
+    standalone: boolean;
+    production: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const host = window.location.hostname;
+    setHostInfo({
+      host,
+      frozen: isFrozenHomescreenHost(host),
+      standalone: isStandaloneDisplay(),
+      production: isProductionAppHost(host),
+    });
+  }, []);
 
   async function runRepair() {
     setPhase("running");
     try {
       await clearNumaRuntimeCache();
       setPhase((current) => nextLagaPhase(current, "success"));
+      // Hard reload in-place so a production home-screen app actually picks
+      // up new HTML/JS. Absolute production links open Safari on iOS and
+      // leave the installed icon untouched.
+      window.setTimeout(() => {
+        if (isFrozenHomescreenHost(window.location.hostname)) return;
+        window.location.replace(`/idag?r=${Date.now()}`);
+      }, 350);
     } catch {
       setPhase((current) => nextLagaPhase(current, "fail"));
     }
@@ -29,7 +61,9 @@ export default function LagaPage() {
     phase === "running"
       ? "Rensar cache…"
       : phase === "done"
-        ? "Cache rensad. Välj vart du vill gå."
+        ? hostInfo?.frozen
+          ? "Cache rensad här — men ikonen pekar fortfarande fel. Lägg till om från production."
+          : "Cache rensad. Laddar om…"
         : phase === "error"
           ? "Kunde inte rensa automatiskt. Prova länkarna ändå."
           : phase === "confirm"
@@ -56,13 +90,34 @@ export default function LagaPage() {
       <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#5a6b61" }}>
         {status}
       </p>
+
+      {hostInfo ? (
+        <p
+          style={{
+            margin: 0,
+            fontSize: 12,
+            lineHeight: 1.45,
+            color: hostInfo.frozen ? "#9a4b2a" : "#5a6b61",
+            wordBreak: "break-all",
+          }}
+        >
+          Appen körs på: <strong>{hostInfo.host}</strong>
+          {hostInfo.standalone ? " (hemskärm)" : " (webbläsare)"}
+          {hostInfo.frozen
+            ? " — det är en gammal Vercel-länk. Ta bort ikonen och lägg till från production."
+            : hostInfo.production
+              ? " — rätt production-länk."
+              : null}
+        </p>
+      ) : null}
+
       <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#5a6b61" }}>
         Tip: lägg till NUMA på hemskärmen från{" "}
         <a
-          href="https://numa-finance.vercel.app/idag"
+          href={`${PRODUCTION_ORIGIN}/idag`}
           style={{ color: "#1f6f5b", fontWeight: 600 }}
         >
-          numa-finance.vercel.app
+          {PRODUCTION_HOST}
         </a>{" "}
         — inte från tillfälliga Vercel-länkar. Då får du alltid senaste
         production automatiskt.
@@ -115,7 +170,9 @@ export default function LagaPage() {
           </button>
           <button
             type="button"
-            onClick={() => setPhase((current) => nextLagaPhase(current, "cancel"))}
+            onClick={() =>
+              setPhase((current) => nextLagaPhase(current, "cancel"))
+            }
             style={{
               display: "flex",
               minHeight: 44,
@@ -143,16 +200,19 @@ export default function LagaPage() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <a
-          href="https://numa-finance.vercel.app/idag"
+          href={`${PRODUCTION_ORIGIN}/idag`}
           style={{
             display: "flex",
             minHeight: 48,
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 16,
-            background: phase === "done" ? "#1f6f5b" : "transparent",
-            color: phase === "done" ? "#fff" : "#132019",
-            border: phase === "done" ? 0 : "1px solid rgba(19,32,25,0.12)",
+            background: phase === "done" || hostInfo?.frozen ? "#1f6f5b" : "transparent",
+            color: phase === "done" || hostInfo?.frozen ? "#fff" : "#132019",
+            border:
+              phase === "done" || hostInfo?.frozen
+                ? 0
+                : "1px solid rgba(19,32,25,0.12)",
             fontSize: 14,
             fontWeight: 600,
             textDecoration: "none",

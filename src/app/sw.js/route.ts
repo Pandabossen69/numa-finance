@@ -1,13 +1,15 @@
-const BUILD_ID =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ??
-  process.env.NEXT_PUBLIC_NUMA_BUILD_ID ??
-  "dev";
+import { resolveSwBuildId } from "@/lib/pwa/build-id";
+
+const BUILD_ID = resolveSwBuildId();
 
 /**
- * Cache hashed static assets only. Old NUMA workers cached HTML/RSC and
- * blanked the app — never intercept navigations, RSC, or Server Actions.
- * BUILD_ID is inlined so each deploy changes the script bytes and browsers
- * update the existing /sw.js registration (not a new ?v= registration).
+ * NextStep-style update contract for installed home-screen apps:
+ * - Never cache HTML/RSC (navigations pass through to the network).
+ * - skipWaiting + clients.claim so a new deploy activates immediately.
+ * - BUILD_ID is inlined so each production deploy changes /sw.js bytes and
+ *   browsers update the existing registration (stable URL, no ?v=).
+ * Hashed /_next/static assets may be cache-first; cache name is versioned
+ * so activate wipes the previous deploy's entries.
  */
 const WORKER = `/* numa-sw ${BUILD_ID} */
 const STATIC_CACHE = "numa-static-${BUILD_ID}";
@@ -55,6 +57,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Like NextStep: navigations always hit the network so a restart picks up
+  // the latest HTML/RSC shell. We go further and never intercept them.
   if (isRscOrDocument(request, url)) return;
   if (!isStaticAsset(url)) return;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { isStandaloneDisplay } from "@/lib/pwa/display";
 import {
   isProductionAppHost,
   PRODUCTION_HOST,
@@ -9,15 +10,6 @@ import {
 
 const DISMISS_KEY = "numa.homescreenHint.v1";
 export const HOMESCREEN_BAR_DELAY_MS = 1800;
-
-function isStandaloneDisplay(): boolean {
-  if (typeof window === "undefined") return true;
-  const mq = window.matchMedia("(display-mode: standalone)").matches;
-  const iosStandalone =
-    "standalone" in navigator &&
-    Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-  return mq || iosStandalone;
-}
 
 function subscribeHomescreenHint(onStoreChange: () => void) {
   const mq = window.matchMedia("(display-mode: standalone)");
