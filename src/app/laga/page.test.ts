@@ -12,10 +12,13 @@ describe("/laga page", () => {
     expect(src).toContain("navigateAfterRepair");
     expect(src).toContain('navigateAfterRepair("/idag")');
     expect(src).toContain("isFrozenHomescreenHost");
+    expect(src).toContain("readFrozenHost");
     expect(src).toContain('nextLagaPhase(current, "ask")');
     expect(src).toContain("clearNumaRuntimeCache");
     expect(src).toContain("BRAND_MARK");
 
+    // Object snapshots from useSyncExternalStore crash /laga (max update depth).
+    expect(src).not.toMatch(/readHostInfo\s*\(/);
     expect(src).not.toContain("reloadRepairSuccessPage");
     expect(src).not.toContain("location.replace");
     expect(src).not.toContain("Laga appen");
