@@ -134,16 +134,16 @@ export async function confirmReceiptExpenseAction(
       clientMutationId: input.clientMutationId,
     });
 
-    if (input.fromOnboarding) {
-      await stampOnboardingSaldoAt();
-      await stampOnboardingCompletedAt();
-    }
-
-    const profile = await getProfile();
-    await reclaimStalePlanSettleLedgers({
-      timeZone: profile.timezone || "Asia/Bangkok",
-    });
     try {
+      if (input.fromOnboarding) {
+        await stampOnboardingSaldoAt();
+        await stampOnboardingCompletedAt();
+      }
+
+      const profile = await getProfile();
+      await reclaimStalePlanSettleLedgers({
+        timeZone: profile.timezone || "Asia/Bangkok",
+      });
       const snap = await getTodaySnapshot();
       const timeZone = snap.profile.timezone || "Asia/Bangkok";
       const now = new Date();
@@ -175,7 +175,11 @@ export async function confirmReceiptExpenseAction(
         },
       };
     } catch {
-      revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
+      try {
+        revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
+      } catch {
+        // The import is already committed; a cache failure must not invite a retry.
+      }
       return {
         ok: true,
         refreshPending: true,

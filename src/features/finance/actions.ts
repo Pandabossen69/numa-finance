@@ -217,11 +217,15 @@ export async function createExpenseAction(
       clientMutationId: input.clientMutationId,
     });
 
-    const profile = await getProfile();
-    await reclaimStalePlanSettleLedgers({
-      timeZone: profile.timezone || "Asia/Bangkok",
-    });
-    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    const refreshed = await refreshAfterDurableWrite(
+      revalidateMoneyPaths,
+      async () => {
+        const profile = await getProfile();
+        await reclaimStalePlanSettleLedgers({
+          timeZone: profile.timezone || "Asia/Bangkok",
+        });
+      },
+    );
     if (refreshed.refreshPending) {
       return {
         ok: true,
@@ -353,11 +357,15 @@ export async function createIncomeAction(
       description: input.description,
       clientMutationId: input.clientMutationId,
     });
-    const profile = await getProfile();
-    await reclaimStalePlanSettleLedgers({
-      timeZone: profile.timezone || "Asia/Bangkok",
-    });
-    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    const refreshed = await refreshAfterDurableWrite(
+      revalidateMoneyPaths,
+      async () => {
+        const profile = await getProfile();
+        await reclaimStalePlanSettleLedgers({
+          timeZone: profile.timezone || "Asia/Bangkok",
+        });
+      },
+    );
     if (refreshed.refreshPending) {
       return {
         ok: true,
@@ -390,8 +398,15 @@ export async function createTransferAction(
       amountMinor,
       description: input.description,
     });
-    revalidateMoneyPaths();
-    return { ok: true };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,
@@ -416,8 +431,15 @@ export async function createCashWithdrawalAction(
       amountMinor,
       description: input.description,
     });
-    revalidateMoneyPaths();
-    return { ok: true };
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,
@@ -505,13 +527,23 @@ export async function setAvailableNowAction(raw: {
       note: "Tillgängligt tills nästa intäkt",
     });
 
-    if (raw.fromOnboarding) {
-      await stampOnboardingSaldoAt();
-      await stampOnboardingCompletedAt();
+    const refreshed = await refreshAfterDurableWrite(
+      revalidateMoneyPaths,
+      async () => {
+        if (raw.fromOnboarding) {
+          await stampOnboardingSaldoAt();
+          await stampOnboardingCompletedAt();
+        }
+      },
+    );
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
     }
-
-    revalidateMoneyPaths();
-    return { ok: true };
+    return { ok: true, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,

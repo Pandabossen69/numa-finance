@@ -42,3 +42,33 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
     metadataDisplayName: metadataDisplayNameOf(user),
   };
 });
+
+/**
+ * Auth-server identity for privileged decisions. Never use cookie
+ * `getSession()` here — that can carry forged user data.
+ * Email is `user.email` only, never `user_metadata`.
+ * Fail closed: missing/invalid/revoked/expired → null.
+ */
+export async function readVerifiedServerUser(): Promise<AuthUser | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await withTimeoutRetry(
+      () => supabase.auth.getUser(),
+      3_000,
+      "verifyAuthUser",
+      0,
+    );
+    if (error || !data.user?.id) return null;
+    return {
+      id: data.user.id,
+      email: data.user.email ?? "",
+      metadataDisplayName: metadataDisplayNameOf(data.user),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Request-scoped verified identity. Fresh enough to observe revocation. */
+export const getVerifiedAuthUser = cache(readVerifiedServerUser);

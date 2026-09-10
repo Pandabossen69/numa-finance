@@ -31,8 +31,10 @@ export type RefreshAfterWrite =
  */
 export async function refreshAfterDurableWrite(
   revalidate: () => void,
+  afterWrite?: () => Promise<unknown>,
 ): Promise<RefreshAfterWrite> {
   try {
+    await afterWrite?.();
     const snap = await refreshTodaySnapshot();
     revalidate();
     return {
@@ -45,6 +47,11 @@ export async function refreshAfterDurableWrite(
       },
     };
   } catch (error) {
+    try {
+      revalidate();
+    } catch {
+      // The durable write already committed.
+    }
     void reportError("mutation.refresh", error);
     return { refreshPending: true };
   }

@@ -13,6 +13,10 @@ describe("createExpenseAction", () => {
     expect(fn).toContain("refreshAfterDurableWrite");
     expect(fn).toContain("clientMutationId: input.clientMutationId");
     expect(fn).toContain("accountId: input.accountId");
+    expect(fn).toContain("reclaimStalePlanSettleLedgers");
+    expect(fn.indexOf("createManualExpense")).toBeLessThan(
+      fn.indexOf("refreshAfterDurableWrite"),
+    );
   });
 });
 
