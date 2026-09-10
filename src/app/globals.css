@@ -81,10 +81,10 @@
   --numa-safe-right: env(safe-area-inset-right, 0px);
   /* 44px — iPhone HIG minimum. Nav, chips, and chrome tap targets. */
   --numa-touch: 2.75rem;
-  /* Floating dock + inset. FAB hangs above it; keep last content clear. */
-  --numa-nav-bar: 5.15rem;
-  --numa-fab-overhang: 2.25rem;
-  --numa-shell-breathing: 2rem;
+  /* Edge icon dock (no floating pill). Modest + sits in-bar. */
+  --numa-nav-bar: 3.75rem;
+  --numa-fab-overhang: 0.35rem;
+  --numa-shell-breathing: 1.35rem;
   --numa-shell-pad-bottom: calc(
     var(--numa-nav-bar) + var(--numa-fab-overhang) + var(--numa-shell-breathing) +
       var(--numa-safe-bottom)
@@ -1555,38 +1555,41 @@ button.numa-chip:disabled {
 }
 
 .numa-bottom-nav {
-  left: 0.7rem;
-  right: 0.7rem;
-  bottom: 0.55rem;
+  left: 0;
+  right: 0;
+  bottom: 0;
   padding-left: var(--numa-safe-left);
   padding-right: var(--numa-safe-right);
   padding-bottom: var(--numa-safe-bottom);
-  border: 1px solid rgba(180, 217, 222, 0.16);
-  border-radius: 1.7rem;
-  background: color-mix(in srgb, var(--numa-nav) 72%, transparent);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.1) inset,
-    0 18px 44px -16px rgba(0, 0, 0, 0.72),
-    0 0 34px -22px var(--numa-steel-glow);
-  -webkit-backdrop-filter: blur(32px) saturate(1.45);
-  backdrop-filter: blur(32px) saturate(1.45);
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0;
+  background: color-mix(in srgb, var(--numa-nav) 88%, transparent);
+  box-shadow: 0 -12px 28px -20px rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  backdrop-filter: blur(22px) saturate(1.25);
 }
 
 .numa-bottom-nav-item {
-  transition:
-    color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 100ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 100ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: color 100ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .numa-bottom-nav-item.is-active {
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--numa-steel-soft) 76%, var(--numa-card)),
-    color-mix(in srgb, var(--numa-accent-soft) 78%, var(--numa-card))
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: transparent;
+  box-shadow: none;
   color: var(--numa-ink);
+}
+
+.numa-bottom-nav-item.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0.45rem;
+  left: 50%;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: var(--numa-accent);
+  transform: translateX(-50%);
 }
 
 .numa-bottom-nav-item.is-pending,
@@ -1597,10 +1600,10 @@ button.numa-chip:disabled {
 .numa-fab {
   background: linear-gradient(155deg, #ffd0a0 0%, var(--numa-accent) 44%, #d96c3b 100%);
   box-shadow:
-    0 12px 28px rgba(240, 140, 72, 0.26),
-    0 2px 6px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.18);
+    0 8px 20px rgba(240, 140, 72, 0.28),
+    0 1px 4px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.16);
   color: #061014;
   transition:
     transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
@@ -1609,8 +1612,8 @@ button.numa-chip:disabled {
 
 .numa-fab:active {
   box-shadow:
-    0 6px 16px rgba(22, 21, 19, 0.2),
-    0 1px 4px rgba(22, 21, 19, 0.12),
+    0 4px 12px rgba(22, 21, 19, 0.2),
+    0 1px 3px rgba(22, 21, 19, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 3px rgba(0, 0, 0, 0.2);
 }
