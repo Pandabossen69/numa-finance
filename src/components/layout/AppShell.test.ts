@@ -20,4 +20,10 @@ describe("AppShell chrome", () => {
     expect(src).toContain("md:pb-16");
     expect(src).not.toContain("md:pb-[var(--numa-shell-pad-bottom)]");
   });
+
+  it("keeps the brand icon lockup in the persistent mobile shell header", () => {
+    expect(src).toContain("BrandLockup");
+    expect(src).toContain('href="/idag"');
+  });
 });
+

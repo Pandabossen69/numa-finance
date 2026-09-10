@@ -227,6 +227,8 @@ describe("NUMA vision palette", () => {
     expect(css).toContain("var(--numa-accent-glow)");
     expect(css).toContain("var(--numa-steel-soft)");
     expect(css).toContain(".auth-mark-icon");
+    expect(css).toContain(".numa-brand-lockup");
+    expect(css).toContain(".numa-brand-lockup-icon");
     expect(css).not.toContain(".auth-mark::after");
   });
 

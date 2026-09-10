@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BrandLockup } from "@/components/layout/BrandLockup";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
@@ -39,11 +40,11 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
           className="group block min-w-0 px-1"
         >
           <p className="numa-section-title">Personlig ekonomi</p>
-          <p className="mt-1 text-3xl font-semibold tracking-[-0.05em] text-[var(--numa-ink)] transition group-hover:text-[var(--numa-accent-ink)]">
-            NUMA
-          </p>
+          <span className="mt-2 block transition group-hover:opacity-95">
+            <BrandLockup size="lg" />
+          </span>
           <p
-            className="mt-1 truncate text-sm font-semibold tracking-tight text-[var(--numa-accent-ink)]"
+            className="mt-1.5 truncate pl-[calc(2.25rem+0.65rem)] text-sm font-semibold tracking-tight text-[var(--numa-accent-ink)]"
             title={typeof displayName === "string" ? displayName : undefined}
           >
             {displayName}
