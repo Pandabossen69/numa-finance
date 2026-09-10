@@ -9,9 +9,7 @@ export type AuthUser = {
   metadataDisplayName: string | null;
 };
 
-function metadataDisplayNameOf(user: {
-  user_metadata?: unknown;
-}): string | null {
+function metadataDisplayNameOf(user: { user_metadata?: unknown }): string | null {
   const meta = user.user_metadata;
   if (!meta || typeof meta !== "object") return null;
   const raw = (meta as Record<string, unknown>).display_name;
@@ -28,17 +26,30 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { session },
-  } = await withTimeoutRetry(
-    () => supabase.auth.getSession(),
-    2_000,
-    "getAuthUser",
-    0,
-  );
+  } = await withTimeoutRetry(() => supabase.auth.getSession(), 2_000, "getAuthUser", 0);
   const user = session?.user;
   if (!user) return null;
   return {
     id: user.id,
     email: user.email ?? "",
     metadataDisplayName: metadataDisplayNameOf(user),
+  };
+});
+
+/** Privileged decisions must use Auth-verified identity, never cookie user data. */
+export const getVerifiedAuthUser = cache(async (): Promise<AuthUser | null> => {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await withTimeoutRetry(
+    () => supabase.auth.getUser(),
+    3_000,
+    "verifyAuthUser",
+    0,
+  );
+  if (error || !data.user) return null;
+  return {
+    id: data.user.id,
+    email: data.user.email ?? "",
+    metadataDisplayName: metadataDisplayNameOf(data.user),
   };
 });

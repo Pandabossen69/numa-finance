@@ -101,7 +101,7 @@ describe("admin-only user creation security", () => {
 
   it("creates users with the service role on the server", () => {
     expect(adminAction).toContain("createSupabaseServiceRoleClient");
-    expect(adminAction).toContain("getSessionUser");
+    expect(adminAction).toContain("getVerifiedAuthUser");
     expect(adminAction).toContain("authorizeAdminCreateUser");
     expect(adminAction).toContain("email_confirm: true");
     expect(adminAction).not.toContain("NEXT_PUBLIC_SUPABASE_SERVICE");
