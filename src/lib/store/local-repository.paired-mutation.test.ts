@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createEmptyStore, LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
 
 const storeState = vi.hoisted(() => ({
-  data: createEmptyStore(),
+  data: {} as NumaStoreData,
 }));
 
 vi.mock("./local-store", () => ({
