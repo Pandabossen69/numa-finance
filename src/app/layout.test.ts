@@ -13,10 +13,11 @@ describe("PWA viewport", () => {
   });
 
   it("points Safari and the tab icon at the Steel + Orange brand art", () => {
-    expect(src).toContain("/icons/icon-192.png");
-    expect(src).toContain("/icons/icon-512.png");
-    expect(src).toContain("/apple-touch-icon.png");
-    expect(src).toContain("/favicon.ico");
+    expect(src).toContain("BRAND_ICON_192");
+    expect(src).toContain("BRAND_ICON_512");
+    expect(src).toContain("BRAND_APPLE_TOUCH");
+    expect(src).toContain("BRAND_FAVICON");
+    expect(src).toContain("@/lib/brand-assets");
   });
 });
 

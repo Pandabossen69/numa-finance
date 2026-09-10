@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { BRAND_MARK } from "@/lib/brand-assets";
 
 export const LOGIN_BOOT_TIMEOUT_MS = 12_000;
 const LOGIN_BOOT_HOST_ID = "numa-login-boot";
@@ -27,7 +28,7 @@ export function LoginBoot({ announced = true }: { announced?: boolean }) {
         <p className="auth-mark">
           <img
             className="auth-mark-icon"
-            src="/icons/mark.png"
+            src={BRAND_MARK}
             alt=""
             width={40}
             height={40}
