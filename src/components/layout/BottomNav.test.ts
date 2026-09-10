@@ -16,13 +16,14 @@ describe("BottomNav a11y", () => {
   it("uses an edge icon dock with a symmetrical center + and no caption clutter", () => {
     expect(src).toContain("numa-bottom-nav");
     expect(src).toContain("numa-fab");
-    expect(src).toContain("h-12 w-12");
     expect(src).toContain("min-h-[var(--numa-touch)]");
     expect(src).toContain("grid-cols-5");
+    expect(src).toContain("strokeWidth");
     expect(src).not.toContain("Lägg till</span>");
     expect(src).not.toMatch(/>\s*\{label\}\s*</);
     expect(src).not.toContain("-mt-7");
     expect(src).not.toContain("bg-[var(--numa-accent-soft)]");
     expect(src).not.toContain("text-[10px]");
+    expect(src).not.toContain("h-12 w-12");
   });
 });
