@@ -17,7 +17,8 @@ describe("LoginBoot", () => {
     expect(boot).toContain("auth-stage");
     expect(boot).toContain("auth-boot");
     expect(boot).toContain("auth-mark");
-    expect(boot).toContain('src="/icons/mark.png"');
+    expect(boot).toContain("BRAND_MARK");
+    expect(boot).not.toContain('src="/icons/mark.png"');
     expect(boot).toContain('aria-live={announced ? "polite" : undefined}');
     expect(boot).toContain('aria-busy="true"');
     expect(boot).toContain('aria-label="Loggar in i NUMA"');

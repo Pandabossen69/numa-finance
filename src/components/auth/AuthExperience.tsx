@@ -17,6 +17,7 @@ import {
   bindSessionOwner,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
+import { BRAND_MARK } from "@/lib/brand-assets";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 function kickPostLoginWarm() {
@@ -90,7 +91,7 @@ export function AuthExperience() {
           <p className="auth-mark">
             <img
               className="auth-mark-icon"
-              src="/icons/mark.png"
+              src={BRAND_MARK}
               alt=""
               width={40}
               height={40}

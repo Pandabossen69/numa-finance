@@ -3,6 +3,12 @@ import { Sora, JetBrains_Mono } from "next/font/google";
 import { CanonicalHostRedirect } from "@/components/pwa/CanonicalHostRedirect";
 import { FrozenHomescreenGuard } from "@/components/pwa/FrozenHomescreenGuard";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
+import {
+  BRAND_APPLE_TOUCH,
+  BRAND_FAVICON,
+  BRAND_ICON_192,
+  BRAND_ICON_512,
+} from "@/lib/brand-assets";
 import { PRODUCTION_ORIGIN } from "@/lib/site";
 import "./globals.css";
 
@@ -29,11 +35,11 @@ export const metadata: Metadata = {
   applicationName: "NUMA",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "48x48" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: BRAND_FAVICON, sizes: "48x48" },
+      { url: BRAND_ICON_192, sizes: "192x192", type: "image/png" },
+      { url: BRAND_ICON_512, sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: BRAND_APPLE_TOUCH, sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     capable: true,
@@ -44,7 +50,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "NUMA",
     description: "Din dagsbudget — se vad som är kvar idag, planera och håll koll på saldot.",
-    images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "NUMA" }],
+    images: [{ url: BRAND_ICON_512, width: 512, height: 512, alt: "NUMA" }],
   },
   formatDetection: {
     telephone: false,

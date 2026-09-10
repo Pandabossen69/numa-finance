@@ -38,11 +38,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // Brand PNGs are tiny — prefer revalidate over a week-long sticky
+        // owl after a rebrand. URLs are also ?v=-busted via brand-assets.
         source: "/icons/:path*",
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=604800, stale-while-revalidate=86400",
+            value: "public, max-age=3600, must-revalidate",
           },
         ],
       },
@@ -51,7 +53,16 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Cache-Control",
-            value: "public, max-age=604800, stale-while-revalidate=86400",
+            value: "public, max-age=3600, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/favicon.ico",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600, must-revalidate",
           },
         ],
       },
