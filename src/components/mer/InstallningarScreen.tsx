@@ -48,10 +48,10 @@ export function InstallningarScreen({
             <MerListRow className="space-y-3 py-4">
               <div>
                 <p className="text-[15px] font-medium tracking-tight">
-                  Fungerar inte appen?
+                  Uppdatera appen
                 </p>
                 <p className="mt-1 text-[12px] leading-relaxed text-[var(--numa-faint)]">
-                  Rensar cache och laddar om.
+                  Hämtar senaste versionen och rensar gammal cache.
                 </p>
               </div>
               <RepairAppButton />
@@ -88,7 +88,7 @@ export function InstallningarScreen({
             <MerListGroup>
               <MerListRow>
                 <p className="text-sm text-[var(--numa-muted)]">
-                  Kunde inte läsa profilen. Prova “Laga appen” ovan.
+                  Kunde inte läsa profilen. Prova “Uppdatera appen” ovan.
                 </p>
               </MerListRow>
             </MerListGroup>

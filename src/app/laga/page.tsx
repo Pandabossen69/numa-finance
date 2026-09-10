@@ -1,53 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import {
   clearNumaRuntimeCache,
   nextLagaPhase,
   type LagaPhase,
 } from "@/lib/pwa/repair";
-import { isStandaloneDisplay } from "@/lib/pwa/display";
+import { BRAND_MARK } from "@/lib/brand-assets";
 import {
   isFrozenHomescreenHost,
-  isProductionAppHost,
   PRODUCTION_HOST,
   PRODUCTION_ORIGIN,
 } from "@/lib/site";
 
+function readHostInfo(): { host: string; frozen: boolean } {
+  const host = window.location.hostname;
+  return { host, frozen: isFrozenHomescreenHost(host) };
+}
+
 /**
- * Repair page — cache is cleared only after an explicit confirm.
- * Destinations stay available so we never auto-bounce into a blank Hem.
- * If the home-screen icon is stuck on a frozen preview host, show that
- * clearly: /laga cannot magically rewrite the iOS icon target.
+ * Forces a fresh app shell: unregister SW, wipe Cache Storage, reload.
+ * Cache clears only after an explicit confirm. No auto-bounce into a blank Hem.
+ * Frozen preview installs get a short host warning — this page cannot rewrite
+ * the iOS home-screen target.
  */
 export default function LagaPage() {
   const [phase, setPhase] = useState<LagaPhase>("idle");
-  const [cacheBust] = useState(() => Date.now());
-  const [hostInfo, setHostInfo] = useState<{
-    host: string;
-    frozen: boolean;
-    standalone: boolean;
-    production: boolean;
-  } | null>(null);
+  const hostInfo = useSyncExternalStore(
+    () => () => {},
+    readHostInfo,
+    () => null,
+  );
 
-  useEffect(() => {
-    const host = window.location.hostname;
-    setHostInfo({
-      host,
-      frozen: isFrozenHomescreenHost(host),
-      standalone: isStandaloneDisplay(),
-      production: isProductionAppHost(host),
-    });
-  }, []);
-
-  async function runRepair() {
+  async function runUpdate() {
     setPhase("running");
     try {
       await clearNumaRuntimeCache();
       setPhase((current) => nextLagaPhase(current, "success"));
-      // Hard reload in-place so a production home-screen app actually picks
-      // up new HTML/JS. Absolute production links open Safari on iOS and
-      // leave the installed icon untouched.
       window.setTimeout(() => {
         if (isFrozenHomescreenHost(window.location.hostname)) return;
         window.location.replace(`/idag?r=${Date.now()}`);
@@ -59,16 +48,16 @@ export default function LagaPage() {
 
   const status =
     phase === "running"
-      ? "Rensar cache…"
+      ? "Uppdaterar…"
       : phase === "done"
         ? hostInfo?.frozen
-          ? "Cache rensad här — men ikonen pekar fortfarande fel. Lägg till om från production."
-          : "Cache rensad. Laddar om…"
+          ? "Cache rensad här — men appen öppnades från fel länk. Öppna production nedan."
+          : "Klar. Laddar om…"
         : phase === "error"
-          ? "Kunde inte rensa automatiskt. Prova länkarna ändå."
+          ? "Kunde inte uppdatera. Prova igen."
           : phase === "confirm"
-            ? "Rensar bara cache på den här enheten. Dina konton raderas inte."
-            : "Något strular? Rensa cache först när du själv trycker.";
+            ? "Hämtar senaste versionen och rensar gammal cache på den här enheten. Dina konton påverkas inte."
+            : "Hämtar senaste versionen och rensar gammal cache. Dina konton påverkas inte.";
 
   return (
     <main
@@ -79,69 +68,84 @@ export default function LagaPage() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        gap: 16,
+        gap: 18,
         padding: 20,
-        color: "#132019",
-        fontFamily: "system-ui, sans-serif",
+        color: "var(--numa-ink, #f6f1e9)",
+        fontFamily: "var(--font-numa-sans), system-ui, sans-serif",
       }}
     >
-      <h1 style={{ margin: 0, fontSize: "1.65rem", fontWeight: 600 }}>NUMA</h1>
-      <p style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Laga appen</p>
-      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#5a6b61" }}>
-        {status}
-      </p>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+        aria-label="NUMA"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={BRAND_MARK}
+          alt=""
+          width={32}
+          height={32}
+          decoding="async"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            display: "block",
+            boxShadow: "0 0 0 1px rgba(246,241,233,0.08)",
+          }}
+        />
+        <span
+          style={{
+            fontSize: "1.35rem",
+            fontWeight: 700,
+            letterSpacing: "-0.04em",
+          }}
+        >
+          NUMA
+        </span>
+      </div>
 
-      {hostInfo ? (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <h1 style={{ margin: 0, fontSize: "1.45rem", fontWeight: 650 }}>
+          Uppdatera appen
+        </h1>
         <p
           style={{
             margin: 0,
-            fontSize: 12,
+            fontSize: 14,
+            lineHeight: 1.5,
+            color: "var(--numa-muted, #b9c5c5)",
+          }}
+        >
+          {status}
+        </p>
+      </div>
+
+      {hostInfo?.frozen ? (
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
             lineHeight: 1.45,
-            color: hostInfo.frozen ? "#9a4b2a" : "#5a6b61",
+            color: "#e8a078",
             wordBreak: "break-all",
           }}
         >
-          Appen körs på: <strong>{hostInfo.host}</strong>
-          {hostInfo.standalone ? " (hemskärm)" : " (webbläsare)"}
-          {hostInfo.frozen
-            ? " — det är en gammal Vercel-länk. Ta bort ikonen och lägg till från production."
-            : hostInfo.production
-              ? " — rätt production-länk."
-              : null}
+          Fel länk: <strong>{hostInfo.host}</strong>. Öppna{" "}
+          <strong>{PRODUCTION_HOST}</strong> i stället.
         </p>
       ) : null}
-
-      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "#5a6b61" }}>
-        Tip: lägg till NUMA på hemskärmen från{" "}
-        <a
-          href={`${PRODUCTION_ORIGIN}/idag`}
-          style={{ color: "#1f6f5b", fontWeight: 600 }}
-        >
-          {PRODUCTION_HOST}
-        </a>{" "}
-        — inte från tillfälliga Vercel-länkar. Då får du alltid senaste
-        production automatiskt.
-      </p>
 
       {phase === "idle" || phase === "error" ? (
         <button
           type="button"
           onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
-          style={{
-            display: "flex",
-            minHeight: 48,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 16,
-            background: "#1f6f5b",
-            color: "#fff",
-            fontSize: 14,
-            fontWeight: 600,
-            border: 0,
-            cursor: "pointer",
-          }}
+          style={primaryButtonStyle}
         >
-          Laga appen nu
+          Uppdatera appen
         </button>
       ) : null}
 
@@ -150,42 +154,18 @@ export default function LagaPage() {
           <button
             type="button"
             onClick={() => {
-              void runRepair();
+              void runUpdate();
             }}
-            style={{
-              display: "flex",
-              minHeight: 48,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 16,
-              background: "#1f6f5b",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              border: 0,
-              cursor: "pointer",
-            }}
+            style={primaryButtonStyle}
           >
-            Ja, rensa cache
+            Uppdatera nu
           </button>
           <button
             type="button"
             onClick={() =>
               setPhase((current) => nextLagaPhase(current, "cancel"))
             }
-            style={{
-              display: "flex",
-              minHeight: 44,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 16,
-              background: "transparent",
-              color: "#5a6b61",
-              fontSize: 14,
-              fontWeight: 600,
-              border: "1px solid rgba(19,32,25,0.12)",
-              cursor: "pointer",
-            }}
+            style={ghostButtonStyle}
           >
             Avbryt
           </button>
@@ -193,68 +173,89 @@ export default function LagaPage() {
       ) : null}
 
       {phase === "running" ? (
-        <p style={{ margin: 0, fontSize: 13, color: "#5a6b61" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: "var(--numa-muted, #b9c5c5)",
+          }}
+        >
           Tar bara en sekund…
         </p>
       ) : null}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <a
-          href={`${PRODUCTION_ORIGIN}/idag`}
-          style={{
-            display: "flex",
-            minHeight: 48,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 16,
-            background: phase === "done" || hostInfo?.frozen ? "#1f6f5b" : "transparent",
-            color: phase === "done" || hostInfo?.frozen ? "#fff" : "#132019",
-            border:
-              phase === "done" || hostInfo?.frozen
-                ? 0
-                : "1px solid rgba(19,32,25,0.12)",
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
-          Öppna production (rätt länk)
-        </a>
-        <a
-          href={`/mer?r=${cacheBust}`}
-          style={{
-            display: "flex",
-            minHeight: 48,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 16,
-            border: "1px solid rgba(19,32,25,0.12)",
-            color: "#132019",
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
-          Öppna Mer-menyn här
-        </a>
-        <a
-          href={`/idag?r=${cacheBust}`}
-          style={{
-            display: "flex",
-            minHeight: 48,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 16,
-            border: "1px solid rgba(19,32,25,0.12)",
-            color: "#132019",
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
-          Öppna Hem här
-        </a>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          marginTop: 4,
+        }}
+      >
+        {hostInfo?.frozen ? (
+          <a href={`${PRODUCTION_ORIGIN}/idag`} style={primaryLinkStyle}>
+            Öppna {PRODUCTION_HOST}
+          </a>
+        ) : (
+          <a href="/idag" style={ghostLinkStyle}>
+            Tillbaka till Hem
+          </a>
+        )}
       </div>
     </main>
   );
 }
+
+const primaryButtonStyle: CSSProperties = {
+  display: "flex",
+  minHeight: 48,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 16,
+  background: "var(--numa-accent, #f0a15e)",
+  color: "#1a120c",
+  fontSize: 14,
+  fontWeight: 600,
+  border: 0,
+  cursor: "pointer",
+};
+
+const ghostButtonStyle: CSSProperties = {
+  display: "flex",
+  minHeight: 44,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 16,
+  background: "transparent",
+  color: "var(--numa-muted, #b9c5c5)",
+  fontSize: 14,
+  fontWeight: 600,
+  border: "1px solid rgba(246,241,233,0.12)",
+  cursor: "pointer",
+};
+
+const primaryLinkStyle: CSSProperties = {
+  display: "flex",
+  minHeight: 48,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 16,
+  background: "var(--numa-accent, #f0a15e)",
+  color: "#1a120c",
+  fontSize: 14,
+  fontWeight: 600,
+  textDecoration: "none",
+};
+
+const ghostLinkStyle: CSSProperties = {
+  display: "flex",
+  minHeight: 44,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 16,
+  border: "1px solid rgba(246,241,233,0.12)",
+  color: "var(--numa-ink, #f6f1e9)",
+  fontSize: 14,
+  fontWeight: 600,
+  textDecoration: "none",
+};

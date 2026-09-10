@@ -16,7 +16,11 @@ function tsxFiles(dir: string): string[] {
  * One token system: colour lives in globals.css :root, never inline in a
  * component. /laga is exempt elsewhere — it ships inline styles on purpose
  * so the repair screen still renders when the stylesheet fails to load.
+ * FrozenHomescreenGuard is the same class of emergency UI (blocks a broken
+ * preview install); it keeps self-contained inline colours on purpose.
  */
+const INLINE_STYLE_EXEMPT = new Set(["pwa/FrozenHomescreenGuard.tsx"]);
+
 describe("component colour tokens", () => {
   const files = tsxFiles(componentsDir);
 
@@ -27,14 +31,14 @@ describe("component colour tokens", () => {
   it("has no raw hex or rgb() colour in any component", () => {
     const offenders = files
       .map((file) => {
+        const relative = path.relative(componentsDir, file);
+        if (INLINE_STYLE_EXEMPT.has(relative)) return null;
         const src = readFileSync(file, "utf8");
         const hits = [
           ...src.matchAll(/#[0-9a-fA-F]{3,8}\b/g),
           ...src.matchAll(/\brgba?\(/g),
         ].map((match) => match[0]);
-        return hits.length > 0
-          ? `${path.relative(componentsDir, file)}: ${hits.join(", ")}`
-          : null;
+        return hits.length > 0 ? `${relative}: ${hits.join(", ")}` : null;
       })
       .filter(Boolean);
     expect(offenders).toEqual([]);

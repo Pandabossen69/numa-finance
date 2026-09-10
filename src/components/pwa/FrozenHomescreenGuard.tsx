@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
 import {
   isFrozenHomescreenHost,
@@ -8,26 +8,30 @@ import {
   PRODUCTION_ORIGIN,
 } from "@/lib/site";
 
+function readBlockedHost(): string | null {
+  try {
+    if (!isStandaloneDisplay()) return null;
+    const host = window.location.hostname;
+    if (!isFrozenHomescreenHost(host)) return null;
+    return host;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Home-screen icons installed from a Vercel preview URL never receive new
  * production deploys. Cross-origin redirect often opens Safari instead of
  * fixing the icon — so we block with clear reinstall steps instead.
  */
 export function FrozenHomescreenGuard() {
-  const [blocked, setBlocked] = useState<null | { host: string }>(null);
+  const blockedHost = useSyncExternalStore(
+    () => () => {},
+    readBlockedHost,
+    () => null,
+  );
 
-  useEffect(() => {
-    try {
-      if (!isStandaloneDisplay()) return;
-      const host = window.location.hostname;
-      if (!isFrozenHomescreenHost(host)) return;
-      setBlocked({ host });
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  if (!blocked) return null;
+  if (!blockedHost) return null;
 
   return (
     <div
@@ -61,7 +65,7 @@ export function FrozenHomescreenGuard() {
         >
           Den här ikonen öppnar en gammal Vercel-länk (
           <span style={{ color: "#c5d6cc", wordBreak: "break-all" }}>
-            {blocked.host}
+            {blockedHost}
           </span>
           ). Safari kan visa rätt version, men den här appen uppdateras aldrig.
         </p>

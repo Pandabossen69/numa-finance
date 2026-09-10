@@ -74,8 +74,8 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
       },
       {
         href: "/laga",
-        label: "Laga appen",
-        hint: "Om något strular",
+        label: "Uppdatera appen",
+        hint: "Hämta senaste versionen",
         icon: <IconWrench />,
         tone: "alarm",
       },
