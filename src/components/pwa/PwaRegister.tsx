@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
+import { isRepairQuietWindowActive } from "@/lib/pwa/repair";
 
 /**
  * NextStep-inspired update loop for daily home-screen users:
@@ -30,6 +31,9 @@ export function PwaRegister() {
 
     function reloadOnce() {
       if (cancelled || reloading) return;
+      // /laga just finished a cache wipe + navigate — reloading here sends the
+      // user back to Uppdatera appen ("samma sida igen") or a blank dead-end.
+      if (isRepairQuietWindowActive()) return;
       reloading = true;
       window.location.reload();
     }

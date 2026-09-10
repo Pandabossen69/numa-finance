@@ -3,9 +3,8 @@
 import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import {
   clearNumaRuntimeCache,
-  isRepairDoneSearch,
+  navigateAfterRepair,
   nextLagaPhase,
-  reloadRepairSuccessPage,
   type LagaPhase,
 } from "@/lib/pwa/repair";
 import { BRAND_MARK } from "@/lib/brand-assets";
@@ -20,15 +19,11 @@ function readHostInfo(): { host: string; frozen: boolean } {
   return { host, frozen: isFrozenHomescreenHost(host) };
 }
 
-function readRepairDone(): boolean {
-  return isRepairDoneSearch(window.location.search);
-}
-
 /**
  * Update flow for home-screen iOS:
- * 1. Confirm → wipe Cache Storage only (no SKIP_WAITING — that races PwaRegister reload)
- * 2. Reload /laga?updated=1 (same-document hop)
- * 3. Show success + normal <a href="/idag"> so the user navigates with a tap
+ * 1. Confirm → wipe Cache Storage only (no SKIP_WAITING — that races PwaRegister)
+ * 2. Navigate to Hem (/idag) — not back onto the same /laga screen
+ * 3. Keep "Öppna Hem" as a tap fallback if navigation is delayed
  */
 export default function LagaPage() {
   const hostInfo = useSyncExternalStore(
@@ -36,39 +31,30 @@ export default function LagaPage() {
     readHostInfo,
     () => null,
   );
-  const alreadyDone = useSyncExternalStore(
-    () => () => {},
-    readRepairDone,
-    () => false,
-  );
   const [phase, setPhase] = useState<LagaPhase>("idle");
-  // Query flag wins after the iOS-safe same-document reload.
-  const viewPhase: LagaPhase = alreadyDone ? "done" : phase;
 
   async function runUpdate() {
     setPhase("running");
     try {
       await clearNumaRuntimeCache();
-      if (isFrozenHomescreenHost(window.location.hostname)) {
-        setPhase((current) => nextLagaPhase(current, "success"));
-        return;
-      }
-      reloadRepairSuccessPage();
+      setPhase((current) => nextLagaPhase(current, "success"));
+      if (isFrozenHomescreenHost(window.location.hostname)) return;
+      navigateAfterRepair("/idag");
     } catch {
       setPhase((current) => nextLagaPhase(current, "fail"));
     }
   }
 
   const status =
-    viewPhase === "running"
+    phase === "running"
       ? "Uppdaterar…"
-      : viewPhase === "done"
+      : phase === "done"
         ? hostInfo?.frozen
           ? "Cache rensad här — men appen öppnades från fel länk. Öppna production nedan."
-          : "Klar. Appen är uppdaterad."
-        : viewPhase === "error"
+          : "Klar. Öppnar Hem…"
+        : phase === "error"
           ? "Kunde inte uppdatera. Prova igen."
-          : viewPhase === "confirm"
+          : phase === "confirm"
             ? "Rensar gammal cache på den här enheten. Dina konton påverkas inte."
             : "Rensar gammal cache så appen laddar fräscht. Dina konton påverkas inte.";
 
@@ -123,7 +109,7 @@ export default function LagaPage() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: "1.45rem", fontWeight: 650 }}>
-          Uppdatera appen
+          {phase === "done" && !hostInfo?.frozen ? "Klart" : "Uppdatera appen"}
         </h1>
         <p
           style={{
@@ -152,7 +138,7 @@ export default function LagaPage() {
         </p>
       ) : null}
 
-      {viewPhase === "idle" || viewPhase === "error" ? (
+      {phase === "idle" || phase === "error" ? (
         <button
           type="button"
           onClick={() => setPhase((current) => nextLagaPhase(current, "ask"))}
@@ -162,7 +148,7 @@ export default function LagaPage() {
         </button>
       ) : null}
 
-      {viewPhase === "confirm" ? (
+      {phase === "confirm" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <button
             type="button"
@@ -185,7 +171,7 @@ export default function LagaPage() {
         </div>
       ) : null}
 
-      {viewPhase === "running" ? (
+      {phase === "running" ? (
         <p
           style={{
             margin: 0,
@@ -197,7 +183,7 @@ export default function LagaPage() {
         </p>
       ) : null}
 
-      {viewPhase === "done" && !hostInfo?.frozen ? (
+      {phase === "done" && !hostInfo?.frozen ? (
         <a href="/idag" style={primaryLinkStyle}>
           Öppna Hem
         </a>
@@ -215,7 +201,7 @@ export default function LagaPage() {
           <a href={`${PRODUCTION_ORIGIN}/idag`} style={primaryLinkStyle}>
             Öppna {PRODUCTION_HOST}
           </a>
-        ) : viewPhase !== "done" ? (
+        ) : phase !== "done" ? (
           <a href="/idag" style={ghostLinkStyle}>
             Tillbaka till Hem
           </a>

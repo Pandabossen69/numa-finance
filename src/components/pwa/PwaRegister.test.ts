@@ -24,6 +24,8 @@ describe("PWA version nudge", () => {
     // Standalone registers immediately (NextStep-style), tabs defer.
     expect(src).toContain("if (standalone)");
     expect(src).toContain("void setup()");
+    // Repair flow must not be bounced back to /laga by this reload.
+    expect(src).toContain("isRepairQuietWindowActive");
   });
 
   it("sits above the dock, not over the NUMA logo, and keeps Uppdatera at 44px", () => {

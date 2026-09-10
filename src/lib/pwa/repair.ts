@@ -1,5 +1,7 @@
 export const NUMA_SW_KILL_FLAG = "numa.swKill.v8";
-export const NUMA_REPAIR_DONE_PARAM = "updated";
+/** Suppresses PwaRegister's standalone auto-reload during/after repair. */
+export const NUMA_REPAIR_QUIET_FLAG = "numa.repairQuiet.v1";
+const REPAIR_QUIET_MS = 20_000;
 
 export type LagaPhase = "idle" | "confirm" | "running" | "done" | "error";
 export type LagaEvent = "ask" | "cancel" | "success" | "fail";
@@ -24,9 +26,29 @@ export function lagaStartsIdle(): boolean {
   return true;
 }
 
-export function isRepairDoneSearch(search: string): boolean {
+export function beginRepairQuietWindow(): void {
   try {
-    return new URLSearchParams(search).get(NUMA_REPAIR_DONE_PARAM) === "1";
+    sessionStorage.setItem(NUMA_REPAIR_QUIET_FLAG, String(Date.now()));
+  } catch {
+    // ignore
+  }
+}
+
+/** True while a repair navigation is in flight — PwaRegister must not reload. */
+export function isRepairQuietWindowActive(): boolean {
+  try {
+    const raw = sessionStorage.getItem(NUMA_REPAIR_QUIET_FLAG);
+    if (!raw) return false;
+    const started = Number(raw);
+    if (!Number.isFinite(started)) {
+      sessionStorage.removeItem(NUMA_REPAIR_QUIET_FLAG);
+      return false;
+    }
+    if (Date.now() - started > REPAIR_QUIET_MS) {
+      sessionStorage.removeItem(NUMA_REPAIR_QUIET_FLAG);
+      return false;
+    }
+    return true;
   } catch {
     return false;
   }
@@ -35,13 +57,15 @@ export function isRepairDoneSearch(search: string): boolean {
 /**
  * Wipe Cache Storage + local repair flags.
  *
- * Do NOT call registration.update() or post skip-waiting here. In standalone iOS,
- * that fires PwaRegister's controllerchange → location.reload() in the same
- * turn as our navigation and surfaces "This page couldn't load".
- * Cache wipe + a calm same-document reload is enough; PwaRegister still
- * picks up new /sw.js on the next focus/pageshow.
+ * Do NOT call registration.update() or post skip-waiting here. In standalone
+ * iOS that fires PwaRegister's controllerchange → location.reload() and the
+ * user lands back on the same /laga screen (or Safari's dead-end page).
+ * Cache wipe + a calm navigate to Hem is enough; PwaRegister still picks up
+ * new /sw.js on the next focus/pageshow.
  */
 export async function clearNumaRuntimeCache(): Promise<void> {
+  beginRepairQuietWindow();
+
   try {
     localStorage.removeItem(NUMA_SW_KILL_FLAG);
     sessionStorage.removeItem("numa.blankGuard.v1");
@@ -62,13 +86,15 @@ export async function clearNumaRuntimeCache(): Promise<void> {
 }
 
 /**
- * After a successful repair: reload /laga with ?updated=1.
- * Same-document navigation is the only reliably safe hop on iOS standalone
- * right after cache churn. The success screen then offers a normal <a> to Hem.
+ * Leave /laga for Hem after repair. Quiet window stays active so a late
+ * controllerchange cannot reload back onto Uppdatera appen.
  */
-export function reloadRepairSuccessPage(): void {
+export function navigateAfterRepair(path = "/idag"): void {
   if (typeof window === "undefined") return;
-  const url = new URL("/laga", window.location.origin);
-  url.searchParams.set(NUMA_REPAIR_DONE_PARAM, "1");
-  window.location.assign(url.href);
+  beginRepairQuietWindow();
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("r", String(Date.now()));
+  window.setTimeout(() => {
+    window.location.assign(url.href);
+  }, 150);
 }

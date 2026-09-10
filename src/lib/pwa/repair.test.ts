@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  isRepairDoneSearch,
+  isRepairQuietWindowActive,
   lagaStartsIdle,
   nextLagaPhase,
 } from "./repair";
@@ -24,15 +24,16 @@ describe("/laga repair flow", () => {
 
   it("clears caches without SKIP_WAITING (avoids iOS reload race)", () => {
     expect(src).toContain("caches.delete");
-    expect(src).toContain("reloadRepairSuccessPage");
+    expect(src).toContain("beginRepairQuietWindow");
+    expect(src).toContain("navigateAfterRepair");
     expect(src).not.toContain("SKIP_WAITING");
     expect(src).not.toContain("reg.update");
     expect(src).not.toMatch(/\b\w+\.unregister\s*\(/);
+    expect(src).not.toContain("reloadRepairSuccessPage");
   });
 
-  it("detects the success query", () => {
-    expect(isRepairDoneSearch("?updated=1")).toBe(true);
-    expect(isRepairDoneSearch("?updated=0")).toBe(false);
-    expect(isRepairDoneSearch("")).toBe(false);
+  it("exposes a quiet window helper for PwaRegister", () => {
+    expect(typeof isRepairQuietWindowActive).toBe("function");
+    expect(src).toContain("NUMA_REPAIR_QUIET_FLAG");
   });
 });

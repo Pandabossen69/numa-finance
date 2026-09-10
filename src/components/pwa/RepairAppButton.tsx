@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import {
   clearNumaRuntimeCache,
+  navigateAfterRepair,
   nextLagaPhase,
-  reloadRepairSuccessPage,
   type LagaPhase,
 } from "@/lib/pwa/repair";
 
@@ -17,8 +17,9 @@ export function RepairAppButton() {
     startTransition(async () => {
       try {
         await clearNumaRuntimeCache();
-        // Same iOS-safe path as /laga — reload success screen, then user taps Hem.
-        reloadRepairSuccessPage();
+        setPhase((current) => nextLagaPhase(current, "success"));
+        // Same path as /laga — go to Hem, not back onto Uppdatera.
+        navigateAfterRepair("/idag");
       } catch {
         setPhase((current) => nextLagaPhase(current, "fail"));
       }
