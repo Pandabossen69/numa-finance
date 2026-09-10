@@ -35,13 +35,15 @@ describe("cold Hem/Analys hang contract", () => {
       repository.indexOf("export async function getLatestCheckpoint"),
     );
     expect(timed).toContain("loadTodaySnapshotOnce()");
-    expect(timed).toMatch(/,\s*0\s*,?\s*\)/);
+    expect(timed).toMatch(/,\s*1\s*,?\s*\)/);
     const once = repository.slice(
       repository.indexOf("async function loadTodaySnapshotOnce"),
       repository.indexOf("export async function getTodaySnapshot"),
     );
     expect(once).toContain("api().getProfile()");
     expect(once).toContain("api().listAccounts()");
+    expect(once).toContain("listPlanItems");
+    expect(once).toContain("emptyTodaySnapshot(profile, accounts, null, planItems)");
   });
 
   it("does not keep Hem Suspense open on accounts or Kom igång", () => {
@@ -66,6 +68,7 @@ describe("cold Hem/Analys hang contract", () => {
     expect(dest).toContain("HemFirstPaint");
     expect(dest).toContain("AnalysFirstPaint");
     expect(viewLoading).toContain("Hämtar läget…");
+    expect(viewLoading).toContain("Hämtar planen…");
     expect(viewLoading).toContain("Hämtar analysen…");
     expect(viewLoading).toContain("remainingTodayMinor");
     const pending = viewLoading.slice(

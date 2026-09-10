@@ -255,6 +255,50 @@ describe("last view memory", () => {
     expect(lastPlanSnapshot()?.currency).toBe("THB");
   });
 
+  it("does not replace Plan history with a placeholder empty snapshot", () => {
+    rememberPlanSnapshot({
+      items: [
+        {
+          id: "hyra",
+          userId: "user-hugo",
+          name: "Hyra",
+          kind: "mandatory",
+          amountMinor: 20_000_00,
+          currency: "THB",
+          cadence: "monthly",
+          nextDueAt: "2026-08-01T00:00:00.000Z",
+          isActive: true,
+          settledAt: null,
+          settledMinor: null,
+          remainingDueAt: null,
+          createdAt: "2026-08-01T00:00:00.000Z",
+          updatedAt: "2026-08-01T00:00:00.000Z",
+        },
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 10_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "real-rev",
+      verifiedAt: "2026-09-08T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: null,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "empty:user-hugo:0",
+      verifiedAt: "1970-01-01T00:00:00.000Z",
+      truthStatus: "verified",
+    });
+    expect(lastPlanSnapshot()?.items).toHaveLength(1);
+    expect(lastPlanSnapshot()?.items[0]?.name).toBe("Hyra");
+  });
+
   it("keeps Rörelser, Saldo, Mer, Fota, Importera and Inställningar", () => {
     rememberMovementsSnapshot(sampleMovements);
     rememberMovementsView({ filter: "expense", period: "all" });
