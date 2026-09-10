@@ -14,6 +14,13 @@ describe("PWA version nudge", () => {
     expect(src).not.toContain("location.replace");
   });
 
+  it("auto-reloads installed home-screen apps when a new worker takes over", () => {
+    expect(src).toContain("isStandaloneDisplay");
+    expect(src).toContain("reloadOnce");
+    expect(src).toContain("controllerchange");
+    expect(src).toContain("visibilitychange");
+  });
+
   it("sits above the dock, not over the NUMA logo, and keeps Uppdatera at 44px", () => {
     expect(src).toContain(
       "bottom-[calc(var(--numa-nav-bar)+var(--numa-fab-overhang)+0.4rem)]",

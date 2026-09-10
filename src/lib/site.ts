@@ -61,8 +61,8 @@ export function isProductionAppHost(hostname: string): boolean {
 /**
  * Bounce leftover team / other-app *.vercel.app hosts to production so an
  * installed phone app cannot stick on a random URL. This project's own
- * preview and deployment aliases must stay put — otherwise PR acceptance
- * and in-preview login land on production.
+ * preview and deployment aliases must stay put in the browser — otherwise
+ * PR acceptance and in-preview login land on production.
  * Escape hatch for other hosts: ?preview=1 or numa_preview=1.
  */
 export function shouldRedirectToProduction(
@@ -75,6 +75,15 @@ export function shouldRedirectToProduction(
   if (isProjectVercelAlias(hostname)) return false;
   const host = hostnameWithoutPort(hostname);
   return host.endsWith(".vercel.app");
+}
+
+/**
+ * Home-screen PWAs installed from a Vercel preview / unique deploy URL are
+ * frozen on that build forever. Detect that so we can tell the user to
+ * re-add the icon from production (cross-origin replace often opens Safari).
+ */
+export function isFrozenHomescreenHost(hostname: string): boolean {
+  return isProjectVercelAlias(hostname);
 }
 
 export function productionUrlForPath(pathname: string, search = ""): string {

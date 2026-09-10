@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isStandaloneDisplay } from "@/lib/pwa/display";
 
 /**
  * Register the worker at the stable /sw.js URL so deploys replace the
  * existing registration (a ?v= query would leave the old worker in control).
  * Wait until after first paint so a cold visit is not competing with SW install.
- * When a new build is waiting, offer a soft reload — never wipe user data.
+ * In the browser: offer a soft reload when a new build is waiting.
+ * On the home-screen PWA: auto-reload once the new worker takes control —
+ * otherwise the installed app keeps the old JS in memory with no banner.
  */
 export function PwaRegister() {
   const [updateReady, setUpdateReady] = useState(false);
@@ -17,6 +20,7 @@ export function PwaRegister() {
     let idleId = 0;
     let timeoutId = 0;
     let onLoad: (() => void) | null = null;
+    let reloading = false;
 
     function afterFirstPaint(fn: () => void) {
       const run = () => {
@@ -32,6 +36,12 @@ export function PwaRegister() {
         onLoad = run;
         window.addEventListener("load", run, { once: true });
       }
+    }
+
+    function reloadOnce() {
+      if (cancelled || reloading) return;
+      reloading = true;
+      window.location.reload();
     }
 
     async function setup() {
@@ -51,12 +61,19 @@ export function PwaRegister() {
         );
 
         const hadController = Boolean(navigator.serviceWorker.controller);
+        const standalone = isStandaloneDisplay();
         const reg = await navigator.serviceWorker.register("/sw.js", {
           updateViaCache: "none",
           scope: "/",
         });
         const markReady = () => {
-          if (!cancelled) setUpdateReady(true);
+          if (cancelled) return;
+          if (standalone) {
+            // Installed PWA: don't wait for a banner the user may never see.
+            reg.waiting?.postMessage({ type: "SKIP_WAITING" });
+            return;
+          }
+          setUpdateReady(true);
         };
         if (reg.waiting && hadController) {
           markReady();
@@ -71,9 +88,22 @@ export function PwaRegister() {
           });
         });
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (hadController) markReady();
+          if (!hadController) return;
+          if (standalone) {
+            reloadOnce();
+            return;
+          }
+          markReady();
         });
-        void reg.update();
+
+        const checkUpdate = () => {
+          void reg.update();
+        };
+        checkUpdate();
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") checkUpdate();
+        });
+        window.addEventListener("focus", checkUpdate);
       } catch {
         // Registration is best-effort.
       }

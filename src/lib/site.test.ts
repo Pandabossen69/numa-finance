@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   hasPreviewEscape,
   isCanonicalAppHost,
+  isFrozenHomescreenHost,
   isProductionAppHost,
   isProjectVercelAlias,
   productionUrlForPath,
@@ -54,10 +55,7 @@ describe("canonical production host", () => {
   it("allows ?preview=1 escape hatch", () => {
     const params = new URLSearchParams("preview=1");
     expect(
-      shouldRedirectToProduction(
-        "numa-finance-git-foo.vercel.app",
-        params,
-      ),
+      shouldRedirectToProduction("numa-finance-git-foo.vercel.app", params),
     ).toBe(false);
     expect(
       shouldRedirectToProduction(
@@ -75,5 +73,15 @@ describe("canonical production host", () => {
     expect(productionUrlForPath("/idag")).toBe(
       "https://numa-finance.vercel.app/idag",
     );
+  });
+
+  it("flags preview / unique deploy hosts as frozen home-screen targets", () => {
+    expect(
+      isFrozenHomescreenHost(
+        "numa-finance-mqwenax7f-hugo-throsandher-s-projects.vercel.app",
+      ),
+    ).toBe(true);
+    expect(isFrozenHomescreenHost("numa-finance.vercel.app")).toBe(false);
+    expect(isFrozenHomescreenHost("localhost")).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Sora, JetBrains_Mono } from "next/font/google";
 import { CanonicalHostRedirect } from "@/components/pwa/CanonicalHostRedirect";
+import { FrozenHomescreenGuard } from "@/components/pwa/FrozenHomescreenGuard";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { PRODUCTION_ORIGIN } from "@/lib/site";
 import "./globals.css";
@@ -68,6 +69,7 @@ export default function RootLayout({
     <html lang="sv" className={`${sans.variable} ${mono.variable} h-full`}>
       <body className="min-h-full antialiased">
         <CanonicalHostRedirect />
+        <FrozenHomescreenGuard />
         {children}
         <PwaRegister />
       </body>
