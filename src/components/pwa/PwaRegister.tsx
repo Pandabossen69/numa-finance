@@ -4,23 +4,48 @@ import { useEffect, useState } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
 
 /**
- * Register the worker at the stable /sw.js URL so deploys replace the
- * existing registration (a ?v= query would leave the old worker in control).
- * Wait until after first paint so a cold visit is not competing with SW install.
- * In the browser: offer a soft reload when a new build is waiting.
- * On the home-screen PWA: auto-reload once the new worker takes control —
- * otherwise the installed app keeps the old JS in memory with no banner.
+ * NextStep-inspired update loop for daily home-screen users:
+ * 1. Stable /sw.js registration (no ?v=) so deploys replace the same worker.
+ * 2. updateViaCache: "none" so the browser always revalidates /sw.js.
+ * 3. On installed (standalone) apps: register immediately and auto-reload
+ *    when a new worker takes control — restart/resume → fresh UI.
+ * 4. In the browser tab: soft "Ny version" banner instead of a surprise reload.
+ * HTML/RSC is never served from the SW (see /sw.js), so a cold open already
+ * gets the latest shell; this client loop covers soft resumes too.
  */
 export function PwaRegister() {
   const [updateReady, setUpdateReady] = useState(false);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+
     let cancelled = false;
     let idleId = 0;
     let timeoutId = 0;
     let onLoad: (() => void) | null = null;
     let reloading = false;
+    let registration: ServiceWorkerRegistration | null = null;
+
+    const standalone = isStandaloneDisplay();
+
+    function reloadOnce() {
+      if (cancelled || reloading) return;
+      reloading = true;
+      window.location.reload();
+    }
+
+    function checkUpdate() {
+      void registration?.update();
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") checkUpdate();
+    }
+
+    function onPageShow() {
+      // iOS soft-resume / bfcache — the usual "I reopened the app" path.
+      checkUpdate();
+    }
 
     function afterFirstPaint(fn: () => void) {
       const run = () => {
@@ -36,12 +61,6 @@ export function PwaRegister() {
         onLoad = run;
         window.addEventListener("load", run, { once: true });
       }
-    }
-
-    function reloadOnce() {
-      if (cancelled || reloading) return;
-      reloading = true;
-      window.location.reload();
     }
 
     async function setup() {
@@ -61,23 +80,26 @@ export function PwaRegister() {
         );
 
         const hadController = Boolean(navigator.serviceWorker.controller);
-        const standalone = isStandaloneDisplay();
         const reg = await navigator.serviceWorker.register("/sw.js", {
           updateViaCache: "none",
           scope: "/",
         });
+        registration = reg;
+
         const markReady = () => {
           if (cancelled) return;
           if (standalone) {
-            // Installed PWA: don't wait for a banner the user may never see.
+            // Installed PWA: never depend on a banner the user may never see.
             reg.waiting?.postMessage({ type: "SKIP_WAITING" });
             return;
           }
           setUpdateReady(true);
         };
+
         if (reg.waiting && hadController) {
           markReady();
         }
+
         reg.addEventListener("updatefound", () => {
           const worker = reg.installing;
           if (!worker) return;
@@ -87,6 +109,7 @@ export function PwaRegister() {
             }
           });
         });
+
         navigator.serviceWorker.addEventListener("controllerchange", () => {
           if (!hadController) return;
           if (standalone) {
@@ -96,22 +119,26 @@ export function PwaRegister() {
           markReady();
         });
 
-        const checkUpdate = () => {
-          void reg.update();
-        };
         checkUpdate();
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") checkUpdate();
-        });
+        document.addEventListener("visibilitychange", onVisible);
         window.addEventListener("focus", checkUpdate);
+        window.addEventListener("pageshow", onPageShow);
       } catch {
         // Registration is best-effort.
       }
     }
 
-    afterFirstPaint(() => {
+    // NextStep registers on mount. Home-screen apps do the same so a restart
+    // revalidates /sw.js before the user navigates away. Browser tabs keep the
+    // idle deferral so cold visits stay snappy.
+    if (standalone) {
       void setup();
-    });
+    } else {
+      afterFirstPaint(() => {
+        void setup();
+      });
+    }
+
     return () => {
       cancelled = true;
       if (onLoad) window.removeEventListener("load", onLoad);
@@ -119,6 +146,9 @@ export function PwaRegister() {
         cancelIdleCallback(idleId);
       }
       if (timeoutId) window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", checkUpdate);
+      window.removeEventListener("pageshow", onPageShow);
     };
   }, []);
 

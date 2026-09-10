@@ -19,6 +19,11 @@ describe("PWA version nudge", () => {
     expect(src).toContain("reloadOnce");
     expect(src).toContain("controllerchange");
     expect(src).toContain("visibilitychange");
+    expect(src).toContain("pageshow");
+    expect(src).toContain("updateViaCache: \"none\"");
+    // Standalone registers immediately (NextStep-style), tabs defer.
+    expect(src).toContain("if (standalone)");
+    expect(src).toContain("void setup()");
   });
 
   it("sits above the dock, not over the NUMA logo, and keeps Uppdatera at 44px", () => {
