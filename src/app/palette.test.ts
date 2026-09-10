@@ -171,8 +171,10 @@ describe("NUMA vision palette", () => {
     expect(monthChip).toContain("min-height: var(--numa-touch)");
     expect(css).toContain(".numa-scope-chip {");
     expect(css).toContain(".numa-bottom-nav {");
-    expect(css).toContain("left: 0.7rem");
-    expect(css).toContain("bottom: 0.55rem");
+    expect(css).toContain("left: 0");
+    expect(css).toContain("right: 0");
+    expect(css).toContain("bottom: 0");
+    expect(css).toContain("border-radius: 0");
     expect(css).toContain("padding-left: var(--numa-safe-left)");
     expect(css).toContain("padding-bottom: var(--numa-safe-bottom)");
     expect(css).toMatch(/html \{[^}]*overflow-x:\s*clip/);

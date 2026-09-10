@@ -6,6 +6,10 @@ import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { isSpaTabHref } from "@/lib/nav/spa-tabs";
 
+/**
+ * Icon-only edge dock: stilren B/C-mix with a symmetrical orange + in the
+ * center. Labels live in aria-label only — no caption clutter under icons.
+ */
 export function BottomNav() {
   const { highlightPath, markIntent, pending, navigateSpaTab } = useNavIntent();
   const { prefetch } = usePrefetchOnIntent();
@@ -42,7 +46,7 @@ export function BottomNav() {
       className="numa-bottom-nav fixed z-50 overflow-x-clip md:hidden"
       aria-label="Huvudnavigering"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-5 items-end px-1 pb-1.5 pt-1.5">
+      <div className="mx-auto grid h-[var(--numa-nav-bar)] max-w-lg grid-cols-5 items-center px-2">
         {left.map((tab) => (
           <NavItem
             key={tab.href}
@@ -57,7 +61,7 @@ export function BottomNav() {
             onClick={(event) => onTabClick(tab.href, event)}
           />
         ))}
-        <div className="flex flex-col items-center justify-end gap-0.5 pb-0.5">
+        <div className="flex items-center justify-center">
           <Link
             href="/fota"
             prefetch={false}
@@ -65,14 +69,11 @@ export function BottomNav() {
             onMouseEnter={() => prefetch("/fota")}
             onFocus={() => prefetch("/fota")}
             onClick={() => onIntent("/fota")}
-            className="numa-press numa-fab relative -mt-7 flex h-14 w-14 items-center justify-center rounded-full text-[var(--numa-card)]"
-            aria-label="Fota eller lägg till"
+            className="numa-press numa-fab relative flex items-center justify-center rounded-full"
+            aria-label="Lägg till"
           >
             <PlusIcon />
           </Link>
-          <span className="whitespace-nowrap text-[10px] font-semibold tracking-wide text-[var(--numa-ink)]">
-            Lägg till
-          </span>
         </div>
         {right.map((tab) => (
           <NavItem
@@ -117,22 +118,14 @@ function NavItem({
       href={href}
       onPointerDown={onIntent}
       onClick={onClick}
+      aria-label={label}
       aria-current={active ? "page" : undefined}
       aria-busy={pending || undefined}
-      className={`numa-press numa-bottom-nav-item relative flex min-h-[3.5rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.15rem] px-0.5 ${
-        active
-          ? "is-active bg-[var(--numa-accent-soft)] text-[var(--numa-ink)]"
-          : "text-[var(--numa-faint)]"
+      className={`numa-press numa-bottom-nav-item relative flex min-h-[var(--numa-touch)] min-w-0 items-center justify-center rounded-xl px-0.5 pb-1 ${
+        active ? "is-active" : ""
       }${pending ? " is-pending" : ""}`}
     >
       <NavIcon name={icon} active={active} />
-      <span
-        className={`whitespace-nowrap text-[10px] font-semibold tracking-wide ${
-          active ? "text-[var(--numa-ink)]" : ""
-        }`}
-      >
-        {label}
-      </span>
     </a>
   );
 }
@@ -140,11 +133,12 @@ function NavItem({
 function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
   const stroke = active ? "var(--numa-ink)" : "currentColor";
   const common = {
-    width: 22,
-    height: 22,
+    width: 23,
+    height: 23,
     viewBox: "0 0 24 24",
     "aria-hidden": true as const,
   };
+  const strokeWidth = "1.75";
 
   switch (name) {
     case "home":
@@ -153,7 +147,7 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
           <path
             d="M4.5 10.5 12 4.5l7.5 6V19a1.5 1.5 0 0 1-1.5 1.5h-3.25v-5.25h-5.5V20.5H6A1.5 1.5 0 0 1 4.5 19v-8.5Z"
             stroke={stroke}
-            strokeWidth="1.7"
+            strokeWidth={strokeWidth}
             strokeLinejoin="round"
           />
         </svg>
@@ -168,12 +162,12 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
             height="14"
             rx="2.5"
             stroke={stroke}
-            strokeWidth="1.7"
+            strokeWidth={strokeWidth}
           />
           <path
             d="M8 4.5v3M16 4.5v3M4.5 10.5h15"
             stroke={stroke}
-            strokeWidth="1.7"
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
         </svg>
@@ -184,7 +178,7 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
           <path
             d="M5 18.5V11M10.5 18.5V7M16 18.5v-5.5M20.5 18.5V5.5"
             stroke={stroke}
-            strokeWidth={active ? "2.2" : "1.7"}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
           />
         </svg>
@@ -192,9 +186,9 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
     case "mer":
       return (
         <svg {...common} fill="none">
-          <circle cx="6.5" cy="12" r="1.7" fill={stroke} />
-          <circle cx="12" cy="12" r="1.7" fill={stroke} />
-          <circle cx="17.5" cy="12" r="1.7" fill={stroke} />
+          <circle cx="6.5" cy="12" r="1.55" fill={stroke} />
+          <circle cx="12" cy="12" r="1.55" fill={stroke} />
+          <circle cx="17.5" cy="12" r="1.55" fill={stroke} />
         </svg>
       );
   }
@@ -202,11 +196,11 @@ function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
 
 function PlusIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M12 5.5v13M5.5 12h13"
+        d="M12 5.75v12.5M5.75 12h12.5"
         stroke="currentColor"
-        strokeWidth="2.4"
+        strokeWidth="2.35"
         strokeLinecap="round"
       />
     </svg>
