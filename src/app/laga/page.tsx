@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useState, useSyncExternalStore, type CSSProperties } from "react";
 import {
   clearNumaRuntimeCache,
   nextLagaPhase,
@@ -13,6 +13,11 @@ import {
   PRODUCTION_ORIGIN,
 } from "@/lib/site";
 
+function readHostInfo(): { host: string; frozen: boolean } {
+  const host = window.location.hostname;
+  return { host, frozen: isFrozenHomescreenHost(host) };
+}
+
 /**
  * Forces a fresh app shell: unregister SW, wipe Cache Storage, reload.
  * Cache clears only after an explicit confirm. No auto-bounce into a blank Hem.
@@ -21,18 +26,11 @@ import {
  */
 export default function LagaPage() {
   const [phase, setPhase] = useState<LagaPhase>("idle");
-  const [hostInfo, setHostInfo] = useState<{
-    host: string;
-    frozen: boolean;
-  } | null>(null);
-
-  useEffect(() => {
-    const host = window.location.hostname;
-    setHostInfo({
-      host,
-      frozen: isFrozenHomescreenHost(host),
-    });
-  }, []);
+  const hostInfo = useSyncExternalStore(
+    () => () => {},
+    readHostInfo,
+    () => null,
+  );
 
   async function runUpdate() {
     setPhase("running");
