@@ -7,17 +7,16 @@ describe("/laga page", () => {
   it("frames the action as an update, without homescreen install tips", () => {
     expect(src).toContain("Uppdatera appen");
     expect(src).toContain("Uppdatera nu");
-    expect(src).toContain("Hämtar senaste versionen");
-    expect(src).toContain("Dina konton påverkas inte");
-    expect(src).toContain("Tillbaka till Hem");
+    expect(src).toContain("Öppna Hem");
+    expect(src).toContain("Klar. Appen är uppdaterad.");
+    expect(src).toContain("reloadRepairSuccessPage");
     expect(src).toContain("isFrozenHomescreenHost");
     expect(src).toContain('nextLagaPhase(current, "ask")');
     expect(src).toContain("clearNumaRuntimeCache");
-    expect(src).toContain("navigateAfterRepair");
     expect(src).toContain("BRAND_MARK");
-    expect(src).not.toContain("location.replace");
-    expect(src).not.toContain("unregister");
 
+    expect(src).not.toContain("navigateAfterRepair");
+    expect(src).not.toContain("location.replace");
     expect(src).not.toContain("Laga appen");
     expect(src).not.toContain("Ja, rensa cache");
     expect(src).not.toContain("lägg till NUMA på hemskärmen");

@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import {
   clearNumaRuntimeCache,
-  navigateAfterRepair,
   nextLagaPhase,
+  reloadRepairSuccessPage,
   type LagaPhase,
 } from "@/lib/pwa/repair";
 
@@ -17,8 +17,8 @@ export function RepairAppButton() {
     startTransition(async () => {
       try {
         await clearNumaRuntimeCache();
-        setPhase((current) => nextLagaPhase(current, "success"));
-        navigateAfterRepair("/idag");
+        // Same iOS-safe path as /laga — reload success screen, then user taps Hem.
+        reloadRepairSuccessPage();
       } catch {
         setPhase((current) => nextLagaPhase(current, "fail"));
       }
@@ -49,7 +49,9 @@ export function RepairAppButton() {
           <button
             type="button"
             className="flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-semibold text-[var(--numa-muted)]"
-            onClick={() => setPhase((current) => nextLagaPhase(current, "cancel"))}
+            onClick={() =>
+              setPhase((current) => nextLagaPhase(current, "cancel"))
+            }
           >
             Avbryt
           </button>
@@ -63,7 +65,7 @@ export function RepairAppButton() {
         </p>
       ) : (
         <p className="text-[12px] leading-relaxed text-[var(--numa-faint)]">
-          Hämtar senaste versionen och rensar gammal cache. Dina konton påverkas
+          Rensar gammal cache så appen laddar fräscht. Dina konton påverkas
           inte.
         </p>
       )}

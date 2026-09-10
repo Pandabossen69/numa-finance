@@ -1,4 +1,5 @@
 export const NUMA_SW_KILL_FLAG = "numa.swKill.v8";
+export const NUMA_REPAIR_DONE_PARAM = "updated";
 
 export type LagaPhase = "idle" | "confirm" | "running" | "done" | "error";
 export type LagaEvent = "ask" | "cancel" | "success" | "fail";
@@ -23,15 +24,22 @@ export function lagaStartsIdle(): boolean {
   return true;
 }
 
+export function isRepairDoneSearch(search: string): boolean {
+  try {
+    return new URLSearchParams(search).get(NUMA_REPAIR_DONE_PARAM) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Refresh the installed app shell without tearing down the controller mid-nav.
+ * Wipe Cache Storage + local repair flags.
  *
- * Important (iOS home-screen): unregistering the service worker and then
- * immediately calling location.replace("/idag") often surfaces Safari's
- * "This page couldn't load" interstitial in standalone mode. We instead:
- * 1. wipe Cache Storage
- * 2. ask the existing worker to update + skipWaiting
- * 3. let the caller navigate with {@link navigateAfterRepair}
+ * Do NOT call registration.update() or post skip-waiting here. In standalone iOS,
+ * that fires PwaRegister's controllerchange → location.reload() in the same
+ * turn as our navigation and surfaces "This page couldn't load".
+ * Cache wipe + a calm same-document reload is enough; PwaRegister still
+ * picks up new /sw.js on the next focus/pageshow.
  */
 export async function clearNumaRuntimeCache(): Promise<void> {
   try {
@@ -46,20 +54,6 @@ export async function clearNumaRuntimeCache(): Promise<void> {
     await Promise.all(keys.map((key) => caches.delete(key)));
   }
 
-  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(
-      regs.map(async (reg) => {
-        try {
-          await reg.update();
-        } catch {
-          // ignore network/update failures — cache wipe still helps
-        }
-        reg.waiting?.postMessage({ type: "SKIP_WAITING" });
-      }),
-    );
-  }
-
   try {
     localStorage.setItem(NUMA_SW_KILL_FLAG, "done");
   } catch {
@@ -68,14 +62,13 @@ export async function clearNumaRuntimeCache(): Promise<void> {
 }
 
 /**
- * Same-origin hard navigation that survives iOS standalone after a repair.
- * Uses absolute URL + assign (not replace) after a short settle delay.
+ * After a successful repair: reload /laga with ?updated=1.
+ * Same-document navigation is the only reliably safe hop on iOS standalone
+ * right after cache churn. The success screen then offers a normal <a> to Hem.
  */
-export function navigateAfterRepair(path = "/idag"): void {
+export function reloadRepairSuccessPage(): void {
   if (typeof window === "undefined") return;
-  const url = new URL(path, window.location.origin);
-  url.searchParams.set("r", String(Date.now()));
-  window.setTimeout(() => {
-    window.location.assign(url.href);
-  }, 250);
+  const url = new URL("/laga", window.location.origin);
+  url.searchParams.set(NUMA_REPAIR_DONE_PARAM, "1");
+  window.location.assign(url.href);
 }

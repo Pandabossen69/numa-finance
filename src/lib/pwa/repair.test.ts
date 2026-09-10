@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { lagaStartsIdle, nextLagaPhase } from "./repair";
+import {
+  isRepairDoneSearch,
+  lagaStartsIdle,
+  nextLagaPhase,
+} from "./repair";
 
 const src = readFileSync(new URL("./repair.ts", import.meta.url), "utf8");
 
@@ -18,11 +22,17 @@ describe("/laga repair flow", () => {
     expect(nextLagaPhase("running", "fail")).toBe("error");
   });
 
-  it("updates the worker instead of unregistering (iOS-safe)", () => {
-    expect(src).toContain("reg.update()");
-    expect(src).toContain("SKIP_WAITING");
-    expect(src).toContain("navigateAfterRepair");
-    expect(src).toContain("location.assign");
+  it("clears caches without SKIP_WAITING (avoids iOS reload race)", () => {
+    expect(src).toContain("caches.delete");
+    expect(src).toContain("reloadRepairSuccessPage");
+    expect(src).not.toContain("SKIP_WAITING");
+    expect(src).not.toContain("reg.update");
     expect(src).not.toMatch(/\b\w+\.unregister\s*\(/);
+  });
+
+  it("detects the success query", () => {
+    expect(isRepairDoneSearch("?updated=1")).toBe(true);
+    expect(isRepairDoneSearch("?updated=0")).toBe(false);
+    expect(isRepairDoneSearch("")).toBe(false);
   });
 });
