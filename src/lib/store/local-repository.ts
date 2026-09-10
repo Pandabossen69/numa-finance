@@ -16,6 +16,7 @@ import {
   shouldWriteSmsTipCheckpoint,
   decideSmsBatchConfirm,
   collectPairedVoidIds,
+  requireCompletePairedReplay,
   resolveSmsBatchOccurredAt,
   zonedDayKey,
   type Account,
@@ -661,6 +662,7 @@ export async function createTransfer(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  clientMutationId?: string | null;
 }): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) throw new Error("Beloppet måste vara större än noll");
   if (input.fromAccountId === input.toAccountId) {
@@ -668,6 +670,12 @@ export async function createTransfer(input: {
   }
 
   const store = await readStore();
+  const existing = requireCompletePairedReplay(
+    input.clientMutationId,
+    store.transactions,
+    "Överföringen sparades inte komplett",
+  );
+  if (existing) return existing;
   const from = store.accounts.find((a) => a.id === input.fromAccountId);
   const to = store.accounts.find((a) => a.id === input.toAccountId);
   if (!from || !to) throw new Error("Kontot hittades inte");
@@ -680,6 +688,16 @@ export async function createTransfer(input: {
   let outId = "";
   let inId = "";
   await updateStore((s) => {
+    const replay = requireCompletePairedReplay(
+      input.clientMutationId,
+      s.transactions,
+      "Överföringen sparades inte komplett",
+    );
+    if (replay) {
+      outId = replay.out.id;
+      inId = replay.inn.id;
+      return;
+    }
     const ts = nowIso();
     const occurredAt = input.occurredAt ?? ts;
     const description = input.description?.trim() || "Överföring";
@@ -705,6 +723,7 @@ export async function createTransfer(input: {
       fxRate: fx.fxRate,
       fxAsOf: fx.fxAsOf,
       fxSource: fx.fxSource,
+      clientMutationId: input.clientMutationId ?? null,
       occurredAt,
       description,
       merchant: null,
@@ -725,6 +744,7 @@ export async function createTransfer(input: {
       accountId: to.id,
       counterAccountId: from.id,
       direction: "credit",
+      clientMutationId: null,
     };
     outId = out.id;
     inId = inn.id;
@@ -744,6 +764,7 @@ export async function createCashWithdrawal(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  clientMutationId?: string | null;
 }): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -756,6 +777,12 @@ export async function createCashWithdrawal(input: {
   }
 
   const store = await readStore();
+  const existing = requireCompletePairedReplay(
+    input.clientMutationId,
+    store.transactions,
+    "Kontantuttaget sparades inte komplett",
+  );
+  if (existing) return existing;
   const from = store.accounts.find((a) => a.id === input.fromAccountId);
   if (!from) throw new Error("Kontot hittades inte");
   requireLifecycle(assertAccountAcceptsWrites(from));
@@ -772,6 +799,16 @@ export async function createCashWithdrawal(input: {
   let outId = "";
   let inId = "";
   await updateStore((s) => {
+    const replay = requireCompletePairedReplay(
+      input.clientMutationId,
+      s.transactions,
+      "Kontantuttaget sparades inte komplett",
+    );
+    if (replay) {
+      outId = replay.out.id;
+      inId = replay.inn.id;
+      return;
+    }
     const ts = nowIso();
     const occurredAt = input.occurredAt ?? ts;
     const description = input.description?.trim() || "Kontantuttag";
@@ -796,6 +833,7 @@ export async function createCashWithdrawal(input: {
       fxRate: fx.fxRate,
       fxAsOf: fx.fxAsOf,
       fxSource: fx.fxSource,
+      clientMutationId: input.clientMutationId ?? null,
       occurredAt,
       description,
       merchant: null,
@@ -816,6 +854,7 @@ export async function createCashWithdrawal(input: {
       accountId: to.id,
       counterAccountId: from.id,
       direction: "credit",
+      clientMutationId: null,
     };
     outId = out.id;
     inId = inn.id;

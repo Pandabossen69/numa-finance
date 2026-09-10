@@ -261,6 +261,7 @@ const transferSchema = z.object({
   toAccountId: z.string().uuid(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
+  clientMutationId: z.string().uuid().optional(),
 });
 
 const cashSchema = z.object({
@@ -268,6 +269,7 @@ const cashSchema = z.object({
   toAccountId: z.string().uuid(),
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
+  clientMutationId: z.string().uuid().optional(),
 });
 
 /**
@@ -392,21 +394,23 @@ export async function createTransferAction(
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
-    await createTransfer({
+    const pair = await createTransfer({
       fromAccountId: input.fromAccountId,
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
+      clientMutationId: input.clientMutationId,
     });
     const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {
       return {
         ok: true,
+        id: pair.out.id,
         refreshPending: true,
         refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
       };
     }
-    return { ok: true, ...refreshed.snapshots };
+    return { ok: true, id: pair.out.id, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,
@@ -425,21 +429,23 @@ export async function createCashWithdrawalAction(
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
-    await createCashWithdrawal({
+    const pair = await createCashWithdrawal({
       fromAccountId: input.fromAccountId,
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
+      clientMutationId: input.clientMutationId,
     });
     const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {
       return {
         ok: true,
+        id: pair.out.id,
         refreshPending: true,
         refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
       };
     }
-    return { ok: true, ...refreshed.snapshots };
+    return { ok: true, id: pair.out.id, ...refreshed.snapshots };
   } catch (error) {
     return {
       ok: false,

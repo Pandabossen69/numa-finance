@@ -20,6 +20,25 @@ describe("createExpenseAction", () => {
   });
 });
 
+describe("createTransferAction / createCashWithdrawalAction", () => {
+  it("passes the client mutation id through before refresh", () => {
+    const transfer = src.slice(
+      src.indexOf("export async function createTransferAction"),
+      src.indexOf("export async function createCashWithdrawalAction"),
+    );
+    const cash = src.slice(
+      src.indexOf("export async function createCashWithdrawalAction"),
+    );
+    expect(transfer).toContain("clientMutationId: input.clientMutationId");
+    expect(transfer).toContain("refreshAfterDurableWrite");
+    expect(transfer.indexOf("createTransfer")).toBeLessThan(
+      transfer.indexOf("refreshAfterDurableWrite"),
+    );
+    expect(cash).toContain("clientMutationId: input.clientMutationId");
+    expect(cash).toContain("refreshAfterDurableWrite");
+  });
+});
+
 describe("account management actions", () => {
   it("updates, deletes, archives and restores through owned repository writes", () => {
     expect(src).toContain("export async function updateAccountAction");
