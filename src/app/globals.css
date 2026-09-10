@@ -387,6 +387,40 @@ body {
   vertical-align: middle;
 }
 
+/* Shell lockup: app-icon tile + wordmark. Icon replaces the accent dot. */
+.numa-brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.numa-brand-lockup-icon {
+  display: block;
+  width: 1.875rem;
+  height: 1.875rem;
+  flex: 0 0 auto;
+  border-radius: 0.58rem;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--numa-border) 80%, transparent),
+    0 6px 14px -10px rgba(0, 0, 0, 0.55);
+}
+
+.numa-brand-lockup.is-lg .numa-brand-lockup-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.7rem;
+}
+
+.numa-brand-lockup.is-lg .numa-brand-mark {
+  font-size: 1.85rem;
+  letter-spacing: -0.055em;
+}
+
+.numa-brand-lockup .numa-brand-mark::after {
+  display: none;
+}
+
 .numa-row {
   display: flex;
   flex-wrap: wrap;
