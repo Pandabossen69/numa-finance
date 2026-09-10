@@ -21,8 +21,7 @@ export type MutationSnapshots = {
 };
 
 export type RefreshAfterWrite =
-  | { refreshPending: false; snapshots: MutationSnapshots }
-  | { refreshPending: true };
+  { refreshPending: false; snapshots: MutationSnapshots } | { refreshPending: true };
 
 /**
  * After the durable write committed, a snapshot/revalidation failure must
@@ -31,8 +30,10 @@ export type RefreshAfterWrite =
  */
 export async function refreshAfterDurableWrite(
   revalidate: () => void,
+  afterWrite?: () => Promise<unknown>,
 ): Promise<RefreshAfterWrite> {
   try {
+    await afterWrite?.();
     const snap = await refreshTodaySnapshot();
     revalidate();
     return {
@@ -45,6 +46,11 @@ export async function refreshAfterDurableWrite(
       },
     };
   } catch (error) {
+    try {
+      revalidate();
+    } catch {
+      /* persisted write remains successful */
+    }
     void reportError("mutation.refresh", error);
     return { refreshPending: true };
   }

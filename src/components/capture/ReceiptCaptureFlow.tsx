@@ -770,7 +770,7 @@ function ModePicker({
         {
           id: "bank_sms",
           title: "Bank-SMS",
-          hint: "Saldot i SMS:et.",
+          hint: "Ladda upp en skärmdump av bankens SMS.",
         },
         {
           id: "bank_app",
@@ -782,17 +782,17 @@ function ModePicker({
     {
       id: "bank_sms",
       title: "Bank-SMS",
-      hint: "Saldot i SMS:et.",
+      hint: "Ladda upp en skärmdump av bankens SMS.",
     },
     {
       id: "bank_app",
       title: "Bankapp",
-      hint: hasAccount ? "Beloppet i bankappen." : "Sätt saldo först.",
+      hint: hasAccount ? "Ladda upp en skärmdump från din bankapp." : "Sätt saldo först.",
     },
     {
       id: "receipt",
       title: "Kvitto",
-      hint: "Priset på kvittot.",
+      hint: "Fota eller ladda upp ett kvitto.",
     },
     {
       id: "manual",
@@ -805,10 +805,10 @@ function ModePicker({
     <div className="animate-rise space-y-8">
       <header className="space-y-2">
         <h2 className="text-2xl font-semibold tracking-tight">
-          {onboarding ? "Fota saldot" : "Fota"}
+          {onboarding ? "Fota saldot" : "Lägg till"}
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {SV.fotaHint}
+          {onboarding ? SV.fotaHint : "Läs in en bild eller skriv beloppet själv."}
         </p>
       </header>
 

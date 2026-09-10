@@ -25,7 +25,12 @@ import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledge
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
-import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } from "@/domain/money";
+import {
+  CURRENCIES,
+  parseUiAmountToMinor,
+  parseManualRate,
+  type CurrencyCode,
+} from "@/domain/money";
 import {
   ACCOUNT_KINDS,
   assertCurrencyAllowedForKind,
@@ -40,14 +45,7 @@ import type { MovementsSnapshot } from "@/features/finance/load-movements";
 const accountSchema = z.object({
   name: z.string().trim().min(1).max(80),
   institution: z.string().trim().max(80).optional().nullable(),
-  accountType: z.enum([
-    "checking",
-    "savings",
-    "cash",
-    "credit",
-    "investment",
-    "other",
-  ]),
+  accountType: z.enum(["checking", "savings", "cash", "credit", "investment", "other"]),
   kind: z.enum(ACCOUNT_KINDS),
   currency: z.enum(CURRENCIES),
   maskedIdentifier: z.string().trim().max(32).optional().nullable(),
@@ -217,11 +215,12 @@ export async function createExpenseAction(
       clientMutationId: input.clientMutationId,
     });
 
-    const profile = await getProfile();
-    await reclaimStalePlanSettleLedgers({
-      timeZone: profile.timezone || "Asia/Bangkok",
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths, async () => {
+      const profile = await getProfile();
+      await reclaimStalePlanSettleLedgers({
+        timeZone: profile.timezone || "Asia/Bangkok",
+      });
     });
-    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {
       return {
         ok: true,
@@ -310,8 +309,7 @@ export async function updateTransactionAction(raw: {
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte uppdatera rörelsen",
+      error: error instanceof Error ? error.message : "Kunde inte uppdatera rörelsen",
     };
   }
 }
@@ -332,8 +330,7 @@ export async function voidTransactionAction(id: string): Promise<ActionResult> {
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte ta bort rörelsen",
+      error: error instanceof Error ? error.message : "Kunde inte ta bort rörelsen",
     };
   }
 }
@@ -353,11 +350,12 @@ export async function createIncomeAction(
       description: input.description,
       clientMutationId: input.clientMutationId,
     });
-    const profile = await getProfile();
-    await reclaimStalePlanSettleLedgers({
-      timeZone: profile.timezone || "Asia/Bangkok",
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths, async () => {
+      const profile = await getProfile();
+      await reclaimStalePlanSettleLedgers({
+        timeZone: profile.timezone || "Asia/Bangkok",
+      });
     });
-    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {
       return {
         ok: true,
@@ -395,8 +393,7 @@ export async function createTransferAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte spara överföring",
+      error: error instanceof Error ? error.message : "Kunde inte spara överföring",
     };
   }
 }
@@ -421,8 +418,7 @@ export async function createCashWithdrawalAction(
   } catch (error) {
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte spara kontantuttag",
+      error: error instanceof Error ? error.message : "Kunde inte spara kontantuttag",
     };
   }
 }
@@ -516,9 +512,7 @@ export async function setAvailableNowAction(raw: {
     return {
       ok: false,
       error:
-        error instanceof Error
-          ? error.message
-          : "Kunde inte spara tillgängligt belopp",
+        error instanceof Error ? error.message : "Kunde inte spara tillgängligt belopp",
     };
   }
 }

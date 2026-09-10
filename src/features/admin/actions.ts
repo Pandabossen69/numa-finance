@@ -2,7 +2,7 @@
 
 import "server-only";
 
-import { getSessionUser } from "@/features/auth/session";
+import { getVerifiedAuthUser } from "@/lib/supabase/auth-user";
 import {
   authorizeAdminCreateUser,
   parseCreateUserInput,
@@ -22,7 +22,12 @@ export async function createUserAction(raw: {
   password: string;
   displayName?: string;
 }): Promise<CreateUserResult> {
-  const session = await getSessionUser();
+  let session;
+  try {
+    session = await getVerifiedAuthUser();
+  } catch {
+    return { ok: false, error: "Kunde inte verifiera behörigheten. Försök igen." };
+  }
   const allowed = authorizeAdminCreateUser(session?.email);
   if (!allowed.ok) {
     return allowed;
