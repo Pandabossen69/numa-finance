@@ -109,7 +109,7 @@ describe("durable expense/income write vs post-write refresh", () => {
     };
     expect(firstArg.clientMutationId).toBe(MUTATION_ID);
     expect(secondArg.clientMutationId).toBe(MUTATION_ID);
-    expect(first.id).toBe(second.id);
+    expect(first.ok && second.ok && first.id === second.id).toBe(true);
   });
 
   it("still fails when the durable write itself fails", async () => {
