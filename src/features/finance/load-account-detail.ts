@@ -18,6 +18,13 @@ import {
   listTransactions,
 } from "@/lib/store/repository";
 
+export type AccountSibling = {
+  id: string;
+  name: string;
+  kind: AccountKind;
+  currency: CurrencyCode;
+};
+
 export type AccountDetail = {
   id: string;
   name: string;
@@ -29,6 +36,7 @@ export type AccountDetail = {
   calculatedMinor: number | null;
   hasLedgerHistory: boolean;
   activeCount: number;
+  otherActiveAccounts: AccountSibling[];
 };
 
 export type AccountDetailResult =
@@ -37,7 +45,7 @@ export type AccountDetailResult =
 
 function toDetail(
   account: Account,
-  activeCount: number,
+  activeAccounts: Account[],
   checkpoint: Awaited<ReturnType<typeof getLatestCheckpoint>>,
   transactions: Awaited<ReturnType<typeof listTransactions>>,
 ): AccountDetail {
@@ -67,7 +75,15 @@ function toDetail(
     isActive: account.isActive,
     calculatedMinor,
     hasLedgerHistory: accountHasLedgerHistory(transactions),
-    activeCount,
+    activeCount: activeAccounts.length,
+    otherActiveAccounts: activeAccounts
+      .filter((row) => row.id !== account.id)
+      .map((row) => ({
+        id: row.id,
+        name: row.name,
+        kind: row.kind,
+        currency: row.currency,
+      })),
   };
 }
 
@@ -85,7 +101,7 @@ export const loadAccountDetail = cache(
       ]);
       return {
         ok: true,
-        data: toDetail(account, active.length, checkpoint, transactions),
+        data: toDetail(account, active, checkpoint, transactions),
       };
     } catch (error) {
       unstable_rethrow(error);

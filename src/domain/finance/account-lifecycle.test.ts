@@ -15,6 +15,7 @@ import {
   DELETE_UNKNOWN_SALDO_SV,
   HAS_HISTORY_DELETE_SV,
   LAST_ACTIVE_ACCOUNT_SV,
+  MAKE_OTHER_DEFAULT_HINT_SV,
   NOT_ARCHIVED_SV,
   accountHasLedgerHistory,
   accountTypeForKind,
@@ -25,6 +26,7 @@ import {
   evaluateDeleteAccount,
   evaluateKindChange,
   evaluateRestoreAccount,
+  explainAccountRetireUi,
   type AccountLifecycleFacts,
 } from "./account-lifecycle";
 
@@ -158,6 +160,68 @@ describe("default and last-active blocks", () => {
     expect(CHOOSE_OTHER_DEFAULT_SV).toBe("Välj ett annat förvalt konto först.");
   });
 
+  it("still shows archive or delete in the UI when default, but blocked", () => {
+    expect(
+      explainAccountRetireUi({
+        isDefault: true,
+        activeCount: 2,
+        hasLedgerHistory: true,
+        balanceMinor: 100_00,
+      }),
+    ).toEqual({
+      action: "archive",
+      blocked: true,
+      reason: `${CHOOSE_OTHER_DEFAULT_SV} ${DEFAULT_ACCOUNT_BLOCK_SV}`,
+    });
+    expect(
+      explainAccountRetireUi({
+        isDefault: true,
+        activeCount: 2,
+        hasLedgerHistory: false,
+        balanceMinor: 0,
+      }),
+    ).toEqual({
+      action: "delete",
+      blocked: true,
+      reason: `${CHOOSE_OTHER_DEFAULT_SV} ${DEFAULT_ACCOUNT_BLOCK_SV}`,
+    });
+  });
+
+  it("explains saldo and last-active blocks for the visible button", () => {
+    expect(
+      explainAccountRetireUi({
+        isDefault: false,
+        activeCount: 2,
+        hasLedgerHistory: true,
+        balanceMinor: 250_00,
+      }),
+    ).toEqual({
+      action: "archive",
+      blocked: true,
+      reason: ARCHIVE_REQUIRES_ZERO_SV,
+    });
+    expect(
+      explainAccountRetireUi({
+        isDefault: false,
+        activeCount: 1,
+        hasLedgerHistory: false,
+        balanceMinor: 0,
+      }),
+    ).toEqual({
+      action: "delete",
+      blocked: true,
+      reason: LAST_ACTIVE_ACCOUNT_SV,
+    });
+    expect(
+      explainAccountRetireUi({
+        isDefault: false,
+        activeCount: 2,
+        hasLedgerHistory: true,
+        balanceMinor: 0,
+      }),
+    ).toEqual({ action: "archive", blocked: false, reason: null });
+  });
+
   it("blocks retiring the last active account", () => {
     expect(evaluateDeleteAccount(facts({ activeCount: 1 }))).toEqual({
       ok: false,
@@ -249,5 +313,6 @@ describe("copy", () => {
       "vilket konto som föreslås när en utgift skapas",
     );
     expect(DEFAULT_ACCOUNT_COPY_SV).not.toContain("Primärt konto för utgifter");
+    expect(MAKE_OTHER_DEFAULT_HINT_SV).toContain("Gör ett annat konto förvalt först");
   });
 });
