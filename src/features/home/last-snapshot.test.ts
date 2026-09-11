@@ -499,6 +499,14 @@ describe("last view memory", () => {
     expect(lastAccountsSnapshot()?.accounts[1]?.calculatedMinor).toBe(300_00);
     expect(lastAccountsSnapshot()?.totalThbMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(1_200_00);
+
+    applyLocalTransfer({
+      fromAccountId: "acc-a",
+      toAccountId: "acc-b",
+      amountMinor: 100_00,
+    });
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(800_00);
+    expect(lastAccountsSnapshot()?.accounts[1]?.calculatedMinor).toBe(400_00);
   });
 
   it("lets kvar idag go negative when spend passes the sticky dagsbudget", () => {

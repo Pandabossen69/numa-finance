@@ -16,6 +16,7 @@ import {
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
   collectPairedVoidIds,
+  requireCompletePairedReplay,
   resolveSmsBatchOccurredAt,
   zonedDayKey,
   type Account,
@@ -704,6 +705,30 @@ async function findTransactionByMutationId(
   return data ? mapTransaction(data) : null;
 }
 
+async function findPairedMoneyMoveByMutationId(
+  clientMutationId: string,
+  incompleteMessage: string,
+): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction } | null> {
+  const debit = await findTransactionByMutationId(clientMutationId);
+  if (!debit) return null;
+  if (!debit.transferGroupId) {
+    throw new Error(incompleteMessage);
+  }
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("transfer_group_id", debit.transferGroupId);
+  if (error) throw new Error(error.message);
+  return requireCompletePairedReplay(
+    clientMutationId,
+    (data ?? []).map(mapTransaction),
+    incompleteMessage,
+  );
+}
+
 export async function createManualIncome(input: {
   accountId: string;
   amountMinor: number;
@@ -794,12 +819,22 @@ export async function createTransfer(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  clientMutationId?: string | null;
 }): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
   }
   if (input.fromAccountId === input.toAccountId) {
     throw new Error("Välj två olika konton");
+  }
+
+  const incompleteMessage = "Överföringen sparades inte komplett";
+  if (input.clientMutationId) {
+    const existing = await findPairedMoneyMoveByMutationId(
+      input.clientMutationId,
+      incompleteMessage,
+    );
+    if (existing) return existing;
   }
 
   const userId = await requireUserId();
@@ -828,6 +863,7 @@ export async function createTransfer(input: {
   });
 
   // Single multi-row insert — both legs commit together or neither does.
+  // Mutation id lives on the debit only (unique index is one row per key).
   const { data: rows, error } = await supabase
     .from("transactions")
     .insert([
@@ -844,6 +880,7 @@ export async function createTransfer(input: {
         fx_rate: fx.fxRate,
         fx_as_of: fx.fxAsOf,
         fx_source: fx.fxSource,
+        client_mutation_id: input.clientMutationId ?? null,
         occurred_at: occurredAt,
         description,
         source: "manual",
@@ -873,12 +910,21 @@ export async function createTransfer(input: {
       },
     ])
     .select("*");
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (input.clientMutationId && isUniqueViolationMessage(error.message)) {
+      const existing = await findPairedMoneyMoveByMutationId(
+        input.clientMutationId,
+        incompleteMessage,
+      );
+      if (existing) return existing;
+    }
+    throw new Error(error.message);
+  }
 
   const outRow = (rows ?? []).find((r) => r.id === outId);
   const inRow = (rows ?? []).find((r) => r.id === inId);
   if (!outRow || !inRow) {
-    throw new Error("Överföringen sparades inte komplett");
+    throw new Error(incompleteMessage);
   }
 
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };
@@ -890,6 +936,7 @@ export async function createCashWithdrawal(input: {
   amountMinor: number;
   description?: string;
   occurredAt?: string;
+  clientMutationId?: string | null;
 }): Promise<{ out: CanonicalTransaction; inn: CanonicalTransaction }> {
   if (input.amountMinor <= 0) {
     throw new Error("Beloppet måste vara större än noll");
@@ -899,6 +946,15 @@ export async function createCashWithdrawal(input: {
   }
   if (input.fromAccountId === input.toAccountId) {
     throw new Error("Välj två olika konton");
+  }
+
+  const incompleteMessage = "Kontantuttaget sparades inte komplett";
+  if (input.clientMutationId) {
+    const existing = await findPairedMoneyMoveByMutationId(
+      input.clientMutationId,
+      incompleteMessage,
+    );
+    if (existing) return existing;
   }
 
   const userId = await requireUserId();
@@ -946,6 +1002,7 @@ export async function createCashWithdrawal(input: {
         fx_rate: fx.fxRate,
         fx_as_of: fx.fxAsOf,
         fx_source: fx.fxSource,
+        client_mutation_id: input.clientMutationId ?? null,
         occurred_at: occurredAt,
         description,
         source: "manual",
@@ -975,12 +1032,21 @@ export async function createCashWithdrawal(input: {
       },
     ])
     .select("*");
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (input.clientMutationId && isUniqueViolationMessage(error.message)) {
+      const existing = await findPairedMoneyMoveByMutationId(
+        input.clientMutationId,
+        incompleteMessage,
+      );
+      if (existing) return existing;
+    }
+    throw new Error(error.message);
+  }
 
   const outRow = (rows ?? []).find((r) => r.id === outId);
   const inRow = (rows ?? []).find((r) => r.id === inId);
   if (!outRow || !inRow) {
-    throw new Error("Kontantuttaget sparades inte komplett");
+    throw new Error(incompleteMessage);
   }
 
   return { out: mapTransaction(outRow), inn: mapTransaction(inRow) };

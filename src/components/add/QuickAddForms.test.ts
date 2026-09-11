@@ -37,5 +37,24 @@ describe("Flytta/Kontant empty copy", () => {
     );
     expect(transferBlock).toContain("compatibleDestinations");
     expect(transferBlock).toContain("olika valutor stöds inte ännu");
+    expect(transferBlock).toContain("createStableMutationId");
+    expect(transferBlock).toContain("mutation.take()");
+    expect(transferBlock).toContain("clientMutationId: mutationId");
+    expect(transferBlock).toContain("mutation.clear()");
+    expect(transferBlock.indexOf("if (!result.ok)")).toBeLessThan(
+      transferBlock.indexOf("mutation.clear()"),
+    );
+    expect(transferBlock).toContain("appliedMutations");
+    expect(transferBlock).toContain("adoptMutationFinance");
+    const cashBlock = src.slice(src.indexOf("function CashForm"));
+    expect(cashBlock).toContain("createStableMutationId");
+    expect(cashBlock).toContain("mutation.take()");
+    expect(cashBlock).toContain("clientMutationId: mutationId");
+    expect(cashBlock).toContain("mutation.clear()");
+    expect(cashBlock.indexOf("if (!result.ok)")).toBeLessThan(
+      cashBlock.indexOf("mutation.clear()"),
+    );
+    expect(cashBlock).toContain("appliedMutations");
+    expect(cashBlock).toContain("adoptMutationFinance");
   });
 });

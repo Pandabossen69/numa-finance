@@ -70,3 +70,24 @@ export function nativeToThbMinor(
 export function newClientMutationId(): string {
   return crypto.randomUUID();
 }
+
+/** One logical submit. Retry after a lost response must reuse the same id. */
+export function createStableMutationId(): {
+  take: () => string;
+  clear: () => void;
+  peek: () => string | null;
+} {
+  let current: string | null = null;
+  return {
+    take() {
+      if (!current) current = newClientMutationId();
+      return current;
+    },
+    clear() {
+      current = null;
+    },
+    peek() {
+      return current;
+    },
+  };
+}

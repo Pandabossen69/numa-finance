@@ -2,9 +2,8 @@
 
 import "server-only";
 
-import { getSessionUser } from "@/features/auth/session";
+import { requireVerifiedAdminForMutation } from "@/features/auth/session";
 import {
-  authorizeAdminCreateUser,
   parseCreateUserInput,
   SERVICE_ROLE_MISSING_SV,
   swedishCreateUserError,
@@ -22,8 +21,7 @@ export async function createUserAction(raw: {
   password: string;
   displayName?: string;
 }): Promise<CreateUserResult> {
-  const session = await getSessionUser();
-  const allowed = authorizeAdminCreateUser(session?.email);
+  const allowed = await requireVerifiedAdminForMutation();
   if (!allowed.ok) {
     return allowed;
   }

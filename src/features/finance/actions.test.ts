@@ -13,6 +13,29 @@ describe("createExpenseAction", () => {
     expect(fn).toContain("refreshAfterDurableWrite");
     expect(fn).toContain("clientMutationId: input.clientMutationId");
     expect(fn).toContain("accountId: input.accountId");
+    expect(fn).toContain("reclaimStalePlanSettleLedgers");
+    expect(fn.indexOf("createManualExpense")).toBeLessThan(
+      fn.indexOf("refreshAfterDurableWrite"),
+    );
+  });
+});
+
+describe("createTransferAction / createCashWithdrawalAction", () => {
+  it("passes the client mutation id through before refresh", () => {
+    const transfer = src.slice(
+      src.indexOf("export async function createTransferAction"),
+      src.indexOf("export async function createCashWithdrawalAction"),
+    );
+    const cash = src.slice(
+      src.indexOf("export async function createCashWithdrawalAction"),
+    );
+    expect(transfer).toContain("clientMutationId: input.clientMutationId");
+    expect(transfer).toContain("refreshAfterDurableWrite");
+    expect(transfer.indexOf("createTransfer")).toBeLessThan(
+      transfer.indexOf("refreshAfterDurableWrite"),
+    );
+    expect(cash).toContain("clientMutationId: input.clientMutationId");
+    expect(cash).toContain("refreshAfterDurableWrite");
   });
 });
 

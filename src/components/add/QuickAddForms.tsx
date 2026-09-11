@@ -10,7 +10,11 @@ import {
 } from "@/features/finance/actions";
 import { SV } from "@/features/copy/labels-sv";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
-import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
+import {
+  createStableMutationId,
+  nativeToThbMinor,
+  newClientMutationId,
+} from "@/domain/finance";
 import {
   adoptMutationFinance,
   applyAccountDelta,
@@ -397,6 +401,8 @@ function TransferForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const [mutation] = useState(createStableMutationId);
+  const [appliedMutations] = useState(() => new Set<string>());
 
   const fromAccount = accounts.find((a) => a.id === fromId);
   const fromCurrency = fromAccount?.currency ?? "THB";
@@ -451,22 +457,32 @@ function TransferForm({
             );
             return;
           }
+          const mutationId = mutation.take();
           const result = await createTransferAction({
             fromAccountId: fromId,
             toAccountId: toId,
             amount,
             description: description || undefined,
+            clientMutationId: mutationId,
           });
           if (!result.ok) {
             setError(result.error);
             return;
           }
-          applyLocalTransfer({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amountMinor,
-          });
-          confirmOptimisticFinance();
+          if (result.home || result.accounts) {
+            adoptMutationFinance(result);
+          } else if (!appliedMutations.has(mutationId)) {
+            appliedMutations.add(mutationId);
+            applyLocalTransfer({
+              fromAccountId: fromId,
+              toAccountId: toId,
+              amountMinor,
+            });
+            confirmOptimisticFinance();
+          } else {
+            confirmOptimisticFinance();
+          }
+          mutation.clear();
           setAmount("");
           setDescription("");
           onSuccess?.();
@@ -538,6 +554,8 @@ function CashForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const [mutation] = useState(createStableMutationId);
+  const [appliedMutations] = useState(() => new Set<string>());
   const fromCurrency =
     accounts.find((account) => account.id === fromId)?.currency ?? "THB";
 
@@ -573,22 +591,32 @@ function CashForm({
             setError("Beloppet måste vara större än 0");
             return;
           }
+          const mutationId = mutation.take();
           const result = await createCashWithdrawalAction({
             fromAccountId: fromId,
             toAccountId: toId,
             amount,
             description: description || undefined,
+            clientMutationId: mutationId,
           });
           if (!result.ok) {
             setError(result.error);
             return;
           }
-          applyLocalTransfer({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amountMinor,
-          });
-          confirmOptimisticFinance();
+          if (result.home || result.accounts) {
+            adoptMutationFinance(result);
+          } else if (!appliedMutations.has(mutationId)) {
+            appliedMutations.add(mutationId);
+            applyLocalTransfer({
+              fromAccountId: fromId,
+              toAccountId: toId,
+              amountMinor,
+            });
+            confirmOptimisticFinance();
+          } else {
+            confirmOptimisticFinance();
+          }
+          mutation.clear();
           setAmount("");
           setDescription("");
           onSuccess?.();
