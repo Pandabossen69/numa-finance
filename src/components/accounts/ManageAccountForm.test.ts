@@ -27,6 +27,7 @@ describe("ManageAccountForm", () => {
   });
 
   it("always shows archive or delete, disabled when blocked", () => {
+    expect(src).toContain('from "@/domain/finance/account-lifecycle"');
     expect(src).toContain("explainAccountRetireUi");
     expect(src).toContain("retire.blocked");
     expect(src).toContain("MAKE_OTHER_DEFAULT_HINT_SV");

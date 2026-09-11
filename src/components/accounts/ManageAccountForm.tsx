@@ -11,9 +11,9 @@ import {
   MAKE_OTHER_DEFAULT_HINT_SV,
   currenciesForAccountKind,
   defaultCurrencyForKind,
-  explainAccountRetireUi,
   type AccountKind,
 } from "@/domain/finance";
+import { explainAccountRetireUi } from "@/domain/finance/account-lifecycle";
 import type { CurrencyCode } from "@/domain/money";
 import {
   archiveAccountAction,
