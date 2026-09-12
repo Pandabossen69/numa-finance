@@ -11,10 +11,32 @@ import { getProfile } from "@/lib/store/repository";
 export const dynamic = "force-dynamic";
 
 /**
- * Cookie is a cheap sync read for Christian-bar Hem SSR into TabKeepAlive.
- * Profile/onboarding stay in Suspense — never block shell chrome on them.
+ * Sync shell chrome — never await session/profile here. Cookie SSR for
+ * Christian-bar Hem lives in MainLayoutWithCookie (Suspense), so TabKeepAlive
+ * can paint last-known without blocking first shell paint on profile.
  */
-export default async function MainLayout({
+export default function MainLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <AppShell
+          homeCookieShell={null}
+          displayName={<ShellDisplayNameFallback />}
+        >
+          {children}
+        </AppShell>
+      }
+    >
+      <MainLayoutWithCookie>{children}</MainLayoutWithCookie>
+    </Suspense>
+  );
+}
+
+async function MainLayoutWithCookie({
   children,
 }: {
   children: React.ReactNode;

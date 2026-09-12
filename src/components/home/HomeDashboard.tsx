@@ -70,7 +70,7 @@ export function HomeDashboard({
   error?: string | null;
   accounts?: AccountsSnapshot | null;
   gettingStarted?: GettingStartedView | null;
-  /** When false, display snap without elevating it to session-confirmed (#107). */
+  /** When false, display snap without elevating it to session-confirmed (issue 107). */
   adoptSnap?: boolean;
 }) {
   const stored = useSyncExternalStore(
@@ -96,7 +96,7 @@ export function HomeDashboard({
 
   useEffect(() => {
     // Adopt the server snap unless an optimistic spend is in flight.
-    // Provisional login shell must not confirm session (#107).
+    // Provisional login shell must not confirm session (issue 107).
     if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap);
     if (accounts && (lastAccountsSnapshot() == null || !isAccountsDirty())) {
       rememberAccountsSnapshot(accounts);

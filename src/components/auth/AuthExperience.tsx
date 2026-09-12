@@ -53,7 +53,7 @@ export function AuthExperience() {
       }
       // Wipe last-known only when the account actually changed — same-user
       // re-login must keep Plan/Analys caches so menus stay ~0ms (NextStep).
-      // Hem money still needs a live confirm (#107) — but same-user last-known
+      // Hem money still needs a live confirm (issue 107) — but same-user last-known
       // paints as a provisional shell. Never paint "Loggar in i NUMA…" over
       // the snapshot fetch (Christian-bar ≤300ms / hard-fail multi-second).
       bindSessionOwner(result.userId);

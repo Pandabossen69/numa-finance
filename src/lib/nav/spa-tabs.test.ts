@@ -89,8 +89,8 @@ describe("SPA keep-alive primary tabs", () => {
     const idag = read("../../app/(main)/idag/page.tsx");
     const mer = read("../../app/(main)/mer/page.tsx");
     expect(idag).toContain("HemRouteClient");
-    expect(idag).toContain("cookieShell");
-    expect(idag).toMatch(/return\s+<\s*HemRouteClient\s+cookieShell=\{cookieShell\}\s*\/>/);
+    expect(idag).not.toContain("readLastHomeCookie");
+    expect(idag).toMatch(/return\s+<\s*HemRouteClient\s*\/>/);
     expect(idag).not.toContain("IdagBody");
     expect(mer).toContain("MerRouteClient");
     expect(mer).toMatch(/return\s+<\s*MerRouteClient\s*\/>/);

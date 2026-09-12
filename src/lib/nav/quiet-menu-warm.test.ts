@@ -19,7 +19,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("opts?.restart");
     expect(home).toContain("scheduleQuietMenuWarm");
     const adoptStart = home.indexOf("useEffect(() => {");
-    const adoptEnd = home.indexOf("}, [snap, accounts, gettingStarted]);");
+    const adoptEnd = home.indexOf("}, [snap, accounts, gettingStarted, adoptSnap]);");
     expect(adoptStart).toBeGreaterThan(-1);
     expect(adoptEnd).toBeGreaterThan(adoptStart);
     const adopt = home.slice(adoptStart, adoptEnd);

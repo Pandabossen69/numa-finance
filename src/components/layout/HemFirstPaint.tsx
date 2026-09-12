@@ -21,7 +21,7 @@ const subscribeNever = () => () => {};
 
 /**
  * Session-confirmed live Hem, or same-user login shell, or Hem-shaped
- * skeleton — never hydrate/cookie alone as *live* money (#107 + Christian-bar).
+ * skeleton — never hydrate/cookie alone as *live* money (issue 107 + Christian-bar).
  * Cookie may paint as a provisional shell in first HTML (SSR) only.
  */
 export function HemFirstPaint({

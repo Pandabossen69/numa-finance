@@ -86,9 +86,8 @@ describe("instant tap — phone-width dest paint", () => {
     expect(last).toContain("clearPersistedLastKnown");
     expect(cookie).toContain("numa.lastHome.v1");
     expect(idag).toContain("HemRouteClient");
-    // Provisional cookie SSR shell (Christian-bar) — not live confirm (#107).
-    expect(idag).toContain("readLastHomeCookie");
-    expect(idag).toContain("cookieShell");
+    // Cookie SSR is layout → TabKeepAlive (Christian-bar); page stays thin.
+    expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("lastSessionHomeSnapshot");

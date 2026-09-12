@@ -22,7 +22,7 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
  * Session-confirmed last-known paints as live; after login, same-user
- * cached totals may paint as a provisional shell (#107 + Christian-bar).
+ * cached totals may paint as a provisional shell (issue 107 + Christian-bar).
  * Login boot clears on mount so "Loggar in…" never waits on the snapshot.
  * Optional cookieShell lets hard-refresh SSR paint last-known in first HTML.
  */

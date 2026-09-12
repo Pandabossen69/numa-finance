@@ -14,6 +14,8 @@ describe("main first-load chrome", () => {
     expect(layout).toContain("export default function MainLayout");
     expect(layout).not.toContain("export default async function MainLayout");
     expect(layout).toContain("AppShell");
+    expect(layout).toContain("readLastHomeCookie");
+    expect(layout).toContain("homeCookieShell");
     expect(layout).toContain("redirectIfOnboardingIncomplete");
     expect(layout).toContain("OnboardingRedirect");
     expect(layout).toContain("ShellDisplayName");

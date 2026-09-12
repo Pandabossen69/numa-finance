@@ -17,9 +17,8 @@ describe("/idag first paint", () => {
     expect(page).toContain("HemRouteClient");
     expect(page).not.toContain("Suspense");
     expect(page).not.toContain("IdagBody");
-    // Cookie is provisional SSR shell only — never awaited live money.
-    expect(page).toContain("readLastHomeCookie");
-    expect(page).toContain("cookieShell");
+    // Cookie SSR lives in layout → TabKeepAlive, not the thin page.
+    expect(page).not.toContain("readLastHomeCookie");
     expect(page).not.toContain("route-islands");
     expect(page).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");

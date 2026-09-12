@@ -13,7 +13,7 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 /**
  * Canonical NUMA shell — soft client navigation with prefetch warmup.
  * Clears login boot as soon as the shell mounts so Hem can show its
- * skeleton while the snapshot fetch finishes (SPEC 6 / #107).
+ * skeleton while the snapshot fetch finishes (SPEC 6 / issue 107).
  * homeCookieShell feeds the keep-alive /idag panel so hard-refresh SSR
  * can paint last-known (RSC page children stay parked hidden).
  */
