@@ -53,8 +53,16 @@ async function runQuietWarm(generation: number) {
   }
 }
 
-/** Idle warm so Hem's first paint is not competing with Plan/Analys/Rörelser. */
-export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
+/**
+ * Warm Plan/Analys/Rörelser after Hem has (or is about to have) the wire.
+ * Default: idle so Hem's first paint is not competing.
+ * `urgent`: start ASAP — use after Hem session confirm so quiet warm wins
+ * the keep-alive cold fetches that wait on afterHemBoot.
+ */
+export function scheduleQuietMenuWarm(opts?: {
+  restart?: boolean;
+  urgent?: boolean;
+}) {
   if (typeof window === "undefined") return;
   if (opts?.restart) {
     warmGeneration += 1;
@@ -71,6 +79,10 @@ export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
     });
   };
 
+  if (opts?.urgent) {
+    start();
+    return;
+  }
   if (typeof requestIdleCallback === "function") {
     requestIdleCallback(start, { timeout: 300 });
   } else {

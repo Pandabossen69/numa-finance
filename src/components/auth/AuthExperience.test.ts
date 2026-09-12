@@ -44,7 +44,7 @@ describe("AuthExperience — login boot", () => {
     expect(src).toContain("flushSync");
     expect(src).toContain("kickPostLoginWarm");
     expect(src).toContain("scheduleQuietMenuWarm");
-    expect(src).toContain("getHomeSnapshotAction");
+    expect(src).toContain("fetchHomeSnapshot");
     expect(src).toContain("rememberHomeSnapshot");
     expect(src).toContain("LOGIN_BOOT_TIMEOUT_MS");
     expect(src).toContain("aria-busy={booting || pending || undefined}");
@@ -68,7 +68,18 @@ describe("AuthExperience — login boot", () => {
       success.indexOf("kickPostLoginWarm"),
     );
 
-    const failStart = src.indexOf("if (!result.ok)");
+    const kick = src.slice(
+      src.indexOf("function kickPostLoginWarm"),
+      src.indexOf("export function AuthExperience"),
+    );
+    expect(kick.indexOf("fetchHomeSnapshot")).toBeLessThan(
+      kick.indexOf("scheduleQuietMenuWarm"),
+    );
+    expect(kick.indexOf("scheduleQuietMenuWarm")).toBeLessThan(
+      kick.indexOf("rememberHomeSnapshot"),
+    );
+
+    const failStart = src.indexOf("if (!result.ok)", src.indexOf("function submitLogin"));
     const fail = src.slice(failStart, src.indexOf("return;", failStart));
     expect(fail).toContain("clearLoginBoot");
     expect(fail).toContain("setBooting(false)");

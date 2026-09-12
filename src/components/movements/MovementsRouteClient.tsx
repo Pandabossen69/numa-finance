@@ -9,6 +9,7 @@ import {
   rememberMovementsSnapshot,
   subscribeMovementsSnapshot,
 } from "@/features/home/last-snapshot";
+import { afterHemBoot } from "@/lib/nav/after-hem-boot";
 
 /**
  * Client-first Rörelser (NextStep quiet-load pattern).
@@ -27,18 +28,22 @@ export function MovementsRouteClient() {
     let cancelled = false;
     // Quiet menu warm owns background refresh when cache is warm.
     if (lastMovementsSnapshot()) return;
-    void getMovementsSnapshotAction().then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        if (!isMovementsDirty()) rememberMovementsSnapshot(result.data);
-        setError(null);
-        return;
-      }
-      // Quiet failure: only surface an error when there is nothing to show.
-      if (!lastMovementsSnapshot()) setError(result.error);
+    const stop = afterHemBoot(() => {
+      if (cancelled || lastMovementsSnapshot()) return;
+      void getMovementsSnapshotAction().then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          if (!isMovementsDirty()) rememberMovementsSnapshot(result.data);
+          setError(null);
+          return;
+        }
+        // Quiet failure: only surface an error when there is nothing to show.
+        if (!lastMovementsSnapshot()) setError(result.error);
+      });
     });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
 

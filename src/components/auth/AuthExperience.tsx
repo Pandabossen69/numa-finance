@@ -10,7 +10,7 @@ import {
   paintLoginBoot,
 } from "@/components/auth/LoginBoot";
 import { signInAction } from "@/features/auth/actions";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
+import { fetchHomeSnapshot } from "@/features/finance/home-snapshot-client";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
 import {
@@ -21,10 +21,14 @@ import {
 import { BRAND_MARK } from "@/lib/brand-assets";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
+/** Hem first — quiet Plan/Analys/Rörelser only after live money is ready. */
 function kickPostLoginWarm() {
-  scheduleQuietMenuWarm({ restart: true });
-  void getHomeSnapshotAction().then((result) => {
-    if (result.ok) rememberHomeSnapshot(result.data);
+  void fetchHomeSnapshot().then((result) => {
+    if (!result.ok) return;
+    // Start quiet warm before confirm emit so keep-alive menu fallbacks
+    // (afterHemBoot idle) see an inflight bundle instead of racing new IO.
+    scheduleQuietMenuWarm({ restart: true, urgent: true });
+    rememberHomeSnapshot(result.data);
   });
 }
 

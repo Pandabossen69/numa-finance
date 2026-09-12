@@ -64,7 +64,7 @@ describe("smooth nav and saves", () => {
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("<Suspense");
     expect(hemClient).toContain("HemFirstPaint");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(plan).toContain("PlanRouteClient");
     expect(plan).not.toContain("<Suspense fallback={<ViewLoading />}>");
     expect(analys).toContain("AnalysRouteClient");

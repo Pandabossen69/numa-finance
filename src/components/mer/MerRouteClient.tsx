@@ -8,6 +8,7 @@ import {
   rememberMerSnapshot,
   subscribeMerSnapshot,
 } from "@/features/home/last-snapshot";
+import { afterHemBoot } from "@/lib/nav/after-hem-boot";
 
 /**
  * Client-first Mer — last-known paints immediately; quiet profile fetch
@@ -24,14 +25,18 @@ export function MerRouteClient() {
     let cancelled = false;
     // Quiet menu warm owns background refresh when cache is warm.
     if (lastMerSnapshot()) return;
-    void getMerSnapshotAction().then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        rememberMerSnapshot(result.data);
-      }
+    const stop = afterHemBoot(() => {
+      if (cancelled || lastMerSnapshot()) return;
+      void getMerSnapshotAction().then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          rememberMerSnapshot(result.data);
+        }
+      });
     });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
 

@@ -8,6 +8,7 @@ import {
   rememberAnalysSnapshot,
   subscribeAnalysSnapshot,
 } from "@/features/home/last-snapshot";
+import { afterHemBoot } from "@/lib/nav/after-hem-boot";
 
 /**
  * Client-first Analys — paint last-known immediately, quiet-fetch in background.
@@ -24,17 +25,21 @@ export function AnalysRouteClient() {
     let cancelled = false;
     // Quiet menu warm owns background refresh when cache is warm.
     if (lastAnalysSnapshot()) return;
-    void getAnalysSnapshotAction().then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        rememberAnalysSnapshot(result.data);
-        setError(null);
-        return;
-      }
-      if (!lastAnalysSnapshot()) setError(result.error);
+    const stop = afterHemBoot(() => {
+      if (cancelled || lastAnalysSnapshot()) return;
+      void getAnalysSnapshotAction().then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          rememberAnalysSnapshot(result.data);
+          setError(null);
+          return;
+        }
+        if (!lastAnalysSnapshot()) setError(result.error);
+      });
     });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
 

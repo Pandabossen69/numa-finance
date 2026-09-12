@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
+import { fetchHomeSnapshot } from "@/features/finance/home-snapshot-client";
 import {
   isHomeDirty,
   lastGettingStarted,
@@ -37,12 +37,18 @@ export function HemRouteClient() {
 
   useEffect(() => {
     let cancelled = false;
-    void getHomeSnapshotAction().then((result) => {
+    // Login warm may already have confirmed — paint stays, skip duplicate IO.
+    if (lastSessionHomeSnapshot()) {
+      scheduleQuietMenuWarm({ urgent: true });
+      clearLoginBoot();
+      return;
+    }
+    void fetchHomeSnapshot().then((result) => {
       if (cancelled) return;
       if (result.ok) {
+        scheduleQuietMenuWarm({ urgent: true });
         if (!isHomeDirty()) rememberHomeSnapshot(result.data);
         setError(null);
-        scheduleQuietMenuWarm();
         clearLoginBoot();
         return;
       }
@@ -56,7 +62,7 @@ export function HemRouteClient() {
 
   useEffect(() => {
     if (stored) {
-      scheduleQuietMenuWarm();
+      scheduleQuietMenuWarm({ urgent: true });
       clearLoginBoot();
     }
   }, [stored]);

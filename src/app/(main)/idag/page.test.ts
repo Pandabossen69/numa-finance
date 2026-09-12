@@ -22,7 +22,7 @@ describe("/idag first paint", () => {
     expect(page).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("HomeDashboard");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
     expect(loading).toContain("LoadingSlot");
@@ -36,7 +36,7 @@ describe("/idag first paint", () => {
     expect(page).not.toContain("loadAccountsSnapshot");
     expect(hemClient).not.toContain("loadGettingStartedView");
     expect(hemClient).not.toContain("loadAccountsSnapshot");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(homeSnapshot).toContain("loadHomeSnapshot");
   });
 });

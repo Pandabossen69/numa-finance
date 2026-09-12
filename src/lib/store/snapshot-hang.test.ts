@@ -49,7 +49,7 @@ describe("cold Hem/Analys hang contract", () => {
     expect(idag).not.toContain("loadAccountsSnapshot");
     expect(idag).not.toContain("loadGettingStartedView");
     expect(idag).not.toContain("Promise.all");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(hemClient).not.toContain("loadAccountsSnapshot");
     expect(hemClient).not.toContain("loadGettingStartedView");
   });
