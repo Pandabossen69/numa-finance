@@ -23,6 +23,7 @@ describe("/idag first paint", () => {
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("HomeDashboard");
     expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("HemFirstPaint");

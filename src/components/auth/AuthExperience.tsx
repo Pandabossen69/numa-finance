@@ -15,6 +15,7 @@ import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
 import {
   bindSessionOwner,
+  invalidateHomeSessionPaint,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { BRAND_MARK } from "@/lib/brand-assets";
@@ -69,8 +70,10 @@ export function AuthExperience() {
       });
       paintLoginBoot();
       // Wipe last-known only when the account actually changed — same-user
-      // re-login must keep Plan/Analys/Hem caches so menus stay ~0ms (NextStep).
+      // re-login must keep Plan/Analys caches so menus stay ~0ms (NextStep).
+      // Hem money still needs a live confirm so we never flash yesterday's kvar.
       bindSessionOwner(result.userId);
+      invalidateHomeSessionPaint();
       kickPostLoginWarm();
       const preview =
         typeof document !== "undefined" &&
