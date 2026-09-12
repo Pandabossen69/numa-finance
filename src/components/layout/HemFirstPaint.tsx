@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useLayoutEffect, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
@@ -8,10 +8,12 @@ import { MerScreen } from "@/components/mer/MerScreen";
 import { PlanScreen } from "@/components/plan/PlanScreen";
 import { AnalysPending, HomeViewLoading } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   lastAnalysSnapshot,
   lastMerSnapshot,
   lastHomeShellSnapshot,
+  seedHomeLoginShell,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -19,21 +21,28 @@ const subscribeNever = () => () => {};
 
 /**
  * Session-confirmed live Hem, or same-user login shell, or Hem-shaped
- * skeleton — never hydrate/cookie alone (#107 + Christian-bar).
+ * skeleton — never hydrate/cookie alone as *live* money (#107 + Christian-bar).
+ * Cookie may paint as a provisional shell in first HTML (SSR) only.
  */
-function readHomeShell() {
-  return lastHomeShellSnapshot();
-}
-
-export function HemFirstPaint() {
-  // Client getServerSnapshot = shell so hard-refresh / loading.tsx can paint
-  // last-known immediately after JS (Christian-bar). SSR still has no
-  // localStorage so the first HTML may be the skeleton; client recovers.
-  const snap = useSyncExternalStore(
+export function HemFirstPaint({
+  cookieShell = null,
+}: {
+  cookieShell?: HomeSnapshot | null;
+}) {
+  // SSR getServerSnapshot = cookie so hard-refresh first HTML can show
+  // last-known numbers (Christian-bar). Client getSnapshot prefers module
+  // shell (persist hydrate / login enable) and falls back to cookie.
+  const synced = useSyncExternalStore(
     subscribeHomeSnapshot,
-    readHomeShell,
-    readHomeShell,
+    () => lastHomeShellSnapshot() ?? cookieShell,
+    () => cookieShell,
   );
+
+  useLayoutEffect(() => {
+    seedHomeLoginShell(cookieShell);
+  }, [cookieShell]);
+
+  const snap = synced ?? cookieShell;
   if (snap) {
     return (
       <HomeDashboard
@@ -54,7 +63,7 @@ export function AnalysFirstPaint() {
   );
   const home = useSyncExternalStore(
     subscribeHomeSnapshot,
-    readHomeShell,
+    lastHomeShellSnapshot,
     () => null,
   );
   if (analys) return <AnalysDashboard data={analys} />;
@@ -62,11 +71,15 @@ export function AnalysFirstPaint() {
 }
 
 /** Parent (main)/loading.tsx — pick dest last-known from the URL. */
-export function MainFirstPaint() {
+export function MainFirstPaint({
+  cookieShell = null,
+}: {
+  cookieShell?: HomeSnapshot | null;
+}) {
   const pathname = usePathname() ?? "";
   const tab = holdKey(pathname);
   if (tab === "/analys") return <AnalysFirstPaint />;
   if (tab === "/plan") return <PlanScreen />;
   if (tab === "/mer") return <MerScreen data={lastMerSnapshot()} />;
-  return <HemFirstPaint />;
+  return <HemFirstPaint cookieShell={cookieShell} />;
 }

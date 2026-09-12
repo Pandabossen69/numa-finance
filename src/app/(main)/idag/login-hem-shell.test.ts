@@ -43,11 +43,15 @@ describe("login → Hem usable shell (Christian-bar)", () => {
   it("paints same-user shell from login/warm hydrate; skeleton only when empty", () => {
     expect(last).toContain("homeLoginShell");
     expect(last).toMatch(/homeLoginShell\s*=/);
+    expect(last).toContain("seedHomeLoginShell");
     expect(first).toContain("lastHomeShellSnapshot");
+    expect(first).toContain("cookieShell");
     expect(first).toContain("HomeViewLoading");
     expect(first).toContain("adoptSnap={false}");
     expect(first).not.toContain("lastHomeSnapshot()");
     expect(hem).toContain("lastHomeShellSnapshot");
+    expect(hem).toContain("cookieShell");
+    expect(hem).toContain("seedHomeLoginShell");
   });
 
   it("keeps #107 session-confirm gate for live money", () => {

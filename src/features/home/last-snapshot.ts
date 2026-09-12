@@ -280,6 +280,18 @@ export function enableHomeLoginShell() {
   if (homeLoginShell) emit(homeListeners);
 }
 
+/**
+ * Client-only: adopt a cookie/SSR last-known row as provisional shell.
+ * Never session-confirms (#107). Safe no-op on the server (no module mutate).
+ */
+export function seedHomeLoginShell(snap: HomeSnapshot | null | undefined) {
+  if (typeof window === "undefined" || !snap) return;
+  if (sessionOwnerId && sessionOwnerId !== snap.userId) return;
+  if (!sessionOwnerId) sessionOwnerId = snap.userId;
+  if (!home) home = snap;
+  enableHomeLoginShell();
+}
+
 export function hasBoundSessionOwner(): boolean {
   return sessionOwnerId != null;
 }

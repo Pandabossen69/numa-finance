@@ -8,18 +8,23 @@ import { NavIntentProvider } from "@/components/layout/NavIntent";
 import { NavWarmup } from "@/components/layout/NavWarmup";
 import { SideNav } from "@/components/layout/SideNav";
 import { TabKeepAlive } from "@/components/layout/TabKeepAlive";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 
 /**
  * Canonical NUMA shell — soft client navigation with prefetch warmup.
  * Clears login boot as soon as the shell mounts so Hem can show its
  * skeleton while the snapshot fetch finishes (SPEC 6 / #107).
+ * homeCookieShell feeds the keep-alive /idag panel so hard-refresh SSR
+ * can paint last-known (RSC page children stay parked hidden).
  */
 export function AppShell({
   children,
   displayName,
+  homeCookieShell = null,
 }: {
   children: React.ReactNode;
   displayName: React.ReactNode;
+  homeCookieShell?: HomeSnapshot | null;
 }) {
   return (
     <NavIntentProvider>
@@ -42,7 +47,7 @@ export function AppShell({
             </header>
 
             <main className="mx-auto w-full min-w-0 max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">
-              <TabKeepAlive>
+              <TabKeepAlive homeCookieShell={homeCookieShell}>
                 <LastViewOutlet>{children}</LastViewOutlet>
               </TabKeepAlive>
             </main>

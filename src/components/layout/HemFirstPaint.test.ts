@@ -11,6 +11,8 @@ const mainLoading = readFileSync(
 describe("Hem first paint", () => {
   it("paints session shell or skeleton, never hydrate alone as live money", () => {
     expect(src).toContain("lastHomeShellSnapshot");
+    expect(src).toContain("cookieShell");
+    expect(src).toContain("seedHomeLoginShell");
     expect(src).not.toContain("readLastHomeCookieFromDocument");
     expect(src).not.toContain("lastHomeSnapshot()");
     expect(src).toContain("HomeViewLoading");
@@ -25,6 +27,7 @@ describe("Hem first paint", () => {
     expect(slot).not.toContain("use client");
     expect(mainLoading).toContain("LoadingSlot");
     expect(mainLoading).toContain("MainFirstPaint");
+    expect(mainLoading).toContain("readLastHomeCookie");
     expect(mainLoading).not.toContain("ViewLoading");
   });
 });

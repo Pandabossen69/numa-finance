@@ -5,6 +5,7 @@ import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
 import { fetchHomeSnapshot } from "@/features/finance/home-snapshot-client";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   isHomeDirty,
   lastGettingStarted,
@@ -12,6 +13,7 @@ import {
   lastHomeSnapshot,
   lastSessionHomeSnapshot,
   rememberHomeSnapshot,
+  seedHomeLoginShell,
   subscribeGettingStarted,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
@@ -22,12 +24,17 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
  * Session-confirmed last-known paints as live; after login, same-user
  * cached totals may paint as a provisional shell (#107 + Christian-bar).
  * Login boot clears on mount so "Loggar in…" never waits on the snapshot.
+ * Optional cookieShell lets hard-refresh SSR paint last-known in first HTML.
  */
-export function HemRouteClient() {
+export function HemRouteClient({
+  cookieShell = null,
+}: {
+  cookieShell?: HomeSnapshot | null;
+}) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    lastHomeShellSnapshot,
-    lastHomeShellSnapshot,
+    () => lastHomeShellSnapshot() ?? cookieShell,
+    () => cookieShell,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
@@ -36,10 +43,11 @@ export function HemRouteClient() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  // Drop branded login overlay as soon as Hem is in the tree.
+  // Drop branded login overlay + seed cookie into provisional shell.
   useLayoutEffect(() => {
     clearLoginBoot();
-  }, []);
+    seedHomeLoginShell(cookieShell);
+  }, [cookieShell]);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,13 +77,14 @@ export function HemRouteClient() {
     }
   }, [stored]);
 
-  if (!stored && !error) {
-    return <HemFirstPaint />;
+  const snap = stored ?? cookieShell;
+  if (!snap && !error) {
+    return <HemFirstPaint cookieShell={cookieShell} />;
   }
 
   return (
     <HomeDashboard
-      snap={stored}
+      snap={snap}
       error={error}
       gettingStarted={storedGettingStarted}
       adoptSnap={lastSessionHomeSnapshot() != null}

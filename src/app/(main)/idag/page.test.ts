@@ -17,7 +17,9 @@ describe("/idag first paint", () => {
     expect(page).toContain("HemRouteClient");
     expect(page).not.toContain("Suspense");
     expect(page).not.toContain("IdagBody");
-    expect(page).not.toContain("readLastHomeCookie");
+    // Cookie is provisional SSR shell only — never awaited live money.
+    expect(page).toContain("readLastHomeCookie");
+    expect(page).toContain("cookieShell");
     expect(page).not.toContain("route-islands");
     expect(page).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
@@ -25,8 +27,12 @@ describe("/idag first paint", () => {
     expect(hemClient).toContain("fetchHomeSnapshot");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
+    expect(hemClient).toContain("cookieShell");
+    expect(hemClient).toContain("seedHomeLoginShell");
+    expect(hemClient).not.toContain("readLastHomeCookie");
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("HemFirstPaint");
+    expect(loading).toContain("readLastHomeCookie");
     expect(loading).not.toContain("HomeViewLoading");
     expect(loading).not.toContain("ViewLoading");
   });

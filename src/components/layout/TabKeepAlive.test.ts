@@ -24,9 +24,15 @@ describe("TabKeepAlive", () => {
     expect(src).toContain("{children}");
   });
 
-  it("is wired under AppShell around LastViewOutlet", () => {
+  it("is wired under AppShell around LastViewOutlet with cookie shell", () => {
     expect(shell).toContain('import { TabKeepAlive } from "@/components/layout/TabKeepAlive"');
-    expect(shell).toContain("<TabKeepAlive>");
+    expect(shell).toContain("homeCookieShell");
+    expect(shell).toContain("<TabKeepAlive homeCookieShell={homeCookieShell}>");
     expect(shell).toContain("</TabKeepAlive>");
+  });
+
+  it("passes last-home cookie into the visible /idag keep-alive panel", () => {
+    expect(src).toContain("homeCookieShell");
+    expect(src).toContain("<HemRouteClient cookieShell={homeCookieShell} />");
   });
 });
