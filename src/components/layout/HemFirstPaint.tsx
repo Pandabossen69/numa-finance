@@ -8,23 +8,27 @@ import { MerScreen } from "@/components/mer/MerScreen";
 import { PlanScreen } from "@/components/plan/PlanScreen";
 import { AnalysPending, HemPending } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
-import { readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
 import {
   lastAnalysSnapshot,
-  lastHomeSnapshot,
   lastMerSnapshot,
+  lastSessionHomeSnapshot,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
 const subscribeNever = () => () => {};
 
-function readHome() {
-  return lastHomeSnapshot() ?? readLastHomeCookieFromDocument();
+/** Session-confirmed Hem only — never hydrate/cookie as live kvar/Över. */
+function readSessionHome() {
+  return lastSessionHomeSnapshot();
 }
 
-/** Last-known Hem money, or a two-line pending — never empty mint cards. */
+/** Session last-known Hem, or a short pending — never stale money flash. */
 export function HemFirstPaint() {
-  const snap = useSyncExternalStore(subscribeHomeSnapshot, readHome, () => null);
+  const snap = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    readSessionHome,
+    () => null,
+  );
   if (snap) return <HomeDashboard snap={snap} error={null} />;
   return <HemPending />;
 }
@@ -35,7 +39,11 @@ export function AnalysFirstPaint() {
     lastAnalysSnapshot,
     () => null,
   );
-  const home = useSyncExternalStore(subscribeHomeSnapshot, readHome, () => null);
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    readSessionHome,
+    () => null,
+  );
   if (analys) return <AnalysDashboard data={analys} />;
   return <AnalysPending home={home} />;
 }

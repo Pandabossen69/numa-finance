@@ -76,6 +76,8 @@ export type SettingsSnapshot = {
 
 let sessionOwnerId: string | null = null;
 let home: HomeSnapshot | null = null;
+/** True only after a live remember this JS lifetime — not hydrate/cookie. */
+let homeSessionConfirmed = false;
 let homeDirty = false;
 let analys: AnalysSnapshot | null = null;
 let plan: PlanSnapshot | null = null;
@@ -136,6 +138,7 @@ function schedulePersist() {
 export function hydrateLastKnownFromPersist() {
   const data = readPersistedLastKnown();
   persistPaused = true;
+  homeSessionConfirmed = false;
   if (data) {
     sessionOwnerId = data.userId;
     home = data.home ?? readLastHomeCookieFromDocument();
@@ -198,6 +201,7 @@ export function subscribeAccountsSnapshot(listener: () => void) {
 
 function wipeSessionCaches() {
   home = null;
+  homeSessionConfirmed = false;
   homeDirty = false;
   analys = null;
   plan = null;
@@ -235,8 +239,23 @@ export function clearClientSessionCaches() {
   clearPersistedLastKnown();
 }
 
+/**
+ * Drop Hem paint eligibility without wiping Plan/Analys caches.
+ * Login / cold reopen must not flash a previous visit's kvar/Över.
+ */
+export function invalidateHomeSessionPaint() {
+  if (!homeSessionConfirmed && home == null) return;
+  homeSessionConfirmed = false;
+  emit(homeListeners);
+}
+
 export function hasBoundSessionOwner(): boolean {
   return sessionOwnerId != null;
+}
+
+/** Hem money confirmed this JS session (fetch or mutation) — not hydrate. */
+export function isHomeSessionConfirmed(): boolean {
+  return homeSessionConfirmed;
 }
 
 export function lastKnownChromeDisplayName(): string | null {
@@ -292,11 +311,18 @@ function shouldAdoptFinanceSnapshot(
 
 export function rememberHomeSnapshot(
   snap: HomeSnapshot,
-  opts?: { dirty?: boolean; force?: boolean },
+  opts?: { dirty?: boolean; force?: boolean; confirmSession?: boolean },
 ) {
   bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
-  if (home === snap && homeDirty === nextDirty) return;
+  const confirmSession = opts?.confirmSession !== false;
+  if (
+    home === snap &&
+    homeDirty === nextDirty &&
+    (!confirmSession || homeSessionConfirmed)
+  ) {
+    return;
+  }
   if (
     !nextDirty &&
     !opts?.force &&
@@ -321,11 +347,17 @@ export function rememberHomeSnapshot(
       }
     : snap;
   homeDirty = nextDirty;
+  if (confirmSession) homeSessionConfirmed = true;
   emit(homeListeners);
 }
 
 export function lastHomeSnapshot(): HomeSnapshot | null {
   return home;
+}
+
+/** Live Hem paint only — hydrate/cookie alone must not flash as current money. */
+export function lastSessionHomeSnapshot(): HomeSnapshot | null {
+  return homeSessionConfirmed ? home : null;
 }
 
 export function applyOptimisticHomeSpend(amountMinor: number): HomeSnapshot | null {
@@ -535,7 +567,8 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
         savingsTotalMinor,
       ),
     },
-    { dirty: homeDirty },
+    // Plan sync must not elevate hydrate → "live Hem" before home fetch.
+    { dirty: homeDirty, confirmSession: false },
   );
 }
 

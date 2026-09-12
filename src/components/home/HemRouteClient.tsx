@@ -9,6 +9,7 @@ import {
   isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
+  lastSessionHomeSnapshot,
   rememberHomeSnapshot,
   subscribeGettingStarted,
   subscribeHomeSnapshot,
@@ -17,14 +18,15 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
- * Last-known paints immediately; quiet fetch catches up. SPA keep-alive
- * mounts this once so tab switches never remount or re-await RSC.
+ * Session-confirmed last-known paints immediately; hydrate alone shows
+ * HemPending until the quiet fetch confirms. SPA keep-alive mounts this
+ * once so tab switches never remount or re-await RSC.
  */
 export function HemRouteClient() {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    lastHomeSnapshot,
-    lastHomeSnapshot,
+    lastSessionHomeSnapshot,
+    lastSessionHomeSnapshot,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,

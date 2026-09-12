@@ -42,7 +42,7 @@ import {
   isHomeDirty,
   lastAccountsSnapshot,
   lastGettingStarted,
-  lastHomeSnapshot,
+  lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberGettingStarted,
   rememberHomeSnapshot,
@@ -71,7 +71,7 @@ export function HomeDashboard({
 }) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    lastHomeSnapshot,
+    lastSessionHomeSnapshot,
     () => null,
   );
   const accountsView = useSyncExternalStore(
@@ -85,7 +85,7 @@ export function HomeDashboard({
     lastGettingStarted,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
-  const view = (sameOwner ? stored : null) ?? snap ?? lastHomeSnapshot();
+  const view = (sameOwner ? stored : null) ?? snap ?? lastSessionHomeSnapshot();
 
   useEffect(() => {
     // Adopt the server snap unless an optimistic spend is in flight.

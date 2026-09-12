@@ -24,6 +24,9 @@ import {
   hasBoundSessionOwner,
   clearClientSessionCaches,
   hydrateLastKnownFromPersist,
+  invalidateHomeSessionPaint,
+  isHomeSessionConfirmed,
+  lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
@@ -584,8 +587,63 @@ describe("last view memory", () => {
     if (raw) map.set("numa.lastKnown.v1", raw);
     hydrateLastKnownFromPersist();
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(640_00);
+    expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(isHomeSessionConfirmed()).toBe(false);
     expect(lastKnownChromeDisplayName()).toBe("Hugo");
     Reflect.deleteProperty(globalThis, "localStorage");
+  });
+
+  it("does not paint hydrate/cookie Hem as live until a session remember", async () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    rememberHomeSnapshot(
+      homeSnap({ unpaidMinor: 120_00, overMinor: 108_167_00 }),
+    );
+    expect(lastSessionHomeSnapshot()?.unpaidMinor).toBe(120_00);
+    await Promise.resolve();
+    // Simulate persist write + cold reopen.
+    const raw = map.get("numa.lastKnown.v1");
+    expect(raw).toContain("120");
+    clearClientSessionCaches();
+    if (raw) map.set("numa.lastKnown.v1", raw);
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
+    expect(lastSessionHomeSnapshot()).toBeNull();
+
+    invalidateHomeSessionPaint();
+    expect(lastSessionHomeSnapshot()).toBeNull();
+
+    rememberHomeSnapshot(
+      homeSnap({ unpaidMinor: 0, overMinor: 108_287_00 }),
+    );
+    expect(lastSessionHomeSnapshot()?.unpaidMinor).toBe(0);
+    expect(lastSessionHomeSnapshot()?.overMinor).toBe(108_287_00);
+    Reflect.deleteProperty(globalThis, "localStorage");
+  });
+
+  it("login invalidate keeps memory but blocks Hem paint until fetch", () => {
+    rememberHomeSnapshot(
+      homeSnap({ unpaidMinor: 120_00, overMinor: 108_167_00 }),
+    );
+    expect(isHomeSessionConfirmed()).toBe(true);
+    invalidateHomeSessionPaint();
+    expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
+    expect(lastSessionHomeSnapshot()).toBeNull();
+    rememberHomeSnapshot(
+      homeSnap({ unpaidMinor: 0, overMinor: 108_287_00 }),
+    );
+    expect(lastSessionHomeSnapshot()?.overMinor).toBe(108_287_00);
   });
 
   it("fills Hem from the cookie when persist has no home", () => {
@@ -629,6 +687,7 @@ describe("last view memory", () => {
     hydrateLastKnownFromPersist();
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(333_00);
     expect(lastHomeSnapshot()?.displayName).toBe("Test");
+    expect(lastSessionHomeSnapshot()).toBeNull();
     Reflect.deleteProperty(globalThis, "localStorage");
     Reflect.deleteProperty(globalThis, "document");
   });

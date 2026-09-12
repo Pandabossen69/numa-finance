@@ -61,8 +61,12 @@ describe("AuthExperience — login boot", () => {
       success.indexOf("kickPostLoginWarm"),
     );
     expect(success).toContain("bindSessionOwner(result.userId)");
+    expect(success).toContain("invalidateHomeSessionPaint");
     expect(success).not.toContain("clearClientSessionCaches");
     expect(success).not.toContain("router.refresh()");
+    expect(success.indexOf("invalidateHomeSessionPaint")).toBeLessThan(
+      success.indexOf("kickPostLoginWarm"),
+    );
 
     const failStart = src.indexOf("if (!result.ok)");
     const fail = src.slice(failStart, src.indexOf("return;", failStart));

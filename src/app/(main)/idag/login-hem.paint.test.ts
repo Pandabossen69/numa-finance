@@ -72,6 +72,7 @@ describe("login → Hem first mount", () => {
     expect(idag).not.toContain("<Suspense");
     expect(idag).not.toContain("IdagBody");
     expect(hemClient).toContain("HemFirstPaint");
+    expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
     expect(keepAlive).toContain("HemRouteClient");
     expect(keepAlive).toContain('"/idag": <HemRouteClient />');

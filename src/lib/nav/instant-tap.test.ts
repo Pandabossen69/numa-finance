@@ -89,7 +89,7 @@ describe("instant tap — phone-width dest paint", () => {
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
-    expect(hemClient).toContain("lastHomeSnapshot");
+    expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).not.toContain("readLastHomeCookie");
   });
 
