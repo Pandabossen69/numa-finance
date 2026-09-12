@@ -20,8 +20,9 @@ import { SPA_TAB_HREFS, spaTabKey, type SpaTabHref } from "@/lib/nav/spa-tabs";
  * class survived the DOM paint and kept the dest invisible until React
  * caught up (often seconds while server actions resolved).
  *
- * homeCookieShell must reach the visible /idag panel — the RSC page child is
- * parked `hidden`/`inert`, so cookie SSR on page.tsx alone never paints Hem.
+ * Optional homeCookieShell can SSR into the visible /idag panel (RSC page
+ * children stay parked). Login/warm paint primarily uses module
+ * lastHomeShellSnapshot so layout need not await the cookie before mount.
  */
 export function TabKeepAlive({
   children,

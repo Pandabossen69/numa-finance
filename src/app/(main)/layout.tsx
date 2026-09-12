@@ -1,6 +1,7 @@
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { HomeCookieSeed } from "@/components/layout/HomeCookieSeed";
 import { SessionOwnerBinder } from "@/components/layout/SessionOwnerBinder";
 import { ShellDisplayNameFallback } from "@/components/layout/ShellDisplayNameFallback";
 import { chromeDisplayName } from "@/domain/identity/display-name";
@@ -11,34 +12,18 @@ import { getProfile } from "@/lib/store/repository";
 export const dynamic = "force-dynamic";
 
 /**
- * Sync shell chrome — never await session/profile here. Cookie SSR for
- * Christian-bar Hem lives in MainLayoutWithCookie (Suspense), so TabKeepAlive
- * can paint last-known without blocking first shell paint on profile.
+ * Sync shell chrome — never await session/profile/cookie here.
+ * Cookie SSR seeds the module shell via HomeCookieSeed (Suspense) so
+ * TabKeepAlive can mount immediately and paint lastHomeShellSnapshot
+ * (login seed / persist hydrate) without a blank Suspense gap.
  */
 export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Never mount TabKeepAlive with a null cookie shell — that painted
-  // skeleton Hem, then remounted all five panels when the cookie resolved
-  // (warm hard-refresh ~600ms+). Await the cookie once, then mount shell.
-  return (
-    <Suspense fallback={null}>
-      <MainLayoutWithCookie>{children}</MainLayoutWithCookie>
-    </Suspense>
-  );
-}
-
-async function MainLayoutWithCookie({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const homeCookieShell = await readLastHomeCookie();
   return (
     <AppShell
-      homeCookieShell={homeCookieShell}
       displayName={
         <Suspense fallback={<ShellDisplayNameFallback />}>
           <ShellDisplayName />
@@ -46,11 +31,19 @@ async function MainLayoutWithCookie({
       }
     >
       <Suspense fallback={null}>
+        <HomeCookieSeedFromServer />
+      </Suspense>
+      <Suspense fallback={null}>
         <OnboardingRedirect />
       </Suspense>
       {children}
     </AppShell>
   );
+}
+
+async function HomeCookieSeedFromServer() {
+  const shell = await readLastHomeCookie();
+  return <HomeCookieSeed shell={shell} />;
 }
 
 async function OnboardingRedirect() {
