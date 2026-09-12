@@ -40,6 +40,9 @@ describe("AuthExperience — public signup closed", () => {
 describe("AuthExperience — login boot (Christian-bar)", () => {
   it("never paints Loggar in overlay after success — shell under AppShell", () => {
     expect(src).toContain("enableHomeLoginShell");
+    expect(src).toContain("writeLastHomeCookie");
+    expect(src).toContain("seedHomeLoginShell");
+    expect(src).toContain("lastHomeSnapshot");
     expect(src).toContain("kickPostLoginWarm");
     expect(src).toContain("fetchHomeSnapshot");
     expect(src).toContain("rememberHomeSnapshot");
@@ -64,6 +67,11 @@ describe("AuthExperience — login boot (Christian-bar)", () => {
       success.indexOf("enableHomeLoginShell"),
     );
     expect(success.indexOf("enableHomeLoginShell")).toBeLessThan(
+      success.indexOf("kickPostLoginWarm"),
+    );
+    expect(success).toContain("writeLastHomeCookie(shell)");
+    expect(success).toContain("seedHomeLoginShell");
+    expect(success.indexOf("writeLastHomeCookie(shell)")).toBeLessThan(
       success.indexOf("kickPostLoginWarm"),
     );
 

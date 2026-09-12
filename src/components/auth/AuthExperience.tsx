@@ -7,11 +7,14 @@ import { signInAction } from "@/features/auth/actions";
 import { fetchHomeSnapshot } from "@/features/finance/home-snapshot-client";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
+import { writeLastHomeCookie, readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
 import {
   bindSessionOwner,
   enableHomeLoginShell,
   invalidateHomeSessionPaint,
+  lastHomeSnapshot,
   rememberHomeSnapshot,
+  seedHomeLoginShell,
 } from "@/features/home/last-snapshot";
 import { BRAND_MARK } from "@/lib/brand-assets";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
@@ -58,13 +61,21 @@ export function AuthExperience() {
       // the snapshot fetch (Christian-bar ≤300ms / hard-fail multi-second).
       bindSessionOwner(result.userId);
       invalidateHomeSessionPaint();
+      // Re-adopt document cookie / persist row as provisional shell, then
+      // write the cookie synchronously so the /idag RSC request SSR-paints
+      // last-known (Christian-bar) instead of a skeleton keep-alive mount.
+      seedHomeLoginShell(readLastHomeCookieFromDocument());
       enableHomeLoginShell();
+      const shell = lastHomeSnapshot();
+      if (shell && shell.userId === result.userId) {
+        writeLastHomeCookie(shell);
+      }
       kickPostLoginWarm();
       clearLoginBoot();
       const preview =
         typeof document !== "undefined" &&
         hasPreviewEscape(new URLSearchParams(window.location.search), document.cookie);
-      // Soft replace — Hem shell/skeleton paints under AppShell immediately.
+      // Soft replace — provisional Hem shell paints under AppShell immediately.
       router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath);
     });
   }

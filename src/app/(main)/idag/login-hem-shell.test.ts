@@ -32,6 +32,8 @@ describe("login → Hem usable shell (Christian-bar)", () => {
     expect(auth).not.toContain("paintLoginBoot");
     expect(auth).toContain("clearLoginBoot");
     expect(auth).toContain("enableHomeLoginShell");
+    expect(auth).toContain("writeLastHomeCookie");
+    expect(auth).toContain("seedHomeLoginShell");
     expect(shell).toContain("LoginBootClear");
     expect(hem).toContain("useLayoutEffect");
     expect(hem).toContain("clearLoginBoot");

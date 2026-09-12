@@ -20,17 +20,11 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Never mount TabKeepAlive with a null cookie shell — that painted
+  // skeleton Hem, then remounted all five panels when the cookie resolved
+  // (warm hard-refresh ~600ms+). Await the cookie once, then mount shell.
   return (
-    <Suspense
-      fallback={
-        <AppShell
-          homeCookieShell={null}
-          displayName={<ShellDisplayNameFallback />}
-        >
-          {children}
-        </AppShell>
-      }
-    >
+    <Suspense fallback={null}>
       <MainLayoutWithCookie>{children}</MainLayoutWithCookie>
     </Suspense>
   );
