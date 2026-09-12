@@ -1,6 +1,5 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
 import { ReceiptCaptureFlow } from "@/lib/route-islands";
 import { FotaPending } from "@/components/capture/FotaViewLoading";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
@@ -13,6 +12,12 @@ import {
   type FotaBootSnapshot,
 } from "@/features/home/last-snapshot";
 
+/**
+ * Mer→Fota calm pending without setState-in-effect:
+ * - cold / soft-fallback: data=null → last-known boot or titled FotaPending
+ * - island load: route-islands `loading: () => <FotaPending />`
+ * - loading.tsx: FotaScreen data={null} via LoadingSlot
+ */
 export function FotaScreen({
   data,
   error,
@@ -42,36 +47,6 @@ export function FotaScreen({
     return <FotaPending />;
   }
 
-  return (
-    <FotaCaptureGate
-      observationId={observationId}
-      initialMode={initialMode}
-      initialPreview={initialPreview}
-      view={view}
-    />
-  );
-}
-
-/**
- * Always paint titled Laddar… for at least one layout pass so Mer→Fota
- * soft-nav never flashes an empty dark frame before the island mounts.
- */
-function FotaCaptureGate({
-  view,
-  initialMode,
-  initialPreview,
-  observationId,
-}: {
-  view: FotaBootSnapshot;
-  initialMode: CaptureMode;
-  initialPreview: CapturePreview | null;
-  observationId: string | null;
-}) {
-  const [ready, setReady] = useState(false);
-  useLayoutEffect(() => {
-    setReady(true);
-  }, []);
-  if (!ready) return <FotaPending />;
   return (
     <ReceiptCaptureFlow
       key={
