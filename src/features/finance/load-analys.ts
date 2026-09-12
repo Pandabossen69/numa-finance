@@ -125,15 +125,16 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     });
     const planItems = snap.planItems ?? [];
     const spendingByMonthKey = snap.monthSpendingByKey ?? {};
-    const ledgerTransactions = snap.ledgerTransactions ?? [];
-    // Per kategori must use the same spending filter + app-side FX→primary
-    // (THB) as Spenderat i månaden / Tx Utgifter. Native SEK rows were
-    // previously skipped (currency !== THB): e.g. 10+20+1+1 SEK @ 3.5 = 112 THB.
+    // Same app-side FX→primary (THB) as Spenderat / Tx Utgifter. Native SEK
+    // rows were skipped in Per kategori (currency !== THB) and Senaste still
+    // painted KR (−1/−1/−20/−10) instead of THB (−3,50/−3,50/−70/−35).
+    // Fixture: 10+20+1+1 SEK @ 3.5 = 112 THB → Övrigt 8× not 4×.
+    const ledgerTransactions = projectLedgerToCanonicalThb(
+      snap.ledgerTransactions ?? [],
+      fxMapFromTodaySnap(snap),
+    );
     const categoriesByMonthKey = spendingCategoriesByMonthKey({
-      transactions: projectLedgerToCanonicalThb(
-        ledgerTransactions,
-        fxMapFromTodaySnap(snap),
-      ),
+      transactions: ledgerTransactions,
       currency: snap.currency,
       timeZone,
     });

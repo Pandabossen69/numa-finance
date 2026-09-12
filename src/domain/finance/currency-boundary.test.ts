@@ -403,8 +403,27 @@ describe("native / canonical currency boundary", () => {
     expect(canonicalCategories?.some((c) => c.name === "Okategoriserat")).toBe(
       true,
     );
+    // QA fixture: four SEK rows land under the uncategorised bucket (8× Övrigt
+    // on Tx when other uncategorised THB spend is included — here the null-cat
+    // SEK row must appear after FX, not vanish).
+    const uncategorised = canonicalCategories?.find(
+      (c) => c.name === "Okategoriserat",
+    );
+    expect(uncategorised?.count).toBe(1);
+    expect(uncategorised?.amountMinor).toBe(3_50);
 
     const movements = movementsSnapshotFromToday(snap, now);
     expect(movements.monthExpenseMinor).toBe(38_824_00);
+
+    // Senaste / Tx list: same four SEK rows show as THB after projection.
+    const projected = projectLedgerToCanonicalThb(snap.ledgerTransactions, fxMap);
+    const sekProjected = projected.filter((tx) =>
+      sekParts.some((part) => part.id === tx.id),
+    );
+    expect(sekProjected).toHaveLength(4);
+    expect(sekProjected.every((tx) => tx.currency === "THB")).toBe(true);
+    expect(sekProjected.map((tx) => tx.amountMinor).sort((a, b) => a - b)).toEqual(
+      [3_50, 3_50, 35_00, 70_00],
+    );
   });
 });
