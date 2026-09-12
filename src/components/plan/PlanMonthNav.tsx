@@ -36,7 +36,10 @@ export function PlanMonthNav({
     const chip = chipRefs.current[monthKey];
     const strip = chip?.closest(".numa-month-strip") as HTMLElement | null;
     if (!chip || !strip) return;
-    strip.scrollTo({ left: chip.offsetLeft, behavior: "smooth" });
+    // Clamp to max so Dec sits in a full 5-chip window — never a mid-glyph.
+    const max = Math.max(0, strip.scrollWidth - strip.clientWidth);
+    const left = Math.min(Math.max(0, chip.offsetLeft), max);
+    strip.scrollTo({ left, behavior: "smooth" });
   }, [monthKey, viewYear]);
 
   return (
@@ -90,7 +93,7 @@ export function PlanMonthNav({
                 chipRefs.current[key] = el;
               }}
               onClick={() => onSelectMonth(key)}
-              className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold normal-case ${
+              className={`numa-press numa-month-chip min-h-11 rounded-full text-sm font-semibold normal-case ${
                 monthKey === key
                   ? "is-active bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                   : key === currentMonthKey

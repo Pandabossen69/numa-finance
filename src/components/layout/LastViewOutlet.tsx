@@ -233,7 +233,13 @@ export function LastViewOutlet({ children }: { children: ReactNode }) {
           {children}
         </div>
       ) : null}
-      {showSoftFallback ? <ViewLoading /> : null}
+      {showSoftFallback ? (
+        destTab ? (
+          destLoadingForTab(destTab)
+        ) : (
+          <ViewLoading />
+        )
+      ) : null}
     </div>
   );
 }

@@ -95,9 +95,11 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-month-strip-slot");
     expect(css).toContain(".numa-month-strip-wrap");
     expect(css).toContain("flex: 0 0 1.75rem");
+    expect(css).toContain("background: var(--numa-bg)");
+    expect(css).toContain("min-width: 0");
+    expect(css).toContain("calc((100% - 1.6rem) / 5)");
     expect(css).toContain("scroll-snap-type: x mandatory");
     expect(css).toContain("scroll-snap-align: start");
-    expect(css).toContain("calc((100% - 1.6rem) / 5)");
     expect(css).toContain(".numa-month-chip.is-clipped");
     expect(css).toContain("visibility: hidden");
     expect(css).not.toContain(".numa-month-strip-chevron");
@@ -105,6 +107,13 @@ describe("NUMA vision palette", () => {
       /\.numa-month-strip-wrap\.is-overflow-start::before/,
     );
     expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
+    // Disabled slots keep an opaque plate — must not fade the whole slot.
+    const disabledSlot = css.match(
+      /\.numa-month-strip-slot:disabled\s*\{[^}]+\}/,
+    )?.[0];
+    expect(disabledSlot).toBeTruthy();
+    expect(disabledSlot).toContain("color: transparent");
+    expect(disabledSlot).not.toMatch(/opacity:\s*0/);
   });
 
   it("uses one desktop content width for Hem, Plan, Analys, Mer and Fota", () => {
