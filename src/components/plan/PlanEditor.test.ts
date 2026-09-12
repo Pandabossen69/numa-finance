@@ -111,8 +111,9 @@ describe("Plan dates and add-form", () => {
     expect(monthStrip).toContain("is-overflow");
     expect(monthStrip).toContain("numa-month-strip-shell");
     expect(monthStrip).toContain("numa-month-strip-slot");
-    expect(monthStrip).toContain("hidePartialChips");
+    expect(monthStrip).toContain("readClipped");
     expect(monthStrip).toContain("is-clipped");
+    expect(monthStrip).toContain("cloneElement");
     expect(monthStrip).toContain("snapScrollLeft");
     expect(plan).not.toContain("numa-month-strip -mx-1");
   });

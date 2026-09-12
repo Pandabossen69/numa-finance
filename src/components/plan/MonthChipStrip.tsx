@@ -1,7 +1,15 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 type Edges = { start: boolean; end: boolean };
 
@@ -24,94 +32,143 @@ function snapScrollLeft(el: HTMLElement) {
   }
 }
 
-/** Hide pills that aren't fully inside the scroller — no mid-glyph slivers. */
-function hidePartialChips(el: HTMLElement) {
-  if (el.clientWidth < 8) return;
-  const box = el.getBoundingClientRect();
-  if (box.width < 8) return;
-  const active = el.querySelector(
-    ".numa-month-chip.is-active",
-  ) as HTMLElement | null;
-  if (active) {
-    const ar = active.getBoundingClientRect();
-    if (ar.left < box.left - 0.5) {
-      el.scrollLeft += ar.left - box.left;
-    } else if (ar.right > box.right + 0.5) {
-      el.scrollLeft += ar.right - box.right;
-    }
-  }
-  const box2 = el.getBoundingClientRect();
-  for (const chip of Array.from(el.children) as HTMLElement[]) {
-    const r = chip.getBoundingClientRect();
-    const fully =
-      r.width > 0 &&
-      r.left >= box2.left - 1 &&
-      r.right <= box2.right + 1;
-    const keep = chip.classList.contains("is-active");
-    chip.classList.toggle("is-clipped", !fully && !keep);
-  }
-}
-
 /**
  * Month chips with reserved ‹/› flex slots (never over glyphs).
- * Scroll snaps to chip edges; partial pills are hidden so labels stay whole.
+ * Partial pills get `is-clipped` via React className (DOM classList was wiped
+ * on parent re-render). Overflow defaults true so phone widths never flash a
+ * mid-glyph before measure.
  */
 export function MonthChipStrip({ children }: { children: ReactNode }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState<Edges | null>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState<Edges>({ start: false, end: true });
+  const [overflow, setOverflow] = useState(true);
+  /** Indices of chips that are not fully inside the scroller. */
+  const [clipped, setClipped] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
   const snapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
-    const node = scrollerRef.current;
-    if (!node) return;
+    const scroller = scrollerRef.current;
+    const shell = shellRef.current;
+    if (!scroller || !shell) return;
 
-    function sync() {
-      const el = scrollerRef.current;
-      if (!el) return;
-      const max = el.scrollWidth - el.clientWidth;
-      const next: Edges =
-        max <= 2
-          ? { start: false, end: false }
-          : {
-              start: el.scrollLeft > 2,
-              end: el.scrollLeft < max - 2,
-            };
-      setEdges((prev) =>
-        prev && prev.start === next.start && prev.end === next.end
-          ? prev
-          : next,
-      );
-      hidePartialChips(el);
+    let raf = 0;
+
+    function readClipped(el: HTMLElement): Set<number> {
+      const next = new Set<number>();
+      if (el.clientWidth < 8) return next;
+
+      // Prefer offset/scroll geometry — getBoundingClientRect was racing
+      // keep-alive / slot layout and leaving mid-glyphs unmarked.
+      const viewLeft = el.scrollLeft;
+      const viewRight = viewLeft + el.clientWidth;
+      const chips = Array.from(el.children) as HTMLElement[];
+
+      const active = el.querySelector(
+        ".numa-month-chip.is-active",
+      ) as HTMLElement | null;
+      if (active) {
+        const aLeft = active.offsetLeft;
+        const aRight = aLeft + active.offsetWidth;
+        if (aLeft < viewLeft - 0.5) el.scrollLeft = aLeft;
+        else if (aRight > viewRight + 0.5)
+          el.scrollLeft = aRight - el.clientWidth;
+      }
+
+      const left = el.scrollLeft;
+      const right = left + el.clientWidth;
+      chips.forEach((chip, i) => {
+        const chipLeft = chip.offsetLeft;
+        const chipRight = chipLeft + chip.offsetWidth;
+        const fully =
+          chip.offsetWidth > 0 &&
+          chipLeft >= left - 0.75 &&
+          chipRight <= right + 0.75;
+        if (!fully) next.add(i);
+      });
+      return next;
     }
 
+    function sameSet(a: ReadonlySet<number>, b: ReadonlySet<number>) {
+      if (a.size !== b.size) return false;
+      for (const v of a) if (!b.has(v)) return false;
+      return true;
+    }
+
+    function measure() {
+      const el = scrollerRef.current;
+      if (!el) return;
+      if (el.clientWidth < 8) return;
+
+      const max = el.scrollWidth - el.clientWidth;
+      const hasOverflow = max > 2;
+      const nextEdges: Edges = hasOverflow
+        ? { start: el.scrollLeft > 2, end: el.scrollLeft < max - 2 }
+        : { start: false, end: false };
+
+      setOverflow(hasOverflow);
+      setEdges((prev) =>
+        prev.start === nextEdges.start && prev.end === nextEdges.end
+          ? prev
+          : nextEdges,
+      );
+
+      const nextClipped = readClipped(el);
+      el.dataset.clippedDebug = String(nextClipped.size);
+      setClipped((prev) => (sameSet(prev, nextClipped) ? prev : nextClipped));
+    }
+
+    function schedule() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    }
+
+    measure();
+    schedule();
+    const t1 = window.setTimeout(measure, 0);
+    const t2 = window.setTimeout(measure, 50);
+    const t3 = window.setTimeout(measure, 200);
+    void document.fonts?.ready?.then(measure);
+
     function onScroll() {
-      sync();
+      measure();
       if (snapTimer.current) clearTimeout(snapTimer.current);
       snapTimer.current = setTimeout(() => {
         const el = scrollerRef.current;
         if (!el) return;
         snapScrollLeft(el);
-        sync();
+        measure();
       }, 60);
     }
 
-    sync();
-    node.addEventListener("scroll", onScroll, { passive: true });
-    const ro = new ResizeObserver(() => {
-      snapScrollLeft(node);
-      sync();
-    });
-    ro.observe(node);
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(scroller);
+    ro.observe(shell);
+    for (const child of Array.from(scroller.children)) ro.observe(child);
+
+    const spaPanel = shell.closest("[data-numa-spa-tab]");
+    const mo = spaPanel ? new MutationObserver(schedule) : null;
+    if (spaPanel && mo) {
+      mo.observe(spaPanel, {
+        attributes: true,
+        attributeFilter: ["hidden", "data-numa-spa-visible"],
+      });
+    }
+
     return () => {
-      node.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+      scroller.removeEventListener("scroll", onScroll);
       ro.disconnect();
+      mo?.disconnect();
       if (snapTimer.current) clearTimeout(snapTimer.current);
     };
   }, []);
-
-  const start = edges?.start ?? false;
-  const end = edges?.end ?? false;
-  const overflow = Boolean(edges && (edges.start || edges.end));
 
   function scrollByChip(dir: -1 | 1) {
     const el = scrollerRef.current;
@@ -127,25 +184,39 @@ export function MonthChipStrip({ children }: { children: ReactNode }) {
     el.scrollTo({ left: chips[next]!.offsetLeft, behavior: "smooth" });
   }
 
+  const painted = Children.map(children, (child, index) => {
+    if (!isValidElement(child)) return child;
+    const el = child as ReactElement<{ className?: string }>;
+    const prev = el.props.className ?? "";
+    const isClipped = clipped.has(index);
+    const className = isClipped
+      ? `${prev} is-clipped`.trim()
+      : prev.replace(/\bis-clipped\b/g, "").trim();
+    return cloneElement(el, { className });
+  });
+
   return (
     <div
+      ref={shellRef}
       className={`numa-month-strip-shell${overflow ? " is-overflow" : ""}`}
       data-numa-month-scroll={overflow ? "more" : undefined}
+      data-numa-strip="slots-v3"
+      data-clipped-count={clipped.size}
     >
       {overflow ? (
         <button
           type="button"
           className="numa-month-strip-slot is-start"
           aria-label="Föregående månader"
-          disabled={!start}
+          disabled={!edges.start}
           onClick={() => scrollByChip(-1)}
         >
-          {start ? "‹" : null}
+          {edges.start ? "‹" : null}
         </button>
       ) : null}
       <div className="numa-month-strip-wrap">
         <div ref={scrollerRef} className="numa-month-strip pb-1">
-          {children}
+          {painted}
         </div>
       </div>
       {overflow ? (
@@ -153,10 +224,10 @@ export function MonthChipStrip({ children }: { children: ReactNode }) {
           type="button"
           className="numa-month-strip-slot is-end"
           aria-label="Nästa månader"
-          disabled={!end}
+          disabled={!edges.end}
           onClick={() => scrollByChip(1)}
         >
-          {end ? "›" : null}
+          {edges.end ? "›" : null}
         </button>
       ) : null}
     </div>

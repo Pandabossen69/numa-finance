@@ -97,6 +97,7 @@ describe("NUMA vision palette", () => {
     expect(css).toContain("flex: 0 0 1.75rem");
     expect(css).toContain("scroll-snap-type: x mandatory");
     expect(css).toContain("scroll-snap-align: start");
+    expect(css).toContain("calc((100% - 1.6rem) / 5)");
     expect(css).toContain(".numa-month-chip.is-clipped");
     expect(css).toContain("visibility: hidden");
     expect(css).not.toContain(".numa-month-strip-chevron");
