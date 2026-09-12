@@ -809,7 +809,7 @@ function recomputeMovements(
       allExpenseMinor += tx.amountMinor;
       if (inMonth) {
         monthExpenseMinor += tx.amountMinor;
-        const name = tx.category?.trim() || "Övrigt";
+        const name = tx.category?.trim() || "Okategoriserat";
         const prev = categoryMap.get(name) ?? {
           name,
           amountMinor: 0,

@@ -34,6 +34,7 @@ export function classifySpend(
   tx: Pick<
     CanonicalTransaction,
     | "transactionType"
+    | "direction"
     | "status"
     | "ledgerOrigin"
     | "planItemId"

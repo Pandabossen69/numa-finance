@@ -27,7 +27,10 @@ import { loadErrorMessageSv } from "@/lib/async";
 import { reportError } from "@/lib/observe/report";
 import type { TodaySnapshot } from "@/lib/store/types-snapshot";
 
-/** Same FX map Rörelser uses so Analys categories stay in canonical THB. */
+/**
+ * App-side FX map (checkpoint rate on the account) — same source Spenderat /
+ * Rörelser use. Not numa.fx_conversions (often empty for local/test users).
+ */
 function fxMapFromTodaySnap(snap: TodaySnapshot): Map<string, FxCheckpoint | null> {
   const byId = new Map(
     (snap.accountBalances ?? []).map((row) => [row.accountId, row]),
@@ -123,9 +126,9 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const planItems = snap.planItems ?? [];
     const spendingByMonthKey = snap.monthSpendingByKey ?? {};
     const ledgerTransactions = snap.ledgerTransactions ?? [];
-    // Same rows as Spenderat / monthSpendingByKey (canonical THB), not the
-    // native ledger — otherwise SEK/EUR/USD expenses silently drop out of
-    // Per kategori while still counting in Spenderat i månaden.
+    // Per kategori must use the same spending filter + app-side FX→primary
+    // (THB) as Spenderat i månaden / Tx Utgifter. Native SEK rows were
+    // previously skipped (currency !== THB): e.g. 10+20+1+1 SEK @ 3.5 = 112 THB.
     const categoriesByMonthKey = spendingCategoriesByMonthKey({
       transactions: projectLedgerToCanonicalThb(
         ledgerTransactions,

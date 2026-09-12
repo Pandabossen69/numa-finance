@@ -299,8 +299,10 @@ describe("native / canonical currency boundary", () => {
   });
 
   it("keeps Analys Per kategori on canonical THB so SEK spend cannot drift from Spenderat", () => {
-    // Repro of the 38 712 vs 38 824 gap: 32 SEK @ 3.5 = 112 THB omitted when
-    // categories were rolled from the native ledger (currency !== THB).
+    // Confirmed root cause (test@): 112 THB = 32 SEK × 3.5 from four confirmed
+    // SEK expenses (10+20+1+1). Not transfer / excluded category. FX is app-side
+    // (tx.thbMinor / checkpoint rate) — numa.fx_conversions empty. Native
+    // Per kategori skipped currency !== THB → 38 712 vs Spenderat 38 824.
     const thbSpend = tx({
       id: "thb-big",
       accountId: "bank",
@@ -310,16 +312,24 @@ describe("native / canonical currency boundary", () => {
       category: "Mat",
       occurredAt: "2026-09-02T03:00:00.000Z",
     });
-    const sekSpend = tx({
-      id: "sek-112",
-      accountId: "nordea",
-      amountMinor: 32_00,
-      currency: "SEK",
-      thbMinor: 112_00,
-      fxRate: 3.5,
-      category: "Övrigt",
-      occurredAt: "2026-09-03T05:00:00.000Z",
-    });
+    const sekParts = [
+      { id: "sek-10", amountMinor: 10_00, thbMinor: 35_00, at: "2026-09-03T05:00:00.000Z" },
+      { id: "sek-20", amountMinor: 20_00, thbMinor: 70_00, at: "2026-09-04T05:00:00.000Z" },
+      { id: "sek-1a", amountMinor: 1_00, thbMinor: 3_50, at: "2026-09-05T05:00:00.000Z" },
+      { id: "sek-1b", amountMinor: 1_00, thbMinor: 3_50, at: "2026-09-06T05:00:00.000Z", category: null },
+    ] as const;
+    const sekSpend = sekParts.map((part) =>
+      tx({
+        id: part.id,
+        accountId: "nordea",
+        amountMinor: part.amountMinor,
+        currency: "SEK",
+        thbMinor: part.thbMinor,
+        fxRate: 3.5,
+        category: "category" in part ? part.category : "Övrigt",
+        occurredAt: part.at,
+      }),
+    );
     const profile: Profile = {
       id: "u1",
       displayName: "Hugo",
@@ -346,7 +356,7 @@ describe("native / canonical currency boundary", () => {
       primary: thbAccount,
       checkpoint: thbCp,
       checkpoints: [thbCp, sekCp],
-      transactions: [thbSpend, sekSpend],
+      transactions: [thbSpend, ...sekSpend],
       now,
     });
 
@@ -390,6 +400,9 @@ describe("native / canonical currency boundary", () => {
       canonicalCategories?.reduce((n, row) => n + row.amountMinor, 0) ?? 0;
     expect(categorySum).toBe(38_824_00);
     expect(categorySum).toBe(snap.monthSpendingByKey["2026-09"]);
+    expect(canonicalCategories?.some((c) => c.name === "Okategoriserat")).toBe(
+      true,
+    );
 
     const movements = movementsSnapshotFromToday(snap, now);
     expect(movements.monthExpenseMinor).toBe(38_824_00);

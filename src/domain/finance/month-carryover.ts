@@ -176,13 +176,15 @@ export type SpendingCategoryTotal = {
 };
 
 /** Shown when a transaction was saved without a category. */
-export const UNCATEGORISED_SPEND_NAME = "Övrigt";
+export const UNCATEGORISED_SPEND_NAME = "Okategoriserat";
 
 /**
  * The same rows as `spendingByMonthKey`, split by category.
  *
  * Kept next to it on purpose: the categories of a month must always add up to
- * that month's spending, so both filters have to stay identical.
+ * that month's spending, so both filters have to stay identical
+ * (confirmed expense/debit via appliesToSpending; transfer + cash_withdrawal
+ * excluded by type; FX already applied when callers pass canonical THB).
  */
 export function spendingCategoriesByMonthKey(params: {
   transactions: CanonicalTransaction[];
