@@ -9,6 +9,8 @@ describe("/konton instant shell", () => {
     expect(page).toContain("Suspense");
     expect(page).toContain("AccountsDashboard");
     expect(page).toContain("data={null}");
-    expect(loading).toContain("AccountsViewLoading");
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("AccountsDashboard");
+    expect(loading).not.toContain("AccountsViewLoading");
   });
 });

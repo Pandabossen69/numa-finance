@@ -1,7 +1,7 @@
 "use client";
 
 import { ReceiptCaptureFlow } from "@/lib/route-islands";
-import { FotaViewLoading } from "@/components/capture/FotaViewLoading";
+import { FotaPending } from "@/components/capture/FotaViewLoading";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
@@ -12,6 +12,12 @@ import {
   type FotaBootSnapshot,
 } from "@/features/home/last-snapshot";
 
+/**
+ * Mer→Fota calm pending without setState-in-effect:
+ * - cold / soft-fallback: data=null → last-known boot or titled FotaPending
+ * - island load: route-islands `loading: () => <FotaPending />`
+ * - loading.tsx: FotaScreen data={null} via LoadingSlot
+ */
 export function FotaScreen({
   data,
   error,
@@ -38,26 +44,22 @@ export function FotaScreen({
         </div>
       );
     }
-    return <FotaViewLoading />;
+    return <FotaPending />;
   }
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
-      <ReceiptCaptureFlow
-        key={
-          observationId
-            ? `obs:${observationId}`
-            : `mode:${initialMode}`
-        }
-        accountId={view.accountId}
-        accounts={view.accounts}
-        remainingTodayMinor={view.remainingTodayMinor}
-        currency={view.currency}
-        bootstrapping={view.bootstrapping}
-        initialMode={initialMode}
-        initialPreview={initialPreview}
-      />
-    </div>
+    <ReceiptCaptureFlow
+      key={
+        observationId ? `obs:${observationId}` : `mode:${initialMode}`
+      }
+      accountId={view.accountId}
+      accounts={view.accounts}
+      remainingTodayMinor={view.remainingTodayMinor}
+      currency={view.currency}
+      bootstrapping={view.bootstrapping}
+      initialMode={initialMode}
+      initialPreview={initialPreview}
+    />
   );
 }
 

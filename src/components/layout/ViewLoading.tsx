@@ -4,22 +4,21 @@ import { formatMoneyCompact, money } from "@/domain/money";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 
 /**
- * Soft page placeholder — mint panels that match Hem/Plan/Analys layout.
+ * Calm route pending — text + thin bars, never near-empty mint cards.
  * Client so LastViewOutlet can recognize the type across tab holds.
- * No pulse (that reads as a reload). Used by loading.tsx and LastViewOutlet.
+ * No pulse (that reads as a reload). Soft fallback + dynamic islands.
  */
 export function ViewLoading() {
   return (
     <div
-      className="numa-page numa-page-wide space-y-4"
+      className="numa-page numa-page-wide space-y-2 pt-1"
       data-numa-view-loading="true"
       aria-busy="true"
       aria-label="Laddar"
     >
-      <div className="numa-skel h-8 w-36" />
-      <div className="numa-skel h-[11.5rem] w-full" />
-      <div className="numa-skel h-16 w-full" />
-      <div className="numa-skel h-16 w-full" />
+      <p className="text-sm font-medium text-[var(--numa-muted)]">Laddar…</p>
+      <div className="numa-skel h-2.5 w-36 !rounded-full" />
+      <div className="numa-skel h-2.5 w-24 !rounded-full" />
     </div>
   );
 }

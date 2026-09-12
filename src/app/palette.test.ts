@@ -90,13 +90,30 @@ describe("NUMA vision palette", () => {
     );
   });
 
-  it("fades the Plan month strip only on overflowing edges", () => {
-    expect(css).toContain(".numa-month-strip");
-    expect(css).toContain(".numa-month-strip.is-overflow-start.is-overflow-end");
-    expect(css).toMatch(/mask-image:\s*linear-gradient/);
-    expect(css).toContain("transparent 0");
-    expect(css).toContain("transparent 100%");
-    expect(css).toContain("#000 1.5rem");
+  it("reserves Plan month-strip ‹/› slots and snaps chips (no mid-glyph overlays)", () => {
+    expect(css).toContain(".numa-month-strip-shell");
+    expect(css).toContain(".numa-month-strip-slot");
+    expect(css).toContain(".numa-month-strip-wrap");
+    expect(css).toContain("flex: 0 0 1.75rem");
+    expect(css).toContain("background: var(--numa-bg)");
+    expect(css).toContain("min-width: 0");
+    expect(css).toContain("calc((100% - 1.6rem) / 5)");
+    expect(css).toContain("scroll-snap-type: x mandatory");
+    expect(css).toContain("scroll-snap-align: start");
+    expect(css).toContain(".numa-month-chip.is-clipped");
+    expect(css).toContain("visibility: hidden");
+    expect(css).not.toContain(".numa-month-strip-chevron");
+    expect(css).not.toMatch(
+      /\.numa-month-strip-wrap\.is-overflow-start::before/,
+    );
+    expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
+    // Disabled slots keep an opaque plate — must not fade the whole slot.
+    const disabledSlot = css.match(
+      /\.numa-month-strip-slot:disabled\s*\{[^}]+\}/,
+    )?.[0];
+    expect(disabledSlot).toBeTruthy();
+    expect(disabledSlot).toContain("color: transparent");
+    expect(disabledSlot).not.toMatch(/opacity:\s*0/);
   });
 
   it("uses one desktop content width for Hem, Plan, Analys, Mer and Fota", () => {

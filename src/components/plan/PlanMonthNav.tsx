@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { labelMonthNameSv, visibleMonthKeysForYear } from "@/domain/finance";
+import { labelMonthChipSv, labelMonthNameSv, visibleMonthKeysForYear } from "@/domain/finance";
 import { MonthChipStrip } from "@/components/plan/MonthChipStrip";
 
 export type MonthDots = { living?: boolean; save?: boolean };
@@ -33,11 +33,13 @@ export function PlanMonthNav({
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
-    chipRefs.current[monthKey]?.scrollIntoView({
-      inline: "center",
-      block: "nearest",
-      behavior: "smooth",
-    });
+    const chip = chipRefs.current[monthKey];
+    const strip = chip?.closest(".numa-month-strip") as HTMLElement | null;
+    if (!chip || !strip) return;
+    // Clamp to max so Dec sits in a full 5-chip window — never a mid-glyph.
+    const max = Math.max(0, strip.scrollWidth - strip.clientWidth);
+    const left = Math.min(Math.max(0, chip.offsetLeft), max);
+    strip.scrollTo({ left, behavior: "smooth" });
   }, [monthKey, viewYear]);
 
   return (
@@ -91,15 +93,16 @@ export function PlanMonthNav({
                 chipRefs.current[key] = el;
               }}
               onClick={() => onSelectMonth(key)}
-              className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold capitalize ${
+              className={`numa-press numa-month-chip min-h-11 rounded-full text-sm font-semibold normal-case ${
                 monthKey === key
                   ? "is-active bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                   : key === currentMonthKey
                     ? "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)] ring-1 ring-[var(--numa-accent)]/35"
                     : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-accent-soft)] hover:text-[var(--numa-accent-ink)]"
               }`}
+              aria-label={labelMonthNameSv(key)}
             >
-              {labelMonthNameSv(key)}
+              {labelMonthChipSv(key)}
               {dots.living || dots.save ? (
                 <span className="numa-month-dots" aria-hidden>
                   {dots.living ? <i className="is-saldo" /> : null}

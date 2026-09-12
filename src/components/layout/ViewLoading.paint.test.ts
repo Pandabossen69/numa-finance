@@ -7,6 +7,7 @@ import {
   AnalysViewLoading,
   HemPending,
   HomeViewLoading,
+  ViewLoading,
 } from "./ViewLoading";
 
 const home = {
@@ -22,6 +23,7 @@ describe("first-paint pending", () => {
     );
     const analysEmpty = renderToStaticMarkup(createElement(AnalysPending));
     const hem = renderToStaticMarkup(createElement(HemPending));
+    const route = renderToStaticMarkup(createElement(ViewLoading));
     const oldHem = renderToStaticMarkup(createElement(HomeViewLoading));
     const oldAnalys = renderToStaticMarkup(createElement(AnalysViewLoading));
 
@@ -34,6 +36,8 @@ describe("first-paint pending", () => {
     expect(analysEmpty).not.toContain("h-[10.5rem]");
     expect(hem).toContain("Hämtar läget");
     expect(hem).not.toContain("h-[22rem]");
+    expect(route).toContain("Laddar");
+    expect(route).not.toContain("h-[11.5rem]");
     expect(oldHem).toContain("h-[22rem]");
     expect(oldAnalys).toContain("h-[10.5rem]");
   });
