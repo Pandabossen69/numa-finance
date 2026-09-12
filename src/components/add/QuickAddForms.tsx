@@ -24,6 +24,7 @@ import {
   applyOptimisticHomeSpend,
   confirmOptimisticFinance,
 } from "@/features/home/last-snapshot";
+import { ChipStrip } from "@/components/ui/ChipStrip";
 
 export type ShellAccount = {
   id: string;
@@ -245,22 +246,26 @@ function ExpenseForm({
             ?.currency ?? "THB") as CurrencyCode
         }
       />
-      <div className="numa-chip-scroll">
+      <ChipStrip
+        startLabel="Föregående kategorier"
+        endLabel="Nästa kategorier"
+        activeSelector=".numa-category-chip.is-active"
+      >
         {CATEGORIES.map((c) => (
           <button
             key={c}
             type="button"
             onClick={() => setCategoryOverride(c)}
-            className={`numa-press min-h-11 rounded-full px-3 text-sm ${
+            className={`numa-press numa-category-chip min-h-11 rounded-full px-3 text-sm ${
               category === c
-                ? "bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
+                ? "is-active bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                 : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
           >
             {c}
           </button>
         ))}
-      </div>
+      </ChipStrip>
       <TextField
         value={description}
         onChange={setDescription}
