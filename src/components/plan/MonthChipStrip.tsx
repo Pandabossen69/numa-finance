@@ -45,8 +45,15 @@ export function MonthChipStrip({ children }: { children: ReactNode }) {
           : "";
 
   return (
-    <div ref={scrollerRef} className={`numa-month-strip pb-1 ${fade}`.trim()}>
-      {children}
+    <div
+      className={`numa-month-strip-wrap ${fade}`.trim()}
+      data-numa-month-scroll={
+        overflow.start || overflow.end ? "more" : undefined
+      }
+    >
+      <div ref={scrollerRef} className="numa-month-strip pb-1">
+        {children}
+      </div>
     </div>
   );
 }

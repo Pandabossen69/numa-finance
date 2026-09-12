@@ -1,5 +1,11 @@
-import { AccountsViewLoading } from "@/components/accounts/AccountsViewLoading";
+import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
+import { LoadingSlot } from "@/components/layout/LoadingSlot";
 
+/** Dest-shaped Saldo — last-known accounts when warm, not a blank skeleton. */
 export default function KontonLoading() {
-  return <AccountsViewLoading />;
+  return (
+    <LoadingSlot>
+      <AccountsDashboard data={null} />
+    </LoadingSlot>
+  );
 }

@@ -16,8 +16,10 @@ describe("/importera Fortsätt", () => {
     ]);
   });
 
-  it("uses card-shaped list skeletons instead of a tall grey column", () => {
-    expect(loading).toContain("ImporteraViewLoading");
+  it("streams last-known pictures instead of an empty mint skeleton", () => {
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("ImporteraScreen");
+    expect(loading).not.toContain("ImporteraViewLoading");
     expect(loading).not.toMatch(/numa-skel h-\[1[0-9]{2}/);
   });
 

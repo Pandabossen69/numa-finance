@@ -861,48 +861,60 @@ body {
   animation: numa-page-in 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Edge fades sit on the wrap so pill glyphs stay opaque (no mid-word mask clip). */
+.numa-month-strip-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.numa-month-strip-wrap::before,
+.numa-month-strip-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0.25rem;
+  width: 2.25rem;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.numa-month-strip-wrap::before {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    var(--numa-bg) 0%,
+    color-mix(in srgb, var(--numa-bg) 55%, transparent) 55%,
+    transparent 100%
+  );
+}
+
+.numa-month-strip-wrap::after {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    var(--numa-bg) 0%,
+    color-mix(in srgb, var(--numa-bg) 55%, transparent) 55%,
+    transparent 100%
+  );
+}
+
+.numa-month-strip-wrap.is-overflow-start::before,
+.numa-month-strip-wrap.is-overflow-end::after {
+  opacity: 1;
+}
+
 .numa-month-strip {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
-  scroll-padding-inline: 1.25rem;
+  scroll-padding-inline: 2.25rem;
   padding-inline: 0.25rem 1rem;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-}
-
-.numa-month-strip.is-overflow-end {
-  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1.5rem), transparent 100%);
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    #000 0,
-    #000 calc(100% - 1.5rem),
-    transparent 100%
-  );
-}
-
-.numa-month-strip.is-overflow-start {
-  mask-image: linear-gradient(90deg, transparent 0, #000 1.5rem, #000 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 1.5rem, #000 100%);
-}
-
-.numa-month-strip.is-overflow-start.is-overflow-end {
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 1.5rem,
-    #000 calc(100% - 1.5rem),
-    transparent 100%
-  );
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 1.5rem,
-    #000 calc(100% - 1.5rem),
-    transparent 100%
-  );
 }
 
 .numa-month-strip::-webkit-scrollbar {
@@ -911,6 +923,7 @@ body {
 
 .numa-month-chip {
   scroll-snap-align: center;
+  scroll-margin-inline: 2.25rem;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;

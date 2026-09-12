@@ -25,6 +25,8 @@ import {
   withRolledMonthlyDues,
   yearMonthKeys,
   visibleMonthKeysForYear,
+  labelMonthChipSv,
+  labelMonthNameSv,
 } from "./plan-months";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 
@@ -50,6 +52,12 @@ function item(
 }
 
 describe("plan-months", () => {
+  it("uses compact chip labels that stay readable at phone width", () => {
+    expect(labelMonthChipSv("2026-09-01")).toBe("sep");
+    expect(labelMonthChipSv("2026-10-01")).toBe("okt");
+    expect(labelMonthNameSv("2026-09-01")).toBe("september");
+  });
+
   it("treats mandatory as recurring monthly", () => {
     expect(
       isRecurringMonthly(

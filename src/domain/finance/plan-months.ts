@@ -663,6 +663,21 @@ export function labelMonthNameSv(monthKey: string): string {
   });
 }
 
+/**
+ * Compact Swedish month for the Plan/Analys chip strip (e.g. `sep`, `okt`).
+ * Full long names clip mid-word at ~390px; short labels stay fully readable.
+ */
+export function labelMonthChipSv(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, (m ?? 1) - 1, 1));
+  return d
+    .toLocaleDateString("sv-SE", {
+      month: "short",
+      timeZone: "UTC",
+    })
+    .replace(/\.$/, "");
+}
+
 export function yearFromMonthKey(monthKey: string): number {
   return Number(monthKey.slice(0, 4));
 }
