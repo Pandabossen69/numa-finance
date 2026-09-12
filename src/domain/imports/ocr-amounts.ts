@@ -22,11 +22,18 @@ export function sanitizeOcrDigitNoise(value: string): string {
 /**
  * Bangkok Bank / English SMS: "10,758.04" or "750.00".
  * Comma = thousands, period = decimal.
+ * Also accepts vision strings like "150 THB" / "฿150".
  */
 export function westernAmountToMinor(value: string): number {
   const cleaned = sanitizeOcrDigitNoise(value)
+    .replace(/[฿€£$]/gu, "")
+    .replace(/^(?:bt|thb|sek|kr)\s*/i, "")
+    .replace(/\s*(?:bt|thb|sek|kr)$/i, "")
     .replace(/\s/g, "")
     .replace(/,/g, "");
+  if (!cleaned || !/^\d+(?:\.\d+)?$/.test(cleaned)) {
+    throw new Error(`Cannot parse western bank amount: ${value}`);
+  }
   const major = Number(cleaned);
   if (!Number.isFinite(major) || major < 0) {
     throw new Error(`Cannot parse western bank amount: ${value}`);
@@ -94,6 +101,11 @@ export function visionMajorToMinor(
   value: number | string | null | undefined,
 ): number | null {
   if (value == null) return null;
-  const raw = typeof value === "number" ? String(value) : String(value);
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0) return null;
+    return Math.round(value * 100);
+  }
+  const raw = String(value).trim();
+  if (!raw) return null;
   return tryWesternAmountToMinor(raw);
 }

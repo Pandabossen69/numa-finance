@@ -6,7 +6,10 @@ import {
 } from "./extraction";
 import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
 import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
-import { resolveReceiptPaidAmountMinor } from "./receipt-total";
+import {
+  extractPaidTotalFromText,
+  resolveReceiptPaidAmountMinor,
+} from "./receipt-total";
 
 function bankAppMajorToMinor(
   value: number | string | null | undefined,
@@ -77,15 +80,23 @@ type VisionCallFail = {
   model?: undefined;
 };
 
+/**
+ * True bank-SMS signals only. Do NOT match bare "PromptPay" / "Bangkok" —
+ * Thai cafe receipts (Cafe Siam) include both as address + payment method.
+ */
 function looksLikeBankText(text: string): boolean {
   const t = text.toLowerCase();
   return (
     /available balance is\s+(?:bt|thb?)/.test(t) ||
     /bal(?:ance)?\s+available\s+is\s+(?:bt|thb?)/.test(t) ||
-    t.includes("withdrawal") ||
-    t.includes("promptpay") ||
-    t.includes("moneyplus") ||
-    t.includes("bangkok")
+    t.includes("withdrawal/transfer/payment") ||
+    t.includes("withdrawal from your account") ||
+    t.includes("withdrawal from account") ||
+    t.includes("promptpay transfer") ||
+    t.includes("moneyplus transfer") ||
+    t.includes("deposit/transfer/payment") ||
+    (t.includes("from your account") && /(?:bt|thb?)\s*[\d,]/.test(t)) ||
+    (t.includes("to your account") && /(?:bt|thb?)\s*[\d,]/.test(t))
   );
 }
 
@@ -339,7 +350,12 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     ) {
       return false;
     }
-    return visionMajorToMinor(parsed.amountMajor) != null;
+    const fromVision = visionMajorToMinor(parsed.amountMajor);
+    if (fromVision != null && fromVision > 0) return true;
+    const fullText =
+      typeof parsed.fullText === "string" ? parsed.fullText : null;
+    const fromText = extractPaidTotalFromText(fullText);
+    return fromText != null && fromText.amountMinor > 0;
   }
 
   private async callVision(

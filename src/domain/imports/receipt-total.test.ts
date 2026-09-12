@@ -61,6 +61,48 @@ Amount paid 1,050.00
   });
 });
 
+describe("extractPaidTotalFromText (Thai cafe receipts)", () => {
+  const cafeSiam = `
+Cafe Siam
+ร้านกาแฟสยาม
+123 Thanon Siam, Bangkok 10330
+Tel: 02-123-4567
+ใบเสร็จรับเงิน / RECEIPT
+เลขที่ / No.: CS240523-0017
+วันที่ / Date: 23/05/2024 10:45
+รายการ Item    จำนวน Qty    ราคา Price (THB)
+Iced latte     1            85
+Croissant      1            65
+รวมทั้งสิ้น / Total                    150 THB
+ชำระผ่าน / Pay via PromptPay
+ขอบคุณครับ / Thank you
+`;
+
+  it("reads bilingual รวมทั้งสิ้น / Total 150 THB", () => {
+    const hit = extractPaidTotalFromText(cafeSiam);
+    expect(hit?.amountMinor).toBe(15_000);
+    expect(hit?.labelKey).toMatch(/total|thai/);
+  });
+
+  it("reads Thai-only รวมทั้งสิ้น when English Total is dropped", () => {
+    const thaiOnly = cafeSiam.replace(" / Total", "").replace(" / RECEIPT", "");
+    const hit = extractPaidTotalFromText(thaiOnly);
+    expect(hit?.amountMinor).toBe(15_000);
+    expect(hit?.labelKey).toBe("thai_grand_total");
+  });
+
+  it("sums clear line items when total label is missing", () => {
+    const hit = extractPaidTotalFromText(`
+Cafe Siam
+Iced latte 1 85
+Croissant 1 65
+Pay via PromptPay
+`);
+    expect(hit?.amountMinor).toBe(15_000);
+    expect(hit?.labelKey).toBe("line_item_sum");
+  });
+});
+
 describe("resolveReceiptPaidAmountMinor", () => {
   it("overrides wrong vision amount with Final total from text", () => {
     const grab = `
@@ -84,5 +126,20 @@ Final total
         fullText: "some blurry noise",
       }),
     ).toBe(12_500);
+  });
+
+  it("recovers Cafe Siam total when vision amount is 0", () => {
+    expect(
+      resolveReceiptPaidAmountMinor({
+        visionAmountMinor: 0,
+        fullText: `
+Cafe Siam Bangkok
+Iced latte 85
+Croissant 65
+รวมทั้งสิ้น 150 THB
+Pay via PromptPay
+`,
+      }),
+    ).toBe(15_000);
   });
 });
