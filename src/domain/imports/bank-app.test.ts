@@ -24,6 +24,9 @@ describe("ocr amount helpers", () => {
   it("parses Bangkok Bank western amounts", () => {
     expect(westernAmountToMinor("10,758.04")).toBe(1_075_804);
     expect(westernAmountToMinor("750.00")).toBe(75_000);
+    expect(westernAmountToMinor("150 THB")).toBe(15_000);
+    expect(westernAmountToMinor("฿150")).toBe(15_000);
+    expect(() => westernAmountToMinor("")).toThrow();
   });
 
   it("parses European / Swedish bank UI amounts", () => {
