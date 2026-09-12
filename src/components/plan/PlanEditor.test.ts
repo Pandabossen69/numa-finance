@@ -10,6 +10,7 @@ const rows = read("./PlanRows.tsx");
 const dateField = read("./PlanDateField.tsx");
 const inlineAdd = read("./InlineAdd.tsx");
 const monthStrip = read("./MonthChipStrip.tsx");
+const chipStrip = read("../ui/ChipStrip.tsx");
 const card = read("./PlanCard.tsx");
 const equation = read("./PlanEquation.tsx");
 const piles = read("./PlanPiles.tsx");
@@ -25,6 +26,7 @@ const plan = [
   dateField,
   inlineAdd,
   monthStrip,
+  chipStrip,
   card,
   equation,
   format,
@@ -108,13 +110,15 @@ describe("Plan dates and add-form", () => {
     expect(monthNav).toContain("MonthChipStrip");
     expect(monthNav).toContain("labelMonthChipSv");
     expect(monthNav).toContain("normal-case");
-    expect(monthStrip).toContain("is-overflow");
-    expect(monthStrip).toContain("numa-month-strip-shell");
-    expect(monthStrip).toContain("numa-month-strip-slot");
-    expect(monthStrip).toContain("readClipped");
-    expect(monthStrip).toContain("is-clipped");
-    expect(monthStrip).toContain("cloneElement");
-    expect(monthStrip).toContain("snapScrollLeft");
+    expect(monthStrip).toContain("ChipStrip");
+    expect(monthStrip).toContain("Föregående månader");
+    expect(chipStrip).toContain("is-overflow");
+    expect(chipStrip).toContain("numa-month-strip-shell");
+    expect(chipStrip).toContain("numa-month-strip-slot");
+    expect(chipStrip).toContain("readClipped");
+    expect(chipStrip).toContain("is-clipped");
+    expect(chipStrip).toContain("cloneElement");
+    expect(chipStrip).toContain("snapScrollLeft");
     expect(plan).not.toContain("numa-month-strip -mx-1");
   });
 

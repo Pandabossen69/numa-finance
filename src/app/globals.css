@@ -948,9 +948,20 @@ body {
   overflow: hidden;
 }
 
-.numa-month-chip.is-clipped {
+.numa-month-chip.is-clipped,
+.numa-category-chip.is-clipped {
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Fota→Manuellt categories: natural width + snap (shell/‹/› shared with months). */
+.numa-category-chip {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  scroll-margin-inline: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .numa-month-dots {
