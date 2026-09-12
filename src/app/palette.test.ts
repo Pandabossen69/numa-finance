@@ -94,7 +94,9 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-month-strip-wrap");
     expect(css).toContain(".numa-month-strip-wrap.is-overflow-start::before");
     expect(css).toContain(".numa-month-strip-wrap.is-overflow-end::after");
-    expect(css).toContain("scroll-padding-inline: 2.25rem");
+    expect(css).toContain("scroll-padding-inline: 3rem");
+    expect(css).toContain('content: "‹"');
+    expect(css).toContain('content: "›"');
     expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
   });
 

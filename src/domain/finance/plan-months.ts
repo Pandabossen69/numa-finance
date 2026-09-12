@@ -665,17 +665,27 @@ export function labelMonthNameSv(monthKey: string): string {
 
 /**
  * Compact Swedish month for the Plan/Analys chip strip (e.g. `sep`, `okt`).
- * Full long names clip mid-word at ~390px; short labels stay fully readable.
+ * Locale `short` still leaves `juni`/`juli`/`mars` long enough to look clipped
+ * under the edge fade at ~390px — keep a fixed 3-letter set instead.
  */
+const MONTH_CHIP_SV = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "maj",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "okt",
+  "nov",
+  "dec",
+] as const;
+
 export function labelMonthChipSv(monthKey: string): string {
-  const [y, m] = monthKey.split("-").map(Number);
-  const d = new Date(Date.UTC(y!, (m ?? 1) - 1, 1));
-  return d
-    .toLocaleDateString("sv-SE", {
-      month: "short",
-      timeZone: "UTC",
-    })
-    .replace(/\.$/, "");
+  const m = Number(monthKey.split("-")[1]);
+  return MONTH_CHIP_SV[(m ?? 1) - 1] ?? labelMonthNameSv(monthKey);
 }
 
 export function yearFromMonthKey(monthKey: string): number {

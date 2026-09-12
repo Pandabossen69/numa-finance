@@ -53,9 +53,11 @@ function item(
 
 describe("plan-months", () => {
   it("uses compact chip labels that stay readable at phone width", () => {
-    expect(labelMonthChipSv("2026-09-01")).toBe("sep");
-    expect(labelMonthChipSv("2026-10-01")).toBe("okt");
-    expect(labelMonthNameSv("2026-09-01")).toBe("september");
+    expect(labelMonthChipSv("2026-09")).toBe("sep");
+    expect(labelMonthChipSv("2026-10")).toBe("okt");
+    expect(labelMonthChipSv("2026-06")).toBe("jun");
+    expect(labelMonthChipSv("2026-03")).toBe("mar");
+    expect(labelMonthNameSv("2026-09")).toBe("september");
   });
 
   it("treats mandatory as recurring monthly", () => {
