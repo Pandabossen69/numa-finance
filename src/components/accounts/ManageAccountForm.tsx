@@ -5,17 +5,15 @@ import { useRouter } from "next/navigation";
 import {
   ACCOUNT_KIND_LABEL_SV,
   ACCOUNT_KINDS,
-  CHOOSE_OTHER_DEFAULT_SV,
   CURRENCY_LOCKED_SV,
-  DEFAULT_ACCOUNT_BLOCK_SV,
   DEFAULT_ACCOUNT_COPY_SV,
   DEFAULT_ACCOUNT_HELP_SV,
-  DELETE_REQUIRES_ZERO_SV,
-  DELETE_UNKNOWN_SALDO_SV,
+  MAKE_OTHER_DEFAULT_HINT_SV,
   currenciesForAccountKind,
   defaultCurrencyForKind,
   type AccountKind,
 } from "@/domain/finance";
+import { explainAccountRetireUi } from "@/domain/finance/account-lifecycle";
 import type { CurrencyCode } from "@/domain/money";
 import {
   archiveAccountAction,
@@ -23,7 +21,10 @@ import {
   restoreAccountAction,
   updateAccountAction,
 } from "@/features/finance/actions";
-import type { AccountDetail } from "@/features/finance/load-account-detail";
+import type {
+  AccountDetail,
+  AccountSibling,
+} from "@/features/finance/load-account-detail";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 
 function currencyLabel(code: CurrencyCode): string {
@@ -52,6 +53,12 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
   });
 
   const currencyLocked = account.hasLedgerHistory;
+  const retire = explainAccountRetireUi({
+    isDefault: account.isDefault,
+    activeCount: account.activeCount,
+    hasLedgerHistory: account.hasLedgerHistory,
+    balanceMinor: account.calculatedMinor,
+  });
   const allowedCurrencies = useMemo(
     () => currenciesForAccountKind(form.kind),
     [form.kind],
@@ -117,6 +124,25 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     setError(null);
     startTransition(async () => {
       finish(await restoreAccountAction(account.id));
+    });
+  }
+
+  function onMakeSiblingDefault(sibling: AccountSibling) {
+    if (!guard.tryBegin()) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await updateAccountAction({
+        id: sibling.id,
+        name: sibling.name,
+        kind: sibling.kind,
+        currency: sibling.currency,
+        makeDefault: true,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
     });
   }
 
@@ -252,105 +278,96 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         {pending && confirm == null ? "Sparar…" : "Spara ändringar"}
       </button>
 
-      {account.isDefault ? (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            {CHOOSE_OTHER_DEFAULT_SV} {DEFAULT_ACCOUNT_BLOCK_SV}
-          </p>
-        </div>
-      ) : account.hasLedgerHistory ? (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          {confirm === "archive" ? (
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                Arkivera {account.name}? Historiken sparas, men kontot döljs från
-                aktiva listor och nya utgifter. Saldo måste vara 0.
-              </p>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={onArchive}
-                className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
-              >
-                {pending ? "Arkiverar…" : "Ja, arkivera konto"}
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => setConfirm(null)}
-                className="numa-btn numa-btn-soft min-h-14 w-full"
-              >
-                Avbryt
-              </button>
-            </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  setError(null);
-                  setConfirm("archive");
-                }}
-                className="numa-btn numa-btn-soft min-h-14 w-full"
-              >
-                Arkivera konto
-              </button>
-              <p className="text-xs leading-relaxed text-[var(--numa-faint)]">
-                Konton med historik kan inte raderas. Flytta eller töm saldot till
-                0 innan du arkiverar.
-              </p>
-            </>
-          )}
-        </div>
-      ) : account.calculatedMinor === 0 ? (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          {confirm === "delete" ? (
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                Radera {account.name}? Det går inte att ångra. Inga transaktioner
-                finns på kontot, och saldot är 0.
-              </p>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={onDelete}
-                className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
-              >
-                {pending ? "Raderar…" : "Ja, radera konto"}
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => setConfirm(null)}
-                className="numa-btn numa-btn-soft min-h-14 w-full"
-              >
-                Avbryt
-              </button>
-            </div>
-          ) : (
+      <div className="space-y-3 border-t border-[var(--numa-border)] pt-4">
+        {confirm === "archive" ? (
+          <div className="space-y-3">
+            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+              Arkivera {account.name}? Historiken sparas, men kontot döljs från
+              aktiva listor och nya utgifter. Saldo måste vara 0.
+            </p>
+            <button
+              type="button"
+              disabled={pending || retire.blocked}
+              onClick={onArchive}
+              className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
+            >
+              {pending ? "Arkiverar…" : "Ja, arkivera konto"}
+            </button>
             <button
               type="button"
               disabled={pending}
-              onClick={() => {
-                setError(null);
-                setConfirm("delete");
-              }}
-              className="numa-btn numa-btn-soft min-h-14 w-full text-[var(--numa-danger)]"
+              onClick={() => setConfirm(null)}
+              className="numa-btn numa-btn-soft min-h-14 w-full"
             >
-              Radera konto
+              Avbryt
             </button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            {account.calculatedMinor == null
-              ? DELETE_UNKNOWN_SALDO_SV
-              : DELETE_REQUIRES_ZERO_SV}
-          </p>
-        </div>
-      )}
+          </div>
+        ) : confirm === "delete" ? (
+          <div className="space-y-3">
+            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+              Radera {account.name}? Det går inte att ångra. Inga transaktioner
+              finns på kontot, och saldot är 0.
+            </p>
+            <button
+              type="button"
+              disabled={pending || retire.blocked}
+              onClick={onDelete}
+              className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
+            >
+              {pending ? "Raderar…" : "Ja, radera konto"}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setConfirm(null)}
+              className="numa-btn numa-btn-soft min-h-14 w-full"
+            >
+              Avbryt
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={pending || retire.blocked}
+              onClick={() => {
+                if (retire.blocked) return;
+                setError(null);
+                setConfirm(retire.action);
+              }}
+              className={`numa-btn numa-btn-soft min-h-14 w-full ${
+                retire.action === "delete" ? "text-[var(--numa-danger)]" : ""
+              }`}
+            >
+              {retire.action === "archive" ? "Arkivera konto" : "Radera konto"}
+            </button>
+            {retire.reason || retire.action === "archive" ? (
+              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+                {retire.reason ??
+                  "Konton med historik kan inte raderas. Flytta eller töm saldot till 0 innan du arkiverar."}
+              </p>
+            ) : null}
+            {account.isDefault && account.otherActiveAccounts.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs leading-relaxed text-[var(--numa-faint)]">
+                  {MAKE_OTHER_DEFAULT_HINT_SV}
+                </p>
+                {account.otherActiveAccounts.map((sibling) => (
+                  <button
+                    key={sibling.id}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => onMakeSiblingDefault(sibling)}
+                    className="numa-btn numa-btn-soft min-h-12 w-full text-sm"
+                  >
+                    Gör {sibling.name} förvalt
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
     </form>
   );
 }

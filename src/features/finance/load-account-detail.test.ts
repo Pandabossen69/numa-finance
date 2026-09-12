@@ -10,6 +10,7 @@ describe("loadAccountDetail", () => {
     expect(src).toContain("notFound: true");
     expect(src).toContain("accountHasLedgerHistory");
     expect(src).toContain("listAccounts()");
+    expect(src).toContain("otherActiveAccounts");
   });
 });
 

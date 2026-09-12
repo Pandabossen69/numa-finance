@@ -22,27 +22,23 @@ describe("ManageAccountForm", () => {
     expect(src).toContain("deleteAccountAction");
     expect(src).toContain("Radera konto");
     expect(src).toContain("Ja, radera konto");
-    expect(src).toContain("account.calculatedMinor === 0");
+    expect(src).toContain("balanceMinor: account.calculatedMinor");
     expect(src).toContain("saldot är 0");
   });
 
-  it("never shows the delete flow on the default account", () => {
-    expect(src).toContain("account.isDefault");
-    expect(src).toContain("CHOOSE_OTHER_DEFAULT_SV");
-    expect(src).toContain("DEFAULT_ACCOUNT_BLOCK_SV");
-    const defaultBranch = src.slice(
-      src.indexOf("{account.isDefault ? ("),
-      src.indexOf(") : account.hasLedgerHistory ? ("),
-    );
-    expect(defaultBranch).toContain("CHOOSE_OTHER_DEFAULT_SV");
-    expect(defaultBranch).not.toContain("Radera konto");
-    expect(defaultBranch).not.toContain("Ja, radera konto");
-    expect(defaultBranch).not.toContain("setConfirm(\"delete\")");
+  it("always shows archive or delete, disabled when blocked", () => {
+    expect(src).toContain('from "@/domain/finance/account-lifecycle"');
+    expect(src).toContain("explainAccountRetireUi");
+    expect(src).toContain("retire.blocked");
+    expect(src).toContain("MAKE_OTHER_DEFAULT_HINT_SV");
+    expect(src).toContain("onMakeSiblingDefault");
+    expect(src).toContain("Gör {sibling.name} förvalt");
+    expect(src).toContain("Radera konto");
+    expect(src).toContain("Arkivera konto");
   });
 
-  it("hides delete when an empty account still has saldo", () => {
-    expect(src).toContain("DELETE_REQUIRES_ZERO_SV");
-    expect(src).toContain("DELETE_UNKNOWN_SALDO_SV");
+  it("does not hide the retire button just because the account is default", () => {
+    expect(src).not.toContain("{account.isDefault ? (");
   });
 
   it("offers archive — not hard delete — when history exists", () => {
