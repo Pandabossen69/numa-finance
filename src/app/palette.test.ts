@@ -213,6 +213,15 @@ describe("NUMA vision palette", () => {
     expect(rule).not.toContain("padding: 0.85rem");
   });
 
+  it("leaves money unit casing alone so SEK stays kr not KR", () => {
+    const moneyCurrency = css.slice(
+      css.indexOf(".money-currency {"),
+      css.indexOf(".numa-money {"),
+    );
+    expect(moneyCurrency).toContain("text-transform: none");
+    expect(moneyCurrency).not.toContain("text-transform: uppercase");
+  });
+
   it("locks Plan money to a unit column so THB lines up", () => {
     expect(css).toContain("--numa-money-unit");
     expect(css).toContain(".numa-money.is-end");

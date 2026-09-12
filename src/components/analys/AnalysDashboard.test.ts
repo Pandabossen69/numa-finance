@@ -165,6 +165,11 @@ describe("Analys month result color", () => {
     expect(loader).toContain("spendingCategoriesByMonthKey({");
     expect(movements).toContain("spendingCategoriesByMonthKey({");
     expect(movements).not.toContain("categoryMap");
+    // Analys must project native ledger → canonical THB first (same as
+    // Spenderat / Rörelser), or foreign-currency expenses silently drop out.
+    expect(loader).toContain("projectLedgerToCanonicalThb(");
+    expect(loader).toContain("fxMapFromTodaySnap");
+    expect(movements).toContain("projectLedgerToCanonicalThb(");
     // The section follows the browsed month and compares with the one before.
     expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
     expect(src).toContain("addMonthsKey(activeMonthKey, -1)");

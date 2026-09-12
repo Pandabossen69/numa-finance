@@ -11,6 +11,8 @@ import { assembleTodaySnapshot } from "@/lib/store/assemble-today-snapshot";
 import {
   lockFxAtWrite,
   nativeToThbMinor,
+  projectLedgerToCanonicalThb,
+  spendingCategoriesByMonthKey,
   thbToNativeMinor,
   toCanonicalThbTransaction,
 } from "./index";
@@ -294,5 +296,102 @@ describe("native / canonical currency boundary", () => {
     expect(movements.items[0]?.nativeAmountMinor).toBe(10_00);
     expect(movements.items[0]?.nativeCurrency).toBe("SEK");
     expect(movements.items[0]?.amountMinor).toBe(35_00);
+  });
+
+  it("keeps Analys Per kategori on canonical THB so SEK spend cannot drift from Spenderat", () => {
+    // Repro of the 38 712 vs 38 824 gap: 32 SEK @ 3.5 = 112 THB omitted when
+    // categories were rolled from the native ledger (currency !== THB).
+    const thbSpend = tx({
+      id: "thb-big",
+      accountId: "bank",
+      amountMinor: 38_712_00,
+      thbMinor: 38_712_00,
+      fxRate: 1,
+      category: "Mat",
+      occurredAt: "2026-09-02T03:00:00.000Z",
+    });
+    const sekSpend = tx({
+      id: "sek-112",
+      accountId: "nordea",
+      amountMinor: 32_00,
+      currency: "SEK",
+      thbMinor: 112_00,
+      fxRate: 3.5,
+      category: "Övrigt",
+      occurredAt: "2026-09-03T05:00:00.000Z",
+    });
+    const profile: Profile = {
+      id: "u1",
+      displayName: "Hugo",
+      timezone: tz,
+      primaryCurrency: "THB",
+      referenceCurrency: "THB",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      onboardingSaldoAt: "2026-08-01T00:00:00.000Z",
+      onboardingCompletedAt: "2026-08-01T00:00:00.000Z",
+      gettingStartedCompletedAt: null,
+      gettingStartedCollapsed: false,
+    };
+    const thbCp = checkpoint("bank", 100_000_00);
+    const sekCp = checkpoint("nordea", 1_000_00, {
+      currency: "SEK",
+      fxRate: 3.5,
+      thbMinor: 3_500_00,
+    });
+    const snap = assembleTodaySnapshot({
+      profile,
+      accounts: [thbAccount, sekAccount],
+      planItems: [],
+      primary: thbAccount,
+      checkpoint: thbCp,
+      checkpoints: [thbCp, sekCp],
+      transactions: [thbSpend, sekSpend],
+      now,
+    });
+
+    expect(snap.monthSpendingByKey["2026-09"]).toBe(38_824_00);
+
+    const byId = new Map(
+      (snap.accountBalances ?? []).map((row) => [row.accountId, row]),
+    );
+    const fxMap = new Map(
+      snap.accounts.map((account) => {
+        const bal = byId.get(account.id);
+        return [
+          account.id,
+          bal
+            ? {
+                accountId: account.id,
+                balanceMinor: bal.nativeMinor ?? 0,
+                thbMinor: bal.thbMinor,
+                fxRate: bal.fxRate,
+              }
+            : null,
+        ] as const;
+      }),
+    );
+
+    const nativeCategories = spendingCategoriesByMonthKey({
+      transactions: snap.ledgerTransactions,
+      currency: "THB",
+      timeZone: tz,
+    })["2026-09"];
+    const nativeSum =
+      nativeCategories?.reduce((n, row) => n + row.amountMinor, 0) ?? 0;
+    expect(nativeSum).toBe(38_712_00);
+
+    const canonicalCategories = spendingCategoriesByMonthKey({
+      transactions: projectLedgerToCanonicalThb(snap.ledgerTransactions, fxMap),
+      currency: "THB",
+      timeZone: tz,
+    })["2026-09"];
+    const categorySum =
+      canonicalCategories?.reduce((n, row) => n + row.amountMinor, 0) ?? 0;
+    expect(categorySum).toBe(38_824_00);
+    expect(categorySum).toBe(snap.monthSpendingByKey["2026-09"]);
+
+    const movements = movementsSnapshotFromToday(snap, now);
+    expect(movements.monthExpenseMinor).toBe(38_824_00);
   });
 });

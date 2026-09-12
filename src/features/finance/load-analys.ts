@@ -2,7 +2,9 @@ import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction } from "@/domain/finance";
 import {
   NEXT_INCOME_NAME,
+  projectLedgerToCanonicalThb,
   spendingCategoriesByMonthKey,
+  type FxCheckpoint,
   type LedgerMatchTx,
   type SpendingCategoryTotal,
   isPlanIncome,
@@ -23,6 +25,29 @@ import {
 } from "@/features/finance/analys-month";
 import { loadErrorMessageSv } from "@/lib/async";
 import { reportError } from "@/lib/observe/report";
+import type { TodaySnapshot } from "@/lib/store/types-snapshot";
+
+/** Same FX map Rörelser uses so Analys categories stay in canonical THB. */
+function fxMapFromTodaySnap(snap: TodaySnapshot): Map<string, FxCheckpoint | null> {
+  const byId = new Map(
+    (snap.accountBalances ?? []).map((row) => [row.accountId, row]),
+  );
+  const map = new Map<string, FxCheckpoint | null>();
+  for (const account of snap.accounts) {
+    const bal = byId.get(account.id);
+    if (!bal) {
+      map.set(account.id, null);
+      continue;
+    }
+    map.set(account.id, {
+      accountId: account.id,
+      balanceMinor: bal.nativeMinor ?? 0,
+      thbMinor: bal.thbMinor,
+      fxRate: bal.fxRate,
+    });
+  }
+  return map;
+}
 
 export type { AnalysLine } from "@/features/finance/analys-month";
 
@@ -98,10 +123,14 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const planItems = snap.planItems ?? [];
     const spendingByMonthKey = snap.monthSpendingByKey ?? {};
     const ledgerTransactions = snap.ledgerTransactions ?? [];
-    // Same rows as the month totals, split by category, for every month the
-    // user can browse to.
+    // Same rows as Spenderat / monthSpendingByKey (canonical THB), not the
+    // native ledger — otherwise SEK/EUR/USD expenses silently drop out of
+    // Per kategori while still counting in Spenderat i månaden.
     const categoriesByMonthKey = spendingCategoriesByMonthKey({
-      transactions: ledgerTransactions,
+      transactions: projectLedgerToCanonicalThb(
+        ledgerTransactions,
+        fxMapFromTodaySnap(snap),
+      ),
       currency: snap.currency,
       timeZone,
     });

@@ -50,6 +50,13 @@ describe("Rörelser expense color", () => {
     expect(src).not.toContain("min-h-10 rounded-full");
   });
 
+  it("pluralizes the filtered count correctly", () => {
+    expect(src).toContain(
+      'filtered.length === 1 ? "rörelse" : "rörelser"',
+    );
+    expect(src).not.toContain("{filtered.length} rörelser");
+  });
+
   it("keeps period and filter chips equal and stats off a phone 3-up", () => {
     expect(src).toContain("numa-equal-chips");
     expect(src).toContain("is-quad");

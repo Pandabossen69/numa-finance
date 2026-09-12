@@ -196,7 +196,8 @@ body {
   font-weight: 600;
   letter-spacing: 0.1em;
   line-height: 1;
-  text-transform: uppercase;
+  /* Keep CURRENCY_META casing (kr, €, THB) — uppercase turned SEK into "KR". */
+  text-transform: none;
 }
 
 .numa-money {
