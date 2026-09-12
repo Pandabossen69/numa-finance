@@ -175,8 +175,8 @@ export type SpendingCategoryTotal = {
   count: number;
 };
 
-/** Shown when a transaction was saved without a category. */
-export const UNCATEGORISED_SPEND_NAME = "Okategoriserat";
+/** Null/blank category — same bucket Tx Per kategori shows as Övrigt. */
+export const UNCATEGORISED_SPEND_NAME = "Övrigt";
 
 /**
  * The same rows as `spendingByMonthKey`, split by category.

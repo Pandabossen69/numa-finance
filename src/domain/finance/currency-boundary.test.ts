@@ -400,15 +400,11 @@ describe("native / canonical currency boundary", () => {
       canonicalCategories?.reduce((n, row) => n + row.amountMinor, 0) ?? 0;
     expect(categorySum).toBe(38_824_00);
     expect(categorySum).toBe(snap.monthSpendingByKey["2026-09"]);
-    expect(canonicalCategories?.some((c) => c.name === "Okategoriserat")).toBe(
-      true,
-    );
-    // QA fixture: four SEK rows land under the uncategorised bucket (8× Övrigt
-    // on Tx when other uncategorised THB spend is included — here the null-cat
-    // SEK row must appear after FX, not vanish).
-    const uncategorised = canonicalCategories?.find(
-      (c) => c.name === "Okategoriserat",
-    );
+    expect(canonicalCategories?.some((c) => c.name === "Övrigt")).toBe(true);
+    // QA fixture: four SEK rows land under Övrigt (Tx shows Övrigt 8× when
+    // other uncategorised THB spend is included — here the null-cat SEK row
+    // must appear after FX, not vanish).
+    const uncategorised = canonicalCategories?.find((c) => c.name === "Övrigt");
     expect(uncategorised?.count).toBe(1);
     expect(uncategorised?.amountMinor).toBe(3_50);
 
