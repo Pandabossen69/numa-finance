@@ -37,35 +37,39 @@ describe("AuthExperience — public signup closed", () => {
   });
 });
 
-describe("AuthExperience — login boot", () => {
-  it("paints a branded NUMA boot overlay in the success turn before replace", () => {
+describe("AuthExperience — login boot (Christian-bar)", () => {
+  it("enables same-user Hem shell and never holds Loggar in over the fetch", () => {
     expect(src).toContain("LoginBoot");
     expect(src).toContain("paintLoginBoot");
-    expect(src).toContain("flushSync");
+    expect(src).toContain("LOGIN_BOOT_MAX_MS");
+    expect(src).toContain("enableHomeLoginShell");
+    expect(src).toContain("lastHomeShellSnapshot");
     expect(src).toContain("kickPostLoginWarm");
-    expect(src).toContain("scheduleQuietMenuWarm");
     expect(src).toContain("fetchHomeSnapshot");
     expect(src).toContain("rememberHomeSnapshot");
-    expect(src).toContain("LOGIN_BOOT_TIMEOUT_MS");
     expect(src).toContain("aria-busy={booting || pending || undefined}");
 
     const success = src.slice(
       src.indexOf("if (!result.ok)"),
       src.indexOf("router.replace(preview"),
     );
-    expect(success).toContain("flushSync");
-    expect(success).toContain("setBooting(true)");
-    expect(success).toContain("paintLoginBoot");
-    expect(success).toContain("kickPostLoginWarm");
-    expect(success.indexOf("paintLoginBoot")).toBeLessThan(
-      success.indexOf("kickPostLoginWarm"),
-    );
     expect(success).toContain("bindSessionOwner(result.userId)");
     expect(success).toContain("invalidateHomeSessionPaint");
+    expect(success).toContain("enableHomeLoginShell");
+    expect(success).toContain("kickPostLoginWarm");
+    expect(success).toContain("lastHomeShellSnapshot()");
+    expect(success).toContain("clearLoginBoot");
+    expect(success).toContain("paintLoginBoot");
     expect(success).not.toContain("clearClientSessionCaches");
     expect(success).not.toContain("router.refresh()");
     expect(success.indexOf("invalidateHomeSessionPaint")).toBeLessThan(
+      success.indexOf("enableHomeLoginShell"),
+    );
+    expect(success.indexOf("enableHomeLoginShell")).toBeLessThan(
       success.indexOf("kickPostLoginWarm"),
+    );
+    expect(success.indexOf("lastHomeShellSnapshot()")).toBeLessThan(
+      success.indexOf("paintLoginBoot"),
     );
 
     const kick = src.slice(
@@ -79,7 +83,10 @@ describe("AuthExperience — login boot", () => {
       kick.indexOf("rememberHomeSnapshot"),
     );
 
-    const failStart = src.indexOf("if (!result.ok)", src.indexOf("function submitLogin"));
+    const failStart = src.indexOf(
+      "if (!result.ok)",
+      src.indexOf("function submitLogin"),
+    );
     const fail = src.slice(failStart, src.indexOf("return;", failStart));
     expect(fail).toContain("clearLoginBoot");
     expect(fail).toContain("setBooting(false)");

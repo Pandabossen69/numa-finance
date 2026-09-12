@@ -11,29 +11,35 @@ import { holdKey } from "@/components/layout/nav";
 import {
   lastAnalysSnapshot,
   lastMerSnapshot,
-  lastSessionHomeSnapshot,
+  lastHomeShellSnapshot,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
 const subscribeNever = () => () => {};
 
-/** Session-confirmed Hem only — never hydrate/cookie as live kvar/Över. */
-function readSessionHome() {
-  return lastSessionHomeSnapshot();
+/**
+ * Session-confirmed live Hem, or same-user login shell, or Hem-shaped
+ * skeleton — never hydrate/cookie alone (#107 + Christian-bar).
+ */
+function readHomeShell() {
+  return lastHomeShellSnapshot();
 }
 
-/**
- * Session-confirmed Hem, or a Hem-shaped skeleton — never hydrate/cookie
- * money. Skeleton paints immediately after login boot clears so the UI is
- * usable while the live snapshot fetch finishes (#107 + SPEC 6).
- */
 export function HemFirstPaint() {
   const snap = useSyncExternalStore(
     subscribeHomeSnapshot,
-    readSessionHome,
+    readHomeShell,
     () => null,
   );
-  if (snap) return <HomeDashboard snap={snap} error={null} />;
+  if (snap) {
+    return (
+      <HomeDashboard
+        snap={snap}
+        error={null}
+        adoptSnap={false}
+      />
+    );
+  }
   return <HomeViewLoading />;
 }
 
@@ -45,7 +51,7 @@ export function AnalysFirstPaint() {
   );
   const home = useSyncExternalStore(
     subscribeHomeSnapshot,
-    readSessionHome,
+    readHomeShell,
     () => null,
   );
   if (analys) return <AnalysDashboard data={analys} />;

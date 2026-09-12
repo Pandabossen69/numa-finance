@@ -9,12 +9,13 @@ const mainLoading = readFileSync(
 );
 
 describe("Hem first paint", () => {
-  it("paints session-confirmed Hem only, never hydrate/cookie as live money", () => {
-    expect(src).toContain("lastSessionHomeSnapshot");
+  it("paints session shell or skeleton, never hydrate alone as live money", () => {
+    expect(src).toContain("lastHomeShellSnapshot");
     expect(src).not.toContain("readLastHomeCookieFromDocument");
     expect(src).not.toContain("lastHomeSnapshot()");
     expect(src).toContain("HomeViewLoading");
     expect(src).toContain("HomeDashboard");
+    expect(src).toContain("adoptSnap={false}");
     expect(src).not.toContain("HemPending");
     expect(src).not.toContain("AnalysViewLoading");
   });

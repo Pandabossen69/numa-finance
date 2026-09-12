@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
-  LOGIN_BOOT_TIMEOUT_MS,
+  LOGIN_BOOT_MAX_MS,
   LoginBoot,
   clearLoginBoot,
   paintLoginBoot,
@@ -15,7 +15,9 @@ import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
 import {
   bindSessionOwner,
+  enableHomeLoginShell,
   invalidateHomeSessionPaint,
+  lastHomeShellSnapshot,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { BRAND_MARK } from "@/lib/brand-assets";
@@ -51,7 +53,7 @@ export function AuthExperience() {
     const id = window.setTimeout(() => {
       setBooting(false);
       clearLoginBoot();
-    }, LOGIN_BOOT_TIMEOUT_MS);
+    }, LOGIN_BOOT_MAX_MS);
     return () => window.clearTimeout(id);
   }, [booting]);
 
@@ -67,23 +69,29 @@ export function AuthExperience() {
         setError(result.error);
         return;
       }
-      // Paint the branded boot screen in this turn — before navigation
-      // so /idag (Hem) is not a blank white wait.
-      flushSync(() => {
-        setBooting(true);
-      });
-      paintLoginBoot();
       // Wipe last-known only when the account actually changed — same-user
       // re-login must keep Plan/Analys caches so menus stay ~0ms (NextStep).
-      // Hem money still needs a live confirm so we never flash yesterday's kvar.
+      // Hem money still needs a live confirm so we never flash yesterday's kvar
+      // as *confirmed* — but same-user last-known may paint as a provisional
+      // shell (Christian-bar ≤300ms) while fetch runs.
       bindSessionOwner(result.userId);
       invalidateHomeSessionPaint();
+      enableHomeLoginShell();
       kickPostLoginWarm();
+      if (lastHomeShellSnapshot()) {
+        // Cached totals ready — never hold "Loggar in…" over a multi-second fetch.
+        clearLoginBoot();
+        setBooting(false);
+      } else {
+        flushSync(() => {
+          setBooting(true);
+        });
+        paintLoginBoot(); // hard-capped at LOGIN_BOOT_MAX_MS (300)
+      }
       const preview =
         typeof document !== "undefined" &&
         hasPreviewEscape(new URLSearchParams(window.location.search), document.cookie);
-      // Soft replace without refresh — avoid a force-dynamic RSC round-trip
-      // while the branded boot overlay is up.
+      // Soft replace without refresh — avoid a force-dynamic RSC round-trip.
       router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath);
     });
   }

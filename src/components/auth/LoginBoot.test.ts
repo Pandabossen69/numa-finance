@@ -32,6 +32,9 @@ describe("LoginBoot", () => {
   it("is kicked from login success and cleared on shell mount, not money fetch", () => {
     expect(auth).toContain("paintLoginBoot");
     expect(auth).toContain("clearLoginBoot");
+    expect(auth).toContain("LOGIN_BOOT_MAX_MS");
+    expect(boot).toContain("LOGIN_BOOT_MAX_MS");
+    expect(boot).toContain("300");
     expect(hem).toContain("clearLoginBoot");
     expect(hem).toContain("useLayoutEffect");
     expect(onboarding).toContain("LoginBootClear");
@@ -40,7 +43,6 @@ describe("LoginBoot", () => {
       "utf8",
     );
     expect(shell).toContain("LoginBootClear");
-    // Must not wait for rememberHomeSnapshot before clearing boot.
     const clearIdx = hem.indexOf("useLayoutEffect");
     const fetchIdx = hem.indexOf("fetchHomeSnapshot");
     expect(clearIdx).toBeGreaterThan(-1);

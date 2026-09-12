@@ -8,6 +8,7 @@ import { fetchHomeSnapshot } from "@/features/finance/home-snapshot-client";
 import {
   isHomeDirty,
   lastGettingStarted,
+  lastHomeShellSnapshot,
   lastHomeSnapshot,
   lastSessionHomeSnapshot,
   rememberHomeSnapshot,
@@ -18,15 +19,15 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
- * Session-confirmed last-known paints immediately; hydrate alone shows a
- * Hem-shaped skeleton until the quiet fetch confirms (#107). Login boot
- * clears on shell mount so "Loggar in…" never waits on the snapshot.
+ * Session-confirmed last-known paints as live; after login, same-user
+ * cached totals may paint as a provisional shell (#107 + Christian-bar).
+ * Login boot clears on mount so "Loggar in…" never waits on the snapshot.
  */
 export function HemRouteClient() {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    lastSessionHomeSnapshot,
-    lastSessionHomeSnapshot,
+    lastHomeShellSnapshot,
+    lastHomeShellSnapshot,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
@@ -35,15 +36,14 @@ export function HemRouteClient() {
   );
   const [error, setError] = useState<string | null>(null);
 
-  // Drop branded login overlay as soon as Hem is in the tree — money may
-  // still be fetching; skeleton/shell is the Christian-bar usable paint.
+  // Drop branded login overlay as soon as Hem is in the tree.
   useLayoutEffect(() => {
     clearLoginBoot();
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    // Login warm may already have confirmed — paint stays, skip duplicate IO.
+    // Live confirm already present — skip duplicate IO.
     if (lastSessionHomeSnapshot()) {
       scheduleQuietMenuWarm({ urgent: true });
       return;
@@ -74,6 +74,11 @@ export function HemRouteClient() {
   }
 
   return (
-    <HomeDashboard snap={stored} error={error} gettingStarted={storedGettingStarted} />
+    <HomeDashboard
+      snap={stored}
+      error={error}
+      gettingStarted={storedGettingStarted}
+      adoptSnap={lastSessionHomeSnapshot() != null}
+    />
   );
 }

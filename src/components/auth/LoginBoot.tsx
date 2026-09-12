@@ -6,6 +6,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { BRAND_MARK } from "@/lib/brand-assets";
 
 export const LOGIN_BOOT_TIMEOUT_MS = 12_000;
+/** Christian-bar: never leave "Loggar in…" up for multi-seconds. */
+export const LOGIN_BOOT_MAX_MS = 300;
 const LOGIN_BOOT_HOST_ID = "numa-login-boot";
 
 /**
@@ -81,7 +83,7 @@ export function paintLoginBoot() {
   window.clearTimeout(timeoutId);
   timeoutId = window.setTimeout(() => {
     clearLoginBoot();
-  }, LOGIN_BOOT_TIMEOUT_MS);
+  }, LOGIN_BOOT_MAX_MS);
 }
 
 export function clearLoginBoot() {

@@ -78,6 +78,11 @@ let sessionOwnerId: string | null = null;
 let home: HomeSnapshot | null = null;
 /** True only after a live remember this JS lifetime — not hydrate/cookie. */
 let homeSessionConfirmed = false;
+/**
+ * After login: same-user last-known may paint as a provisional Hem shell
+ * while the live fetch runs. Never set by hydrate alone (#107).
+ */
+let homeLoginShell = false;
 let homeDirty = false;
 let analys: AnalysSnapshot | null = null;
 let plan: PlanSnapshot | null = null;
@@ -139,6 +144,7 @@ export function hydrateLastKnownFromPersist() {
   const data = readPersistedLastKnown();
   persistPaused = true;
   homeSessionConfirmed = false;
+  homeLoginShell = false;
   if (data) {
     sessionOwnerId = data.userId;
     home = data.home ?? readLastHomeCookieFromDocument();
@@ -202,6 +208,7 @@ export function subscribeAccountsSnapshot(listener: () => void) {
 function wipeSessionCaches() {
   home = null;
   homeSessionConfirmed = false;
+  homeLoginShell = false;
   homeDirty = false;
   analys = null;
   plan = null;
@@ -247,6 +254,19 @@ export function invalidateHomeSessionPaint() {
   if (!homeSessionConfirmed && home == null) return;
   homeSessionConfirmed = false;
   emit(homeListeners);
+}
+
+/**
+ * After login bind: allow same-user last-known as a provisional Hem shell
+ * (Christian-bar ≤300ms). Hydrate alone never enables this — call only
+ * from the login success path after bindSessionOwner.
+ */
+export function enableHomeLoginShell() {
+  homeLoginShell =
+    home != null &&
+    sessionOwnerId != null &&
+    home.userId === sessionOwnerId;
+  if (homeLoginShell) emit(homeListeners);
 }
 
 export function hasBoundSessionOwner(): boolean {
@@ -347,7 +367,10 @@ export function rememberHomeSnapshot(
       }
     : snap;
   homeDirty = nextDirty;
-  if (confirmSession) homeSessionConfirmed = true;
+  if (confirmSession) {
+    homeSessionConfirmed = true;
+    homeLoginShell = false;
+  }
   emit(homeListeners);
 }
 
@@ -358,6 +381,23 @@ export function lastHomeSnapshot(): HomeSnapshot | null {
 /** Live Hem paint only — hydrate/cookie alone must not flash as current money. */
 export function lastSessionHomeSnapshot(): HomeSnapshot | null {
   return homeSessionConfirmed ? home : null;
+}
+
+/**
+ * Hem paint for Christian-bar login: session-confirmed live, OR same-user
+ * last-known after enableHomeLoginShell(). Hydrate alone still returns null.
+ */
+export function lastHomeShellSnapshot(): HomeSnapshot | null {
+  if (homeSessionConfirmed) return home;
+  if (
+    homeLoginShell &&
+    home &&
+    sessionOwnerId &&
+    home.userId === sessionOwnerId
+  ) {
+    return home;
+  }
+  return null;
 }
 
 export function applyOptimisticHomeSpend(amountMinor: number): HomeSnapshot | null {
