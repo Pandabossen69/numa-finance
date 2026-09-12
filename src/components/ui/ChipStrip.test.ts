@@ -13,5 +13,7 @@ describe("ChipStrip", () => {
     expect(src).toContain("startLabel");
     expect(src).toContain("endLabel");
     expect(src).toContain("activeSelector");
+    expect(src).toContain("lastActiveSig");
+    expect(src).toContain("right - el.clientWidth");
   });
 });

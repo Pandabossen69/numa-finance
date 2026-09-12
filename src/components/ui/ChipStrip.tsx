@@ -65,6 +65,31 @@ export function ChipStrip({
     if (!scroller || !shell) return;
 
     let raf = 0;
+    /** Content-geometry signature of the active chip. We only auto-scroll when
+     *  selection/size changes — never fight ‹/› or touch scroll. */
+    let lastActiveSig = "";
+
+    function ensureActiveVisible(el: HTMLElement) {
+      if (!activeSelector) return;
+      const active = el.querySelector(activeSelector) as HTMLElement | null;
+      if (!active) {
+        lastActiveSig = "";
+        return;
+      }
+      const sig = `${active.textContent ?? ""}:${active.offsetLeft}:${active.offsetWidth}`;
+      const viewLeft = el.scrollLeft;
+      const viewRight = viewLeft + el.clientWidth;
+      const aLeft = active.offsetLeft;
+      const aRight = aLeft + active.offsetWidth;
+      const out = aLeft < viewLeft - 0.5 || aRight > viewRight + 0.5;
+      // Same chip geometry: user may have scrolled it away — leave them be.
+      if (sig === lastActiveSig) return;
+      lastActiveSig = sig;
+      if (!out) return;
+      const max = Math.max(0, el.scrollWidth - el.clientWidth);
+      if (aLeft < viewLeft - 0.5) el.scrollLeft = Math.max(0, aLeft);
+      else el.scrollLeft = Math.min(max, Math.max(0, aRight - el.clientWidth));
+    }
 
     function readClipped(el: HTMLElement): Set<number> {
       const next = new Set<number>();
@@ -72,23 +97,11 @@ export function ChipStrip({
 
       // Prefer offset/scroll geometry — getBoundingClientRect was racing
       // keep-alive / slot layout and leaving mid-glyphs unmarked.
-      const viewLeft = el.scrollLeft;
-      const viewRight = viewLeft + el.clientWidth;
-      const chips = Array.from(el.children) as HTMLElement[];
-
-      if (activeSelector) {
-        const active = el.querySelector(activeSelector) as HTMLElement | null;
-        if (active) {
-          const aLeft = active.offsetLeft;
-          const aRight = aLeft + active.offsetWidth;
-          if (aLeft < viewLeft - 0.5) el.scrollLeft = aLeft;
-          else if (aRight > viewRight + 0.5)
-            el.scrollLeft = aRight - el.clientWidth;
-        }
-      }
+      ensureActiveVisible(el);
 
       const left = el.scrollLeft;
       const right = left + el.clientWidth;
+      const chips = Array.from(el.children) as HTMLElement[];
       chips.forEach((chip, i) => {
         const chipLeft = chip.offsetLeft;
         const chipRight = chipLeft + chip.offsetWidth;
@@ -185,13 +198,35 @@ export function ChipStrip({
     if (!el) return;
     const chips = Array.from(el.children) as HTMLElement[];
     if (chips.length === 0) return;
+    const max = Math.max(0, el.scrollWidth - el.clientWidth);
     const x = el.scrollLeft;
-    let current = 0;
-    for (let i = 0; i < chips.length; i++) {
-      if (chips[i]!.offsetLeft <= x + 2) current = i;
+    const viewRight = x + el.clientWidth;
+
+    if (dir === 1) {
+      // Bring the first chip that spills past the right edge fully into view
+      // (works for natural-width category pills, not only equal month cells).
+      for (const chip of chips) {
+        const right = chip.offsetLeft + chip.offsetWidth;
+        if (right > viewRight + 0.75) {
+          el.scrollTo({
+            left: Math.min(max, Math.max(0, right - el.clientWidth)),
+            behavior: "smooth",
+          });
+          return;
+        }
+      }
+      el.scrollTo({ left: max, behavior: "smooth" });
+      return;
     }
-    const next = Math.max(0, Math.min(chips.length - 1, current + dir));
-    el.scrollTo({ left: chips[next]!.offsetLeft, behavior: "smooth" });
+
+    for (let i = chips.length - 1; i >= 0; i--) {
+      const chip = chips[i]!;
+      if (chip.offsetLeft < x - 0.75) {
+        el.scrollTo({ left: Math.max(0, chip.offsetLeft), behavior: "smooth" });
+        return;
+      }
+    }
+    el.scrollTo({ left: 0, behavior: "smooth" });
   }
 
   const painted = Children.map(children, (child, index) => {

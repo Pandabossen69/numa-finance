@@ -964,6 +964,12 @@ body {
   box-sizing: border-box;
 }
 
+/* Extra end pad so the last pill (Övrigt) can clear the edge when selected/bold. */
+.numa-month-strip:has(.numa-category-chip) {
+  padding-inline-end: 1.25rem;
+  scroll-snap-type: x proximity;
+}
+
 .numa-month-dots {
   display: inline-flex;
   gap: 0.18rem;
