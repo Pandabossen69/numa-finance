@@ -29,10 +29,22 @@ describe("LoginBoot", () => {
     expect(css).toContain(".auth-boot-title");
   });
 
-  it("is kicked from login success and cleared on Hem and onboarding", () => {
+  it("is kicked from login success and cleared on shell mount, not money fetch", () => {
     expect(auth).toContain("paintLoginBoot");
     expect(auth).toContain("clearLoginBoot");
     expect(hem).toContain("clearLoginBoot");
+    expect(hem).toContain("useLayoutEffect");
     expect(onboarding).toContain("LoginBootClear");
+    const shell = readFileSync(
+      new URL("../layout/AppShell.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(shell).toContain("LoginBootClear");
+    // Must not wait for rememberHomeSnapshot before clearing boot.
+    const clearIdx = hem.indexOf("useLayoutEffect");
+    const fetchIdx = hem.indexOf("fetchHomeSnapshot");
+    expect(clearIdx).toBeGreaterThan(-1);
+    expect(fetchIdx).toBeGreaterThan(-1);
+    expect(clearIdx).toBeLessThan(fetchIdx);
   });
 });

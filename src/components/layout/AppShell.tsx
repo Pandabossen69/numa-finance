@@ -1,5 +1,6 @@
 "use client";
 
+import { LoginBootClear } from "@/components/auth/LoginBoot";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { BrandLockup } from "@/components/layout/BrandLockup";
 import { LastViewOutlet } from "@/components/layout/LastViewOutlet";
@@ -10,6 +11,8 @@ import { TabKeepAlive } from "@/components/layout/TabKeepAlive";
 
 /**
  * Canonical NUMA shell — soft client navigation with prefetch warmup.
+ * Clears login boot as soon as the shell mounts so Hem can show its
+ * skeleton while the snapshot fetch finishes (SPEC 6 / #107).
  */
 export function AppShell({
   children,
@@ -20,6 +23,7 @@ export function AppShell({
 }) {
   return (
     <NavIntentProvider>
+      <LoginBootClear />
       <div className="mx-auto min-h-dvh w-full max-w-[var(--numa-shell-max)] overflow-x-clip pl-[max(1rem,var(--numa-safe-left))] pr-[max(1rem,var(--numa-safe-right))] md:px-8">
         <NavWarmup />
         <div className="flex gap-8 md:gap-12">

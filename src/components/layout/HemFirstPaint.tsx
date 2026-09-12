@@ -6,7 +6,7 @@ import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { PlanScreen } from "@/components/plan/PlanScreen";
-import { AnalysPending, HemPending } from "@/components/layout/ViewLoading";
+import { AnalysPending, HomeViewLoading } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
 import {
   lastAnalysSnapshot,
@@ -22,7 +22,11 @@ function readSessionHome() {
   return lastSessionHomeSnapshot();
 }
 
-/** Session last-known Hem, or a short pending — never stale money flash. */
+/**
+ * Session-confirmed Hem, or a Hem-shaped skeleton — never hydrate/cookie
+ * money. Skeleton paints immediately after login boot clears so the UI is
+ * usable while the live snapshot fetch finishes (#107 + SPEC 6).
+ */
 export function HemFirstPaint() {
   const snap = useSyncExternalStore(
     subscribeHomeSnapshot,
@@ -30,7 +34,7 @@ export function HemFirstPaint() {
     () => null,
   );
   if (snap) return <HomeDashboard snap={snap} error={null} />;
-  return <HemPending />;
+  return <HomeViewLoading />;
 }
 
 export function AnalysFirstPaint() {

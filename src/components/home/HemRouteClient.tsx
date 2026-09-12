@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
@@ -18,9 +18,9 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
- * Session-confirmed last-known paints immediately; hydrate alone shows
- * HemPending until the quiet fetch confirms. SPA keep-alive mounts this
- * once so tab switches never remount or re-await RSC.
+ * Session-confirmed last-known paints immediately; hydrate alone shows a
+ * Hem-shaped skeleton until the quiet fetch confirms (#107). Login boot
+ * clears on shell mount so "Loggar in…" never waits on the snapshot.
  */
 export function HemRouteClient() {
   const stored = useSyncExternalStore(
@@ -35,12 +35,17 @@ export function HemRouteClient() {
   );
   const [error, setError] = useState<string | null>(null);
 
+  // Drop branded login overlay as soon as Hem is in the tree — money may
+  // still be fetching; skeleton/shell is the Christian-bar usable paint.
+  useLayoutEffect(() => {
+    clearLoginBoot();
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     // Login warm may already have confirmed — paint stays, skip duplicate IO.
     if (lastSessionHomeSnapshot()) {
       scheduleQuietMenuWarm({ urgent: true });
-      clearLoginBoot();
       return;
     }
     void fetchHomeSnapshot().then((result) => {
@@ -49,11 +54,9 @@ export function HemRouteClient() {
         scheduleQuietMenuWarm({ urgent: true });
         if (!isHomeDirty()) rememberHomeSnapshot(result.data);
         setError(null);
-        clearLoginBoot();
         return;
       }
       if (!lastHomeSnapshot()) setError(result.error);
-      clearLoginBoot();
     });
     return () => {
       cancelled = true;
@@ -63,7 +66,6 @@ export function HemRouteClient() {
   useEffect(() => {
     if (stored) {
       scheduleQuietMenuWarm({ urgent: true });
-      clearLoginBoot();
     }
   }, [stored]);
 

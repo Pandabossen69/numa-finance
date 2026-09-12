@@ -25,5 +25,9 @@ describe("AppShell chrome", () => {
     expect(src).toContain("BrandLockup");
     expect(src).toContain('href="/idag"');
   });
+
+  it("clears login boot as soon as the authenticated shell mounts", () => {
+    expect(src).toContain("LoginBootClear");
+  });
 });
 
