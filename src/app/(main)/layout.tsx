@@ -4,22 +4,27 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SessionOwnerBinder } from "@/components/layout/SessionOwnerBinder";
 import { ShellDisplayNameFallback } from "@/components/layout/ShellDisplayNameFallback";
 import { chromeDisplayName } from "@/domain/identity/display-name";
+import { readLastHomeCookie } from "@/features/home/last-home-cookie.server";
 import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Sync shell — never await session/profile here. An async layout blocked
- * Hem/Plan chrome (and every tab prefetch) until onboarding + profile settled.
+ * Await last-home cookie before mounting AppShell/TabKeepAlive.
+ * Warm hard-refresh must SSR Kvar/Över into the visible keep-alive Hem —
+ * cookieSeed-after-mount left cookieShell=null locked in useState and blanked
+ * warm ~19s (SPEC 6). Profile/onboarding stay in Suspense.
  */
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const homeCookieShell = await readLastHomeCookie();
   return (
     <AppShell
+      homeCookieShell={homeCookieShell}
       displayName={
         <Suspense fallback={<ShellDisplayNameFallback />}>
           <ShellDisplayName />

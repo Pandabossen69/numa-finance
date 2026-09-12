@@ -78,6 +78,11 @@ let sessionOwnerId: string | null = null;
 let home: HomeSnapshot | null = null;
 /** True only after a live remember this JS lifetime — not hydrate/cookie. */
 let homeSessionConfirmed = false;
+/**
+ * After login: same-user last-known may paint as a provisional Hem shell
+ * while the live fetch runs. Never set by hydrate alone (#107).
+ */
+let homeLoginShell = false;
 let homeDirty = false;
 let analys: AnalysSnapshot | null = null;
 let plan: PlanSnapshot | null = null;
@@ -139,6 +144,7 @@ export function hydrateLastKnownFromPersist() {
   const data = readPersistedLastKnown();
   persistPaused = true;
   homeSessionConfirmed = false;
+  homeLoginShell = false;
   if (data) {
     sessionOwnerId = data.userId;
     home = data.home ?? readLastHomeCookieFromDocument();
@@ -151,6 +157,13 @@ export function hydrateLastKnownFromPersist() {
     planView = data.planView;
     analysScope = data.analysScope;
     movementsView = data.movementsView;
+    // Warm reopen / hard-refresh: same-user last-known is a provisional
+    // shell (not live confirm). Christian-bar ≤300ms; #107 still blocks
+    // lastSessionHomeSnapshot until remember.
+    homeLoginShell =
+      home != null &&
+      sessionOwnerId != null &&
+      home.userId === sessionOwnerId;
     persistPaused = false;
     return;
   }
@@ -158,6 +171,10 @@ export function hydrateLastKnownFromPersist() {
   if (cookieHome) {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
+    homeLoginShell =
+      home != null &&
+      sessionOwnerId != null &&
+      home.userId === sessionOwnerId;
   }
   persistPaused = false;
 }
@@ -202,6 +219,7 @@ export function subscribeAccountsSnapshot(listener: () => void) {
 function wipeSessionCaches() {
   home = null;
   homeSessionConfirmed = false;
+  homeLoginShell = false;
   homeDirty = false;
   analys = null;
   plan = null;
@@ -247,6 +265,31 @@ export function invalidateHomeSessionPaint() {
   if (!homeSessionConfirmed && home == null) return;
   homeSessionConfirmed = false;
   emit(homeListeners);
+}
+
+/**
+ * Allow same-user last-known as a provisional Hem shell (Christian-bar).
+ * Used after login bind and after warm hydrate. Never elevates to
+ * session-confirmed live money (#107).
+ */
+export function enableHomeLoginShell() {
+  homeLoginShell =
+    home != null &&
+    sessionOwnerId != null &&
+    home.userId === sessionOwnerId;
+  if (homeLoginShell) emit(homeListeners);
+}
+
+/**
+ * Client-only: adopt a cookie/SSR last-known row as provisional shell.
+ * Never session-confirms (#107). Safe no-op on the server (no module mutate).
+ */
+export function seedHomeLoginShell(snap: HomeSnapshot | null | undefined) {
+  if (typeof window === "undefined" || !snap) return;
+  if (sessionOwnerId && sessionOwnerId !== snap.userId) return;
+  if (!sessionOwnerId) sessionOwnerId = snap.userId;
+  if (!home) home = snap;
+  enableHomeLoginShell();
 }
 
 export function hasBoundSessionOwner(): boolean {
@@ -347,7 +390,10 @@ export function rememberHomeSnapshot(
       }
     : snap;
   homeDirty = nextDirty;
-  if (confirmSession) homeSessionConfirmed = true;
+  if (confirmSession) {
+    homeSessionConfirmed = true;
+    homeLoginShell = false;
+  }
   emit(homeListeners);
 }
 
@@ -358,6 +404,24 @@ export function lastHomeSnapshot(): HomeSnapshot | null {
 /** Live Hem paint only — hydrate/cookie alone must not flash as current money. */
 export function lastSessionHomeSnapshot(): HomeSnapshot | null {
   return homeSessionConfirmed ? home : null;
+}
+
+/**
+ * Hem paint for Christian-bar: session-confirmed live, OR same-user
+ * last-known provisional shell (login / warm hydrate). Hydrate without a
+ * matching owner still returns null.
+ */
+export function lastHomeShellSnapshot(): HomeSnapshot | null {
+  if (homeSessionConfirmed) return home;
+  if (
+    homeLoginShell &&
+    home &&
+    sessionOwnerId &&
+    home.userId === sessionOwnerId
+  ) {
+    return home;
+  }
+  return null;
 }
 
 export function applyOptimisticHomeSpend(amountMinor: number): HomeSnapshot | null {

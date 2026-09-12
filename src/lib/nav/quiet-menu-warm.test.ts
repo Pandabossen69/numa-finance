@@ -11,6 +11,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     const home = read("../../components/home/HomeDashboard.tsx");
     expect(warm).toContain("getQuietMenuBundleAction");
     expect(warm).toContain("requestIdleCallback");
+    expect(warm).toContain("opts?.urgent");
     expect(warm).toContain("rememberPlanSnapshot");
     expect(warm).toContain("rememberAnalysSnapshot");
     expect(warm).toContain("rememberMovementsSnapshot");
@@ -18,7 +19,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("opts?.restart");
     expect(home).toContain("scheduleQuietMenuWarm");
     const adoptStart = home.indexOf("useEffect(() => {");
-    const adoptEnd = home.indexOf("}, [snap, accounts, gettingStarted]);");
+    const adoptEnd = home.indexOf("}, [snap, accounts, gettingStarted, adoptSnap]);");
     expect(adoptStart).toBeGreaterThan(-1);
     expect(adoptEnd).toBeGreaterThan(adoptStart);
     const adopt = home.slice(adoptStart, adoptEnd);
@@ -37,6 +38,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(loading).not.toContain("MovementsViewLoading");
     expect(client).toContain("getMovementsSnapshotAction");
     expect(client).toContain("lastMovementsSnapshot");
+    expect(client).toContain("afterHemBoot");
     expect(client).toContain("if (lastMovementsSnapshot()) return;");
     expect(client).toContain("if (!lastMovementsSnapshot()) setError");
   });

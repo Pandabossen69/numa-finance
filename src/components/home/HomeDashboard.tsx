@@ -42,6 +42,7 @@ import {
   isHomeDirty,
   lastAccountsSnapshot,
   lastGettingStarted,
+  lastHomeShellSnapshot,
   lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberGettingStarted,
@@ -63,11 +64,14 @@ export function HomeDashboard({
   error,
   accounts = null,
   gettingStarted = null,
+  adoptSnap = true,
 }: {
   snap: HomeSnapshot | null;
   error?: string | null;
   accounts?: AccountsSnapshot | null;
   gettingStarted?: GettingStartedView | null;
+  /** When false, display snap without elevating it to session-confirmed (issue 107). */
+  adoptSnap?: boolean;
 }) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
@@ -85,13 +89,15 @@ export function HomeDashboard({
     lastGettingStarted,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
-  const view = (sameOwner ? stored : null) ?? snap ?? lastSessionHomeSnapshot();
+  // Prefer session-confirmed, then prop snap (incl. provisional shell), then
+  // same-user login/warm shell — never wait on live fetch for last-known.
+  const view =
+    (sameOwner ? stored : null) ?? snap ?? lastHomeShellSnapshot();
 
   useEffect(() => {
     // Adopt the server snap unless an optimistic spend is in flight.
-    // The old "== null" guard left Hem stuck on the first in-memory
-    // snapshot (often 0) after saldo, Fota, or a later RSC load.
-    if (snap && !isHomeDirty()) rememberHomeSnapshot(snap);
+    // Provisional login shell must not confirm session (issue 107).
+    if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap);
     if (accounts && (lastAccountsSnapshot() == null || !isAccountsDirty())) {
       rememberAccountsSnapshot(accounts);
     }
@@ -101,7 +107,7 @@ export function HomeDashboard({
     // Quiet NextStep-style warm: fill Plan/Analys/Rörelser last-known after
     // Hem paints. Idle + never clears on failure — not the old racing warmup.
     if (snap) scheduleQuietMenuWarm();
-  }, [snap, accounts, gettingStarted]);
+  }, [snap, accounts, gettingStarted, adoptSnap]);
 
   if (!view) {
     if (!error) return <HemPending />;

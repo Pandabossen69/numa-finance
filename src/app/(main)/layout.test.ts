@@ -10,10 +10,14 @@ const idagLoading = readFileSync(
 );
 
 describe("main first-load chrome", () => {
-  it("paints AppShell without awaiting session or profile", () => {
-    expect(layout).toContain("export default function MainLayout");
-    expect(layout).not.toContain("export default async function MainLayout");
+  it("SSR last-home cookie into AppShell before TabKeepAlive mounts", () => {
+    expect(layout).toContain("export default async function MainLayout");
+    expect(layout).not.toContain("export default function MainLayout");
     expect(layout).toContain("AppShell");
+    expect(layout).toContain("readLastHomeCookie");
+    expect(layout).toContain("homeCookieShell={homeCookieShell}");
+    expect(layout).not.toContain("HomeCookieSeed");
+    expect(layout).not.toContain("MainLayoutWithCookie");
     expect(layout).toContain("redirectIfOnboardingIncomplete");
     expect(layout).toContain("OnboardingRedirect");
     expect(layout).toContain("ShellDisplayName");

@@ -26,6 +26,8 @@ import {
   hydrateLastKnownFromPersist,
   invalidateHomeSessionPaint,
   isHomeSessionConfirmed,
+  enableHomeLoginShell,
+  lastHomeShellSnapshot,
   lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysScope,
@@ -619,10 +621,13 @@ describe("last view memory", () => {
     if (raw) map.set("numa.lastKnown.v1", raw);
     hydrateLastKnownFromPersist();
     expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
+    // Provisional shell OK for Christian-bar warm reopen — not live confirm.
     expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
 
     invalidateHomeSessionPaint();
     expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
 
     rememberHomeSnapshot(
       homeSnap({ unpaidMinor: 0, overMinor: 108_287_00 }),
@@ -632,7 +637,7 @@ describe("last view memory", () => {
     Reflect.deleteProperty(globalThis, "localStorage");
   });
 
-  it("login invalidate keeps memory but blocks Hem paint until fetch", () => {
+  it("login invalidate keeps memory but blocks confirmed Hem until fetch", () => {
     rememberHomeSnapshot(
       homeSnap({ unpaidMinor: 120_00, overMinor: 108_167_00 }),
     );
@@ -640,10 +645,47 @@ describe("last view memory", () => {
     invalidateHomeSessionPaint();
     expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
     expect(lastSessionHomeSnapshot()).toBeNull();
+    // confirm cleared homeLoginShell on remember; enable again for shell.
+    expect(lastHomeShellSnapshot()).toBeNull();
+    enableHomeLoginShell();
+    expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
     rememberHomeSnapshot(
       homeSnap({ unpaidMinor: 0, overMinor: 108_287_00 }),
     );
     expect(lastSessionHomeSnapshot()?.overMinor).toBe(108_287_00);
+    expect(lastHomeShellSnapshot()?.overMinor).toBe(108_287_00);
+  });
+
+  it("warm hydrate enables provisional Hem shell but not live confirm", async () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    rememberHomeSnapshot(
+      homeSnap({ unpaidMinor: 120_00, overMinor: 108_167_00 }),
+    );
+    await Promise.resolve();
+    const raw = map.get("numa.lastKnown.v1");
+    expect(raw).toContain("120");
+    clearClientSessionCaches();
+    if (raw) map.set("numa.lastKnown.v1", raw);
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
+    expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(isHomeSessionConfirmed()).toBe(false);
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
+    expect(lastHomeShellSnapshot()?.overMinor).toBe(108_167_00);
+    Reflect.deleteProperty(globalThis, "localStorage");
   });
 
   it("fills Hem from the cookie when persist has no home", () => {

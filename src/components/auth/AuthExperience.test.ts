@@ -13,7 +13,7 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toContain("onCreateAccount");
     expect(src).toContain("Logga in");
     expect(src).toContain("Konto skapas av NUMA");
-    expect(src).toContain("Logga in med e-post och lösenord.");
+    expect(src).toContain("Logga in med e-post och lösenord");
     expect(src).toContain("auth-card");
     expect(src).toContain("auth-mark");
     expect(src).toContain("BRAND_MARK");
@@ -37,41 +37,61 @@ describe("AuthExperience — public signup closed", () => {
   });
 });
 
-describe("AuthExperience — login boot", () => {
-  it("paints a branded NUMA boot overlay in the success turn before replace", () => {
-    expect(src).toContain("LoginBoot");
-    expect(src).toContain("paintLoginBoot");
-    expect(src).toContain("flushSync");
+describe("AuthExperience — login boot (Christian-bar)", () => {
+  it("never paints Loggar in overlay after success — shell under AppShell", () => {
+    expect(src).toContain("enableHomeLoginShell");
+    expect(src).toContain("writeLastHomeCookie");
+    expect(src).toContain("seedHomeLoginShell");
+    expect(src).toContain("lastHomeSnapshot");
     expect(src).toContain("kickPostLoginWarm");
-    expect(src).toContain("scheduleQuietMenuWarm");
-    expect(src).toContain("getHomeSnapshotAction");
+    expect(src).toContain("fetchHomeSnapshot");
     expect(src).toContain("rememberHomeSnapshot");
-    expect(src).toContain("LOGIN_BOOT_TIMEOUT_MS");
-    expect(src).toContain("aria-busy={booting || pending || undefined}");
+    expect(src).toContain("clearLoginBoot");
+    expect(src).toContain("aria-busy={pending || undefined}");
+    expect(src).not.toContain("paintLoginBoot");
+    expect(src).not.toContain("setBooting(true)");
 
     const success = src.slice(
       src.indexOf("if (!result.ok)"),
       src.indexOf("router.replace(preview"),
     );
-    expect(success).toContain("flushSync");
-    expect(success).toContain("setBooting(true)");
-    expect(success).toContain("paintLoginBoot");
-    expect(success).toContain("kickPostLoginWarm");
-    expect(success.indexOf("paintLoginBoot")).toBeLessThan(
-      success.indexOf("kickPostLoginWarm"),
-    );
     expect(success).toContain("bindSessionOwner(result.userId)");
     expect(success).toContain("invalidateHomeSessionPaint");
+    expect(success).toContain("enableHomeLoginShell");
+    expect(success).toContain("kickPostLoginWarm");
+    expect(success).toContain("clearLoginBoot");
+    expect(success).not.toContain("paintLoginBoot");
     expect(success).not.toContain("clearClientSessionCaches");
     expect(success).not.toContain("router.refresh()");
     expect(success.indexOf("invalidateHomeSessionPaint")).toBeLessThan(
+      success.indexOf("enableHomeLoginShell"),
+    );
+    expect(success.indexOf("enableHomeLoginShell")).toBeLessThan(
+      success.indexOf("kickPostLoginWarm"),
+    );
+    expect(success).toContain("writeLastHomeCookie(shell)");
+    expect(success).toContain("seedHomeLoginShell");
+    expect(success.indexOf("writeLastHomeCookie(shell)")).toBeLessThan(
       success.indexOf("kickPostLoginWarm"),
     );
 
-    const failStart = src.indexOf("if (!result.ok)");
+    const kick = src.slice(
+      src.indexOf("function kickPostLoginWarm"),
+      src.indexOf("export function AuthExperience"),
+    );
+    expect(kick.indexOf("fetchHomeSnapshot")).toBeLessThan(
+      kick.indexOf("scheduleQuietMenuWarm"),
+    );
+    expect(kick.indexOf("scheduleQuietMenuWarm")).toBeLessThan(
+      kick.indexOf("rememberHomeSnapshot"),
+    );
+
+    const failStart = src.indexOf(
+      "if (!result.ok)",
+      src.indexOf("function submitLogin"),
+    );
     const fail = src.slice(failStart, src.indexOf("return;", failStart));
     expect(fail).toContain("clearLoginBoot");
-    expect(fail).toContain("setBooting(false)");
     expect(fail).toContain("setError(result.error)");
   });
 });

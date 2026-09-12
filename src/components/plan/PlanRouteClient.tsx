@@ -13,6 +13,7 @@ import {
   subscribePlanSnapshot,
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
+import { afterHemBoot } from "@/lib/nav/after-hem-boot";
 
 function planFocusFromSteg(steg: string | null): {
   focusAdd: null | "income" | "fixed";
@@ -58,20 +59,25 @@ function PlanRouteBody({
     let cancelled = false;
     // Quiet menu warm owns background refresh when cache is warm.
     if (lastPlanSnapshot()) return;
-    void getPlanPageDataAction().then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        const { gettingStarted, ...plan } = result.data;
-        rememberPlanSnapshot(plan);
-        syncHomeLivingFromPlan(plan);
-        if (gettingStarted) rememberGettingStarted(gettingStarted);
-        setError(null);
-        return;
-      }
-      if (!lastPlanSnapshot()) setError(result.error);
+    // Keep-alive mounts Plan with Hem — wait so login→Hem owns the wire.
+    const stop = afterHemBoot(() => {
+      if (cancelled || lastPlanSnapshot()) return;
+      void getPlanPageDataAction().then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          const { gettingStarted, ...plan } = result.data;
+          rememberPlanSnapshot(plan);
+          syncHomeLivingFromPlan(plan);
+          if (gettingStarted) rememberGettingStarted(gettingStarted);
+          setError(null);
+          return;
+        }
+        if (!lastPlanSnapshot()) setError(result.error);
+      });
     });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
 

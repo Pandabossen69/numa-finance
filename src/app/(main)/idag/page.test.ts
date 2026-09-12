@@ -17,16 +17,21 @@ describe("/idag first paint", () => {
     expect(page).toContain("HemRouteClient");
     expect(page).not.toContain("Suspense");
     expect(page).not.toContain("IdagBody");
+    // Cookie SSR lives in layout → TabKeepAlive, not the thin page.
     expect(page).not.toContain("readLastHomeCookie");
     expect(page).not.toContain("route-islands");
     expect(page).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("HomeDashboard");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
+    expect(hemClient).toContain("cookieShell");
+    expect(hemClient).toContain("seedHomeLoginShell");
+    expect(hemClient).not.toContain("readLastHomeCookie");
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("HemFirstPaint");
+    expect(loading).toContain("readLastHomeCookie");
     expect(loading).not.toContain("HomeViewLoading");
     expect(loading).not.toContain("ViewLoading");
   });
@@ -36,7 +41,7 @@ describe("/idag first paint", () => {
     expect(page).not.toContain("loadAccountsSnapshot");
     expect(hemClient).not.toContain("loadGettingStartedView");
     expect(hemClient).not.toContain("loadAccountsSnapshot");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(homeSnapshot).toContain("loadHomeSnapshot");
   });
 });

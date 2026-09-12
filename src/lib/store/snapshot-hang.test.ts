@@ -49,17 +49,19 @@ describe("cold Hem/Analys hang contract", () => {
     expect(idag).not.toContain("loadAccountsSnapshot");
     expect(idag).not.toContain("loadGettingStartedView");
     expect(idag).not.toContain("Promise.all");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("fetchHomeSnapshot");
     expect(hemClient).not.toContain("loadAccountsSnapshot");
     expect(hemClient).not.toContain("loadGettingStartedView");
   });
 
   it("paints last-known money or a short pending, never empty mint cards", () => {
     expect(idag).toContain("HemRouteClient");
+    // Cookie paints provisional last-known in first HTML; live confirm still gated.
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
+    expect(hemClient).toContain("adoptSnap=");
     expect(analys).toContain("AnalysRouteClient");
     expect(analys).not.toContain("AnalysViewLoading");
     expect(analysClient).toContain("lastAnalysSnapshot");
