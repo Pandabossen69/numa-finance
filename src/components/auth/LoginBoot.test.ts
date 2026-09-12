@@ -23,18 +23,17 @@ describe("LoginBoot", () => {
     expect(boot).toContain('aria-busy="true"');
     expect(boot).toContain('aria-label="Loggar in i NUMA"');
     expect(boot).toContain("LOGIN_BOOT_TIMEOUT_MS");
+    expect(boot).toContain("LOGIN_BOOT_MAX_MS");
+    expect(boot).toContain("300");
     expect(boot).toContain("flushSync");
     expect(boot).toContain("createRoot");
     expect(css).toContain(".auth-boot");
     expect(css).toContain(".auth-boot-title");
   });
 
-  it("is kicked from login success and cleared on shell mount, not money fetch", () => {
-    expect(auth).toContain("paintLoginBoot");
+  it("success login never mounts boot — Hem clears any leftover on shell mount", () => {
     expect(auth).toContain("clearLoginBoot");
-    expect(auth).toContain("LOGIN_BOOT_MAX_MS");
-    expect(boot).toContain("LOGIN_BOOT_MAX_MS");
-    expect(boot).toContain("300");
+    expect(auth).not.toContain("paintLoginBoot");
     expect(hem).toContain("clearLoginBoot");
     expect(hem).toContain("useLayoutEffect");
     expect(onboarding).toContain("LoginBootClear");

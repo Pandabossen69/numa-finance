@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import {
-  LOGIN_BOOT_MAX_MS,
-  LoginBoot,
-  clearLoginBoot,
-  paintLoginBoot,
-} from "@/components/auth/LoginBoot";
+import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { signInAction } from "@/features/auth/actions";
 import { fetchHomeSnapshot } from "@/features/finance/home-snapshot-client";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
@@ -17,7 +11,6 @@ import {
   bindSessionOwner,
   enableHomeLoginShell,
   invalidateHomeSessionPaint,
-  lastHomeShellSnapshot,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { BRAND_MARK } from "@/lib/brand-assets";
@@ -40,22 +33,12 @@ export function AuthExperience() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [booting, setBooting] = useState(false);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     router.prefetch("/kom-igang");
     router.prefetch("/idag");
   }, [router]);
-
-  useEffect(() => {
-    if (!booting) return;
-    const id = window.setTimeout(() => {
-      setBooting(false);
-      clearLoginBoot();
-    }, LOGIN_BOOT_MAX_MS);
-    return () => window.clearTimeout(id);
-  }, [booting]);
 
   function submitLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -65,40 +48,29 @@ export function AuthExperience() {
       const result = await signInAction({ email, password });
       if (!result.ok) {
         clearLoginBoot();
-        setBooting(false);
         setError(result.error);
         return;
       }
       // Wipe last-known only when the account actually changed — same-user
       // re-login must keep Plan/Analys caches so menus stay ~0ms (NextStep).
-      // Hem money still needs a live confirm so we never flash yesterday's kvar
-      // as *confirmed* — but same-user last-known may paint as a provisional
-      // shell (Christian-bar ≤300ms) while fetch runs.
+      // Hem money still needs a live confirm (#107) — but same-user last-known
+      // paints as a provisional shell. Never paint "Loggar in i NUMA…" over
+      // the snapshot fetch (Christian-bar ≤300ms / hard-fail multi-second).
       bindSessionOwner(result.userId);
       invalidateHomeSessionPaint();
       enableHomeLoginShell();
       kickPostLoginWarm();
-      if (lastHomeShellSnapshot()) {
-        // Cached totals ready — never hold "Loggar in…" over a multi-second fetch.
-        clearLoginBoot();
-        setBooting(false);
-      } else {
-        flushSync(() => {
-          setBooting(true);
-        });
-        paintLoginBoot(); // hard-capped at LOGIN_BOOT_MAX_MS (300)
-      }
+      clearLoginBoot();
       const preview =
         typeof document !== "undefined" &&
         hasPreviewEscape(new URLSearchParams(window.location.search), document.cookie);
-      // Soft replace without refresh — avoid a force-dynamic RSC round-trip.
+      // Soft replace — Hem shell/skeleton paints under AppShell immediately.
       router.replace(preview ? withPreviewQuery(result.nextPath) : result.nextPath);
     });
   }
 
   return (
-    <div className="auth-stage" aria-busy={booting || pending || undefined}>
-      {booting ? <LoginBoot announced={false} /> : null}
+    <div className="auth-stage" aria-busy={pending || undefined}>
       <div className="auth-glow" aria-hidden />
 
       <div className="auth-frame">

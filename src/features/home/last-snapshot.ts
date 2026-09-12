@@ -157,6 +157,13 @@ export function hydrateLastKnownFromPersist() {
     planView = data.planView;
     analysScope = data.analysScope;
     movementsView = data.movementsView;
+    // Warm reopen / hard-refresh: same-user last-known is a provisional
+    // shell (not live confirm). Christian-bar ≤300ms; #107 still blocks
+    // lastSessionHomeSnapshot until remember.
+    homeLoginShell =
+      home != null &&
+      sessionOwnerId != null &&
+      home.userId === sessionOwnerId;
     persistPaused = false;
     return;
   }
@@ -164,6 +171,10 @@ export function hydrateLastKnownFromPersist() {
   if (cookieHome) {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
+    homeLoginShell =
+      home != null &&
+      sessionOwnerId != null &&
+      home.userId === sessionOwnerId;
   }
   persistPaused = false;
 }
@@ -257,9 +268,9 @@ export function invalidateHomeSessionPaint() {
 }
 
 /**
- * After login bind: allow same-user last-known as a provisional Hem shell
- * (Christian-bar ≤300ms). Hydrate alone never enables this — call only
- * from the login success path after bindSessionOwner.
+ * Allow same-user last-known as a provisional Hem shell (Christian-bar).
+ * Used after login bind and after warm hydrate. Never elevates to
+ * session-confirmed live money (#107).
  */
 export function enableHomeLoginShell() {
   homeLoginShell =
@@ -384,8 +395,9 @@ export function lastSessionHomeSnapshot(): HomeSnapshot | null {
 }
 
 /**
- * Hem paint for Christian-bar login: session-confirmed live, OR same-user
- * last-known after enableHomeLoginShell(). Hydrate alone still returns null.
+ * Hem paint for Christian-bar: session-confirmed live, OR same-user
+ * last-known provisional shell (login / warm hydrate). Hydrate without a
+ * matching owner still returns null.
  */
 export function lastHomeShellSnapshot(): HomeSnapshot | null {
   if (homeSessionConfirmed) return home;

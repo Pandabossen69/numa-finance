@@ -38,7 +38,10 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(quickBody).not.toContain("warmupPlanPageData");
     expect(quickBody).not.toContain("scheduleQuietMenuWarm");
     expect(src).toContain("isHomeDirty");
-    expect(src).toContain("if (snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
+    expect(src).toContain(
+      "if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap)",
+    );
+    expect(src).toContain("lastHomeShellSnapshot()");
     expect(src).not.toContain("lastHomeSnapshot() == null");
     expect(src).toContain("stored.userId === snap.userId");
     expect(src).not.toContain("refreshQuiet");

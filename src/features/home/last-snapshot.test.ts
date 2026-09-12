@@ -621,10 +621,13 @@ describe("last view memory", () => {
     if (raw) map.set("numa.lastKnown.v1", raw);
     hydrateLastKnownFromPersist();
     expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
+    // Provisional shell OK for Christian-bar warm reopen — not live confirm.
     expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
 
     invalidateHomeSessionPaint();
     expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
 
     rememberHomeSnapshot(
       homeSnap({ unpaidMinor: 0, overMinor: 108_287_00 }),
@@ -642,6 +645,7 @@ describe("last view memory", () => {
     invalidateHomeSessionPaint();
     expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
     expect(lastSessionHomeSnapshot()).toBeNull();
+    // confirm cleared homeLoginShell on remember; enable again for shell.
     expect(lastHomeShellSnapshot()).toBeNull();
     enableHomeLoginShell();
     expect(lastSessionHomeSnapshot()).toBeNull();
@@ -653,7 +657,7 @@ describe("last view memory", () => {
     expect(lastHomeShellSnapshot()?.overMinor).toBe(108_287_00);
   });
 
-  it("hydrate alone never enables login Hem shell", async () => {
+  it("warm hydrate enables provisional Hem shell but not live confirm", async () => {
     const map = new Map<string, string>();
     Object.defineProperty(globalThis, "localStorage", {
       configurable: true,
@@ -678,7 +682,9 @@ describe("last view memory", () => {
     hydrateLastKnownFromPersist();
     expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
     expect(lastSessionHomeSnapshot()).toBeNull();
-    expect(lastHomeShellSnapshot()).toBeNull();
+    expect(isHomeSessionConfirmed()).toBe(false);
+    expect(lastHomeShellSnapshot()?.unpaidMinor).toBe(120_00);
+    expect(lastHomeShellSnapshot()?.overMinor).toBe(108_167_00);
     Reflect.deleteProperty(globalThis, "localStorage");
   });
 

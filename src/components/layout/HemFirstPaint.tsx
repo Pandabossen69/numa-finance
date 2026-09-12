@@ -26,10 +26,13 @@ function readHomeShell() {
 }
 
 export function HemFirstPaint() {
+  // Client getServerSnapshot = shell so hard-refresh / loading.tsx can paint
+  // last-known immediately after JS (Christian-bar). SSR still has no
+  // localStorage so the first HTML may be the skeleton; client recovers.
   const snap = useSyncExternalStore(
     subscribeHomeSnapshot,
     readHomeShell,
-    () => null,
+    readHomeShell,
   );
   if (snap) {
     return (

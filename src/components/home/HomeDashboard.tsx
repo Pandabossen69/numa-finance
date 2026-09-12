@@ -42,6 +42,7 @@ import {
   isHomeDirty,
   lastAccountsSnapshot,
   lastGettingStarted,
+  lastHomeShellSnapshot,
   lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberGettingStarted,
@@ -88,7 +89,10 @@ export function HomeDashboard({
     lastGettingStarted,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
-  const view = (sameOwner ? stored : null) ?? snap ?? lastSessionHomeSnapshot();
+  // Prefer session-confirmed, then prop snap (incl. provisional shell), then
+  // same-user login/warm shell — never wait on live fetch for last-known.
+  const view =
+    (sameOwner ? stored : null) ?? snap ?? lastHomeShellSnapshot();
 
   useEffect(() => {
     // Adopt the server snap unless an optimistic spend is in flight.

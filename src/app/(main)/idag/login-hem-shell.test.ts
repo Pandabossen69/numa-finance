@@ -21,21 +21,17 @@ const auth = readFileSync(
   new URL("../../../components/auth/AuthExperience.tsx", import.meta.url),
   "utf8",
 );
-const boot = readFileSync(
-  new URL("../../../components/auth/LoginBoot.tsx", import.meta.url),
-  "utf8",
-);
 
 /**
- * SPEC 6 Christian-bar: usable Hem ≤300ms after login (cached totals /
- * skeleton OK). "Loggar in…" must never stretch multi-seconds. #107 still
- * forbids hydrate alone as confirmed live kvar/Över.
+ * SPEC 6 Christian-bar: usable Hem ≤300ms (cached totals / skeleton).
+ * No multi-second "Loggar in i NUMA…" or blank wait. #107: hydrate is
+ * provisional shell only — lastSessionHomeSnapshot stays gated.
  */
 describe("login → Hem usable shell (Christian-bar)", () => {
-  it("hard-caps Loggar in and clears boot on shell mount", () => {
-    expect(boot).toContain("LOGIN_BOOT_MAX_MS");
-    expect(boot).toContain("300");
-    expect(auth).toContain("LOGIN_BOOT_MAX_MS");
+  it("never paints login boot after success; clears leftovers on shell mount", () => {
+    expect(auth).not.toContain("paintLoginBoot");
+    expect(auth).toContain("clearLoginBoot");
+    expect(auth).toContain("enableHomeLoginShell");
     expect(shell).toContain("LoginBootClear");
     expect(hem).toContain("useLayoutEffect");
     expect(hem).toContain("clearLoginBoot");
@@ -44,20 +40,20 @@ describe("login → Hem usable shell (Christian-bar)", () => {
     );
   });
 
-  it("paints same-user login shell or Hem skeleton, never hydrate alone", () => {
-    expect(auth).toContain("enableHomeLoginShell");
+  it("paints same-user shell from login/warm hydrate; skeleton only when empty", () => {
+    expect(last).toContain("homeLoginShell");
+    expect(last).toMatch(/homeLoginShell\s*=/);
     expect(first).toContain("lastHomeShellSnapshot");
     expect(first).toContain("HomeViewLoading");
     expect(first).toContain("adoptSnap={false}");
     expect(first).not.toContain("lastHomeSnapshot()");
-    expect(first).not.toContain("readLastHomeCookie");
     expect(hem).toContain("lastHomeShellSnapshot");
   });
 
   it("keeps #107 session-confirm gate for live money", () => {
     expect(last).toContain("homeSessionConfirmed");
     expect(last).toContain("invalidateHomeSessionPaint");
-    expect(last).toContain("enableHomeLoginShell");
+    expect(last).toContain("lastSessionHomeSnapshot");
     expect(last).toContain("lastHomeShellSnapshot");
     expect(hem).toContain("lastSessionHomeSnapshot");
     expect(hem).toContain("rememberHomeSnapshot");

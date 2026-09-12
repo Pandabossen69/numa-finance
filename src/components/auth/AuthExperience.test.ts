@@ -13,7 +13,7 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toContain("onCreateAccount");
     expect(src).toContain("Logga in");
     expect(src).toContain("Konto skapas av NUMA");
-    expect(src).toContain("Logga in med e-post och lösenord.");
+    expect(src).toContain("Logga in med e-post och lösenord");
     expect(src).toContain("auth-card");
     expect(src).toContain("auth-mark");
     expect(src).toContain("BRAND_MARK");
@@ -38,16 +38,15 @@ describe("AuthExperience — public signup closed", () => {
 });
 
 describe("AuthExperience — login boot (Christian-bar)", () => {
-  it("enables same-user Hem shell and never holds Loggar in over the fetch", () => {
-    expect(src).toContain("LoginBoot");
-    expect(src).toContain("paintLoginBoot");
-    expect(src).toContain("LOGIN_BOOT_MAX_MS");
+  it("never paints Loggar in overlay after success — shell under AppShell", () => {
     expect(src).toContain("enableHomeLoginShell");
-    expect(src).toContain("lastHomeShellSnapshot");
     expect(src).toContain("kickPostLoginWarm");
     expect(src).toContain("fetchHomeSnapshot");
     expect(src).toContain("rememberHomeSnapshot");
-    expect(src).toContain("aria-busy={booting || pending || undefined}");
+    expect(src).toContain("clearLoginBoot");
+    expect(src).toContain("aria-busy={pending || undefined}");
+    expect(src).not.toContain("paintLoginBoot");
+    expect(src).not.toContain("setBooting(true)");
 
     const success = src.slice(
       src.indexOf("if (!result.ok)"),
@@ -57,9 +56,8 @@ describe("AuthExperience — login boot (Christian-bar)", () => {
     expect(success).toContain("invalidateHomeSessionPaint");
     expect(success).toContain("enableHomeLoginShell");
     expect(success).toContain("kickPostLoginWarm");
-    expect(success).toContain("lastHomeShellSnapshot()");
     expect(success).toContain("clearLoginBoot");
-    expect(success).toContain("paintLoginBoot");
+    expect(success).not.toContain("paintLoginBoot");
     expect(success).not.toContain("clearClientSessionCaches");
     expect(success).not.toContain("router.refresh()");
     expect(success.indexOf("invalidateHomeSessionPaint")).toBeLessThan(
@@ -67,9 +65,6 @@ describe("AuthExperience — login boot (Christian-bar)", () => {
     );
     expect(success.indexOf("enableHomeLoginShell")).toBeLessThan(
       success.indexOf("kickPostLoginWarm"),
-    );
-    expect(success.indexOf("lastHomeShellSnapshot()")).toBeLessThan(
-      success.indexOf("paintLoginBoot"),
     );
 
     const kick = src.slice(
@@ -89,7 +84,6 @@ describe("AuthExperience — login boot (Christian-bar)", () => {
     );
     const fail = src.slice(failStart, src.indexOf("return;", failStart));
     expect(fail).toContain("clearLoginBoot");
-    expect(fail).toContain("setBooting(false)");
     expect(fail).toContain("setError(result.error)");
   });
 });
