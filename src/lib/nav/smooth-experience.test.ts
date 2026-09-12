@@ -60,9 +60,15 @@ describe("smooth nav and saves", () => {
     const mer = read("../../app/(main)/mer/page.tsx");
     const hemClient = read("../../components/home/HemRouteClient.tsx");
     const merClient = read("../../components/mer/MerRouteClient.tsx");
+    const keepAlive = read("../../components/layout/TabKeepAlive.tsx");
     expect(idag).toContain("HemRouteClient");
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("<Suspense");
+    expect(idag).toMatch(/return\s+<\s*HemRouteClient\s*\/>/);
+    // Visible keep-alive Hem owns the SSR cookie shell (not the thin page).
+    expect(keepAlive).toContain(
+      '"/idag": <HemRouteClient cookieShell={homeCookieShell} />',
+    );
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("fetchHomeSnapshot");
     expect(plan).toContain("PlanRouteClient");
