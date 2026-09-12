@@ -34,7 +34,8 @@ export const ReceiptCaptureFlow = nextDynamic(
     import("@/components/capture/ReceiptCaptureFlow").then(
       (mod) => mod.ReceiptCaptureFlow,
     ),
-  { ssr: false },
+  /* Soft-nav Mer→Fota: calm Laddar… while the island loads — never blank dark. */
+  { ssr: false, loading: () => <ViewLoading /> },
 );
 
 export const MovementsScreen = nextDynamic(

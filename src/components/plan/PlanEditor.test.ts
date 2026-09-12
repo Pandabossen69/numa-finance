@@ -107,8 +107,11 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("lastPlanView");
     expect(monthNav).toContain("MonthChipStrip");
     expect(monthNav).toContain("labelMonthChipSv");
+    expect(monthNav).toContain("normal-case");
     expect(monthStrip).toContain("is-overflow-start");
     expect(monthStrip).toContain("numa-month-strip-wrap");
+    expect(monthStrip).toContain("numa-month-strip-chevron");
+    expect(monthStrip).toContain("useLayoutEffect");
     expect(plan).not.toContain("numa-month-strip -mx-1");
   });
 

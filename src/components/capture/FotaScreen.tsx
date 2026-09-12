@@ -1,7 +1,7 @@
 "use client";
 
 import { ReceiptCaptureFlow } from "@/lib/route-islands";
-import { FotaViewLoading } from "@/components/capture/FotaViewLoading";
+import { ViewLoading } from "@/components/layout/ViewLoading";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
@@ -38,7 +38,8 @@ export function FotaScreen({
         </div>
       );
     }
-    return <FotaViewLoading />;
+    /* Calm Laddar… — never an empty dark mint shell on Mer→Fota soft-nav. */
+    return <ViewLoading />;
   }
 
   return (

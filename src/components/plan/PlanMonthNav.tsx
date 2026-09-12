@@ -91,7 +91,7 @@ export function PlanMonthNav({
                 chipRefs.current[key] = el;
               }}
               onClick={() => onSelectMonth(key)}
-              className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold capitalize ${
+              className={`numa-press numa-month-chip min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold normal-case ${
                 monthKey === key
                   ? "is-active bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                   : key === currentMonthKey

@@ -90,14 +90,18 @@ describe("NUMA vision palette", () => {
     );
   });
 
-  it("fades the Plan month strip only on overflowing edges", () => {
+  it("covers Plan month-strip overflow with opaque plates + stable ‹/› nodes", () => {
     expect(css).toContain(".numa-month-strip-wrap");
     expect(css).toContain(".numa-month-strip-wrap.is-overflow-start::before");
     expect(css).toContain(".numa-month-strip-wrap.is-overflow-end::after");
-    expect(css).toContain("scroll-padding-inline: 3rem");
-    expect(css).toContain('content: "‹"');
-    expect(css).toContain('content: "›"');
+    expect(css).toContain(".numa-month-strip-chevron");
+    expect(css).toContain("scroll-padding-inline: 2.75rem");
+    expect(css).toContain("background: var(--numa-bg)");
+    expect(css).toContain("width: 2.75rem");
     expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
+    expect(css).not.toMatch(
+      /\.numa-month-strip-wrap\.is-overflow-end::after\s*\{[^}]*content:\s*"›"/,
+    );
   });
 
   it("uses one desktop content width for Hem, Plan, Analys, Mer and Fota", () => {
