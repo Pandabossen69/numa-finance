@@ -79,13 +79,14 @@ export function isBankSmsLedgerRow(tx: BankSmsLedgerHints): boolean {
 }
 
 export function appliesToSpending(
-  tx: Pick<CanonicalTransaction, "transactionType" | "status"> &
+  tx: Pick<CanonicalTransaction, "transactionType" | "status" | "direction"> &
     BankSmsLedgerHints,
 ): boolean {
   if (tx.status !== "confirmed") return false;
-  // Bank-SMS expenses count toward Spenderat idag / perioden.
-  // Saldo still ignores them via isBankSmsLedgerRow in balance helpers.
-  return tx.transactionType === "expense";
+  // Spenderat / Per kategori / Tx Utgifter: confirmed expense debit only.
+  // transfer + cash_withdrawal are other types (both legs share transfer_group_id).
+  // Bank-SMS expenses still count here; saldo ignores them via isBankSmsLedgerRow.
+  return tx.transactionType === "expense" && tx.direction === "debit";
 }
 
 export function appliesToIncome(

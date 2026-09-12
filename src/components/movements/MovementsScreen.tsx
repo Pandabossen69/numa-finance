@@ -294,7 +294,9 @@ export function MovementsScreen({
 
       <section className="animate-rise-delay-3 space-y-2">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold">{filtered.length} rörelser</h2>
+          <h2 className="text-sm font-semibold">
+            {filtered.length} {filtered.length === 1 ? "rörelse" : "rörelser"}
+          </h2>
           <Link
             href="/fota"
             prefetch

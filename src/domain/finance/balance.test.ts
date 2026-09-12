@@ -190,6 +190,7 @@ describe("bank-SMS tip vs day-dial spend", () => {
   it("counts screenshot SMS expenses as spend but not as income", () => {
     expect(
       appliesToSpending({
+        direction: "debit",
         transactionType: "expense",
         status: "confirmed",
         source: "screenshot",
@@ -204,6 +205,7 @@ describe("bank-SMS tip vs day-dial spend", () => {
     ).toBe(false);
     expect(
       appliesToSpending({
+        direction: "debit",
         transactionType: "expense",
         status: "confirmed",
         source: "manual",
@@ -216,11 +218,34 @@ describe("bank-SMS tip vs day-dial spend", () => {
         source: "manual",
       }),
     ).toBe(true);
+    // Expense credits and transfer/cash_withdrawal never count as Spenderat.
+    expect(
+      appliesToSpending({
+        direction: "credit",
+        transactionType: "expense",
+        status: "confirmed",
+      }),
+    ).toBe(false);
+    expect(
+      appliesToSpending({
+        direction: "debit",
+        transactionType: "transfer",
+        status: "confirmed",
+      }),
+    ).toBe(false);
+    expect(
+      appliesToSpending({
+        direction: "debit",
+        transactionType: "cash_withdrawal",
+        status: "confirmed",
+      }),
+    ).toBe(false);
   });
 
   it("counts source sms expenses the same way as screenshot", () => {
     expect(
       appliesToSpending({
+        direction: "debit",
         transactionType: "expense",
         status: "confirmed",
         source: "sms",
@@ -238,6 +263,7 @@ describe("bank-SMS tip vs day-dial spend", () => {
   it("counts bank-app card imports as household spend and moves EUR saldo", () => {
     expect(
       appliesToSpending({
+        direction: "debit",
         transactionType: "expense",
         status: "confirmed",
         source: "bank_import",
@@ -247,6 +273,7 @@ describe("bank-SMS tip vs day-dial spend", () => {
     // Even if legacy path tagged screenshot, bankapp fingerprint must spend.
     expect(
       appliesToSpending({
+        direction: "debit",
         transactionType: "expense",
         status: "confirmed",
         source: "screenshot",
@@ -348,6 +375,7 @@ describe("bank-SMS tip vs day-dial spend", () => {
     expect(bal?.amountMinor).toBe(5_274_00);
     expect(
       appliesToSpending({
+        direction: "debit",
         transactionType: "expense",
         status: "confirmed",
         source: "screenshot",

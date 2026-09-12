@@ -2,7 +2,9 @@ import { unstable_rethrow } from "next/navigation";
 import type { CanonicalTransaction } from "@/domain/finance";
 import {
   NEXT_INCOME_NAME,
+  projectLedgerToCanonicalThb,
   spendingCategoriesByMonthKey,
+  type FxCheckpoint,
   type LedgerMatchTx,
   type SpendingCategoryTotal,
   isPlanIncome,
@@ -23,6 +25,32 @@ import {
 } from "@/features/finance/analys-month";
 import { loadErrorMessageSv } from "@/lib/async";
 import { reportError } from "@/lib/observe/report";
+import type { TodaySnapshot } from "@/lib/store/types-snapshot";
+
+/**
+ * App-side FX map (checkpoint rate on the account) — same source Spenderat /
+ * Rörelser use. Not numa.fx_conversions (often empty for local/test users).
+ */
+function fxMapFromTodaySnap(snap: TodaySnapshot): Map<string, FxCheckpoint | null> {
+  const byId = new Map(
+    (snap.accountBalances ?? []).map((row) => [row.accountId, row]),
+  );
+  const map = new Map<string, FxCheckpoint | null>();
+  for (const account of snap.accounts) {
+    const bal = byId.get(account.id);
+    if (!bal) {
+      map.set(account.id, null);
+      continue;
+    }
+    map.set(account.id, {
+      accountId: account.id,
+      balanceMinor: bal.nativeMinor ?? 0,
+      thbMinor: bal.thbMinor,
+      fxRate: bal.fxRate,
+    });
+  }
+  return map;
+}
 
 export type { AnalysLine } from "@/features/finance/analys-month";
 
@@ -97,9 +125,14 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     });
     const planItems = snap.planItems ?? [];
     const spendingByMonthKey = snap.monthSpendingByKey ?? {};
-    const ledgerTransactions = snap.ledgerTransactions ?? [];
-    // Same rows as the month totals, split by category, for every month the
-    // user can browse to.
+    // Same app-side FX→primary (THB) as Spenderat / Tx Utgifter. Native SEK
+    // rows were skipped in Per kategori (currency !== THB) and Senaste still
+    // painted KR (−1/−1/−20/−10) instead of THB (−3,50/−3,50/−70/−35).
+    // Fixture: 10+20+1+1 SEK @ 3.5 = 112 THB → Övrigt 8× not 4×.
+    const ledgerTransactions = projectLedgerToCanonicalThb(
+      snap.ledgerTransactions ?? [],
+      fxMapFromTodaySnap(snap),
+    );
     const categoriesByMonthKey = spendingCategoriesByMonthKey({
       transactions: ledgerTransactions,
       currency: snap.currency,
