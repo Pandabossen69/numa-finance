@@ -1,7 +1,6 @@
 import { unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { AppShell } from "@/components/layout/AppShell";
-import { HomeCookieSeed } from "@/components/layout/HomeCookieSeed";
 import { SessionOwnerBinder } from "@/components/layout/SessionOwnerBinder";
 import { ShellDisplayNameFallback } from "@/components/layout/ShellDisplayNameFallback";
 import { chromeDisplayName } from "@/domain/identity/display-name";
@@ -12,18 +11,20 @@ import { getProfile } from "@/lib/store/repository";
 export const dynamic = "force-dynamic";
 
 /**
- * Sync shell chrome — never await session/profile/cookie here.
- * Cookie SSR seeds the module shell via HomeCookieSeed (Suspense) so
- * TabKeepAlive can mount immediately and paint lastHomeShellSnapshot
- * (login seed / persist hydrate) without a blank Suspense gap.
+ * Await last-home cookie before mounting AppShell/TabKeepAlive.
+ * Warm hard-refresh must SSR Kvar/Över into the visible keep-alive Hem —
+ * cookieSeed-after-mount left cookieShell=null locked in useState and blanked
+ * warm ~19s (SPEC 6). Profile/onboarding stay in Suspense.
  */
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const homeCookieShell = await readLastHomeCookie();
   return (
     <AppShell
+      homeCookieShell={homeCookieShell}
       displayName={
         <Suspense fallback={<ShellDisplayNameFallback />}>
           <ShellDisplayName />
@@ -31,19 +32,11 @@ export default function MainLayout({
       }
     >
       <Suspense fallback={null}>
-        <HomeCookieSeedFromServer />
-      </Suspense>
-      <Suspense fallback={null}>
         <OnboardingRedirect />
       </Suspense>
       {children}
     </AppShell>
   );
-}
-
-async function HomeCookieSeedFromServer() {
-  const shell = await readLastHomeCookie();
-  return <HomeCookieSeed shell={shell} />;
 }
 
 async function OnboardingRedirect() {

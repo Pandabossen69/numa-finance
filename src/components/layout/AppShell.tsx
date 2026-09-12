@@ -14,8 +14,8 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
  * Canonical NUMA shell — soft client navigation with prefetch warmup.
  * Clears login boot as soon as the shell mounts so Hem can show its
  * last-known / skeleton while the snapshot fetch finishes (SPEC 6 / issue 107).
- * homeCookieShell is optional SSR into keep-alive Hem; prefer module shell
- * (hydrate / login seed / HomeCookieSeed) so layout never blanks on cookie.
+ * homeCookieShell SSR into keep-alive Hem — required for warm hard-refresh
+ * first Kvar/Över (module hydrate alone cannot SSR).
  */
 export function AppShell({
   children,
