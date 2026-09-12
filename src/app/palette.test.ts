@@ -90,18 +90,20 @@ describe("NUMA vision palette", () => {
     );
   });
 
-  it("covers Plan month-strip overflow with opaque plates + stable ‹/› nodes", () => {
+  it("reserves Plan month-strip ‹/› slots and snaps chips (no mid-glyph overlays)", () => {
+    expect(css).toContain(".numa-month-strip-shell");
+    expect(css).toContain(".numa-month-strip-slot");
     expect(css).toContain(".numa-month-strip-wrap");
-    expect(css).toContain(".numa-month-strip-wrap.is-overflow-start::before");
-    expect(css).toContain(".numa-month-strip-wrap.is-overflow-end::after");
-    expect(css).toContain(".numa-month-strip-chevron");
-    expect(css).toContain("scroll-padding-inline: 2.75rem");
-    expect(css).toContain("background: var(--numa-bg)");
-    expect(css).toContain("width: 2.75rem");
-    expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
+    expect(css).toContain("flex: 0 0 1.75rem");
+    expect(css).toContain("scroll-snap-type: x mandatory");
+    expect(css).toContain("scroll-snap-align: start");
+    expect(css).toContain(".numa-month-chip.is-clipped");
+    expect(css).toContain("visibility: hidden");
+    expect(css).not.toContain(".numa-month-strip-chevron");
     expect(css).not.toMatch(
-      /\.numa-month-strip-wrap\.is-overflow-end::after\s*\{[^}]*content:\s*"›"/,
+      /\.numa-month-strip-wrap\.is-overflow-start::before/,
     );
+    expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
   });
 
   it("uses one desktop content width for Hem, Plan, Analys, Mer and Fota", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import nextDynamic from "next/dynamic";
+import { FotaPending } from "@/components/capture/FotaViewLoading";
 import {
   AnalysPending,
   HemPending,
@@ -34,8 +35,8 @@ export const ReceiptCaptureFlow = nextDynamic(
     import("@/components/capture/ReceiptCaptureFlow").then(
       (mod) => mod.ReceiptCaptureFlow,
     ),
-  /* Soft-nav Mer→Fota: calm Laddar… while the island loads — never blank dark. */
-  { ssr: false, loading: () => <ViewLoading /> },
+  /* Soft-nav Mer→Fota: titled Laddar… while the island loads — never blank dark. */
+  { ssr: false, loading: () => <FotaPending /> },
 );
 
 export const MovementsScreen = nextDynamic(

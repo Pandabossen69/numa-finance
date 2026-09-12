@@ -33,11 +33,10 @@ export function PlanMonthNav({
   const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
-    chipRefs.current[monthKey]?.scrollIntoView({
-      inline: "center",
-      block: "nearest",
-      behavior: "smooth",
-    });
+    const chip = chipRefs.current[monthKey];
+    const strip = chip?.closest(".numa-month-strip") as HTMLElement | null;
+    if (!chip || !strip) return;
+    strip.scrollTo({ left: chip.offsetLeft, behavior: "smooth" });
   }, [monthKey, viewYear]);
 
   return (

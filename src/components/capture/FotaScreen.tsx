@@ -1,7 +1,8 @@
 "use client";
 
+import { useLayoutEffect, useState } from "react";
 import { ReceiptCaptureFlow } from "@/lib/route-islands";
-import { ViewLoading } from "@/components/layout/ViewLoading";
+import { FotaPending } from "@/components/capture/FotaViewLoading";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
@@ -38,27 +39,52 @@ export function FotaScreen({
         </div>
       );
     }
-    /* Calm Laddar… — never an empty dark mint shell on Mer→Fota soft-nav. */
-    return <ViewLoading />;
+    return <FotaPending />;
   }
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
-      <ReceiptCaptureFlow
-        key={
-          observationId
-            ? `obs:${observationId}`
-            : `mode:${initialMode}`
-        }
-        accountId={view.accountId}
-        accounts={view.accounts}
-        remainingTodayMinor={view.remainingTodayMinor}
-        currency={view.currency}
-        bootstrapping={view.bootstrapping}
-        initialMode={initialMode}
-        initialPreview={initialPreview}
-      />
-    </div>
+    <FotaCaptureGate
+      observationId={observationId}
+      initialMode={initialMode}
+      initialPreview={initialPreview}
+      view={view}
+    />
+  );
+}
+
+/**
+ * Always paint titled Laddar… for at least one layout pass so Mer→Fota
+ * soft-nav never flashes an empty dark frame before the island mounts.
+ */
+function FotaCaptureGate({
+  view,
+  initialMode,
+  initialPreview,
+  observationId,
+}: {
+  view: FotaBootSnapshot;
+  initialMode: CaptureMode;
+  initialPreview: CapturePreview | null;
+  observationId: string | null;
+}) {
+  const [ready, setReady] = useState(false);
+  useLayoutEffect(() => {
+    setReady(true);
+  }, []);
+  if (!ready) return <FotaPending />;
+  return (
+    <ReceiptCaptureFlow
+      key={
+        observationId ? `obs:${observationId}` : `mode:${initialMode}`
+      }
+      accountId={view.accountId}
+      accounts={view.accounts}
+      remainingTodayMinor={view.remainingTodayMinor}
+      currency={view.currency}
+      bootstrapping={view.bootstrapping}
+      initialMode={initialMode}
+      initialPreview={initialPreview}
+    />
   );
 }
 
