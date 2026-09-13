@@ -60,6 +60,7 @@ describe("cold Hem/Analys hang contract", () => {
     expect(idag).not.toContain("HomeViewLoading");
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
+    expect(hemClient).toContain("cookieShell");
     expect(analys).toContain("AnalysRouteClient");
     expect(analys).not.toContain("AnalysViewLoading");
     expect(analysClient).toContain("lastAnalysSnapshot");

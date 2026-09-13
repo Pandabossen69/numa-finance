@@ -26,7 +26,10 @@ import type {
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
-import { readLastHomeCookieFromDocument } from "@/features/home/last-home-cookie";
+import {
+  readLastHomeCookieFromDocument,
+  writeLastHomeCookie,
+} from "@/features/home/last-home-cookie";
 import {
   clearPersistedLastKnown,
   readPersistedLastKnown,
@@ -348,6 +351,9 @@ export function rememberHomeSnapshot(
     : snap;
   homeDirty = nextDirty;
   if (confirmSession) homeSessionConfirmed = true;
+  // Sync cookie write — do not wait on persist microtask. Warm hard-refresh
+  // SSR needs numa.lastHome.v1 present after authenticated Hem has totals.
+  writeLastHomeCookie(home);
   emit(homeListeners);
 }
 

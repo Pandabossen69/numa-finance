@@ -61,14 +61,16 @@ export function readPersistedLastKnown(): PersistedLastKnown | null {
 }
 
 export function writePersistedLastKnown(data: PersistedLastKnown): void {
-  const storage = persistStorage();
-  if (!storage) return;
   const payload: PersistedLastKnown = {
     ...data,
     v: 1,
     movements: slimMovements(data.movements),
   };
+  // Cookie must land even when localStorage is unavailable — layout SSR
+  // reads numa.lastHome.v1 for first Kvar/Över (SPEC 6b).
   writeLastHomeCookie(payload.home);
+  const storage = persistStorage();
+  if (!storage) return;
   try {
     storage.setItem(LAST_KNOWN_STORAGE_KEY, JSON.stringify(payload));
   } catch {

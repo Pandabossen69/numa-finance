@@ -7,6 +7,7 @@ import { NavIntentProvider } from "@/components/layout/NavIntent";
 import { NavWarmup } from "@/components/layout/NavWarmup";
 import { SideNav } from "@/components/layout/SideNav";
 import { TabKeepAlive } from "@/components/layout/TabKeepAlive";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 
 /**
  * Canonical NUMA shell — soft client navigation with prefetch warmup.
@@ -14,9 +15,12 @@ import { TabKeepAlive } from "@/components/layout/TabKeepAlive";
 export function AppShell({
   children,
   displayName,
+  homeCookieShell = null,
 }: {
   children: React.ReactNode;
   displayName: React.ReactNode;
+  /** Last-known Hem from numa.lastHome.v1 — SSR into keep-alive /idag. */
+  homeCookieShell?: HomeSnapshot | null;
 }) {
   return (
     <NavIntentProvider>
@@ -38,7 +42,7 @@ export function AppShell({
             </header>
 
             <main className="mx-auto w-full min-w-0 max-w-[var(--numa-content-max)] pb-[var(--numa-shell-pad-bottom)] pt-3 md:max-w-none md:pb-16 md:pt-10">
-              <TabKeepAlive>
+              <TabKeepAlive homeCookieShell={homeCookieShell}>
                 <LastViewOutlet>{children}</LastViewOutlet>
               </TabKeepAlive>
             </main>

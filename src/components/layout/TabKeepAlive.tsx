@@ -7,6 +7,7 @@ import { useNavIntent } from "@/components/layout/NavIntent";
 import { MerRouteClient } from "@/components/mer/MerRouteClient";
 import { MovementsRouteClient } from "@/components/movements/MovementsRouteClient";
 import { PlanRouteClient } from "@/components/plan/PlanRouteClient";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 import { SPA_TAB_HREFS, spaTabKey, type SpaTabHref } from "@/lib/nav/spa-tabs";
 
 /**
@@ -18,15 +19,24 @@ import { SPA_TAB_HREFS, spaTabKey, type SpaTabHref } from "@/lib/nav/spa-tabs";
  * created yet. Do NOT use `.numa-view-park` (`display: none`) here — that
  * class survived the DOM paint and kept the dest invisible until React
  * caught up (often seconds while server actions resolved).
+ *
+ * homeCookieShell must SSR into the visible /idag panel — RSC page children
+ * stay parked hidden, so page/loading cookie paint never reaches the user.
  */
-export function TabKeepAlive({ children }: { children: ReactNode }) {
+export function TabKeepAlive({
+  children,
+  homeCookieShell = null,
+}: {
+  children: ReactNode;
+  homeCookieShell?: HomeSnapshot | null;
+}) {
   const { pathname } = useNavIntent();
   const active = spaTabKey(pathname);
 
   // Stable element trees — lazy useState so a tab switch re-render does not
   // rebuild Plan/Analys (that was a ~500ms main-thread stall after DOM paint).
   const [panelBodies] = useState<Record<SpaTabHref, ReactNode>>(() => ({
-    "/idag": <HemRouteClient />,
+    "/idag": <HemRouteClient cookieShell={homeCookieShell} />,
     "/plan": <PlanRouteClient />,
     "/analys": <AnalysRouteClient />,
     "/mer": <MerRouteClient />,

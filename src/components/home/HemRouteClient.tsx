@@ -5,6 +5,7 @@ import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   isHomeDirty,
   lastGettingStarted,
@@ -19,14 +20,19 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
  * Session-confirmed last-known paints immediately; hydrate alone shows
- * HemPending until the quiet fetch confirms. SPA keep-alive mounts this
- * once so tab switches never remount or re-await RSC.
+ * HemPending until the quiet fetch confirms. Optional cookieShell lets
+ * hard-refresh SSR paint last-known Kvar/Över in the first HTML (SPEC 6b).
+ * SPA keep-alive mounts this once so tab switches never remount or re-await RSC.
  */
-export function HemRouteClient() {
+export function HemRouteClient({
+  cookieShell = null,
+}: {
+  cookieShell?: HomeSnapshot | null;
+} = {}) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    lastSessionHomeSnapshot,
-    lastSessionHomeSnapshot,
+    () => lastSessionHomeSnapshot() ?? cookieShell,
+    () => cookieShell,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
@@ -61,11 +67,21 @@ export function HemRouteClient() {
     }
   }, [stored]);
 
-  if (!stored && !error) {
+  const snap = stored ?? cookieShell;
+  if (!snap && !error) {
     return <HemFirstPaint />;
   }
 
+  // Cookie-only shell must not elevate to session-confirmed (issue 107). Live
+  // fetch rememberHomeSnapshot confirms; until then adoptSnap stays false when
+  // the only paint source is the SSR cookie.
+  const live = lastSessionHomeSnapshot() != null;
   return (
-    <HomeDashboard snap={stored} error={error} gettingStarted={storedGettingStarted} />
+    <HomeDashboard
+      snap={snap}
+      error={error}
+      gettingStarted={storedGettingStarted}
+      adoptSnap={live}
+    />
   );
 }
