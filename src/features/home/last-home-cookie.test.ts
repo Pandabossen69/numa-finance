@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
+  LAST_HOME_COOKIE,
   parseLastHomeCookie,
   serializeLastHomeCookie,
+  writeLastHomeCookie,
 } from "./last-home-cookie";
 
 function home(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
@@ -56,7 +58,41 @@ function home(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
   };
 }
 
+function mockDocumentCookie() {
+  let jar = "";
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      get cookie() {
+        return jar;
+      },
+      set cookie(next: string) {
+        const [pair] = next.split(";");
+        const eq = pair.indexOf("=");
+        const name = pair.slice(0, eq);
+        const value = pair.slice(eq + 1);
+        if (next.includes("Max-Age=0")) {
+          jar = jar
+            .split("; ")
+            .filter((part) => part && !part.startsWith(`${name}=`))
+            .join("; ");
+          return;
+        }
+        const rest = jar
+          .split("; ")
+          .filter((part) => part && !part.startsWith(`${name}=`));
+        rest.push(`${name}=${value}`);
+        jar = rest.join("; ");
+      },
+    },
+  });
+}
+
 describe("last-home cookie", () => {
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, "document");
+  });
+
   it("round-trips Hem numbers for the first HTML", () => {
     const encoded = serializeLastHomeCookie(home());
     expect(encoded).toBeTruthy();
@@ -70,5 +106,30 @@ describe("last-home cookie", () => {
     expect(parseLastHomeCookie("")).toBeNull();
     expect(parseLastHomeCookie("{")).toBeNull();
     expect(parseLastHomeCookie(JSON.stringify({ userId: "u1" }))).toBeNull();
+  });
+
+  it("writes Path=/ SameSite=Lax ~30d into document.cookie (SPEC 6b)", () => {
+    mockDocumentCookie();
+    let assigned = "";
+    const desc = Object.getOwnPropertyDescriptor(globalThis, "document")!;
+    const doc = desc.value as { cookie: string };
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        get cookie() {
+          return doc.cookie;
+        },
+        set cookie(next: string) {
+          assigned = next;
+          doc.cookie = next;
+        },
+      },
+    });
+    writeLastHomeCookie(home({ remainingTodayMinor: 640_00 }));
+    expect(assigned).toContain(`${LAST_HOME_COOKIE}=`);
+    expect(assigned).toContain("Path=/");
+    expect(assigned).toContain("SameSite=Lax");
+    expect(assigned).toContain("Max-Age=2592000");
+    expect(document.cookie).toContain(LAST_HOME_COOKIE);
   });
 });

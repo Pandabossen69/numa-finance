@@ -72,9 +72,11 @@ describe("SPA keep-alive primary tabs", () => {
     const shell = read("../../components/layout/AppShell.tsx");
     const keepAlive = read("../../components/layout/TabKeepAlive.tsx");
     expect(shell).toContain("TabKeepAlive");
-    expect(shell).toContain("<TabKeepAlive>");
+    expect(shell).toContain("homeCookieShell");
+    expect(shell).toContain("<TabKeepAlive homeCookieShell={homeCookieShell}>");
     expect(shell).toContain("<LastViewOutlet>{children}</LastViewOutlet>");
     expect(keepAlive).toContain("HemRouteClient");
+    expect(keepAlive).toContain("cookieShell={homeCookieShell}");
     expect(keepAlive).toContain("PlanRouteClient");
     expect(keepAlive).toContain("AnalysRouteClient");
     expect(keepAlive).toContain("MerRouteClient");

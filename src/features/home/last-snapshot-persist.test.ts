@@ -7,6 +7,7 @@ import {
 } from "./last-snapshot-persist";
 import type { PersistedLastKnown } from "./last-snapshot-persist";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import { LAST_HOME_COOKIE } from "./last-home-cookie";
 
 function memoryStorage() {
   const map = new Map<string, string>();
@@ -19,6 +20,36 @@ function memoryStorage() {
       map.delete(key);
     },
   };
+}
+
+function mockDocumentCookie() {
+  let jar = "";
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: {
+      get cookie() {
+        return jar;
+      },
+      set cookie(next: string) {
+        const [pair] = next.split(";");
+        const eq = pair.indexOf("=");
+        const name = pair.slice(0, eq);
+        const value = pair.slice(eq + 1);
+        if (next.includes("Max-Age=0")) {
+          jar = jar
+            .split("; ")
+            .filter((part) => part && !part.startsWith(`${name}=`))
+            .join("; ");
+          return;
+        }
+        const rest = jar
+          .split("; ")
+          .filter((part) => part && !part.startsWith(`${name}=`));
+        rest.push(`${name}=${value}`);
+        jar = rest.join("; ");
+      },
+    },
+  });
 }
 
 const home = {
@@ -48,6 +79,7 @@ function payload(partial: Partial<PersistedLastKnown> = {}): PersistedLastKnown 
 describe("last-known persist", () => {
   afterEach(() => {
     Reflect.deleteProperty(globalThis, "localStorage");
+    Reflect.deleteProperty(globalThis, "document");
   });
 
   it("round-trips Hem chrome so the next open can paint without RSC", () => {
@@ -55,14 +87,25 @@ describe("last-known persist", () => {
       configurable: true,
       value: memoryStorage(),
     });
+    mockDocumentCookie();
     writePersistedLastKnown(payload());
     const next = readPersistedLastKnown();
     expect(next?.userId).toBe("u1");
     expect(next?.home?.displayName).toBe("Hugo");
     expect(next?.home?.remainingTodayMinor).toBe(400_00);
+    expect(document.cookie).toContain(LAST_HOME_COOKIE);
     clearPersistedLastKnown();
     expect(readPersistedLastKnown()).toBeNull();
     expect(globalThis.localStorage.getItem(LAST_KNOWN_STORAGE_KEY)).toBeNull();
+    expect(document.cookie).not.toContain(`${LAST_HOME_COOKIE}=`);
+  });
+
+  it("writes numa.lastHome.v1 even when localStorage is unavailable (SPEC 6b)", () => {
+    mockDocumentCookie();
+    // No localStorage — previous path returned before cookie write.
+    writePersistedLastKnown(payload());
+    expect(document.cookie).toContain(LAST_HOME_COOKIE);
+    expect(document.cookie).toContain("400");
   });
 
   it("caps a long Rörelser list so persist cannot blow the quota", () => {
@@ -70,6 +113,7 @@ describe("last-known persist", () => {
       configurable: true,
       value: memoryStorage(),
     });
+    mockDocumentCookie();
     const items = Array.from({ length: 80 }, (_, i) => ({ id: `t${i}` }));
     writePersistedLastKnown(
       payload({

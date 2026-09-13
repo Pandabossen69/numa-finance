@@ -26,7 +26,14 @@ describe("TabKeepAlive", () => {
 
   it("is wired under AppShell around LastViewOutlet", () => {
     expect(shell).toContain('import { TabKeepAlive } from "@/components/layout/TabKeepAlive"');
-    expect(shell).toContain("<TabKeepAlive>");
+    expect(shell).toContain("homeCookieShell");
+    expect(shell).toContain("<TabKeepAlive homeCookieShell={homeCookieShell}>");
     expect(shell).toContain("</TabKeepAlive>");
+  });
+
+  it("SSR-seeds the visible Hem panel from the last-home cookie (SPEC 6b)", () => {
+    expect(src).toContain("homeCookieShell");
+    expect(src).toContain("cookieShell={homeCookieShell}");
+    expect(src).toContain("<HemRouteClient cookieShell={homeCookieShell} />");
   });
 });

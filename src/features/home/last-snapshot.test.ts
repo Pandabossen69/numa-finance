@@ -180,6 +180,40 @@ describe("last view memory", () => {
     stop();
   });
 
+  it("writes numa.lastHome.v1 when Hem remembers real totals (SPEC 6b)", () => {
+    let jar = "";
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        get cookie() {
+          return jar;
+        },
+        set cookie(next: string) {
+          const [pair] = next.split(";");
+          const eq = pair.indexOf("=");
+          const name = pair.slice(0, eq);
+          const value = pair.slice(eq + 1);
+          if (next.includes("Max-Age=0")) {
+            jar = jar
+              .split("; ")
+              .filter((part) => part && !part.startsWith(`${name}=`))
+              .join("; ");
+            return;
+          }
+          const rest = jar
+            .split("; ")
+            .filter((part) => part && !part.startsWith(`${name}=`));
+          rest.push(`${name}=${value}`);
+          jar = rest.join("; ");
+        },
+      },
+    });
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    expect(document.cookie).toContain("64000");
+    Reflect.deleteProperty(globalThis, "document");
+  });
+
   it("moves Hem saldo with Mottagen and keeps Över still", () => {
     rememberHomeSnapshot(
       homeSnap({

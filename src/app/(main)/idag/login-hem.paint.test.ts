@@ -75,7 +75,7 @@ describe("login → Hem first mount", () => {
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
     expect(keepAlive).toContain("HemRouteClient");
-    expect(keepAlive).toContain('"/idag": <HemRouteClient />');
+    expect(keepAlive).toContain('"/idag": <HemRouteClient cookieShell={homeCookieShell} />');
     expect(keepAlive).toContain("data-numa-spa-tab");
     expect(hold).not.toContain("if (node.type === Suspense) return true;");
     expect(outlet).toContain("data-numa-hidden-live");
