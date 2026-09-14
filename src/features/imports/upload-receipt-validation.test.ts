@@ -26,7 +26,7 @@ const jpegBytes = new Uint8Array([
 
 function formWithFile(bytes: Uint8Array, type: string) {
   const fd = new FormData();
-  fd.set("file", new File([bytes], "kvitto.jpg", { type }));
+  fd.set("file", new File([Buffer.from(bytes)], "kvitto.jpg", { type }));
   return fd;
 }
 
