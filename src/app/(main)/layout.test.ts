@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const layout = readFileSync(new URL("./layout.tsx", import.meta.url), "utf8");
+const homeCookieServer = readFileSync(
+  new URL("../../features/home/last-home-cookie.server.ts", import.meta.url),
+  "utf8",
+);
 const loading = readFileSync(new URL("./loading.tsx", import.meta.url), "utf8");
 const idag = readFileSync(new URL("./idag/page.tsx", import.meta.url), "utf8");
 const idagLoading = readFileSync(
@@ -23,6 +27,12 @@ describe("main first-load chrome", () => {
     expect(layout).toContain("chromeDisplayName");
     expect(layout).toContain("SessionOwnerBinder");
     expect(layout).not.toContain("Användare");
+    expect(homeCookieServer).toContain("lastHomeCookieForSession");
+    expect(homeCookieServer).toContain("getSessionUser");
+    expect(homeCookieServer).toContain("Promise.all([cookies(), getSessionUser()])");
+    expect(homeCookieServer).not.toContain("getVerifiedAuthUser");
+    expect(homeCookieServer).not.toContain("getProfile");
+    expect(homeCookieServer).not.toContain("auth.getUser()");
   });
 
   it("keeps loading.tsx as content-only so the shell is not nested", () => {

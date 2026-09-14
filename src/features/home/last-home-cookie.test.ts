@@ -3,6 +3,7 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   LAST_HOME_COOKIE,
   fullHomeSnapshotExceedsCookieCap,
+  lastHomeCookieForSession,
   parseLastHomeCookie,
   serializeLastHomeCookie,
   toLastHomeCookieShell,
@@ -195,6 +196,31 @@ describe("last-home cookie", () => {
     writeLastHomeCookie(fat);
     expect(document.cookie).toContain(LAST_HOME_COOKIE);
     expect(document.cookie).toContain("77100");
+  });
+
+  it("same session user keeps the SSR Kvar/Över shell", () => {
+    const encoded = serializeLastHomeCookie(
+      home({ remainingTodayMinor: 640_00, overMinor: 5_420_00 }),
+    );
+    const next = lastHomeCookieForSession(encoded, "u1");
+    expect(next?.userId).toBe("u1");
+    expect(next?.displayName).toBe("Hugo");
+    expect(next?.remainingTodayMinor).toBe(640_00);
+    expect(next?.overMinor).toBe(5_420_00);
+  });
+
+  it("another session user gets no cached displayName or money", () => {
+    const encoded = serializeLastHomeCookie(
+      home({ remainingTodayMinor: 640_00, overMinor: 5_420_00 }),
+    );
+    expect(lastHomeCookieForSession(encoded, "u2")).toBeNull();
+  });
+
+  it("missing or empty session shows no financial shell", () => {
+    const encoded = serializeLastHomeCookie(home());
+    expect(lastHomeCookieForSession(encoded, null)).toBeNull();
+    expect(lastHomeCookieForSession(encoded, undefined)).toBeNull();
+    expect(lastHomeCookieForSession(encoded, "")).toBeNull();
   });
 
   it("toLastHomeCookieShell keeps Kvar/Över paint fields", () => {

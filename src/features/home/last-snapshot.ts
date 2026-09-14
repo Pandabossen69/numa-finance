@@ -142,9 +142,14 @@ export function hydrateLastKnownFromPersist() {
   const data = readPersistedLastKnown();
   persistPaused = true;
   homeSessionConfirmed = false;
+  const cookieHome = readLastHomeCookieFromDocument();
   if (data) {
     sessionOwnerId = data.userId;
-    home = data.home ?? readLastHomeCookieFromDocument();
+    const cookieMatchesOwner =
+      cookieHome != null &&
+      data.userId != null &&
+      cookieHome.userId === data.userId;
+    home = data.home ?? (cookieMatchesOwner ? cookieHome : null);
     plan = data.plan;
     analys = data.analys;
     mer = data.mer;
@@ -157,7 +162,6 @@ export function hydrateLastKnownFromPersist() {
     persistPaused = false;
     return;
   }
-  const cookieHome = readLastHomeCookieFromDocument();
   if (cookieHome) {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
@@ -230,8 +234,15 @@ function wipeSessionCaches() {
 }
 
 export function bindSessionOwner(userId: string) {
-  if (sessionOwnerId && sessionOwnerId !== userId) {
+  const boundOwner =
+    sessionOwnerId ?? home?.userId ?? mer?.userId ?? settings?.userId ?? null;
+  if (boundOwner && boundOwner !== userId) {
+    persistPaused = true;
     wipeSessionCaches();
+    sessionOwnerId = userId;
+    clearPersistedLastKnown();
+    persistPaused = false;
+    return;
   }
   sessionOwnerId = userId;
 }

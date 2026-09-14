@@ -90,6 +90,23 @@ export function parseLastHomeCookie(
   }
 }
 
+/**
+ * Fail-closed Hem shell for SSR: paint last-known displayName / Kvar / Över
+ * only when cookie.userId equals the current session user. A missing,
+ * expired, or other-account session must not leak the previous user's money.
+ */
+export function lastHomeCookieForSession(
+  raw: string | undefined | null,
+  sessionUserId: string | null | undefined,
+): HomeSnapshot | null {
+  if (typeof sessionUserId !== "string" || sessionUserId.length === 0) {
+    return null;
+  }
+  const snap = parseLastHomeCookie(raw);
+  if (!snap || snap.userId !== sessionUserId) return null;
+  return snap;
+}
+
 export function serializeLastHomeCookie(home: HomeSnapshot): string | null {
   try {
     const shell = toLastHomeCookieShell(home);
