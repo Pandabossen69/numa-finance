@@ -3,7 +3,11 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { parseUiAmountToMinor, money } from "@/domain/money";
-import { ALLOWED_IMAGE_MIME, assertAllowedImageBytes } from "@/lib/media/image-magic";
+import {
+  ALLOWED_IMAGE_MIME,
+  assertAllowedImageBytes,
+  isExpectedImageValidationError,
+} from "@/lib/media/image-magic";
 import { reportError } from "@/lib/observe/report";
 import { calculateDayPulse } from "@/domain/gamification";
 import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
@@ -67,7 +71,9 @@ export async function uploadReceiptAction(
     revalidatePath("/idag");
     return { ok: true, data: result };
   } catch (error) {
-    void reportError("ocr.upload", error);
+    if (!isExpectedImageValidationError(error)) {
+      void reportError("ocr.upload", error);
+    }
     return {
       ok: false,
       error:
