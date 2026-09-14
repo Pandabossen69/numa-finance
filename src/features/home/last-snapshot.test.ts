@@ -22,6 +22,7 @@ import {
   lastSettingsSnapshot,
   lastKnownChromeDisplayName,
   hasBoundSessionOwner,
+  bindSessionOwner,
   clearClientSessionCaches,
   hydrateLastKnownFromPersist,
   invalidateHomeSessionPaint,
@@ -598,6 +599,50 @@ describe("last view memory", () => {
     expect(lastMerSnapshot()).toBeNull();
   });
 
+  it("clears numa.lastHome.v1 immediately when another user binds", () => {
+    let jar = "";
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        get cookie() {
+          return jar;
+        },
+        set cookie(next: string) {
+          const [pair] = next.split(";");
+          const eq = pair.indexOf("=");
+          const name = pair.slice(0, eq);
+          const value = pair.slice(eq + 1);
+          if (next.includes("Max-Age=0")) {
+            jar = jar
+              .split("; ")
+              .filter((part) => part && !part.startsWith(`${name}=`))
+              .join("; ");
+            return;
+          }
+          const rest = jar
+            .split("; ")
+            .filter((part) => part && !part.startsWith(`${name}=`));
+          rest.push(`${name}=${value}`);
+          jar = rest.join("; ");
+        },
+      },
+    });
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    bindSessionOwner("user-christian");
+    expect(document.cookie).not.toContain("numa.lastHome.v1=");
+    expect(lastHomeSnapshot()).toBeNull();
+    bindSessionOwner("user-hugo");
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    bindSessionOwner("user-hugo");
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(640_00);
+    clearClientSessionCaches();
+    expect(document.cookie).not.toContain("numa.lastHome.v1=");
+    Reflect.deleteProperty(globalThis, "document");
+  });
+
   it("rehydrates last-known Hem after a cold client boot", async () => {
     const map = new Map<string, string>();
     Object.defineProperty(globalThis, "localStorage", {
@@ -712,7 +757,11 @@ describe("last view memory", () => {
       }),
     );
     const encoded = serializeLastHomeCookie(
-      homeSnap({ remainingTodayMinor: 333_00, displayName: "Test" }),
+      homeSnap({
+        userId: "user-test",
+        remainingTodayMinor: 333_00,
+        displayName: "Test",
+      }),
     );
     Object.defineProperty(globalThis, "document", {
       configurable: true,
@@ -722,6 +771,54 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(333_00);
     expect(lastHomeSnapshot()?.displayName).toBe("Test");
     expect(lastSessionHomeSnapshot()).toBeNull();
+    Reflect.deleteProperty(globalThis, "localStorage");
+    Reflect.deleteProperty(globalThis, "document");
+  });
+
+  it("does not hydrate another user's cookie when persist belongs to someone else", () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    map.set(
+      "numa.lastKnown.v1",
+      JSON.stringify({
+        v: 1,
+        userId: "user-test",
+        home: null,
+        plan: null,
+        analys: null,
+        mer: null,
+        accounts: null,
+        movements: null,
+        gettingStarted: null,
+        planView: null,
+        analysScope: null,
+        movementsView: null,
+      }),
+    );
+    const encoded = serializeLastHomeCookie(
+      homeSnap({
+        userId: "user-hugo",
+        remainingTodayMinor: 333_00,
+        displayName: "Hugo",
+      }),
+    );
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: { cookie: `numa.lastHome.v1=${encoded}` },
+    });
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()).toBeNull();
     Reflect.deleteProperty(globalThis, "localStorage");
     Reflect.deleteProperty(globalThis, "document");
   });

@@ -86,5 +86,12 @@ describe("sign-in next path", () => {
     expect(actions).toContain("persistOnboardingPhaseCookie");
     expect(actions).toContain("nextPath: state.nextPath");
     expect(actions).toContain("clearOnboardingCookie");
+    expect(actions).toContain("discardLastHomeCookieIfNotUser(userId)");
+    expect(actions).toContain("clearLastHomeCookie");
+    const signOut = actions.slice(actions.indexOf("export async function signOutAction"));
+    expect(signOut).toContain("clearLastHomeCookie");
+    expect(signOut.indexOf("clearLastHomeCookie")).toBeLessThan(
+      signOut.indexOf("redirect("),
+    );
   });
 });
