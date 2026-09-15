@@ -4,25 +4,26 @@ import { AppShell } from "@/components/layout/AppShell";
 import { SessionOwnerBinder } from "@/components/layout/SessionOwnerBinder";
 import { ShellDisplayNameFallback } from "@/components/layout/ShellDisplayNameFallback";
 import { chromeDisplayName } from "@/domain/identity/display-name";
-import { resolveHomeShell } from "@/features/home/last-home-cookie.server";
+import { readLastHomeCookie } from "@/features/home/last-home-cookie.server";
 import { redirectIfOnboardingIncomplete } from "@/features/onboarding/redirect";
 import { getProfile } from "@/lib/store/repository";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Await Hem shell before mounting AppShell/TabKeepAlive so the visible /idag
- * panel can SSR Kvar/Över (SPEC 6b/6d). Cookie hit = warm fast path; cookie
- * miss for an authenticated session loads a live slim snapshot so cold login
- * is not a long blank. Fail-closes when userId is not the current session.
- * Profile and onboarding stay in Suspense.
+ * Await last-home cookie before mounting AppShell/TabKeepAlive so the visible
+ * /idag panel can SSR Kvar/Över for the same session user (SPEC 6b). Cookie
+ * only — never await a live Hem money snapshot here (SPEC 6d: layout-blocked
+ * live load made cold login→Kvar ~23s vs prod ~4s). Fail-closes when
+ * cookie.userId is not the current session. Profile and onboarding stay in
+ * Suspense.
  */
 export default async function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const homeCookieShell = await resolveHomeShell();
+  const homeCookieShell = await readLastHomeCookie();
   return (
     <AppShell
       homeCookieShell={homeCookieShell}

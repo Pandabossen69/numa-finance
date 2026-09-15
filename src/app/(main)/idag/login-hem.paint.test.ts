@@ -80,20 +80,4 @@ describe("login → Hem first mount", () => {
     expect(hold).not.toContain("if (node.type === Suspense) return true;");
     expect(outlet).toContain("data-numa-hidden-live");
   });
-
-  it("SSRs cold Hem via resolveHomeShell when last-home cookie is missing (SPEC 6d)", () => {
-    const layout = readFileSync(
-      new URL("../layout.tsx", import.meta.url),
-      "utf8",
-    );
-    const homeCookieServer = readFileSync(
-      new URL("../../../features/home/last-home-cookie.server.ts", import.meta.url),
-      "utf8",
-    );
-    expect(layout).toContain("resolveHomeShell");
-    expect(layout).toContain("homeCookieShell={homeCookieShell}");
-    expect(homeCookieServer).toContain("loadHomeSnapshot");
-    expect(homeCookieServer).toContain("toLastHomeCookieShell");
-    expect(hemClient).toContain("adoptSnap");
-  });
 });

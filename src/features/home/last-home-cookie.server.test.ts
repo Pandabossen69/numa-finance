@@ -5,7 +5,6 @@ import { LAST_HOME_COOKIE, serializeLastHomeCookie } from "./last-home-cookie";
 const getSessionUser = vi.fn();
 const cookieGet = vi.fn();
 const cookieDelete = vi.fn();
-const loadHomeSnapshot = vi.fn();
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -16,10 +15,6 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/features/auth/session", () => ({
   getSessionUser: () => getSessionUser(),
-}));
-
-vi.mock("@/features/finance/load-home", () => ({
-  loadHomeSnapshot: () => loadHomeSnapshot(),
 }));
 
 function home(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
@@ -78,7 +73,6 @@ describe("readLastHomeCookie session bind", () => {
     getSessionUser.mockReset();
     cookieGet.mockReset();
     cookieDelete.mockReset();
-    loadHomeSnapshot.mockReset();
   });
 
   it("same user gets the fast SSR shell", async () => {
@@ -142,95 +136,5 @@ describe("readLastHomeCookie session bind", () => {
 
     await discardLastHomeCookieIfNotUser("u2");
     expect(cookieDelete).toHaveBeenCalledWith(LAST_HOME_COOKIE);
-  });
-});
-
-describe("resolveHomeShell SPEC 6d", () => {
-  beforeEach(() => {
-    getSessionUser.mockReset();
-    cookieGet.mockReset();
-    cookieDelete.mockReset();
-    loadHomeSnapshot.mockReset();
-    vi.resetModules();
-  });
-
-  it("prefers the session-bound cookie and skips the live fetch (warm)", async () => {
-    const { resolveHomeShell } = await import("./last-home-cookie.server");
-    const snap = home({ remainingTodayMinor: 640_00, overMinor: 5_420_00 });
-    cookieGet.mockReturnValue({ value: serializeLastHomeCookie(snap) });
-    getSessionUser.mockResolvedValue({
-      id: "u1",
-      email: "hugo@example.com",
-    });
-
-    const next = await resolveHomeShell();
-    expect(next?.remainingTodayMinor).toBe(640_00);
-    expect(next?.overMinor).toBe(5_420_00);
-    expect(loadHomeSnapshot).not.toHaveBeenCalled();
-  });
-
-  it("loads a live slim shell when authenticated with no cookie (cold)", async () => {
-    const { resolveHomeShell } = await import("./last-home-cookie.server");
-    cookieGet.mockReturnValue(undefined);
-    getSessionUser.mockResolvedValue({
-      id: "u1",
-      email: "hugo@example.com",
-    });
-    loadHomeSnapshot.mockResolvedValue({
-      ok: true,
-      data: home({
-        remainingTodayMinor: 777_00,
-        overMinor: 9_001_00,
-        verificationLabel: "long label that should be stripped from shell",
-        extraSaldoHint: "hint prose",
-      }),
-    });
-
-    const next = await resolveHomeShell();
-    expect(next?.userId).toBe("u1");
-    expect(next?.remainingTodayMinor).toBe(777_00);
-    expect(next?.overMinor).toBe(9_001_00);
-    expect(next?.verificationLabel).toBeNull();
-    expect(next?.extraSaldoHint).toBeNull();
-    expect(loadHomeSnapshot).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not fetch money without a session", async () => {
-    const { resolveHomeShell } = await import("./last-home-cookie.server");
-    cookieGet.mockReturnValue(undefined);
-    getSessionUser.mockResolvedValue(null);
-
-    await expect(resolveHomeShell()).resolves.toBeNull();
-    expect(loadHomeSnapshot).not.toHaveBeenCalled();
-  });
-
-  it("fail-closes when the live snapshot belongs to another user", async () => {
-    const { resolveHomeShell } = await import("./last-home-cookie.server");
-    cookieGet.mockReturnValue(undefined);
-    getSessionUser.mockResolvedValue({
-      id: "u1",
-      email: "hugo@example.com",
-    });
-    loadHomeSnapshot.mockResolvedValue({
-      ok: true,
-      data: home({ userId: "u2", remainingTodayMinor: 100_00 }),
-    });
-
-    await expect(resolveHomeShell()).resolves.toBeNull();
-  });
-
-  it("fail-softs when the live snapshot loader errors", async () => {
-    const { resolveHomeShell } = await import("./last-home-cookie.server");
-    cookieGet.mockReturnValue(undefined);
-    getSessionUser.mockResolvedValue({
-      id: "u1",
-      email: "hugo@example.com",
-    });
-    loadHomeSnapshot.mockResolvedValue({
-      ok: false,
-      error: "Kunde inte hämta din ekonomi",
-    });
-
-    await expect(resolveHomeShell()).resolves.toBeNull();
   });
 });
