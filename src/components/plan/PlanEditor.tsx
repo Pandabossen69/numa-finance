@@ -13,7 +13,6 @@ import {
   monthKeyFromDate,
   cumulativePlanSavingsMinor,
   explicitlyLinkedPlanItemIds,
-  suggestPlanLinks,
   applyPlanItemEdits,
   previewPlanSettleEffect,
   planAmountBelowSettledError,
@@ -68,7 +67,6 @@ import {
   deletePlanItemAction,
   importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
-  confirmPlanLinkAction,
   setPlanItemSettledAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
@@ -261,7 +259,7 @@ export function PlanEditor({
   // Publish after commit. Writing to the plan store inside a setState
   // updater ran during render and updated PlanScreen mid-render, which React
   // rejects and which could repaint the list under the user's finger.
-  // Do not depend on ledgerTransactions — Koppla updates that prop and
+  // Do not depend on ledgerTransactions — a ledger-only prop change
   // re-publishing adopted rows looped Plan ("Too many re-renders").
   useEffect(() => {
     publishItems(localItems);
@@ -304,25 +302,6 @@ export function PlanEditor({
   const linkedPlanIds = useMemo(
     () => explicitlyLinkedPlanItemIds(ledgerTransactions),
     [ledgerTransactions],
-  );
-  const linkSuggestions = useMemo(
-    () => [
-      ...suggestPlanLinks({
-        items: projection.incomes,
-        transactions: ledgerTransactions,
-        kind: "income",
-        monthKey,
-        timeZone,
-      }),
-      ...suggestPlanLinks({
-        items: projection.items,
-        transactions: ledgerTransactions,
-        kind: "expense",
-        monthKey,
-        timeZone,
-      }),
-    ],
-    [projection.incomes, projection.items, ledgerTransactions, monthKey, timeZone],
   );
   const savingsTotalMinor = useMemo(
     () => cumulativePlanSavingsMinor(viewItems, monthKey, timeZone),
@@ -801,65 +780,6 @@ export function PlanEditor({
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
           {error}
         </p>
-      ) : null}
-
-      {linkSuggestions.length > 0 ? (
-        <section className="space-y-2" aria-label="Förslag att koppla">
-          <p className="px-1 text-sm font-semibold tracking-tight">Förslag</p>
-          <p className="px-1 text-xs leading-snug text-[var(--numa-faint)]">
-            Liknande belopp nära datumet. Koppla bara om det är rätt räkning —
-            NUMA gissar inte åt dig.
-          </p>
-          <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
-            {linkSuggestions.map((suggestion) => {
-              const item = viewItems.find((row) => row.id === suggestion.planItemId);
-              const tx = ledgerTransactions.find(
-                (row) => row.id === suggestion.transactionId,
-              );
-              if (!item || !tx) return null;
-              return (
-                <li
-                  key={`${suggestion.planItemId}:${suggestion.transactionId}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    <p className="truncate text-xs text-[var(--numa-faint)]">
-                      {tx.description || tx.merchant || "Rörelse"} ·{" "}
-                      {(tx.amountMinor / 100).toLocaleString("sv-SE")} {tx.currency}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className="numa-press shrink-0 rounded-full bg-[var(--numa-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--numa-card)]"
-                    aria-label={`Koppla ${item.name} till transaktionen`}
-                    onClick={() => {
-                      void runMutation({
-                        busy: `link:${suggestion.planItemId}`,
-                        apply: (rows) => rows,
-                        revert: (rows) => rows,
-                        action: () =>
-                          confirmPlanLinkAction({
-                            transactionId: suggestion.transactionId,
-                            itemId: suggestion.planItemId,
-                            clientMutationId: newClientMutationId(),
-                          }),
-                        reconcile: (rows, result) => {
-                          adoptMutationFinance(result);
-                          return result.item
-                            ? mergeReturnedItem(rows, result.item)
-                            : rows;
-                        },
-                      });
-                    }}
-                  >
-                    Koppla
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
       ) : null}
 
       <div className="animate-rise-delay-2 grid gap-4">
