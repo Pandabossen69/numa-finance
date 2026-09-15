@@ -11,6 +11,11 @@ import {
  * First HTML for /idag — last-known numbers only when the cookie is bound
  * to the current session user. Mismatch / no session → no financial shell.
  * Uses getSessionUser (request-cached getSession), not a second Auth getUser.
+ *
+ * Do not await a live Hem money snapshot here. Blocking (main)/layout on
+ * TodaySnapshot regressed cold login→Kvar to ~23s vs prod ~4s (SPEC 6d /
+ * PR #116). Cookie SSR stays for warm; cold stays on the client action
+ * until a non-blocking path exists.
  */
 export async function readLastHomeCookie(): Promise<HomeSnapshot | null> {
   const [jar, user] = await Promise.all([cookies(), getSessionUser()]);

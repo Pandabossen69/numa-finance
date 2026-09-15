@@ -12,9 +12,11 @@ export const dynamic = "force-dynamic";
 
 /**
  * Await last-home cookie before mounting AppShell/TabKeepAlive so the visible
- * /idag panel can SSR Kvar/Över for the same session user (SPEC 6b). The
- * reader fail-closes when cookie.userId is not the current session. Profile
- * and onboarding stay in Suspense.
+ * /idag panel can SSR Kvar/Över for the same session user (SPEC 6b). Cookie
+ * only — never await a live Hem money snapshot here (SPEC 6d: layout-blocked
+ * live load made cold login→Kvar ~23s vs prod ~4s). Fail-closes when
+ * cookie.userId is not the current session. Profile and onboarding stay in
+ * Suspense.
  */
 export default async function MainLayout({
   children,
