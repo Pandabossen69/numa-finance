@@ -9,6 +9,26 @@ export const ALLOWED_IMAGE_MIME = new Set([
   "image/heif",
 ]);
 
+export const INVALID_IMAGE_SV =
+  "Filen är inte en giltig bild (JPEG, PNG, WebP eller HEIC)";
+export const IMAGE_MIME_MISMATCH_SV = "Filtypen stämmer inte med innehållet";
+
+/** Fail-closed image rejection shown to the user. Not an OCR/runtime crash. */
+export class ExpectedImageValidationError extends Error {
+  readonly expected = true as const;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "ExpectedImageValidationError";
+  }
+}
+
+export function isExpectedImageValidationError(
+  error: unknown,
+): error is ExpectedImageValidationError {
+  return error instanceof ExpectedImageValidationError;
+}
+
 export function sniffImageMime(bytes: Uint8Array): string | null {
   if (bytes.length < 12) return null;
   if (JPEG.every((b, i) => bytes[i] === b)) return "image/jpeg";
@@ -27,7 +47,7 @@ export function sniffImageMime(bytes: Uint8Array): string | null {
 export function assertAllowedImageBytes(bytes: Uint8Array, claimedMime?: string): string {
   const sniffed = sniffImageMime(bytes);
   if (!sniffed || !ALLOWED_IMAGE_MIME.has(sniffed)) {
-    throw new Error("Filen är inte en giltig bild (JPEG, PNG, WebP eller HEIC)");
+    throw new ExpectedImageValidationError(INVALID_IMAGE_SV);
   }
   if (
     claimedMime &&
@@ -36,7 +56,7 @@ export function assertAllowedImageBytes(bytes: Uint8Array, claimedMime?: string)
     !(claimedMime === "image/heif" && sniffed === "image/heic") &&
     !(claimedMime === "image/heic" && sniffed === "image/heif")
   ) {
-    throw new Error("Filtypen stämmer inte med innehållet");
+    throw new ExpectedImageValidationError(IMAGE_MIME_MISMATCH_SV);
   }
   return sniffed;
 }
