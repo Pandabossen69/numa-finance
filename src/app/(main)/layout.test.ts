@@ -14,9 +14,9 @@ const idagLoading = readFileSync(
 );
 
 describe("main first-load chrome", () => {
-  it("awaits last-home cookie then paints AppShell (SPEC 6b SSR)", () => {
+  it("awaits Hem shell then paints AppShell (SPEC 6b/6d SSR)", () => {
     expect(layout).toContain("export default async function MainLayout");
-    expect(layout).toContain("readLastHomeCookie");
+    expect(layout).toContain("resolveHomeShell");
     expect(layout).toContain("homeCookieShell");
     expect(layout).toContain("AppShell");
     expect(layout).toContain("redirectIfOnboardingIncomplete");
@@ -30,6 +30,9 @@ describe("main first-load chrome", () => {
     expect(homeCookieServer).toContain("lastHomeCookieForSession");
     expect(homeCookieServer).toContain("getSessionUser");
     expect(homeCookieServer).toContain("Promise.all([cookies(), getSessionUser()])");
+    expect(homeCookieServer).toContain("resolveHomeShell");
+    expect(homeCookieServer).toContain("loadHomeSnapshot");
+    expect(homeCookieServer).toContain("toLastHomeCookieShell");
     expect(homeCookieServer).not.toContain("getVerifiedAuthUser");
     expect(homeCookieServer).not.toContain("getProfile");
     expect(homeCookieServer).not.toContain("auth.getUser()");

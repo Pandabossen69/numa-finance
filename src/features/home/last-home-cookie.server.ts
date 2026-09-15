@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import { loadHomeSnapshot } from "@/features/finance/load-home";
 import { getSessionUser } from "@/features/auth/session";
 import {
   LAST_HOME_COOKIE,
   lastHomeCookieForSession,
   parseLastHomeCookie,
+  toLastHomeCookieShell,
 } from "@/features/home/last-home-cookie";
 
 /**
@@ -18,6 +20,28 @@ export async function readLastHomeCookie(): Promise<HomeSnapshot | null> {
     jar.get(LAST_HOME_COOKIE)?.value,
     user?.id,
   );
+}
+
+/**
+ * Visible keep-alive Hem shell (SPEC 6d).
+ * Warm: session-bound `numa.lastHome.v1` — no money fetch.
+ * Cold (authenticated, no cookie): live `loadHomeSnapshot` so first HTML
+ * paints Kvar/Över instead of HemPending until the client action returns.
+ * Fail-closed on user mismatch; slim shell matches cookie shape.
+ */
+export async function resolveHomeShell(): Promise<HomeSnapshot | null> {
+  const [jar, user] = await Promise.all([cookies(), getSessionUser()]);
+  const fromCookie = lastHomeCookieForSession(
+    jar.get(LAST_HOME_COOKIE)?.value,
+    user?.id,
+  );
+  if (fromCookie) return fromCookie;
+  if (!user?.id) return null;
+
+  const result = await loadHomeSnapshot();
+  if (!result.ok) return null;
+  if (result.data.userId !== user.id) return null;
+  return toLastHomeCookieShell(result.data);
 }
 
 export async function clearLastHomeCookie(): Promise<void> {
