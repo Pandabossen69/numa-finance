@@ -124,6 +124,7 @@ describe("loadMovementsSnapshot", () => {
     expect(src).toContain("sinceIso: MOVEMENTS_LEDGER_SINCE_ISO");
     expect(src).toContain("limit: MOVEMENTS_LEDGER_LIMIT");
     expect(src).toContain("buildMovementsSnapshot");
+    expect(src).toContain("sortNewestFirst");
     expect(src).toContain("projectLedgerToCanonicalThb");
     expect(src).not.toContain("t.accountId === primary.id");
   });
@@ -169,10 +170,10 @@ describe("buildMovementsSnapshot", () => {
       now,
     });
 
-    expect(view.items.map((row) => row.id).sort()).toEqual([
+    expect(view.items.map((row) => row.id)).toEqual([
+      "sek-exp",
       "coffee",
       "lunch",
-      "sek-exp",
     ]);
     expect(view.monthExpenseMinor).toBe(1_200_00 + 88_00 + 320_00);
     expect(view.items.find((row) => row.id === "coffee")?.amountMinor).toBe(88_00);
@@ -181,6 +182,40 @@ describe("buildMovementsSnapshot", () => {
     expect(view.items.find((row) => row.id === "sek-exp")?.nativeAmountMinor).toBe(100_00);
     expect(view.items.find((row) => row.id === "sek-exp")?.nativeCurrency).toBe("SEK");
     expect(view.balanceMinor).toBe(50_000_00 - 1_200_00 + 2_000_00 - 88_00 + 3_200_00 - 320_00);
+  });
+
+  it("keeps same-day rows stable by createdAt then id", () => {
+    const day = "2026-09-04T00:00:00.000Z";
+    const view = buildMovementsSnapshot({
+      accounts: [primary],
+      transactions: [
+        tx({
+          id: "b",
+          accountId: "bank",
+          amountMinor: 10_00,
+          occurredAt: day,
+          createdAt: "2026-09-04T08:00:00.000Z",
+        }),
+        tx({
+          id: "a",
+          accountId: "bank",
+          amountMinor: 10_00,
+          occurredAt: day,
+          createdAt: "2026-09-04T08:00:00.000Z",
+        }),
+        tx({
+          id: "c",
+          accountId: "bank",
+          amountMinor: 10_00,
+          occurredAt: day,
+          createdAt: "2026-09-04T12:00:00.000Z",
+        }),
+      ],
+      checkpoints: [checkpoint("bank", 50_000_00)],
+      timeZone: tz,
+      now,
+    });
+    expect(view.items.map((row) => row.id)).toEqual(["c", "a", "b"]);
   });
 
   it("lists transfers without counting them as spend", () => {

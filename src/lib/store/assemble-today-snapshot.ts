@@ -13,6 +13,7 @@ import {
   projectLedgerToCanonicalThb,
   projectPayCycle,
   projectPlanForMonth,
+  sortNewestFirst,
   spendingByMonthKey,
   totalSaldoThbMinor,
   type Account,
@@ -163,9 +164,7 @@ export function assembleTodaySnapshot(input: {
   const todayPlannedPaidMinor = windows.today.plannedPaid.amountMinor;
   const monthSpendingMinor = windows.month.total.amountMinor;
   const cycleSpendingMinor = windows.cycle.total.amountMinor;
-  const recentTransactions = [...transactions]
-    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-    .slice(0, 8);
+  const recentTransactions = sortNewestFirst(transactions).slice(0, 8);
 
   return {
     profile,

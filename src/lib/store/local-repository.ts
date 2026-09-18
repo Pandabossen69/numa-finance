@@ -30,6 +30,8 @@ import {
   parsePlanCategoryKind,
   type Profile,
   type SourceObservation,
+  sortAccountsForList,
+  sortNewestFirst,
   type TransactionSource,
 } from "@/domain/finance";
 import { type CurrencyCode } from "@/domain/money";
@@ -112,12 +114,12 @@ export async function setGettingStartedCollapsed(collapsed: boolean): Promise<vo
 
 export async function listAccounts(): Promise<Account[]> {
   const store = await readStore();
-  return store.accounts.filter((a) => a.isActive);
+  return sortAccountsForList(store.accounts.filter((a) => a.isActive));
 }
 
 export async function listArchivedAccounts(): Promise<Account[]> {
   const store = await readStore();
-  return store.accounts.filter((a) => !a.isActive);
+  return sortAccountsForList(store.accounts.filter((a) => !a.isActive));
 }
 
 export async function getAccount(accountId: string): Promise<Account | null> {
@@ -873,9 +875,9 @@ export async function listTransactions(
   options?: { sinceIso?: string; limit?: number },
 ): Promise<CanonicalTransaction[]> {
   const store = await readStore();
-  let rows = store.transactions
-    .filter((t) => (accountId ? t.accountId === accountId : true))
-    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+  let rows = sortNewestFirst(
+    store.transactions.filter((t) => (accountId ? t.accountId === accountId : true)),
+  );
   if (options?.sinceIso) {
     const since = Date.parse(options.sinceIso);
     rows = rows.filter((t) => Date.parse(t.occurredAt) >= since);
@@ -890,14 +892,14 @@ export async function listTransactionsByPlanItemId(
   planItemId: string,
 ): Promise<CanonicalTransaction[]> {
   const store = await readStore();
-  return store.transactions
-    .filter(
+  return sortNewestFirst(
+    store.transactions.filter(
       (t) =>
         t.planItemId === planItemId &&
         t.status !== "voided" &&
         t.userId === LOCAL_DEMO_USER_ID,
-    )
-    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
+    ),
+  );
 }
 
 export async function listConfirmedPlanSettleLedgers(): Promise<

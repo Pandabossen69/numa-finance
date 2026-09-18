@@ -21,6 +21,7 @@ import {
   planWealthTotalMinor,
   visibleMonthKeysForYear,
   yearFromMonthKey,
+  sortNewestFirst,
   type SpendingCategoryTotal,
 } from "@/domain/finance";
 import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
@@ -115,9 +116,7 @@ export function AnalysDashboard({
         : Number.POSITIVE_INFINITY;
       return at >= from && at <= to;
     });
-    return [...inScope]
-      .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-      .slice(0, 8);
+    return sortNewestFirst(inScope).slice(0, 8);
   }, [view, scope, activeMonthKey]);
 
   if (!view || !month || !activeMonthKey) {

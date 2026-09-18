@@ -359,28 +359,36 @@ describe("plan-months", () => {
 
   it("sorts open, then Delvis, then Betald — paid always last", () => {
     const paid = item({
+      id: "paid",
       name: "GHK-Cu",
       kind: "mandatory",
       amountMinor: 1290_00,
+      nextDueAt: "2026-09-01T00:00:00.000Z",
       settledAt: "2026-08-27T12:00:00.000Z",
     });
     const openA = item({
+      id: "open-a",
       name: "Chatgpt",
       kind: "mandatory",
       amountMinor: 650_00,
+      nextDueAt: "2026-09-03T00:00:00.000Z",
     });
     const openB = item({
+      id: "open-b",
       name: "Cursor",
       kind: "mandatory",
       amountMinor: 3500_00,
+      nextDueAt: "2026-09-10T00:00:00.000Z",
     });
     const partial = item({
+      id: "partial",
       name: "Aylis/Unseen",
       kind: "mandatory",
       amountMinor: 26000_00,
+      nextDueAt: "2026-09-02T00:00:00.000Z",
       settledMinor: 2000_00,
     });
-    const sorted = sortPlanRowsForList([paid, openA, openB, partial]);
+    const sorted = sortPlanRowsForList([paid, openB, openA, partial]);
     expect(sorted.map((row) => row.name)).toEqual([
       "Chatgpt",
       "Cursor",
@@ -391,24 +399,57 @@ describe("plan-months", () => {
     expect(planListStatus(paid)).toBe("settled");
   });
 
+  it("orders open rows by soonest due date, then id — not by name", () => {
+    const later = item({
+      id: "z-later",
+      name: "Abonnemang",
+      kind: "mandatory",
+      amountMinor: 200_00,
+      nextDueAt: "2026-09-20T00:00:00.000Z",
+    });
+    const sooner = item({
+      id: "a-sooner",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 8_000_00,
+      nextDueAt: "2026-09-05T00:00:00.000Z",
+    });
+    const sameDayB = item({
+      id: "b",
+      name: "Zoo",
+      kind: "mandatory",
+      amountMinor: 100_00,
+      nextDueAt: "2026-09-05T00:00:00.000Z",
+    });
+    expect(
+      sortPlanRowsForList([later, sameDayB, sooner]).map((row) => row.name),
+    ).toEqual(["Hyra", "Zoo", "Abonnemang"]);
+  });
+
   it("never treats a ledger match as Betald — only the user's own tap counts", () => {
     // Hugo never tapped these. A nearby ledger transaction must not paint
     // them Betald/Mottagen, sink them in the list, or claim they are settled.
     const loan = item({
+      id: "loan",
       name: "Pappa",
       kind: "mandatory",
       amountMinor: 15000_00,
+      nextDueAt: "2026-09-20T00:00:00.000Z",
     });
     const websiteIncome = item({
+      id: "site",
       name: "Hemsida",
       kind: "expected",
       cadence: "income",
       amountMinor: 8000_00,
+      nextDueAt: "2026-09-01T00:00:00.000Z",
     });
     const open = item({
+      id: "el",
       name: "El",
       kind: "mandatory",
       amountMinor: 800_00,
+      nextDueAt: "2026-09-10T00:00:00.000Z",
     });
 
     expect(planListStatus(loan)).toBe("open");
@@ -417,11 +458,11 @@ describe("plan-months", () => {
     expect(isPlanPartiallySettled(loan)).toBe(false);
     expect(isPlanSettled(websiteIncome)).toBe(false);
 
-    // Order is the caller's order — a match cannot reorder anything.
+    // Status + due date only — a match cannot reorder anything.
     expect(sortPlanRowsForList([loan, open, websiteIncome]).map((row) => row.name)).toEqual([
-      "Pappa",
-      "El",
       "Hemsida",
+      "El",
+      "Pappa",
     ]);
   });
 

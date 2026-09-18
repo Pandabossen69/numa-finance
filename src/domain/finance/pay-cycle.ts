@@ -118,7 +118,9 @@ function realIncomeDates(
       monthKey: monthKeyFromDate(new Date(item.nextDueAt), timeZone),
     });
   }
-  out.sort((a, b) => a.at - b.at || a.item.name.localeCompare(b.item.name));
+  out.sort(
+    (a, b) => a.at - b.at || a.item.name.localeCompare(b.item.name) || a.item.id.localeCompare(b.item.id),
+  );
   return out;
 }
 
@@ -130,7 +132,7 @@ function groupByMonth(dated: DatedIncome[]): Map<string, DatedIncome[]> {
     map.set(row.monthKey, list);
   }
   for (const list of map.values()) {
-    list.sort((a, b) => a.at - b.at);
+    list.sort((a, b) => a.at - b.at || a.item.id.localeCompare(b.item.id));
   }
   return map;
 }
@@ -196,7 +198,10 @@ export function expensesInWindow(
     }
   }
 
-  result.sort((a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt));
+  result.sort(
+    (a, b) =>
+      Date.parse(a.dueAt) - Date.parse(b.dueAt) || a.item.id.localeCompare(b.item.id),
+  );
   return result;
 }
 

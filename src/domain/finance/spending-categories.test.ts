@@ -85,6 +85,19 @@ describe("spendingCategoriesByMonthKey", () => {
     expect(Object.keys(categories).sort()).toEqual(Object.keys(totals).sort());
   });
 
+  it("breaks equal amounts with Swedish name order", () => {
+    const tied = spendingCategoriesByMonthKey({
+      transactions: [
+        tx({ amountMinor: 200_00, category: "Övrigt", occurredAt: "2026-08-02T09:00:00.000Z" }),
+        tx({ amountMinor: 200_00, category: "Åka", occurredAt: "2026-08-03T09:00:00.000Z" }),
+        tx({ amountMinor: 200_00, category: "Mat", occurredAt: "2026-08-04T09:00:00.000Z" }),
+      ],
+      currency: "THB",
+      timeZone: TZ,
+    });
+    expect(tied["2026-08"]?.map((c) => c.name)).toEqual(["Mat", "Åka", "Övrigt"]);
+  });
+
   it("leaves out income and rows that are not confirmed", () => {
     const names = categories["2026-08"]?.map((c) => c.name) ?? [];
     expect(names).not.toContain("Shopping");

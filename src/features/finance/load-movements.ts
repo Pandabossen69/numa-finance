@@ -11,6 +11,7 @@ import {
   filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
   projectLedgerToCanonicalThb,
+  sortNewestFirst,
   totalSaldoThbMinor,
   type Account,
   type BalanceCheckpoint,
@@ -158,9 +159,7 @@ export function buildMovementsSnapshot(input: {
     }
   }
 
-  const items: MovementRow[] = [...confirmed]
-    .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-    .map((tx) => {
+  const items: MovementRow[] = sortNewestFirst(confirmed).map((tx) => {
       const projected = canonicalById.get(tx.id);
       const amountMinor = projected?.amountMinor ?? tx.thbMinor ?? tx.amountMinor;
       const currency = (projected?.currency ??
