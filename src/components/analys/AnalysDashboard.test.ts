@@ -151,6 +151,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("currency={tx.currency}");
     expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
     expect(src).toContain("addMonthsKey(activeMonthKey, -1)");
+    expect(src).toContain("spentMinor > 0 && previousSpentMinor > 0");
     expect(src).toContain("spendingCategoriesInWindow({");
     expect(src).toContain("SpendByCategory");
     expect(src).toContain("SV.vartGickPengarna");

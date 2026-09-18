@@ -145,7 +145,7 @@ export function AnalysDashboard({
     view.categoriesByMonthKey[previousMonthKey] ?? [],
   );
   const spendComparison =
-    scope === "month" && previousSpentMinor > 0
+    scope === "month" && spentMinor > 0 && previousSpentMinor > 0
       ? {
           deltaMinor: spentMinor - previousSpentMinor,
           monthName: labelMonthNameSv(previousMonthKey).toLocaleLowerCase("sv-SE"),
