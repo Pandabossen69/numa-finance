@@ -1,27 +1,126 @@
 import {
   LOAD_TIMEOUT_MESSAGE_SV,
   loadErrorMessageSv,
-  withTimeout,
 } from "@/lib/async";
-import type { AnalysSnapshotResult } from "@/features/finance/load-analys";
+import type {
+  AnalysSnapshot,
+  AnalysSnapshotResult,
+} from "@/features/finance/load-analys";
 
 /** Client cap so reload never sits on «Hämtar analysen…» past ~5s. */
 export const ANALYS_CLIENT_TIMEOUT_MS = 4_500;
 
+let inflight: Promise<AnalysSnapshotResult> | null = null;
+let lastResult: AnalysSnapshotResult | null = null;
+let pendingStartedAt = 0;
+let retryHandler: (() => void) | null = null;
+
+/** Last-known must have the fields the dashboard needs to leave pending. */
+export function analysViewCanPaint(
+  snap: AnalysSnapshot | null | undefined,
+): boolean {
+  return Boolean(snap?.month && snap.currentMonthKey);
+}
+
+export function lastAnalysFetchResult(): AnalysSnapshotResult | null {
+  return lastResult;
+}
+
+export function markAnalysPendingStarted(now = Date.now()): void {
+  if (!pendingStartedAt) pendingStartedAt = now;
+}
+
+export function clearAnalysPendingClock(): void {
+  pendingStartedAt = 0;
+}
+
+export function analysPendingHasExpired(now = Date.now()): boolean {
+  return pendingStartedAt > 0 && now - pendingStartedAt >= ANALYS_CLIENT_TIMEOUT_MS;
+}
+
+export function analysPendingRemainingMs(now = Date.now()): number {
+  if (!pendingStartedAt) return ANALYS_CLIENT_TIMEOUT_MS;
+  return Math.max(0, ANALYS_CLIENT_TIMEOUT_MS - (now - pendingStartedAt));
+}
+
+export function registerAnalysClientRetry(handler: () => void): () => void {
+  retryHandler = handler;
+  return () => {
+    if (retryHandler === handler) retryHandler = null;
+  };
+}
+
+/** Drop a prior fail-soft so the next mount/tap can fetch again. */
+export function resetAnalysClientFetch(): void {
+  lastResult = null;
+  inflight = null;
+  pendingStartedAt = 0;
+}
+
+export function requestAnalysClientRetry(): void {
+  const handler = retryHandler;
+  resetAnalysClientFetch();
+  handler?.();
+}
+
+/** Test helper — reset module state between unit cases. */
+export function resetAnalysClientFetchForTests(): void {
+  resetAnalysClientFetch();
+  retryHandler = null;
+}
+
 /**
- * Fetch Analys with a hard client timeout. Server-action transport can hang
- * after the snapshot timer; the UI must still fail-soft in Swedish.
+ * Fetch Analys with a hard client timeout that does not Promise.race the
+ * server-action thenable. Next.js production dispatches actions inside
+ * startTransition and the Flight POST (plus RSC re-render from the root)
+ * can remount the route before `withTimeout` settles — preview still
+ * fail-softs because the action body returns. The timer below is the UI cap.
  */
-export async function fetchAnalysSnapshotClient(
+export function fetchAnalysSnapshotClient(
   load: () => Promise<AnalysSnapshotResult>,
   timeoutMs = ANALYS_CLIENT_TIMEOUT_MS,
 ): Promise<AnalysSnapshotResult> {
-  try {
-    return await withTimeout(load(), timeoutMs, "analysSnapshot");
-  } catch (error) {
-    return {
-      ok: false,
-      error: loadErrorMessageSv(error, LOAD_TIMEOUT_MESSAGE_SV),
+  markAnalysPendingStarted();
+  if (inflight) return inflight;
+  inflight = settleAnalysFetch(load, timeoutMs).finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+function settleAnalysFetch(
+  load: () => Promise<AnalysSnapshotResult>,
+  timeoutMs: number,
+): Promise<AnalysSnapshotResult> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: AnalysSnapshotResult) => {
+      if (settled) return;
+      settled = true;
+      lastResult = result;
+      if (result.ok) clearAnalysPendingClock();
+      resolve(result);
     };
-  }
+
+    const timer = setTimeout(() => {
+      finish({
+        ok: false,
+        error: LOAD_TIMEOUT_MESSAGE_SV,
+      });
+    }, timeoutMs);
+
+    void Promise.resolve()
+      .then(() => load())
+      .then((result) => {
+        clearTimeout(timer);
+        finish(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        finish({
+          ok: false,
+          error: loadErrorMessageSv(error, LOAD_TIMEOUT_MESSAGE_SV),
+        });
+      });
+  });
 }

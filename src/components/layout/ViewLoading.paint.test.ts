@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -8,6 +9,8 @@ import {
   HomeViewLoading,
   ViewLoading,
 } from "./ViewLoading";
+
+const analysSrc = readFileSync(new URL("./ViewLoading.tsx", import.meta.url), "utf8");
 
 describe("first-paint pending", () => {
   it("paints a short Analys purpose pending, never Hem kvar idag", () => {
@@ -22,6 +25,11 @@ describe("first-paint pending", () => {
     expect(analys).toContain("Hur går det");
     expect(analys).toContain("Se vart pengarna gick");
     expect(analys).not.toContain("Kvar idag");
+    expect(analysSrc).toContain("analysPendingHasExpired");
+    expect(analysSrc).toContain("AnalysFailSoft");
+    expect(analysSrc).not.toContain("RetryLoadButton");
+    expect(analysSrc).toContain("analysPendingHasExpired");
+    expect(analysSrc).toContain("AnalysFailSoft");
     expect(analys).not.toContain("kvar i perioden");
     expect(analys).not.toContain("h-[10.5rem]");
     expect(hem).toContain("Hämtar läget");

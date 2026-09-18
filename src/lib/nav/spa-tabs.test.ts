@@ -66,7 +66,9 @@ describe("SPA keep-alive primary tabs", () => {
     // Analys always fetches under a client timeout — last-known is not enough
     // to skip, because a hung reload otherwise stays on «Hämtar analysen…».
     expect(analys).toContain("fetchAnalysSnapshotClient");
+    expect(analys).toContain("lastAnalysFetchResult");
     expect(analys).not.toContain("if (lastAnalysSnapshot()) return");
+    expect(analys).not.toContain("if (!lastAnalysSnapshot()) setError");
     expect(movements).toContain("if (lastMovementsSnapshot()) return;");
     expect(mer).toContain("if (lastMerSnapshot()) return;");
   });

@@ -18,7 +18,10 @@ describe("/analys loading shell", () => {
     expect(routeClient).toContain("getAnalysSnapshotAction");
     expect(routeClient).toContain("fetchAnalysSnapshotClient");
     expect(routeClient).toContain("scheduleQuietMenuWarm");
+    expect(routeClient).toContain("analysViewCanPaint");
+    expect(routeClient).toContain("lastAnalysFetchResult");
     expect(routeClient).not.toContain("if (lastAnalysSnapshot()) return");
+    expect(routeClient).not.toContain("if (!lastAnalysSnapshot()) setError");
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("AnalysFirstPaint");
     expect(loading).not.toContain("AnalysViewLoading");

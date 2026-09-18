@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { AnalysPending } from "@/components/layout/ViewLoading";
+import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import {
   DestinationWarmup,
@@ -32,7 +32,6 @@ import {
   rememberAnalysScope,
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
-import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
@@ -111,16 +110,7 @@ export function AnalysDashboard({
 
   if (!view || !month || !activeMonthKey) {
     if (!error) return <AnalysPending />;
-    return (
-      <div className="numa-panel-strong animate-rise space-y-3 p-5">
-        <p className="text-sm font-semibold">Kunde inte hämta analysen</p>
-        <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
-        <p className="text-sm leading-snug text-[var(--numa-faint)]">
-          {SV.analysHint}
-        </p>
-        <RetryLoadButton />
-      </div>
-    );
+    return <AnalysFailSoft error={error} />;
   }
 
   const { currency, cycle } = view;
