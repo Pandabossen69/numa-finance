@@ -291,6 +291,11 @@ export function PlanRows({
           });
         } else if (status === "partial") {
           menuItems.push({
+            label: doneLabel,
+            disabled: pendingId === item.id && pendingAction === "settle",
+            onSelect: () => onMarkRemainder(item.id),
+          });
+          menuItems.push({
             label: addPartialLabel,
             onSelect: () => {
               setConfirmId(null);
