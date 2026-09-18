@@ -270,8 +270,8 @@ describe("Analys month result color", () => {
   });
 
   it("shows a Swedish fail-soft if Analys never arrives", () => {
-    expect(src).toContain("Kunde inte hämta analysen");
-    expect(src).toContain("RetryLoadButton");
+    expect(src).toContain("AnalysFailSoft");
+    expect(src).not.toContain("RetryLoadButton");
     expect(src).not.toContain("financeTruthMessageSv");
   });
 });

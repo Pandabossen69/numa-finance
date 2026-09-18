@@ -69,6 +69,11 @@ describe("cold Hem/Analys hang contract", () => {
     expect(viewLoading).toContain("Hämtar läget…");
     expect(viewLoading).toContain("Hämtar analysen…");
     expect(analysClient).toContain("fetchAnalysSnapshotClient");
+    expect(analysClient).toContain("analysViewCanPaint");
+    expect(analysClient).toContain("lastAnalysFetchResult");
+    expect(viewLoading).toContain("analysPendingHasExpired");
+    expect(viewLoading).toContain("AnalysFailSoft");
+    expect(viewLoading).not.toContain("RetryLoadButton");
     const action = readFileSync(
       new URL("../../features/finance/analys-snapshot.ts", import.meta.url),
       "utf8",

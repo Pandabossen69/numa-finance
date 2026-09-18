@@ -1,6 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { SV } from "@/features/copy/labels-sv";
+import { LOAD_TIMEOUT_MESSAGE_SV } from "@/lib/async";
+import {
+  analysPendingHasExpired,
+  analysPendingRemainingMs,
+  markAnalysPendingStarted,
+  requestAnalysClientRetry,
+} from "@/features/finance/analys-client-fetch";
 
 /**
  * Calm route pending — text + thin bars, never near-empty mint cards.
@@ -61,11 +69,49 @@ export function HomeViewLoading() {
   );
 }
 
+/** Swedish fail-soft — no auto router.refresh (that put prod back on pending). */
+export function AnalysFailSoft({ error }: { error?: string | null }) {
+  return (
+    <div className="numa-panel-strong animate-rise space-y-3 p-5">
+      <p className="text-sm font-semibold">Kunde inte hämta analysen</p>
+      <p className="text-sm text-[var(--numa-muted)]">
+        {error ?? LOAD_TIMEOUT_MESSAGE_SV}
+      </p>
+      <p className="text-sm leading-snug text-[var(--numa-faint)]">
+        {SV.analysHint}
+      </p>
+      <button
+        type="button"
+        className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
+        onClick={() => requestAnalysClientRetry()}
+      >
+        Försök igen
+      </button>
+    </div>
+  );
+}
+
 /**
  * Analys pending — purpose copy only. Never reprint Hem's Kvar idag
  * (that made reload look like a hung Hem card).
+ * Production can remount this from loading.tsx / dest-loading while the
+ * action Flight POST is open — the clock is module-scoped so «Hämtar
+ * analysen…» fail-softs within ~5s even when the route client unmounts.
  */
 export function AnalysPending() {
+  const [giveUp, setGiveUp] = useState(analysPendingHasExpired);
+
+  useEffect(() => {
+    if (giveUp) return;
+    markAnalysPendingStarted();
+    const timer = window.setTimeout(() => {
+      setGiveUp(true);
+    }, analysPendingRemainingMs());
+    return () => window.clearTimeout(timer);
+  }, [giveUp]);
+
+  if (giveUp) return <AnalysFailSoft />;
+
   return (
     <div
       className="numa-page numa-page-wide space-y-3 pt-1"
