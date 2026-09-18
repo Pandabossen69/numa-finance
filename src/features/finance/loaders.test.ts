@@ -15,6 +15,10 @@ import {
 const home = readFileSync(new URL("./load-home.ts", import.meta.url), "utf8");
 const plan = readFileSync(new URL("./load-plan.ts", import.meta.url), "utf8");
 const analys = readFileSync(new URL("./load-analys.ts", import.meta.url), "utf8");
+const report = readFileSync(
+  new URL("../../lib/observe/report.ts", import.meta.url),
+  "utf8",
+);
 const movements = readFileSync(
   new URL("./load-movements.ts", import.meta.url),
   "utf8",
@@ -53,6 +57,19 @@ describe("Hem / Plan / Analys loader contract", () => {
     expect(home).not.toContain("getUserProgress");
     expect(plan).not.toContain("getUserProgress");
     expect(analys).not.toContain("getUserProgress");
+  });
+
+  it("keeps loader reportError and classifies snapshot timeouts in reportError", () => {
+    expect(home).toContain('void reportError("loader.home"');
+    expect(plan).toContain('void reportError("loader.plan"');
+    expect(analys).toContain('void reportError("loader.analys"');
+    expect(home).toContain("loadErrorMessageSv");
+    expect(plan).toContain("loadErrorMessageSv");
+    expect(analys).toContain("loadErrorMessageSv");
+    expect(report).toContain("isTimeoutError");
+    expect(report).toMatch(
+      /if \(isTimeoutError\(error\)\) \{\s*console\.warn[\s\S]*?return;/,
+    );
   });
 
   it("lets Rörelser fetch its own ledger instead of the Hem snapshot", () => {
