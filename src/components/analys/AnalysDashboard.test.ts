@@ -116,7 +116,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("lastAnalysSnapshot");
     expect(src).toContain("rememberAnalysSnapshot");
     expect(src).toContain("AnalysPending");
-    expect(src).toContain("lastHomeSnapshot");
+    expect(src).not.toContain("lastHomeSnapshot");
     expect(src).not.toContain("AnalysViewLoading");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
@@ -259,5 +259,19 @@ describe("Analys month result color", () => {
     expect(src).toContain("SV.analysHint");
     expect(src).toContain("SV.hurGarDet");
     expect(src).toContain("SV.analysEmptyPeriod");
+  });
+
+  it("always prints the pay-cycle start and end next to kvar", () => {
+    expect(src).toContain("cycle.startLabelSv && cycle.endLabelSv");
+    expect(src).toContain("cycleRangeLabel");
+    expect(src).toContain("cycleRangeLabel ??");
+    expect(src).toContain("hint={periodGoingHint}");
+    expect(src).toContain("{cycleRangeLabel}");
+  });
+
+  it("shows a Swedish fail-soft if Analys never arrives", () => {
+    expect(src).toContain("Kunde inte hämta analysen");
+    expect(src).toContain("RetryLoadButton");
+    expect(src).not.toContain("financeTruthMessageSv");
   });
 });

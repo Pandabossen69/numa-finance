@@ -136,4 +136,35 @@ describe("last-known persist", () => {
     );
     expect(readPersistedLastKnown()?.movements?.items).toHaveLength(50);
   });
+
+  it("keeps Analys period dates and drops unused plan lists", () => {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: memoryStorage(),
+    });
+    mockDocumentCookie();
+    writePersistedLastKnown(
+      payload({
+        analys: {
+          currency: "THB",
+          cycle: {
+            startLabelSv: "1 sep.",
+            endLabelSv: "1 okt.",
+            incomes: [{ id: "i1" }],
+            expenses: [{ id: "e1" }],
+          },
+          goals: [{ id: "g1" }],
+          ledgerTransactions: [{ id: "t1" }],
+        } as never,
+      }),
+    );
+    const next = readPersistedLastKnown()?.analys;
+    expect(next?.cycle.startLabelSv).toBe("1 sep.");
+    expect(next?.cycle.endLabelSv).toBe("1 okt.");
+    expect(next?.cycle.incomes).toEqual([]);
+    expect(next?.cycle.expenses).toEqual([]);
+    expect(next?.goals).toEqual([]);
+    expect(next?.ledgerTransactions).toHaveLength(1);
+  });
 });
+

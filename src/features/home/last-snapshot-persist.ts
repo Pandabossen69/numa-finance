@@ -44,6 +44,20 @@ function slimMovements(snap: MovementsSnapshot | null): MovementsSnapshot | null
   return { ...snap, items: snap.items.slice(0, MAX_MOVEMENT_ITEMS) };
 }
 
+/** Drop unused Analys lists so quota is less likely to evict the whole page. */
+function slimAnalys(snap: AnalysSnapshot | null): AnalysSnapshot | null {
+  if (!snap) return null;
+  return {
+    ...snap,
+    goals: [],
+    cycle: {
+      ...snap.cycle,
+      incomes: [],
+      expenses: [],
+    },
+  };
+}
+
 export function readPersistedLastKnown(): PersistedLastKnown | null {
   const storage = persistStorage();
   if (!storage) return null;
@@ -65,6 +79,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
     ...data,
     v: 1,
     movements: slimMovements(data.movements),
+    analys: slimAnalys(data.analys),
   };
   // Cookie must land even when localStorage is unavailable — layout SSR
   // reads numa.lastHome.v1 for first Kvar/Över (SPEC 6b).

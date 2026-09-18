@@ -63,7 +63,9 @@ describe("SPA keep-alive primary tabs", () => {
     const movements = read("../../components/movements/MovementsRouteClient.tsx");
     const mer = read("../../components/mer/MerRouteClient.tsx");
     expect(plan).toContain("if (lastPlanSnapshot()) return;");
-    expect(analys).toContain("if (lastAnalysSnapshot()) return;");
+    expect(analys).toMatch(
+      /if \(lastAnalysSnapshot\(\)\) \{\s*scheduleQuietMenuWarm\(\);\s*return;/,
+    );
     expect(movements).toContain("if (lastMovementsSnapshot()) return;");
     expect(mer).toContain("if (lastMerSnapshot()) return;");
   });

@@ -12,10 +12,9 @@ import {
   lastAnalysSnapshot,
   lastMerSnapshot,
   lastSessionHomeSnapshot,
+  subscribeAnalysSnapshot,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
-
-const subscribeNever = () => () => {};
 
 /** Session-confirmed Hem only — never hydrate/cookie as live kvar/Över. */
 function readSessionHome() {
@@ -35,17 +34,12 @@ export function HemFirstPaint() {
 
 export function AnalysFirstPaint() {
   const analys = useSyncExternalStore(
-    subscribeNever,
+    subscribeAnalysSnapshot,
     lastAnalysSnapshot,
     () => null,
   );
-  const home = useSyncExternalStore(
-    subscribeHomeSnapshot,
-    readSessionHome,
-    () => null,
-  );
   if (analys) return <AnalysDashboard data={analys} />;
-  return <AnalysPending home={home} />;
+  return <AnalysPending />;
 }
 
 /** Parent (main)/loading.tsx — pick dest last-known from the URL. */

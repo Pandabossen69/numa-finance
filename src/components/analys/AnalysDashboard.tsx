@@ -26,7 +26,6 @@ import {
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
-  lastHomeSnapshot,
   lastPlanView,
   rememberPlanView,
   subscribePlanView,
@@ -45,7 +44,6 @@ import {
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
-import { financeTruthMessageSv } from "@/features/finance/finance-truth-copy";
 
 type AnalysScope = "period" | "month";
 
@@ -112,11 +110,14 @@ export function AnalysDashboard({
   }, [view, scope, activeMonthKey]);
 
   if (!view || !month || !activeMonthKey) {
-    if (!error) return <AnalysPending home={lastHomeSnapshot()} />;
+    if (!error) return <AnalysPending />;
     return (
       <div className="numa-panel-strong animate-rise space-y-3 p-5">
-        <p className="text-sm font-semibold">{financeTruthMessageSv({ truthStatus: "unavailable" }).title}</p>
+        <p className="text-sm font-semibold">Kunde inte hämta analysen</p>
         <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
+        <p className="text-sm leading-snug text-[var(--numa-faint)]">
+          {SV.analysHint}
+        </p>
         <RetryLoadButton />
       </div>
     );
@@ -169,12 +170,15 @@ export function AnalysDashboard({
   const isEmpty = cycle.livingMode === "empty";
   const hasSaldo = view.hasBankTruth && view.calculatedBalanceMinor != null;
   const daysLeftLabel = formatDaysUntilSv(cycle.daysLeft);
+  const cycleRangeLabel =
+    cycle.startLabelSv && cycle.endLabelSv
+      ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
+      : null;
   const cycleTitle =
-    isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
+    cycleRangeLabel ??
+    (isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
       ? `Fram till ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
-      : cycle.startLabelSv && cycle.endLabelSv
-        ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
-        : "Ingen period ännu";
+      : "Ingen period ännu");
   const spentLabel =
     scope === "month" ? SV.spenderatIManaden : SV.spenderatIPerioden;
   const spentMeta =
@@ -187,15 +191,20 @@ export function AnalysDashboard({
           )} ${spendComparison.deltaMinor > 0 ? "mer" : "mindre"} än ${spendComparison.monthName}`;
   const categoryEmpty =
     scope === "month" ? SV.analysEmptySpendMonth : SV.analysEmptySpendPeriod;
-  const periodGoingHint = isBridge
-    ? hasSaldo
-      ? daysLeftLabel
-      : "Ange saldo på Hem"
-    : isEmpty
-      ? SV.analysEmptyPeriod
-      : cycle.isActive
+  const periodGoingHint = [
+    cycleRangeLabel,
+    isBridge
+      ? hasSaldo
         ? daysLeftLabel
-        : SV.analysEmptyPeriod;
+        : "Ange saldo på Hem"
+      : isEmpty
+        ? SV.analysEmptyPeriod
+        : cycle.isActive
+          ? daysLeftLabel
+          : SV.analysEmptyPeriod,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const showPeriodKvar = !isEmpty && !(isBridge && !hasSaldo);
   const periodKvarMinor = isBridge && !hasSaldo ? 0 : cycle.remainingFreeMinor;
 
@@ -237,7 +246,7 @@ export function AnalysDashboard({
             spentLabel={spentLabel}
             spentMinor={isEmpty ? 0 : spentMinor}
             currency={currency}
-            meta={isEmpty ? SV.analysEmptyPeriod : undefined}
+            meta={isEmpty ? SV.analysEmptyPeriod : daysLeftLabel}
           />
 
           {isEmpty ? (
@@ -259,6 +268,11 @@ export function AnalysDashboard({
                 <h2 id="analys-hur" className="numa-section-title px-1">
                   {SV.hurGarDet}
                 </h2>
+                {cycleRangeLabel ? (
+                  <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
+                    {cycleRangeLabel}
+                  </p>
+                ) : null}
                 <div className="numa-panel-list numa-money-stack px-4 py-1">
                   {showPeriodKvar ? (
                     <MetricRow
