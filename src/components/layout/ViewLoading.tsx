@@ -102,16 +102,13 @@ export function AnalysPending() {
   const [giveUp, setGiveUp] = useState(analysPendingHasExpired);
 
   useEffect(() => {
+    if (giveUp) return;
     markAnalysPendingStarted();
-    if (analysPendingHasExpired()) {
-      setGiveUp(true);
-      return;
-    }
     const timer = window.setTimeout(() => {
       setGiveUp(true);
     }, analysPendingRemainingMs());
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [giveUp]);
 
   if (giveUp) return <AnalysFailSoft />;
 

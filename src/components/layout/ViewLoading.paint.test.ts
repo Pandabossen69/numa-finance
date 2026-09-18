@@ -28,8 +28,10 @@ describe("first-paint pending", () => {
     expect(analysSrc).toContain("analysPendingHasExpired");
     expect(analysSrc).toContain("AnalysFailSoft");
     expect(analysSrc).not.toContain("RetryLoadButton");
-    expect(analysSrc).toContain("analysPendingHasExpired");
-    expect(analysSrc).toContain("AnalysFailSoft");
+    expect(analysSrc).toContain("useState(analysPendingHasExpired)");
+    expect(analysSrc).not.toMatch(
+      /if \(analysPendingHasExpired\(\)\) \{\s*setGiveUp\(true\)/,
+    );
     expect(analys).not.toContain("kvar i perioden");
     expect(analys).not.toContain("h-[10.5rem]");
     expect(hem).toContain("Hämtar läget");
