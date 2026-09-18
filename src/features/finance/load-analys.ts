@@ -178,6 +178,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
     const formulaSteps =
       living.mode === "bridge"
         ? [
+            "Analys visar vart pengarna gick. Spenderat och kategorierna är samma belopp.",
             "Innan nästa intäkt lever du på saldot på kontot.",
             "Dagsbudget = saldo ÷ dagar kvar (samma belopp hela dagen).",
             "Kvar idag = dagsbudget − det du spenderat idag.",
@@ -188,11 +189,13 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
           ]
         : living.mode === "empty"
           ? [
+              "Analys visar vart pengarna gick när en period är igång.",
               "Lägg in intäkter med datum i Plan.",
               "Då startar en period och du får en dagsbudget på Hem.",
             ]
           : cycle.phase === "partial"
             ? [
+                "Analys visar vart pengarna gick. Spenderat och kategorierna är samma belopp.",
                 "Tidiga intäkter ingår redan i budgeten.",
                 "Dagsbudget räknas fram till månadens sista intäkt.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte mitt på dagen.",
@@ -202,6 +205,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
                 "Det som blir över en månad följer med som extra saldo.",
               ]
             : [
+                "Analys visar vart pengarna gick. Spenderat och kategorierna är samma belopp.",
                 "Intäkterna i perioden minus planerade utgifter och sparande = kvar i perioden.",
                 "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
                 "Löneperiodens utgifter kan skilja sig från kalendermånadens.",

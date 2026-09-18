@@ -4,39 +4,25 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./AnalysDashboard.tsx", import.meta.url), "utf8");
 
 describe("Analys month result color", () => {
-  it("shows kvar idag as clay alarm when the day is overspent", () => {
-    expect(src).toContain("cycle.remainingTodayMinor < 0");
-    expect(src).toContain('? "alarm"');
-  });
-
   it("uses clay alarm for Minus mot planen, not destroy red", () => {
     expect(src).toContain('tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}');
-    expect(src).toContain('tone={month.freeToSpendMinor >= 0 ? "positive" : "alarm"}');
     expect(src).not.toMatch(/monthResultMinor >= 0 \? "positive" : "danger"/);
-    expect(src).not.toMatch(/freeToSpendMinor >= 0 \? "positive" : "danger"/);
   });
 
-  it("answers 'what is left' with the same Över as Hem and Plan", () => {
-    // One money story: the hero is cash coverage for the browsed month.
-    expect(src).toContain("livingMinor={month.coverage.overMinor}");
-    expect(src).toContain("livingLabel={SV.over}");
-    expect(src).not.toContain("livingLabel={SV.motPlanen}");
-    // And the four lines that build it, exactly as Hem shows them.
-    expect(src).toContain("CASH_COVERAGE_HINT_SV");
-    expect(src).toContain("label={SV.kommerIn}");
-    expect(src).toContain("label={SV.kvarAttBetala}");
-    expect(src).toContain("amountMinor={month.coverage.saldoMinor}");
-
-    // The plan-vs-spend story stays as exactly one row, explained, so it
-    // cannot be mistaken for the cash answer or repeated twice.
+  it("answers leftover vs plan without reprinting Hem/Plan Över", () => {
+    // Mot planen stays as exactly one row, explained, so it cannot be
+    // mistaken for cash on Hem or the Över pile on Plan.
     expect(src).toContain("inte kontanter");
+    expect(src).not.toContain("livingLabel={SV.over}");
+    expect(src).not.toContain("livingMinor={month.coverage.overMinor}");
+    expect(src).not.toContain("CASH_COVERAGE_HINT_SV");
+    expect(src).not.toContain("WealthScoreboard");
+    expect(src).not.toContain("label={SV.kommerIn}");
+    expect(src).not.toContain("label={SV.kvarAttBetala}");
     expect(src).not.toContain("label={SV.motPlanen}");
     expect(src.match(/SV\.minusMotPlanen/g) ?? []).toHaveLength(1);
     expect(src).not.toContain("amountMinor={month.livingSaldoMinor}");
-    // Sentences the engine already produced but nothing rendered.
     expect(src).toContain("month.monthLeftoverHint ??");
-    expect(src).toContain("hint={month.extraSaldoHint}");
-    // And no leftover payload for figures the screen no longer shows.
     const monthView = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
@@ -44,7 +30,7 @@ describe("Analys month result color", () => {
     expect(monthView).not.toContain("livingSaldoMinor");
     expect(monthView).not.toContain("wealthTotalMinor");
 
-    // Coverage is built by the shared month builder, not re-derived here.
+    // Coverage still comes from the shared month builder, not re-derived here.
     const monthBuilder = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
@@ -68,7 +54,6 @@ describe("Analys month result color", () => {
     expect(src).toContain("numa-money-line");
     expect(src).toContain("numa-money-stack");
     expect(src).toContain("numa-hero-money");
-    expect(src).toContain("numa-analys-wealth");
     expect(src).toContain("wrap={false}");
     expect(src).toContain("overflow-x-hidden");
   });
@@ -79,12 +64,16 @@ describe("Analys month result color", () => {
     expect(src).not.toContain('formatCountSv(cycle.daysLeft, "dag", "dagar")');
   });
 
-  it("does not send empty Mål to a dead Lägg till on Plan", () => {
-    expect(src).toContain("Avsätt sparande under Plan");
+  it("points plan work to Plan instead of reprinting Mål and Betald lists", () => {
+    expect(src).toContain("SV.analysPlanPointer");
+    expect(src).not.toContain("Avsätt sparande under Plan");
     expect(src).not.toContain("Lägg till →");
+    expect(src).not.toContain("PlanStatusChip");
+    expect(src).not.toContain("PlanEquation");
+    expect(src).not.toContain('settleKind="income"');
   });
 
-  it("follows Delvis and Betald/Mottagen from Plan", () => {
+  it("follows Delvis and Betald/Mottagen from Plan in the shared line builder", () => {
     const monthBuilder = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
@@ -98,34 +87,19 @@ describe("Analys month result color", () => {
     expect(monthBuilder).toContain("planRowView(item).status");
     expect(monthBuilder).toContain("settledMinor: settledAmountMinor(item)");
     expect(monthBuilder).toContain("plannedMinor: item.amountMinor");
-    // Every list goes through the one helper, so none can drift back.
     expect(monthBuilder).toContain("export function toAnalysLine(");
     expect(loader).not.toMatch(/amountMinor: i\.amountMinor/);
     expect(loader).not.toMatch(/amountMinor: g\.amountMinor/);
-
-    // The screen renders the same chip and the same Delvis equation as Plan.
-    expect(src).toContain("planChipLabel");
-    expect(src).toContain("planChipClass");
-    expect(src).toContain("PlanStatusChip");
-    expect(src).toContain("PlanEquation");
-    expect(src).toContain('settleKind="income"');
-    expect(src).toContain('settleKind="expense"');
   });
 
-  it("totals a list the same way Plan's Summa does — what is left", () => {
-    expect(src).toContain(
-      "const totalMinor = lines.reduce((sum, line) => sum + line.remainingMinor, 0)",
-    );
+  it("does not auto-mark Betald from the ledger", () => {
+    expect(src).not.toMatch(/auto-?mark|autoBetald/i);
     const monthBuilder = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
     );
-    expect(monthBuilder).toContain("remainingMinor: remainingOpenMinor(item)");
-    // No caller can hand the list a total that contradicts its rows.
-    expect(src).not.toContain("totalMinor={cycle.incomeMinor}");
-    expect(src).not.toContain("totalMinor={cycle.expenseMinor}");
-    expect(src).not.toContain("totalMinor={month.incomeMinor}");
-    expect(src).not.toContain("totalMinor={month.expenseMinor}");
+    expect(monthBuilder).toContain("status: planRowView(item).status");
+    expect(monthBuilder).not.toMatch(/ledger[\s\S]{0,80}Betald/);
   });
 
   it("keeps the last Analys block clear of the floating dock", () => {
@@ -152,7 +126,7 @@ describe("Analys month result color", () => {
     expect(src).not.toMatch(/href="\/plan"[\s\S]{0,120}prefetch\n/);
   });
 
-  it("shows where the month's money went, from the shared split", () => {
+  it("answers vart gick pengarna with one Spenderat, then the same split", () => {
     const loader = readFileSync(
       new URL("../../features/finance/load-analys.ts", import.meta.url),
       "utf8",
@@ -167,51 +141,56 @@ describe("Analys month result color", () => {
     expect(movements).not.toContain("categoryMap");
     // Analys must project native ledger → canonical THB first (same as
     // Spenderat / Rörelser), or foreign-currency expenses silently drop out
-    // of Per kategori and Senaste still shows KR instead of THB.
+    // of the category split and Senaste still shows KR instead of THB.
     expect(loader).toContain("projectLedgerToCanonicalThb(");
     expect(loader).toContain("fxMapFromTodaySnap");
     expect(movements).toContain("projectLedgerToCanonicalThb(");
-    // Senaste reads ledgerTransactions — those rows must already be canonical.
     expect(loader).toMatch(
       /const ledgerTransactions = projectLedgerToCanonicalThb\(/,
     );
     expect(src).toContain("currency={tx.currency}");
-    // The section follows the browsed month and compares with the one before.
     expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
     expect(src).toContain("addMonthsKey(activeMonthKey, -1)");
+    expect(src).toContain("spendingCategoriesInWindow({");
     expect(src).toContain("SpendByCategory");
-    expect(src).toContain("sortNewestFirst");
-    expect(src).toContain("Per kategori");
+    expect(src).toContain("SV.vartGickPengarna");
+    expect(src).toContain("SV.analysCategoryHint");
+    expect(src).toContain("SV.analysEmptySpendPeriod");
+    expect(src).toContain("SV.analysEmptySpendMonth");
     expect(src).toContain("mer");
     expect(src).toContain("mindre");
-    // Header and comparison come from the listed rows, so they cannot
-    // contradict the categories under them.
-    expect(src).toContain("const categorySpentMinor = sumCategories(monthCategories)");
-    expect(src).toContain("spentMinor={categorySpentMinor}");
+    // Hero and comparison come from the listed rows, so they cannot
+    // contradict the categories under them (Spec 4: Per kategori vs Spenderat).
+    expect(src).toContain("const spentMinor = sumSpendingCategories(categories)");
+    expect(src).toContain("spentMinor={isEmpty ? 0 : spentMinor}");
+    expect(src).toContain("spentMinor={spentMinor}");
     expect(src).not.toContain("spentMinor={month.spentMinor}");
+    expect(src).not.toContain("spentMinor={categorySpentMinor}");
+    expect(src).not.toContain("spentMinor={view.cycleSpendingMinor}");
+    // The category section must not print a second total under another name.
+    expect(src).not.toContain('aria-label="Per kategori"');
+    expect(src).not.toMatch(/<h3[^>]*>\s*Per kategori/);
+    expect(src).toContain("SV.spenderatIPerioden");
+    expect(src).toContain("SV.spenderatIManaden");
   });
 
-  it("gives the bridge block the period's own figures", () => {
-    // Before payday it used to hold only "På kontot".
-    expect(src).toContain('label="Kommande intäkter"');
-    expect(src).toContain('label="Kommande utgifter"');
-    // ...and the headline is the saldo before payday, so the block must not
-    // print the same number again under a second name.
-    expect(src).toContain("{isBridge ? null : hasSaldo ? (");
+  it("does not reprint Hem's day envelope on Analys", () => {
+    expect(src).not.toContain("label={SV.kvarIdag}");
+    expect(src).not.toContain("label={SV.dagsbudget}");
+    expect(src).not.toContain("label={SV.spenderatIdag}");
+    expect(src).not.toContain("view.todaySpendingMinor");
+    expect(src).not.toContain("cycle.dayBudgetMinor");
+    expect(src).not.toContain("cycle.remainingTodayMinor");
   });
 
-  it("shows the same period figure above the list as in it", () => {
-    // Rows used to show the planned amount while the list below counted what
-    // is left, so one screen printed 15 800 and 800 under the same word.
-    expect(src).toContain("const cycleIncomingMinor = sumRemaining(cycle.incomes)");
-    expect(src).toContain("const cycleUnpaidMinor = sumRemaining(cycle.expenses)");
-    expect(src).toContain("amountMinor={cycleIncomingMinor}");
-    expect(src).toContain("amountMinor={cycleUnpaidMinor}");
+  it("keeps bridge kvar from repeating På kontona as a second hero", () => {
+    expect(src).toContain("isBridge && !hasSaldo");
+    expect(src).toContain('label={isBridge ? "Kvar tills nästa intäkt" : SV.kvarIPerioden}');
+    expect(src).not.toContain("amountMinor={view.calculatedBalanceMinor");
+    expect(src).not.toContain("label={SV.paKontot}");
+    expect(src).not.toContain('label="Kommande intäkter"');
     expect(src).not.toContain("amountMinor={cycle.incomeMinor}");
     expect(src).not.toContain("amountMinor={cycle.expenseMinor}");
-    // Spenderat i perioden is structurally 0 before the period opens, so the
-    // bridge block does not print it.
-    expect(src).not.toMatch(/hasSaldo \? \([\s\S]{0,600}spenderatIPerioden/);
   });
 
   it("ships no figure the screen never renders", () => {
@@ -240,15 +219,14 @@ describe("Analys month result color", () => {
     // Månad shows the browsed month, Perioden the running cycle window.
     expect(src).toContain('scope === "month"');
     expect(src).toContain("=== activeMonthKey");
+    expect(src).toContain("isInPayCycleWindow(");
     expect(src).toContain("cycle.startAt");
     expect(src).toContain("cycle.endAt");
     expect(loader).toContain("startAt: cycle.startAt");
     // Unconfirmed rows are not money that moved.
     expect(src).toContain('tx.status !== "confirmed"');
-    // The empty line says which window is empty.
     expect(src).toContain("Inga rörelser i perioden");
     expect(src).not.toContain("Inga rörelser ännu");
-    // No pre-sliced list on the payload any more.
     expect(loader).not.toContain("recentTransactions");
   });
 
@@ -257,11 +235,8 @@ describe("Analys month result color", () => {
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
     );
-    // The same nav component Plan uses, so the two cannot look or act different.
     expect(src).toContain("PlanMonthNav");
     expect(src).toContain('idPrefix="analys"');
-    // One remembered month for both screens, subscribed rather than read at
-    // mount — tabs stay mounted, so a mount-time read would go stale.
     expect(src).toContain("useSyncExternalStore(\n    subscribePlanView,");
     expect(src).toContain("sharedMonth?.monthKey");
     expect(src).toContain("rememberPlanView({ monthKey: key");
@@ -272,12 +247,16 @@ describe("Analys month result color", () => {
     );
     expect(store).toContain("export function subscribePlanView(");
     expect(store).toContain("emit(planViewListeners)");
-    // Browsing recomputes locally with the same pure builder the server used.
     expect(src).toContain("buildAnalysMonth({");
     expect(monthBuilder).toContain("export function buildAnalysMonth(");
     expect(src).toContain("activeMonthKey === view.monthKey");
-    // The heading follows the browsed month, not today.
     expect(src).toContain("labelMonthSv(activeMonthKey)");
     expect(src).not.toContain("{view.monthLabelSv}");
+  });
+
+  it("teaches the purpose in the empty states and page hint", () => {
+    expect(src).toContain("SV.analysHint");
+    expect(src).toContain("SV.hurGarDet");
+    expect(src).toContain("SV.analysEmptyPeriod");
   });
 });

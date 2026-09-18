@@ -3,6 +3,8 @@ import type { CanonicalTransaction } from "./types";
 import {
   spendingByMonthKey,
   spendingCategoriesByMonthKey,
+  spendingCategoriesInWindow,
+  sumSpendingCategories,
   UNCATEGORISED_SPEND_NAME,
 } from "./month-carryover";
 
@@ -102,5 +104,41 @@ describe("spendingCategoriesByMonthKey", () => {
     const names = categories["2026-08"]?.map((c) => c.name) ?? [];
     expect(names).not.toContain("Shopping");
     expect(totals["2026-08"]).toBe(900_00 + 450_00 + 50_00);
+  });
+});
+
+describe("spendingCategoriesInWindow", () => {
+  it("adds up to Spenderat i perioden and sorts biggest first", () => {
+    const lines = spendingCategoriesInWindow({
+      transactions: [
+        tx({ amountMinor: 300_00, category: "Mat", occurredAt: "2026-08-02T09:00:00.000Z" }),
+        tx({ amountMinor: 150_00, category: "Mat", occurredAt: "2026-08-11T09:00:00.000Z" }),
+        tx({ amountMinor: 900_00, category: "Boende", occurredAt: "2026-08-03T09:00:00.000Z" }),
+        // On the end instant — half-open window, same as cycle Spenderat.
+        tx({ amountMinor: 80_00, category: "Mat", occurredAt: "2026-09-01T00:00:00.000Z" }),
+        tx({ amountMinor: 700_00, category: "Mat", occurredAt: "2026-07-09T09:00:00.000Z" }),
+      ],
+      currency: "THB",
+      startAt: "2026-08-01T00:00:00.000Z",
+      endAt: "2026-09-01T00:00:00.000Z",
+    });
+    expect(lines.map((c) => [c.name, c.amountMinor, c.count])).toEqual([
+      ["Boende", 900_00, 1],
+      ["Mat", 450_00, 2],
+    ]);
+    expect(sumSpendingCategories(lines)).toBe(1_350_00);
+  });
+
+  it("counts nothing before the period starts", () => {
+    expect(
+      spendingCategoriesInWindow({
+        transactions: [
+          tx({ amountMinor: 500_00, category: "Mat", occurredAt: "2026-08-10T09:00:00.000Z" }),
+        ],
+        currency: "THB",
+        startAt: null,
+        endAt: null,
+      }),
+    ).toEqual([]);
   });
 });

@@ -4,6 +4,7 @@ import {
   appliesToPlannedPaidSpending,
   classifySpend,
   computeClassifiedSpendingWindows,
+  isInPayCycleWindow,
   resolveTodaySpendSplit,
 } from "./spend-class";
 import type { CanonicalTransaction } from "./types";
@@ -119,6 +120,26 @@ describe("spend classification", () => {
     expect(windows.today.total.amountMinor).toBe(21_200_00);
     expect(windows.cycle.total.amountMinor).toBe(21_200_00);
     expect(windows.cycle.discretionary.amountMinor).toBe(1_200_00);
+  });
+
+  it("uses a half-open pay-cycle window for Spenderat i perioden", () => {
+    expect(
+      isInPayCycleWindow(
+        "2026-08-25T00:00:00.000Z",
+        "2026-08-25T00:00:00.000Z",
+        "2026-09-25T00:00:00.000Z",
+      ),
+    ).toBe(true);
+    expect(
+      isInPayCycleWindow(
+        "2026-09-25T00:00:00.000Z",
+        "2026-08-25T00:00:00.000Z",
+        "2026-09-25T00:00:00.000Z",
+      ),
+    ).toBe(false);
+    expect(isInPayCycleWindow("2026-08-25T00:00:00.000Z", null, null)).toBe(
+      false,
+    );
   });
 
   it("counts an 88 THB cash expense as discretionary, never as a plan settle", () => {

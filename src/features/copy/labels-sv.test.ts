@@ -16,6 +16,12 @@ describe("Swedish money labels", () => {
     expect(SV.perioden).toBe("Perioden");
     expect(SV.manad).toBe("Månad");
     expect(SV.saRaknarNuma).toBe("Så räknar NUMA");
+    expect(SV.analysHint).toBe("Se vart pengarna gick — och hur perioden går.");
+    expect(SV.vartGickPengarna).toBe("Vart gick pengarna?");
+    expect(SV.hurGarDet).toBe("Hur går det?");
+    expect(SV.analysCategoryHint).toMatch(/samma belopp som spenderat/i);
+    expect(SV.analysEmptySpendPeriod).toMatch(/när du handlar/i);
+    expect(SV.analysPlanPointer).toMatch(/plan/i);
   });
 
   it("keeps Mot planen as the Analys leftover label, not the Plan/Hem cash hero", () => {

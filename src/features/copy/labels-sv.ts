@@ -17,6 +17,10 @@
  * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
  * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
+ *
+ * Analys answers two questions only: «Vart gick pengarna?» (Spenderat +
+ * category split of that same number) and «Hur går det?» (Kvar i perioden /
+ * Mot planen). It must not reprint Hem's day envelope or Plan's Över piles.
  */
 export const SV = {
   kvarIdag: "Kvar idag",
@@ -77,6 +81,16 @@ export const SV = {
   perioden: "Perioden",
   manad: "Månad",
   saRaknarNuma: "Så räknar NUMA",
+  analysHint: "Se vart pengarna gick — och hur perioden går.",
+  vartGickPengarna: "Vart gick pengarna?",
+  hurGarDet: "Hur går det?",
+  analysCategoryHint: "Samma belopp som Spenderat, störst först.",
+  analysEmptySpendPeriod:
+    "Inget spenderat i perioden ännu. När du handlar syns det här.",
+  analysEmptySpendMonth:
+    "Inget spenderat i den här månaden ännu. När du handlar syns det här.",
+  analysEmptyPeriod: "Lägg in intäkter i Plan så startar en period.",
+  analysPlanPointer: "Vad som kommer in och måste ut lever i Plan.",
   idag: "Idag",
   betald: "Betald",
   mottagen: "Mottagen",

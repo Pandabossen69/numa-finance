@@ -68,6 +68,24 @@ export function appliesToTotalSpending(
   return classifySpend(tx) !== "none";
 }
 
+/**
+ * Half-open pay-cycle window used by Spenderat i perioden and Analys
+ * category split: `start ≤ occurred < end`. Missing start ⇒ nothing counts.
+ */
+export function isInPayCycleWindow(
+  occurredAt: string,
+  startAt?: string | null,
+  endAt?: string | null,
+): boolean {
+  const occurredMs = Date.parse(occurredAt);
+  const startMs = startAt != null ? Date.parse(startAt) : NaN;
+  const endMs = endAt != null ? Date.parse(endAt) : NaN;
+  if (!Number.isFinite(occurredMs) || !Number.isFinite(startMs)) return false;
+  if (occurredMs < startMs) return false;
+  if (Number.isFinite(endMs) && occurredMs >= endMs) return false;
+  return true;
+}
+
 export type ClassifiedSpendingWindows = {
   /** All confirmed expenses (discretionary + planned bills). */
   total: Money;
@@ -181,10 +199,6 @@ export function computeClassifiedSpendingWindows(params: {
   const timeZone = params.timeZone || DEFAULT_TIMEZONE;
   const todayKey = zonedDayKey(now, timeZone);
   const monthKey = monthKeyFromDate(now, timeZone);
-  const cycleStartMs =
-    params.cycleStartAt != null ? Date.parse(params.cycleStartAt) : NaN;
-  const cycleEndMs =
-    params.cycleEndAt != null ? Date.parse(params.cycleEndAt) : NaN;
 
   const today = emptyWindows(params.currency);
   const month = emptyWindows(params.currency);
@@ -197,14 +211,11 @@ export function computeClassifiedSpendingWindows(params: {
 
     const dayKey = zonedDayKey(tx.occurredAt, timeZone);
     const txMonthKey = monthKeyFromDate(new Date(tx.occurredAt), timeZone);
-    const occurredMs = Date.parse(tx.occurredAt);
 
     if (dayKey === todayKey) addClassified(today, tx, spend);
     if (txMonthKey === monthKey) addClassified(month, tx, spend);
-    if (Number.isFinite(cycleStartMs) && occurredMs >= cycleStartMs) {
-      if (!Number.isFinite(cycleEndMs) || occurredMs < cycleEndMs) {
-        addClassified(cycle, tx, spend);
-      }
+    if (isInPayCycleWindow(tx.occurredAt, params.cycleStartAt, params.cycleEndAt)) {
+      addClassified(cycle, tx, spend);
     }
   }
 
