@@ -1,6 +1,11 @@
+import { isTimeoutError } from "@/lib/async";
+
 /**
  * Best-effort production error reporting.
- * When `SENTRY_DSN` is set, events go to Sentry. Always logs locally.
+ * When `SENTRY_DSN` is set, unexpected errors go to Sentry as `level: error`.
+ * Expected circuit-breaker timeouts (`isTimeoutError`) are logged locally
+ * only — fail-soft is correct; treating them as production errors floods
+ * Stability.
  */
 export async function reportError(
   scope:
@@ -21,6 +26,12 @@ export async function reportError(
 ): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
+
+  if (isTimeoutError(error)) {
+    console.warn(`[numa] ${scope} timed out`, message, extra ?? "");
+    return;
+  }
+
   console.error(`[numa] ${scope}`, message, extra ?? "");
 
   const dsn = process.env.SENTRY_DSN;
