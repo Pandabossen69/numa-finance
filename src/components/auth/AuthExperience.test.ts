@@ -87,11 +87,18 @@ describe("sign-in next path", () => {
     expect(actions).toContain("nextPath: state.nextPath");
     expect(actions).toContain("clearOnboardingCookie");
     expect(actions).toContain("discardLastHomeCookieIfNotUser(userId)");
-    expect(actions).toContain("clearLastHomeCookie");
+    expect(actions).not.toContain("clearLastHomeCookie");
     const signOut = actions.slice(actions.indexOf("export async function signOutAction"));
-    expect(signOut).toContain("clearLastHomeCookie");
-    expect(signOut.indexOf("clearLastHomeCookie")).toBeLessThan(
-      signOut.indexOf("redirect("),
+    expect(signOut).not.toContain("clearLastHomeCookie");
+  });
+});
+
+describe("sign-out keeps slim last-home cookie", () => {
+  it("clears memory/persist but not numa.lastHome.v1 (SPEC B)", () => {
+    const signOut = readFileSync(
+      new URL("./SignOutButton.tsx", import.meta.url),
+      "utf8",
     );
+    expect(signOut).toContain("clearClientSessionCaches({ keepHomeCookie: true })");
   });
 });
