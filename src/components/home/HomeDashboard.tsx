@@ -31,7 +31,10 @@ import {
   shouldShowFinanceTruthBanner,
 } from "@/features/finance/finance-truth-copy";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
-import type { GettingStartedView } from "@/features/getting-started/progress";
+import {
+  reconcileGettingStartedWithSaldo,
+  type GettingStartedView,
+} from "@/features/getting-started/progress";
 import {
   adoptMutationFinance,
   applyAccountBalance,
@@ -103,6 +106,15 @@ export function HomeDashboard({
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);
     }
+    if (snap?.calculatedBalanceMinor != null && lastGettingStarted()?.visible) {
+      const next = reconcileGettingStartedWithSaldo(
+        lastGettingStarted()!,
+        true,
+      );
+      if (next.doneCount !== lastGettingStarted()!.doneCount) {
+        rememberGettingStarted(next);
+      }
+    }
     // Quiet NextStep-style warm: fill Plan/Analys/Rörelser last-known after
     // Hem paints. Idle + never clears on failure — not the old racing warmup.
     if (snap) scheduleQuietMenuWarm();
@@ -141,6 +153,10 @@ export function HomeDashboard({
   const isBridge = view.livingMode === "bridge";
   const isEmpty = view.livingMode === "empty";
   const hasSaldo = view.calculatedBalanceMinor != null;
+  const rawGettingStarted = gettingStarted ?? storedGettingStarted;
+  const checklist = rawGettingStarted?.visible
+    ? reconcileGettingStartedWithSaldo(rawGettingStarted, hasSaldo)
+    : rawGettingStarted;
   const dayOk = remainingTodayMinor > 0;
   const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
@@ -188,8 +204,8 @@ export function HomeDashboard({
         ) : null}
       </header>
 
-      {isEmpty && (gettingStarted ?? storedGettingStarted)?.visible ? (
-        <GettingStartedCard view={(gettingStarted ?? storedGettingStarted)!} />
+      {isEmpty && checklist?.visible ? (
+        <GettingStartedCard view={checklist} />
       ) : null}
 
       {view.needsAvailableInput ? (
@@ -475,8 +491,8 @@ export function HomeDashboard({
         </>
       ) : null}
 
-      {!isEmpty && (gettingStarted ?? storedGettingStarted)?.visible ? (
-        <GettingStartedCard view={(gettingStarted ?? storedGettingStarted)!} />
+      {!isEmpty && checklist?.visible ? (
+        <GettingStartedCard view={checklist} />
       ) : null}
     </div>
   );

@@ -6,6 +6,7 @@ import {
   gettingStartedProgressLabel,
   isPlanBill,
   nextGettingStartedStep,
+  reconcileGettingStartedWithSaldo,
 } from "./progress";
 
 function item(partial: Partial<PlanItem> & Pick<PlanItem, "kind" | "cadence" | "name">): PlanItem {
@@ -108,6 +109,18 @@ describe("buildGettingStartedView", () => {
     expect(nextGettingStartedStep(view)?.id).toBe("saldo");
     expect(gettingStartedNextCta("saldo")).toBe("Sätt saldo");
     expect(gettingStartedNextCta("income")).toBe("Lägg in vad som kommer in");
+  });
+
+  it("marks saldo done when Hem already has a balance", () => {
+    const view = buildGettingStartedView({
+      ...emptyUser,
+      email: "christianhultz1@gmail.com",
+    });
+    const next = reconcileGettingStartedWithSaldo(view, true);
+    expect(next.doneCount).toBe(1);
+    expect(next.steps[0]?.done).toBe(true);
+    expect(next.steps[0]?.href).toBe("/idag");
+    expect(nextGettingStartedStep(next)?.id).toBe("income");
   });
 
   it("treats non-savings plan rows as bills", () => {

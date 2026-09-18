@@ -116,3 +116,23 @@ export function gettingStartedNextCta(id: GettingStartedStepId): string {
   if (id === "income") return "Lägg in vad som kommer in";
   return "Lägg in vad som måste betalas";
 }
+
+/** Keep Kom igång in sync when Hem already has a saldo but the cache lags. */
+export function reconcileGettingStartedWithSaldo(
+  view: GettingStartedView,
+  hasSaldo: boolean,
+): GettingStartedView {
+  if (!hasSaldo) return view;
+  const saldo = view.steps.find((step) => step.id === "saldo");
+  if (!saldo || saldo.done) return view;
+  const steps = view.steps.map((step) =>
+    step.id === "saldo" ? { ...step, done: true, href: "/idag" } : step,
+  );
+  const doneCount = steps.filter((step) => step.done).length;
+  return {
+    ...view,
+    steps,
+    doneCount,
+    allDone: doneCount === view.total,
+  };
+}

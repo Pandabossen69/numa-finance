@@ -13,27 +13,11 @@ import {
   subscribePlanSnapshot,
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
-
-function planFocusFromSteg(steg: string | null): {
-  focusAdd: null | "income" | "fixed";
-  stepHint: string | null;
-} {
-  if (steg === "inkomst") {
-    return {
-      focusAdd: "income",
-      stepHint:
-        "Steg 2 av 3. Här lägger du in det som kommer in — lön eller CSN.",
-    };
-  }
-  if (steg === "utgift") {
-    return {
-      focusAdd: "fixed",
-      stepHint:
-        "Steg 3 av 3. Här lägger du in det som måste betalas — hyra eller räkning.",
-    };
-  }
-  return { focusAdd: null, stepHint: null };
-}
+import {
+  lastPlanFocus,
+  planFocusFromSteg,
+  subscribePlanFocus,
+} from "@/features/plan/plan-focus";
 
 type PlanRouteProps = {
   focusAdd?: null | "income" | "fixed";
@@ -90,11 +74,16 @@ function PlanRouteBody({
 
 function PlanRouteWithSteg(props: PlanRouteProps) {
   const searchParams = useSearchParams();
+  const storedFocus = useSyncExternalStore(
+    subscribePlanFocus,
+    lastPlanFocus,
+    lastPlanFocus,
+  );
   const fromQuery = planFocusFromSteg(searchParams.get("steg"));
   return (
     <PlanRouteBody
-      focusAdd={props.focusAdd ?? fromQuery.focusAdd}
-      stepHint={props.stepHint ?? fromQuery.stepHint}
+      focusAdd={props.focusAdd ?? storedFocus.focusAdd ?? fromQuery.focusAdd}
+      stepHint={props.stepHint ?? storedFocus.stepHint ?? fromQuery.stepHint}
     />
   );
 }

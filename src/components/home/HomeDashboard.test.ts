@@ -132,15 +132,12 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("GettingStartedCard");
     expect(src).toContain("lastGettingStarted");
     expect(src).toContain("subscribeGettingStarted");
+    expect(src).toContain("reconcileGettingStartedWithSaldo");
     expect(src).toContain("läget just nu");
     expect(src).not.toMatch(/välkommen till din resa/i);
-    const firstGuide = src.indexOf(
-      "isEmpty && (gettingStarted ?? storedGettingStarted)?.visible",
-    );
+    const firstGuide = src.indexOf("isEmpty && checklist?.visible");
     const dayStage = src.indexOf("numa-day-stage");
-    const laterGuide = src.indexOf(
-      "!isEmpty && (gettingStarted ?? storedGettingStarted)?.visible",
-    );
+    const laterGuide = src.indexOf("!isEmpty && checklist?.visible");
     expect(firstGuide).toBeGreaterThan(-1);
     expect(firstGuide).toBeLessThan(dayStage);
     expect(laterGuide).toBeGreaterThan(dayStage);

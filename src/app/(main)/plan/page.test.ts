@@ -10,6 +10,10 @@ const routeClient = readFileSync(
   new URL("../../../components/plan/PlanRouteClient.tsx", import.meta.url),
   "utf8",
 );
+const planFocus = readFileSync(
+  new URL("../../../features/plan/plan-focus.ts", import.meta.url),
+  "utf8",
+);
 const warmup = readFileSync(
   new URL("../../../components/plan/load-plan.ts", import.meta.url),
   "utf8",
@@ -20,12 +24,14 @@ describe("/plan getting-started hints", () => {
     expect(page).toContain("PlanRouteClient");
     expect(page).not.toContain("await searchParams");
     expect(page).not.toMatch(/välkommen/i);
-    expect(routeClient).toContain('steg === "inkomst"');
-    expect(routeClient).toContain('steg === "utgift"');
-    expect(routeClient).toContain(
+    expect(routeClient).toContain("planFocusFromSteg");
+    expect(routeClient).toContain("lastPlanFocus");
+    expect(planFocus).toContain('steg === "inkomst"');
+    expect(planFocus).toContain('steg === "utgift"');
+    expect(planFocus).toContain(
       "Steg 2 av 3. Här lägger du in det som kommer in — lön eller CSN.",
     );
-    expect(routeClient).toContain(
+    expect(planFocus).toContain(
       "Steg 3 av 3. Här lägger du in det som måste betalas — hyra eller räkning.",
     );
     expect(routeClient).toContain("useSearchParams");
