@@ -16,7 +16,8 @@ describe("loadAccountDetail", () => {
 describe("loadAccountsSnapshot archived split", () => {
   it("keeps archived accounts out of the active list and Hem total", () => {
     expect(load).toContain("listArchivedAccounts");
-    expect(load).toContain("archivedAccounts: archivedRows");
+    expect(load).toContain("accounts: sortAccountsForList(activeRows)");
+    expect(load).toContain("archivedAccounts: sortAccountsForList(archivedRows)");
     expect(load).toContain("rows.filter((row) => row.isActive)");
     expect(load).toContain("for (const row of activeRows)");
   });
