@@ -71,6 +71,9 @@ describe("Hem PWA hint and HIGH copy", () => {
   it("says Sparar… while saldo buttons are busy, not Klart", () => {
     expect(src).toContain('{busy ? "Sparar…" : SV.visaDagsbudget}');
     expect(src).not.toMatch(/busy \? "Klart"/);
+    const available = src.slice(src.indexOf("function AvailableNowCard"));
+    expect(available).toContain("Saldo nu");
+    expect(available).not.toContain("SV.komIgång");
   });
 
   it("blocks a second QuickExpense tap while the first save is in flight", () => {
@@ -131,6 +134,16 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("subscribeGettingStarted");
     expect(src).toContain("läget just nu");
     expect(src).not.toMatch(/välkommen till din resa/i);
+    const firstGuide = src.indexOf(
+      "isEmpty && (gettingStarted ?? storedGettingStarted)?.visible",
+    );
+    const dayStage = src.indexOf("numa-day-stage");
+    const laterGuide = src.indexOf(
+      "!isEmpty && (gettingStarted ?? storedGettingStarted)?.visible",
+    );
+    expect(firstGuide).toBeGreaterThan(-1);
+    expect(firstGuide).toBeLessThan(dayStage);
+    expect(laterGuide).toBeGreaterThan(dayStage);
   });
 
   it("does not tell a user with a saldo to set a saldo", () => {
@@ -139,6 +152,9 @@ describe("Hem PWA hint and HIGH copy", () => {
       "Ingen dagsbudget än. Lägg in vad som kommer in i Plan.",
     );
     expect(src).toContain("Ingen dagsbudget än. Sätt saldo så räknas kvar idag.");
+    expect(src).toContain("Lägg in vad som kommer in →");
+    expect(src).toContain("Sätt saldo →");
+    expect(src).toContain('href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}');
     expect(src).toMatch(/\{hasSaldo\s*\n?\s*\?/);
     expect(src).toContain('view.dayBudgetMinor > 0 ? null : "md:h-auto md:self-start"');
   });

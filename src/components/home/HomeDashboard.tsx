@@ -181,11 +181,16 @@ export function HomeDashboard({
           <>
             <h1 className="numa-page-title">Hem</h1>
             <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
-              Saldo, det som kommer in och det som måste betalas — läget just nu.
+              Här syns läget just nu — saldo, det som kommer in och det som måste
+              betalas.
             </p>
           </>
         ) : null}
       </header>
+
+      {isEmpty && (gettingStarted ?? storedGettingStarted)?.visible ? (
+        <GettingStartedCard view={(gettingStarted ?? storedGettingStarted)!} />
+      ) : null}
 
       {view.needsAvailableInput ? (
         <AvailableNowCard
@@ -319,11 +324,21 @@ export function HomeDashboard({
               ) : (
                 <div className="space-y-3 py-6 text-center">
                   {isEmpty ? (
-                    <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                      {hasSaldo
-                        ? "Ingen dagsbudget än. Lägg in vad som kommer in i Plan."
-                        : "Ingen dagsbudget än. Sätt saldo så räknas kvar idag."}
-                    </p>
+                    <div className="space-y-3">
+                      <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                        {hasSaldo
+                          ? "Ingen dagsbudget än. Lägg in vad som kommer in i Plan."
+                          : "Ingen dagsbudget än. Sätt saldo så räknas kvar idag."}
+                      </p>
+                      <Link
+                        href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}
+                        className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                      >
+                        {hasSaldo
+                          ? "Lägg in vad som kommer in →"
+                          : "Sätt saldo →"}
+                      </Link>
+                    </div>
                   ) : (
                     <>
                       <div
@@ -460,7 +475,7 @@ export function HomeDashboard({
         </>
       ) : null}
 
-      {(gettingStarted ?? storedGettingStarted)?.visible ? (
+      {!isEmpty && (gettingStarted ?? storedGettingStarted)?.visible ? (
         <GettingStartedCard view={(gettingStarted ?? storedGettingStarted)!} />
       ) : null}
     </div>
@@ -484,7 +499,7 @@ function AvailableNowCard({
   return (
     <section className="numa-panel-strong animate-rise-delay-1 space-y-4 p-5">
       <div>
-        <p className="numa-section-title">{SV.komIgång}</p>
+        <p className="numa-section-title">Saldo nu</p>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">{SV.hurMycketKvar}</h2>
         <p className="mt-1 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Vi räknar ut en dagsbudget

@@ -1818,6 +1818,12 @@ button.numa-chip:disabled {
   overflow: hidden;
 }
 
+.numa-komigang-next {
+  background: var(--numa-accent-soft);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--numa-accent) 22%, transparent);
+}
+
 .numa-step-check {
   animation: numa-scale-in 180ms ease-out;
 }

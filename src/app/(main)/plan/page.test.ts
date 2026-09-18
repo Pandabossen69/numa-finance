@@ -22,12 +22,17 @@ describe("/plan getting-started hints", () => {
     expect(page).not.toMatch(/välkommen/i);
     expect(routeClient).toContain('steg === "inkomst"');
     expect(routeClient).toContain('steg === "utgift"');
-    expect(routeClient).toContain("Här lägger du in det som kommer in.");
-    expect(routeClient).toContain("Här lägger du in det som måste betalas.");
+    expect(routeClient).toContain(
+      "Steg 2 av 3. Här lägger du in det som kommer in — lön eller CSN.",
+    );
+    expect(routeClient).toContain(
+      "Steg 3 av 3. Här lägger du in det som måste betalas — hyra eller räkning.",
+    );
     expect(routeClient).toContain("useSearchParams");
     expect(routeClient).toContain("focusAdd={focusAdd}");
     expect(routeClient).toContain("stepHint={stepHint}");
     expect(screen).toContain("Vad som kommer in och vad som måste ut.");
+    expect(screen).toContain("GettingStartedCard");
   });
 
   it("paints last-known Plan client-first and quiet-refreshes in the background", () => {

@@ -20,6 +20,7 @@ import { goHomeInstant } from "@/lib/nav/instant";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
 import { CAPTURE_UI_COPY } from "@/features/imports/capture-ui-copy";
+import { ONBOARDING_SV } from "@/features/onboarding/copy";
 import { SV } from "@/features/copy/labels-sv";
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
@@ -804,11 +805,14 @@ function ModePicker({
   return (
     <div className="animate-rise space-y-8">
       <header className="space-y-2">
+        {onboarding ? (
+          <p className="numa-section-title">{ONBOARDING_SV.saldoEyebrow}</p>
+        ) : null}
         <h2 className="text-2xl font-semibold tracking-tight">
-          {onboarding ? "Fota saldot" : "Fota"}
+          {onboarding ? ONBOARDING_SV.fotaPickTitle : "Fota"}
         </h2>
         <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {SV.fotaHint}
+          {onboarding ? ONBOARDING_SV.fotaPickHint : SV.fotaHint}
         </p>
       </header>
 

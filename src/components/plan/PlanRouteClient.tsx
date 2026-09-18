@@ -21,13 +21,15 @@ function planFocusFromSteg(steg: string | null): {
   if (steg === "inkomst") {
     return {
       focusAdd: "income",
-      stepHint: "Här lägger du in det som kommer in.",
+      stepHint:
+        "Steg 2 av 3. Här lägger du in det som kommer in — lön eller CSN.",
     };
   }
   if (steg === "utgift") {
     return {
       focusAdd: "fixed",
-      stepHint: "Här lägger du in det som måste betalas.",
+      stepHint:
+        "Steg 3 av 3. Här lägger du in det som måste betalas — hyra eller räkning.",
     };
   }
   return { focusAdd: null, stepHint: null };

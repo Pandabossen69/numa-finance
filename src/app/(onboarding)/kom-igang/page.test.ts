@@ -84,6 +84,7 @@ describe("first-run onboarding", () => {
     expect(choiceUi).toContain("ONBOARDING_MANUAL_PATH");
     expect(choiceUi).toContain("C.fotaTitle");
     expect(choiceUi).toContain("C.manualTitle");
+    expect(choiceUi).toContain("C.afterSaldoHint");
     expect(choiceUi).not.toContain("Hoppa över");
     expect(choiceUi).not.toContain("Analys");
     expect(choiceUi).toContain("md:grid-cols-2");

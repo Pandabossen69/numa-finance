@@ -3,6 +3,13 @@ import { isPlanIncome, isPlanSavings, type PlanItem } from "@/domain/finance";
 
 export const GETTING_STARTED_TOTAL = 3;
 
+export const GETTING_STARTED_SV = {
+  title: "Kom igång",
+  intro: "Tre korta steg. Gör nästa.",
+  allDone: "Saldo, in och ut är på plats.",
+  nextChip: "Gör nu",
+} as const;
+
 export type GettingStartedStepId = "saldo" | "income" | "bills";
 
 export type GettingStartedStep = {
@@ -31,19 +38,19 @@ const STEPS: Array<{
   {
     id: "saldo",
     label: "Saldo just nu",
-    why: "Så Hem visar läget just nu.",
+    why: "Så Hem visar vad du har.",
     href: "/kom-igang",
   },
   {
     id: "income",
     label: "Vad kommer in",
-    why: "Lön eller CSN hör hemma i Plan.",
+    why: "Lägg in lön eller CSN i Plan.",
     href: "/plan?steg=inkomst",
   },
   {
     id: "bills",
     label: "Vad måste betalas",
-    why: "Hyra och räkningar lägger du i Plan.",
+    why: "Lägg in hyra och räkningar i Plan.",
     href: "/plan?steg=utgift",
   },
 ];
@@ -96,4 +103,16 @@ export function buildGettingStartedView(input: {
 
 export function gettingStartedProgressLabel(doneCount: number, total: number): string {
   return `${doneCount} av ${total} klara`;
+}
+
+export function nextGettingStartedStep(
+  view: GettingStartedView,
+): GettingStartedStep | null {
+  return view.steps.find((step) => !step.done) ?? null;
+}
+
+export function gettingStartedNextCta(id: GettingStartedStepId): string {
+  if (id === "saldo") return "Sätt saldo";
+  if (id === "income") return "Lägg in vad som kommer in";
+  return "Lägg in vad som måste betalas";
 }
