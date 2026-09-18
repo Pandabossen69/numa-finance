@@ -25,11 +25,8 @@ export function AnalysRouteClient() {
 
   useEffect(() => {
     let cancelled = false;
-    // Last-known paints immediately; still warm so /analys reload is not Hem-only.
-    if (lastAnalysSnapshot()) {
-      scheduleQuietMenuWarm();
-      return;
-    }
+    // Always fetch under the client cap. Last-known paints immediately;
+    // a hung action must still fail-soft so reload never sits on pending.
     void fetchAnalysSnapshotClient(getAnalysSnapshotAction).then((result) => {
       if (cancelled) return;
       if (result.ok) {

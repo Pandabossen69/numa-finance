@@ -63,9 +63,10 @@ describe("SPA keep-alive primary tabs", () => {
     const movements = read("../../components/movements/MovementsRouteClient.tsx");
     const mer = read("../../components/mer/MerRouteClient.tsx");
     expect(plan).toContain("if (lastPlanSnapshot()) return;");
-    expect(analys).toMatch(
-      /if \(lastAnalysSnapshot\(\)\) \{\s*scheduleQuietMenuWarm\(\);\s*return;/,
-    );
+    // Analys always fetches under a client timeout — last-known is not enough
+    // to skip, because a hung reload otherwise stays on «Hämtar analysen…».
+    expect(analys).toContain("fetchAnalysSnapshotClient");
+    expect(analys).not.toContain("if (lastAnalysSnapshot()) return");
     expect(movements).toContain("if (lastMovementsSnapshot()) return;");
     expect(mer).toContain("if (lastMerSnapshot()) return;");
   });
