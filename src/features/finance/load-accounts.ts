@@ -5,6 +5,7 @@ import {
   balanceToThbMinor,
   calculateAccountBalance,
   filterTransactionsAfterCheckpoint,
+  sortAccountsForList,
   type AccountKind,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
@@ -127,8 +128,8 @@ export const loadAccountsSnapshot = cache(
       return {
         ok: true,
         data: {
-          accounts: activeRows,
-          archivedAccounts: archivedRows,
+          accounts: sortAccountsForList(activeRows),
+          archivedAccounts: sortAccountsForList(archivedRows),
           totalThbMinor,
         },
       };

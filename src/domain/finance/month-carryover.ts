@@ -1,4 +1,5 @@
 import { appliesToSpending } from "./balance";
+import { compareSpendDesc } from "./list-sort";
 import {
   APP_PLAN_START_MONTH,
   addMonthsKey,
@@ -210,9 +211,7 @@ export function spendingCategoriesByMonthKey(params: {
 
   const out: Record<string, SpendingCategoryTotal[]> = {};
   for (const [key, bucket] of buckets) {
-    out[key] = [...bucket.values()].sort(
-      (a, b) => b.amountMinor - a.amountMinor,
-    );
+    out[key] = [...bucket.values()].sort(compareSpendDesc);
   }
   return out;
 }

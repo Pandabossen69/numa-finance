@@ -32,6 +32,8 @@ import {
   PLAN_UPDATE_FAILED_SV,
   type Profile,
   type SourceObservation,
+  sortAccountsForList,
+  sortNewestFirst,
   type TransactionSource,
 } from "@/domain/finance";
 import { type CurrencyCode } from "@/domain/money";
@@ -215,7 +217,7 @@ export const listAccounts = cache(async (): Promise<Account[]> => {
     .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapAccount);
+  return sortAccountsForList((data ?? []).map(mapAccount));
 });
 
 export async function getAccount(accountId: string): Promise<Account | null> {
@@ -243,7 +245,7 @@ export const listArchivedAccounts = cache(async (): Promise<Account[]> => {
     .order("updated_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapAccount);
+  return sortAccountsForList((data ?? []).map(mapAccount));
 });
 
 async function remoteLifecycleFacts(account: Account) {
@@ -1062,7 +1064,9 @@ export async function listTransactions(
     .from("transactions")
     .select(numaSelect(LEDGER_TRANSACTION_SELECT))
     .eq("user_id", userId)
-    .order("occurred_at", { ascending: false });
+    .order("occurred_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true });
 
   if (accountId) {
     query = query.eq("account_id", accountId);
@@ -1076,7 +1080,7 @@ export async function listTransactions(
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapTransaction);
+  return sortNewestFirst((data ?? []).map(mapTransaction));
 }
 
 export async function listTransactionsByPlanItemId(
@@ -1090,9 +1094,11 @@ export async function listTransactionsByPlanItemId(
     .eq("user_id", userId)
     .eq("plan_item_id", planItemId)
     .neq("status", "voided")
-    .order("occurred_at", { ascending: false });
+    .order("occurred_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).map(mapTransaction);
+  return sortNewestFirst((data ?? []).map(mapTransaction));
 }
 
 export async function listConfirmedPlanSettleLedgers(): Promise<

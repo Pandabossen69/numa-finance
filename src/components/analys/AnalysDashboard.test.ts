@@ -180,6 +180,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
     expect(src).toContain("addMonthsKey(activeMonthKey, -1)");
     expect(src).toContain("SpendByCategory");
+    expect(src).toContain("sortNewestFirst");
     expect(src).toContain("Per kategori");
     expect(src).toContain("mer");
     expect(src).toContain("mindre");

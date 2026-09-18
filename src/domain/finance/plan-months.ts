@@ -1,4 +1,5 @@
 import { zonedDayKey } from "./datetime";
+import { compareId, compareIsoAsc } from "./list-sort";
 import type { PlanItem } from "./types";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 
@@ -248,28 +249,28 @@ const PLAN_LIST_RANK: Record<PlanListStatus, number> = {
   settled: 2,
 };
 
-/**
- * Open rows first, Delvis just above Betald/Mottagen, paid last. Stable
- * otherwise. Ranked on the user's own taps — a ledger match never sinks a row.
- */
-export function sortPlanRowsForList(items: readonly PlanItem[]): PlanItem[] {
-  return items
-    .map((item, index) => ({ item, index }))
-    .sort((a, b) => {
-      const rankA = PLAN_LIST_RANK[planListStatus(a.item)];
-      const rankB = PLAN_LIST_RANK[planListStatus(b.item)];
-      if (rankA !== rankB) return rankA - rankB;
-      return a.index - b.index;
-    })
-    .map((row) => row.item);
-}
-
 /** Date used for the open remainder (Delvis klar) or the original due date. */
 export function remainingDueIso(item: PlanItem): string | null {
   if (isPlanPartiallySettled(item) && item.remainingDueAt) {
     return item.remainingDueAt;
   }
   return item.nextDueAt;
+}
+
+/**
+ * Open rows first, Delvis just above Betald/Mottagen, paid last.
+ * Within a status: soonest due date, then id. Ranked on the user's own taps —
+ * a ledger match never sinks a row.
+ */
+export function comparePlanRowsForList(a: PlanItem, b: PlanItem): number {
+  const rankA = PLAN_LIST_RANK[planListStatus(a)];
+  const rankB = PLAN_LIST_RANK[planListStatus(b)];
+  if (rankA !== rankB) return rankA - rankB;
+  return compareIsoAsc(remainingDueIso(a), remainingDueIso(b)) || compareId(a.id, b.id);
+}
+
+export function sortPlanRowsForList(items: readonly PlanItem[]): PlanItem[] {
+  return [...items].sort(comparePlanRowsForList);
 }
 
 /**
@@ -570,6 +571,9 @@ export function projectPlanForMonth(
     }
   }
 
+  const listedIncomes = sortPlanRowsForList(incomes);
+  const listedItems = sortPlanRowsForList(projected);
+
   const incomeMinor = incomes.reduce((sum, i) => sum + i.amountMinor, 0);
   const savingsMinor = savings?.amountMinor ?? 0;
   const fixedMinor = fixedItems.reduce(
@@ -586,10 +590,10 @@ export function projectPlanForMonth(
   return {
     monthKey,
     labelSv: labelMonthSv(monthKey),
-    items: projected,
+    items: listedItems,
     fixedItems,
     extraItems,
-    incomes,
+    incomes: listedIncomes,
     savings,
     reservedMinor,
     bufferMinor,

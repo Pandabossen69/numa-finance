@@ -10,6 +10,7 @@ import {
   isPlanIncome,
   isPlanSavings,
   monthKeyFromDate,
+  sortPlanRowsForList,
   projectLivingBudget,
   projectPayCycle,
   type PlanItem,
@@ -162,16 +163,16 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
       }),
     );
 
-    const goals: AnalysLine[] = planItems
-      .filter(
+    const goals: AnalysLine[] = sortPlanRowsForList(
+      planItems.filter(
         (p) =>
           p.isActive &&
           p.kind === "goal" &&
           p.name !== NEXT_INCOME_NAME &&
           !isPlanIncome(p) &&
           !isPlanSavings(p),
-      )
-      .map((g) => toAnalysLine(g, { detail: "Mål" }));
+      ),
+    ).map((g) => toAnalysLine(g, { detail: "Mål" }));
 
 
     const formulaSteps =

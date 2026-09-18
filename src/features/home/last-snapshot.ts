@@ -13,6 +13,8 @@ import {
   projectLivingBudget,
   projectPayCycle,
   remainingTodayOf,
+  sortNewestFirst,
+  sortSpendDesc,
   type FxCheckpoint,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
@@ -851,9 +853,7 @@ function recomputeMovements(
     allIncomeMinor,
     allExpenseMinor,
     allNetMinor: allIncomeMinor - allExpenseMinor,
-    monthCategories: [...categoryMap.values()].sort(
-      (a, b) => b.amountMinor - a.amountMinor,
-    ),
+    monthCategories: sortSpendDesc([...categoryMap.values()]),
     balanceMinor:
       previous.balanceMinor == null
         ? null
@@ -1152,7 +1152,7 @@ export function applyMovementsAdd(row: MovementRow): MovementsSnapshot | null {
   rememberMovementsSnapshot(
     recomputeMovements(
       movements,
-      [normalized, ...movements.items],
+      sortNewestFirst([normalized, ...movements.items]),
       movementBalanceDelta(normalized),
     ),
     { dirty: true },

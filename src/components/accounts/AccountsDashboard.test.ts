@@ -35,5 +35,6 @@ describe("AccountsDashboard", () => {
     expect(load).toContain("calculateAccountBalance");
     expect(load).toContain("filterTransactionsAfterCheckpoint");
     expect(load).not.toContain("getTodaySnapshot");
+    expect(load).toContain("sortAccountsForList");
   });
 });
