@@ -16,6 +16,9 @@ export function OnboardingSaldoChoice() {
         <p className="max-w-[34ch] text-[15px] leading-relaxed text-[var(--numa-muted)]">
           {C.saldoHint}
         </p>
+        <p className="max-w-[34ch] text-[13px] leading-relaxed text-[var(--numa-faint)]">
+          {C.afterSaldoHint}
+        </p>
       </header>
 
       <nav className="mt-auto grid min-w-0 gap-3.5 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))] md:mt-9 md:grid-cols-2 md:gap-4">

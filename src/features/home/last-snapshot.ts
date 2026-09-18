@@ -692,6 +692,14 @@ export function lastAnalysScope(): "period" | "month" | null {
 
 export function rememberGettingStarted(view: GettingStartedView | null) {
   if (gettingStarted === view) return;
+  // A quieter warm must not rewind first-run progress (saldo just saved).
+  if (
+    view &&
+    gettingStarted?.visible &&
+    view.doneCount < gettingStarted.doneCount
+  ) {
+    return;
+  }
   gettingStarted = view;
   emit(gettingStartedListeners);
 }

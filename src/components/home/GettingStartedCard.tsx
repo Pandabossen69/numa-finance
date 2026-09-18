@@ -8,7 +8,10 @@ import {
   expandGettingStartedAction,
 } from "@/features/getting-started/actions";
 import {
+  GETTING_STARTED_SV,
+  gettingStartedNextCta,
   gettingStartedProgressLabel,
+  nextGettingStartedStep,
   type GettingStartedView,
 } from "@/features/getting-started/progress";
 import {
@@ -44,6 +47,7 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
   }
 
   const progress = gettingStartedProgressLabel(view.doneCount, view.total);
+  const next = nextGettingStartedStep(view);
 
   return (
     <section
@@ -72,7 +76,7 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
               id="kom-igang-title"
               className="min-w-0 flex-1 truncate px-1 text-sm font-semibold tracking-tight text-[var(--numa-ink)]"
             >
-              Kom igång
+              {GETTING_STARTED_SV.title}
             </h2>
             <p className="shrink-0 text-[12px] font-medium text-[var(--numa-muted)]">
               {view.allDone ? "Klar" : progress}
@@ -102,7 +106,7 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
               id="kom-igang-title"
               className="min-w-0 flex-1 truncate text-sm font-semibold tracking-tight"
             >
-              Kom igång
+              {GETTING_STARTED_SV.title}
             </span>
             <span className="shrink-0 text-[12px] font-medium text-[var(--numa-muted)]">
               {progress}
@@ -129,53 +133,78 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
         <div className="numa-komigang-body-inner">
           {view.allDone ? (
             <p className="px-4 pb-4 text-sm leading-relaxed text-[var(--numa-muted)] md:px-5">
-              Saldo, in och ut är på plats.
+              {GETTING_STARTED_SV.allDone}
             </p>
           ) : (
-            <ol className="grid grid-cols-1 gap-1.5 border-t border-[var(--numa-border)] p-2 md:grid-cols-3">
-              {view.steps.map((step) => (
-                <li key={step.id} className="min-w-0">
-                  {step.done ? (
-                    <div className="flex min-h-14 items-center justify-between gap-3 rounded-[1.15rem] bg-[var(--numa-positive-soft)] px-3 py-3 md:min-h-[5.5rem] md:items-start md:px-4 md:py-4">
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold tracking-tight text-[var(--numa-positive)]">
-                          {step.label}
-                        </span>
-                        <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
-                          {step.why}
-                        </span>
-                      </span>
-                      <span
-                        className="numa-step-check flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-card)] text-sm font-semibold text-[var(--numa-positive)]"
-                        aria-hidden
+            <>
+              <p className="px-4 pb-2 text-sm leading-relaxed text-[var(--numa-muted)] md:px-5">
+                {GETTING_STARTED_SV.intro}
+              </p>
+              <ol className="grid grid-cols-1 gap-1.5 border-t border-[var(--numa-border)] p-2 md:grid-cols-3">
+                {view.steps.map((step) => {
+                  const isNext = next?.id === step.id;
+                  if (step.done) {
+                    return (
+                      <li key={step.id} className="min-w-0">
+                        <div className="flex min-h-14 items-center justify-between gap-3 rounded-[1.15rem] bg-[var(--numa-positive-soft)] px-3 py-3 md:min-h-[5.5rem] md:items-start md:px-4 md:py-4">
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold tracking-tight text-[var(--numa-positive)]">
+                              {step.label}
+                            </span>
+                            <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
+                              {step.why}
+                            </span>
+                          </span>
+                          <span
+                            className="numa-step-check flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-card)] text-sm font-semibold text-[var(--numa-positive)]"
+                            aria-hidden
+                          >
+                            ✓
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={step.id} className="min-w-0">
+                      <Link
+                        href={step.href}
+                        className={`numa-press flex min-h-14 items-center justify-between gap-3 rounded-[1.15rem] px-3 py-3 text-left transition focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:outline-none focus-visible:ring-inset md:min-h-[5.5rem] md:items-start md:px-4 md:py-4 ${
+                          isNext
+                            ? "numa-komigang-next"
+                            : "hover:bg-[var(--numa-accent-soft)]"
+                        }`}
                       >
-                        ✓
-                      </span>
-                    </div>
-                  ) : (
-                    <Link
-                      href={step.href}
-                      className="numa-press flex min-h-14 items-center justify-between gap-3 rounded-[1.15rem] px-3 py-3 text-left transition hover:bg-[var(--numa-accent-soft)] focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:outline-none focus-visible:ring-inset md:min-h-[5.5rem] md:items-start md:px-4 md:py-4"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold tracking-tight">
-                          {step.label}
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold tracking-tight">
+                            {step.label}
+                          </span>
+                          <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
+                            {step.why}
+                          </span>
                         </span>
-                        <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
-                          {step.why}
+                        <span
+                          className="flex h-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] px-2.5 text-[12px] font-semibold text-[var(--numa-accent-ink)]"
+                          aria-hidden
+                        >
+                          {isNext ? GETTING_STARTED_SV.nextChip : "→"}
                         </span>
-                      </span>
-                      <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
-                        aria-hidden
-                      >
-                        →
-                      </span>
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ol>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
+              {next ? (
+                <div className="px-2 pb-2 md:px-3 md:pb-3">
+                  <Link
+                    href={next.href}
+                    className="numa-btn numa-btn-primary min-h-12 w-full rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
+                  >
+                    {gettingStartedNextCta(next.id)}
+                  </Link>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </div>

@@ -13,6 +13,11 @@ describe("GettingStartedCard", () => {
     expect(src).toContain("expandGettingStartedAction");
     expect(src).toContain("completeGettingStartedAction");
     expect(src).toContain("gettingStartedProgressLabel");
+    expect(src).toContain("GETTING_STARTED_SV.intro");
+    expect(src).toContain("nextGettingStartedStep");
+    expect(src).toContain("gettingStartedNextCta");
+    expect(src).toContain("numa-komigang-next");
+    expect(src).toContain("numa-btn-primary");
     expect(src).toContain("numa-komigang-body");
     expect(src).toContain("w-full min-w-0");
     expect(src).toContain("md:grid-cols-3");

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { isNavActive, optimisticNavPath } from "@/components/layout/nav";
+import { rememberPlanFocusFromHref } from "@/features/plan/plan-focus";
 import { isSpaTabHref, spaTabKey } from "@/lib/nav/spa-tabs";
 
 type Pending = { href: string; fromPath: string };
@@ -71,15 +72,17 @@ function spaHrefFromAnchor(anchor: HTMLAnchorElement): string | null {
   const href = anchor.getAttribute("href");
   if (!href || href.startsWith("#") || href.startsWith("mailto:")) return null;
   let path = href;
+  let search = "";
   try {
     const url = new URL(href, window.location.href);
     if (url.origin !== window.location.origin) return null;
     path = url.pathname;
+    search = url.search;
   } catch {
     return null;
   }
   if (!isSpaTabHref(path)) return null;
-  return pathOnly(path);
+  return `${pathOnly(path)}${search}`;
 }
 
 export function NavIntentProvider({ children }: { children: ReactNode }) {
@@ -194,6 +197,12 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
         `[data-numa-spa-tab="${destKey}"][data-numa-spa-visible="1"]`,
       );
       if (painted && pathOnly(pathname) === dest) {
+        rememberPlanFocusFromHref(href);
+        try {
+          window.history.pushState({ numaSpa: true, href }, "", href);
+        } catch {
+          // ignore
+        }
         setPending(null);
         setIntent(null);
         return true;
@@ -204,8 +213,9 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       setSpaPath(dest);
       setPending(null);
       setIntent(null);
+      rememberPlanFocusFromHref(href);
       try {
-        window.history.pushState({ numaSpa: true, href: dest }, "", dest);
+        window.history.pushState({ numaSpa: true, href }, "", href);
       } catch {
         // ignore
       }

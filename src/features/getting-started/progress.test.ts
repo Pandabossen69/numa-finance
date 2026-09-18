@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { PlanItem } from "@/domain/finance";
 import {
   buildGettingStartedView,
+  gettingStartedNextCta,
   gettingStartedProgressLabel,
   isPlanBill,
+  nextGettingStartedStep,
+  reconcileGettingStartedWithSaldo,
 } from "./progress";
 
 function item(partial: Partial<PlanItem> & Pick<PlanItem, "kind" | "cadence" | "name">): PlanItem {
@@ -89,9 +92,35 @@ describe("buildGettingStartedView", () => {
     expect(view.steps[1]?.done).toBe(true);
     expect(view.steps[2]?.done).toBe(false);
     expect(view.steps[1]?.href).toBe("/plan?steg=inkomst");
-    expect(view.steps[0]?.why).toBe("Så Hem visar läget just nu.");
-    expect(view.steps[1]?.why).toBe("Lön eller CSN hör hemma i Plan.");
-    expect(view.steps[2]?.why).toBe("Hyra och räkningar lägger du i Plan.");
+    expect(view.steps[0]?.why).toBe("Så Hem visar vad du har.");
+    expect(view.steps[1]?.why).toBe("Lägg in lön eller CSN i Plan.");
+    expect(view.steps[2]?.why).toBe("Lägg in hyra och räkningar i Plan.");
+    expect(nextGettingStartedStep(view)?.id).toBe("bills");
+    expect(gettingStartedNextCta("bills")).toBe(
+      "Lägg in vad som måste betalas",
+    );
+  });
+
+  it("points the next CTA at the first unfinished step", () => {
+    const view = buildGettingStartedView({
+      ...emptyUser,
+      email: "christianhultz1@gmail.com",
+    });
+    expect(nextGettingStartedStep(view)?.id).toBe("saldo");
+    expect(gettingStartedNextCta("saldo")).toBe("Sätt saldo");
+    expect(gettingStartedNextCta("income")).toBe("Lägg in vad som kommer in");
+  });
+
+  it("marks saldo done when Hem already has a balance", () => {
+    const view = buildGettingStartedView({
+      ...emptyUser,
+      email: "christianhultz1@gmail.com",
+    });
+    const next = reconcileGettingStartedWithSaldo(view, true);
+    expect(next.doneCount).toBe(1);
+    expect(next.steps[0]?.done).toBe(true);
+    expect(next.steps[0]?.href).toBe("/idag");
+    expect(nextGettingStartedStep(next)?.id).toBe("income");
   });
 
   it("treats non-savings plan rows as bills", () => {
