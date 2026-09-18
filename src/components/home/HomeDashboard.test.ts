@@ -118,6 +118,19 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain('formatCountSv(view.spendDaysLeft, "dag", "dagar")');
   });
 
+  it("sits N dagar kvar under the Kvar circle, not opposite the title", () => {
+    const wrapStart = src.indexOf("flex flex-col items-center gap-1.5");
+    const wrap = src.slice(wrapStart, wrapStart + 1800);
+    expect(wrap).toContain("<DayDial");
+    expect(wrap).toContain("{daysLeftChip}");
+    expect(wrap.indexOf("<DayDial")).toBeLessThan(wrap.indexOf("{daysLeftChip}"));
+    expect(src).not.toContain(
+      "flex min-w-0 items-center justify-between gap-3 px-1",
+    );
+    expect(src).toContain("Hela dagsbudgeten kvar");
+    expect(src).not.toContain("Hela dagsbudgeten kvar · ${daysWord}");
+  });
+
   it("names the dagsbudget horizon as till nästa inkomst + date", () => {
     expect(src).toContain("SV.tillNastaInkomst");
     expect(src).toContain("fram till nästa inkomst");

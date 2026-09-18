@@ -51,6 +51,9 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
           className="absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2.5rem))] rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] p-4 shadow-[var(--numa-shadow)] max-md:relative max-md:right-auto max-md:z-10 max-md:mt-3 max-md:w-full"
         >
           <p className="numa-section-title">{SV.saRaknarNuma}</p>
+          <p className="mt-2 text-sm leading-snug text-[var(--numa-muted)]">
+            {SV.saRaknasAnalysenLead}
+          </p>
           <ol className="mt-3 list-decimal space-y-2 pl-4 text-sm leading-snug text-[var(--numa-muted)]">
             {steps.map((step) => (
               <li key={step}>{step}</li>

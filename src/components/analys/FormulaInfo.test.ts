@@ -15,4 +15,10 @@ describe("FormulaInfo popover", () => {
     expect(src).toContain("numa-tap-icon");
     expect(src).not.toContain("h-10 w-10");
   });
+
+  it("titles the existing info control Så räknas analysen", () => {
+    expect(src).toContain("SV.saRaknarNuma");
+    expect(src).toContain("SV.saRaknasAnalysenLead");
+    expect(src).toContain("aria-label={SV.saRaknarNuma}");
+  });
 });
