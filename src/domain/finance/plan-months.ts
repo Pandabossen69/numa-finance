@@ -352,6 +352,21 @@ export function isPlanSavings(item: PlanItem): boolean {
   );
 }
 
+/** Active savings row for a calendar month — latest `updatedAt` wins. */
+export function findMonthSavings(
+  items: PlanItem[],
+  monthKey: string,
+  timeZone: string,
+): PlanItem | undefined {
+  let found: PlanItem | undefined;
+  for (const item of items) {
+    if (!item.isActive || !isPlanSavings(item) || !item.nextDueAt) continue;
+    if (planItemMonthKey(item, timeZone) !== monthKey) continue;
+    if (!found || item.updatedAt >= found.updatedAt) found = item;
+  }
+  return found;
+}
+
 /** Mid-month anchor used to attach one-off income/savings to a calendar month. */
 export function monthAnchorIso(monthKey: string): string {
   return `${monthKey}-15T12:00:00.000Z`;
@@ -528,7 +543,6 @@ export function projectPlanForMonth(
   const fixedItems: PlanItem[] = [];
   const extraItems: PlanItem[] = [];
   const incomes: PlanItem[] = [];
-  let savings: PlanItem | null = null;
 
   for (const item of active) {
     const dueMonth = planItemMonthKey(item, timeZone);
@@ -537,12 +551,6 @@ export function projectPlanForMonth(
       continue;
     }
     if (isPlanSavings(item)) {
-      if (dueMonth === monthKey) {
-        const prev = savings;
-        if (!prev || item.updatedAt >= prev.updatedAt) {
-          savings = item;
-        }
-      }
       continue;
     }
     if (isRecurringMonthly(item)) {
@@ -575,6 +583,7 @@ export function projectPlanForMonth(
   const listedItems = sortPlanRowsForList(projected);
 
   const incomeMinor = incomes.reduce((sum, i) => sum + i.amountMinor, 0);
+  const savings = findMonthSavings(active, monthKey, timeZone) ?? null;
   const savingsMinor = savings?.amountMinor ?? 0;
   const fixedMinor = fixedItems.reduce(
     (sum, i) => sum + remainingOpenMinor(i),

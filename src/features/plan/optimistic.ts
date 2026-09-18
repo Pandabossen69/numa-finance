@@ -1,7 +1,6 @@
 import {
-  isPlanSavings,
+  findMonthSavings as findPlanMonthSavings,
   monthAnchorIso,
-  monthKeyFromDate,
   MONTHLY_SAVE_NAME,
   type PlanCategoryKind,
   type PlanItem,
@@ -142,10 +141,7 @@ export function findMonthSavings(
   monthKey: string,
   timeZone: string,
 ): PlanItem | undefined {
-  return items.find((item) => {
-    if (!item.isActive || !isPlanSavings(item) || !item.nextDueAt) return false;
-    return monthKeyFromDate(new Date(item.nextDueAt), timeZone) === monthKey;
-  });
+  return findPlanMonthSavings(items, monthKey, timeZone);
 }
 
 export function applyMonthSavings(

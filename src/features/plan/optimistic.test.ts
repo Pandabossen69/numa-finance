@@ -169,6 +169,63 @@ describe("plan optimistic helpers", () => {
       "Asia/Bangkok",
     );
     expect(updated.items).toEqual([rent]);
+  });
+
+  it("edits the latest savings row when a month has duplicates", () => {
+    const older = item({
+      name: MONTHLY_SAVE_NAME,
+      kind: "goal",
+      amountMinor: 1_000_00,
+      cadence: "savings",
+      nextDueAt: "2026-08-15T12:00:00.000Z",
+    });
+    const newer = {
+      ...item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 2_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      updatedAt: "2026-08-20T00:00:00.000Z",
+    };
+    const applied = applyMonthSavings(
+      [older, newer],
+      "2026-08",
+      4_000_00,
+      "THB",
+      "Asia/Bangkok",
+    );
+    expect(applied.previous?.id).toBe(newer.id);
+    expect(applied.items.find((row) => row.id === newer.id)?.amountMinor).toBe(
+      4_000_00,
+    );
+    expect(applied.items.find((row) => row.id === older.id)?.amountMinor).toBe(
+      1_000_00,
+    );
+  });
+
+  it("keeps reverting a cleared latest savings row", () => {
+    const existing = item({
+      name: MONTHLY_SAVE_NAME,
+      kind: "goal",
+      amountMinor: 1000_00,
+      cadence: "savings",
+      nextDueAt: "2026-08-15T12:00:00.000Z",
+    });
+    const rent = item({
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 10000_00,
+    });
+    const updated = applyMonthSavings(
+      [rent, existing],
+      "2026-08",
+      0,
+      "THB",
+      "Asia/Bangkok",
+    );
+    expect(updated.items).toEqual([rent]);
     expect(
       revertMonthSavings(
         updated.items,

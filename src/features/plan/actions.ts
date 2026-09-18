@@ -8,6 +8,7 @@ import {
   dayOfMonthFromIso,
   dueDateInMonth,
   importableFixedExpenses,
+  findMonthSavings,
   isPlanIncome,
   isPlanSavings,
   monthAnchorIso,
@@ -126,7 +127,8 @@ function planWriteFailure(
     | "create_extra"
     | "update"
     | "update_amount"
-    | "import_fixed",
+    | "import_fixed"
+    | "set_savings",
 ): { ok: false; error: string } {
   if (error instanceof z.ZodError) {
     if (error.issues.some((issue) => issue.path.includes("kind"))) {
@@ -259,10 +261,11 @@ export async function setMonthSavingsAction(
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
     const ctx = await planWriteContext();
-    const existing = ctx.planItems.find((p) => {
-      if (!p.isActive || !isPlanSavings(p) || !p.nextDueAt) return false;
-      return monthKeyFromDate(new Date(p.nextDueAt), ctx.timeZone) === input.monthKey;
-    });
+    const existing = findMonthSavings(
+      ctx.planItems,
+      input.monthKey,
+      ctx.timeZone,
+    );
 
     if (amountMinor === 0) {
       if (existing) await deletePlanItem(existing.id);
@@ -283,10 +286,7 @@ export async function setMonthSavingsAction(
     revalidatePlanPaths();
     return { ok: true, item };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte spara sparmålet",
-    };
+    return planWriteFailure(error, "Kunde inte spara sparmålet", "set_savings");
   }
 }
 

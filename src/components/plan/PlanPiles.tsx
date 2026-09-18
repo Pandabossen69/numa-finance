@@ -42,10 +42,15 @@ export function PlanPiles({
     (key) => (savingsByMonth[key] ?? 0) > 0,
   ).length;
   const savingsFill = monthKeys.length > 0 ? monthsWithSavings / monthKeys.length : 0;
+  const hasThisMonth = savingsThisMonthMinor > 0;
+  const hasEarlier = savingsTotalMinor > savingsThisMonthMinor;
 
   const overChip = overOk ? SV.pengarOver : SV.rackerInte;
-  const savingsChip =
-    savingsThisMonthMinor > 0 ? SV.vaxer : savingsTotalMinor > 0 ? "Avsatt" : "Inte ännu";
+  const savingsChip = hasThisMonth
+    ? "Denna månad"
+    : savingsTotalMinor > 0
+      ? "Tidigare månader"
+      : "Inte ännu";
 
   return (
     <div className="space-y-4">
@@ -121,13 +126,13 @@ export function PlanPiles({
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <p id="plan-sparande-heading" className="numa-section-title min-w-0">
-              {SV.sparande} · {monthName}
+              Spara i {monthName}
             </p>
             <span className="numa-chip numa-chip-ink shrink-0">{savingsChip}</span>
           </div>
           <div className="text-[var(--numa-ink)]">
             <MoneyDisplay
-              amountMinor={savingsTotalMinor}
+              amountMinor={savingsThisMonthMinor}
               currency={currency}
               size="sm"
               compact
@@ -136,13 +141,9 @@ export function PlanPiles({
             />
           </div>
           <p className="numa-pile-hint">
-            {savingsTotalMinor <= 0
-              ? "Sätt av det som inte ska levas upp."
-              : savingsThisMonthMinor <= 0
-                ? "Sparat i tidigare månader"
-                : savingsTotalMinor === savingsThisMonthMinor
-                  ? `Avsatt i ${monthName}`
-                  : "Sparat hittills"}
+            {hasThisMonth
+              ? "Avsatt i planen denna månad. Sänker dagsbudgeten när perioden är igång. Över på kontona ändras inte."
+              : "Sätt av det som inte ska levas upp. Tas från kvar i perioden — sänker dagsbudgeten, inte Över."}
           </p>
 
           <div className="numa-year-dots" aria-hidden>
@@ -163,18 +164,18 @@ export function PlanPiles({
             />
           </div>
 
-          {savingsTotalMinor > 0 &&
-          savingsThisMonthMinor > 0 &&
-          savingsTotalMinor !== savingsThisMonthMinor ? (
+          {hasEarlier ? (
             <PileLine
-              label={`I ${monthName}`}
-              amountMinor={savingsThisMonthMinor}
+              label={SV.sparandeTotalt}
+              amountMinor={savingsTotalMinor}
               currency={currency}
             />
           ) : null}
 
           <div className="mt-auto space-y-2 pt-1">
-            <p className="numa-section-title">Avsätt i {monthName}</p>
+            <p className="numa-section-title">
+              {hasThisMonth ? `Ändra ${monthName}` : `Avsätt i ${monthName}`}
+            </p>
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="text"
@@ -191,9 +192,9 @@ export function PlanPiles({
                 onClick={onSaveSavings}
                 className="numa-btn numa-btn-primary min-h-11 px-4"
               >
-                {savingsBusy ? "Sparar…" : "Avsätt"}
+                {savingsBusy ? "Sparar…" : hasThisMonth ? "Uppdatera" : "Avsätt"}
               </button>
-              {savingsThisMonthMinor > 0 ? (
+              {hasThisMonth ? (
                 <button
                   type="button"
                   disabled={clearBusy || savingsBusy}

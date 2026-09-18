@@ -121,7 +121,7 @@ export function CompactPiles({
       <div className="is-park min-w-0">
         <div className="numa-pile-save-copy">
           <p className="numa-section-title">{SV.sparande}</p>
-          <p className="numa-pile-hint">{SV.sparandeTotalt}</p>
+          <p className="numa-pile-hint">{SV.sparandeHintHem}</p>
         </div>
         <div className="numa-pile-save-value min-w-0 text-[var(--numa-ink)]">
           <MoneyDisplay

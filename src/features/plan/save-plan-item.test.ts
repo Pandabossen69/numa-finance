@@ -94,13 +94,14 @@ describe("plan save actions hide Postgres text", () => {
     expect(actions).toContain("toSafePlanLogError");
   });
 
-  it("leaves savings on its previous error path", () => {
+  it("maps savings failures through planWriteFailure", () => {
     const savings = actions.slice(
       actions.indexOf("export async function setMonthSavingsAction"),
       actions.indexOf("export async function deletePlanItemAction"),
     );
-    expect(savings).not.toContain("planWriteFailure");
-    expect(savings).toContain("error instanceof Error ? error.message");
+    expect(savings).toContain("planWriteFailure");
+    expect(savings).toContain("findMonthSavings");
+    expect(savings).not.toContain("error instanceof Error ? error.message");
   });
 
   it("validates kind before the RPC", () => {
