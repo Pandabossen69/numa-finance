@@ -32,6 +32,9 @@ describe("Swedish money labels", () => {
     expect(SV.kvarAttBetala).toBe("Kvar att betala");
     expect(SV.over).not.toBe(SV.motPlanen);
     expect(SV.overDagsbudget).toBe("Över dagsbudgeten");
+    expect(SV.tillNastaInkomst).toBe("Till nästa inkomst");
+    expect(SV.sparandeHintHem).toMatch(/planen/i);
+    expect(SV.sparaDennaManad).toBe("Spara denna månad");
   });
 
   it("points Flytta/Kontant empty states to Mer → Konton", () => {

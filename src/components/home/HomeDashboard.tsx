@@ -144,13 +144,9 @@ export function HomeDashboard({
   const dayOk = remainingTodayMinor > 0;
   const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
-  const rangeLabel = isBridge
-    ? view.nextIncomeLabelSv
-      ? `Till ${view.nextIncomeLabelSv}`
-      : null
-    : view.cycleStartLabelSv && view.cycleEndLabelSv
-      ? `${view.cycleStartLabelSv} – ${view.cycleEndLabelSv}`
-      : null;
+  const rangeLabel = view.nextIncomeLabelSv
+    ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
+    : null;
 
   const dayUsedRatio =
     view.dayBudgetMinor > 0 ? todaySpendingMinor / view.dayBudgetMinor : 0;
@@ -283,7 +279,11 @@ export function HomeDashboard({
                           wrap={false}
                         />
                       </div>
-                      <p className="numa-metric-hint">Sätts på morgonen</p>
+                      <p className="numa-metric-hint">
+                        {view.nextIncomeLabelSv
+                          ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
+                          : "Sätts på morgonen"}
+                      </p>
                     </div>
                     <div className="is-spent">
                       <p className="numa-metric-label">{SV.spenderatIdag}</p>
@@ -488,7 +488,9 @@ function AvailableNowCard({
         <h2 className="mt-1 text-lg font-semibold tracking-tight">{SV.hurMycketKvar}</h2>
         <p className="mt-1 max-w-[36ch] text-sm leading-relaxed text-[var(--numa-muted)]">
           Vi räknar ut en dagsbudget
-          {nextIncomeLabel ? ` fram till ${nextIncomeLabel}` : " fram till nästa intäkt"}.
+          {nextIncomeLabel
+            ? ` fram till nästa inkomst · ${nextIncomeLabel}`
+            : " fram till nästa inkomst"}.
           När du handlar sjunker bara kvar idag.
         </p>
       </div>

@@ -3,6 +3,7 @@ import {
   calculateAccountBalance,
   calculatePlanTotals,
   calculateSafeToSpend,
+  calendarDaysBetween,
   checkpointMapForAccounts,
   computeClassifiedSpendingWindows,
   computeFinanceRevision,
@@ -127,7 +128,11 @@ export function assembleTodaySnapshot(input: {
   const bufferMinor = cycle.bufferMinor;
   const daysUntilNextIncome = Math.max(
     1,
-    cycle.startAt ? cycle.daysLeft : totals.daysUntilNextIncome || 1,
+    cycle.nextPaycheckAt
+      ? calendarDaysBetween(now, cycle.nextPaycheckAt, timezone)
+      : cycle.startAt
+        ? cycle.daysLeft
+        : totals.daysUntilNextIncome || 1,
   );
   const windows = computeClassifiedSpendingWindows({
     transactions: canonicalTx,

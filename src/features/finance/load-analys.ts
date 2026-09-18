@@ -197,7 +197,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
             ? [
                 "Analys visar vart pengarna gick. Spenderat och kategorierna är samma belopp.",
                 "Tidiga intäkter ingår redan i budgeten.",
-                "Dagsbudget räknas fram till månadens sista intäkt.",
+                "Dagsbudget räknas fram till nästa inkomst — inte till periodens sista intäkt.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte mitt på dagen.",
                 "När sista intäkten kommer räknas perioden om till nästa.",
                 "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
@@ -210,7 +210,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
                 "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
                 "Löneperiodens utgifter kan skilja sig från kalendermånadens.",
                 "Det som blir över en månad följer med som extra saldo.",
-                "Dagsbudget = kvar i perioden (på morgonen) ÷ dagar kvar.",
+                "Dagsbudget = kvar i perioden (på morgonen) ÷ dagar till nästa inkomst.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte.",
               ];
 
