@@ -352,6 +352,18 @@ export function isPlanSavings(item: PlanItem): boolean {
   );
 }
 
+/** Active savings rows for one calendar month. */
+export function listMonthSavings(
+  items: readonly PlanItem[],
+  monthKey: string,
+  timeZone: string,
+): PlanItem[] {
+  return items.filter((item) => {
+    if (!item.isActive || !isPlanSavings(item) || !item.nextDueAt) return false;
+    return planItemMonthKey(item, timeZone) === monthKey;
+  });
+}
+
 /** Active savings row for a calendar month — latest `updatedAt` wins. */
 export function findMonthSavings(
   items: PlanItem[],
@@ -359,12 +371,24 @@ export function findMonthSavings(
   timeZone: string,
 ): PlanItem | undefined {
   let found: PlanItem | undefined;
-  for (const item of items) {
-    if (!item.isActive || !isPlanSavings(item) || !item.nextDueAt) continue;
-    if (planItemMonthKey(item, timeZone) !== monthKey) continue;
+  for (const item of listMonthSavings(items, monthKey, timeZone)) {
     if (!found || item.updatedAt >= found.updatedAt) found = item;
   }
   return found;
+}
+
+/**
+ * Older same-month savings leftovers. A live edit must not leave these
+ * around — remount / quiet warm can otherwise pick 3000 over 7500.
+ */
+export function listStaleMonthSavings(
+  items: readonly PlanItem[],
+  monthKey: string,
+  timeZone: string,
+  keepId?: string,
+): PlanItem[] {
+  const keep = keepId ?? findMonthSavings(items as PlanItem[], monthKey, timeZone)?.id;
+  return listMonthSavings(items, monthKey, timeZone).filter((item) => item.id !== keep);
 }
 
 /** Mid-month anchor used to attach one-off income/savings to a calendar month. */

@@ -200,9 +200,10 @@ describe("plan optimistic helpers", () => {
     expect(applied.items.find((row) => row.id === newer.id)?.amountMinor).toBe(
       4_000_00,
     );
-    expect(applied.items.find((row) => row.id === older.id)?.amountMinor).toBe(
-      1_000_00,
-    );
+    expect(applied.items.find((row) => row.id === older.id)).toBeUndefined();
+    expect(
+      projectPlanForMonth(applied.items, "2026-08", "Asia/Bangkok").savingsMinor,
+    ).toBe(4_000_00);
   });
 
   it("keeps reverting a cleared latest savings row", () => {

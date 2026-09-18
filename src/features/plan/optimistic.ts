@@ -1,5 +1,6 @@
 import {
   findMonthSavings as findPlanMonthSavings,
+  listStaleMonthSavings,
   monthAnchorIso,
   MONTHLY_SAVE_NAME,
   type PlanCategoryKind,
@@ -144,6 +145,18 @@ export function findMonthSavings(
   return findPlanMonthSavings(items, monthKey, timeZone);
 }
 
+function dropStaleMonthSavings(
+  items: PlanItem[],
+  monthKey: string,
+  timeZone: string,
+  keepId?: string,
+): PlanItem[] {
+  const stale = listStaleMonthSavings(items, monthKey, timeZone, keepId);
+  if (stale.length === 0) return items;
+  const drop = new Set(stale.map((row) => row.id));
+  return items.filter((row) => !drop.has(row.id));
+}
+
 export function applyMonthSavings(
   items: PlanItem[],
   monthKey: string,
@@ -152,15 +165,16 @@ export function applyMonthSavings(
   timeZone: string,
 ): { items: PlanItem[]; tempId?: string; previous: PlanItem | null } {
   const existing = findMonthSavings(items, monthKey, timeZone) ?? null;
+  const next = dropStaleMonthSavings(items, monthKey, timeZone, existing?.id);
   if (amountMinor === 0) {
     return {
-      items: existing ? removeItemById(items, existing.id) : items,
+      items: existing ? removeItemById(next, existing.id) : next,
       previous: existing,
     };
   }
   if (existing) {
     return {
-      items: replaceItemById(items, existing.id, {
+      items: replaceItemById(next, existing.id, {
         ...existing,
         amountMinor,
         updatedAt: new Date().toISOString(),
@@ -176,7 +190,7 @@ export function applyMonthSavings(
     cadence: "savings",
     nextDueAt: monthAnchorIso(monthKey),
   });
-  return { items: [...items, created], tempId: created.id, previous: null };
+  return { items: [...next, created], tempId: created.id, previous: null };
 }
 
 export function revertMonthSavings(

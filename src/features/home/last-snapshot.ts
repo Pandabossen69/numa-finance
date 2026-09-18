@@ -431,7 +431,7 @@ export function adoptMutationFinance(result: {
   movements?: MovementsSnapshot | null;
 }) {
   if (result.home) rememberHomeSnapshot(result.home, { force: true });
-  if (result.plan) rememberPlanSnapshot(result.plan);
+  if (result.plan) rememberPlanSnapshot(result.plan, { force: true });
   if (result.accounts) rememberAccountsSnapshot(result.accounts);
   if (result.movements) rememberMovementsSnapshot(result.movements);
   confirmOptimisticFinance();
@@ -620,9 +620,12 @@ function planStamp(snapshot: PlanSnapshot): string {
   return `${stampPlanItems(snapshot.items)}:${snapshot.bankBalanceMinor}:${snapshot.ledgerTransactions.length}:${snapshot.currency}:${snapshot.timeZone}`;
 }
 
-export function rememberPlanSnapshot(snapshot: PlanSnapshot) {
+export function rememberPlanSnapshot(
+  snapshot: PlanSnapshot,
+  opts?: { force?: boolean },
+) {
   if (plan === snapshot) return;
-  if (plan && !shouldAdoptFinanceSnapshot(plan, snapshot, false)) {
+  if (!opts?.force && plan && !shouldAdoptFinanceSnapshot(plan, snapshot, false)) {
     return;
   }
   if (plan && planStamp(plan) === planStamp(snapshot)) {

@@ -18,6 +18,8 @@ import {
   settledAmountMinor,
   sumCountsTowardCashMinor,
   findMonthSavings,
+  listMonthSavings,
+  listStaleMonthSavings,
   perDayBudgetMinor,
   projectPlanForMonth,
   cumulativePlanSavingsMinor,
@@ -260,6 +262,10 @@ describe("plan-months", () => {
     expect(projectPlanForMonth([older, newer], "2026-08", "UTC").savingsMinor).toBe(
       5_000_00,
     );
+    expect(listMonthSavings([older, newer], "2026-08", "UTC")).toHaveLength(2);
+    expect(
+      listStaleMonthSavings([older, newer], "2026-08", "UTC").map((row) => row.id),
+    ).toEqual([older.id]);
   });
 
   it("keeps Hem/Plan card math identical for a live month", () => {

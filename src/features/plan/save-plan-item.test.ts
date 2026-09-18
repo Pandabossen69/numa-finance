@@ -101,6 +101,10 @@ describe("plan save actions hide Postgres text", () => {
     );
     expect(savings).toContain("planWriteFailure");
     expect(savings).toContain("findMonthSavings");
+    expect(savings).toContain("listStaleMonthSavings");
+    expect(savings).toContain("listMonthSavings");
+    expect(savings).toContain("refreshAfterDurableWrite");
+    expect(savings).toContain("SAVED_REFRESH_PENDING_SV");
     expect(savings).not.toContain("error instanceof Error ? error.message");
   });
 
