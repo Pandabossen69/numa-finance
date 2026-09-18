@@ -770,8 +770,13 @@ export function PlanEditor({
                   monthKey,
                   amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
                 }),
-              reconcile: (rows, result) =>
-                result.item ? mergeReturnedItem(rows, result.item, tempId) : rows,
+              reconcile: (rows, result) => {
+                adoptMutationFinance(result);
+                if (result.plan) return result.plan.items;
+                return result.item
+                  ? mergeReturnedItem(rows, result.item, tempId)
+                  : rows;
+              },
             });
           }}
           onClearSavings={() => {
@@ -790,6 +795,11 @@ export function PlanEditor({
                   monthKey,
                   amount: "0",
                 }),
+              reconcile: (rows, result) => {
+                adoptMutationFinance(result);
+                if (result.plan) return result.plan.items;
+                return rows;
+              },
             }).then((ok) => {
               if (ok) setSavingsAmount("");
             });

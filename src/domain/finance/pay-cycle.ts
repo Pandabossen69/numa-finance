@@ -58,10 +58,17 @@ export type PayCycleProjection = {
    * Exclusive window end:
    * - partial: last income of this funding month
    * - full / pre labels: last income of the next month
+   *
+   * Cycle end can label the pay-period window. The Hem day envelope
+   * must use `nextPaycheckAt`, not this date — otherwise dagsbudget is
+   * silently stretched past the next real paycheck.
    */
   endAt: string | null;
   startLabelSv: string | null;
   endLabelSv: string | null;
+  /** Soonest real planned paycheck after today. Null when none is dated. */
+  nextPaycheckAt: string | null;
+  nextPaycheckLabelSv: string | null;
   /** Funding calendar month for the income pool (`2026-08`). */
   fundingMonthKey: string | null;
   /** pre = before first income; partial = early incomes landed; full = last→next last. */
@@ -211,6 +218,8 @@ function emptyCycle(): PayCycleProjection {
     endAt: null,
     startLabelSv: null,
     endLabelSv: null,
+    nextPaycheckAt: null,
+    nextPaycheckLabelSv: null,
     fundingMonthKey: null,
     phase: null,
     isActive: false,
@@ -372,12 +381,17 @@ export function projectPayCycle(
   const fromIso = isActive ? now.toISOString() : startIso;
   const daysLeft = Math.max(1, calendarDaysBetween(fromIso, endIso, timeZone));
   const perDayMinor = perDayBudgetMinor(freeToSpendMinor, daysLeft);
+  const nextPaycheck = dated.find((row) => row.at > todayMs) ?? null;
 
   return {
     startAt: startIso,
     endAt: endIso,
     startLabelSv: labelDateSv(startIso, timeZone),
     endLabelSv: labelDateSv(endIso, timeZone),
+    nextPaycheckAt: nextPaycheck?.iso ?? null,
+    nextPaycheckLabelSv: nextPaycheck
+      ? labelDateSv(nextPaycheck.iso, timeZone)
+      : null,
     fundingMonthKey,
     phase,
     isActive,

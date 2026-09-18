@@ -118,6 +118,13 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain('formatCountSv(view.spendDaysLeft, "dag", "dagar")');
   });
 
+  it("names the dagsbudget horizon as till nästa inkomst + date", () => {
+    expect(src).toContain("SV.tillNastaInkomst");
+    expect(src).toContain("fram till nästa inkomst");
+    expect(src).not.toContain("fram till nästa intäkt");
+    expect(src).not.toContain("view.cycleStartLabelSv && view.cycleEndLabelSv");
+  });
+
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
     expect(src).toContain("GettingStartedCard");
     expect(src).toContain("lastGettingStarted");

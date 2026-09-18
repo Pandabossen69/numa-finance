@@ -167,7 +167,7 @@ export function AnalysDashboard({
   const cycleTitle =
     cycleRangeLabel ??
     (isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
-      ? `Fram till ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
+      ? `${SV.tillNastaInkomst} · ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
       : "Ingen period ännu");
   const spentLabel =
     scope === "month" ? SV.spenderatIManaden : SV.spenderatIPerioden;
@@ -231,7 +231,7 @@ export function AnalysDashboard({
       {scope === "period" ? (
         <div key="period" className="numa-scope-panel space-y-6">
           <SpendHero
-            eyebrow={isBridge ? "Tills nästa intäkt" : isEmpty ? "Ingen period" : SV.perioden}
+            eyebrow={isBridge ? SV.tillNastaInkomst : isEmpty ? "Ingen period" : SV.perioden}
             title={cycleTitle}
             spentLabel={spentLabel}
             spentMinor={isEmpty ? 0 : spentMinor}

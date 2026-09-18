@@ -133,6 +133,7 @@ describe("projectPayCycle", () => {
     expect(afterAll.isActive).toBe(true);
     expect(afterAll.startAt).toBe("2026-08-23T12:00:00.000Z");
     expect(afterAll.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(afterAll.nextPaycheckAt).toBe("2026-09-23T12:00:00.000Z");
     expect(afterAll.incomeMinor).toBe(117_000_00);
     expect(afterAll.expenseMinor).toBe(12_000_00);
     expect(afterAll.savingsMinor).toBe(5_000_00);
@@ -180,6 +181,7 @@ describe("projectPayCycle", () => {
     expect(cycle.phase).toBe("full");
     expect(cycle.startAt).toBe("2026-08-10T12:00:00.000Z");
     expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(cycle.nextPaycheckAt).toBe("2026-09-10T12:00:00.000Z");
     expect(cycle.incomeMinor).toBe(40_000_00);
   });
 

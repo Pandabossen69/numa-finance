@@ -8,8 +8,11 @@ import {
   dayOfMonthFromIso,
   dueDateInMonth,
   importableFixedExpenses,
+  findMonthSavings,
   isPlanIncome,
   isPlanSavings,
+  listMonthSavings,
+  listStaleMonthSavings,
   monthAnchorIso,
   monthKeyFromDate,
   NEXT_INCOME_NAME,
@@ -44,6 +47,10 @@ import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
+import {
+  refreshAfterDurableWrite,
+  SAVED_REFRESH_PENDING_SV,
+} from "@/features/finance/mutation-refresh";
 import {
   accountsSnapshotFromToday,
   homeSnapshotFromToday,
@@ -126,7 +133,8 @@ function planWriteFailure(
     | "create_extra"
     | "update"
     | "update_amount"
-    | "import_fixed",
+    | "import_fixed"
+    | "set_savings",
 ): { ok: false; error: string } {
   if (error instanceof z.ZodError) {
     if (error.issues.some((issue) => issue.path.includes("kind"))) {
@@ -259,34 +267,52 @@ export async function setMonthSavingsAction(
       return { ok: false, error: "Belopp kan inte vara negativt" };
     }
     const ctx = await planWriteContext();
-    const existing = ctx.planItems.find((p) => {
-      if (!p.isActive || !isPlanSavings(p) || !p.nextDueAt) return false;
-      return monthKeyFromDate(new Date(p.nextDueAt), ctx.timeZone) === input.monthKey;
-    });
+    const existing = findMonthSavings(
+      ctx.planItems,
+      input.monthKey,
+      ctx.timeZone,
+    );
+    const leftovers =
+      amountMinor === 0
+        ? listMonthSavings(ctx.planItems, input.monthKey, ctx.timeZone)
+        : listStaleMonthSavings(
+            ctx.planItems,
+            input.monthKey,
+            ctx.timeZone,
+            existing?.id,
+          );
 
+    let item: PlanItem | undefined;
     if (amountMinor === 0) {
-      if (existing) await deletePlanItem(existing.id);
-      revalidatePlanPaths();
-      return { ok: true };
+      await Promise.all(leftovers.map((row) => deletePlanItem(row.id)));
+    } else {
+      item = existing
+        ? await updatePlanItem({ id: existing.id, amountMinor })
+        : await createPlanItem({
+            name: "Spara denna månad",
+            kind: "goal",
+            amountMinor,
+            currency: ctx.currency,
+            cadence: "savings",
+            nextDueAt: monthAnchorIso(input.monthKey),
+          });
+      if (leftovers.length > 0) {
+        await Promise.all(leftovers.map((row) => deletePlanItem(row.id)));
+      }
     }
 
-    const item = existing
-      ? await updatePlanItem({ id: existing.id, amountMinor })
-      : await createPlanItem({
-          name: "Spara denna månad",
-          kind: "goal",
-          amountMinor,
-          currency: ctx.currency,
-          cadence: "savings",
-          nextDueAt: monthAnchorIso(input.monthKey),
-        });
-    revalidatePlanPaths();
-    return { ok: true, item };
+    const refreshed = await refreshAfterDurableWrite(revalidatePlanPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        item,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, item, ...refreshed.snapshots };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Kunde inte spara sparmålet",
-    };
+    return planWriteFailure(error, "Kunde inte spara sparmålet", "set_savings");
   }
 }
 

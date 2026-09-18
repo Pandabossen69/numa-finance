@@ -17,6 +17,9 @@ import {
   remainingOpenMinor,
   settledAmountMinor,
   sumCountsTowardCashMinor,
+  findMonthSavings,
+  listMonthSavings,
+  listStaleMonthSavings,
   perDayBudgetMinor,
   projectPlanForMonth,
   cumulativePlanSavingsMinor,
@@ -230,6 +233,39 @@ describe("plan-months", () => {
     expect(cumulativePlanSavingsMinor(withSeptember, "2026-09", "UTC")).toBe(
       8_000_00,
     );
+  });
+
+  it("uses the latest savings row when a month has duplicates", () => {
+    const older = {
+      ...item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 1_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+    const newer = {
+      ...item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 5_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      updatedAt: "2026-08-20T00:00:00.000Z",
+    };
+    expect(findMonthSavings([older, newer], "2026-08", "UTC")?.amountMinor).toBe(
+      5_000_00,
+    );
+    expect(projectPlanForMonth([older, newer], "2026-08", "UTC").savingsMinor).toBe(
+      5_000_00,
+    );
+    expect(listMonthSavings([older, newer], "2026-08", "UTC")).toHaveLength(2);
+    expect(
+      listStaleMonthSavings([older, newer], "2026-08", "UTC").map((row) => row.id),
+    ).toEqual([older.id]);
   });
 
   it("keeps Hem/Plan card math identical for a live month", () => {

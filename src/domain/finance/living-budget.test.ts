@@ -344,6 +344,104 @@ describe("projectLivingBudget", () => {
     expect(living.daysUntilHorizon).not.toBe(4);
   });
 
+  it("divides dagsbudget by days to the 25th paycheck, not following month end", () => {
+    const now = new Date("2026-09-18T03:00:00.000Z");
+    const payday = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön okt",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-10-25T12:00:00.000Z",
+      }),
+    ];
+    const cycle = projectPayCycle(payday, now, tz);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 5_000_00,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.mode).toBe("cycle");
+    expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(living.nextIncomeAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(living.daysLeft).toBe(7); // 18 → 25 Sep
+    expect(living.daysUntilHorizon).toBe(7);
+    expect(living.daysLeft).not.toBe(12); // not Sep 30 month end
+    expect(living.daysLeft).not.toBe(37); // not 25 Oct
+    expect(living.dayBudgetMinor).toBe(Math.floor(cycle.freeToSpendMinor / 7));
+  });
+
+  it("does not stretch the day envelope to next month's last income", () => {
+    const now = new Date("2026-09-04T03:00:00.000Z");
+    const items = [
+      item({
+        name: "Tidig aug",
+        kind: "expected",
+        amountMinor: 10_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-10T12:00:00.000Z",
+      }),
+      item({
+        name: "Sen aug",
+        kind: "expected",
+        amountMinor: 30_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Tidig sep",
+        kind: "expected",
+        amountMinor: 10_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-11T12:00:00.000Z",
+      }),
+      item({
+        name: "Sen sep",
+        kind: "expected",
+        amountMinor: 30_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+    ];
+    const cycle = projectPayCycle(items, now, tz);
+    expect(cycle.phase).toBe("full");
+    expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(cycle.nextPaycheckAt).toBe("2026-09-11T12:00:00.000Z");
+
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 5_000_00,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.mode).toBe("cycle");
+    expect(living.nextIncomeAt).toBe("2026-09-11T12:00:00.000Z");
+    expect(living.daysLeft).toBe(7); // 4 → 11 Sep
+    expect(living.daysLeft).not.toBe(21); // not 4 → 25 Sep cycle end
+    expect(living.nextIncomeLabelSv?.toLowerCase()).toMatch(/11/);
+    expect(living.cycleEndLabelSv?.toLowerCase()).toMatch(/25/);
+    expect(living.dayBudgetMinor).toBe(Math.floor(cycle.freeToSpendMinor / 7));
+  });
+
   it("falls back to bridge after the cycle window ends", () => {
     const cycle = projectPayCycle(
       items,

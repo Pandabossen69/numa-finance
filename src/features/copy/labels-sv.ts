@@ -25,6 +25,7 @@
 export const SV = {
   kvarIdag: "Kvar idag",
   dagsbudget: "Dagsbudget",
+  tillNastaInkomst: "Till nästa inkomst",
   spenderatIdag: "Spenderat idag",
   spenderatIdagHint: "Rörliga utgifter — inte räkningar",
   betaldaRakningarIdag: "Betalda räkningar idag",
@@ -61,6 +62,8 @@ export const SV = {
   paKontot: "På kontona",
   saldoLevaFor: "Att leva för",
   sparandeAvsatt: "Ligger avsatt",
+  sparandeHintHem: "Avsatt i planen — inte Över",
+  sparaDennaManad: "Spara denna månad",
   vaxer: "Växer",
   intakter: "Intäkter",
   utgifter: "Utgifter",

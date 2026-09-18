@@ -12,6 +12,16 @@ describe("Sparande empty state and Avsätt", () => {
     expect(src).not.toContain("Inget avsatt än");
   });
 
+  it("shows this month as the hero and explains dagsbudget vs Över", () => {
+    expect(src).toContain("Spara i {monthName}");
+    expect(src).toContain("amountMinor={savingsThisMonthMinor}");
+    expect(src).toContain("sänker dagsbudgeten, inte Över");
+    expect(src).toContain("Över på kontona ändras inte");
+    expect(src).toContain("hasThisMonth ? \"Uppdatera\" : \"Avsätt\"");
+    expect(src).toContain("SV.sparandeTotalt");
+    expect(src).not.toContain("SV.vaxer");
+  });
+
   it("labels Över with a matching aria heading id", () => {
     expect(src).toContain('aria-labelledby="plan-over-heading"');
     expect(src).toContain('id="plan-over-heading"');

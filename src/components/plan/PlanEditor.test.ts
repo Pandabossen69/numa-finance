@@ -296,6 +296,21 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("useRouter");
   });
 
+  it("adopts savings mutation snapshots so Hem/Plan remount keep the edit", () => {
+    const save = editor.slice(
+      editor.indexOf("onSaveSavings={() => {"),
+      editor.indexOf("onClearSavings={() => {"),
+    );
+    const clear = editor.slice(
+      editor.indexOf("onClearSavings={() => {"),
+      editor.indexOf("{error ? ("),
+    );
+    for (const block of [save, clear]) {
+      expect(block).toContain("adoptMutationFinance(result)");
+      expect(block).toContain("if (result.plan) return result.plan.items");
+    }
+  });
+
   it("lands a new row immediately and closes add without emptying the form first", () => {
     expect(editor).toContain("function commitAdd");
     expect(editor).toContain("setAddKind(null)");
