@@ -68,11 +68,19 @@ describe("cold Hem/Analys hang contract", () => {
     expect(dest).toContain("AnalysFirstPaint");
     expect(viewLoading).toContain("Hämtar läget…");
     expect(viewLoading).toContain("Hämtar analysen…");
-    expect(viewLoading).toContain("remainingTodayMinor");
+    expect(analysClient).toContain("fetchAnalysSnapshotClient");
+    const action = readFileSync(
+      new URL("../../features/finance/analys-snapshot.ts", import.meta.url),
+      "utf8",
+    );
+    expect(action).toContain("withTimeout");
+    expect(action).toContain("ANALYS_ACTION_TIMEOUT_MS");
     const pending = viewLoading.slice(
       viewLoading.indexOf("export function AnalysPending"),
       viewLoading.indexOf("export function AnalysViewLoading"),
     );
+    expect(pending).not.toContain("remainingTodayMinor");
+    expect(pending).not.toContain("Kvar idag");
     expect(pending).not.toContain("h-[10.5rem]");
     expect(pending).not.toContain("h-[22rem]");
   });

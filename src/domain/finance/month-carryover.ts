@@ -1,4 +1,5 @@
 import { appliesToSpending } from "./balance";
+import { isInPayCycleWindow } from "./spend-class";
 import { compareSpendDesc } from "./list-sort";
 import {
   APP_PLAN_START_MONTH,
@@ -176,8 +177,38 @@ export type SpendingCategoryTotal = {
   count: number;
 };
 
+/** Ledger fields the category split needs — matches Analys / Rörelser rows. */
+export type SpendingCategoryTx = Pick<
+  CanonicalTransaction,
+  | "transactionType"
+  | "status"
+  | "direction"
+  | "currency"
+  | "occurredAt"
+  | "category"
+  | "amountMinor"
+>;
+
 /** Null/blank category — same bucket Tx Per kategori shows as Övrigt. */
 export const UNCATEGORISED_SPEND_NAME = "Övrigt";
+
+function accumulateCategory(
+  bucket: Map<string, SpendingCategoryTotal>,
+  tx: SpendingCategoryTx,
+) {
+  const name = tx.category?.trim() || UNCATEGORISED_SPEND_NAME;
+  const prev = bucket.get(name) ?? { name, amountMinor: 0, count: 0 };
+  prev.amountMinor += tx.amountMinor;
+  prev.count += 1;
+  bucket.set(name, prev);
+}
+
+/** Sum of the listed category rows — the only Spenderat Analys may print. */
+export function sumSpendingCategories(
+  categories: readonly SpendingCategoryTotal[],
+): number {
+  return categories.reduce((total, category) => total + category.amountMinor, 0);
+}
 
 /**
  * The same rows as `spendingByMonthKey`, split by category.
@@ -188,7 +219,7 @@ export const UNCATEGORISED_SPEND_NAME = "Övrigt";
  * excluded by type; FX already applied when callers pass canonical THB).
  */
 export function spendingCategoriesByMonthKey(params: {
-  transactions: CanonicalTransaction[];
+  transactions: readonly SpendingCategoryTx[];
   currency: CurrencyCode;
   timeZone: string;
 }): Record<string, SpendingCategoryTotal[]> {
@@ -202,11 +233,7 @@ export function spendingCategoriesByMonthKey(params: {
       bucket = new Map();
       buckets.set(key, bucket);
     }
-    const name = tx.category?.trim() || UNCATEGORISED_SPEND_NAME;
-    const prev = bucket.get(name) ?? { name, amountMinor: 0, count: 0 };
-    prev.amountMinor += tx.amountMinor;
-    prev.count += 1;
-    bucket.set(name, prev);
+    accumulateCategory(bucket, tx);
   }
 
   const out: Record<string, SpendingCategoryTotal[]> = {};
@@ -214,6 +241,29 @@ export function spendingCategoriesByMonthKey(params: {
     out[key] = [...bucket.values()].sort(compareSpendDesc);
   }
   return out;
+}
+
+/**
+ * Same filter as Spenderat i perioden (`appliesToSpending` + pay-cycle window).
+ * Analys prints this sum as Spenderat and lists the same rows under
+ * "Vart gick pengarna?" — never a second, differently labelled total.
+ */
+export function spendingCategoriesInWindow(params: {
+  transactions: readonly SpendingCategoryTx[];
+  currency: CurrencyCode;
+  startAt: string | null;
+  endAt: string | null;
+}): SpendingCategoryTotal[] {
+  const bucket = new Map<string, SpendingCategoryTotal>();
+  for (const tx of params.transactions) {
+    if (!appliesToSpending(tx)) continue;
+    if (tx.currency !== params.currency) continue;
+    if (!isInPayCycleWindow(tx.occurredAt, params.startAt, params.endAt)) {
+      continue;
+    }
+    accumulateCategory(bucket, tx);
+  }
+  return [...bucket.values()].sort(compareSpendDesc);
 }
 
 export function monthKeysInclusive(fromKey: string, toKey: string): string[] {

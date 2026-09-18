@@ -1,7 +1,6 @@
 "use client";
 
-import { formatMoneyCompact, money } from "@/domain/money";
-import type { HomeSnapshot } from "@/features/finance/load-home";
+import { SV } from "@/features/copy/labels-sv";
 
 /**
  * Calm route pending — text + thin bars, never near-empty mint cards.
@@ -62,44 +61,33 @@ export function HomeViewLoading() {
   );
 }
 
-/** Calm pending — last-known money when we have it, never empty mint cards. */
-export function AnalysPending({
-  home = null,
-}: {
-  home?: HomeSnapshot | null;
-}) {
+/**
+ * Analys pending — purpose copy only. Never reprint Hem's Kvar idag
+ * (that made reload look like a hung Hem card).
+ */
+export function AnalysPending() {
   return (
     <div
-      className="numa-page numa-page-wide space-y-2 pt-1"
+      className="numa-page numa-page-wide space-y-3 pt-1"
       data-numa-view-loading="true"
       aria-busy="true"
       aria-label="Hämtar analysen"
     >
-      {home ? (
-        <>
-          <p className="text-xs font-medium uppercase tracking-wide text-[var(--numa-muted)]">
-            Kvar idag
-          </p>
-          <p className="text-2xl font-semibold tabular-nums">
-            {formatMoneyCompact(money(home.remainingTodayMinor, home.currency))}
-          </p>
-          <p className="text-sm text-[var(--numa-muted)]">
-            {formatMoneyCompact(money(home.remainingFreeMinor, home.currency))}{" "}
-            kvar i perioden
-          </p>
-          <p className="text-sm font-medium text-[var(--numa-muted)]">
-            Hämtar analysen…
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="text-sm font-medium text-[var(--numa-muted)]">
-            Hämtar analysen…
-          </p>
-          <div className="numa-skel h-2.5 w-36 !rounded-full" />
-          <div className="numa-skel h-2.5 w-24 !rounded-full" />
-        </>
-      )}
+      <h1 className="numa-page-title">Analys</h1>
+      <p className="max-w-[36ch] text-sm leading-snug text-[var(--numa-muted)]">
+        {SV.analysHint}
+      </p>
+      <p className="text-sm font-semibold text-[var(--numa-ink)]">
+        {SV.vartGickPengarna}
+      </p>
+      <p className="text-sm font-semibold text-[var(--numa-ink)]">
+        {SV.hurGarDet}
+      </p>
+      <p className="text-sm font-medium text-[var(--numa-muted)]">
+        Hämtar analysen…
+      </p>
+      <div className="numa-skel h-2.5 w-36 !rounded-full" />
+      <div className="numa-skel h-2.5 w-24 !rounded-full" />
     </div>
   );
 }
