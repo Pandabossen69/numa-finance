@@ -20,6 +20,11 @@ export async function readLastHomeCookie(): Promise<HomeSnapshot | null> {
   );
 }
 
+/**
+ * Explicit delete only. Logout keeps the slim shell so same-user cold
+ * login can SSR Kvar/Över (SPEC H). Other-account login still goes
+ * through discardLastHomeCookieIfNotUser.
+ */
 export async function clearLastHomeCookie(): Promise<void> {
   try {
     const jar = await cookies();
