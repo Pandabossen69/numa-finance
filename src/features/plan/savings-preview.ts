@@ -1,4 +1,5 @@
 import {
+  applyLeftoverSparDelta,
   hasCycleFundingEvidence,
   projectCashCoverage,
   projectLivingBudget,
@@ -26,6 +27,8 @@ type PreviewLiving = {
   remainingTodayMinor: number;
   remainingFreeMinor: number;
   dayBudgetMinor: number;
+  livingPoolMinor: number;
+  daysLeft: number;
 };
 
 /** Draft avsättning → Över / Kvar idag / dagsbudget, same functions as the write path. */
@@ -54,15 +57,33 @@ export function previewMonthSavings(input: {
   );
   const from = livingAfterItems(input.items, input, now);
   const to = livingAfterItems(applied.items, input, now);
+  const sparDelta = input.draftMinor - input.currentMinor;
+  // Leftover path: Över moves via coverage, Spec L leftover ignores unpriced
+  // remaining. Apply only the spar increment so 15k stays 275,12 and 20k drops.
+  const leftoverStuck =
+    from.dayBudgetMinor === to.dayBudgetMinor &&
+    from.remainingTodayMinor === to.remainingTodayMinor;
+  const adjusted =
+    leftoverStuck && sparDelta !== 0
+      ? applyLeftoverSparDelta(
+          {
+            livingPoolMinor: to.livingPoolMinor,
+            remainingFreeMinor: to.remainingFreeMinor,
+            daysLeft: to.daysLeft,
+            spentTodayMinor: input.todaySpendingMinor,
+          },
+          sparDelta,
+        )
+      : to;
   return {
     overFrom: from.overMinor,
     overTo: to.overMinor,
     remainingTodayFrom: from.remainingTodayMinor,
-    remainingTodayTo: to.remainingTodayMinor,
+    remainingTodayTo: adjusted.remainingTodayMinor,
     remainingFreeFrom: from.remainingFreeMinor,
-    remainingFreeTo: to.remainingFreeMinor,
+    remainingFreeTo: adjusted.remainingFreeMinor,
     dayBudgetFrom: from.dayBudgetMinor,
-    dayBudgetTo: to.dayBudgetMinor,
+    dayBudgetTo: adjusted.dayBudgetMinor,
   };
 }
 
@@ -122,5 +143,7 @@ function livingAfterItems(
     remainingTodayMinor: living.remainingTodayMinor,
     remainingFreeMinor: living.remainingFreeMinor,
     dayBudgetMinor: living.dayBudgetMinor,
+    livingPoolMinor: living.livingPoolMinor,
+    daysLeft: living.daysLeft,
   };
 }

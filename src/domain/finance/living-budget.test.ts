@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
+  applyLeftoverSparDelta,
   inferReservedSavingsMinor,
   livingBudgetEquationHolds,
   livingBudgetHintSv,
@@ -572,6 +573,50 @@ describe("projectLivingBudget", () => {
     expect(living.dayBudgetMinor).toBeGreaterThan(0);
   });
 
+  it("keeps 275,12 at 15k avsätt when leftover does not re-subtract remaining spar", () => {
+    const now = new Date("2026-09-19T03:00:00.000Z");
+    const payday = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 15_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+    ];
+    const cycle = {
+      ...projectPayCycle(payday, now, tz),
+      freeToSpendMinor: 1_650_75,
+    };
+    expect(cycle.remainingSavingsMinor).toBe(15_000_00);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 3_421_95,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.reservedSavingsMinor).toBe(15_000_00);
+    expect(living.livingPoolMinor).toBe(1_650_75);
+    expect(living.dayBudgetMinor).toBe(275_12);
+    expect(living.remainingTodayMinor).toBe(275_12);
+  });
+
   it("drops Kvar/dagsbudget when avsätt rises on the Spec L leftover path", () => {
     const now = new Date("2026-09-19T03:00:00.000Z");
     const payday = (saveMinor: number): PlanItem[] => [
@@ -597,12 +642,10 @@ describe("projectLivingBudget", () => {
         nextDueAt: "2026-09-20T12:00:00.000Z",
       }),
     ];
-    const at = (saveMinor: number, leftoverMinor: number, pricedSparMinor: number) => {
-      const items = payday(saveMinor);
+    const at = (saveMinor: number) => {
       const cycle = {
-        ...projectPayCycle(items, now, tz),
-        freeToSpendMinor: leftoverMinor,
-        savingsMinor: pricedSparMinor,
+        ...projectPayCycle(payday(saveMinor), now, tz),
+        freeToSpendMinor: 1_650_75,
       };
       return projectLivingBudget({
         cycle,
@@ -613,16 +656,38 @@ describe("projectLivingBudget", () => {
         fundingConfirmed: true,
       });
     };
-    const at15k = at(15_000_00, 1_650_75, 15_000_00);
-    const at20k = at(20_000_00, 1_650_75, 15_000_00);
+    const at15k = at(15_000_00);
+    const at20kRaw = at(20_000_00);
+    const at20k = applyLeftoverSparDelta(
+      {
+        livingPoolMinor: at20kRaw.livingPoolMinor,
+        remainingFreeMinor: at20kRaw.remainingFreeMinor,
+        daysLeft: at20kRaw.daysLeft,
+      },
+      5_000_00,
+    );
     expect(at15k.daysLeft).toBe(6);
     expect(at15k.dayBudgetMinor).toBe(275_12);
     expect(at15k.remainingTodayMinor).toBe(275_12);
-    expect(at20k.daysLeft).toBe(6);
+    expect(at20kRaw.dayBudgetMinor).toBe(275_12);
     expect(at20k.dayBudgetMinor).toBe(0);
     expect(at20k.remainingTodayMinor).toBe(0);
     expect(at20k.dayBudgetMinor).toBeLessThan(at15k.dayBudgetMinor);
     expect(at20k.remainingFreeMinor).toBeLessThan(at15k.remainingFreeMinor);
+  });
+
+  it("applyLeftoverSparDelta turns 275,12 leftover into 0 when +5k avsätt exhausts the pool", () => {
+    const next = applyLeftoverSparDelta(
+      {
+        livingPoolMinor: 1_650_75,
+        remainingFreeMinor: 1_650_75,
+        daysLeft: 6,
+      },
+      5_000_00,
+    );
+    expect(next.livingPoolMinor).toBe(0);
+    expect(next.dayBudgetMinor).toBe(0);
+    expect(next.remainingTodayMinor).toBe(0);
   });
 
   it("reserves only open bills due before next paycheck and shows the leftover pool", () => {

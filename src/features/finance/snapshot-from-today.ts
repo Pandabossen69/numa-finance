@@ -1,5 +1,6 @@
 import {
   ACCOUNT_KIND_LABEL_SV,
+  applyLeftoverSparDelta,
   extraSaldoHintSv,
   labelMonthSv,
   monthKeyFromDate,
@@ -105,6 +106,41 @@ export function homeSnapshotFromToday(
     financeRevision: snap.financeRevision,
     verifiedAt: snap.verifiedAt,
     truthStatus: "verified",
+  };
+}
+
+/**
+ * After a month-avsätt save on the leftover path, apply only the spar
+ * increment so Hem matches Plan preview. Skip 0→N (keeps Spec L 275,12).
+ */
+export function applyHomeLeftoverSparDelta(
+  home: HomeSnapshot,
+  sparDeltaMinor: number,
+  previousSaveMinor: number,
+): HomeSnapshot {
+  if (sparDeltaMinor === 0 || previousSaveMinor <= 0) return home;
+  const spentToday = Math.max(0, home.todaySpendingMinor ?? 0);
+  const cashPool =
+    (home.calculatedBalanceMinor ?? 0) -
+    (home.reservedUntilIncomeMinor ?? 0) +
+    spentToday;
+  if (cashPool > 0) return home;
+  const next = applyLeftoverSparDelta(
+    {
+      livingPoolMinor: home.livingPoolMinor,
+      remainingFreeMinor: home.remainingFreeMinor,
+      daysLeft: Math.max(1, home.spendDaysLeft),
+      spentTodayMinor: spentToday,
+    },
+    sparDeltaMinor,
+  );
+  return {
+    ...home,
+    livingPoolMinor: next.livingPoolMinor,
+    remainingFreeMinor: next.remainingFreeMinor,
+    dayBudgetMinor: next.dayBudgetMinor,
+    remainingTodayMinor: next.remainingTodayMinor,
+    safeToSpendTodayMinor: next.remainingTodayMinor,
   };
 }
 

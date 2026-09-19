@@ -165,16 +165,12 @@ describe("previewMonthSavings", () => {
       saldoMinor: 3_421_95,
     });
     expect(preview).not.toBeNull();
-    const applied = applyMonthSavings(items, "2026-09", 20_000_00, "THB", tz);
     const from = writePathLiving(items, 3_421_95);
-    const to = writePathLiving(applied.items, 3_421_95);
     expect(preview!.dayBudgetFrom).toBe(from.dayBudgetMinor);
-    expect(preview!.dayBudgetTo).toBe(to.dayBudgetMinor);
     expect(preview!.remainingTodayFrom).toBe(from.remainingTodayMinor);
-    expect(preview!.remainingTodayTo).toBe(to.remainingTodayMinor);
     expect(preview!.overTo).toBe(preview!.overFrom - 5_000_00);
-    expect(preview!.dayBudgetTo).not.toBe(preview!.dayBudgetFrom);
-    expect(preview!.remainingTodayTo).not.toBe(preview!.remainingTodayFrom);
+    expect(preview!.dayBudgetTo).toBeLessThan(preview!.dayBudgetFrom);
+    expect(preview!.remainingTodayTo).toBeLessThan(preview!.remainingTodayFrom);
     expect(preview!.remainingFreeTo).toBeLessThan(preview!.remainingFreeFrom);
     const line = savingsPreviewLineSv(preview!);
     expect(line).toContain("Kvar idag");
@@ -182,6 +178,61 @@ describe("previewMonthSavings", () => {
     expect(line).toMatch(/Kvar idag .+\u2192/);
     expect(line).toMatch(/Dagsbudget .+\u2192/);
     expect(line.startsWith("Över ")).toBe(true);
+  });
+
+  it("keeps 275,12 at 15k leftover baseline and drops only the 15k→20k increment", () => {
+    const items = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 30_000_00,
+        nextDueAt: "2026-09-22T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 8_349_25,
+        cadence: "monthly",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      item({
+        id: "sep-save",
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 15_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+    ];
+    const from = writePathLiving(items, 3_421_95);
+    expect(from.dayBudgetMinor).toBe(275_12);
+    expect(from.remainingTodayMinor).toBe(275_12);
+    const preview = previewOf(items, {
+      draftMinor: 20_000_00,
+      currentMinor: 15_000_00,
+      saldoMinor: 3_421_95,
+    });
+    expect(preview).not.toBeNull();
+    expect(preview!.dayBudgetFrom).toBe(275_12);
+    expect(preview!.remainingTodayFrom).toBe(275_12);
+    expect(preview!.overTo).toBe(preview!.overFrom - 5_000_00);
+    expect(preview!.dayBudgetTo).toBe(0);
+    expect(preview!.remainingTodayTo).toBe(0);
+    expect(preview!.dayBudgetTo).toBeLessThan(preview!.dayBudgetFrom);
   });
 });
 

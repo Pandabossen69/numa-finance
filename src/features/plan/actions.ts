@@ -53,6 +53,7 @@ import {
 } from "@/features/finance/mutation-refresh";
 import {
   accountsSnapshotFromToday,
+  applyHomeLeftoverSparDelta,
   homeSnapshotFromToday,
   movementsSnapshotFromToday,
   planSnapshotFromToday,
@@ -310,7 +311,15 @@ export async function setMonthSavingsAction(
         refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
       };
     }
-    return { ok: true, item, ...refreshed.snapshots };
+    const previousSaveMinor = existing?.amountMinor ?? 0;
+    const home = refreshed.snapshots.home
+      ? applyHomeLeftoverSparDelta(
+          refreshed.snapshots.home,
+          amountMinor - previousSaveMinor,
+          previousSaveMinor,
+        )
+      : refreshed.snapshots.home;
+    return { ok: true, item, ...refreshed.snapshots, home };
   } catch (error) {
     return planWriteFailure(error, "Kunde inte spara sparmålet", "set_savings");
   }
