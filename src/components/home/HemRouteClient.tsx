@@ -10,6 +10,7 @@ import {
   isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
+  lastKnownHomeShell,
   lastSessionHomeSnapshot,
   rememberHomeSnapshot,
   subscribeGettingStarted,
@@ -19,8 +20,9 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
- * Session-confirmed last-known paints immediately; hydrate alone shows
- * HemPending until the quiet fetch confirms. Optional cookieShell lets
+ * Session-confirmed last-known paints immediately; cookie / same-owner
+ * last-known paints as a shell (adoptSnap false). Cookie-miss shows
+ * HemPending without holding LoginBoot (SPEC B). Optional cookieShell lets
  * hard-refresh SSR paint last-known Kvar/Över in the first HTML (SPEC 6b).
  * SPA keep-alive mounts this once so tab switches never remount or re-await RSC.
  */
@@ -31,7 +33,7 @@ export function HemRouteClient({
 } = {}) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    () => lastSessionHomeSnapshot() ?? cookieShell,
+    () => lastSessionHomeSnapshot() ?? lastKnownHomeShell(cookieShell),
     () => cookieShell,
   );
   const storedGettingStarted = useSyncExternalStore(
@@ -40,6 +42,12 @@ export function HemRouteClient({
     lastGettingStarted,
   );
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Last-known or HemPending is enough — do not hold LoginBoot for the
+    // live snapshot (SPEC B; layout await of a live snap made cold ~23s).
+    clearLoginBoot();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +75,7 @@ export function HemRouteClient({
     }
   }, [stored]);
 
-  const snap = stored ?? cookieShell;
+  const snap = stored ?? lastKnownHomeShell(cookieShell);
   if (!snap && !error) {
     return <HemFirstPaint />;
   }

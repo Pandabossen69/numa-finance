@@ -25,8 +25,12 @@ describe("/idag first paint", () => {
     expect(hemClient).toContain("getHomeSnapshotAction");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
+    expect(hemClient).toContain("lastKnownHomeShell");
     expect(hemClient).toContain("cookieShell");
     expect(hemClient).toContain("adoptSnap");
+    expect(hemClient).toMatch(
+      /useEffect\(\(\) => \{\s*[\s\S]*?clearLoginBoot\(\);\s*\}, \[\]\)/,
+    );
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("HemFirstPaint");
     expect(loading).not.toContain("HomeViewLoading");
