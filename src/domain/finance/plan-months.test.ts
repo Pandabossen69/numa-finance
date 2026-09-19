@@ -30,6 +30,7 @@ import {
   visibleMonthKeysForYear,
   labelMonthChipSv,
   labelMonthNameSv,
+  labelSavingsMonthsSv,
 } from "./plan-months";
 import { NEXT_INCOME_NAME } from "./plan-totals";
 
@@ -685,5 +686,17 @@ describe("plan-months", () => {
     expect(edited.settledMinor).toBe(8_000_00);
     expect(edited.remainingDueAt).toBeNull();
     expect(edited.nextDueAt).toBe("2026-08-01T12:00:00.000Z");
+  });
+});
+
+describe("labelSavingsMonthsSv", () => {
+  it("joins reserved-savings months the way Hem and Plan name them", () => {
+    expect(labelMonthNameSv("2026-09")).toBe("september");
+    expect(labelSavingsMonthsSv("2026-09")).toBe("september");
+    expect(labelSavingsMonthsSv("2026-09,2026-10")).toBe("september och oktober");
+    expect(labelSavingsMonthsSv(["2026-09", "2026-10"])).toBe(
+      "september och oktober",
+    );
+    expect(labelSavingsMonthsSv(null)).toBe("");
   });
 });

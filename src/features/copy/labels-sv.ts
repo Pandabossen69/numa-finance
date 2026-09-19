@@ -59,6 +59,8 @@ export const SV = {
   planOchSparande: "Plan och sparande",
   spenderatIManaden: "Spenderat i månaden",
   sparande: "Sparande",
+  /** Plan hero + Hem pile/equation — same words, same month. */
+  sparaI: (monthName: string) => `Spara i ${monthName}`,
   /** Σ THB across every wallet — Hem / Plan / Analys. */
   saldo: "På kontona",
   saldoAllaKontonHint: "Alla plånböcker ihopräknade till THB",

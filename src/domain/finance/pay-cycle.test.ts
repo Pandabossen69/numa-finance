@@ -459,4 +459,48 @@ describe("projectPayCycle", () => {
     expect(cycle.startAt).toBe("2026-08-23T12:00:00.000Z");
     expect(cycle.endAt).toBe("2026-09-25T12:00:00.000Z");
   });
+
+  it("reserves only Spara i september when sep+okt both have 15k before 25 sep", () => {
+    const items = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 15_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+      item({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor: 15_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-10-20T12:00:00.000Z",
+      }),
+    ];
+    const cycle = projectPayCycle(
+      items,
+      new Date("2026-09-19T03:00:00.000Z"),
+      tz,
+    );
+    expect(cycle.nextPaycheckAt).toBe("2026-09-25T12:00:00.000Z");
+    expect(cycle.remainingSavingsMinor).toBe(15_000_00);
+    expect(cycle.remainingSavingsRows).toEqual([
+      { amountMinor: 15_000_00, dueAt: "2026-09-20T12:00:00.000Z" },
+    ]);
+    expect(cycle.savingsDueAt).toBe("2026-09-20T12:00:00.000Z");
+  });
 });

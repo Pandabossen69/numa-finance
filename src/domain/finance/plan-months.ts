@@ -700,6 +700,26 @@ export function labelMonthNameSv(monthKey: string): string {
   });
 }
 
+/** `september`, `september och oktober` — Hem/Plan reserved-savings months. */
+export function labelSavingsMonthsSv(
+  monthKeys: string | readonly string[] | null | undefined,
+): string {
+  const raw: string = Array.isArray(monthKeys)
+    ? (monthKeys as readonly string[]).join(",")
+    : typeof monthKeys === "string"
+      ? monthKeys
+      : "";
+  const keys = raw
+    .split(",")
+    .map((key: string) => key.trim())
+    .filter(Boolean);
+  const names = keys.map((key: string) => labelMonthNameSv(key));
+  if (names.length === 0) return "";
+  if (names.length === 1) return names[0]!;
+  if (names.length === 2) return `${names[0]} och ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")} och ${names[names.length - 1]}`;
+}
+
 /**
  * Compact Swedish month for the Plan/Analys chip strip (e.g. `sep`, `okt`).
  * Locale `short` still leaves `juni`/`juli`/`mars` long enough to look clipped

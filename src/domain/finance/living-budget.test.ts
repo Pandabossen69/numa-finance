@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
+  inferReservedSavingsMinor,
+  livingBudgetEquationHolds,
   livingBudgetHintSv,
   projectLivingBudget,
   remainingReservedUntilHorizon,
@@ -711,7 +713,7 @@ describe("livingBudgetHintSv", () => {
       ),
     ).toEqual([
       "Du kan leva på 570,16 THB / dag",
-      "Saldo 3 421 THB − planerat 0 THB = 3 421 THB · 6 dagar till 25 sep.",
+      "Saldo 3 421 THB · 6 dagar till 25 sep.",
     ]);
   });
 
@@ -742,20 +744,155 @@ describe("livingBudgetHintSv", () => {
     }
   });
 
-  it("adds Saldo − planerat = pool when anything is reserved", () => {
+  it("adds Saldo − reserved = pool only when the subtraction is true", () => {
     expect(
       hintPlain(
         livingBudgetHintSv({
           dayBudgetMinor: 275_00,
           poolMinor: 1_650_00,
           reservedMinor: 1_771_00,
+          reservedExpensesMinor: 1_200_00,
+          reservedSavingsMinor: 571_00,
+          savingsMonthLabelSv: "september",
           daysUntilHorizon: 6,
           nextIncomeLabelSv: "25 sep.",
         }),
       ),
     ).toEqual([
       "Du kan leva på 275 THB / dag",
-      "Saldo 3 421 THB − planerat 1 771 THB = 1 650 THB · 6 dagar till 25 sep.",
+      "Saldo 3 421 THB − Spara i september 571 THB − kvar att betala 1 200 THB = 1 650 THB · 6 dagar till 25 sep.",
     ]);
+  });
+
+  it("never claims Saldo − 15 000 = 1 650,75 when that math is false (Spec N)", () => {
+    const lines = hintPlain(
+      livingBudgetHintSv({
+        dayBudgetMinor: 275_12,
+        poolMinor: 1_650_75,
+        reservedMinor: 15_000_00,
+        reservedSavingsMinor: 15_000_00,
+        savingsMonthLabelSv: "september",
+        saldoMinor: 3_421_95,
+        daysUntilHorizon: 6,
+        nextIncomeLabelSv: "25 sep.",
+      }),
+    );
+    const text = lines.join("\n");
+    expect(livingBudgetEquationHolds({
+      saldoMinor: 3_421_95,
+      reservedMinor: 15_000_00,
+      poolMinor: 1_650_75,
+    })).toBe(false);
+    expect(text).not.toMatch(/planerat/i);
+    expect(text).toContain("Spara i september 15 000 THB");
+    expect(text).toContain("Kvar i perioden 1 650,75 THB");
+    expect(text).toContain("Saldo 3 421,95 THB");
+    expect(text).not.toMatch(/3 421,95 THB −/);
+    expect(text).not.toMatch(/15 000 THB = 1 650,75/);
+    expect(lines).toEqual([
+      "Du kan leva på 275,12 THB / dag",
+      "Saldo 3 421,95 THB · Kvar i perioden 1 650,75 THB · 6 dagar till 25 sep.",
+      "Spara i september 15 000 THB — avsatt i planen",
+    ]);
+  });
+
+  it("names which month Hem reserves when sep and okt both have 15k", () => {
+    const now = new Date("2026-09-19T03:00:00.000Z");
+    const payday = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 15_000_00,
+        cadence: "monthly",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 15_000_00,
+        cadence: "monthly",
+        nextDueAt: "2026-10-20T12:00:00.000Z",
+      }),
+    ];
+    const timeZone = "Asia/Bangkok";
+    const cycle = {
+      ...projectPayCycle(payday, now, timeZone),
+      freeToSpendMinor: 1_650_75,
+    };
+    expect(cycle.remainingSavingsMinor).toBe(15_000_00);
+    expect(cycle.remainingSavingsRows).toHaveLength(1);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone,
+      bankBalanceMinor: 3_421_95,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.livingPoolMinor).toBe(1_650_75);
+    expect(living.dayBudgetMinor).toBe(275_12);
+    expect(living.reservedUntilIncomeMinor).toBe(15_000_00);
+    expect(living.reservedSavingsMinor).toBe(15_000_00);
+    expect(living.reservedSavingsMonthKey).toBe("2026-09");
+    expect(living.reservedSavingsMonthKey).not.toContain("2026-10");
+
+    const lines = hintPlain(
+      livingBudgetHintSv({
+        dayBudgetMinor: living.dayBudgetMinor,
+        poolMinor: living.livingPoolMinor,
+        reservedMinor: living.reservedUntilIncomeMinor,
+        reservedSavingsMinor: living.reservedSavingsMinor,
+        reservedExpensesMinor: living.reservedExpensesMinor,
+        reservedSavingsMonthKey: living.reservedSavingsMonthKey,
+        saldoMinor: 3_421_95,
+        daysUntilHorizon: living.daysUntilHorizon,
+        nextIncomeLabelSv: living.nextIncomeLabelSv,
+      }),
+    );
+    const text = lines.join("\n");
+    expect(text).toContain("Spara i september 15 000 THB");
+    expect(text).not.toMatch(/oktober/i);
+    expect(text).not.toMatch(/planerat/i);
+    expect(text).not.toMatch(/15 000 THB = /);
+  });
+});
+
+describe("inferReservedSavingsMinor", () => {
+  it("prefers the explicit split and otherwise matches pile/plan amounts", () => {
+    expect(
+      inferReservedSavingsMinor({
+        reservedMinor: 15_000_00,
+        reservedSavingsMinor: 15_000_00,
+        savingsTotalMinor: 15_000_00,
+      }),
+    ).toBe(15_000_00);
+    expect(
+      inferReservedSavingsMinor({
+        reservedMinor: 1_771_00,
+        planSavingsMinor: 571_00,
+        savingsTotalMinor: 571_00,
+      }),
+    ).toBe(571_00);
+    expect(
+      inferReservedSavingsMinor({
+        reservedMinor: 1_771_00,
+        planSavingsMinor: 0,
+        savingsTotalMinor: 0,
+      }),
+    ).toBe(0);
   });
 });

@@ -44,6 +44,11 @@ export type CycleExpense = {
   dueAt: string;
 };
 
+export type RemainingSavingsRow = {
+  amountMinor: number;
+  dueAt: string;
+};
+
 export type PayCyclePhase = "pre" | "partial" | "full";
 
 export type PayCycleProjection = {
@@ -85,9 +90,11 @@ export type PayCycleProjection = {
   bufferMinor: number;
   flexibleMinor: number;
   savingsMinor: number;
-  /** Remaining open funding-month savings (Klar / Delvis subtracted). */
+  /** Remaining open savings due before the next paycheck (Klar / Delvis subtracted). */
   remainingSavingsMinor: number;
-  /** Due date of the funding-month savings row, if any. */
+  /** Open savings rows that still sit in saldo until the next paycheck. */
+  remainingSavingsRows: RemainingSavingsRow[];
+  /** Earliest due date among remaining open savings rows, if any. */
   savingsDueAt: string | null;
   freeToSpendMinor: number;
   /** Days from now (or start if future) until end, min 1 when cycle exists. */
@@ -237,6 +244,7 @@ function emptyCycle(): PayCycleProjection {
     flexibleMinor: 0,
     savingsMinor: 0,
     remainingSavingsMinor: 0,
+    remainingSavingsRows: [],
     savingsDueAt: null,
     freeToSpendMinor: 0,
     daysLeft: 1,
@@ -335,6 +343,7 @@ export function projectPayCycle(
   let expenseEndIso: string;
   let savingsMinor = 0;
   let remainingSavingsMinor = 0;
+  const remainingSavingsRows: RemainingSavingsRow[] = [];
   let isActive = false;
 
   if (phase === "pre") {
@@ -392,8 +401,14 @@ export function projectPayCycle(
     if (!row.isActive || !isPlanSavings(row) || !row.nextDueAt) continue;
     const due = Date.parse(row.nextDueAt);
     if (!Number.isFinite(due) || due >= savingsHorizonMs) continue;
-    remainingSavingsMinor += remainingOpenMinor(row);
+    const openMinor = remainingOpenMinor(row);
+    if (openMinor <= 0) continue;
+    remainingSavingsRows.push({ amountMinor: openMinor, dueAt: row.nextDueAt });
+    remainingSavingsMinor += openMinor;
   }
+  remainingSavingsRows.sort(
+    (a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt),
+  );
 
   return {
     startAt: startIso,
@@ -417,7 +432,8 @@ export function projectPayCycle(
     flexibleMinor,
     savingsMinor,
     remainingSavingsMinor,
-    savingsDueAt: null,
+    remainingSavingsRows,
+    savingsDueAt: remainingSavingsRows[0]?.dueAt ?? null,
     freeToSpendMinor,
     daysLeft,
     perDayMinor,

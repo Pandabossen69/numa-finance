@@ -13,7 +13,7 @@ describe("Sparande empty state and Avsätt", () => {
   });
 
   it("shows this month as the hero and explains dagsbudget vs Över", () => {
-    expect(src).toContain("Spara i {monthName}");
+    expect(src).toContain("SV.sparaI(monthName)");
     expect(src).toContain("amountMinor={savingsThisMonthMinor}");
     expect(src).toContain("sänker dagsbudgeten, inte Över");
     expect(src).toContain("Över på kontona ändras inte");
