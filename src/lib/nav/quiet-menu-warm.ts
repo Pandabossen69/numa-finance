@@ -2,10 +2,13 @@
 
 import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
+  isAccountsDirty,
   isMovementsDirty,
+  lastAccountsSnapshot,
   lastAnalysSnapshot,
   lastMovementsSnapshot,
   lastPlanSnapshot,
+  rememberAccountsSnapshot,
   rememberAnalysSnapshot,
   rememberGettingStarted,
   rememberMovementsSnapshot,
@@ -30,7 +33,7 @@ function applyQuietBundle(
   if (generation !== warmGeneration) return;
   if (!data.ok) return;
 
-  const { plan, gettingStarted, analys, movements } = data.data;
+  const { plan, gettingStarted, analys, movements, accounts } = data.data;
 
   // Quiet success only fills gaps / refreshes — never clears existing UI.
   if (plan) {
@@ -41,6 +44,11 @@ function applyQuietBundle(
   if (analys) rememberAnalysSnapshot(analys);
   if (movements && !isMovementsDirty()) {
     rememberMovementsSnapshot(movements);
+  }
+  // Gap-fill only. Plan's TodaySnapshot omits archived accounts — never
+  // clobber a richer last-known from a prior /konton visit.
+  if (accounts && lastAccountsSnapshot() == null && !isAccountsDirty()) {
+    rememberAccountsSnapshot(accounts);
   }
 }
 
@@ -83,7 +91,8 @@ export function quietMenuCacheReady() {
   return (
     lastPlanSnapshot() != null ||
     lastAnalysSnapshot() != null ||
-    lastMovementsSnapshot() != null
+    lastMovementsSnapshot() != null ||
+    lastAccountsSnapshot() != null
   );
 }
 
@@ -92,4 +101,11 @@ export function resetQuietMenuWarmForTests() {
   warmGeneration = 0;
   inflight = null;
   scheduled = false;
+}
+
+/** Test helper — apply a bundle as idle warm would. */
+export function applyQuietMenuBundleForTests(
+  data: Awaited<ReturnType<typeof getQuietMenuBundleAction>>,
+) {
+  applyQuietBundle(warmGeneration, data);
 }

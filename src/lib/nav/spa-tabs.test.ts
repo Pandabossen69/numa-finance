@@ -30,6 +30,7 @@ describe("SPA keep-alive primary tabs", () => {
     expect(spaTabKey("/fota")).toBeNull();
     expect(isSpaTabHref("/idag")).toBe(true);
     expect(isSpaTabHref("/konton")).toBe(false);
+    expect(SPA_TAB_HREFS).not.toContain("/konton");
   });
 
   it("lets BottomNav and SideNav call navigateSpaTab and preventDefault", () => {
@@ -71,6 +72,8 @@ describe("SPA keep-alive primary tabs", () => {
     expect(analys).not.toContain("if (!lastAnalysSnapshot()) setError");
     expect(movements).toContain("if (lastMovementsSnapshot()) return;");
     expect(mer).toContain("if (lastMerSnapshot()) return;");
+    const accounts = read("../../components/accounts/AccountsRouteClient.tsx");
+    expect(accounts).toContain("if (lastAccountsSnapshot()) return;");
   });
 
   it("wraps the shell outlet in TabKeepAlive with the five route clients", () => {

@@ -1,23 +1,12 @@
-import { Suspense } from "react";
-import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
-import { loadAccountsSnapshot } from "@/features/finance/load-accounts";
+import { AccountsRouteClient } from "@/components/accounts/AccountsRouteClient";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Client-first Konton. The old RSC body awaited loadAccountsSnapshot
+ * (full ledger + checkpoints) so Mer→Konton sat on a blank dest. Last-known
+ * / dest shell paints now; quiet-warm after Hem fills memory first.
+ */
 export default function KontonPage() {
-  return (
-    <Suspense fallback={<AccountsDashboard data={null} />}>
-      <KontonBody />
-    </Suspense>
-  );
-}
-
-async function KontonBody() {
-  const result = await loadAccountsSnapshot();
-  return (
-    <AccountsDashboard
-      data={result.ok ? result.data : null}
-      error={result.ok ? null : result.error}
-    />
-  );
+  return <AccountsRouteClient />;
 }

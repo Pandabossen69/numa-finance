@@ -107,6 +107,32 @@ describe("instant tap — phone-width dest paint", () => {
     expect(mer).toContain("prefetch={false}");
   });
 
+  it("paints Konton dest shell on Mer→Konton before RSC children arrive", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/konton",
+        heldTab: "/mer",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        pathTab: "/konton",
+      }),
+    ).toBe("dest-loading");
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: true,
+        destTab: "/konton",
+        heldTab: "/mer",
+        destIsTabRoot: true,
+        hasDestCache: true,
+        intentMismatch: true,
+        pathTab: "/mer",
+      }),
+    ).toBe("dest");
+  });
+
   it("marks Analys → Transaktioner so LastViewOutlet paints Rörelser, not loading.tsx", () => {
     const analys = read("../../components/analys/AnalysDashboard.tsx");
     expect(analys).toContain('href="/transaktioner"');
