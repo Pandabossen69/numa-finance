@@ -39,6 +39,10 @@ describe("Swedish money labels", () => {
     expect(SV.overDagsbudget).toBe("Över dagsbudgeten");
     expect(SV.tillNastaInkomst).toBe("Till nästa inkomst");
     expect(SV.sparandeHintHem).toMatch(/planen/i);
+    expect(SV.sparandeKvarHint).toBe("Tas från Kvar — sänker dagsbudgeten.");
+    expect(SV.sparandeKvarHint).toMatch(/Kvar/);
+    expect(SV.sparandeKvarHint).toMatch(/dagsbudgeten/);
+    expect(SV.sparandeKvarHint).not.toMatch(/kontona|Över|cash/i);
     expect(SV.sparaDennaManad).toBe("Spara denna månad");
   });
 

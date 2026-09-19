@@ -18,6 +18,7 @@
  *   (inline: «Planerat kvar minus spenderat — inte pengar på kontona.»)
  * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
+ *   (Plan sparmål inline: «Tas från Kvar — sänker dagsbudgeten.»)
  *
  * Analys answers two questions only: «Vart gick pengarna?» (Spenderat +
  * category split of that same number) and «Hur går det?» (Kvar i perioden /
@@ -67,6 +68,8 @@ export const SV = {
   saldoLevaFor: "Att leva för",
   sparandeAvsatt: "Ligger avsatt",
   sparandeHintHem: "Avsatt i planen — inte Över",
+  /** Always-visible Plan sparmål one-liner — Kvar / dagsbudget, not cash-on-hand. */
+  sparandeKvarHint: "Tas från Kvar — sänker dagsbudgeten.",
   sparaDennaManad: "Spara denna månad",
   vaxer: "Växer",
   intakter: "Intäkter",

@@ -142,8 +142,8 @@ export function PlanPiles({
           </div>
           <p className="numa-pile-hint">
             {hasThisMonth
-              ? "Avsatt i planen denna månad. Sänker dagsbudgeten när perioden är igång. Över på kontona ändras inte."
-              : "Sätt av det som inte ska levas upp. Tas från kvar i perioden — sänker dagsbudgeten, inte Över."}
+              ? SV.sparandeKvarHint
+              : `Sätt av det som inte ska levas upp. ${SV.sparandeKvarHint}`}
           </p>
 
           <div className="numa-year-dots" aria-hidden>
