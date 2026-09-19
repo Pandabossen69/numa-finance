@@ -38,7 +38,9 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(quickBody).not.toContain("warmupPlanPageData");
     expect(quickBody).not.toContain("scheduleQuietMenuWarm");
     expect(src).toContain("isHomeDirty");
-    expect(src).toContain("if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap)");
+    expect(src).toContain(
+      "if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap)",
+    );
     expect(src).toContain("adoptSnap");
     expect(src).not.toContain("lastHomeSnapshot() == null");
     expect(src).toContain("stored.userId === snap.userId");
@@ -94,11 +96,12 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("is-spent");
     expect(src).toContain("numa-metric-label");
     expect(src).toContain("wrap={false}");
-    expect(src).not.toContain('bg-[var(--numa-card)] pt-1');
+    expect(src).not.toContain("bg-[var(--numa-card)] pt-1");
   });
 
   it("does not dress the Kvar idag card as a tap target", () => {
-    expect(src).toContain("numa-day-stage cursor-default");
+    expect(src).toContain("numa-day-stage");
+    expect(src).toContain("cursor-default");
     expect(src).not.toMatch(/numa-day-stage[^"]*numa-press/);
   });
 
@@ -127,9 +130,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(wrap).toContain("<DayDial");
     expect(wrap).toContain("{daysLeftChip}");
     expect(wrap.indexOf("<DayDial")).toBeLessThan(wrap.indexOf("{daysLeftChip}"));
-    expect(src).not.toContain(
-      "flex min-w-0 items-center justify-between gap-3 px-1",
-    );
+    expect(src).not.toContain("flex min-w-0 items-center justify-between gap-3 px-1");
     expect(src).toContain("Hela dagsbudgeten kvar");
     expect(src).not.toContain("Hela dagsbudgeten kvar · ${daysWord}");
   });
@@ -158,9 +159,7 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("does not tell a user with a saldo to set a saldo", () => {
     expect(src).toContain("const hasSaldo = view.calculatedBalanceMinor != null");
-    expect(src).toContain(
-      "Ingen dagsbudget än. Lägg in vad som kommer in i Plan.",
-    );
+    expect(src).toContain("Ingen dagsbudget än. Lägg in vad som kommer in i Plan.");
     expect(src).toContain("Ingen dagsbudget än. Sätt saldo så räknas kvar idag.");
     expect(src).toContain("Lägg in vad som kommer in →");
     expect(src).toContain("Sätt saldo →");
@@ -187,6 +186,22 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain(
       "numa-press inline-flex min-h-11 items-center font-semibold text-[var(--numa-accent)]",
     );
+  });
+
+  it("puts a primary low-Kvar next-action above the day metrics", () => {
+    const dial = src.indexOf("DayDial");
+    const next = src.indexOf("LowKvarNextCta");
+    const metrics = src.indexOf("numa-day-metrics");
+    expect(src).toContain("lowKvarNextAction");
+    expect(src).toContain("data-numa-next-action");
+    expect(src).toContain('id="lagg-utgift"');
+    expect(src).toContain("action.href");
+    expect(src).toContain("prefetch={false}");
+    expect(src).toContain("SV.nastaSteg");
+    expect(next).toBeGreaterThan(dial);
+    expect(next).toBeLessThan(metrics);
+    expect(src).not.toContain("remainingTodayOf");
+    expect(src).not.toContain("last-home-cookie");
   });
 
   it("does not duplicate Fota/Plan as Hem action cards — + is the only capture entry", () => {

@@ -69,6 +69,12 @@ export const SV = {
   utgifter: "Utgifter",
   laggtillUtgift: "Lägg till utgift",
   laggtillUtgiftHint: "Sparas direkt mot idag",
+  /** Hem next-action when Kvar is low — shorter than the QuickExpense title. */
+  laggUtgift: "Lägg utgift",
+  laggUtgiftHintLowKvar: "Logga det du handlar.",
+  oppnaPlan: "Öppna Plan",
+  oppnaPlanHintLowKvar: "Se vad som måste ut.",
+  nastaSteg: "Nästa steg",
   fota: "Fota",
   fotaHint: "Fånga saldo eller kvitto så du slipper skriva.",
   plan: "Plan",
@@ -90,8 +96,7 @@ export const SV = {
   vartGickPengarna: "Vart gick pengarna?",
   hurGarDet: "Hur går det?",
   analysCategoryHint: "Samma belopp som Spenderat, störst först.",
-  analysEmptySpendPeriod:
-    "Inget spenderat i perioden ännu. När du handlar syns det här.",
+  analysEmptySpendPeriod: "Inget spenderat i perioden ännu. När du handlar syns det här.",
   analysEmptySpendMonth:
     "Inget spenderat i den här månaden ännu. När du handlar syns det här.",
   analysEmptyPeriod: "Lägg in intäkter i Plan så startar en period.",

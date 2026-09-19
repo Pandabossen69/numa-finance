@@ -44,6 +44,15 @@ describe("Swedish money labels", () => {
     expect(SV.saldo).toBe("På kontona");
   });
 
+  it("keeps Hem low-Kvar next-action labels short and Swedish", () => {
+    expect(SV.laggUtgift).toBe("Lägg utgift");
+    expect(SV.oppnaPlan).toBe("Öppna Plan");
+    expect(SV.laggUtgiftHintLowKvar).toBe("Logga det du handlar.");
+    expect(SV.oppnaPlanHintLowKvar).toBe("Se vad som måste ut.");
+    expect(SV.nastaSteg).toBe("Nästa steg");
+    expect(SV.laggUtgift).not.toBe(SV.laggtillUtgift);
+  });
+
   it("teaches Hem, Plan and Fota in short Swedish", () => {
     expect(SV.fotaHint).toBe("Fånga saldo eller kvitto så du slipper skriva.");
     expect(SV.planHint).toBe("Vad som kommer in och vad som måste ut.");
