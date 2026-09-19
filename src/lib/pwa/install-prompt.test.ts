@@ -3,9 +3,11 @@ import {
   beginInstallPromptCapture,
   detectInstallPlatform,
   installGuideSteps,
+  installGuideTitle,
   promptInstall,
   readInstallPromptStatus,
   resetInstallPromptForTests,
+  wantsProductionInstallAction,
 } from "./install-prompt";
 
 function fakeBip(outcome: "accepted" | "dismissed" = "accepted") {
@@ -17,7 +19,7 @@ function fakeBip(outcome: "accepted" | "dismissed" = "accepted") {
 }
 
 describe("detectInstallPlatform", () => {
-  it("classifies iPhone, iPadOS-as-Mac, and Android", () => {
+  it("classifies iPhone, iPadOS-as-Mac, Android, and desktop Chromium", () => {
     expect(
       detectInstallPlatform({
         userAgent:
@@ -37,7 +39,21 @@ describe("detectInstallPlatform", () => {
     ).toBe("android");
     expect(
       detectInstallPlatform({
-        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        maxTouchPoints: 0,
+      }),
+    ).toBe("chromium");
+    expect(
+      detectInstallPlatform({
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0",
+      }),
+    ).toBe("chromium");
+    expect(
+      detectInstallPlatform({
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Gecko/20100101 Firefox/131.0",
         maxTouchPoints: 0,
       }),
     ).toBe("other");
@@ -45,14 +61,30 @@ describe("detectInstallPlatform", () => {
 });
 
 describe("installGuideSteps", () => {
-  it("gives iOS and Android Chrome their own short path", () => {
+  it("keeps iOS, Android and desktop Chromium on separate copy", () => {
     expect(installGuideSteps("ios")).toContain("Dela → Lägg till på hemskärmen");
     expect(installGuideSteps("ios")).toContain("Safari");
-    expect(installGuideSteps("android")).toContain("Chrome");
+    expect(installGuideTitle("ios")).toBe("Installera NUMA som app");
+
     expect(installGuideSteps("android")).toContain("Installera app");
+    expect(installGuideSteps("android")).toContain("menyn");
     expect(installGuideSteps("android")).not.toContain("Dela →");
-    expect(installGuideSteps("other")).toContain("iPhone");
-    expect(installGuideSteps("other")).toContain("Android");
+    expect(installGuideSteps("android")).not.toContain("iPhone");
+    expect(installGuideTitle("android")).toBe("Installera NUMA i Chrome");
+
+    expect(installGuideSteps("chromium")).toContain("Chrome eller Edge");
+    expect(installGuideSteps("chromium")).not.toContain("iPhone");
+    expect(installGuideSteps("chromium")).not.toContain("Android");
+    expect(installGuideSteps("chromium")).not.toContain("Dela →");
+    expect(installGuideTitle("chromium")).toBe("Installera NUMA i Chrome");
+    expect(wantsProductionInstallAction("chromium")).toBe(true);
+    expect(wantsProductionInstallAction("ios")).toBe(false);
+    expect(wantsProductionInstallAction("android")).toBe(false);
+
+    expect(installGuideSteps("other")).toContain("Chrome");
+    expect(installGuideSteps("other")).not.toContain("iPhone");
+    expect(installGuideSteps("other")).not.toContain("Android");
+    expect(installGuideSteps("other")).not.toContain("Dela →");
   });
 });
 

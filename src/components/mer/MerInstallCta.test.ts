@@ -10,24 +10,27 @@ const capture = readFileSync(
 const layout = readFileSync(new URL("../../app/layout.tsx", import.meta.url), "utf8");
 
 describe("Mer install CTA", () => {
-  it("wires beforeinstallprompt to a Swedish Installera NUMA button", () => {
+  it("shows Installera NUMA whenever BIP is available — no host gate", () => {
     expect(src).toContain("promptInstall");
-    expect(src).toContain("readInstallPromptStatus");
+    expect(src).toContain('const canPrompt = promptStatus === "available"');
+    expect(src).not.toContain("isCanonicalAppHost");
+    expect(src).not.toContain("canNativeInstall");
     expect(src).toContain("Installera NUMA");
-    expect(src).toContain("canPrompt");
     expect(src).not.toContain("localStorage");
     expect(src).not.toContain("DISMISS");
     expect(src).not.toContain("aria-modal");
-    expect(src).not.toContain('position: "fixed"');
   });
 
-  it("keeps standalone calm and uses platform steps when BIP is missing", () => {
+  it("keeps standalone calm and splits iOS / Android / desktop Chromium fallbacks", () => {
     expect(src).toContain("isStandaloneDisplay");
     expect(src).toContain("NUMA är en app här");
-    expect(src).toContain("Inget mer behövs.");
     expect(src).toContain("installGuideSteps");
-    expect(src).toContain("readInstallPlatform");
-    expect(src).not.toContain("Dela → Lägg till på hemskärmen.");
+    expect(src).toContain("installGuideTitle");
+    expect(src).toContain("wantsProductionInstallAction");
+    expect(src).toContain("Öppna {PRODUCTION_HOST} för att installera");
+    expect(src).toContain('data-numa-install={canPrompt ? "bip" : platform}');
+    expect(src).not.toContain("På iPhone:");
+    expect(src).not.toContain("På Android:");
   });
 
   it("captures BIP on the root shell, not only after Mer mounts", () => {
@@ -38,9 +41,8 @@ describe("Mer install CTA", () => {
     );
   });
 
-  it("keeps the production-host and install buttons at a 44px tap target", () => {
+  it("keeps install actions at a 44px tap target", () => {
     expect(src).toContain("inline-flex min-h-11 w-full items-center justify-center");
-    expect(src).toContain("Öppna {PRODUCTION_HOST}");
   });
 
   it("sits on Mer as an in-flow section, not a Hem overlay", () => {

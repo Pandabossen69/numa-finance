@@ -6,7 +6,7 @@ export type BeforeInstallPromptLike = {
 };
 
 export type InstallPromptStatus = "none" | "available" | "accepted";
-export type InstallPlatform = "ios" | "android" | "other";
+export type InstallPlatform = "ios" | "android" | "chromium" | "other";
 
 let deferred: BeforeInstallPromptLike | null = null;
 let accepted = false;
@@ -88,6 +88,11 @@ export function detectInstallPlatform(input: {
   // iPadOS 13+ reports as Macintosh with touch.
   if (ua.includes("mac") && (input.maxTouchPoints ?? 0) > 1) return "ios";
   if (ua.includes("android")) return "android";
+  // Desktop Chrome / Edge / Chromium (preview QA at ~390 is this, not iPhone).
+  if (ua.includes("edg/") || ua.includes("edga") || ua.includes("edg ")) {
+    return "chromium";
+  }
+  if (ua.includes("chrome") || ua.includes("chromium")) return "chromium";
   return "other";
 }
 
@@ -103,16 +108,34 @@ export function readInstallPlatform(): InstallPlatform {
   }
 }
 
+export function installGuideTitle(platform: InstallPlatform): string {
+  switch (platform) {
+    case "android":
+    case "chromium":
+      return "Installera NUMA i Chrome";
+    default:
+      return "Installera NUMA som app";
+  }
+}
+
 /** Short, platform-specific how-to when the browser never fires BIP. */
 export function installGuideSteps(platform: InstallPlatform): string {
   switch (platform) {
     case "ios":
       return "I Safari: Dela → Lägg till på hemskärmen.";
     case "android":
-      return "I Chrome: meny → Installera app.";
+      return "Tryck menyn (⋮) → Installera app.";
+    case "chromium":
+      return "I Chrome eller Edge: meny → Installera NUMA.";
     default:
-      return "På iPhone: Dela → Lägg till på hemskärmen. På Android: Chrome-meny → Installera app.";
+      return "Öppna NUMA i Chrome för att installera som app.";
   }
+}
+
+export function wantsProductionInstallAction(
+  platform: InstallPlatform,
+): boolean {
+  return platform === "chromium" || platform === "other";
 }
 
 /** Test helper — not used by the app. */

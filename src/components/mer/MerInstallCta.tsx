@@ -4,13 +4,14 @@ import { useState, useSyncExternalStore } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
 import {
   installGuideSteps,
+  installGuideTitle,
   promptInstall,
   readInstallPlatform,
   readInstallPromptStatus,
   subscribeInstallPrompt,
+  wantsProductionInstallAction,
 } from "@/lib/pwa/install-prompt";
 import {
-  isCanonicalAppHost,
   isProductionAppHost,
   PRODUCTION_HOST,
   PRODUCTION_ORIGIN,
@@ -30,17 +31,10 @@ function readOnProduction(): boolean {
   }
 }
 
-function readCanNativeInstall(): boolean {
-  try {
-    return isCanonicalAppHost(window.location.hostname);
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Mer (~390) install path. In-flow only — never a modal or visit nag.
- * BIP → Installera NUMA. No event → iOS / Android Chrome steps.
+ * BIP (any host, including preview) → Installera NUMA.
+ * No event → distinct iOS / Android / desktop-Chromium cards.
  */
 export function MerInstallCta() {
   const installedDisplay = useSyncExternalStore(
@@ -56,22 +50,17 @@ export function MerInstallCta() {
   const platform = useSyncExternalStore(
     subscribeDisplay,
     readInstallPlatform,
-    () => "other" as const,
+    () => "chromium" as const,
   );
   const alreadyOnProduction = useSyncExternalStore(
     subscribeDisplay,
     readOnProduction,
     () => false,
   );
-  const canNativeInstall = useSyncExternalStore(
-    subscribeDisplay,
-    readCanNativeInstall,
-    () => false,
-  );
   const [busy, setBusy] = useState(false);
 
   const installed = installedDisplay || promptStatus === "accepted";
-  const canPrompt = promptStatus === "available" && canNativeInstall;
+  const canPrompt = promptStatus === "available";
 
   async function onInstall() {
     if (busy) return;
@@ -88,6 +77,7 @@ export function MerInstallCta() {
       <aside
         className="space-y-1 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
         aria-label="NUMA är en app här"
+        data-numa-install="installed"
       >
         <p className="text-[15px] font-semibold tracking-tight text-[var(--numa-ink)]">
           NUMA är en app här
@@ -99,19 +89,29 @@ export function MerInstallCta() {
     );
   }
 
+  const title = canPrompt
+    ? "Installera NUMA som app"
+    : installGuideTitle(platform);
+  const steps = canPrompt
+    ? "Öppna från hemskärmen, som en vanlig app."
+    : installGuideSteps(platform);
+  const showProductionPrimary =
+    !canPrompt &&
+    !alreadyOnProduction &&
+    wantsProductionInstallAction(platform);
+
   return (
     <aside
       className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
-      aria-label="Installera NUMA som app"
+      aria-label={title}
+      data-numa-install={canPrompt ? "bip" : platform}
     >
       <div className="space-y-1">
         <p className="text-[15px] font-semibold tracking-tight text-[var(--numa-ink)]">
-          Installera NUMA som app
+          {title}
         </p>
         <p className="text-[13px] leading-relaxed text-[var(--numa-muted)]">
-          {canPrompt
-            ? "Öppna från hemskärmen, som en vanlig app."
-            : installGuideSteps(platform)}
+          {steps}
         </p>
       </div>
       {canPrompt ? (
@@ -124,14 +124,17 @@ export function MerInstallCta() {
           {busy ? "Öppnar…" : "Installera NUMA"}
         </button>
       ) : null}
-      {alreadyOnProduction ? null : (
+      {showProductionPrimary ? (
         <a
           href={PRODUCTION_ORIGIN}
-          className={
-            canPrompt
-              ? "inline-flex min-h-11 items-center justify-center px-1 text-sm font-medium text-[var(--numa-muted)]"
-              : "inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)]"
-          }
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)]"
+        >
+          Öppna {PRODUCTION_HOST} för att installera
+        </a>
+      ) : alreadyOnProduction || canPrompt ? null : (
+        <a
+          href={PRODUCTION_ORIGIN}
+          className="inline-flex min-h-11 items-center justify-center px-1 text-sm font-medium text-[var(--numa-muted)]"
         >
           Öppna {PRODUCTION_HOST}
         </a>
