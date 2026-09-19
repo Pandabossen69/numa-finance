@@ -389,7 +389,7 @@ export function projectPayCycle(
   );
   const { reservedMinor, bufferMinor, flexibleMinor, expenseMinor } =
     sumExpenseParts(expenses);
-  let freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
+  const freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
 
   const fromIso = isActive ? now.toISOString() : startIso;
   const daysLeft = Math.max(1, calendarDaysBetween(fromIso, endIso, timeZone));
