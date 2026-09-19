@@ -112,9 +112,11 @@ export function homeSnapshotFromToday(
 /**
  * After a month-avsätt save on the leftover path, apply only the spar
  * increment so Hem matches Plan preview. Skip 0→N (keeps Spec L 275,12).
- * Skip decrease / nollställ: the post-write snapshot is already leftover
- * at the new amount (20→15 = 275,12). Re-applying −5k turns that into
- * 1 108,45 and soft-nav Hem stays stale until hard reload.
+ * Skip decrease / nollställ here: a negative delta on the already-restored
+ * leftover becomes 1 108,45. The server snapshot on decrease is
+ * projectLivingBudget(now) — Bangkok Sep 20 is 330,15 (5-day). Client
+ * rememberHomeSnapshot overlays the Spec O2 post-write leftover (275,12)
+ * so adoptMutationFinance({force:true}) does not publish 330,15.
  */
 export function applyHomeLeftoverSparDelta(
   home: HomeSnapshot,

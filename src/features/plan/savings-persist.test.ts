@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { findMonthSavings, MONTHLY_SAVE_NAME, type PlanItem } from "@/domain/finance";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
@@ -286,6 +286,10 @@ describe("Spec O leftover save persist + Hem adopt", () => {
     clearClientSessionCaches();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("applyHomeLeftoverSparDelta drops 275,12 on 15k→20k even when reservedUntilIncome is 0", () => {
     const next = applyHomeLeftoverSparDelta(leftoverHome(), 5_000_00, 15_000_00);
     expect(next.dayBudgetMinor).toBe(0);
@@ -526,6 +530,85 @@ describe("Spec O leftover save persist + Hem adopt", () => {
     expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
 
     // Hem tab reads last-known — same as soft-nav Hem → Plan → Hem.
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).not.toBe(330_15);
+  });
+
+  it("QA restore 15k: adoptMutationFinance of server 330,15 must not win on Hem↔Plan keep-shell", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T20:00:00.000Z"));
+    resetPlanMonthCacheForTests();
+
+    const at15k = leftoverHome();
+    rememberHomeSnapshot(at15k);
+    rememberPlanSnapshot(planSnap(leftoverPlanItems(15_000_00)));
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    const savedHome = applyHomeLeftoverSparDelta(at15k, 5_000_00, 15_000_00);
+    adoptMutationFinance({
+      home: {
+        ...savedHome,
+        overMinor: 54_981_00,
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      },
+      plan: planSnap(leftoverPlanItems(20_000_00), {
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      }),
+    });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(0);
+
+    const serverFiveDay = leftoverHome({
+      remainingTodayMinor: 330_15,
+      dayBudgetMinor: 330_15,
+      safeToSpendTodayMinor: 330_15,
+      livingPoolMinor: 1_650_75,
+      remainingFreeMinor: 1_650_75,
+      spendDaysLeft: 5,
+      daysUntilIncome: 5,
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T20:30:00.000Z",
+    });
+    const restoredHome = applyHomeLeftoverSparDelta(
+      serverFiveDay,
+      -5_000_00,
+      20_000_00,
+    );
+    expect(restoredHome.dayBudgetMinor).toBe(330_15);
+
+    const restoredPlan = planSnap(leftoverPlanItems(15_000_00), {
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T20:30:00.000Z",
+      bankBalanceMinor: 3_421_95,
+    });
+    adoptMutationFinance({
+      home: restoredHome,
+      plan: restoredPlan,
+    });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+
+    prefetchAdjacentPlanMonths({
+      items: restoredPlan.items,
+      ledgerTransactions: restoredPlan.ledgerTransactions,
+      monthKey: MONTH,
+      timeZone: TZ,
+      saldoMinor: restoredPlan.bankBalanceMinor,
+    });
+    rememberLivePlan({
+      ...restoredPlan,
+      financeRevision: "rev-15k-restore:local",
+      verifiedAt: "2026-09-19T20:50:00.000Z",
+      truthStatus: "stale",
+    });
+    syncHomeLivingFromPlan(lastPlanSnapshot() ?? restoredPlan);
+    rememberHomeSnapshot(serverFiveDay);
+    rememberHomeSnapshot(serverFiveDay, { force: true });
+
     expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
