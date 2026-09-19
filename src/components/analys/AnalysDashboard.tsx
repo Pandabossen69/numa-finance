@@ -294,6 +294,9 @@ export function AnalysDashboard({
             <h2 id="analys-hur-manad" className="numa-section-title px-1">
               {SV.hurGarDet}
             </h2>
+            <p className="px-1 text-[12px] leading-snug text-[var(--numa-faint)]">
+              {SV.overskottMotPlanenHint}
+            </p>
             <div className="numa-panel-list numa-money-stack px-4 py-1">
               <MetricRow
                 label={
@@ -302,10 +305,7 @@ export function AnalysDashboard({
                 amountMinor={month.monthResultMinor}
                 currency={currency}
                 tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
-                hint={
-                  month.monthLeftoverHint ??
-                  "Planerat kvar minus spenderat — inte kontanter"
-                }
+                hint={month.monthLeftoverHint ?? undefined}
               />
             </div>
           </section>
