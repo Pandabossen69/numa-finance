@@ -51,6 +51,8 @@ export function toLastHomeCookieShell(home: HomeSnapshot): HomeSnapshot {
     spendDaysLeft: home.spendDaysLeft,
     dayBudgetMinor: home.dayBudgetMinor,
     remainingTodayMinor: home.remainingTodayMinor,
+    livingPoolMinor: home.livingPoolMinor,
+    reservedUntilIncomeMinor: home.reservedUntilIncomeMinor,
     daysUntilIncome: home.daysUntilIncome,
     nextIncomeLabelSv: clip(home.nextIncomeLabelSv),
     extraSaldoMinor: home.extraSaldoMinor,

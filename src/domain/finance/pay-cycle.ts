@@ -85,6 +85,10 @@ export type PayCycleProjection = {
   bufferMinor: number;
   flexibleMinor: number;
   savingsMinor: number;
+  /** Remaining open funding-month savings (Klar / Delvis subtracted). */
+  remainingSavingsMinor: number;
+  /** Due date of the funding-month savings row, if any. */
+  savingsDueAt: string | null;
   freeToSpendMinor: number;
   /** Days from now (or start if future) until end, min 1 when cycle exists. */
   daysLeft: number;
@@ -232,6 +236,8 @@ function emptyCycle(): PayCycleProjection {
     bufferMinor: 0,
     flexibleMinor: 0,
     savingsMinor: 0,
+    remainingSavingsMinor: 0,
+    savingsDueAt: null,
     freeToSpendMinor: 0,
     daysLeft: 1,
     perDayMinor: 0,
@@ -328,6 +334,7 @@ export function projectPayCycle(
   let expenseStartIso: string;
   let expenseEndIso: string;
   let savingsMinor = 0;
+  let remainingSavingsMinor = 0;
   let isActive = false;
 
   if (phase === "pre") {
@@ -356,11 +363,8 @@ export function projectPayCycle(
     incomeRows = wave;
     expenseStartIso = first.iso;
     expenseEndIso = nextLastIso;
-    savingsMinor = projectPlanForMonth(
-      items,
-      fundingMonthKey,
-      timeZone,
-    ).savingsMinor;
+    const month = projectPlanForMonth(items, fundingMonthKey, timeZone);
+    savingsMinor = month.savingsMinor;
     isActive = todayMs < Date.parse(nextLastIso);
   }
 
@@ -382,6 +386,14 @@ export function projectPayCycle(
   const daysLeft = Math.max(1, calendarDaysBetween(fromIso, endIso, timeZone));
   const perDayMinor = perDayBudgetMinor(freeToSpendMinor, daysLeft);
   const nextPaycheck = dated.find((row) => row.at > todayMs) ?? null;
+  const savingsHorizonIso = nextPaycheck?.iso ?? endIso;
+  const savingsHorizonMs = Date.parse(savingsHorizonIso);
+  for (const row of items) {
+    if (!row.isActive || !isPlanSavings(row) || !row.nextDueAt) continue;
+    const due = Date.parse(row.nextDueAt);
+    if (!Number.isFinite(due) || due >= savingsHorizonMs) continue;
+    remainingSavingsMinor += remainingOpenMinor(row);
+  }
 
   return {
     startAt: startIso,
@@ -404,6 +416,8 @@ export function projectPayCycle(
     bufferMinor,
     flexibleMinor,
     savingsMinor,
+    remainingSavingsMinor,
+    savingsDueAt: null,
     freeToSpendMinor,
     daysLeft,
     perDayMinor,

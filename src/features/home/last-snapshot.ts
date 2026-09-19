@@ -580,6 +580,8 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       spendDaysLeft: living.daysUntilHorizon,
       dayBudgetMinor: living.dayBudgetMinor,
       remainingTodayMinor: living.remainingTodayMinor,
+      livingPoolMinor: living.livingPoolMinor,
+      reservedUntilIncomeMinor: living.reservedUntilIncomeMinor,
       daysUntilIncome: living.daysUntilHorizon,
       nextIncomeLabelSv: living.nextIncomeLabelSv,
       incomingMinor: coverage.incomingMinor,
@@ -920,6 +922,9 @@ export function applyOptimisticPlanSettle(input: {
   let planExpenseMinor = previous.planExpenseMinor;
   let dayBudgetMinor = previous.dayBudgetMinor;
   let remainingTodayMinor = previous.remainingTodayMinor;
+  let livingPoolMinor = previous.livingPoolMinor;
+  let reservedUntilIncomeMinor = previous.reservedUntilIncomeMinor;
+  let usesBankBalance = previous.usesBankBalance;
   if (planSnap) {
     const now = new Date();
     const cycle = projectPayCycle(planSnap.items, now, planSnap.timeZone);
@@ -938,6 +943,9 @@ export function applyOptimisticPlanSettle(input: {
       planExpenseMinor = cycle.expenseMinor;
       dayBudgetMinor = living.dayBudgetMinor;
       remainingTodayMinor = living.remainingTodayMinor;
+      livingPoolMinor = living.livingPoolMinor;
+      reservedUntilIncomeMinor = living.reservedUntilIncomeMinor;
+      usesBankBalance = living.usesBankBalance;
     }
   }
   rememberHomeSnapshot(
@@ -955,6 +963,9 @@ export function applyOptimisticPlanSettle(input: {
       planExpenseMinor,
       dayBudgetMinor,
       remainingTodayMinor,
+      livingPoolMinor,
+      reservedUntilIncomeMinor,
+      usesBankBalance,
       safeToSpendTodayMinor: remainingTodayMinor,
       wealthTotalMinor: planWealthTotalMinor(
         overMinor,
@@ -999,13 +1010,20 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
   if (!home) return null;
   const overMinor = balanceMinor + home.incomingMinor - home.unpaidMinor;
   const spentToday = Math.max(0, home.todaySpendingMinor);
+  const reserved = Math.max(0, home.reservedUntilIncomeMinor ?? 0);
   const refreshDayEnvelope =
-    home.livingMode !== "cycle" &&
-    (home.needsAvailableInput ||
-      home.livingMode === "bridge" ||
-      home.usesBankBalance);
+    home.needsAvailableInput ||
+    home.livingMode === "bridge" ||
+    home.usesBankBalance;
+  const cashPool = balanceMinor + spentToday - reserved;
+  const planPool = (home.remainingFreeMinor ?? 0) + spentToday;
+  const livingPoolMinor = refreshDayEnvelope
+    ? cashPool > 0
+      ? cashPool
+      : Math.max(0, planPool)
+    : home.livingPoolMinor;
   const dayBudgetMinor = refreshDayEnvelope
-    ? perDayBudgetMinor(Math.max(0, balanceMinor + spentToday), Math.max(1, home.spendDaysLeft))
+    ? perDayBudgetMinor(livingPoolMinor, Math.max(1, home.spendDaysLeft))
     : home.dayBudgetMinor;
   const remainingTodayMinor = refreshDayEnvelope
     ? remainingTodayOf(dayBudgetMinor, spentToday)
@@ -1021,6 +1039,7 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
         ? {
             needsAvailableInput: false,
             usesBankBalance: true,
+            livingPoolMinor,
             dayBudgetMinor,
             remainingTodayMinor,
             safeToSpendTodayMinor: remainingTodayMinor,

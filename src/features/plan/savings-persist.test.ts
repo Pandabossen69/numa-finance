@@ -81,6 +81,8 @@ function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
     spendDaysLeft: 15,
     dayBudgetMinor: 1_211_73,
     remainingTodayMinor: 1_211_73,
+    livingPoolMinor: 18_176_00,
+    reservedUntilIncomeMinor: 0,
     daysUntilIncome: 15,
     nextIncomeLabelSv: "3 okt.",
     extraSaldoMinor: 0,

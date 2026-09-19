@@ -13,7 +13,7 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
-import { formatDaysUntilSv } from "@/domain/finance";
+import { formatDaysUntilSv, livingBudgetHintSv } from "@/domain/finance";
 import {
   formatMoney,
   formatMoneyCompact,
@@ -59,7 +59,8 @@ import { lowKvarNextAction, type LowKvarCta } from "@/features/home/low-kvar-cta
 import { HemPending } from "@/components/layout/ViewLoading";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
-  return formatMoneyCompact(money(amountMinor, currency));
+  const minor = Number.isFinite(amountMinor) ? Math.round(amountMinor) : 0;
+  return formatMoneyCompact(money(minor, currency));
 }
 
 export function HomeDashboard({
@@ -174,6 +175,9 @@ export function HomeDashboard({
         ? `${formatMoneyHint(remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar`
         : null;
 
+  const showDayEnvelope =
+    view.dayBudgetMinor > 0 || (view.livingPoolMinor ?? 0) > 0;
+
   const nextAction = lowKvarNextAction({
     dayBudgetMinor: view.dayBudgetMinor,
     remainingTodayMinor,
@@ -231,7 +235,7 @@ export function HomeDashboard({
                 overToday ? "is-over" : null,
                 // No dagsbudget yet: hug the copy instead of stretching to
                 // match the piles column and leaving a tall empty card.
-                view.dayBudgetMinor > 0 ? null : "md:h-auto md:self-start",
+                showDayEnvelope ? null : "md:h-auto md:self-start",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -241,7 +245,7 @@ export function HomeDashboard({
                 {SV.kvarIdag}
               </p>
 
-              {view.dayBudgetMinor > 0 ? (
+              {showDayEnvelope ? (
                 <>
                   <div className="flex flex-col items-center gap-1.5">
                     <DayDial usedRatio={dayUsedRatio} over={overToday}>
@@ -302,11 +306,33 @@ export function HomeDashboard({
                           wrap={false}
                         />
                       </div>
-                      <p className="numa-metric-hint">
-                        {view.nextIncomeLabelSv
-                          ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
-                          : "Sätts på morgonen"}
-                      </p>
+                      <div className="numa-living-math">
+                        {livingBudgetHintSv({
+                          dayBudgetMinor: view.dayBudgetMinor,
+                          poolMinor:
+                            view.livingPoolMinor ??
+                            view.calculatedBalanceMinor ??
+                            0,
+                          reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+                          saldoMinor: view.calculatedBalanceMinor,
+                          daysUntilHorizon: view.daysUntilIncome,
+                          nextIncomeLabelSv: view.nextIncomeLabelSv,
+                          currency,
+                        }).map((line, index) => (
+                          <p
+                            key={line}
+                            className={
+                              index === 0
+                                ? "is-lead"
+                                : index === 2
+                                  ? "is-breakdown"
+                                  : undefined
+                            }
+                          >
+                            {line}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                     <div className="is-spent">
                       <p className="numa-metric-label">{SV.spenderatIdag}</p>

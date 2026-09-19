@@ -42,6 +42,10 @@ export type HomeSnapshot = {
   dayBudgetMinor: number;
   /** Signed leftover of today's sticky dagsbudget (negative = overspent). */
   remainingTodayMinor: number;
+  /** Morning cash pool divided into dagsbudget (saldo − reserved + spent today). */
+  livingPoolMinor: number;
+  /** Remaining planned expenses + savings reserved from saldo until next income. */
+  reservedUntilIncomeMinor: number;
   daysUntilIncome: number;
   nextIncomeLabelSv: string | null;
   extraSaldoMinor: number;
