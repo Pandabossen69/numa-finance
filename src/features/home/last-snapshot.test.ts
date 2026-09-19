@@ -907,6 +907,24 @@ describe("last view memory", () => {
     rememberHomeSnapshot(staleCashPool);
     expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+
+    // Spec P keep-shell: Plan sync can raise cycle spend and recompute
+    // leftover as 1 650,75 / 5 days = 330,15. Same avsätt must not win.
+    const staleFiveDay = homeSnap({
+      remainingTodayMinor: 330_15,
+      dayBudgetMinor: 330_15,
+      safeToSpendTodayMinor: 330_15,
+      livingPoolMinor: 1_650_75,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      cycleSpendingMinor: (restored.cycleSpendingMinor ?? 0) + 105_00,
+      financeRevision: "rev-plan-local",
+      verifiedAt: "2026-09-19T20:50:00.000Z",
+    });
+    expect(isLeftoverSparLivingRevert(restored, staleFiveDay)).toBe(true);
+    rememberHomeSnapshot(staleFiveDay);
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
   });
 
   it("does not treat additive Plan warmup spend as a leftover savings revert", () => {

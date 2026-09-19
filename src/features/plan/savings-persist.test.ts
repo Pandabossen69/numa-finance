@@ -14,6 +14,11 @@ import {
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
 import { applyHomeLeftoverSparDelta } from "@/features/finance/snapshot-from-today";
+import { rememberLivePlan } from "@/components/plan/plan-cache";
+import {
+  prefetchAdjacentPlanMonths,
+  resetPlanMonthCacheForTests,
+} from "@/features/plan/plan-month-cache";
 import { applyMonthSavings, ensureMonthSavings } from "@/features/plan/optimistic";
 
 const TZ = "Asia/Bangkok";
@@ -461,6 +466,71 @@ describe("Spec O leftover save persist + Hem adopt", () => {
     expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
+  });
+
+  it("after restore 15k, soft Hem↔Plan↔Hem keep-shell keeps leftover 275,12", () => {
+    resetPlanMonthCacheForTests();
+    const at15k = leftoverHome();
+    rememberHomeSnapshot(at15k);
+    rememberPlanSnapshot(planSnap(leftoverPlanItems(15_000_00)));
+
+    const savedHome = applyHomeLeftoverSparDelta(at15k, 5_000_00, 15_000_00);
+    adoptMutationFinance({
+      home: {
+        ...savedHome,
+        overMinor: 54_981_00,
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      },
+      plan: planSnap(leftoverPlanItems(20_000_00), {
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      }),
+    });
+
+    const serverRestore = leftoverHome({
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T08:04:00.000Z",
+    });
+    const restoredHome = applyHomeLeftoverSparDelta(
+      serverRestore,
+      -5_000_00,
+      20_000_00,
+    );
+    const restoredPlan = planSnap(leftoverPlanItems(15_000_00), {
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T08:04:00.000Z",
+      bankBalanceMinor: 3_421_95,
+    });
+    adoptMutationFinance({
+      home: restoredHome,
+      plan: restoredPlan,
+    });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    // Plan keep-shell: publish :local + prefetch ±1 + PlanScreen sync (no reload).
+    prefetchAdjacentPlanMonths({
+      items: restoredPlan.items,
+      ledgerTransactions: restoredPlan.ledgerTransactions,
+      monthKey: MONTH,
+      timeZone: TZ,
+      saldoMinor: restoredPlan.bankBalanceMinor,
+    });
+    rememberLivePlan({
+      ...restoredPlan,
+      financeRevision: "rev-15k-restore:local",
+      verifiedAt: "2026-09-19T20:50:00.000Z",
+      truthStatus: "stale",
+    });
+    syncHomeLivingFromPlan(lastPlanSnapshot() ?? restoredPlan);
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    // Hem tab reads last-known — same as soft-nav Hem → Plan → Hem.
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).not.toBe(330_15);
   });
 
   it("after nollställ, soft remount adopts the post-clear living — not leftover 275,12", () => {

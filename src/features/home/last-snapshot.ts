@@ -342,7 +342,6 @@ export function isLeftoverSparLivingRevert(
 ): boolean {
   const adoptedMonthSave = current.planMonthSavingsMinor ?? 0;
   if (adoptedMonthSave <= 0) return false;
-  if (incoming.cycleSpendingMinor > current.cycleSpendingMinor) return false;
   const currentSave =
     current.planMonthSavingsMinor ?? current.savingsTotalMinor;
   const incomingSave =
@@ -352,7 +351,11 @@ export function isLeftoverSparLivingRevert(
     incoming.remainingTodayMinor === incoming.dayBudgetMinor;
   const livingRegress = current.dayBudgetMinor < incoming.dayBudgetMinor;
   if (!leftoverShape || !livingRegress) return false;
-  if (currentSave === incomingSave) return true;
+  // Restore 20k→15k leftover (275,12) must not jump to a 5-day recompute
+  // (330,15) on Plan keep-shell sync — even if cycle spend rose. Additive
+  // SEK warmup has planMonthSavingsMinor 0 and already returned above.
+  if (incomingSave > 0 && incomingSave <= currentSave) return true;
+  if (incoming.cycleSpendingMinor > current.cycleSpendingMinor) return false;
   return incomingSave < currentSave;
 }
 
@@ -607,10 +610,19 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       0;
   const leftoverPath = cashPool <= 0 || homeLooksLeftover;
   const staleLowerSave = leftoverPath && nextSave < prevSave;
+  // After setMonthSavings decrease, keep the adopted leftover living on
+  // Hem↔Plan soft remount even if cashPool flipped (daysLeft 6→5 = 330,15).
+  const restoreKeepAdopted =
+    prevSave > 0 &&
+    nextSave > 0 &&
+    nextSave <= prevSave &&
+    home.remainingTodayMinor === home.dayBudgetMinor &&
+    home.dayBudgetMinor !== living.dayBudgetMinor;
   const keepAdoptedLiving =
-    leftoverPath &&
-    home.dayBudgetMinor !== living.dayBudgetMinor &&
-    (prevSave === nextSave || staleLowerSave);
+    restoreKeepAdopted ||
+    (leftoverPath &&
+      home.dayBudgetMinor !== living.dayBudgetMinor &&
+      (prevSave === nextSave || staleLowerSave));
   const incrementBase = homeLooksLeftover
     ? {
         livingPoolMinor: home.livingPoolMinor,
