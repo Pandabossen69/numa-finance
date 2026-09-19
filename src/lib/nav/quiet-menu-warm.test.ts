@@ -1,10 +1,14 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
+import type { PlanSnapshot } from "@/features/finance/load-plan";
 import {
   clearClientSessionCaches,
   lastAccountsSnapshot,
+  lastAnalysSnapshot,
   rememberAccountsSnapshot,
+  rememberAnalysSnapshot,
+  rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import {
   applyQuietMenuBundleForTests,
@@ -15,6 +19,18 @@ import {
 function read(rel: string) {
   return readFileSync(new URL(rel, import.meta.url), "utf8");
 }
+
+const samplePlan: PlanSnapshot = {
+  items: [],
+  currency: "THB",
+  timeZone: "Asia/Bangkok",
+  bankBalanceMinor: 10_000_00,
+  spendingByMonthKey: { "2026-09": 400_00 },
+  ledgerTransactions: [],
+  financeRevision: "plan-rev",
+  verifiedAt: "2026-09-19T05:00:00.000Z",
+  truthStatus: "verified",
+};
 
 const sampleAccounts: AccountsSnapshot = {
   accounts: [
@@ -51,6 +67,9 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("requestIdleCallback");
     expect(warm).toContain("rememberPlanSnapshot");
     expect(warm).toContain("rememberAnalysSnapshot");
+    expect(warm).toContain("analysSnapshotFromPlan");
+    expect(warm).toContain("lastSessionHomeSnapshot");
+    expect(warm).toContain("lastAnalysSnapshot() == null");
     expect(warm).toContain("rememberMovementsSnapshot");
     expect(warm).toContain("rememberAccountsSnapshot");
     expect(warm).toContain("isMovementsDirty");
@@ -88,6 +107,8 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(bundle).toContain("accounts: plan?.accounts ?? null");
     expect(bundle).not.toMatch(/import \{[^}]*loadAccountsSnapshot/);
     expect(bundle).not.toContain("await loadAccounts");
+    expect(bundle).not.toContain("loadAnalysSnapshot");
+    expect(bundle).toContain("analys: null");
 
     expect(lastAccountsSnapshot()).toBeNull();
     expect(quietMenuCacheReady()).toBe(false);
@@ -124,6 +145,90 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     });
     expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Bangkok Bank");
     expect(lastAccountsSnapshot()?.totalThbMinor).toBe(1_200_00);
+  });
+
+  it("gap-fills lastAnalysSnapshot from Plan + Hem so dest shell can paint", () => {
+    expect(lastAnalysSnapshot()).toBeNull();
+    rememberHomeSnapshot({
+      userId: "user-hugo",
+      displayName: "Hugo",
+      timeZone: "Asia/Bangkok",
+      primaryAccountId: "acc",
+      currency: "THB",
+      monthKey: "2026-09",
+      monthLabelSv: "september",
+      hasBankTruth: true,
+      calculatedBalanceMinor: 10_000_00,
+      verificationLabel: null,
+      todaySpendingMinor: 200_00,
+      todayPlannedPaidMinor: 0,
+      monthSpendingMinor: 1_000_00,
+      cycleSpendingMinor: 400_00,
+      safeToSpendTodayMinor: 800_00,
+      cycleStartLabelSv: null,
+      cycleEndLabelSv: null,
+      cycleEndInferred: false,
+      cycleIsActive: true,
+      livingMode: "cycle",
+      needsAvailableInput: false,
+      usesBankBalance: true,
+      planIncomeMinor: 20_000_00,
+      planExpenseMinor: 8_000_00,
+      planSavingsMinor: 0,
+      freeToSpendMinor: 12_000_00,
+      remainingFreeMinor: 11_600_00,
+      spendDaysLeft: 10,
+      dayBudgetMinor: 1_000_00,
+      remainingTodayMinor: 800_00,
+      livingPoolMinor: 10_000_00,
+      reservedUntilIncomeMinor: 0,
+      daysUntilIncome: 10,
+      nextIncomeLabelSv: null,
+      extraSaldoMinor: 0,
+      extraSaldoDrawnMinor: 0,
+      extraSaldoHint: null,
+      extraCarriedInMinor: 0,
+      savingsTotalMinor: 2_000_00,
+      wealthTotalMinor: 14_000_00,
+      monthResultMinor: 0,
+      incomingMinor: 5_000_00,
+      unpaidMinor: 3_000_00,
+      overMinor: 12_000_00,
+      financeRevision: "plan-rev",
+      verifiedAt: "2026-09-19T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: samplePlan,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: null,
+      },
+    });
+    expect(lastAnalysSnapshot()?.month).toBeTruthy();
+    expect(lastAnalysSnapshot()?.currentMonthKey).toBeTruthy();
+    expect(lastAnalysSnapshot()?.todaySpendingMinor).toBe(200_00);
+    expect(lastAnalysSnapshot()?.calculatedBalanceMinor).toBe(10_000_00);
+
+    rememberAnalysSnapshot({
+      ...lastAnalysSnapshot()!,
+      todaySpendingMinor: 50_00,
+    });
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: { ...samplePlan, bankBalanceMinor: 1_00 },
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: null,
+      },
+    });
+    expect(lastAnalysSnapshot()?.todaySpendingMinor).toBe(50_00);
   });
 
   it("does not overwrite a dirty accounts last-known from quiet warm", () => {

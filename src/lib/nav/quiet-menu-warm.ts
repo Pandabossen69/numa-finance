@@ -1,5 +1,6 @@
 "use client";
 
+import { analysSnapshotFromPlan } from "@/features/finance/analys-from-known";
 import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
   isAccountsDirty,
@@ -8,6 +9,7 @@ import {
   lastAnalysSnapshot,
   lastMovementsSnapshot,
   lastPlanSnapshot,
+  lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysSnapshot,
   rememberGettingStarted,
@@ -39,9 +41,17 @@ function applyQuietBundle(
   if (plan) {
     rememberPlanSnapshot(plan);
     syncHomeLivingFromPlan(plan);
+    // Gap-fill only. A richer last-known from a prior /analys visit wins.
+    if (lastAnalysSnapshot() == null) {
+      rememberAnalysSnapshot(
+        analysSnapshotFromPlan(plan, lastSessionHomeSnapshot()),
+      );
+    }
   }
   if (gettingStarted) rememberGettingStarted(gettingStarted);
-  if (analys) rememberAnalysSnapshot(analys);
+  if (analys && lastAnalysSnapshot() == null) {
+    rememberAnalysSnapshot(analys);
+  }
   if (movements && !isMovementsDirty()) {
     rememberMovementsSnapshot(movements);
   }

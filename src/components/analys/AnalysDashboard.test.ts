@@ -80,7 +80,7 @@ describe("Analys month result color", () => {
       "utf8",
     );
     const loader = readFileSync(
-      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      new URL("../../features/finance/analys-from-known.ts", import.meta.url),
       "utf8",
     );
     // Same derivation as the Plan list — not a second reading of the item.
@@ -129,7 +129,7 @@ describe("Analys month result color", () => {
 
   it("answers vart gick pengarna with one Spenderat, then the same split", () => {
     const loader = readFileSync(
-      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      new URL("../../features/finance/analys-from-known.ts", import.meta.url),
       "utf8",
     );
     const movements = readFileSync(
@@ -197,7 +197,7 @@ describe("Analys month result color", () => {
 
   it("ships no figure the screen never renders", () => {
     const loader = readFileSync(
-      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      new URL("../../features/finance/analys-from-known.ts", import.meta.url),
       "utf8",
     );
     for (const dead of [
@@ -215,7 +215,7 @@ describe("Analys month result color", () => {
 
   it("scopes Senaste to the tab you are on", () => {
     const loader = readFileSync(
-      new URL("../../features/finance/load-analys.ts", import.meta.url),
+      new URL("../../features/finance/analys-from-known.ts", import.meta.url),
       "utf8",
     );
     // Månad shows the browsed month, Perioden the running cycle window.
