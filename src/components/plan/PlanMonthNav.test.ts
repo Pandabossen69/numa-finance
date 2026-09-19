@@ -7,7 +7,10 @@ const css = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf
 describe("PlanMonthNav", () => {
   it("is one year+month control with the selected month as the title", () => {
     expect(src).toContain("labelMonthSv(monthKey)");
+    expect(src).toContain("labelMonthNameSv(monthKey)");
     expect(src).toContain("numa-month-nav-title");
+    expect(src).toContain("numa-month-nav-month");
+    expect(src).toContain("numa-month-nav-year-text");
     expect(src).toContain("Välj månad");
     expect(src).toContain("Denna månad");
     expect(src).toContain("Visar");
@@ -31,12 +34,12 @@ describe("PlanMonthNav", () => {
   });
 
   it("makes the selected month obvious at phone width", () => {
-    const title = css.slice(
-      css.indexOf(".numa-month-nav-title {"),
-      css.indexOf(".numa-month-nav-caret {"),
+    const month = css.slice(
+      css.indexOf(".numa-month-nav-month {"),
+      css.indexOf(".numa-month-nav-year-text {"),
     );
-    expect(title).toContain("clamp(1.2rem, 5.4vw, 1.45rem)");
-    expect(title).toContain("font-weight: 680");
+    expect(month).toContain("clamp(1.22rem, 5.6vw, 1.5rem)");
+    expect(month).toContain("font-weight: 700");
     expect(css).toContain("grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem");
     expect(css).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
     expect(css).toContain(".numa-month-nav-cell.is-active");

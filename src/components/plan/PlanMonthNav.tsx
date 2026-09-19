@@ -7,6 +7,7 @@ import {
   labelMonthNameSv,
   labelMonthSv,
   visibleMonthKeysForYear,
+  yearFromMonthKey,
 } from "@/domain/finance";
 
 export type MonthDots = { living?: boolean; save?: boolean };
@@ -103,8 +104,12 @@ export function PlanMonthNav({
             {isCurrent ? "Denna månad" : "Visar"}
           </span>
           <span className="numa-month-nav-title">
-            {title}
-            <i className={`numa-month-nav-caret${open ? "is-open" : ""}`} aria-hidden />
+            <span className="numa-month-nav-month">{labelMonthNameSv(monthKey)}</span>
+            <span className="numa-month-nav-year-text">{yearFromMonthKey(monthKey)}</span>
+            <i
+              className={open ? "numa-month-nav-caret is-open" : "numa-month-nav-caret"}
+              aria-hidden
+            />
           </span>
         </button>
 

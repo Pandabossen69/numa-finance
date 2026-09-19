@@ -91,7 +91,7 @@ describe("NUMA vision palette", () => {
   it("gives Plan a single month+year control whose title stays readable at ~390", () => {
     expect(css).toContain(".numa-month-nav {");
     expect(css).toContain(".numa-month-nav-title {");
-    expect(css).toContain("clamp(1.2rem, 5.4vw, 1.45rem)");
+    expect(css).toContain("clamp(1.22rem, 5.6vw, 1.5rem)");
     expect(css).toContain(".numa-month-nav-picker {");
     expect(css).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
     expect(css).toContain(".numa-month-nav-cell.is-active");
