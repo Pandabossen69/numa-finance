@@ -175,11 +175,11 @@ describe("last view memory", () => {
     expect(next?.todaySpendingMinor).toBe(350_00);
     expect(next?.remainingTodayMinor).toBe(650_00);
     expect(next?.calculatedBalanceMinor).toBe(9_850_00);
-    expect(next?.overMinor).toBe(9_850_00 + 5_000_00 - 3_000_00);
+    expect(next?.overMinor).toBe(9_850_00 + 5_000_00 - 3_000_00 - 2_000_00);
     expect(ticks).toBeGreaterThan(0);
     revertOptimisticHomeSpend(150_00);
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(200_00);
-    expect(lastHomeSnapshot()?.overMinor).toBe(12_000_00);
+    expect(lastHomeSnapshot()?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00 - 2_000_00);
     stop();
   });
 
@@ -223,7 +223,8 @@ describe("last view memory", () => {
         calculatedBalanceMinor: 10_000_00,
         incomingMinor: 57_000_00,
         unpaidMinor: 0,
-        overMinor: 67_000_00,
+        overMinor: 65_000_00,
+        savingsTotalMinor: 2_000_00,
       }),
     );
     applyOptimisticPlanSettle({
@@ -234,7 +235,7 @@ describe("last view memory", () => {
     const next = lastHomeSnapshot();
     expect(next?.calculatedBalanceMinor).toBe(67_000_00);
     expect(next?.incomingMinor).toBe(0);
-    expect(next?.overMinor).toBe(67_000_00);
+    expect(next?.overMinor).toBe(67_000_00 - 2_000_00);
   });
 
   it("keeps Över as saldo + kommer in − kvar att betala when Plan settles", () => {
@@ -589,7 +590,7 @@ describe("last view memory", () => {
     expect(next?.needsAvailableInput).toBe(false);
     expect(next?.dayBudgetMinor).toBe(1_000_00);
     expect(next?.remainingTodayMinor).toBe(1_000_00);
-    expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00);
+    expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00 - 2_000_00);
   });
 
   it("drops Hugo's last-known numbers when another user binds", () => {

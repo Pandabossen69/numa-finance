@@ -16,7 +16,7 @@
  * - Över: på kontona + kommer in − kvar att betala (Plan/Hem hero)
  * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
  *   (inline: «Planerat kvar minus spenderat — inte pengar på kontona.»)
- * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
+ * - Plan + sparande: leftover vs plan + avsatt/sparat (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
  *
  * Analys answers two questions only: «Vart gick pengarna?» (Spenderat +
@@ -42,7 +42,8 @@ export const SV = {
   extraMed: "Extra med",
   iManaden: "I månaden",
   alltINuma: "Plan + sparande",
-  sparandeTotalt: "Sparat i NUMA",
+  sparandeTotalt: "Sparat från tidigare",
+  sparat: "Sparat",
   overskottHittills: "Överskott mot planen",
   minusMotPlanen: "Minus mot planen",
   /** Always-visible Analys leftover one-liner (Perioden + Månad, first paint). */
@@ -67,8 +68,9 @@ export const SV = {
   merPathSaldo: "Mer → Konton",
   paKontot: "På kontona",
   saldoLevaFor: "Att leva för",
-  sparandeAvsatt: "Ligger avsatt",
-  sparandeHintHem: "Avsatt i planen — inte Över",
+  sparandeAvsatt: "Avsatt denna månad",
+  sparandeHintHem: "Satt av från Över — inte att leva upp",
+  sattAvFranOver: "Sätt av från Över",
   sparaDennaManad: "Spara denna månad",
   vaxer: "Växer",
   intakter: "Intäkter",

@@ -23,6 +23,7 @@ import {
   perDayBudgetMinor,
   projectPlanForMonth,
   cumulativePlanSavingsMinor,
+  priorPlanSavingsMinor,
   rollDueDateForward,
   spendDaysForMonth,
   withRolledMonthlyDues,
@@ -234,6 +235,9 @@ describe("plan-months", () => {
     expect(cumulativePlanSavingsMinor(withSeptember, "2026-09", "UTC")).toBe(
       8_000_00,
     );
+    expect(priorPlanSavingsMinor(withSeptember, "2026-09", "UTC")).toBe(5_000_00);
+    expect(priorPlanSavingsMinor(items, "2026-09", "UTC")).toBe(5_000_00);
+    expect(priorPlanSavingsMinor(items, "2026-08", "UTC")).toBe(0);
   });
 
   it("uses the latest savings row when a month has duplicates", () => {

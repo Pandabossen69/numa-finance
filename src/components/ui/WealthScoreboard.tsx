@@ -1,7 +1,7 @@
-import { CASH_COVERAGE_HINT_SV } from "@/domain/finance";
+import { cashCoverageHintSv } from "@/domain/finance";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PileLine } from "@/components/ui/PileLine";
-import type { CurrencyCode } from "@/domain/money";
+import { formatMoneyCompact, money, type CurrencyCode } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 
 /**
@@ -82,6 +82,7 @@ export function CompactPiles({
   unpaidMinor,
   overMinor,
   savingsMinor,
+  savingsThisMonthMinor = 0,
   savingsMonthName,
   currency,
 }: {
@@ -90,11 +91,22 @@ export function CompactPiles({
   unpaidMinor: number;
   overMinor: number;
   savingsMinor: number;
+  /** Current calendar month avsättning — remaining is prior «sparat». */
+  savingsThisMonthMinor?: number;
   /** Same heading as Plan: «Spara i [månad]». */
   savingsMonthName?: string;
   currency: CurrencyCode;
 }) {
   const overOk = overMinor >= 0;
+  const thisMonth = Math.max(0, savingsThisMonthMinor);
+  const prior = Math.max(0, savingsMinor - thisMonth);
+  const parkHeading =
+    thisMonth > 0 && savingsMonthName
+      ? SV.sparaI(savingsMonthName)
+      : prior > 0
+        ? SV.sparat
+        : SV.sparande;
+  const parkAmount = thisMonth > 0 ? thisMonth : savingsMinor;
   return (
     <div className="numa-piles-board">
       <div className="is-live min-w-0">
@@ -119,20 +131,21 @@ export function CompactPiles({
             tone={overOk ? "over" : "short"}
           />
         </div>
-        <p className="numa-pile-hint mt-3">{CASH_COVERAGE_HINT_SV}</p>
+        <p className="numa-pile-hint mt-3">{cashCoverageHintSv(savingsMinor)}</p>
       </div>
       <div className="is-park min-w-0">
         <div className="numa-pile-save-copy">
-          <p className="numa-section-title">
-            {savingsMinor > 0 && savingsMonthName
-              ? SV.sparaI(savingsMonthName)
-              : SV.sparande}
-          </p>
+          <p className="numa-section-title">{parkHeading}</p>
           <p className="numa-pile-hint">{SV.sparandeHintHem}</p>
+          {thisMonth > 0 && prior > 0 ? (
+            <p className="numa-pile-hint">
+              {SV.sparandeTotalt} {formatMoneyCompact(money(prior, currency))}
+            </p>
+          ) : null}
         </div>
         <div className="numa-pile-save-value min-w-0 text-[var(--numa-ink)]">
           <MoneyDisplay
-            amountMinor={savingsMinor}
+            amountMinor={parkAmount}
             currency={currency}
             size="sm"
             compact

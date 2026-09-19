@@ -553,6 +553,44 @@ export function cumulativePlanSavingsMinor(
 }
 
 /**
+ * Savings already parked before `monthKey` — what next month should call
+ * «sparat». Does not include this month's avsättning.
+ */
+export function priorPlanSavingsMinor(
+  items: PlanItem[],
+  monthKey: string,
+  timeZone: string,
+  startMonthKey: string = APP_PLAN_START_MONTH,
+): number {
+  const previousKey = addMonthsKey(monthKey, -1);
+  if (previousKey < startMonthKey) return 0;
+  return cumulativePlanSavingsMinor(items, previousKey, timeZone, startMonthKey);
+}
+
+/** Latest savings amount per calendar month — one walk, no per-month project. */
+export function savingsByMonthKeys(
+  items: readonly PlanItem[],
+  monthKeys: readonly string[],
+  timeZone: string,
+): Record<string, number> {
+  const allowed = new Set(monthKeys);
+  const out: Record<string, number> = {};
+  for (const key of monthKeys) out[key] = 0;
+  const latest = new Map<string, PlanItem>();
+  for (const item of items) {
+    if (!item.isActive || !isPlanSavings(item)) continue;
+    const key = planItemMonthKey(item, timeZone);
+    if (!key || !allowed.has(key)) continue;
+    const prev = latest.get(key);
+    if (!prev || item.updatedAt >= prev.updatedAt) latest.set(key, item);
+  }
+  for (const [key, item] of latest) {
+    out[key] = item.amountMinor;
+  }
+  return out;
+}
+
+/**
  * Project active plan buckets onto a calendar month.
  * Fixed expenses, extras, incomes and savings all appear only when their
  * nextDueAt falls in that month. Fixed rows are never cloned into other months.

@@ -2,7 +2,7 @@ import { chromeDisplayName } from "@/domain/identity/display-name";
 import {
   computeClassifiedSpendingWindows,
   resolveTodaySpendSplit,
-  cumulativePlanSavingsMinor,
+  cashOverMinor,
   hasCycleFundingEvidence,
   isSameZonedDay,
   monthKeyFromDate,
@@ -391,8 +391,12 @@ export function applyOptimisticHomeSpend(amountMinor: number): HomeSnapshot | nu
     previous.calculatedBalanceMinor == null
       ? null
       : previous.calculatedBalanceMinor - amountMinor;
-  const overMinor =
-    (calculatedBalanceMinor ?? 0) + previous.incomingMinor - previous.unpaidMinor;
+  const overMinor = cashOverMinor({
+    saldoMinor: calculatedBalanceMinor,
+    incomingMinor: previous.incomingMinor,
+    unpaidMinor: previous.unpaidMinor,
+    reservedSavingsMinor: previous.savingsTotalMinor,
+  });
   rememberHomeSnapshot(
     {
       ...previous,
@@ -552,11 +556,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
     timeZone,
     saldoMinor: bankBalanceMinor,
   });
-  const savingsTotalMinor = cumulativePlanSavingsMinor(
-    snapshot.items,
-    home.monthKey,
-    timeZone,
-  );
+  const savingsTotalMinor = coverage.reservedSavingsMinor;
   rememberHomeSnapshot(
     {
       ...home,
@@ -590,6 +590,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       unpaidMinor: coverage.unpaidMinor,
       overMinor: coverage.overMinor,
       savingsTotalMinor,
+      planMonthSavingsMinor: coverage.savingsThisMonthMinor,
       wealthTotalMinor: planWealthTotalMinor(
         coverage.overMinor,
         savingsTotalMinor,
@@ -916,8 +917,12 @@ export function applyOptimisticPlanSettle(input: {
   const unpaidMinor = Math.max(0, previous.unpaidMinor + input.unpaidDeltaMinor);
   const cycleSpendingMinor =
     previous.cycleSpendingMinor + (input.cycleSpendingDeltaMinor ?? 0);
-  const overMinor =
-    (calculatedBalanceMinor ?? 0) + incomingMinor - unpaidMinor;
+  const overMinor = cashOverMinor({
+    saldoMinor: calculatedBalanceMinor,
+    incomingMinor,
+    unpaidMinor,
+    reservedSavingsMinor: previous.savingsTotalMinor,
+  });
   const planSnap = lastPlanSnapshot();
   let remainingFreeMinor = previous.remainingFreeMinor;
   let freeToSpendMinor = previous.freeToSpendMinor;
@@ -995,10 +1000,12 @@ export function applyOptimisticHomeIncome(
     previous.calculatedBalanceMinor == null
       ? null
       : previous.calculatedBalanceMinor + amountMinor;
-  const overMinor =
-    (calculatedBalanceMinor ?? 0) +
-    previous.incomingMinor -
-    previous.unpaidMinor;
+  const overMinor = cashOverMinor({
+    saldoMinor: calculatedBalanceMinor,
+    incomingMinor: previous.incomingMinor,
+    unpaidMinor: previous.unpaidMinor,
+    reservedSavingsMinor: previous.savingsTotalMinor,
+  });
   rememberHomeSnapshot(
     {
       ...previous,
@@ -1016,7 +1023,12 @@ export function applyOptimisticHomeIncome(
 
 export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null {
   if (!home) return null;
-  const overMinor = balanceMinor + home.incomingMinor - home.unpaidMinor;
+  const overMinor = cashOverMinor({
+    saldoMinor: balanceMinor,
+    incomingMinor: home.incomingMinor,
+    unpaidMinor: home.unpaidMinor,
+    reservedSavingsMinor: home.savingsTotalMinor,
+  });
   const spentToday = Math.max(0, home.todaySpendingMinor);
   const reserved = Math.max(0, home.reservedUntilIncomeMinor ?? 0);
   const refreshDayEnvelope =

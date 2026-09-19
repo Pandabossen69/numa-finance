@@ -1,7 +1,6 @@
 import {
   ACCOUNT_KIND_LABEL_SV,
   extraSaldoHintSv,
-  cumulativePlanSavingsMinor,
   labelMonthSv,
   monthKeyFromDate,
   planWealthTotalMinor,
@@ -53,11 +52,7 @@ export function homeSnapshotFromToday(
     timeZone,
     saldoMinor: snap.calculatedBalanceMinor,
   });
-  const savingsTotalMinor = cumulativePlanSavingsMinor(
-    snap.planItems ?? [],
-    monthKey,
-    timeZone,
-  );
+  const savingsTotalMinor = coverage.reservedSavingsMinor;
 
   return {
     userId: snap.profile.id,
@@ -101,6 +96,7 @@ export function homeSnapshotFromToday(
     extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,
     extraCarriedInMinor: extra.carriedInMinor,
     savingsTotalMinor,
+    planMonthSavingsMinor: coverage.savingsThisMonthMinor,
     wealthTotalMinor: planWealthTotalMinor(coverage.overMinor, savingsTotalMinor),
     monthResultMinor: extra.monthResultMinor,
     incomingMinor: coverage.incomingMinor,

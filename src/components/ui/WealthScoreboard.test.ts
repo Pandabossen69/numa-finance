@@ -23,6 +23,9 @@ describe("CompactPiles cash stack", () => {
     expect(compact).not.toContain("SV.motPlanen");
     expect(compact).toContain("SV.sparaI(savingsMonthName)");
     expect(compact).toContain("savingsMonthName");
+    expect(compact).toContain("cashCoverageHintSv");
+    expect(compact).toContain("SV.sparat");
+    expect(compact).toContain("SV.sparandeTotalt");
     expect(compact).not.toContain('size="xs"');
     expect(compact).not.toContain("text-[11px]");
   });

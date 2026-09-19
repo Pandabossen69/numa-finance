@@ -437,6 +437,9 @@ export function HomeDashboard({
                   unpaidMinor={view.unpaidMinor}
                   overMinor={view.overMinor}
                   savingsMinor={view.savingsTotalMinor}
+                  savingsThisMonthMinor={
+                    view.planMonthSavingsMinor ?? view.planSavingsMinor
+                  }
                   savingsMonthName={labelMonthNameSv(view.monthKey)}
                   currency={currency}
                 />

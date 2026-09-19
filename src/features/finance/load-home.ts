@@ -63,8 +63,10 @@ export type HomeSnapshot = {
   incomingMinor: number;
   /** Remaining planned expenses not yet in the ledger (not savings). */
   unpaidMinor: number;
-  /** Saldo + kommer in − kvar att betala. */
+  /** Saldo + kommer in − kvar att betala − sparat (avsättning this month + earlier). */
   overMinor: number;
+  /** This calendar month's avsättning. Optional on older last-home cookies. */
+  planMonthSavingsMinor?: number;
   financeRevision: string;
   verifiedAt: string;
   /** verified = authoritative read; stale/unavailable kept for client fail-soft */

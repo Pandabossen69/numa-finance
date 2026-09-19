@@ -1,18 +1,27 @@
 "use client";
 
 import type { CashCoverageView } from "@/domain/finance";
-import { CASH_COVERAGE_HINT_SV, planWealthTotalMinor } from "@/domain/finance";
+import { cashCoverageHintSv, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PileLine } from "@/components/ui/PileLine";
 import { SV } from "@/features/copy/labels-sv";
+import { formatPlanFigure } from "@/components/plan/plan-format";
+
+export type SavingsLivePreview = {
+  overMinor: number;
+  remainingFreeMinor: number;
+  dayBudgetMinor: number;
+};
 
 export function PlanPiles({
   coverage,
   monthName,
+  priorMonthName,
   currency,
   savingsTotalMinor,
   savingsThisMonthMinor,
+  savingsPriorMinor,
   savingsByMonth,
   monthKeys,
   savingsAmount,
@@ -21,12 +30,17 @@ export function PlanPiles({
   onClearSavings,
   savingsBusy = false,
   clearBusy = false,
+  livePreview = null,
+  currentRemainingFreeMinor = null,
+  currentDayBudgetMinor = null,
 }: {
   coverage: CashCoverageView;
   monthName: string;
+  priorMonthName?: string;
   currency: CurrencyCode;
   savingsTotalMinor: number;
   savingsThisMonthMinor: number;
+  savingsPriorMinor: number;
   savingsByMonth: Record<string, number>;
   monthKeys: string[];
   savingsAmount: string;
@@ -35,6 +49,9 @@ export function PlanPiles({
   onClearSavings: () => void;
   savingsBusy?: boolean;
   clearBusy?: boolean;
+  livePreview?: SavingsLivePreview | null;
+  currentRemainingFreeMinor?: number | null;
+  currentDayBudgetMinor?: number | null;
 }) {
   const overOk = coverage.overMinor >= 0;
   const totalMinor = planWealthTotalMinor(coverage.overMinor, savingsTotalMinor);
@@ -43,14 +60,19 @@ export function PlanPiles({
   ).length;
   const savingsFill = monthKeys.length > 0 ? monthsWithSavings / monthKeys.length : 0;
   const hasThisMonth = savingsThisMonthMinor > 0;
-  const hasEarlier = savingsTotalMinor > savingsThisMonthMinor;
+  const hasPrior = savingsPriorMinor > 0;
+  const showPriorAsHero = !hasThisMonth && hasPrior;
+  const heroMinor = showPriorAsHero ? savingsPriorMinor : savingsThisMonthMinor;
 
   const overChip = overOk ? SV.pengarOver : SV.rackerInte;
   const savingsChip = hasThisMonth
     ? "Denna månad"
-    : savingsTotalMinor > 0
+    : hasPrior
       ? "Tidigare månader"
       : "Inte ännu";
+
+  const reserved = coverage.reservedSavingsMinor;
+  const hint = cashCoverageHintSv(reserved);
 
   return (
     <div className="space-y-4">
@@ -93,6 +115,22 @@ export function PlanPiles({
               currency={currency}
               tone="out"
             />
+            {coverage.savingsThisMonthMinor > 0 ? (
+              <PileLine
+                label={SV.sparandeAvsatt}
+                amountMinor={coverage.savingsThisMonthMinor}
+                currency={currency}
+                tone="out"
+              />
+            ) : null}
+            {coverage.savingsPriorMinor > 0 ? (
+              <PileLine
+                label={SV.sparat}
+                amountMinor={coverage.savingsPriorMinor}
+                currency={currency}
+                tone="out"
+              />
+            ) : null}
             <PileLine
               label={SV.over}
               amountMinor={coverage.overMinor}
@@ -101,7 +139,7 @@ export function PlanPiles({
             />
           </div>
           <p className="numa-pile-hint">
-            {CASH_COVERAGE_HINT_SV}
+            {hint}
             {coverage.saldoMinor == null ? ". Lägg in saldo på Hem." : ""}
           </p>
           {savingsTotalMinor > 0 ? (
@@ -126,13 +164,13 @@ export function PlanPiles({
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <p id="plan-sparande-heading" className="numa-section-title min-w-0">
-              {SV.sparaI(monthName)}
+              {showPriorAsHero ? SV.sparat : SV.sparaI(monthName)}
             </p>
             <span className="numa-chip numa-chip-ink shrink-0">{savingsChip}</span>
           </div>
           <div className="text-[var(--numa-ink)]">
             <MoneyDisplay
-              amountMinor={savingsThisMonthMinor}
+              amountMinor={heroMinor}
               currency={currency}
               size="sm"
               compact
@@ -142,8 +180,10 @@ export function PlanPiles({
           </div>
           <p className="numa-pile-hint">
             {hasThisMonth
-              ? "Avsatt i planen denna månad. Sänker dagsbudgeten när perioden är igång. Över på kontona ändras inte."
-              : "Sätt av det som inte ska levas upp. Tas från kvar i perioden — sänker dagsbudgeten, inte Över."}
+              ? `Taget från Över och dagsbudgeten i ${monthName}. Inte pengar att leva upp.`
+              : hasPrior
+                ? `Sparat från ${priorMonthName ?? "tidigare månader"} — satt av från Över. Inte att leva upp.`
+                : "Sätt av från Över det som inte ska levas upp. Sänker Över och dagsbudgeten. Nästa månad syns det som sparat."}
           </p>
 
           <div className="numa-year-dots" aria-hidden>
@@ -164,17 +204,21 @@ export function PlanPiles({
             />
           </div>
 
-          {hasEarlier ? (
+          {hasThisMonth && hasPrior ? (
             <PileLine
-              label={SV.sparandeTotalt}
-              amountMinor={savingsTotalMinor}
+              label={
+                priorMonthName
+                  ? `Sparat från ${priorMonthName}`
+                  : SV.sparandeTotalt
+              }
+              amountMinor={savingsPriorMinor}
               currency={currency}
             />
           ) : null}
 
           <div className="mt-auto space-y-2 pt-1">
             <p className="numa-section-title">
-              {hasThisMonth ? `Ändra ${monthName}` : `Avsätt i ${monthName}`}
+              {hasThisMonth ? `Ändra ${monthName}` : `Sätt av i ${monthName}`}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <input
@@ -183,7 +227,7 @@ export function PlanPiles({
                 value={savingsAmount}
                 onChange={(e) => onSavingsAmount(e.target.value)}
                 placeholder="t.ex. 2 000"
-                aria-label={`Sparande i ${monthName}`}
+                aria-label={`Sätt av från Över i ${monthName}`}
                 className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
               />
               <button
@@ -192,7 +236,11 @@ export function PlanPiles({
                 onClick={onSaveSavings}
                 className="numa-btn numa-btn-primary min-h-11 px-4"
               >
-                {savingsBusy ? "Sparar…" : hasThisMonth ? "Uppdatera" : "Avsätt"}
+                {savingsBusy
+                  ? "Sparar…"
+                  : hasThisMonth
+                    ? "Uppdatera"
+                    : SV.sattAvFranOver}
               </button>
               {hasThisMonth ? (
                 <button
@@ -205,9 +253,43 @@ export function PlanPiles({
                 </button>
               ) : null}
             </div>
+            {livePreview ? (
+              <p className="text-[12px] leading-snug text-[var(--numa-muted)]">
+                {previewLineSv({
+                  overFrom: coverage.overMinor,
+                  overTo: livePreview.overMinor,
+                  kvarFrom: currentRemainingFreeMinor,
+                  kvarTo: livePreview.remainingFreeMinor,
+                  dayFrom: currentDayBudgetMinor,
+                  dayTo: livePreview.dayBudgetMinor,
+                })}
+              </p>
+            ) : null}
           </div>
         </section>
       </div>
     </div>
   );
+}
+
+function previewLineSv(input: {
+  overFrom: number;
+  overTo: number;
+  kvarFrom: number | null;
+  kvarTo: number;
+  dayFrom: number | null;
+  dayTo: number;
+}): string {
+  const parts = [`Över ${formatPlanFigure(input.overFrom)} → ${formatPlanFigure(input.overTo)}`];
+  if (input.kvarFrom != null && input.kvarFrom !== input.kvarTo) {
+    parts.push(
+      `Kvar i perioden ${formatPlanFigure(input.kvarFrom)} → ${formatPlanFigure(input.kvarTo)}`,
+    );
+  }
+  if (input.dayFrom != null && input.dayFrom !== input.dayTo) {
+    parts.push(
+      `Dagsbudget ${formatPlanFigure(input.dayFrom)} → ${formatPlanFigure(input.dayTo)}`,
+    );
+  }
+  return parts.join(" · ");
 }

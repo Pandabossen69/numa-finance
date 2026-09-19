@@ -150,6 +150,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("inferReservedSavingsMinor");
     expect(src).toContain("labelMonthNameSv(view.monthKey)");
     expect(src).toContain("savingsMonthName");
+    expect(src).toContain("savingsThisMonthMinor");
     expect(src).toContain("view.calculatedBalanceMinor");
     expect(src).toContain("view.daysUntilIncome");
     expect(src).toContain("showDayEnvelope");

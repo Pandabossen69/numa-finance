@@ -295,6 +295,8 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("refreshQuiet");
     expect(plan).not.toContain("router.refresh");
     expect(plan).not.toContain("useRouter");
+    expect(editor).toContain("startMonthTransition");
+    expect(editor).toContain("useTransition");
   });
 
   it("adopts savings mutation snapshots so Hem/Plan remount keep the edit", () => {

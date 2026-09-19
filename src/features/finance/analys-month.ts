@@ -35,7 +35,7 @@ export type AnalysLine = {
 };
 
 export type AnalysMonthView = {
-  /** Saldo + kommer in − kvar att betala, for this month. Same as Hem and Plan. */
+  /** Saldo + kommer in − kvar att betala − sparat, for this month. Same as Hem and Plan. */
   coverage: CashCoverageView;
   incomeMinor: number;
   expenseMinor: number;

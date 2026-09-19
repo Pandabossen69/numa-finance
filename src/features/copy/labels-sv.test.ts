@@ -38,7 +38,11 @@ describe("Swedish money labels", () => {
     expect(SV.over).not.toBe(SV.motPlanen);
     expect(SV.overDagsbudget).toBe("Över dagsbudgeten");
     expect(SV.tillNastaInkomst).toBe("Till nästa inkomst");
-    expect(SV.sparandeHintHem).toMatch(/planen/i);
+    expect(SV.sparandeHintHem).toMatch(/över/i);
+    expect(SV.sparandeHintHem).not.toMatch(/inte Över/i);
+    expect(SV.sparandeTotalt).toBe("Sparat från tidigare");
+    expect(SV.sparandeTotalt).not.toMatch(/numa/i);
+    expect(SV.sattAvFranOver).toBe("Sätt av från Över");
     expect(SV.sparaDennaManad).toBe("Spara denna månad");
     expect(SV.sparaI("september")).toBe("Spara i september");
     expect(SV.sparaI("oktober")).toBe("Spara i oktober");
