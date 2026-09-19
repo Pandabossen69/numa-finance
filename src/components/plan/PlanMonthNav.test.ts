@@ -17,6 +17,9 @@ describe("PlanMonthNav", () => {
     expect(src).toContain("Visar");
     expect(src).toContain("addMonthsKey(monthKey, -1)");
     expect(src).toContain("addMonthsKey(monthKey, 1)");
+    expect(src).toContain("onPrefetchMonth");
+    expect(src).toContain("onPointerEnter={() => onPrefetchMonth?.(addMonthsKey(monthKey, -1))}");
+    expect(src).toContain("onPointerEnter={() => onPrefetchMonth?.(addMonthsKey(monthKey, 1))}");
     expect(src).not.toContain("MonthChipStrip");
     expect(src).not.toContain("onShiftYear");
     expect(src).not.toContain("numa-month-chip");
