@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -20,6 +26,14 @@ import { goHomeInstant } from "@/lib/nav/instant";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
 import { CAPTURE_UI_COPY } from "@/features/imports/capture-ui-copy";
+import {
+  FASTEST_CAPTURE_METHOD,
+  fotaPickerMark,
+  readLastCaptureMethod,
+  rememberLastCaptureMethod,
+  subscribeLastCaptureMethod,
+  type CaptureMethodChoice,
+} from "@/features/imports/fota-quick-path";
 import { ONBOARDING_SV } from "@/features/onboarding/copy";
 import { SV } from "@/features/copy/labels-sv";
 
@@ -76,6 +90,11 @@ export function ReceiptCaptureFlow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const lastUsed = useSyncExternalStore(
+    subscribeLastCaptureMethod,
+    readLastCaptureMethod,
+    () => null,
+  );
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
   const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
   if (resumeKey !== seenResumeKey) {
@@ -138,6 +157,7 @@ export function ReceiptCaptureFlow({
 
   function onFile(file: File | null) {
     if (!file) return;
+    rememberLastCaptureMethod(mode);
     setError(null);
     setScanning(true);
     if (scanPreviewUrl) URL.revokeObjectURL(scanPreviewUrl);
@@ -278,6 +298,7 @@ export function ReceiptCaptureFlow({
         setError(result.error);
         return;
       }
+      rememberLastCaptureMethod(mode);
       URL.revokeObjectURL(preview.previewUrl);
       if (successHref) {
         router.push(successHref);
@@ -291,7 +312,11 @@ export function ReceiptCaptureFlow({
   if (mode === "pick") {
     return (
       <ModePicker
-        onChoose={setMode}
+        onChoose={(next) => {
+          rememberLastCaptureMethod(next);
+          setMode(next);
+        }}
+        lastUsed={lastUsed}
         hasAccount={Boolean(accountId)}
         variant={variant}
       />
@@ -309,7 +334,10 @@ export function ReceiptCaptureFlow({
           <button
             type="button"
             className="numa-press numa-tap text-sm font-semibold text-[var(--numa-accent)]"
-            onClick={() => setMode("bank_sms")}
+            onClick={() => {
+              rememberLastCaptureMethod("bank_sms");
+              setMode("bank_sms");
+            }}
           >
             Fota bank-SMS →
           </button>
@@ -329,6 +357,7 @@ export function ReceiptCaptureFlow({
           primaryAccountId={accountId}
           accounts={accounts}
           onSuccess={() => {
+            rememberLastCaptureMethod("manual");
             goHomeInstant(router);
           }}
         />
@@ -754,16 +783,18 @@ export function ReceiptCaptureFlow({
 
 function ModePicker({
   onChoose,
+  lastUsed = null,
   hasAccount,
   variant = "default",
 }: {
   onChoose: (mode: CaptureMode) => void;
+  lastUsed?: CaptureMethodChoice | null;
   hasAccount: boolean;
   variant?: "default" | "onboarding";
 }) {
   const onboarding = variant === "onboarding";
   const items: Array<{
-    id: CaptureMode;
+    id: Exclude<CaptureMode, "pick">;
     title: string;
     hint: string;
   }> = onboarding
@@ -817,34 +848,44 @@ function ModePicker({
       </header>
 
       <nav className="grid gap-3">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            disabled={
-              !onboarding &&
-              (item.id === "bank_app" || item.id === "manual") &&
-              !hasAccount
-            }
-            onClick={() => onChoose(item.id)}
-            className="numa-panel numa-press flex min-h-20 w-full min-w-0 items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40"
-          >
-            <span className="min-w-0">
-              <span className="block text-[15px] font-semibold tracking-tight">
-                {item.title}
-              </span>
-              <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
-                {item.hint}
-              </span>
-            </span>
-            <span
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
-              aria-hidden
+        {items.map((item) => {
+          const mark = onboarding ? null : fotaPickerMark(item.id, lastUsed);
+          const fastest = !onboarding && item.id === FASTEST_CAPTURE_METHOD;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              disabled={
+                !onboarding &&
+                (item.id === "bank_app" || item.id === "manual") &&
+                !hasAccount
+              }
+              onClick={() => onChoose(item.id)}
+              aria-label={mark ? `${item.title}, ${mark}` : undefined}
+              className={`${fastest ? "numa-panel-strong" : "numa-panel"} numa-press flex min-h-20 w-full min-w-0 items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40`}
             >
-              →
-            </span>
-          </button>
-        ))}
+              <span className="min-w-0">
+                <span className="block text-[15px] font-semibold tracking-tight">
+                  {item.title}
+                </span>
+                {mark ? (
+                  <span className="mt-0.5 block text-xs font-medium whitespace-nowrap text-[var(--numa-accent)]">
+                    {mark}
+                  </span>
+                ) : null}
+                <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
+                  {item.hint}
+                </span>
+              </span>
+              <span
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
+                aria-hidden
+              >
+                →
+              </span>
+            </button>
+          );
+        })}
       </nav>
 
       {onboarding ? null : (

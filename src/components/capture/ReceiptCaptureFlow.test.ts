@@ -44,4 +44,20 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).toContain("h-11 w-11");
     expect(src).not.toContain("h-8 w-8");
   });
+
+  it("marks last-used and the fastest Fota path without hiding other methods", () => {
+    expect(src).toContain("fotaPickerMark");
+    expect(src).toContain("rememberLastCaptureMethod");
+    expect(src).toContain("readLastCaptureMethod");
+    expect(src).toContain("subscribeLastCaptureMethod");
+    expect(src).toContain("lastUsed={lastUsed}");
+    expect(src).toContain("FASTEST_CAPTURE_METHOD");
+    expect(src).toContain("numa-panel-strong");
+    expect(src).toContain("whitespace-nowrap");
+    expect(src).toContain("Bank-SMS");
+    expect(src).toContain("Bankapp");
+    expect(src).toContain("Kvitto");
+    expect(src).toContain("Manuellt");
+    expect(src).toContain("onboarding ? null : fotaPickerMark");
+  });
 });
