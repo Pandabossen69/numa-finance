@@ -15,11 +15,24 @@ describe("Sparande empty state and Avsätt", () => {
   it("shows this month as the hero and explains dagsbudget vs Över", () => {
     expect(src).toContain("Spara i {monthName}");
     expect(src).toContain("amountMinor={savingsThisMonthMinor}");
-    expect(src).toContain("sänker dagsbudgeten, inte Över");
-    expect(src).toContain("Över på kontona ändras inte");
+    expect(src).toContain("SV.sparandeKvarHint");
     expect(src).toContain("hasThisMonth ? \"Uppdatera\" : \"Avsätt\"");
     expect(src).toContain("SV.sparandeTotalt");
     expect(src).not.toContain("SV.vaxer");
+    expect(src).not.toContain("Över på kontona");
+    expect(src).not.toContain("inte Över");
+  });
+
+  it("shows the Kvar / dagsbudget one-liner without a tap", () => {
+    expect(src).toContain("SV.sparandeKvarHint");
+    expect(src).not.toContain("FormulaInfo");
+    expect(src).not.toMatch(/details|<dialog|aria-haspopup/);
+    const hintBlock = src.slice(
+      src.indexOf("amountMinor={savingsThisMonthMinor}"),
+      src.indexOf("numa-year-dots"),
+    );
+    expect(hintBlock).toContain("SV.sparandeKvarHint");
+    expect(hintBlock).toContain("Sätt av det som inte ska levas upp.");
   });
 
   it("labels Över with a matching aria heading id", () => {
