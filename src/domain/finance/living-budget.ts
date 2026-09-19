@@ -105,7 +105,8 @@ function untilLonnSv(days: number, label: string | null): string {
 }
 
 function moneySv(amountMinor: number, currency: CurrencyCode): string {
-  return formatMoneyCompact(money(Math.max(0, amountMinor), currency));
+  const minor = Number.isFinite(amountMinor) ? Math.round(amountMinor) : 0;
+  return formatMoneyCompact(money(Math.max(0, minor), currency));
 }
 
 /**

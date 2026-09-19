@@ -664,6 +664,33 @@ describe("livingBudgetHintSv", () => {
     ]);
   });
 
+  it("never renders + THB or a currency with no digits", () => {
+    const cases = [
+      livingBudgetHintSv({
+        dayBudgetMinor: 0,
+        poolMinor: 0,
+        reservedMinor: 0,
+        daysUntilHorizon: 6,
+        nextIncomeLabelSv: "25 sep.",
+      }),
+      livingBudgetHintSv({
+        dayBudgetMinor: 275_00,
+        poolMinor: 1_650_00,
+        reservedMinor: 1_771_00,
+        daysUntilHorizon: 6,
+        nextIncomeLabelSv: "25 sep.",
+      }),
+    ];
+    for (const lines of cases) {
+      expect(lines.length).toBeGreaterThan(0);
+      for (const line of hintPlain(lines)) {
+        expect(line).not.toMatch(/\+\s*THB/);
+        expect(line).toMatch(/\d/);
+        expect(line).toMatch(/\d[\d\s,]* THB/);
+      }
+    }
+  });
+
   it("adds Saldo − planerat = pool when anything is reserved", () => {
     expect(
       hintPlain(

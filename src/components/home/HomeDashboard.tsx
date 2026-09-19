@@ -59,7 +59,8 @@ import { lowKvarNextAction, type LowKvarCta } from "@/features/home/low-kvar-cta
 import { HemPending } from "@/components/layout/ViewLoading";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
-  return formatMoneyCompact(money(amountMinor, currency));
+  const minor = Number.isFinite(amountMinor) ? Math.round(amountMinor) : 0;
+  return formatMoneyCompact(money(minor, currency));
 }
 
 export function HomeDashboard({
