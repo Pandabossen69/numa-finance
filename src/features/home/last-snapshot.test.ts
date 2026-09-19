@@ -867,6 +867,48 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
   });
 
+  it("force-adopts leftover 275,12 after restore and blocks stale 1 108,45", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        remainingTodayMinor: 0,
+        dayBudgetMinor: 0,
+        safeToSpendTodayMinor: 0,
+        livingPoolMinor: 0,
+        planMonthSavingsMinor: 20_000_00,
+        savingsTotalMinor: 20_000_00,
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      }),
+    );
+    const restored = homeSnap({
+      remainingTodayMinor: 275_12,
+      dayBudgetMinor: 275_12,
+      safeToSpendTodayMinor: 275_12,
+      livingPoolMinor: 1_650_75,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T08:04:00.000Z",
+    });
+    rememberHomeSnapshot(restored, { force: true });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    const staleCashPool = homeSnap({
+      remainingTodayMinor: 1_108_45,
+      dayBudgetMinor: 1_108_45,
+      safeToSpendTodayMinor: 1_108_45,
+      livingPoolMinor: 6_650_75,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      financeRevision: "rev-cookie",
+      verifiedAt: "2026-09-19T08:05:00.000Z",
+    });
+    expect(isLeftoverSparLivingRevert(restored, staleCashPool)).toBe(true);
+    rememberHomeSnapshot(staleCashPool);
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+  });
+
   it("does not treat additive Plan warmup spend as a leftover savings revert", () => {
     const thbOnly = homeSnap({
       cycleSpendingMinor: 38_712_00,

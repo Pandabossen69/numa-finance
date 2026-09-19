@@ -112,13 +112,16 @@ export function homeSnapshotFromToday(
 /**
  * After a month-avsätt save on the leftover path, apply only the spar
  * increment so Hem matches Plan preview. Skip 0→N (keeps Spec L 275,12).
+ * Skip decrease / nollställ: the post-write snapshot is already leftover
+ * at the new amount (20→15 = 275,12). Re-applying −5k turns that into
+ * 1 108,45 and soft-nav Hem stays stale until hard reload.
  */
 export function applyHomeLeftoverSparDelta(
   home: HomeSnapshot,
   sparDeltaMinor: number,
   previousSaveMinor: number,
 ): HomeSnapshot {
-  if (sparDeltaMinor === 0 || previousSaveMinor <= 0) return home;
+  if (sparDeltaMinor <= 0 || previousSaveMinor <= 0) return home;
   const spentToday = Math.max(0, home.todaySpendingMinor ?? 0);
   const reserved =
     home.reservedUntilIncomeMinor && home.reservedUntilIncomeMinor > 0
