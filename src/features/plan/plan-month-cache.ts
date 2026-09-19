@@ -12,6 +12,24 @@ type SuggestionEntry = { stamp: string; suggestions: PlanLinkSuggestion[] };
 
 const paints = new Map<string, PaintEntry>();
 const suggestions = new Map<string, SuggestionEntry>();
+const suggestionListeners = new Set<() => void>();
+let suggestionEpoch = 0;
+
+function emitSuggestions() {
+  suggestionEpoch += 1;
+  for (const listener of suggestionListeners) listener();
+}
+
+export function subscribePlanMonthSuggestions(listener: () => void) {
+  suggestionListeners.add(listener);
+  return () => {
+    suggestionListeners.delete(listener);
+  };
+}
+
+export function planMonthSuggestionEpoch() {
+  return suggestionEpoch;
+}
 
 function ledgerStamp(
   ledger: PlanMonthPaintInput["ledgerTransactions"],
@@ -82,6 +100,7 @@ export function ensurePlanMonthSuggestions(
   if (hit) return hit;
   const next = buildPlanMonthSuggestions(input, projection);
   suggestions.set(input.monthKey, { stamp, suggestions: next });
+  emitSuggestions();
   return next;
 }
 
@@ -122,6 +141,26 @@ export function softSwitchPlanMonth(
   return { paint, elapsedMs: ended - started, fromCache };
 }
 
+export function scheduleEnsurePlanMonthSuggestions(
+  input: PlanMonthPaintInput,
+  stamp = planMonthPaintStamp(input),
+  projection?: PlanMonthPaint["projection"],
+) {
+  if (readPlanMonthSuggestions(input.monthKey, stamp)) return;
+  const run = () => {
+    ensurePlanMonthSuggestions(input, stamp, projection);
+  };
+  if (typeof window === "undefined") {
+    run();
+    return;
+  }
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(run, { timeout: 300 });
+    return;
+  }
+  window.setTimeout(run, 1);
+}
+
 export function schedulePrefetchAdjacentPlanMonths(
   input: PlanMonthPaintInput,
   stamp = planMonthPaintStamp(input),
@@ -143,4 +182,5 @@ export function schedulePrefetchAdjacentPlanMonths(
 export function resetPlanMonthCacheForTests() {
   paints.clear();
   suggestions.clear();
+  suggestionEpoch = 0;
 }

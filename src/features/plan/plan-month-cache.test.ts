@@ -194,7 +194,7 @@ describe("plan month paint cache", () => {
     const src = readFileSync(new URL("./plan-month-cache.ts", import.meta.url), "utf8");
     const soft = src.slice(
       src.indexOf("export function softSwitchPlanMonth"),
-      src.indexOf("export function schedulePrefetchAdjacentPlanMonths"),
+      src.indexOf("export function scheduleEnsurePlanMonthSuggestions"),
     );
     expect(soft).toContain("ensurePlanMonthPaint");
     expect(soft).not.toContain("ensurePlanMonthSuggestions");

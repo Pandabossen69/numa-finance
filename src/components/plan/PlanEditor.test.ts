@@ -216,7 +216,7 @@ describe("Plan dates and add-form", () => {
     expect(monthPaint).toContain("explicitlyLinkedPlanItemIds");
     expect(monthPaint).toContain("suggestPlanLinks");
     expect(monthPaint).toContain("buildPlanMonthSuggestions");
-    expect(editor).toContain("ensurePlanMonthSuggestions");
+    expect(editor).toContain("scheduleEnsurePlanMonthSuggestions");
     expect(editor).toContain(
       "sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)",
     );

@@ -52,9 +52,12 @@ import {
   ensurePlanMonthPaint,
   ensurePlanMonthSuggestions,
   planMonthPaintStamp,
+  planMonthSuggestionEpoch,
   readPlanMonthSuggestions,
+  scheduleEnsurePlanMonthSuggestions,
   schedulePrefetchAdjacentPlanMonths,
   softSwitchPlanMonth,
+  subscribePlanMonthSuggestions,
 } from "@/features/plan/plan-month-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
@@ -277,6 +280,7 @@ export function PlanEditor({
   }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
 
   const isPastMonth = monthKey < currentMonthKey;
+  const previousMonthKey = addMonthsKey(monthKey, -1);
   const monthPaintInput = {
     items: viewItems,
     ledgerTransactions,
@@ -287,30 +291,23 @@ export function PlanEditor({
   const monthPaintStamp = planMonthPaintStamp(monthPaintInput);
   const monthPaint = ensurePlanMonthPaint(monthPaintInput, monthPaintStamp);
   const { projection, coverage, importableFixed, linkedPlanIds } = monthPaint;
-  const cachedSuggestions = readPlanMonthSuggestions(monthKey, monthPaintStamp);
-  const [linkSuggestions, setLinkSuggestions] = useState(
-    () => cachedSuggestions ?? [],
+  const suggestionEpoch = useSyncExternalStore(
+    subscribePlanMonthSuggestions,
+    planMonthSuggestionEpoch,
+    planMonthSuggestionEpoch,
   );
-  const [suggestionKey, setSuggestionKey] = useState(
-    () => `${monthKey}:${monthPaintStamp}`,
-  );
-  const nextSuggestionKey = `${monthKey}:${monthPaintStamp}`;
-  if (suggestionKey !== nextSuggestionKey) {
-    setSuggestionKey(nextSuggestionKey);
-    setLinkSuggestions(cachedSuggestions ?? []);
-  }
+  void suggestionEpoch;
+  const linkSuggestions =
+    readPlanMonthSuggestions(monthKey, monthPaintStamp) ?? [];
   const canImportFixed = !isPastMonth && importableFixed.length > 0;
   useEffect(() => {
     schedulePrefetchAdjacentPlanMonths(monthPaintInput, monthPaintStamp);
-    // Adjacent months share this stamp — rebuild only when money inputs change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthPaintStamp, monthKey]);
-  useEffect(() => {
-    if (cachedSuggestions) return;
-    setLinkSuggestions(
-      ensurePlanMonthSuggestions(monthPaintInput, monthPaintStamp, projection),
+    scheduleEnsurePlanMonthSuggestions(
+      monthPaintInput,
+      monthPaintStamp,
+      projection,
     );
-    // Suggestions are below the fold — never block totals + list.
+    // Adjacent months share this stamp — rebuild only when money inputs change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthPaintStamp, monthKey]);
   const savingsTotalMinor = coverage.reservedSavingsMinor;
