@@ -17,6 +17,8 @@ const piles = read("./PlanPiles.tsx");
 const format = read("./plan-format.ts");
 const chip = read("./plan-chip.ts");
 const monthNav = read("./PlanMonthNav.tsx");
+const monthPaint = read("../../features/plan/plan-month-paint.ts");
+const monthCache = read("../../features/plan/plan-month-cache.ts");
 const css = read("../../app/globals.css");
 
 /** For rules that must hold across Plan, wherever the code happens to live. */
@@ -32,6 +34,8 @@ const plan = [
   format,
   chip,
   monthNav,
+  monthPaint,
+  monthCache,
 ].join("\n");
 
 describe("Plan file layout", () => {
@@ -45,6 +49,8 @@ describe("Plan file layout", () => {
     expect(editor).toContain('from "@/components/plan/PlanCard"');
     expect(editor).toContain('from "@/components/plan/PlanMonthNav"');
     expect(editor).toContain('from "@/components/plan/plan-format"');
+    expect(editor).not.toMatch(/[\s<]key=\{monthKey\}/);
+    expect(editor).toContain("data-plan-month-key={monthKey}");
     // The row list owns the settle rule and does not reach back into the editor.
     expect(rows).not.toContain("PlanEditor");
     expect(rows).toContain("export function PlanRows(");
@@ -141,7 +147,7 @@ describe("Plan dates and add-form", () => {
   });
 
   it("computes Över from cash coverage, not Mot planen leftover", () => {
-    expect(editor).toContain("projectCashCoverage");
+    expect(monthPaint).toContain("projectCashCoverage");
     expect(editor).toContain("ledgerTransactions");
     expect(editor).toContain("coverage={coverage}");
   });
@@ -207,8 +213,10 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("explicitSettled");
     // Money totals use confirmed links only — heuristic stays a suggestion.
     expect(editor).not.toContain("matchPlanItemsToLedger");
-    expect(editor).toContain("explicitlyLinkedPlanItemIds");
-    expect(editor).toContain("suggestPlanLinks");
+    expect(monthPaint).toContain("explicitlyLinkedPlanItemIds");
+    expect(monthPaint).toContain("suggestPlanLinks");
+    expect(monthPaint).toContain("buildPlanMonthSuggestions");
+    expect(editor).toContain("scheduleEnsurePlanMonthSuggestions");
     expect(editor).toContain(
       "sumCountsTowardCashMinor(projection.incomes, linkedPlanIds)",
     );
@@ -295,8 +303,13 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("refreshQuiet");
     expect(plan).not.toContain("router.refresh");
     expect(plan).not.toContain("useRouter");
-    expect(editor).toContain("startMonthTransition");
-    expect(editor).toContain("useTransition");
+    expect(editor).toContain("softSwitchPlanMonth");
+    expect(editor).toContain("flushSync");
+    expect(editor).not.toContain("startMonthTransition");
+    expect(editor).not.toContain("useTransition");
+    expect(editor).toContain("schedulePrefetchAdjacentPlanMonths");
+    expect(monthCache).toContain("prefetchAdjacentPlanMonths");
+    expect(monthPaint).toContain("PLAN_MONTH_VISIBLE_BUDGET_MS = 300");
   });
 
   it("adopts savings mutation snapshots so Hem/Plan remount keep the edit", () => {

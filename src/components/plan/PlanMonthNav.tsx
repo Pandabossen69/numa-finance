@@ -24,6 +24,7 @@ export function PlanMonthNav({
   viewYear,
   currentMonthKey,
   onSelectMonth,
+  onPrefetchMonth,
   dotsFor,
   idPrefix = "plan",
 }: {
@@ -31,6 +32,7 @@ export function PlanMonthNav({
   viewYear: number;
   currentMonthKey: string;
   onSelectMonth: (key: string) => void;
+  onPrefetchMonth?: (key: string) => void;
   dotsFor?: (key: string) => MonthDots;
   idPrefix?: string;
 }) {
@@ -86,6 +88,8 @@ export function PlanMonthNav({
         <button
           type="button"
           onClick={() => onSelectMonth(addMonthsKey(monthKey, -1))}
+          onPointerEnter={() => onPrefetchMonth?.(addMonthsKey(monthKey, -1))}
+          onFocus={() => onPrefetchMonth?.(addMonthsKey(monthKey, -1))}
           className="numa-press numa-month-nav-step"
           aria-label="Föregående månad"
         >
@@ -119,6 +123,8 @@ export function PlanMonthNav({
         <button
           type="button"
           onClick={() => onSelectMonth(addMonthsKey(monthKey, 1))}
+          onPointerEnter={() => onPrefetchMonth?.(addMonthsKey(monthKey, 1))}
+          onFocus={() => onPrefetchMonth?.(addMonthsKey(monthKey, 1))}
           className="numa-press numa-month-nav-step"
           aria-label="Nästa månad"
         >
@@ -179,6 +185,8 @@ export function PlanMonthNav({
                     id={`${idPrefix}-month-${key}`}
                     aria-pressed={selected}
                     onClick={() => pickMonth(key)}
+                    onPointerEnter={() => onPrefetchMonth?.(key)}
+                    onFocus={() => onPrefetchMonth?.(key)}
                     className={`numa-press numa-month-nav-cell${
                       selected ? "is-active" : current ? "is-now" : ""
                     }`}
