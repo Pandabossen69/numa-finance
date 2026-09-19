@@ -91,6 +91,18 @@ describe("Mer HIGH regress", () => {
     expect(mer).toContain('(view.displayName ?? "·").charAt(0)');
     expect(mer).not.toContain("view.displayName.charAt");
   });
+
+  it("keeps the existing Mer items around the install CTA", () => {
+    expect(mer).toContain("MerInstallCta");
+    expect(mer).toContain("Som app");
+    expect(mer).toContain("Rörelser");
+    expect(mer).toContain("Konton");
+    expect(mer).toContain("Tidigare bilder");
+    expect(mer).toContain("Inställningar");
+    expect(mer).toContain("Uppdatera appen");
+    expect(mer).toContain("SignOutButton");
+    expect(mer).toContain("PRODUCTION_ORIGIN");
+  });
 });
 
 describe("admin-only user creation security", () => {
