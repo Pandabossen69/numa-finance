@@ -3,6 +3,7 @@
 import { getPlanPageDataAction } from "@/components/plan/load-plan";
 import { loadAnalysSnapshot } from "@/features/finance/load-analys";
 import { loadMovementsSnapshot } from "@/features/finance/load-movements";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
@@ -13,6 +14,8 @@ export type QuietMenuBundle = {
   gettingStarted: GettingStartedView | null;
   analys: AnalysSnapshot | null;
   movements: MovementsSnapshot | null;
+  /** From Plan's TodaySnapshot — no extra ledger read. */
+  accounts: AccountsSnapshot | null;
 };
 
 export type QuietMenuBundleResult =
@@ -47,6 +50,9 @@ export async function getQuietMenuBundleAction(): Promise<QuietMenuBundleResult>
         gettingStarted,
         analys: analys.ok ? analys.data : null,
         movements: movements.ok ? movements.data : null,
+        // Same TodaySnapshot as Plan — a second ledger read here would
+        // block Plan/Analys/Rörelser last-known on the idle warm.
+        accounts: plan?.accounts ?? null,
       },
     };
   } catch (error) {
