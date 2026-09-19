@@ -44,7 +44,7 @@ export function HemRouteClient({
 
   useEffect(() => {
     // Last-known cookie shell or HemPending is visible — do not hold
-    // LoginBoot for the live snapshot (SPEC H; #116 layout await ~23s).
+    // LoginBoot for the live snapshot (SPEC H; layout snapshot await ~23s).
     clearLoginBoot();
   }, []);
 
