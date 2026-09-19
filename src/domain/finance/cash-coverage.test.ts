@@ -239,7 +239,11 @@ describe("projectCashCoverage", () => {
       saldoMinor: 20_000_00,
     });
     expect(view.unpaidMinor).toBe(8_000_00);
-    expect(view.overMinor).toBe(12_000_00);
+    expect(view.savingsThisMonthMinor).toBe(25_000_00);
+    expect(view.reservedSavingsMinor).toBe(25_000_00);
+    // Över moves by the avsättning — bills stay «kvar att betala».
+    expect(view.overMinor).toBe(20_000_00 - 8_000_00 - 25_000_00);
+    expect(view.overMinor).toBe(-13_000_00);
   });
 
   it("matches CSN plan vs actual with amount drift", () => {

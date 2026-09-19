@@ -8,6 +8,7 @@ import {
 } from "@/domain/finance";
 import {
   applyMonthSavings,
+  ensureMonthSavings,
   isTempPlanId,
   adoptServerPlanItems,
   mergeReturnedItem,
@@ -201,6 +202,16 @@ describe("plan optimistic helpers", () => {
       4_000_00,
     );
     expect(applied.items.find((row) => row.id === older.id)).toBeUndefined();
+    expect(
+      ensureMonthSavings(
+        [older, newer],
+        "2026-08",
+        4_000_00,
+        "THB",
+        "Asia/Bangkok",
+        { ...newer, amountMinor: 4_000_00 },
+      ).find((row) => row.amountMinor === 4_000_00),
+    ).toBeTruthy();
     expect(
       projectPlanForMonth(applied.items, "2026-08", "Asia/Bangkok").savingsMinor,
     ).toBe(4_000_00);

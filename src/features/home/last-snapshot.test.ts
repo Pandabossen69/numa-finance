@@ -31,6 +31,7 @@ import {
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
+  isLeftoverSparLivingRevert,
   rememberHomeSnapshot,
   rememberImporteraRows,
   rememberMerSnapshot,
@@ -175,11 +176,11 @@ describe("last view memory", () => {
     expect(next?.todaySpendingMinor).toBe(350_00);
     expect(next?.remainingTodayMinor).toBe(650_00);
     expect(next?.calculatedBalanceMinor).toBe(9_850_00);
-    expect(next?.overMinor).toBe(9_850_00 + 5_000_00 - 3_000_00);
+    expect(next?.overMinor).toBe(9_850_00 + 5_000_00 - 3_000_00 - 2_000_00);
     expect(ticks).toBeGreaterThan(0);
     revertOptimisticHomeSpend(150_00);
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(200_00);
-    expect(lastHomeSnapshot()?.overMinor).toBe(12_000_00);
+    expect(lastHomeSnapshot()?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00 - 2_000_00);
     stop();
   });
 
@@ -223,7 +224,8 @@ describe("last view memory", () => {
         calculatedBalanceMinor: 10_000_00,
         incomingMinor: 57_000_00,
         unpaidMinor: 0,
-        overMinor: 67_000_00,
+        overMinor: 65_000_00,
+        savingsTotalMinor: 2_000_00,
       }),
     );
     applyOptimisticPlanSettle({
@@ -234,7 +236,7 @@ describe("last view memory", () => {
     const next = lastHomeSnapshot();
     expect(next?.calculatedBalanceMinor).toBe(67_000_00);
     expect(next?.incomingMinor).toBe(0);
-    expect(next?.overMinor).toBe(67_000_00);
+    expect(next?.overMinor).toBe(67_000_00 - 2_000_00);
   });
 
   it("keeps Över as saldo + kommer in − kvar att betala when Plan settles", () => {
@@ -589,7 +591,7 @@ describe("last view memory", () => {
     expect(next?.needsAvailableInput).toBe(false);
     expect(next?.dayBudgetMinor).toBe(1_000_00);
     expect(next?.remainingTodayMinor).toBe(1_000_00);
-    expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00);
+    expect(next?.overMinor).toBe(10_000_00 + 5_000_00 - 3_000_00 - 2_000_00);
   });
 
   it("drops Hugo's last-known numbers when another user binds", () => {
@@ -831,6 +833,59 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()).toBeNull();
     Reflect.deleteProperty(globalThis, "localStorage");
     Reflect.deleteProperty(globalThis, "document");
+  });
+
+  it("does not let a leftover 275,12 fetch undo a 15k→20k living adopt", () => {
+    const adopted = homeSnap({
+      remainingTodayMinor: 0,
+      dayBudgetMinor: 0,
+      safeToSpendTodayMinor: 0,
+      livingPoolMinor: 0,
+      planMonthSavingsMinor: 20_000_00,
+      savingsTotalMinor: 20_000_00,
+      overMinor: 54_981_00,
+      financeRevision: "rev-20k",
+      verifiedAt: "2026-09-19T08:02:00.000Z",
+    });
+    const stale = homeSnap({
+      remainingTodayMinor: 275_12,
+      dayBudgetMinor: 275_12,
+      safeToSpendTodayMinor: 275_12,
+      livingPoolMinor: 1_650_75,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      overMinor: 59_981_00,
+      financeRevision: "rev-cookie",
+      verifiedAt: "2026-09-19T08:03:00.000Z",
+    });
+    expect(isLeftoverSparLivingRevert(adopted, stale)).toBe(true);
+    rememberHomeSnapshot(adopted);
+    rememberHomeSnapshot(stale);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(0);
+    rememberHomeSnapshot(stale, { force: true });
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+  });
+
+  it("does not treat additive Plan warmup spend as a leftover savings revert", () => {
+    const thbOnly = homeSnap({
+      cycleSpendingMinor: 38_712_00,
+      remainingTodayMinor: 1_200_00,
+      dayBudgetMinor: 1_200_00,
+      planMonthSavingsMinor: 0,
+      savingsTotalMinor: 0,
+    });
+    const withSek = homeSnap({
+      cycleSpendingMinor: 38_712_00 + 105_00,
+      remainingTodayMinor: 2_000_00,
+      dayBudgetMinor: 2_000_00,
+      planMonthSavingsMinor: 0,
+      savingsTotalMinor: 0,
+    });
+    expect(isLeftoverSparLivingRevert(thbOnly, withSek)).toBe(false);
+    rememberHomeSnapshot(thbOnly);
+    rememberHomeSnapshot(withSek);
+    expect(lastHomeSnapshot()?.cycleSpendingMinor).toBe(38_712_00 + 105_00);
   });
 
   it("force-adopts a mutation snapshot even when verifiedAt is older", () => {

@@ -187,7 +187,7 @@ describe("financial truth — Plan failure must not become zero", () => {
     expect(snapshotFn).not.toMatch(
       /listPlanItems\(\)\.catch\(\s*\(\)\s*=>\s*\[\]/,
     );
-    expect(snapshotFn).toMatch(/loadPlanItems:\s*listPlanItems/);
+    expect(snapshotFn).toMatch(/loadPlanItems:\s*listPlanItemsUncached/);
     const assemble = readFileSync(
       new URL("../../lib/store/assemble-today-snapshot.ts", import.meta.url),
       "utf8",

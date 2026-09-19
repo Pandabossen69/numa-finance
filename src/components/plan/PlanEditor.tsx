@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
@@ -11,7 +18,6 @@ import {
   isoToDateInput,
   labelMonthNameSv,
   monthKeyFromDate,
-  cumulativePlanSavingsMinor,
   explicitlyLinkedPlanItemIds,
   suggestPlanLinks,
   applyPlanItemEdits,
@@ -21,6 +27,7 @@ import {
   projectCashCoverage,
   projectExtraSaldoSeries,
   projectPlanForMonth,
+  savingsByMonthKeys,
   remainingDueIso,
   settledAmountMinor,
   sumCountsTowardCashMinor,
@@ -60,6 +67,7 @@ import {
   revertMonthSavings,
   settlePlanItem,
 } from "@/features/plan/optimistic";
+import { previewMonthSavings } from "@/features/plan/savings-preview";
 import type { ActionResult } from "@/features/plan/actions";
 import {
   createPlanExtraAction,
@@ -176,6 +184,7 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
+  const [, startMonthTransition] = useTransition();
   const viewItems = busy ? localItems : adoptServerPlanItems(localItems, items);
   const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
@@ -321,11 +330,9 @@ export function PlanEditor({
     ],
     [projection.incomes, projection.items, ledgerTransactions, monthKey, timeZone],
   );
-  const savingsTotalMinor = useMemo(
-    () => cumulativePlanSavingsMinor(viewItems, monthKey, timeZone),
-    [viewItems, monthKey, timeZone],
-  );
+  const savingsTotalMinor = coverage.reservedSavingsMinor;
   const monthName = labelMonthNameSv(monthKey);
+  const priorMonthName = labelMonthNameSv(addMonthsKey(monthKey, -1));
   const yearThroughKey = monthKeys[monthKeys.length - 1] ?? monthKey;
   const yearExtra = useMemo(
     () =>
@@ -345,17 +352,51 @@ export function PlanEditor({
     }
     return out;
   }, [yearExtra]);
-  const savingsByMonth = useMemo(() => {
-    const out: Record<string, number> = {};
-    for (const key of monthKeys) {
-      out[key] = projectPlanForMonth(viewItems, key, timeZone).savingsMinor;
-    }
-    return out;
-  }, [viewItems, monthKeys, timeZone]);
+  const savingsByMonth = useMemo(
+    () => savingsByMonthKeys(viewItems, monthKeys, timeZone),
+    [viewItems, monthKeys, timeZone],
+  );
+  const homeLivingStamp = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    () => {
+      const home = lastHomeSnapshot();
+      if (!home) return "";
+      return `${home.remainingFreeMinor}:${home.dayBudgetMinor}:${home.cycleSpendingMinor}:${home.todaySpendingMinor}:${home.cycleIsActive}`;
+    },
+    () => {
+      const home = lastHomeSnapshot();
+      if (!home) return "";
+      return `${home.remainingFreeMinor}:${home.dayBudgetMinor}:${home.cycleSpendingMinor}:${home.todaySpendingMinor}:${home.cycleIsActive}`;
+    },
+  );
   const [savingsAmount, setSavingsAmount] = useValueForKey(
     projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
     `${monthKey}:${projection.savingsMinor}`,
   );
+  const draftSavingsMinor = useMemo(() => {
+    const parsed = parsePlanAmount(
+      savingsAmount.trim() === "" ? "0" : savingsAmount,
+    );
+    return typeof parsed === "number" ? parsed : null;
+  }, [savingsAmount]);
+  void homeLivingStamp;
+  const home = lastHomeSnapshot();
+  const savingsPreview =
+    draftSavingsMinor == null
+      ? null
+      : previewMonthSavings({
+          items: viewItems,
+          monthKey,
+          draftMinor: draftSavingsMinor,
+          currentMinor: projection.savingsMinor,
+          currency,
+          timeZone,
+          ledgerTransactions,
+          saldoMinor: coverageSaldoMinor,
+          cycleSpendingMinor: home?.cycleSpendingMinor ?? 0,
+          todaySpendingMinor: home?.todaySpendingMinor ?? 0,
+          fundingConfirmed: home?.cycleIsActive,
+        });
   const [incomeDate, setIncomeDate] = useState(`${monthKey}-25`);
   const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
   const [expenseDate, setExpenseDate] = useState(`${monthKey}-01`);
@@ -368,11 +409,13 @@ export function PlanEditor({
   }
 
   function selectMonth(key: string) {
-    setMonthKey(key);
-    setViewYear(yearFromMonthKey(key));
-    setEditingId(null);
-    setPartialId(null);
-    setAddKind(null);
+    startMonthTransition(() => {
+      setMonthKey(key);
+      setViewYear(yearFromMonthKey(key));
+      setEditingId(null);
+      setPartialId(null);
+      setAddKind(null);
+    });
   }
 
   async function runMutation(opts: {
@@ -713,15 +756,18 @@ export function PlanEditor({
         <PlanPiles
           coverage={coverage}
           monthName={monthName}
+          priorMonthName={priorMonthName}
           currency={currency}
           savingsTotalMinor={savingsTotalMinor}
-          savingsThisMonthMinor={projection.savingsMinor}
+          savingsThisMonthMinor={coverage.savingsThisMonthMinor}
+          savingsPriorMinor={coverage.savingsPriorMinor}
           savingsByMonth={savingsByMonth}
           monthKeys={monthKeys}
           savingsAmount={savingsAmount}
           onSavingsAmount={setSavingsAmount}
           savingsBusy={busy === "savings"}
           clearBusy={busy === "savings-clear"}
+          livePreview={savingsPreview}
           onSaveSavings={() => {
             const parsed = parsePlanAmount(
               savingsAmount.trim() === "" ? "0" : savingsAmount,

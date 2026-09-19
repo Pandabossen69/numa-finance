@@ -2,6 +2,7 @@ import { appliesToSpending } from "./balance";
 import { calendarDaysBetween } from "./datetime";
 import {
   addMonthsKey,
+  cumulativePlanSavingsMinor,
   isPlanIncome,
   isPlanSavings,
   monthKeyFromDate,
@@ -16,8 +17,30 @@ import {
 } from "./plan-allocation";
 import type { CanonicalTransaction, PlanItem } from "./types";
 
-/** One-line formula shown on Plan and Hem. */
+/** One-line formula shown on Plan and Hem when nothing is satt av. */
 export const CASH_COVERAGE_HINT_SV = "På kontona + kommer in − kvar att betala";
+
+/** Över after bills and reserved savings (this month + earlier). */
+export function cashOverMinor(input: {
+  saldoMinor: number | null;
+  incomingMinor: number;
+  unpaidMinor: number;
+  reservedSavingsMinor?: number;
+}): number {
+  return (
+    (input.saldoMinor ?? 0) +
+    input.incomingMinor -
+    input.unpaidMinor -
+    Math.max(0, input.reservedSavingsMinor ?? 0)
+  );
+}
+
+/** Same stack as Hem/Plan — include − sparat only when something is reserved. */
+export function cashCoverageHintSv(reservedSavingsMinor: number): string {
+  return reservedSavingsMinor > 0
+    ? "På kontona + kommer in − kvar att betala − sparat"
+    : CASH_COVERAGE_HINT_SV;
+}
 
 const DATE_WINDOW_DAYS = 7;
 const AMOUNT_FLOOR_MINOR = 500_00;
@@ -61,9 +84,15 @@ export type CashCoverageView = {
   incomingMinor: number;
   /** Planned expenses in the month that have not hit the ledger yet. Savings excluded. */
   unpaidMinor: number;
+  /** This month's avsättning — not yet «sparat». */
+  savingsThisMonthMinor: number;
+  /** Earlier months' avsättning — labeled «sparat» once the next month starts. */
+  savingsPriorMinor: number;
+  /** `savingsThisMonth + savingsPrior` — reserved from Över. */
+  reservedSavingsMinor: number;
   /**
-   * `(saldo ?? 0) + incoming − unpaid`.
-   * Negative only when remaining bills exceed cash + remaining income.
+   * `(saldo ?? 0) + incoming − unpaid − reservedSavings`.
+   * Avsätt X moves X from Över into the savings pile (total unchanged).
    */
   overMinor: number;
 };
@@ -86,12 +115,27 @@ export function projectCashCoverage(params: {
   const plan = projectPlanForMonth(planItems, monthKey, timeZone);
   const incomingMinor = remainingPlanAmount(plan.incomes, transactions);
   const unpaidMinor = remainingPlanAmount(plan.items, transactions);
+  const savingsThisMonthMinor = plan.savingsMinor;
+  const reservedSavingsMinor = cumulativePlanSavingsMinor(
+    planItems,
+    monthKey,
+    timeZone,
+  );
+  const savingsPriorMinor = Math.max(0, reservedSavingsMinor - savingsThisMonthMinor);
   return {
     monthKey,
     saldoMinor,
     incomingMinor,
     unpaidMinor,
-    overMinor: (saldoMinor ?? 0) + incomingMinor - unpaidMinor,
+    savingsThisMonthMinor,
+    savingsPriorMinor,
+    reservedSavingsMinor,
+    overMinor: cashOverMinor({
+      saldoMinor,
+      incomingMinor,
+      unpaidMinor,
+      reservedSavingsMinor,
+    }),
   };
 }
 

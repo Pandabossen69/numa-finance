@@ -81,6 +81,40 @@ export function remainingTodayOf(
   return dayBudgetMinor - Math.max(0, spentTodayMinor);
 }
 
+/**
+ * Spec O increment on the Spec L leftover path: shrink/restore the living
+ * pool by a spar delta without subtracting the baseline reserved avsätt
+ * that leftover already lives behind.
+ */
+export function applyLeftoverSparDelta(
+  input: {
+    livingPoolMinor: number;
+    remainingFreeMinor: number;
+    daysLeft: number;
+    spentTodayMinor?: number;
+  },
+  sparDeltaMinor: number,
+): {
+  livingPoolMinor: number;
+  remainingFreeMinor: number;
+  dayBudgetMinor: number;
+  remainingTodayMinor: number;
+} {
+  const delta = Number.isFinite(sparDeltaMinor) ? Math.round(sparDeltaMinor) : 0;
+  const pool = Math.max(0, roundedMinor(input.livingPoolMinor) - delta);
+  const dayBudgetMinor = perDayBudgetMinor(pool, Math.max(1, input.daysLeft));
+  const remainingTodayMinor = remainingTodayOf(
+    dayBudgetMinor,
+    Math.max(0, roundedMinor(input.spentTodayMinor ?? 0)),
+  );
+  return {
+    livingPoolMinor: pool,
+    remainingFreeMinor: roundedMinor(input.remainingFreeMinor) - delta,
+    dayBudgetMinor,
+    remainingTodayMinor,
+  };
+}
+
 export type ReservedUntilHorizon = {
   expensesMinor: number;
   savingsMinor: number;
@@ -555,7 +589,6 @@ export function projectLivingBudget(input: {
     });
   }
 
-  const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
   const horizon = paycheckHorizonIso(cycle);
   const reserved = remainingReservedBreakdownUntilHorizon(
@@ -563,8 +596,14 @@ export function projectLivingBudget(input: {
     horizon,
     timeZone,
   );
+  // Spec L leftover is income − bills − funding-month savings already in
+  // freeToSpend. Remaining month avsätt is reserved (Över) but must not be
+  // subtracted again here — that zeros Hugo’s 275,12 at 15k. Spec O increment
+  // (15k→20k) is applied by applyLeftoverSparDelta on preview/save.
+  const leftoverMinor = cycle.freeToSpendMinor;
+  const remainingFree = leftoverMinor - cycleSpendingMinor;
   const hasBalance = bankBalanceMinor != null;
-  const planPoolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
+  const planPoolAtMorning = leftoverMinor - spentBeforeToday;
   const cashPoolAtMorning = hasBalance
     ? bankBalanceMinor - reserved.totalMinor + spentToday
     : null;
