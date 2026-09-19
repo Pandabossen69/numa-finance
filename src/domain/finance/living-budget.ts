@@ -555,7 +555,6 @@ export function projectLivingBudget(input: {
     });
   }
 
-  const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
   const horizon = paycheckHorizonIso(cycle);
   const reserved = remainingReservedBreakdownUntilHorizon(
@@ -563,8 +562,14 @@ export function projectLivingBudget(input: {
     horizon,
     timeZone,
   );
+  // Spec L leftover is income − bills − savings already in freeToSpend.
+  // Partial-phase pay-cycle zeros savingsMinor, so extra open avsätt never
+  // left the living pool — Över moved, Kvar/dagsbudget stayed put.
+  const extraSparMinor = Math.max(0, reserved.savingsMinor - cycle.savingsMinor);
+  const leftoverMinor = cycle.freeToSpendMinor - extraSparMinor;
+  const remainingFree = leftoverMinor - cycleSpendingMinor;
   const hasBalance = bankBalanceMinor != null;
-  const planPoolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
+  const planPoolAtMorning = leftoverMinor - spentBeforeToday;
   const cashPoolAtMorning = hasBalance
     ? bankBalanceMinor - reserved.totalMinor + spentToday
     : null;

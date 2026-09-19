@@ -121,7 +121,7 @@ describe("projectPayCycle", () => {
     expect(on24th.startAt).toBe("2026-08-23T12:00:00.000Z");
     expect(on24th.endAt).toBe("2026-08-25T12:00:00.000Z");
     expect(on24th.incomeMinor).toBe(7_000_00);
-    expect(on24th.savingsMinor).toBe(0);
+    expect(on24th.savingsMinor).toBe(5_000_00);
     expect(on24th.incomes.map((i) => i.name)).toEqual(["Alltid ID"]);
 
     const afterAll = projectPayCycle(

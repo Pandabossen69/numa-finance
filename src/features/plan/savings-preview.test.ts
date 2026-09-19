@@ -152,12 +152,6 @@ describe("previewMonthSavings", () => {
         nextDueAt: "2026-09-25T12:00:00.000Z",
       }),
       item({
-        name: "Hyra",
-        kind: "mandatory",
-        amountMinor: 30_000_00,
-        nextDueAt: "2026-09-22T12:00:00.000Z",
-      }),
-      item({
         name: MONTHLY_SAVE_NAME,
         kind: "goal",
         amountMinor: 15_000_00,
@@ -179,6 +173,9 @@ describe("previewMonthSavings", () => {
     expect(preview!.remainingTodayFrom).toBe(from.remainingTodayMinor);
     expect(preview!.remainingTodayTo).toBe(to.remainingTodayMinor);
     expect(preview!.overTo).toBe(preview!.overFrom - 5_000_00);
+    expect(preview!.dayBudgetTo).not.toBe(preview!.dayBudgetFrom);
+    expect(preview!.remainingTodayTo).not.toBe(preview!.remainingTodayFrom);
+    expect(preview!.remainingFreeTo).toBeLessThan(preview!.remainingFreeFrom);
     const line = savingsPreviewLineSv(preview!);
     expect(line).toContain("Kvar idag");
     expect(line).toContain("Dagsbudget");

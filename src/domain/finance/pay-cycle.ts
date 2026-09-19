@@ -389,7 +389,7 @@ export function projectPayCycle(
   );
   const { reservedMinor, bufferMinor, flexibleMinor, expenseMinor } =
     sumExpenseParts(expenses);
-  const freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
+  let freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
 
   const fromIso = isActive ? now.toISOString() : startIso;
   const daysLeft = Math.max(1, calendarDaysBetween(fromIso, endIso, timeZone));
@@ -409,6 +409,12 @@ export function projectPayCycle(
   remainingSavingsRows.sort(
     (a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt),
   );
+  // Avsätt due before the next paycheck leaves leftover in every phase.
+  // Partial used to force savingsMinor=0 so 15k→20k never moved Kvar.
+  if (remainingSavingsMinor > savingsMinor) {
+    savingsMinor = remainingSavingsMinor;
+    freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
+  }
 
   return {
     startAt: startIso,

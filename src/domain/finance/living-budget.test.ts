@@ -572,6 +572,59 @@ describe("projectLivingBudget", () => {
     expect(living.dayBudgetMinor).toBeGreaterThan(0);
   });
 
+  it("drops Kvar/dagsbudget when avsätt rises on the Spec L leftover path", () => {
+    const now = new Date("2026-09-19T03:00:00.000Z");
+    const payday = (saveMinor: number): PlanItem[] => [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: saveMinor,
+        cadence: "savings",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+    ];
+    const at = (saveMinor: number, leftoverMinor: number, pricedSparMinor: number) => {
+      const items = payday(saveMinor);
+      const cycle = {
+        ...projectPayCycle(items, now, tz),
+        freeToSpendMinor: leftoverMinor,
+        savingsMinor: pricedSparMinor,
+      };
+      return projectLivingBudget({
+        cycle,
+        now,
+        timeZone: tz,
+        bankBalanceMinor: 3_421_95,
+        cycleSpendingMinor: 0,
+        fundingConfirmed: true,
+      });
+    };
+    const at15k = at(15_000_00, 1_650_75, 15_000_00);
+    const at20k = at(20_000_00, 1_650_75, 15_000_00);
+    expect(at15k.daysLeft).toBe(6);
+    expect(at15k.dayBudgetMinor).toBe(275_12);
+    expect(at15k.remainingTodayMinor).toBe(275_12);
+    expect(at20k.daysLeft).toBe(6);
+    expect(at20k.dayBudgetMinor).toBe(0);
+    expect(at20k.remainingTodayMinor).toBe(0);
+    expect(at20k.dayBudgetMinor).toBeLessThan(at15k.dayBudgetMinor);
+    expect(at20k.remainingFreeMinor).toBeLessThan(at15k.remainingFreeMinor);
+  });
+
   it("reserves only open bills due before next paycheck and shows the leftover pool", () => {
     const now = new Date("2026-09-19T03:00:00.000Z");
     const payday = [
