@@ -1441,7 +1441,7 @@ export async function latestCheckpointForAccount(
   return data ? mapCheckpoint(data) : null;
 }
 
-export const listPlanItems = cache(async (): Promise<PlanItem[]> => {
+async function listPlanItemsUncached(): Promise<PlanItem[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -1452,7 +1452,12 @@ export const listPlanItems = cache(async (): Promise<PlanItem[]> => {
     .order("name", { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapPlanItem);
-});
+}
+
+/** Request-scoped list — must not be used after a plan write in the same action. */
+export const listPlanItems = cache(listPlanItemsUncached);
+
+export { listPlanItemsUncached };
 
 function itemFromSaveRpc(data: unknown): PlanItem {
   const payload = data as { item?: Parameters<typeof mapPlanItem>[0] } | null;
@@ -1663,7 +1668,8 @@ async function loadTodaySnapshotUncached(): Promise<TodaySnapshot> {
     loadProfile: getProfile,
     loadAccounts: listAccounts,
     // Fail closed: a Plan read error must NOT become "empty plan" / 0 obligations.
-    loadPlanItems: listPlanItems,
+    // Uncached: request-scoped listPlanItems would still be the pre-write 15k.
+    loadPlanItems: listPlanItemsUncached,
     loadCheckpoint: latestCheckpointForAccount,
     loadTransactions: (options) =>
       listTransactions(options.accountId, {

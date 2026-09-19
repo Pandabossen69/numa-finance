@@ -58,6 +58,7 @@ import {
   movementsSnapshotFromToday,
   planSnapshotFromToday,
 } from "@/features/finance/snapshot-from-today";
+import { ensureMonthSavings } from "@/features/plan/optimistic";
 
 export type { PlanSettleLedgerResult };
 
@@ -303,6 +304,7 @@ export async function setMonthSavingsAction(
     }
 
     const refreshed = await refreshAfterDurableWrite(revalidatePlanPaths);
+    const previousSaveMinor = existing?.amountMinor ?? 0;
     if (refreshed.refreshPending) {
       return {
         ok: true,
@@ -311,7 +313,17 @@ export async function setMonthSavingsAction(
         refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
       };
     }
-    const previousSaveMinor = existing?.amountMinor ?? 0;
+    const plan = {
+      ...refreshed.snapshots.plan,
+      items: ensureMonthSavings(
+        refreshed.snapshots.plan.items,
+        input.monthKey,
+        amountMinor,
+        ctx.currency,
+        ctx.timeZone,
+        item,
+      ),
+    };
     const home = refreshed.snapshots.home
       ? applyHomeLeftoverSparDelta(
           refreshed.snapshots.home,
@@ -319,7 +331,7 @@ export async function setMonthSavingsAction(
           previousSaveMinor,
         )
       : refreshed.snapshots.home;
-    return { ok: true, item, ...refreshed.snapshots, home };
+    return { ok: true, item, ...refreshed.snapshots, plan, home };
   } catch (error) {
     return planWriteFailure(error, "Kunde inte spara sparmålet", "set_savings");
   }

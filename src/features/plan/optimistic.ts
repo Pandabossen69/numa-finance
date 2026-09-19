@@ -157,6 +157,29 @@ function dropStaleMonthSavings(
   return items.filter((row) => !drop.has(row.id));
 }
 
+/** Patch in-memory plan rows so a stale refresh cannot keep the old avsätt. */
+export function ensureMonthSavings(
+  items: PlanItem[],
+  monthKey: string,
+  amountMinor: number,
+  currency: CurrencyCode,
+  timeZone: string,
+  written?: PlanItem | null,
+): PlanItem[] {
+  let next = items;
+  if (written) {
+    next = next.some((row) => row.id === written.id)
+      ? next.map((row) => (row.id === written.id ? written : row))
+      : [...next, written];
+  }
+  const found = findMonthSavings(next, monthKey, timeZone);
+  if (amountMinor === 0) {
+    return found ? applyMonthSavings(next, monthKey, 0, currency, timeZone).items : next;
+  }
+  if (found?.amountMinor === amountMinor) return next;
+  return applyMonthSavings(next, monthKey, amountMinor, currency, timeZone).items;
+}
+
 export function applyMonthSavings(
   items: PlanItem[],
   monthKey: string,

@@ -31,6 +31,7 @@ import {
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
+  isLeftoverSparLivingRevert,
   rememberHomeSnapshot,
   rememberImporteraRows,
   rememberMerSnapshot,
@@ -832,6 +833,38 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()).toBeNull();
     Reflect.deleteProperty(globalThis, "localStorage");
     Reflect.deleteProperty(globalThis, "document");
+  });
+
+  it("does not let a leftover 275,12 fetch undo a 15k→20k living adopt", () => {
+    const adopted = homeSnap({
+      remainingTodayMinor: 0,
+      dayBudgetMinor: 0,
+      safeToSpendTodayMinor: 0,
+      livingPoolMinor: 0,
+      planMonthSavingsMinor: 20_000_00,
+      savingsTotalMinor: 20_000_00,
+      overMinor: 54_981_00,
+      financeRevision: "rev-20k",
+      verifiedAt: "2026-09-19T08:02:00.000Z",
+    });
+    const stale = homeSnap({
+      remainingTodayMinor: 275_12,
+      dayBudgetMinor: 275_12,
+      safeToSpendTodayMinor: 275_12,
+      livingPoolMinor: 1_650_75,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      overMinor: 59_981_00,
+      financeRevision: "rev-cookie",
+      verifiedAt: "2026-09-19T08:03:00.000Z",
+    });
+    expect(isLeftoverSparLivingRevert(adopted, stale)).toBe(true);
+    rememberHomeSnapshot(adopted);
+    rememberHomeSnapshot(stale);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(0);
+    rememberHomeSnapshot(stale, { force: true });
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
   });
 
   it("force-adopts a mutation snapshot even when verifiedAt is older", () => {

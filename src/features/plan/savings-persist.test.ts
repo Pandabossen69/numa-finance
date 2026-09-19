@@ -5,13 +5,16 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import {
   adoptMutationFinance,
   clearClientSessionCaches,
+  isLeftoverSparLivingRevert,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastSessionHomeSnapshot,
   rememberHomeSnapshot,
   rememberPlanSnapshot,
+  syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
-import { applyMonthSavings } from "@/features/plan/optimistic";
+import { applyHomeLeftoverSparDelta } from "@/features/finance/snapshot-from-today";
+import { applyMonthSavings, ensureMonthSavings } from "@/features/plan/optimistic";
 
 const TZ = "Asia/Bangkok";
 const MONTH = "2026-09";
@@ -220,5 +223,173 @@ describe("month savings persist across remount", () => {
     expect(findMonthSavings(lastPlanSnapshot()?.items ?? [], MONTH, TZ)?.amountMinor).toBe(
       7_500_00,
     );
+  });
+});
+
+const leftoverHome = (partial: Partial<HomeSnapshot> = {}): HomeSnapshot =>
+  homeSnap({
+    monthKey: MONTH,
+    calculatedBalanceMinor: 3_421_95,
+    remainingTodayMinor: 275_12,
+    dayBudgetMinor: 275_12,
+    safeToSpendTodayMinor: 275_12,
+    livingPoolMinor: 1_650_75,
+    remainingFreeMinor: 1_650_75,
+    spendDaysLeft: 6,
+    planSavingsMinor: 15_000_00,
+    savingsTotalMinor: 15_000_00,
+    planMonthSavingsMinor: 15_000_00,
+    reservedUntilIncomeMinor: 0,
+    reservedSavingsUntilIncomeMinor: 15_000_00,
+    overMinor: 59_981_00,
+    financeRevision: "rev-15k",
+    verifiedAt: "2026-09-19T08:00:00.000Z",
+    ...partial,
+  });
+
+function leftoverPlanItems(saveMinor: number): PlanItem[] {
+  return [
+    planItem({
+      id: "lön-aug",
+      name: "Lön aug",
+      kind: "expected",
+      amountMinor: 40_000_00,
+      cadence: "income",
+      nextDueAt: "2026-08-25T12:00:00.000Z",
+    }),
+    planItem({
+      id: "lön-sep",
+      name: "Lön sep",
+      kind: "expected",
+      amountMinor: 40_000_00,
+      cadence: "income",
+      nextDueAt: "2026-09-25T12:00:00.000Z",
+    }),
+    planItem({
+      id: "sep-save",
+      kind: "goal",
+      amountMinor: saveMinor,
+      cadence: "savings",
+      nextDueAt: "2026-09-20T12:00:00.000Z",
+      updatedAt: "2026-09-19T08:00:00.000Z",
+    }),
+  ];
+}
+
+describe("Spec O leftover save persist + Hem adopt", () => {
+  beforeEach(() => {
+    clearClientSessionCaches();
+  });
+
+  it("applyHomeLeftoverSparDelta drops 275,12 on 15k→20k even when reservedUntilIncome is 0", () => {
+    const next = applyHomeLeftoverSparDelta(leftoverHome(), 5_000_00, 15_000_00);
+    expect(next.dayBudgetMinor).toBe(0);
+    expect(next.remainingTodayMinor).toBe(0);
+    expect(next.planMonthSavingsMinor).toBe(20_000_00);
+  });
+
+  it("skips 0→N so Spec L leftover 275,12 stays at first 15k", () => {
+    const next = applyHomeLeftoverSparDelta(leftoverHome(), 15_000_00, 0);
+    expect(next.dayBudgetMinor).toBe(275_12);
+    expect(next.remainingTodayMinor).toBe(275_12);
+  });
+
+  it("after save, Hem living matches Plan and remount keeps 20k", () => {
+    const at15k = leftoverHome();
+    rememberHomeSnapshot(at15k);
+    rememberPlanSnapshot(planSnap(leftoverPlanItems(15_000_00)));
+
+    const applied = applyMonthSavings(
+      leftoverPlanItems(15_000_00),
+      MONTH,
+      20_000_00,
+      "THB",
+      TZ,
+    );
+    const patched = ensureMonthSavings(
+      leftoverPlanItems(15_000_00),
+      MONTH,
+      20_000_00,
+      "THB",
+      TZ,
+      { ...applied.items.find((row) => row.id === "sep-save")!, amountMinor: 20_000_00 },
+    );
+    expect(findMonthSavings(patched, MONTH, TZ)?.amountMinor).toBe(20_000_00);
+
+    const savedHome = applyHomeLeftoverSparDelta(at15k, 5_000_00, 15_000_00);
+    adoptMutationFinance({
+      home: {
+        ...savedHome,
+        overMinor: 54_981_00,
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      },
+      plan: planSnap(patched, {
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      }),
+    });
+
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(0);
+    expect(lastHomeSnapshot()?.overMinor).toBe(54_981_00);
+    expect(findMonthSavings(lastPlanSnapshot()?.items ?? [], MONTH, TZ)?.amountMinor).toBe(
+      20_000_00,
+    );
+
+    rememberHomeSnapshot(
+      leftoverHome({
+        financeRevision: "rev-cookie",
+        verifiedAt: "2026-09-19T08:03:00.000Z",
+      }),
+    );
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
+    expect(isLeftoverSparLivingRevert(lastHomeSnapshot()!, leftoverHome())).toBe(true);
+
+    rememberPlanSnapshot(
+      planSnap(leftoverPlanItems(15_000_00), {
+        financeRevision: "rev-15k",
+        verifiedAt: "2026-09-19T08:00:00.000Z",
+      }),
+    );
+    expect(findMonthSavings(lastPlanSnapshot()?.items ?? [], MONTH, TZ)?.amountMinor).toBe(
+      20_000_00,
+    );
+  });
+
+  it("hydrate at 15k keeps leftover 275,12 — no 275→0 flash", () => {
+    rememberHomeSnapshot(leftoverHome());
+    syncHomeLivingFromPlan(
+      planSnap(leftoverPlanItems(15_000_00), {
+        bankBalanceMinor: 3_421_95,
+      }),
+    );
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+  });
+
+  it("sync from Plan 15k→20k drops Hem leftover and a stale 15k plan cannot restore 275,12", () => {
+    rememberHomeSnapshot(leftoverHome());
+    rememberPlanSnapshot(planSnap(leftoverPlanItems(15_000_00)));
+    syncHomeLivingFromPlan(
+      planSnap(leftoverPlanItems(20_000_00), {
+        financeRevision: "rev-20k:local",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+        bankBalanceMinor: 3_421_95,
+      }),
+    );
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(0);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
+
+    syncHomeLivingFromPlan(
+      planSnap(leftoverPlanItems(15_000_00), {
+        financeRevision: "rev-15k",
+        verifiedAt: "2026-09-19T08:00:00.000Z",
+        bankBalanceMinor: 3_421_95,
+      }),
+    );
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(0);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
+    expect(lastHomeSnapshot()?.planMonthSavingsMinor).toBe(20_000_00);
   });
 });

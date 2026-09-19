@@ -120,10 +120,13 @@ export function applyHomeLeftoverSparDelta(
 ): HomeSnapshot {
   if (sparDeltaMinor === 0 || previousSaveMinor <= 0) return home;
   const spentToday = Math.max(0, home.todaySpendingMinor ?? 0);
+  const reserved =
+    home.reservedUntilIncomeMinor && home.reservedUntilIncomeMinor > 0
+      ? home.reservedUntilIncomeMinor
+      : (home.reservedSavingsUntilIncomeMinor ?? 0) ||
+        (home.planMonthSavingsMinor ?? previousSaveMinor);
   const cashPool =
-    (home.calculatedBalanceMinor ?? 0) -
-    (home.reservedUntilIncomeMinor ?? 0) +
-    spentToday;
+    (home.calculatedBalanceMinor ?? 0) - reserved + spentToday;
   if (cashPool > 0) return home;
   const next = applyLeftoverSparDelta(
     {
@@ -141,6 +144,7 @@ export function applyHomeLeftoverSparDelta(
     dayBudgetMinor: next.dayBudgetMinor,
     remainingTodayMinor: next.remainingTodayMinor,
     safeToSpendTodayMinor: next.remainingTodayMinor,
+    planMonthSavingsMinor: previousSaveMinor + sparDeltaMinor,
   };
 }
 
