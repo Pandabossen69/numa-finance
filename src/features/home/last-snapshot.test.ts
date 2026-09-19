@@ -295,7 +295,11 @@ describe("last view memory", () => {
 
   it("keeps Rörelser, Saldo, Mer, Fota, Importera and Inställningar", () => {
     rememberMovementsSnapshot(sampleMovements);
-    rememberMovementsView({ filter: "expense", period: "all" });
+    rememberMovementsView({
+      filter: "expense",
+      period: "all",
+      category: "Mat",
+    });
     rememberAccountsSnapshot({
       accounts: [accountRow()],
       archivedAccounts: [],
@@ -332,7 +336,11 @@ describe("last view memory", () => {
     });
 
     expect(lastMovementsSnapshot()?.balanceMinor).toBe(100_00);
-    expect(lastMovementsView()).toEqual({ filter: "expense", period: "all" });
+    expect(lastMovementsView()).toEqual({
+      filter: "expense",
+      period: "all",
+      category: "Mat",
+    });
     expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Bangkok Bank");
     expect(lastMerSnapshot()?.displayName).toBe("Christian");
     expect(lastFotaBoot()?.remainingTodayMinor).toBe(250_00);

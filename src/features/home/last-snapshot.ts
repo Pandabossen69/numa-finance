@@ -42,6 +42,12 @@ export type { PlanSnapshot } from "@/features/finance/load-plan";
 
 export type MovementsFilter = "all" | "expense" | "income" | "other";
 export type MovementsPeriod = "month" | "all";
+export type MovementsView = {
+  filter: MovementsFilter;
+  period: MovementsPeriod;
+  /** Per kategori tap — null means every category. */
+  category?: string | null;
+};
 
 export type MerSnapshot = {
   userId: string;
@@ -91,8 +97,7 @@ let analysScope: "period" | "month" | null = null;
 let gettingStarted: GettingStartedView | null = null;
 let movements: MovementsSnapshot | null = null;
 let movementsDirty = false;
-let movementsView: { filter: MovementsFilter; period: MovementsPeriod } | null =
-  null;
+let movementsView: MovementsView | null = null;
 let accounts: AccountsSnapshot | null = null;
 let accountsDirty = false;
 let mer: MerSnapshot | null = null;
@@ -727,18 +732,12 @@ export function lastMovementsSnapshot(): MovementsSnapshot | null {
   return movements;
 }
 
-export function rememberMovementsView(view: {
-  filter: MovementsFilter;
-  period: MovementsPeriod;
-}) {
+export function rememberMovementsView(view: MovementsView) {
   movementsView = view;
   schedulePersist();
 }
 
-export function lastMovementsView(): {
-  filter: MovementsFilter;
-  period: MovementsPeriod;
-} | null {
+export function lastMovementsView(): MovementsView | null {
   return movementsView;
 }
 

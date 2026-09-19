@@ -7,8 +7,7 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import type {
   MerSnapshot,
-  MovementsFilter,
-  MovementsPeriod,
+  MovementsView,
 } from "@/features/home/last-snapshot";
 
 export const LAST_KNOWN_STORAGE_KEY = "numa.lastKnown.v1";
@@ -27,7 +26,7 @@ export type PersistedLastKnown = {
   gettingStarted: GettingStartedView | null;
   planView: { monthKey: string; viewYear: number } | null;
   analysScope: "period" | "month" | null;
-  movementsView: { filter: MovementsFilter; period: MovementsPeriod } | null;
+  movementsView: MovementsView | null;
 };
 
 function persistStorage(): Storage | null {
