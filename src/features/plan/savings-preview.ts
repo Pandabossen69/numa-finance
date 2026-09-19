@@ -60,11 +60,13 @@ export function previewMonthSavings(input: {
   const sparDelta = input.draftMinor - input.currentMinor;
   // Leftover path: Över moves via coverage, Spec L leftover ignores unpriced
   // remaining. Apply only the spar increment so 15k stays 275,12 and 20k drops.
+  // Decrease / nollställ must keep leftover `to` (275,12) — a negative
+  // delta on an already-restored leftover becomes 1 108,45.
   const leftoverStuck =
     from.dayBudgetMinor === to.dayBudgetMinor &&
     from.remainingTodayMinor === to.remainingTodayMinor;
   const adjusted =
-    leftoverStuck && sparDelta !== 0
+    leftoverStuck && sparDelta > 0
       ? applyLeftoverSparDelta(
           {
             livingPoolMinor: to.livingPoolMinor,

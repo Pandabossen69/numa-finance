@@ -234,6 +234,55 @@ describe("previewMonthSavings", () => {
     expect(preview!.remainingTodayTo).toBe(0);
     expect(preview!.dayBudgetTo).toBeLessThan(preview!.dayBudgetFrom);
   });
+
+  it("restore draft 20k→15k keeps leftover 275,12 instead of 1 108,45", () => {
+    const items = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 30_000_00,
+        nextDueAt: "2026-09-22T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 8_349_25,
+        cadence: "monthly",
+        nextDueAt: "2026-08-15T12:00:00.000Z",
+      }),
+      item({
+        id: "sep-save",
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 20_000_00,
+        cadence: "savings",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+    ];
+    const preview = previewOf(items, {
+      draftMinor: 15_000_00,
+      currentMinor: 20_000_00,
+      saldoMinor: 3_421_95,
+    });
+    expect(preview).not.toBeNull();
+    expect(preview!.dayBudgetTo).toBe(275_12);
+    expect(preview!.remainingTodayTo).toBe(275_12);
+    expect(preview!.dayBudgetTo).not.toBe(1_108_45);
+  });
 });
 
 describe("savingsPreviewLineSv", () => {

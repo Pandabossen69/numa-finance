@@ -392,4 +392,118 @@ describe("Spec O leftover save persist + Hem adopt", () => {
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(0);
     expect(lastHomeSnapshot()?.planMonthSavingsMinor).toBe(20_000_00);
   });
+
+  it("does not re-apply leftover delta on restore 20k→15k (QA 1 108,45)", () => {
+    const serverAt15k = leftoverHome({
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T08:04:00.000Z",
+    });
+    const next = applyHomeLeftoverSparDelta(serverAt15k, -5_000_00, 20_000_00);
+    expect(next.dayBudgetMinor).toBe(275_12);
+    expect(next.remainingTodayMinor).toBe(275_12);
+    expect(next.planMonthSavingsMinor).toBe(15_000_00);
+    expect(next.dayBudgetMinor).not.toBe(1_108_45);
+  });
+
+  it("after restore 20k→15k, soft remount Hem living matches Plan leftover 275,12", () => {
+    const at15k = leftoverHome();
+    rememberHomeSnapshot(at15k);
+    rememberPlanSnapshot(planSnap(leftoverPlanItems(15_000_00)));
+
+    const savedHome = applyHomeLeftoverSparDelta(at15k, 5_000_00, 15_000_00);
+    adoptMutationFinance({
+      home: {
+        ...savedHome,
+        overMinor: 54_981_00,
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      },
+      plan: planSnap(leftoverPlanItems(20_000_00), {
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      }),
+    });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(0);
+
+    const serverRestore = leftoverHome({
+      financeRevision: "rev-15k-restore",
+      verifiedAt: "2026-09-19T08:04:00.000Z",
+    });
+    const restoredHome = applyHomeLeftoverSparDelta(
+      serverRestore,
+      -5_000_00,
+      20_000_00,
+    );
+    adoptMutationFinance({
+      home: restoredHome,
+      plan: planSnap(leftoverPlanItems(15_000_00), {
+        financeRevision: "rev-15k-restore",
+        verifiedAt: "2026-09-19T08:04:00.000Z",
+        bankBalanceMinor: 3_421_95,
+      }),
+    });
+
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
+    expect(findMonthSavings(lastPlanSnapshot()?.items ?? [], MONTH, TZ)?.amountMinor).toBe(
+      15_000_00,
+    );
+
+    // Soft-nav remount reads last-known + Plan sync (no full reload).
+    syncHomeLivingFromPlan(
+      planSnap(leftoverPlanItems(15_000_00), {
+        financeRevision: "rev-15k-restore",
+        verifiedAt: "2026-09-19T08:04:00.000Z",
+        bankBalanceMinor: 3_421_95,
+      }),
+    );
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
+  });
+
+  it("after nollställ, soft remount adopts the post-clear living — not leftover 275,12", () => {
+    rememberHomeSnapshot(leftoverHome());
+    adoptMutationFinance({
+      home: leftoverHome(),
+      plan: planSnap(leftoverPlanItems(15_000_00)),
+    });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    const clearedItems = leftoverPlanItems(15_000_00).filter((row) => row.id !== "sep-save");
+    const clearedHome = leftoverHome({
+      planSavingsMinor: 0,
+      savingsTotalMinor: 0,
+      planMonthSavingsMinor: 0,
+      reservedSavingsUntilIncomeMinor: 0,
+      dayBudgetMinor: 570_32,
+      remainingTodayMinor: 570_32,
+      livingPoolMinor: 3_421_95,
+      remainingFreeMinor: 3_421_95,
+      overMinor: 74_981_00,
+      financeRevision: "rev-0",
+      verifiedAt: "2026-09-19T08:05:00.000Z",
+    });
+    const adopted = applyHomeLeftoverSparDelta(clearedHome, -15_000_00, 15_000_00);
+    expect(adopted.dayBudgetMinor).toBe(570_32);
+    expect(adopted.planMonthSavingsMinor).toBe(0);
+
+    adoptMutationFinance({
+      home: adopted,
+      plan: planSnap(clearedItems, {
+        financeRevision: "rev-0",
+        verifiedAt: "2026-09-19T08:05:00.000Z",
+        bankBalanceMinor: 3_421_95,
+      }),
+    });
+
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(570_32);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(570_32);
+    expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(0);
+    expect(findMonthSavings(lastPlanSnapshot()?.items ?? [], MONTH, TZ)).toBeUndefined();
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(
+      lastSessionHomeSnapshot()?.dayBudgetMinor,
+    );
+  });
 });
