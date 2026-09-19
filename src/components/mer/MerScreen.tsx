@@ -19,8 +19,8 @@ import {
   MerSection,
   type MerIconTone,
 } from "@/components/mer/MerHub";
+import { MerInstallCta } from "@/components/mer/MerInstallCta";
 import { MerViewLoading } from "@/components/mer/MerViewLoading";
-import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
 import {
   lastMerSnapshot,
   rememberMerSnapshot,
@@ -115,10 +115,8 @@ export function MerScreen({
       />
 
       <div className="animate-rise-delay-1 space-y-6">
-        <MerSection title="På telefonen (alla konton)">
-          <div className="md:hidden">
-            <HomescreenInstallHint dismissible={false} />
-          </div>
+        <MerSection title="Som app">
+          <MerInstallCta />
           <div className="pt-2">
             <MerListGroup>
               <MerListLink
