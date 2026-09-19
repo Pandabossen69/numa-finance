@@ -144,11 +144,13 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("explains dagsbudget as cash pool ÷ days to payday", () => {
     expect(src).toContain("livingBudgetHintSv");
+    expect(src).toContain("view.dayBudgetMinor");
     expect(src).toContain("view.livingPoolMinor");
     expect(src).toContain("view.reservedUntilIncomeMinor");
     expect(src).toContain("view.daysUntilIncome");
     const metrics = src.slice(src.indexOf("numa-day-metrics"));
     expect(metrics).toContain("livingBudgetHintSv");
+    expect(metrics).toContain("numa-living-math");
     expect(metrics).not.toContain("${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}");
   });
 

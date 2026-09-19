@@ -302,8 +302,9 @@ export function HomeDashboard({
                           wrap={false}
                         />
                       </div>
-                      <p className="numa-metric-hint">
+                      <div className="numa-living-math">
                         {livingBudgetHintSv({
+                          dayBudgetMinor: view.dayBudgetMinor,
                           poolMinor:
                             view.livingPoolMinor ??
                             view.calculatedBalanceMinor ??
@@ -312,8 +313,21 @@ export function HomeDashboard({
                           daysUntilHorizon: view.daysUntilIncome,
                           nextIncomeLabelSv: view.nextIncomeLabelSv,
                           currency,
-                        })}
-                      </p>
+                        }).map((line, index) => (
+                          <p
+                            key={line}
+                            className={
+                              index === 0
+                                ? "is-lead"
+                                : index === 2
+                                  ? "is-breakdown"
+                                  : undefined
+                            }
+                          >
+                            {line}
+                          </p>
+                        ))}
+                      </div>
                     </div>
                     <div className="is-spent">
                       <p className="numa-metric-label">{SV.spenderatIdag}</p>

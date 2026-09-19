@@ -733,6 +733,29 @@ body {
   color: var(--numa-faint);
 }
 
+.numa-living-math {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.numa-living-math p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--numa-muted);
+}
+
+.numa-living-math .is-lead {
+  font-weight: 600;
+  color: var(--numa-ink);
+}
+
+.numa-living-math .is-breakdown {
+  color: var(--numa-ink);
+}
+
 .numa-piles-board {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

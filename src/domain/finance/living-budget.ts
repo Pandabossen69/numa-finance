@@ -104,22 +104,38 @@ function untilLonnSv(days: number, label: string | null): string {
   return label ? `${count} till lön ${label}` : `${count} till nästa inkomst`;
 }
 
-/** One Swedish line: pool + days until paycheck. Readable in under 5s. */
+function moneySv(amountMinor: number, currency: CurrencyCode): string {
+  return formatMoneyCompact(money(Math.max(0, amountMinor), currency));
+}
+
+/**
+ * Always-visible Hem lines under dagsbudget. No tap, readable in under 5s.
+ * 1) Du kan leva på X / dag
+ * 2) Y kvar efter planerat · Z dagar till lön [datum]
+ * 3) If reserved: Saldo A − planerat B = Y
+ */
 export function livingBudgetHintSv(input: {
+  dayBudgetMinor: number;
   poolMinor: number;
   reservedMinor: number;
   daysUntilHorizon: number;
   nextIncomeLabelSv: string | null;
   currency?: CurrencyCode;
-}): string {
-  const amount = formatMoneyCompact(
-    money(Math.max(0, input.poolMinor), input.currency ?? "THB"),
-  );
+}): string[] {
+  const currency = input.currency ?? "THB";
+  const day = moneySv(input.dayBudgetMinor, currency);
+  const pool = moneySv(input.poolMinor, currency);
   const until = untilLonnSv(input.daysUntilHorizon, input.nextIncomeLabelSv);
+  const lines = [
+    `Du kan leva på ${day} / dag`,
+    `${pool} kvar efter planerat · ${until}`,
+  ];
   if (input.reservedMinor > 0) {
-    return `Saldo minus planerat ${amount} · ${until}`;
+    const saldo = moneySv(input.poolMinor + input.reservedMinor, currency);
+    const reserved = moneySv(input.reservedMinor, currency);
+    lines.push(`Saldo ${saldo} − planerat ${reserved} = ${pool}`);
   }
-  return `${amount} att leva på · ${until}`;
+  return lines;
 }
 
 function bridgeHorizonIso(

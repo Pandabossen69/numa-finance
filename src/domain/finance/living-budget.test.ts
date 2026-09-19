@@ -575,28 +575,110 @@ describe("projectLivingBudget", () => {
     expect(living.dayBudgetMinor).toBe(275_00);
     expect(living.remainingFreeMinor).toBe(cycle.freeToSpendMinor);
   });
+
+  it("QA test@: days to 3 okt — not cycle-end — and pool is saldo minus reserved", () => {
+    const now = new Date("2026-09-19T03:00:00.000Z");
+    const payday = [
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 33_521_00,
+        cadence: "income",
+        nextDueAt: "2026-09-03T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön okt",
+        kind: "expected",
+        amountMinor: 33_521_00,
+        cadence: "income",
+        nextDueAt: "2026-10-03T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön okt sen",
+        kind: "expected",
+        amountMinor: 10_000_00,
+        cadence: "income",
+        nextDueAt: "2026-10-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 12_345_00,
+        nextDueAt: "2026-09-28T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 3_000_00,
+        cadence: "monthly",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+    ];
+    const cycle = projectPayCycle(payday, now, tz);
+    expect(cycle.nextPaycheckAt).toBe("2026-10-03T12:00:00.000Z");
+    expect(cycle.endAt).toBe("2026-10-25T12:00:00.000Z");
+    expect(cycle.daysLeft).toBe(36); // 19 Sep → 25 Oct cycle-end
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 119_432_00,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.mode).toBe("cycle");
+    expect(living.daysLeft).toBe(14); // 19 Sep → 3 okt
+    expect(living.daysUntilHorizon).toBe(14);
+    expect(living.daysLeft).not.toBe(cycle.daysLeft);
+    expect(living.nextIncomeLabelSv?.toLowerCase()).toMatch(/3/);
+    expect(living.reservedUntilIncomeMinor).toBe(12_345_00 + 3_000_00);
+    expect(living.livingPoolMinor).toBe(104_087_00);
+    expect(living.dayBudgetMinor).toBe(Math.floor(104_087_00 / 14));
+    expect(living.dayBudgetMinor).not.toBe(
+      Math.floor(cycle.freeToSpendMinor / 14),
+    );
+    expect(living.dayBudgetMinor).not.toBe(Math.floor(119_432_00 / 36));
+    expect(living.dayBudgetMinor).not.toBe(1_298_28);
+  });
 });
 
+function hintPlain(lines: string[]): string[] {
+  return lines.map((line) => line.replace(/\u00a0/g, " "));
+}
+
 describe("livingBudgetHintSv", () => {
-  it("names the cash pool and days to payday", () => {
+  it("always names the daily rate and days to payday", () => {
     expect(
-      livingBudgetHintSv({
-        poolMinor: 3_421_00,
-        reservedMinor: 0,
-        daysUntilHorizon: 6,
-        nextIncomeLabelSv: "25 sep.",
-      }).replace(/\u00a0/g, " "),
-    ).toBe("3 421 THB att leva på · 6 dagar till lön 25 sep.");
+      hintPlain(
+        livingBudgetHintSv({
+          dayBudgetMinor: 570_16,
+          poolMinor: 3_421_00,
+          reservedMinor: 0,
+          daysUntilHorizon: 6,
+          nextIncomeLabelSv: "25 sep.",
+        }),
+      ),
+    ).toEqual([
+      "Du kan leva på 570,16 THB / dag",
+      "3 421 THB kvar efter planerat · 6 dagar till lön 25 sep.",
+    ]);
   });
 
-  it("explains reserved money in one Swedish line", () => {
+  it("adds Saldo − planerat = pool when anything is reserved", () => {
     expect(
-      livingBudgetHintSv({
-        poolMinor: 1_650_00,
-        reservedMinor: 1_771_00,
-        daysUntilHorizon: 6,
-        nextIncomeLabelSv: "25 sep.",
-      }).replace(/\u00a0/g, " "),
-    ).toBe("Saldo minus planerat 1 650 THB · 6 dagar till lön 25 sep.");
+      hintPlain(
+        livingBudgetHintSv({
+          dayBudgetMinor: 275_00,
+          poolMinor: 1_650_00,
+          reservedMinor: 1_771_00,
+          daysUntilHorizon: 6,
+          nextIncomeLabelSv: "25 sep.",
+        }),
+      ),
+    ).toEqual([
+      "Du kan leva på 275 THB / dag",
+      "1 650 THB kvar efter planerat · 6 dagar till lön 25 sep.",
+      "Saldo 3 421 THB − planerat 1 771 THB = 1 650 THB",
+    ]);
   });
 });
