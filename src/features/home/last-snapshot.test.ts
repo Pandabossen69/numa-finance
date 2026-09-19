@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanonicalTransaction } from "@/domain/finance";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
@@ -156,6 +156,10 @@ function homeSnap(partial: Partial<HomeSnapshot> = {}): HomeSnapshot {
 describe("last view memory", () => {
   beforeEach(() => {
     clearClientSessionCaches();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("keeps Plan month and Analys scope across remounts", () => {
@@ -908,8 +912,8 @@ describe("last view memory", () => {
     expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
 
-    // Spec P keep-shell: Plan sync can raise cycle spend and recompute
-    // leftover as 1 650,75 / 5 days = 330,15. Same avsätt must not win.
+    // Same Bangkok day keep-shell: Plan sync can raise cycle spend and
+    // recompute leftover as 1 650,75 / 5 days = 330,15. Same avsätt must not win.
     const staleFiveDay = homeSnap({
       remainingTodayMinor: 330_15,
       dayBudgetMinor: 330_15,
@@ -928,6 +932,8 @@ describe("last view memory", () => {
   });
 
   it("force-adopt of server 5-day leftover 330,15 overlays post-write 275,12", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T10:00:00.000Z"));
     rememberHomeSnapshot(
       homeSnap({
         remainingTodayMinor: 275_12,
@@ -978,6 +984,58 @@ describe("last view memory", () => {
     expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.spendDaysLeft).toBe(6);
     expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
+  });
+
+  it("cross-day leftover 6→5 adopts 330,15 — baseline does not freeze", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T10:00:00.000Z"));
+
+    rememberHomeSnapshot(
+      homeSnap({
+        remainingTodayMinor: 275_12,
+        dayBudgetMinor: 275_12,
+        safeToSpendTodayMinor: 275_12,
+        livingPoolMinor: 1_650_75,
+        remainingFreeMinor: 1_650_75,
+        spendDaysLeft: 6,
+        daysUntilIncome: 6,
+        planMonthSavingsMinor: 15_000_00,
+        savingsTotalMinor: 15_000_00,
+        financeRevision: "rev-15k",
+        verifiedAt: "2026-09-19T10:00:00.000Z",
+      }),
+    );
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.spendDaysLeft).toBe(6);
+
+    vi.setSystemTime(new Date("2026-09-20T10:00:00.000Z"));
+
+    const rolled = homeSnap({
+      remainingTodayMinor: 330_15,
+      dayBudgetMinor: 330_15,
+      safeToSpendTodayMinor: 330_15,
+      livingPoolMinor: 1_650_75,
+      remainingFreeMinor: 1_650_75,
+      spendDaysLeft: 5,
+      daysUntilIncome: 5,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      financeRevision: "rev-15k-nextday",
+      verifiedAt: "2026-09-20T10:00:00.000Z",
+    });
+    expect(isLeftoverSparLivingRevert(lastHomeSnapshot()!, rolled)).toBe(false);
+    rememberHomeSnapshot(rolled);
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(330_15);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(330_15);
+    expect(lastSessionHomeSnapshot()?.spendDaysLeft).toBe(5);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(
+      lastSessionHomeSnapshot()?.dayBudgetMinor,
+    );
+
+    rememberHomeSnapshot(rolled, { force: true });
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(330_15);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(330_15);
+    expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(330_15);
   });
 
   it("does not treat additive Plan warmup spend as a leftover savings revert", () => {

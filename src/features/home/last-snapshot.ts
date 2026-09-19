@@ -7,6 +7,7 @@ import {
   hasCycleFundingEvidence,
   isSameZonedDay,
   monthKeyFromDate,
+  zonedDayKey,
   perDayBudgetMinor,
   planWealthTotalMinor,
   projectCashCoverage,
@@ -89,6 +90,8 @@ export type SettingsSnapshot = {
 type LeftoverLivingBaseline = {
   saveMinor: number;
   monthKey: string;
+  /** Bangkok civil day the leftover write was stashed (`YYYY-MM-DD`). */
+  zonedDayKey: string;
   dayBudgetMinor: number;
   remainingTodayMinor: number;
   livingPoolMinor: number;
@@ -111,14 +114,38 @@ function leftoverIncomingShape(snap: HomeSnapshot): boolean {
   );
 }
 
-/** Stash Spec O2 post-write leftover living (275,12 at 15k). Never clobber with a daysLeft recompute (330,15). */
-function maybeRememberLeftoverLivingBaseline(snap: HomeSnapshot) {
+function leftoverCivilDayNow(timeZone: string): string {
+  return zonedDayKey(new Date(), timeZone);
+}
+
+/** True only while the leftover write is still the same Bangkok civil day. */
+function leftoverBaselineMatchesCivilDay(timeZone: string): boolean {
+  return (
+    leftoverLivingBaseline != null &&
+    leftoverLivingBaseline.zonedDayKey === leftoverCivilDayNow(timeZone)
+  );
+}
+
+/**
+ * Stash Spec O2 post-write leftover living (275,12 at 15k). Same Bangkok
+ * day must not clobber with a daysLeft recompute (330,15). A new civil
+ * day restashes so 1 650,75 / 5 can become today's envelope.
+ */
+function maybeRememberLeftoverLivingBaseline(
+  snap: HomeSnapshot,
+  opts?: { fromPersist?: boolean },
+) {
   const save = leftoverSaveOf(snap);
   if (save <= 0 || snap.dayBudgetMinor <= 0) return;
+  const todayKey = leftoverCivilDayNow(snap.timeZone);
+  if (opts?.fromPersist && snap.verifiedAt) {
+    if (zonedDayKey(snap.verifiedAt, snap.timeZone) !== todayKey) return;
+  }
   if (
     leftoverLivingBaseline &&
     leftoverLivingBaseline.saveMinor === save &&
     leftoverLivingBaseline.monthKey === snap.monthKey &&
+    leftoverLivingBaseline.zonedDayKey === todayKey &&
     snap.dayBudgetMinor > leftoverLivingBaseline.dayBudgetMinor
   ) {
     return;
@@ -126,6 +153,7 @@ function maybeRememberLeftoverLivingBaseline(snap: HomeSnapshot) {
   leftoverLivingBaseline = {
     saveMinor: save,
     monthKey: snap.monthKey,
+    zonedDayKey: todayKey,
     dayBudgetMinor: snap.dayBudgetMinor,
     remainingTodayMinor: snap.remainingTodayMinor,
     livingPoolMinor: snap.livingPoolMinor,
@@ -136,8 +164,9 @@ function maybeRememberLeftoverLivingBaseline(snap: HomeSnapshot) {
 }
 
 /**
- * Server restore at 15k uses projectLivingBudget(now) — Bangkok Sep 20 is
- * 1 650,75 / 5 = 330,15. Spec O2 keeps the post-write leftover (275,12).
+ * Server restore at 15k uses projectLivingBudget(now) — same Bangkok day
+ * as the leftover write still overlays 330,15 → 275,12. After the civil
+ * day rolls, 1 650,75 / 5 = 330,15 is today's envelope.
  */
 function applyLeftoverLivingBaseline(incoming: HomeSnapshot): HomeSnapshot {
   if (incoming.planMonthSavingsMinor === 0) {
@@ -146,6 +175,11 @@ function applyLeftoverLivingBaseline(incoming: HomeSnapshot): HomeSnapshot {
   }
   const baseline = leftoverLivingBaseline;
   if (!baseline) return incoming;
+  // Spec Q: leftover 275,12 is a same-day overlay only. After the Bangkok
+  // civil day rolls, 1 650,75 / 5 = 330,15 is today's envelope.
+  if (!leftoverBaselineMatchesCivilDay(incoming.timeZone)) {
+    return incoming;
+  }
   const incomingSave = leftoverSaveOf(incoming);
   if (incomingSave <= 0 || incomingSave > baseline.saveMinor) return incoming;
   if (incoming.monthKey && incoming.monthKey !== baseline.monthKey) {
@@ -247,14 +281,14 @@ export function hydrateLastKnownFromPersist() {
     planView = data.planView;
     analysScope = data.analysScope;
     movementsView = data.movementsView;
-    if (home) maybeRememberLeftoverLivingBaseline(home);
+    if (home) maybeRememberLeftoverLivingBaseline(home, { fromPersist: true });
     persistPaused = false;
     return;
   }
   if (cookieHome) {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
-    maybeRememberLeftoverLivingBaseline(cookieHome);
+    maybeRememberLeftoverLivingBaseline(cookieHome, { fromPersist: true });
   }
   persistPaused = false;
 }
@@ -423,6 +457,18 @@ export function isLeftoverSparLivingRevert(
   current: HomeSnapshot,
   incoming: HomeSnapshot,
 ): boolean {
+  const timeZone = incoming.timeZone || current.timeZone;
+  if (leftoverLivingBaseline && !leftoverBaselineMatchesCivilDay(timeZone)) {
+    return false;
+  }
+  // Hydrate of yesterday's leftover does not restash a today-keyed
+  // baseline. A daysLeft roll (6→5) must still adopt 330,15.
+  if (
+    !leftoverBaselineMatchesCivilDay(timeZone) &&
+    incoming.spendDaysLeft !== current.spendDaysLeft
+  ) {
+    return false;
+  }
   const adoptedMonthSave = current.planMonthSavingsMinor ?? 0;
   const baselineSave = leftoverLivingBaseline?.saveMinor ?? 0;
   if (adoptedMonthSave <= 0 && baselineSave <= 0) return false;
@@ -447,9 +493,9 @@ export function isLeftoverSparLivingRevert(
       incomingSave <= leftoverLivingBaseline.saveMinor
     );
   }
-  // Restore 20k→15k leftover (275,12) must not jump to a 5-day recompute
-  // (330,15) on Plan keep-shell sync — even if cycle spend rose. Additive
-  // SEK warmup has planMonthSavingsMinor 0 and already returned above.
+  // Same-day restore 20k→15k leftover (275,12) must not jump to a 5-day
+  // recompute (330,15) on Plan keep-shell sync — even if cycle spend rose.
+  // Additive SEK warmup has planMonthSavingsMinor 0 and already returned.
   const cap = Math.max(currentSave, baselineSave);
   if (incomingSave > 0 && incomingSave <= cap) return true;
   if (incoming.cycleSpendingMinor > current.cycleSpendingMinor) return false;
@@ -716,15 +762,17 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
   // Do not require remaining===dayBudget — today-spend leftover still keeps
   // post-write 275,12 vs a 5-day recompute.
   const restoreKeepAdopted =
+    leftoverBaselineMatchesCivilDay(timeZone) &&
     prevSave > 0 &&
     nextSave > 0 &&
     nextSave <= prevSave &&
     home.dayBudgetMinor !== living.dayBudgetMinor;
   const keepAdoptedLiving =
-    restoreKeepAdopted ||
-    (leftoverPath &&
-      home.dayBudgetMinor !== living.dayBudgetMinor &&
-      (prevSave === nextSave || staleLowerSave));
+    leftoverBaselineMatchesCivilDay(timeZone) &&
+    (restoreKeepAdopted ||
+      (leftoverPath &&
+        home.dayBudgetMinor !== living.dayBudgetMinor &&
+        (prevSave === nextSave || staleLowerSave)));
   const incrementBase = homeLooksLeftover
     ? {
         livingPoolMinor: home.livingPoolMinor,
