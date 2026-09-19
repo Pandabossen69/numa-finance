@@ -210,7 +210,7 @@ export async function loadAnalysSnapshot(): Promise<AnalysSnapshotResult> {
                 "Mot planen = kvar i månaden (plan) − spenderat i månaden. Det är inte saldot på kontot.",
                 "Löneperiodens utgifter kan skilja sig från kalendermånadens.",
                 "Det som blir över en månad följer med som extra saldo.",
-                "Dagsbudget = kvar i perioden (på morgonen) ÷ dagar till nästa inkomst.",
+                "Dagsbudget = (saldo − planerat kvar) ÷ dagar till nästa inkomst.",
                 "Kvar idag = dagsbudget − spenderat idag. Andra dagar ändras inte.",
               ];
 

@@ -79,6 +79,8 @@ export function buildMockHomeViewModel(_now = new Date()): HomeViewModel {
     spendDaysLeft: 21,
     dayBudgetMinor: dayBudget,
     remainingTodayMinor: remainingToday,
+    livingPoolMinor: freePlan,
+    reservedUntilIncomeMinor: reserved.amountMinor,
     cycleStartLabelSv: "25 aug.",
     cycleEndLabelSv: "25 sep.",
     cycleEndInferred: false,

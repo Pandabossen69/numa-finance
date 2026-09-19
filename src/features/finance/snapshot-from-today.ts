@@ -90,6 +90,8 @@ export function homeSnapshotFromToday(
     spendDaysLeft: living.daysUntilHorizon,
     dayBudgetMinor: living.dayBudgetMinor,
     remainingTodayMinor: living.remainingTodayMinor,
+    livingPoolMinor: living.livingPoolMinor,
+    reservedUntilIncomeMinor: living.reservedUntilIncomeMinor,
     daysUntilIncome: living.daysUntilHorizon,
     nextIncomeLabelSv: living.nextIncomeLabelSv,
     extraSaldoMinor: extra.extraSaldoMinor,

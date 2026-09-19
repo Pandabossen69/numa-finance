@@ -142,6 +142,16 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain("view.cycleStartLabelSv && view.cycleEndLabelSv");
   });
 
+  it("explains dagsbudget as cash pool ÷ days to payday", () => {
+    expect(src).toContain("livingBudgetHintSv");
+    expect(src).toContain("view.livingPoolMinor");
+    expect(src).toContain("view.reservedUntilIncomeMinor");
+    expect(src).toContain("view.daysUntilIncome");
+    const metrics = src.slice(src.indexOf("numa-day-metrics"));
+    expect(metrics).toContain("livingBudgetHintSv");
+    expect(metrics).not.toContain("${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}");
+  });
+
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
     expect(src).toContain("GettingStartedCard");
     expect(src).toContain("lastGettingStarted");

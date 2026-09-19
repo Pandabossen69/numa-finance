@@ -1,8 +1,9 @@
-import { calendarDaysBetween, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
+import { calendarDaysBetween, formatCountSv, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
 import type { PayCycleProjection } from "./pay-cycle";
-import { perDayBudgetMinor } from "./plan-months";
+import { perDayBudgetMinor, remainingOpenMinor } from "./plan-months";
 import { isBankSmsLedgerRow } from "./balance";
 import type { TransactionSource } from "./types";
+import { formatMoneyCompact, money, type CurrencyCode } from "@/domain/money";
 
 export type LivingBudgetMode = "bridge" | "cycle" | "empty";
 
@@ -15,6 +16,11 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
  *
  * Day envelope (dagsbudget):
  * Morning sticky allowance is floor(poolWithoutTodaySpend / daysLeft).
+ * The pool is cash to live on until the next paycheck: bank balance
+ * minus remaining planned expenses/savings due before that horizon
+ * (already-settled amounts stay in the ledger/saldo and are not
+ * subtracted again). Cycle mode must not silently use plan
+ * `freeToSpend` when a saldo exists — that hides reserved money.
  * `daysLeft` is calendar days until the next real planned paycheck
  * (`nextPaycheckAt`), never the later cycle-end last income.
  * Spending today depletes *today's remaining only* — it does not
@@ -43,6 +49,13 @@ export type LivingBudget = {
    * Hem shows the absolute value under "Över" when negative.
    */
   remainingTodayMinor: number;
+  /**
+   * Morning cash pool divided into dagsbudget (saldo − reserved + spent today).
+   * This is what Hem means by «att leva på».
+   */
+  livingPoolMinor: number;
+  /** Remaining planned expenses + savings reserved from saldo until next income. */
+  reservedUntilIncomeMinor: number;
   nextIncomeAt: string | null;
   nextIncomeLabelSv: string | null;
   cycleEndLabelSv: string | null;
@@ -55,6 +68,58 @@ export function remainingTodayOf(
   spentTodayMinor: number,
 ): number {
   return dayBudgetMinor - Math.max(0, spentTodayMinor);
+}
+
+/**
+ * Remaining planned bills + savings that still sit in saldo until the next
+ * paycheck. Items due on/after the horizon are paid from that income.
+ */
+export function remainingReservedUntilHorizon(
+  cycle: PayCycleProjection,
+  horizonIso: string | null,
+): number {
+  const horizonMs = horizonIso ? Date.parse(horizonIso) : Number.POSITIVE_INFINITY;
+  let reserved = 0;
+  for (const { item, dueAt } of cycle.expenses) {
+    const due = Date.parse(dueAt);
+    if (!Number.isFinite(due)) continue;
+    if (Number.isFinite(horizonMs) && due >= horizonMs) continue;
+    reserved += remainingOpenMinor(item);
+  }
+  if (cycle.remainingSavingsMinor > 0) {
+    const due = cycle.savingsDueAt ? Date.parse(cycle.savingsDueAt) : NaN;
+    if (!horizonIso || !Number.isFinite(due) || due < horizonMs) {
+      reserved += cycle.remainingSavingsMinor;
+    }
+  }
+  return reserved;
+}
+
+function untilLonnSv(days: number, label: string | null): string {
+  const n = Math.max(0, Math.floor(days));
+  if (n <= 0) {
+    return label ? `lön ${label} idag` : "nästa inkomst idag";
+  }
+  const count = formatCountSv(n, "dag", "dagar");
+  return label ? `${count} till lön ${label}` : `${count} till nästa inkomst`;
+}
+
+/** One Swedish line: pool + days until paycheck. Readable in under 5s. */
+export function livingBudgetHintSv(input: {
+  poolMinor: number;
+  reservedMinor: number;
+  daysUntilHorizon: number;
+  nextIncomeLabelSv: string | null;
+  currency?: CurrencyCode;
+}): string {
+  const amount = formatMoneyCompact(
+    money(Math.max(0, input.poolMinor), input.currency ?? "THB"),
+  );
+  const until = untilLonnSv(input.daysUntilHorizon, input.nextIncomeLabelSv);
+  if (input.reservedMinor > 0) {
+    return `Saldo minus planerat ${amount} · ${until}`;
+  }
+  return `${amount} att leva på · ${until}`;
 }
 
 function bridgeHorizonIso(
@@ -97,7 +162,14 @@ function projectBridge(input: {
 }): LivingBudget {
   const { cycle, now, timeZone, bankBalanceMinor, spentToday } = input;
   const hasBalance = bankBalanceMinor != null;
-  const availableMinor = hasBalance ? Math.max(0, bankBalanceMinor) : 0;
+  const reservedUntilIncomeMinor = remainingReservedUntilHorizon(
+    cycle,
+    input.nextIncomeAt,
+  );
+  const liveOn = hasBalance
+    ? bankBalanceMinor - reservedUntilIncomeMinor
+    : 0;
+  const availableMinor = hasBalance ? liveOn : 0;
   const morningAvailable = hasBalance
     ? Math.max(0, availableMinor + spentToday)
     : 0;
@@ -119,6 +191,8 @@ function projectBridge(input: {
     daysUntilHorizon,
     dayBudgetMinor,
     remainingTodayMinor: remainingToday,
+    livingPoolMinor: morningAvailable,
+    reservedUntilIncomeMinor,
     nextIncomeAt: input.nextIncomeAt,
     nextIncomeLabelSv: input.nextIncomeLabelSv,
     cycleEndLabelSv: cycle.endLabelSv,
@@ -225,6 +299,8 @@ export function projectLivingBudget(input: {
       daysUntilHorizon: 0,
       dayBudgetMinor: 0,
       remainingTodayMinor: 0,
+      livingPoolMinor: 0,
+      reservedUntilIncomeMinor: 0,
       nextIncomeAt: null,
       nextIncomeLabelSv: null,
       cycleEndLabelSv: null,
@@ -259,26 +335,35 @@ export function projectLivingBudget(input: {
 
   const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
-  const poolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
   const horizon = paycheckHorizonIso(cycle);
+  const reservedUntilIncomeMinor = remainingReservedUntilHorizon(cycle, horizon);
+  const hasBalance = bankBalanceMinor != null;
+  const poolAtMorning = hasBalance
+    ? bankBalanceMinor - reservedUntilIncomeMinor + spentToday
+    : cycle.freeToSpendMinor - spentBeforeToday;
+  const availableMinor = hasBalance
+    ? bankBalanceMinor - reservedUntilIncomeMinor
+    : remainingFree;
   const calendarDays = horizon
     ? calendarDaysBetween(now, horizon, timeZone)
     : 0;
   const daysUntilHorizon = Math.max(0, calendarDays);
   const daysLeft = Math.max(1, calendarDays);
-  const dayBudgetMinor = perDayBudgetMinor(poolAtMorning, daysLeft);
+  const dayBudgetMinor = perDayBudgetMinor(Math.max(0, poolAtMorning), daysLeft);
   const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
 
   return {
     mode: "cycle",
     needsAvailableInput: false,
-    usesBankBalance: false,
-    availableMinor: remainingFree,
+    usesBankBalance: hasBalance,
+    availableMinor,
     remainingFreeMinor: remainingFree,
     daysLeft,
     daysUntilHorizon,
     dayBudgetMinor,
     remainingTodayMinor: remainingToday,
+    livingPoolMinor: Math.max(0, poolAtMorning),
+    reservedUntilIncomeMinor,
     nextIncomeAt: horizon,
     nextIncomeLabelSv: paycheckHorizonLabelSv(cycle, horizon),
     cycleEndLabelSv: cycle.endLabelSv,

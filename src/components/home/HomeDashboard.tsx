@@ -13,7 +13,7 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
-import { formatDaysUntilSv } from "@/domain/finance";
+import { formatDaysUntilSv, livingBudgetHintSv } from "@/domain/finance";
 import {
   formatMoney,
   formatMoneyCompact,
@@ -303,9 +303,16 @@ export function HomeDashboard({
                         />
                       </div>
                       <p className="numa-metric-hint">
-                        {view.nextIncomeLabelSv
-                          ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
-                          : "Sätts på morgonen"}
+                        {livingBudgetHintSv({
+                          poolMinor:
+                            view.livingPoolMinor ??
+                            view.calculatedBalanceMinor ??
+                            0,
+                          reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+                          daysUntilHorizon: view.daysUntilIncome,
+                          nextIncomeLabelSv: view.nextIncomeLabelSv,
+                          currency,
+                        })}
                       </p>
                     </div>
                     <div className="is-spent">
