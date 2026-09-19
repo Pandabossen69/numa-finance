@@ -283,7 +283,7 @@ export function MovementsScreen({
                     className={`numa-press w-full min-h-11 min-w-0 rounded-2xl px-2.5 py-2 text-left ${
                       selected
                         ? "is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]"
-                        : "ring-1 ring-transparent hover:bg-[var(--numa-bg)]/55 hover:ring-[var(--numa-border-strong)]"
+                        : "ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-bg)]/55"
                     }`}
                   >
                     <div className="numa-money-line mb-1.5 text-sm">
