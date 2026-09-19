@@ -11,6 +11,7 @@ describe("PlanMonthNav", () => {
     expect(src).toContain("numa-month-nav-title");
     expect(src).toContain("numa-month-nav-month");
     expect(src).toContain("numa-month-nav-year-text");
+    expect(src).toContain("numa-month-nav-sep");
     expect(src).toContain("Välj månad");
     expect(src).toContain("Denna månad");
     expect(src).toContain("Visar");

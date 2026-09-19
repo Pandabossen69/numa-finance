@@ -105,6 +105,9 @@ export function PlanMonthNav({
           </span>
           <span className="numa-month-nav-title">
             <span className="numa-month-nav-month">{labelMonthNameSv(monthKey)}</span>
+            <span className="numa-month-nav-sep" aria-hidden>
+              ·
+            </span>
             <span className="numa-month-nav-year-text">{yearFromMonthKey(monthKey)}</span>
             <i
               className={open ? "numa-month-nav-caret is-open" : "numa-month-nav-caret"}
