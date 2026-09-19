@@ -6,27 +6,22 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  useTransition,
 } from "react";
+import { flushSync } from "react-dom";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
   addMonthsKey,
   dayOfMonthFromIso,
   dueDateInMonth,
-  importableFixedExpenses,
   formatListDateSv,
   isoToDateInput,
   labelMonthNameSv,
   monthKeyFromDate,
-  explicitlyLinkedPlanItemIds,
-  suggestPlanLinks,
   applyPlanItemEdits,
   previewPlanSettleEffect,
   planAmountBelowSettledError,
   resolveAdditionalSettlement,
-  projectCashCoverage,
   projectExtraSaldoSeries,
-  projectPlanForMonth,
   savingsByMonthKeys,
   remainingDueIso,
   settledAmountMinor,
@@ -53,6 +48,17 @@ import {
 } from "@/features/home/last-snapshot";
 import { newClientMutationId, thbToNativeMinor } from "@/domain/finance";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
+import {
+  ensurePlanMonthPaint,
+  ensurePlanMonthSuggestions,
+  planMonthPaintStamp,
+  planMonthSuggestionEpoch,
+  readPlanMonthSuggestions,
+  scheduleEnsurePlanMonthSuggestions,
+  schedulePrefetchAdjacentPlanMonths,
+  softSwitchPlanMonth,
+  subscribePlanMonthSuggestions,
+} from "@/features/plan/plan-month-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
   adoptServerPlanItems,
@@ -184,7 +190,6 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
-  const [, startMonthTransition] = useTransition();
   const viewItems = busy ? localItems : adoptServerPlanItems(localItems, items);
   const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
@@ -276,60 +281,35 @@ export function PlanEditor({
 
   const isPastMonth = monthKey < currentMonthKey;
   const previousMonthKey = addMonthsKey(monthKey, -1);
-  const importableFixed = useMemo(
-    () =>
-      importableFixedExpenses({
-        items: viewItems,
-        fromMonthKey: previousMonthKey,
-        toMonthKey: monthKey,
-        timeZone,
-      }),
-    [viewItems, previousMonthKey, monthKey, timeZone],
+  const monthPaintInput = {
+    items: viewItems,
+    ledgerTransactions,
+    monthKey,
+    timeZone,
+    saldoMinor: coverageSaldoMinor,
+  };
+  const monthPaintStamp = planMonthPaintStamp(monthPaintInput);
+  const monthPaint = ensurePlanMonthPaint(monthPaintInput, monthPaintStamp);
+  const { projection, coverage, importableFixed, linkedPlanIds } = monthPaint;
+  const suggestionEpoch = useSyncExternalStore(
+    subscribePlanMonthSuggestions,
+    planMonthSuggestionEpoch,
+    planMonthSuggestionEpoch,
   );
+  void suggestionEpoch;
+  const linkSuggestions =
+    readPlanMonthSuggestions(monthKey, monthPaintStamp) ?? [];
   const canImportFixed = !isPastMonth && importableFixed.length > 0;
-
-  const projection = useMemo(
-    () => projectPlanForMonth(viewItems, monthKey, timeZone),
-    [viewItems, monthKey, timeZone],
-  );
-
-  const coverage = useMemo(
-    () =>
-      projectCashCoverage({
-        planItems: viewItems,
-        transactions: ledgerTransactions,
-        monthKey,
-        timeZone,
-        saldoMinor: coverageSaldoMinor,
-      }),
-    [viewItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
-  );
-  // Money only: keeps the card Summa in step with Hem's Kvar att betala so
-  // cash already in the ledger is not counted twice. Never passed to the
-  // rows — a match must not paint a chip or move a row.
-  const linkedPlanIds = useMemo(
-    () => explicitlyLinkedPlanItemIds(ledgerTransactions),
-    [ledgerTransactions],
-  );
-  const linkSuggestions = useMemo(
-    () => [
-      ...suggestPlanLinks({
-        items: projection.incomes,
-        transactions: ledgerTransactions,
-        kind: "income",
-        monthKey,
-        timeZone,
-      }),
-      ...suggestPlanLinks({
-        items: projection.items,
-        transactions: ledgerTransactions,
-        kind: "expense",
-        monthKey,
-        timeZone,
-      }),
-    ],
-    [projection.incomes, projection.items, ledgerTransactions, monthKey, timeZone],
-  );
+  useEffect(() => {
+    schedulePrefetchAdjacentPlanMonths(monthPaintInput, monthPaintStamp);
+    scheduleEnsurePlanMonthSuggestions(
+      monthPaintInput,
+      monthPaintStamp,
+      projection,
+    );
+    // Adjacent months share this stamp — rebuild only when money inputs change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthPaintStamp, monthKey]);
   const savingsTotalMinor = coverage.reservedSavingsMinor;
   const monthName = labelMonthNameSv(monthKey);
   const priorMonthName = labelMonthNameSv(addMonthsKey(monthKey, -1));
@@ -409,13 +389,26 @@ export function PlanEditor({
   }
 
   function selectMonth(key: string) {
-    startMonthTransition(() => {
+    if (key === monthKey) return;
+    // Urgent — startTransition sat behind in-flight server actions (quiet
+    // menu warm) and left Plan on the old month for seconds.
+    const nextInput = { ...monthPaintInput, monthKey: key };
+    softSwitchPlanMonth(nextInput, monthPaintStamp);
+    flushSync(() => {
       setMonthKey(key);
       setViewYear(yearFromMonthKey(key));
       setEditingId(null);
       setPartialId(null);
       setAddKind(null);
     });
+    schedulePrefetchAdjacentPlanMonths(nextInput, monthPaintStamp);
+  }
+
+  function prefetchMonth(key: string) {
+    if (key === monthKey) return;
+    const next = { ...monthPaintInput, monthKey: key };
+    const paint = ensurePlanMonthPaint(next, monthPaintStamp);
+    ensurePlanMonthSuggestions(next, monthPaintStamp, paint.projection);
   }
 
   async function runMutation(opts: {
@@ -740,13 +733,18 @@ export function PlanEditor({
   }
 
   return (
-    <div className="space-y-8">
+    <div
+      className="space-y-8"
+      data-plan-month-key={monthKey}
+      data-plan-month-ready="1"
+    >
       <section className="animate-rise-delay-1 space-y-4">
         <PlanMonthNav
           monthKey={monthKey}
           viewYear={viewYear}
           currentMonthKey={currentMonthKey}
           onSelectMonth={selectMonth}
+          onPrefetchMonth={prefetchMonth}
           dotsFor={(key) => ({
             living: (extraByMonth[key] ?? 0) > 0,
             save: (savingsByMonth[key] ?? 0) > 0,

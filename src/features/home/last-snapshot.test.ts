@@ -907,6 +907,77 @@ describe("last view memory", () => {
     rememberHomeSnapshot(staleCashPool);
     expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
     expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+
+    // Spec P keep-shell: Plan sync can raise cycle spend and recompute
+    // leftover as 1 650,75 / 5 days = 330,15. Same avsätt must not win.
+    const staleFiveDay = homeSnap({
+      remainingTodayMinor: 330_15,
+      dayBudgetMinor: 330_15,
+      safeToSpendTodayMinor: 330_15,
+      livingPoolMinor: 1_650_75,
+      planMonthSavingsMinor: 15_000_00,
+      savingsTotalMinor: 15_000_00,
+      cycleSpendingMinor: (restored.cycleSpendingMinor ?? 0) + 105_00,
+      financeRevision: "rev-plan-local",
+      verifiedAt: "2026-09-19T20:50:00.000Z",
+    });
+    expect(isLeftoverSparLivingRevert(restored, staleFiveDay)).toBe(true);
+    rememberHomeSnapshot(staleFiveDay);
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+  });
+
+  it("force-adopt of server 5-day leftover 330,15 overlays post-write 275,12", () => {
+    rememberHomeSnapshot(
+      homeSnap({
+        remainingTodayMinor: 275_12,
+        dayBudgetMinor: 275_12,
+        safeToSpendTodayMinor: 275_12,
+        livingPoolMinor: 1_650_75,
+        remainingFreeMinor: 1_650_75,
+        spendDaysLeft: 6,
+        planMonthSavingsMinor: 15_000_00,
+        savingsTotalMinor: 15_000_00,
+        financeRevision: "rev-15k",
+        verifiedAt: "2026-09-19T08:00:00.000Z",
+      }),
+    );
+    rememberHomeSnapshot(
+      homeSnap({
+        remainingTodayMinor: 0,
+        dayBudgetMinor: 0,
+        safeToSpendTodayMinor: 0,
+        livingPoolMinor: 0,
+        remainingFreeMinor: -3_349_25,
+        spendDaysLeft: 6,
+        planMonthSavingsMinor: 20_000_00,
+        savingsTotalMinor: 20_000_00,
+        financeRevision: "rev-20k",
+        verifiedAt: "2026-09-19T08:02:00.000Z",
+      }),
+      { force: true },
+    );
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(0);
+
+    rememberHomeSnapshot(
+      homeSnap({
+        remainingTodayMinor: 330_15,
+        dayBudgetMinor: 330_15,
+        safeToSpendTodayMinor: 330_15,
+        livingPoolMinor: 1_650_75,
+        remainingFreeMinor: 1_650_75,
+        spendDaysLeft: 5,
+        planMonthSavingsMinor: 15_000_00,
+        savingsTotalMinor: 15_000_00,
+        financeRevision: "rev-15k-restore",
+        verifiedAt: "2026-09-19T20:30:00.000Z",
+      }),
+      { force: true },
+    );
+    expect(lastSessionHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
+    expect(lastSessionHomeSnapshot()?.spendDaysLeft).toBe(6);
+    expect(lastSessionHomeSnapshot()?.planMonthSavingsMinor).toBe(15_000_00);
   });
 
   it("does not treat additive Plan warmup spend as a leftover savings revert", () => {

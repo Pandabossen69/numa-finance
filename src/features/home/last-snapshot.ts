@@ -86,6 +86,86 @@ export type SettingsSnapshot = {
   isAdmin: boolean;
 };
 
+type LeftoverLivingBaseline = {
+  saveMinor: number;
+  monthKey: string;
+  dayBudgetMinor: number;
+  remainingTodayMinor: number;
+  livingPoolMinor: number;
+  remainingFreeMinor: number;
+  spendDaysLeft: number;
+  todaySpendingMinor: number;
+};
+
+let leftoverLivingBaseline: LeftoverLivingBaseline | null = null;
+
+function leftoverSaveOf(snap: HomeSnapshot): number {
+  return snap.planMonthSavingsMinor ?? 0;
+}
+
+function leftoverIncomingShape(snap: HomeSnapshot): boolean {
+  const spent = Math.max(0, snap.todaySpendingMinor ?? 0);
+  return (
+    snap.remainingTodayMinor === snap.dayBudgetMinor ||
+    snap.remainingTodayMinor === snap.dayBudgetMinor - spent
+  );
+}
+
+/** Stash Spec O2 post-write leftover living (275,12 at 15k). Never clobber with a daysLeft recompute (330,15). */
+function maybeRememberLeftoverLivingBaseline(snap: HomeSnapshot) {
+  const save = leftoverSaveOf(snap);
+  if (save <= 0 || snap.dayBudgetMinor <= 0) return;
+  if (
+    leftoverLivingBaseline &&
+    leftoverLivingBaseline.saveMinor === save &&
+    leftoverLivingBaseline.monthKey === snap.monthKey &&
+    snap.dayBudgetMinor > leftoverLivingBaseline.dayBudgetMinor
+  ) {
+    return;
+  }
+  leftoverLivingBaseline = {
+    saveMinor: save,
+    monthKey: snap.monthKey,
+    dayBudgetMinor: snap.dayBudgetMinor,
+    remainingTodayMinor: snap.remainingTodayMinor,
+    livingPoolMinor: snap.livingPoolMinor,
+    remainingFreeMinor: snap.remainingFreeMinor,
+    spendDaysLeft: snap.spendDaysLeft,
+    todaySpendingMinor: snap.todaySpendingMinor ?? 0,
+  };
+}
+
+/**
+ * Server restore at 15k uses projectLivingBudget(now) — Bangkok Sep 20 is
+ * 1 650,75 / 5 = 330,15. Spec O2 keeps the post-write leftover (275,12).
+ */
+function applyLeftoverLivingBaseline(incoming: HomeSnapshot): HomeSnapshot {
+  if (incoming.planMonthSavingsMinor === 0) {
+    leftoverLivingBaseline = null;
+    return incoming;
+  }
+  const baseline = leftoverLivingBaseline;
+  if (!baseline) return incoming;
+  const incomingSave = leftoverSaveOf(incoming);
+  if (incomingSave <= 0 || incomingSave > baseline.saveMinor) return incoming;
+  if (incoming.monthKey && incoming.monthKey !== baseline.monthKey) {
+    return incoming;
+  }
+  if (incoming.dayBudgetMinor <= baseline.dayBudgetMinor) return incoming;
+  if (incoming.livingPoolMinor !== baseline.livingPoolMinor) return incoming;
+  if (!leftoverIncomingShape(incoming)) return incoming;
+  return {
+    ...incoming,
+    dayBudgetMinor: baseline.dayBudgetMinor,
+    remainingTodayMinor: baseline.remainingTodayMinor,
+    safeToSpendTodayMinor: baseline.remainingTodayMinor,
+    livingPoolMinor: baseline.livingPoolMinor,
+    remainingFreeMinor: baseline.remainingFreeMinor,
+    spendDaysLeft: baseline.spendDaysLeft,
+    daysUntilIncome: baseline.spendDaysLeft,
+  };
+}
+
 let sessionOwnerId: string | null = null;
 let home: HomeSnapshot | null = null;
 /** True only after a live remember this JS lifetime — not hydrate/cookie. */
@@ -167,12 +247,14 @@ export function hydrateLastKnownFromPersist() {
     planView = data.planView;
     analysScope = data.analysScope;
     movementsView = data.movementsView;
+    if (home) maybeRememberLeftoverLivingBaseline(home);
     persistPaused = false;
     return;
   }
   if (cookieHome) {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
+    maybeRememberLeftoverLivingBaseline(cookieHome);
   }
   persistPaused = false;
 }
@@ -215,6 +297,7 @@ export function subscribeAccountsSnapshot(listener: () => void) {
 }
 
 function wipeSessionCaches() {
+  leftoverLivingBaseline = null;
   home = null;
   homeSessionConfirmed = false;
   homeDirty = false;
@@ -341,18 +424,35 @@ export function isLeftoverSparLivingRevert(
   incoming: HomeSnapshot,
 ): boolean {
   const adoptedMonthSave = current.planMonthSavingsMinor ?? 0;
-  if (adoptedMonthSave <= 0) return false;
-  if (incoming.cycleSpendingMinor > current.cycleSpendingMinor) return false;
+  const baselineSave = leftoverLivingBaseline?.saveMinor ?? 0;
+  if (adoptedMonthSave <= 0 && baselineSave <= 0) return false;
   const currentSave =
     current.planMonthSavingsMinor ?? current.savingsTotalMinor;
   const incomingSave =
     incoming.planMonthSavingsMinor ?? incoming.savingsTotalMinor;
   const leftoverShape =
-    current.remainingTodayMinor === current.dayBudgetMinor &&
-    incoming.remainingTodayMinor === incoming.dayBudgetMinor;
+    leftoverIncomingShape(current) && leftoverIncomingShape(incoming);
+  const sameLeftoverPool =
+    current.livingPoolMinor > 0 &&
+    incoming.livingPoolMinor === current.livingPoolMinor;
   const livingRegress = current.dayBudgetMinor < incoming.dayBudgetMinor;
-  if (!leftoverShape || !livingRegress) return false;
-  if (currentSave === incomingSave) return true;
+  if (!livingRegress) return false;
+  if (!leftoverShape && !sameLeftoverPool) {
+    // Force-adopt already wrote 330,15 — still block vs post-write baseline.
+    return (
+      leftoverLivingBaseline != null &&
+      incoming.livingPoolMinor === leftoverLivingBaseline.livingPoolMinor &&
+      incoming.dayBudgetMinor > leftoverLivingBaseline.dayBudgetMinor &&
+      incomingSave > 0 &&
+      incomingSave <= leftoverLivingBaseline.saveMinor
+    );
+  }
+  // Restore 20k→15k leftover (275,12) must not jump to a 5-day recompute
+  // (330,15) on Plan keep-shell sync — even if cycle spend rose. Additive
+  // SEK warmup has planMonthSavingsMinor 0 and already returned above.
+  const cap = Math.max(currentSave, baselineSave);
+  if (incomingSave > 0 && incomingSave <= cap) return true;
+  if (incoming.cycleSpendingMinor > current.cycleSpendingMinor) return false;
   return incomingSave < currentSave;
 }
 
@@ -363,8 +463,11 @@ export function rememberHomeSnapshot(
   bindSessionOwner(snap.userId);
   const nextDirty = opts?.dirty ?? false;
   const confirmSession = opts?.confirmSession !== false;
+  // Overlay before force: adoptMutationFinance({force:true}) is the live
+  // write that published 330,15 after restore (server 5-day leftover).
+  const incoming = applyLeftoverLivingBaseline(snap);
   if (
-    home === snap &&
+    home === incoming &&
     homeDirty === nextDirty &&
     (!confirmSession || homeSessionConfirmed)
   ) {
@@ -374,28 +477,29 @@ export function rememberHomeSnapshot(
     !nextDirty &&
     !opts?.force &&
     home &&
-    (!shouldAdoptFinanceSnapshot(home, snap, homeDirty) ||
-      isLeftoverSparLivingRevert(home, snap))
+    (!shouldAdoptFinanceSnapshot(home, incoming, homeDirty) ||
+      isLeftoverSparLivingRevert(home, incoming))
   ) {
     return;
   }
   home = nextDirty
     ? {
-        ...snap,
+        ...incoming,
         verifiedAt: new Date().toISOString(),
         // Dirty only blocks a stale RSC echo. A successful local
         // calculation (optimistic SEK/THB spend) stays verified so Hem
         // does not flash "Vi kan inte räkna just nu." after a durable save.
         truthStatus:
-          snap.truthStatus === "unavailable"
+          incoming.truthStatus === "unavailable"
             ? "unavailable"
-            : snap.truthStatus === "verified"
+            : incoming.truthStatus === "verified"
               ? "verified"
               : "stale",
       }
-    : snap;
+    : incoming;
   homeDirty = nextDirty;
   if (confirmSession) homeSessionConfirmed = true;
+  maybeRememberLeftoverLivingBaseline(home);
   // Sync cookie write — do not wait on persist microtask. Warm hard-refresh
   // SSR needs numa.lastHome.v1 present after authenticated Hem has totals.
   writeLastHomeCookie(home);
@@ -607,10 +711,20 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       0;
   const leftoverPath = cashPool <= 0 || homeLooksLeftover;
   const staleLowerSave = leftoverPath && nextSave < prevSave;
+  // After setMonthSavings decrease, keep the adopted leftover living on
+  // Hem↔Plan soft remount even if cashPool flipped (daysLeft 6→5 = 330,15).
+  // Do not require remaining===dayBudget — today-spend leftover still keeps
+  // post-write 275,12 vs a 5-day recompute.
+  const restoreKeepAdopted =
+    prevSave > 0 &&
+    nextSave > 0 &&
+    nextSave <= prevSave &&
+    home.dayBudgetMinor !== living.dayBudgetMinor;
   const keepAdoptedLiving =
-    leftoverPath &&
-    home.dayBudgetMinor !== living.dayBudgetMinor &&
-    (prevSave === nextSave || staleLowerSave);
+    restoreKeepAdopted ||
+    (leftoverPath &&
+      home.dayBudgetMinor !== living.dayBudgetMinor &&
+      (prevSave === nextSave || staleLowerSave));
   const incrementBase = homeLooksLeftover
     ? {
         livingPoolMinor: home.livingPoolMinor,
