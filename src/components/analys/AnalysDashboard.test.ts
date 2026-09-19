@@ -121,7 +121,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
     expect(src).toContain("DestinationWarmup");
-    expect(src).toContain("markIntent(\"/transaktioner\")");
+    expect(src).toContain('markIntent("/transaktioner")');
     expect(src).toContain("prefetch={false}");
     expect(src).not.toMatch(/href="\/plan"[\s\S]{0,120}prefetch\n/);
   });
@@ -145,9 +145,7 @@ describe("Analys month result color", () => {
     expect(loader).toContain("projectLedgerToCanonicalThb(");
     expect(loader).toContain("fxMapFromTodaySnap");
     expect(movements).toContain("projectLedgerToCanonicalThb(");
-    expect(loader).toMatch(
-      /const ledgerTransactions = projectLedgerToCanonicalThb\(/,
-    );
+    expect(loader).toMatch(/const ledgerTransactions = projectLedgerToCanonicalThb\(/);
     expect(src).toContain("currency={tx.currency}");
     expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
     expect(src).toContain("addMonthsKey(activeMonthKey, -1)");
@@ -186,7 +184,9 @@ describe("Analys month result color", () => {
 
   it("keeps bridge kvar from repeating På kontona as a second hero", () => {
     expect(src).toContain("isBridge && !hasSaldo");
-    expect(src).toContain('label={isBridge ? "Kvar tills nästa intäkt" : SV.kvarIPerioden}');
+    expect(src).toContain(
+      'label={isBridge ? "Kvar tills nästa intäkt" : SV.kvarIPerioden}',
+    );
     expect(src).not.toContain("amountMinor={view.calculatedBalanceMinor");
     expect(src).not.toContain("label={SV.paKontot}");
     expect(src).not.toContain('label="Kommande intäkter"');
@@ -238,7 +238,9 @@ describe("Analys month result color", () => {
     );
     expect(src).toContain("PlanMonthNav");
     expect(src).toContain('idPrefix="analys"');
-    expect(src).toContain("useSyncExternalStore(\n    subscribePlanView,");
+    expect(src).toContain(
+      "useSyncExternalStore(subscribePlanView, lastPlanView, () => null)",
+    );
     expect(src).toContain("sharedMonth?.monthKey");
     expect(src).toContain("rememberPlanView({ monthKey: key");
     expect(src).not.toContain("setMonthKey");

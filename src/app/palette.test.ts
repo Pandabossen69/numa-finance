@@ -85,9 +85,16 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-dial-mint-from")).toBe("#6fa9bc");
     expect(token("--numa-dial-halo")).toBe("rgba(110, 168, 184, 0.12)");
     expect(css).toContain("Quiet card wash — no bright cyan bloom behind the dial.");
-    expect(css).toContain(
-      "Soft steel-ink, not neon cyan competing with the amount.",
-    );
+    expect(css).toContain("Soft steel-ink, not neon cyan competing with the amount.");
+  });
+
+  it("gives Plan a single month+year control whose title stays readable at ~390", () => {
+    expect(css).toContain(".numa-month-nav {");
+    expect(css).toContain(".numa-month-nav-title {");
+    expect(css).toContain("clamp(1.22rem, 5.6vw, 1.5rem)");
+    expect(css).toContain(".numa-month-nav-picker {");
+    expect(css).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
+    expect(css).toContain(".numa-month-nav-cell.is-active");
   });
 
   it("reserves Plan month-strip ‹/› slots and snaps chips (no mid-glyph overlays)", () => {
@@ -105,14 +112,10 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-month-strip:has(.numa-category-chip)");
     expect(css).toContain("visibility: hidden");
     expect(css).not.toContain(".numa-month-strip-chevron");
-    expect(css).not.toMatch(
-      /\.numa-month-strip-wrap\.is-overflow-start::before/,
-    );
+    expect(css).not.toMatch(/\.numa-month-strip-wrap\.is-overflow-start::before/);
     expect(css).not.toMatch(/\.numa-month-strip\.is-overflow-end\s*\{[^}]*mask-image/);
     // Disabled slots keep an opaque plate — must not fade the whole slot.
-    const disabledSlot = css.match(
-      /\.numa-month-strip-slot:disabled\s*\{[^}]+\}/,
-    )?.[0];
+    const disabledSlot = css.match(/\.numa-month-strip-slot:disabled\s*\{[^}]+\}/)?.[0];
     expect(disabledSlot).toBeTruthy();
     expect(disabledSlot).toContain("color: transparent");
     expect(disabledSlot).not.toMatch(/opacity:\s*0/);
@@ -320,10 +323,7 @@ describe("NUMA vision palette", () => {
     expect(wealth).toContain(".numa-wealth-op");
     expect(wealth).toContain("display: none");
 
-    const tap = css.slice(
-      css.indexOf(".numa-tap {"),
-      css.indexOf(".auth-card {"),
-    );
+    const tap = css.slice(css.indexOf(".numa-tap {"), css.indexOf(".auth-card {"));
     expect(tap).toContain("min-height: 2.75rem");
     expect(tap).toContain(".numa-tap-icon");
   });

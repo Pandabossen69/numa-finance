@@ -176,9 +176,7 @@ export function PlanEditor({
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
-  const viewItems = busy
-    ? localItems
-    : adoptServerPlanItems(localItems, items);
+  const viewItems = busy ? localItems : adoptServerPlanItems(localItems, items);
   const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
   const writeLockRef = useRef(false);
@@ -228,10 +226,9 @@ export function PlanEditor({
     // After settle the store already has the canonical ledger + saldo.
     // Re-publishing the first-paint props would drop ledgerOrigin and
     // treat Hyra as Spenderat idag.
-    const liveLedger =
-      previous?.ledgerTransactions?.length
-        ? previous.ledgerTransactions
-        : ledgerTransactions;
+    const liveLedger = previous?.ledgerTransactions?.length
+      ? previous.ledgerTransactions
+      : ledgerTransactions;
     if (
       previous &&
       stampPlanItems(previous.items) === stampPlanItems(next) &&
@@ -370,22 +367,9 @@ export function PlanEditor({
     setExpenseDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-01`));
   }
 
-
   function selectMonth(key: string) {
     setMonthKey(key);
     setViewYear(yearFromMonthKey(key));
-    setEditingId(null);
-    setPartialId(null);
-    setAddKind(null);
-  }
-
-  function shiftYear(delta: number) {
-    const nextYear = viewYear + delta;
-    const keys = visibleMonthKeysForYear(nextYear);
-    const preferred = `${nextYear}-${monthKey.slice(5)}`;
-    const nextKey = keys.includes(preferred) ? preferred : keys[0]!;
-    setViewYear(nextYear);
-    setMonthKey(nextKey);
     setEditingId(null);
     setPartialId(null);
     setAddKind(null);
@@ -720,7 +704,6 @@ export function PlanEditor({
           viewYear={viewYear}
           currentMonthKey={currentMonthKey}
           onSelectMonth={selectMonth}
-          onShiftYear={shiftYear}
           dotsFor={(key) => ({
             living: (extraByMonth[key] ?? 0) > 0,
             save: (savingsByMonth[key] ?? 0) > 0,
@@ -773,9 +756,7 @@ export function PlanEditor({
               reconcile: (rows, result) => {
                 adoptMutationFinance(result);
                 if (result.plan) return result.plan.items;
-                return result.item
-                  ? mergeReturnedItem(rows, result.item, tempId)
-                  : rows;
+                return result.item ? mergeReturnedItem(rows, result.item, tempId) : rows;
               },
             });
           }}
@@ -817,8 +798,8 @@ export function PlanEditor({
         <section className="space-y-2" aria-label="Förslag att koppla">
           <p className="px-1 text-sm font-semibold tracking-tight">Förslag</p>
           <p className="px-1 text-xs leading-snug text-[var(--numa-faint)]">
-            Liknande belopp nära datumet. Koppla bara om det är rätt räkning —
-            NUMA gissar inte åt dig.
+            Liknande belopp nära datumet. Koppla bara om det är rätt räkning — NUMA gissar
+            inte åt dig.
           </p>
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {linkSuggestions.map((suggestion) => {

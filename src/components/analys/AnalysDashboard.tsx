@@ -4,10 +4,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
-import {
-  DestinationWarmup,
-  usePrefetchOnIntent,
-} from "@/lib/nav/prefetch-intent";
+import { DestinationWarmup, usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { FormulaInfo } from "@/components/analys/FormulaInfo";
 import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
 import { buildAnalysMonth } from "@/features/finance/analys-month";
@@ -19,7 +16,6 @@ import {
   labelMonthSv,
   spendingCategoriesInWindow,
   sumSpendingCategories,
-  visibleMonthKeysForYear,
   yearFromMonthKey,
   type SpendingCategoryTotal,
 } from "@/domain/finance";
@@ -55,16 +51,10 @@ export function AnalysDashboard({
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
-  const [scope, setScope] = useState<AnalysScope>(
-    () => lastAnalysScope() ?? "period",
-  );
+  const [scope, setScope] = useState<AnalysScope>(() => lastAnalysScope() ?? "period");
   // Share the month with Plan. Subscribed, not read once at mount, because
   // tabs stay mounted between visits.
-  const sharedMonth = useSyncExternalStore(
-    subscribePlanView,
-    lastPlanView,
-    () => null,
-  );
+  const sharedMonth = useSyncExternalStore(subscribePlanView, lastPlanView, () => null);
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
   const view = data ?? lastAnalysSnapshot();
@@ -97,11 +87,7 @@ export function AnalysDashboard({
           monthKeyFromDate(new Date(tx.occurredAt), view.timeZone) === activeMonthKey
         );
       }
-      return isInPayCycleWindow(
-        tx.occurredAt,
-        view.cycle.startAt,
-        view.cycle.endAt,
-      );
+      return isInPayCycleWindow(tx.occurredAt, view.cycle.startAt, view.cycle.endAt);
     });
     return [...inScope]
       .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
@@ -148,14 +134,6 @@ export function AnalysDashboard({
       ? `Inga rörelser i ${labelMonthSv(activeMonthKey)}`
       : "Inga rörelser i perioden";
 
-  const monthSuffix = activeMonthKey.slice(5);
-
-  function shiftYear(delta: number) {
-    const nextYear = viewYear + delta;
-    const keys = visibleMonthKeysForYear(nextYear);
-    const preferred = `${nextYear}-${monthSuffix}`;
-    selectMonth(keys.includes(preferred) ? preferred : keys[0]!);
-  }
   const isBridge = cycle.livingMode === "bridge";
   const isEmpty = cycle.livingMode === "empty";
   const hasSaldo = view.hasBankTruth && view.calculatedBalanceMinor != null;
@@ -169,8 +147,7 @@ export function AnalysDashboard({
     (isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
       ? `${SV.tillNastaInkomst} · ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
       : "Ingen period ännu");
-  const spentLabel =
-    scope === "month" ? SV.spenderatIManaden : SV.spenderatIPerioden;
+  const spentLabel = scope === "month" ? SV.spenderatIManaden : SV.spenderatIPerioden;
   const spentMeta =
     spendComparison == null
       ? null
@@ -199,7 +176,7 @@ export function AnalysDashboard({
   const periodKvarMinor = isBridge && !hasSaldo ? 0 : cycle.remainingFreeMinor;
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6 pb-10">
+    <div className="numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10">
       <DestinationWarmup hrefs={["/transaktioner", "/plan"]} />
       <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -231,7 +208,9 @@ export function AnalysDashboard({
       {scope === "period" ? (
         <div key="period" className="numa-scope-panel space-y-6">
           <SpendHero
-            eyebrow={isBridge ? SV.tillNastaInkomst : isEmpty ? "Ingen period" : SV.perioden}
+            eyebrow={
+              isBridge ? SV.tillNastaInkomst : isEmpty ? "Ingen period" : SV.perioden
+            }
             title={cycleTitle}
             spentLabel={spentLabel}
             spentMinor={isEmpty ? 0 : spentMinor}
@@ -254,7 +233,10 @@ export function AnalysDashboard({
             </p>
           ) : (
             <>
-              <section className="animate-rise-delay-2 space-y-2" aria-labelledby="analys-hur">
+              <section
+                className="animate-rise-delay-2 space-y-2"
+                aria-labelledby="analys-hur"
+              >
                 <h2 id="analys-hur" className="numa-section-title px-1">
                   {SV.hurGarDet}
                 </h2>
@@ -297,7 +279,6 @@ export function AnalysDashboard({
             viewYear={viewYear}
             currentMonthKey={view.currentMonthKey}
             onSelectMonth={selectMonth}
-            onShiftYear={shiftYear}
             idPrefix="analys"
           />
           <SpendHero
@@ -315,7 +296,9 @@ export function AnalysDashboard({
             </h2>
             <div className="numa-panel-list numa-money-stack px-4 py-1">
               <MetricRow
-                label={month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen}
+                label={
+                  month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen
+                }
                 amountMinor={month.monthResultMinor}
                 currency={currency}
                 tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
@@ -470,9 +453,7 @@ function SpendHero({
           wrap={false}
         />
       </div>
-      {meta ? (
-        <p className="text-sm text-[var(--numa-muted)]">{meta}</p>
-      ) : null}
+      {meta ? <p className="text-sm text-[var(--numa-muted)]">{meta}</p> : null}
     </section>
   );
 }
@@ -498,14 +479,10 @@ function SpendByCategory({
         <h3 className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
           {SV.vartGickPengarna}
         </h3>
-        <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
-          {SV.analysCategoryHint}
-        </p>
+        <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{SV.analysCategoryHint}</p>
       </div>
       {categories.length === 0 ? (
-        <p className="px-0.5 text-sm leading-snug text-[var(--numa-muted)]">
-          {empty}
-        </p>
+        <p className="px-0.5 text-sm leading-snug text-[var(--numa-muted)]">{empty}</p>
       ) : (
         <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
           {categories.map((category) => (

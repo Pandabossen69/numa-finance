@@ -104,12 +104,11 @@ describe("Plan dates and add-form", () => {
     expect(inlineAdd).toContain("onTransitionEnd");
   });
 
-  it("keeps month context and fades the chip strip only when it overflows", () => {
+  it("keeps month context and fades the Fota chip strip only when it overflows", () => {
     expect(editor).toContain("rememberPlanView");
     expect(editor).toContain("lastPlanView");
-    expect(monthNav).toContain("MonthChipStrip");
+    expect(monthNav).toContain("labelMonthSv");
     expect(monthNav).toContain("labelMonthChipSv");
-    expect(monthNav).toContain("normal-case");
     expect(monthStrip).toContain("ChipStrip");
     expect(monthStrip).toContain("Föregående månader");
     expect(chipStrip).toContain("is-overflow");
@@ -124,11 +123,13 @@ describe("Plan dates and add-form", () => {
 
   it("lets users browse earlier months and years without rewriting history", () => {
     expect(monthNav).toContain("visibleMonthKeysForYear");
-    expect(editor).toContain("onShiftYear={shiftYear}");
+    expect(monthNav).toContain("addMonthsKey");
+    expect(monthNav).toContain('aria-label="Föregående månad"');
     expect(monthNav).toContain('aria-label="Föregående år"');
     expect(monthNav).toContain("Bläddra bakåt och framåt — historik ändras inte");
     expect(monthNav).toContain("min-h-11 rounded-full px-3");
     expect(plan).not.toContain("även år framåt");
+    expect(editor).not.toContain("onShiftYear");
   });
 
   it("opens the matching add form when Kom igång sends steg", () => {
