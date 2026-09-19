@@ -45,7 +45,7 @@ export const SV = {
   sparandeTotalt: "Sparat i NUMA",
   overskottHittills: "Överskott mot planen",
   minusMotPlanen: "Minus mot planen",
-  /** Always-visible Analys month one-liner — what the leftover number is. */
+  /** Always-visible Analys leftover one-liner (Perioden + Månad, first paint). */
   overskottMotPlanenHint:
     "Planerat kvar minus spenderat — inte pengar på kontona.",
   motPlanen: "Mot planen",
