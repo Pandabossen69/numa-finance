@@ -15,7 +15,8 @@ describe("Swedish money labels", () => {
   it("keeps Analys scope labels short and Swedish", () => {
     expect(SV.perioden).toBe("Perioden");
     expect(SV.manad).toBe("Månad");
-    expect(SV.saRaknarNuma).toBe("Så räknar NUMA");
+    expect(SV.saRaknarNuma).toBe("Så räknas analysen");
+    expect(SV.saRaknasAnalysenLead).toMatch(/inte dagsbudgeten på Hem/i);
     expect(SV.analysHint).toBe("Se vart pengarna gick — och hur perioden går.");
     expect(SV.vartGickPengarna).toBe("Vart gick pengarna?");
     expect(SV.hurGarDet).toBe("Hur går det?");

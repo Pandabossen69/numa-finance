@@ -21,6 +21,7 @@ import {
   rememberAccountsSnapshot,
   subscribeAccountsSnapshot,
 } from "@/features/home/last-snapshot";
+import { SV } from "@/features/copy/labels-sv";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 
 export function AccountsDashboard({
@@ -115,10 +116,10 @@ export function AccountsDashboard({
                 <MerListRow className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
-                      Totalt
+                      Totalt i THB
                     </p>
                     <p className="mt-0.5 text-[13px] text-[var(--numa-muted)]">
-                      Det du äger — Hem och Plan använder detta
+                      {SV.saldoAllaKontonHint}
                     </p>
                   </div>
                   <MoneyDisplay

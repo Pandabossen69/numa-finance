@@ -17,6 +17,13 @@ describe("AccountsDashboard", () => {
     expect(src).toContain("onFocus");
   });
 
+  it("labels the account total as converted to THB", () => {
+    expect(src).toContain("Totalt i THB");
+    expect(src).toContain("SV.saldoAllaKontonHint");
+    expect(src).not.toContain("Det du äger — Hem och Plan använder detta");
+    expect(src).not.toMatch(/>\s*Totalt\s*</);
+  });
+
   it("keeps the empty-state Swedish copy and Fota path", () => {
     expect(src).toContain("Inga konton ännu. Snabbast är att fota bank-SMS via +.");
     expect(src).toContain("/fota?mode=sms");

@@ -83,7 +83,9 @@ export const SV = {
   visaDagsbudget: "Visa dagsbudget",
   perioden: "Perioden",
   manad: "Månad",
-  saRaknarNuma: "Så räknar NUMA",
+  saRaknarNuma: "Så räknas analysen",
+  saRaknasAnalysenLead:
+    "Analys summerar spenderat och hur perioden går mot planen. Det är inte dagsbudgeten på Hem.",
   analysHint: "Se vart pengarna gick — och hur perioden går.",
   vartGickPengarna: "Vart gick pengarna?",
   hurGarDet: "Hur går det?",

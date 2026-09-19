@@ -171,10 +171,16 @@ export function HomeDashboard({
   const statusLine = overToday
     ? SV.overDagsbudget
     : view.dayBudgetMinor > 0 && todaySpendingMinor === 0
-      ? `Hela dagsbudgeten kvar · ${daysWord}`
+      ? "Hela dagsbudgeten kvar"
       : view.dayBudgetMinor > 0
         ? `${formatMoneyHint(remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar`
         : null;
+
+  const daysLeftChip = !isEmpty ? (
+    <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
+      {daysWord}
+    </p>
+  ) : null;
 
   return (
     <div className="numa-page numa-page-wide min-w-0 space-y-6">
@@ -231,50 +237,46 @@ export function HomeDashboard({
                 .join(" ")}
               aria-labelledby="spend-heading"
             >
-              <div className="flex min-w-0 items-center justify-between gap-3 px-1">
-                <p id="spend-heading" className="numa-section-title min-w-0">
-                  {SV.kvarIdag}
-                </p>
-                {!isEmpty ? (
-                  <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
-                    {daysWord}
-                  </p>
-                ) : null}
-              </div>
+              <p id="spend-heading" className="numa-section-title min-w-0 px-1">
+                {SV.kvarIdag}
+              </p>
 
               {view.dayBudgetMinor > 0 ? (
                 <>
-                  <DayDial usedRatio={dayUsedRatio} over={overToday}>
-                    {overToday ? (
-                      <p className="numa-chip numa-chip-alarm mb-2">Över</p>
-                    ) : (
-                      <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[var(--numa-accent)] uppercase">
-                        Kvar
-                      </p>
-                    )}
-                    <div
-                      className={`money-hero ${
-                        overToday
-                          ? "text-[var(--numa-ink)]"
-                          : dayOk
+                  <div className="flex flex-col items-center gap-1.5">
+                    <DayDial usedRatio={dayUsedRatio} over={overToday}>
+                      {overToday ? (
+                        <p className="numa-chip numa-chip-alarm mb-2">Över</p>
+                      ) : (
+                        <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[var(--numa-accent)] uppercase">
+                          Kvar
+                        </p>
+                      )}
+                      <div
+                        className={`money-hero ${
+                          overToday
                             ? "text-[var(--numa-ink)]"
-                            : "text-[var(--numa-muted)]"
-                      }`}
-                    >
-                      <MoneyDisplay
-                        amountMinor={dialCenterMinor}
-                        currency={currency}
-                        size="display"
-                        compact
-                        tone={
-                          overToday || remainingTodayMinor < 0
-                            ? "signed"
-                            : "neutral"
-                        }
-                        wrap={false}
-                      />
-                    </div>
-                  </DayDial>
+                            : dayOk
+                              ? "text-[var(--numa-ink)]"
+                              : "text-[var(--numa-muted)]"
+                        }`}
+                      >
+                        <MoneyDisplay
+                          amountMinor={dialCenterMinor}
+                          currency={currency}
+                          size="display"
+                          compact
+                          tone={
+                            overToday || remainingTodayMinor < 0
+                              ? "signed"
+                              : "neutral"
+                          }
+                          wrap={false}
+                        />
+                      </div>
+                    </DayDial>
+                    {daysLeftChip}
+                  </div>
 
                   {statusLine ? (
                     <p
@@ -373,6 +375,7 @@ export function HomeDashboard({
                           wrap={false}
                         />
                       </div>
+                      {daysLeftChip}
                       <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
                         {isBridge
                           ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
