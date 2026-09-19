@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Sora, JetBrains_Mono } from "next/font/google";
 import { CanonicalHostRedirect } from "@/components/pwa/CanonicalHostRedirect";
 import { FrozenHomescreenGuard } from "@/components/pwa/FrozenHomescreenGuard";
+import { InstallPromptCapture } from "@/components/pwa/InstallPromptCapture";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import {
   BRAND_APPLE_TOUCH,
@@ -74,6 +75,7 @@ export default function RootLayout({
   return (
     <html lang="sv" className={`${sans.variable} ${mono.variable} h-full`}>
       <body className="min-h-full antialiased">
+        <InstallPromptCapture />
         <CanonicalHostRedirect />
         <FrozenHomescreenGuard />
         {children}

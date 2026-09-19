@@ -1,14 +1,22 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
 import {
+  installGuideSteps,
+  promptInstall,
+  readInstallPlatform,
+  readInstallPromptStatus,
+  subscribeInstallPrompt,
+} from "@/lib/pwa/install-prompt";
+import {
+  isCanonicalAppHost,
   isProductionAppHost,
   PRODUCTION_HOST,
   PRODUCTION_ORIGIN,
 } from "@/lib/site";
 
-function subscribeInstallDisplay(onStoreChange: () => void) {
+function subscribeDisplay(onStoreChange: () => void) {
   const mq = window.matchMedia("(display-mode: standalone)");
   mq.addEventListener("change", onStoreChange);
   return () => mq.removeEventListener("change", onStoreChange);
@@ -22,21 +30,58 @@ function readOnProduction(): boolean {
   }
 }
 
+function readCanNativeInstall(): boolean {
+  try {
+    return isCanonicalAppHost(window.location.hostname);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Mer (~390) install path. Always in-flow — never a modal or visit nag.
- * Standalone → already-an-app. Browser → commercial how-to.
+ * Mer (~390) install path. In-flow only — never a modal or visit nag.
+ * BIP → Installera NUMA. No event → iOS / Android Chrome steps.
  */
 export function MerInstallCta() {
-  const installed = useSyncExternalStore(
-    subscribeInstallDisplay,
+  const installedDisplay = useSyncExternalStore(
+    subscribeDisplay,
     isStandaloneDisplay,
     () => false,
   );
+  const promptStatus = useSyncExternalStore(
+    subscribeInstallPrompt,
+    readInstallPromptStatus,
+    () => "none" as const,
+  );
+  const platform = useSyncExternalStore(
+    subscribeDisplay,
+    readInstallPlatform,
+    () => "other" as const,
+  );
   const alreadyOnProduction = useSyncExternalStore(
-    subscribeInstallDisplay,
+    subscribeDisplay,
     readOnProduction,
     () => false,
   );
+  const canNativeInstall = useSyncExternalStore(
+    subscribeDisplay,
+    readCanNativeInstall,
+    () => false,
+  );
+  const [busy, setBusy] = useState(false);
+
+  const installed = installedDisplay || promptStatus === "accepted";
+  const canPrompt = promptStatus === "available" && canNativeInstall;
+
+  async function onInstall() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await promptInstall();
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (installed) {
     return (
@@ -64,13 +109,29 @@ export function MerInstallCta() {
           Installera NUMA som app
         </p>
         <p className="text-[13px] leading-relaxed text-[var(--numa-muted)]">
-          Öppna från hemskärmen, som en vanlig app. Dela → Lägg till på hemskärmen.
+          {canPrompt
+            ? "Öppna från hemskärmen, som en vanlig app."
+            : installGuideSteps(platform)}
         </p>
       </div>
+      {canPrompt ? (
+        <button
+          type="button"
+          onClick={() => void onInstall()}
+          disabled={busy}
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)] disabled:opacity-60"
+        >
+          {busy ? "Öppnar…" : "Installera NUMA"}
+        </button>
+      ) : null}
       {alreadyOnProduction ? null : (
         <a
           href={PRODUCTION_ORIGIN}
-          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)]"
+          className={
+            canPrompt
+              ? "inline-flex min-h-11 items-center justify-center px-1 text-sm font-medium text-[var(--numa-muted)]"
+              : "inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)]"
+          }
         >
           Öppna {PRODUCTION_HOST}
         </a>

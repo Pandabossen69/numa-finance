@@ -12,6 +12,11 @@ describe("PWA viewport", () => {
     expect(src).not.toContain('statusBarStyle: "default"');
   });
 
+  it("captures beforeinstallprompt on the root shell", () => {
+    expect(src).toContain("InstallPromptCapture");
+    expect(src.indexOf("<InstallPromptCapture")).toBeLessThan(src.indexOf("{children}"));
+  });
+
   it("points Safari and the tab icon at the Steel + Orange brand art", () => {
     expect(src).toContain("BRAND_ICON_192");
     expect(src).toContain("BRAND_ICON_512");

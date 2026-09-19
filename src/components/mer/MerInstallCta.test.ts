@@ -3,27 +3,43 @@ import { describe, expect, it } from "vitest";
 
 const src = readFileSync(new URL("./MerInstallCta.tsx", import.meta.url), "utf8");
 const mer = readFileSync(new URL("./MerScreen.tsx", import.meta.url), "utf8");
+const capture = readFileSync(
+  new URL("../pwa/InstallPromptCapture.tsx", import.meta.url),
+  "utf8",
+);
+const layout = readFileSync(new URL("../../app/layout.tsx", import.meta.url), "utf8");
 
 describe("Mer install CTA", () => {
-  it("states the commercial install path in calm Swedish", () => {
-    expect(src).toContain("Installera NUMA som app");
-    expect(src).toContain("Öppna från hemskärmen, som en vanlig app");
-    expect(src).toContain("Dela → Lägg till på hemskärmen");
-    expect(src).toContain("NUMA är en app här");
-    expect(src).toContain("Du öppnar den från hemskärmen. Inget mer behövs.");
-  });
-
-  it("uses existing standalone detection — no beforeinstallprompt or visit nag", () => {
-    expect(src).toContain("isStandaloneDisplay");
-    expect(src).not.toContain("beforeinstallprompt");
+  it("wires beforeinstallprompt to a Swedish Installera NUMA button", () => {
+    expect(src).toContain("promptInstall");
+    expect(src).toContain("readInstallPromptStatus");
+    expect(src).toContain("Installera NUMA");
+    expect(src).toContain("canPrompt");
     expect(src).not.toContain("localStorage");
     expect(src).not.toContain("DISMISS");
-    expect(src).not.toContain("position: \"fixed\"");
     expect(src).not.toContain("aria-modal");
+    expect(src).not.toContain('position: "fixed"');
   });
 
-  it("keeps the production-host button at a 44px tap target", () => {
-    expect(src).toContain("inline-flex min-h-11 items-center justify-center");
+  it("keeps standalone calm and uses platform steps when BIP is missing", () => {
+    expect(src).toContain("isStandaloneDisplay");
+    expect(src).toContain("NUMA är en app här");
+    expect(src).toContain("Inget mer behövs.");
+    expect(src).toContain("installGuideSteps");
+    expect(src).toContain("readInstallPlatform");
+    expect(src).not.toContain("Dela → Lägg till på hemskärmen.");
+  });
+
+  it("captures BIP on the root shell, not only after Mer mounts", () => {
+    expect(capture).toContain("beginInstallPromptCapture");
+    expect(layout).toContain("InstallPromptCapture");
+    expect(layout.indexOf("<InstallPromptCapture")).toBeLessThan(
+      layout.indexOf("{children}"),
+    );
+  });
+
+  it("keeps the production-host and install buttons at a 44px tap target", () => {
+    expect(src).toContain("inline-flex min-h-11 w-full items-center justify-center");
     expect(src).toContain("Öppna {PRODUCTION_HOST}");
   });
 
