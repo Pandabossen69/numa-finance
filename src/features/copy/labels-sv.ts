@@ -15,6 +15,7 @@
  * - Kvar att betala: planned expenses not yet paid (minus Betald / Delvis betald; not savings)
  * - Över: på kontona + kommer in − kvar att betala (Plan/Hem hero)
  * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
+ *   (inline: «Planerat kvar minus spenderat — inte pengar på kontona.»)
  * - Plan + sparande: leftover vs plan + avsatt sparande (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
  *
@@ -44,6 +45,9 @@ export const SV = {
   sparandeTotalt: "Sparat i NUMA",
   overskottHittills: "Överskott mot planen",
   minusMotPlanen: "Minus mot planen",
+  /** Always-visible Analys leftover one-liner (Perioden + Månad, first paint). */
+  overskottMotPlanenHint:
+    "Planerat kvar minus spenderat — inte pengar på kontona.",
   motPlanen: "Mot planen",
   kommerIn: "Kommer in",
   kvarAttBetala: "Kvar att betala",

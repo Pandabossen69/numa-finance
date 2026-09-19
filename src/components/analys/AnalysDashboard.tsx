@@ -219,18 +219,27 @@ export function AnalysDashboard({
           />
 
           {isEmpty ? (
-            <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
-              {SV.analysEmptyPeriod}{" "}
-              <Link
-                href="/plan"
-                prefetch={false}
-                onMouseEnter={() => prefetch("/plan")}
-                onFocus={() => prefetch("/plan")}
-                className="numa-tap font-semibold text-[var(--numa-accent)]"
-              >
-                Plan →
-              </Link>
-            </p>
+            <section
+              className="animate-rise-delay-2 space-y-2"
+              aria-labelledby="analys-hur"
+            >
+              <h2 id="analys-hur" className="numa-section-title px-1">
+                {SV.hurGarDet}
+              </h2>
+              <LeftoverVsPlanHint />
+              <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
+                {SV.analysEmptyPeriod}{" "}
+                <Link
+                  href="/plan"
+                  prefetch={false}
+                  onMouseEnter={() => prefetch("/plan")}
+                  onFocus={() => prefetch("/plan")}
+                  className="numa-tap font-semibold text-[var(--numa-accent)]"
+                >
+                  Plan →
+                </Link>
+              </p>
+            </section>
           ) : (
             <>
               <section
@@ -240,6 +249,7 @@ export function AnalysDashboard({
                 <h2 id="analys-hur" className="numa-section-title px-1">
                   {SV.hurGarDet}
                 </h2>
+                <LeftoverVsPlanHint />
                 {cycleRangeLabel ? (
                   <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
                     {cycleRangeLabel}
@@ -294,6 +304,7 @@ export function AnalysDashboard({
             <h2 id="analys-hur-manad" className="numa-section-title px-1">
               {SV.hurGarDet}
             </h2>
+            <LeftoverVsPlanHint />
             <div className="numa-panel-list numa-money-stack px-4 py-1">
               <MetricRow
                 label={
@@ -302,10 +313,7 @@ export function AnalysDashboard({
                 amountMinor={month.monthResultMinor}
                 currency={currency}
                 tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
-                hint={
-                  month.monthLeftoverHint ??
-                  "Planerat kvar minus spenderat — inte kontanter"
-                }
+                hint={month.monthLeftoverHint ?? undefined}
               />
             </div>
           </section>
@@ -388,6 +396,15 @@ export function AnalysDashboard({
         )}
       </section>
     </div>
+  );
+}
+
+/** Always-visible leftover one-liner — default Perioden paint, no extra tap. */
+function LeftoverVsPlanHint() {
+  return (
+    <p className="px-1 text-[12px] leading-snug text-[var(--numa-faint)]">
+      {SV.overskottMotPlanenHint}
+    </p>
   );
 }
 

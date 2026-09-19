@@ -10,9 +10,10 @@ describe("Analys month result color", () => {
   });
 
   it("answers leftover vs plan without reprinting Hem/Plan Över", () => {
-    // Mot planen stays as exactly one row, explained, so it cannot be
-    // mistaken for cash on Hem or the Över pile on Plan.
-    expect(src).toContain("inte kontanter");
+    // Mot planen stays as exactly one row, explained inline (no extra tap),
+    // so it cannot be mistaken for cash on Hem or the Över pile on Plan.
+    expect(src).toContain("SV.overskottMotPlanenHint");
+    expect(src).not.toContain("inte kontanter");
     expect(src).not.toContain("livingLabel={SV.over}");
     expect(src).not.toContain("livingMinor={month.coverage.overMinor}");
     expect(src).not.toContain("CASH_COVERAGE_HINT_SV");
@@ -261,6 +262,37 @@ describe("Analys month result color", () => {
     expect(src).toContain("SV.analysHint");
     expect(src).toContain("SV.hurGarDet");
     expect(src).toContain("SV.analysEmptyPeriod");
+  });
+
+  it("explains Överskott mot planen inline without a tap", () => {
+    expect(src).toContain("SV.overskottMotPlanenHint");
+    expect(src).toContain("LeftoverVsPlanHint");
+    expect(src).toContain("text-[12px] leading-snug text-[var(--numa-faint)]");
+    expect(src).not.toContain("Planerat kvar minus spenderat — inte kontanter");
+    // Default Analys paint is Perioden — the one-liner must sit under that
+    // Hur går det? as well, including the empty-period path.
+    expect(src).toContain('lastAnalysScope() ?? "period"');
+    const periodStart = src.indexOf('id="analys-hur"');
+    const periodBlock = src.slice(
+      periodStart,
+      src.indexOf("SpendByCategory", periodStart),
+    );
+    expect(periodStart).toBeGreaterThan(-1);
+    expect(periodBlock).toContain("<LeftoverVsPlanHint");
+    expect(periodBlock).not.toContain("FormulaInfo");
+    expect((src.match(/<LeftoverVsPlanHint/g) ?? []).length).toBeGreaterThanOrEqual(3);
+    // FormulaInfo stays a tap-for-more — the leftover one-liner must not
+    // live only behind that control.
+    expect(src).toContain("<FormulaInfo");
+    const monthStart = src.indexOf('id="analys-hur-manad"');
+    const leftoverBlock = src.slice(
+      monthStart,
+      src.indexOf("SpendByCategory", monthStart),
+    );
+    expect(monthStart).toBeGreaterThan(-1);
+    expect(leftoverBlock).toContain("<LeftoverVsPlanHint");
+    expect(leftoverBlock).not.toContain("FormulaInfo");
+    expect(leftoverBlock).not.toContain("setOpen");
   });
 
   it("always prints the pay-cycle start and end next to kvar", () => {
