@@ -596,6 +596,10 @@ body {
   cursor: default;
 }
 
+.numa-day-stage .numa-day-next {
+  cursor: pointer;
+}
+
 .numa-day-stage.is-over {
   background:
     radial-gradient(

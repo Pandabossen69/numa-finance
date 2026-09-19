@@ -55,6 +55,7 @@ import {
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { homeGreeting } from "@/features/home/mock-snapshot";
+import { lowKvarNextAction, type LowKvarCta } from "@/features/home/low-kvar-cta";
 import { HemPending } from "@/components/layout/ViewLoading";
 
 function formatMoneyHint(amountMinor: number, currency: CurrencyCode): string {
@@ -107,10 +108,7 @@ export function HomeDashboard({
       rememberGettingStarted(gettingStarted);
     }
     if (snap?.calculatedBalanceMinor != null && lastGettingStarted()?.visible) {
-      const next = reconcileGettingStartedWithSaldo(
-        lastGettingStarted()!,
-        true,
-      );
+      const next = reconcileGettingStartedWithSaldo(lastGettingStarted()!, true);
       if (next.doneCount !== lastGettingStarted()!.doneCount) {
         rememberGettingStarted(next);
       }
@@ -176,6 +174,14 @@ export function HomeDashboard({
         ? `${formatMoneyHint(remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar`
         : null;
 
+  const nextAction = lowKvarNextAction({
+    dayBudgetMinor: view.dayBudgetMinor,
+    remainingTodayMinor,
+    livingMode: view.livingMode,
+    needsAvailableInput: view.needsAvailableInput,
+    hasPrimaryAccount: Boolean(view.primaryAccountId),
+  });
+
   const daysLeftChip = !isEmpty ? (
     <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
       {daysWord}
@@ -184,7 +190,6 @@ export function HomeDashboard({
 
   return (
     <div className="numa-page numa-page-wide min-w-0 space-y-6">
-
       {staleBanner && staleBanner.title ? (
         <div className="numa-panel animate-rise space-y-1 p-4 text-sm">
           <p className="font-semibold">{staleBanner.title}</p>
@@ -192,7 +197,8 @@ export function HomeDashboard({
             <p className="text-[var(--numa-muted)]">{staleBanner.detail}</p>
           ) : null}
         </div>
-      ) : null}      <header className="animate-rise min-w-0 space-y-1 px-0.5">
+      ) : null}
+      <header className="animate-rise min-w-0 space-y-1 px-0.5">
         <p className="min-w-0 text-[14px] leading-relaxed font-medium text-[var(--numa-muted)]">
           {greeting}
           {rangeLabel ? (
@@ -203,17 +209,12 @@ export function HomeDashboard({
           <>
             <h1 className="numa-page-title">Hem</h1>
             <p className="max-w-[34ch] pt-1 text-sm leading-relaxed text-[var(--numa-muted)]">
-              Här syns läget just nu — saldo, det som kommer in och det som måste
-              betalas.
+              Här syns läget just nu — saldo, det som kommer in och det som måste betalas.
             </p>
           </>
         ) : null}
       </header>
-
-      {isEmpty && checklist?.visible ? (
-        <GettingStartedCard view={checklist} />
-      ) : null}
-
+      {isEmpty && checklist?.visible ? <GettingStartedCard view={checklist} /> : null}
       {view.needsAvailableInput ? (
         <AvailableNowCard
           accountId={view.primaryAccountId}
@@ -221,13 +222,12 @@ export function HomeDashboard({
           nextIncomeLabel={view.nextIncomeLabelSv}
         />
       ) : null}
-
       {!view.needsAvailableInput ? (
         <>
           <div className="grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6">
             <section
               className={[
-                "numa-panel-strong numa-day-stage cursor-default animate-rise-delay-1 flex h-full min-w-0 flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
+                "numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 cursor-default flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
                 overToday ? "is-over" : null,
                 // No dagsbudget yet: hug the copy instead of stretching to
                 // match the piles column and leaving a tall empty card.
@@ -267,9 +267,7 @@ export function HomeDashboard({
                           size="display"
                           compact
                           tone={
-                            overToday || remainingTodayMinor < 0
-                              ? "signed"
-                              : "neutral"
+                            overToday || remainingTodayMinor < 0 ? "signed" : "neutral"
                           }
                           wrap={false}
                         />
@@ -289,6 +287,8 @@ export function HomeDashboard({
                       {statusLine}
                     </p>
                   ) : null}
+
+                  {nextAction ? <LowKvarNextCta action={nextAction} /> : null}
 
                   <div className="numa-day-metrics">
                     <div className="is-budget">
@@ -332,9 +332,7 @@ export function HomeDashboard({
                     <p className="px-1 text-center text-[12px] text-[var(--numa-faint)]">
                       {SV.betaldaRakningarIdag}{" "}
                       <span className="font-semibold text-[var(--numa-ink)]">
-                        {formatMoney(
-                          money(view.todayPlannedPaidMinor, currency),
-                        )}
+                        {formatMoney(money(view.todayPlannedPaidMinor, currency))}
                       </span>
                     </p>
                   ) : null}
@@ -352,18 +350,14 @@ export function HomeDashboard({
                         href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}
                         className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
                       >
-                        {hasSaldo
-                          ? "Lägg in vad som kommer in →"
-                          : "Sätt saldo →"}
+                        {hasSaldo ? "Lägg in vad som kommer in →" : "Sätt saldo →"}
                       </Link>
                     </div>
                   ) : (
                     <>
                       <div
                         className={`money-hero mx-auto ${
-                          dayOk
-                            ? "text-[var(--numa-ink)]"
-                            : "text-[var(--numa-muted)]"
+                          dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
                         }`}
                       >
                         <MoneyDisplay
@@ -493,11 +487,33 @@ export function HomeDashboard({
           />
         </>
       ) : null}
-
-      {!isEmpty && checklist?.visible ? (
-        <GettingStartedCard view={checklist} />
-      ) : null}
+      {!isEmpty && checklist?.visible ? <GettingStartedCard view={checklist} /> : null}
     </div>
+  );
+}
+
+function LowKvarNextCta({ action }: { action: LowKvarCta }) {
+  const className =
+    "numa-btn numa-btn-primary numa-cta-glow numa-day-next min-h-12 w-full";
+  return (
+    <aside
+      className="px-1 pt-1"
+      aria-label={SV.nastaSteg}
+      data-numa-next-action={action.kind}
+    >
+      <p className="mb-2 text-center text-[13px] leading-snug text-[var(--numa-muted)]">
+        {action.hint}
+      </p>
+      {action.kind === "expense" ? (
+        <a href={action.href} className={className}>
+          {action.label}
+        </a>
+      ) : (
+        <Link href={action.href} prefetch={false} className={className}>
+          {action.label}
+        </Link>
+      )}
+    </aside>
   );
 }
 
@@ -524,8 +540,8 @@ function AvailableNowCard({
           Vi räknar ut en dagsbudget
           {nextIncomeLabel
             ? ` fram till nästa inkomst · ${nextIncomeLabel}`
-            : " fram till nästa inkomst"}.
-          När du handlar sjunker bara kvar idag.
+            : " fram till nästa inkomst"}
+          . När du handlar sjunker bara kvar idag.
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -714,11 +730,13 @@ function QuickExpense({
   const selectedAccount =
     accounts.find((account) => account.id === targetAccountId) ?? null;
   const nativeCurrency = selectedAccount?.currency ?? currency;
-  const fxRate =
-    selectedAccount?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
+  const fxRate = selectedAccount?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
 
   return (
-    <section className="numa-panel animate-rise-delay-3 space-y-3.5 p-4">
+    <section
+      id="lagg-utgift"
+      className="numa-panel animate-rise-delay-3 scroll-mt-4 scroll-mb-[var(--numa-shell-pad-bottom)] space-y-3.5 p-4"
+    >
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
         <div className="min-w-0">
           <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
@@ -810,11 +828,7 @@ function QuickExpense({
                   setError("Beloppet måste vara större än 0");
                   return;
                 }
-                const thbMinor = nativeToThbMinor(
-                  amountMinor,
-                  nativeCurrency,
-                  fxRate,
-                );
+                const thbMinor = nativeToThbMinor(amountMinor, nativeCurrency, fxRate);
                 if (thbMinor == null) {
                   setError("Konto saknar växelkurs");
                   return;
@@ -874,9 +888,7 @@ function QuickExpense({
               Spara
             </button>
           </div>
-          {notice ? (
-            <p className="text-sm text-[var(--numa-muted)]">{notice}</p>
-          ) : null}
+          {notice ? <p className="text-sm text-[var(--numa-muted)]">{notice}</p> : null}
           {error ? (
             <p className="text-sm text-[var(--numa-danger)]" role="alert">
               {error}
