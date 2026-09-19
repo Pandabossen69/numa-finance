@@ -27,6 +27,8 @@ describe("/idag first paint", () => {
     expect(hemClient).toContain("lastHomeSnapshot");
     expect(hemClient).toContain("cookieShell");
     expect(hemClient).toContain("adoptSnap");
+    expect(hemClient).toContain("clearLoginBoot");
+    expect(hemClient).not.toContain("lastKnownHomeShell");
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("HemFirstPaint");
     expect(loading).not.toContain("HomeViewLoading");

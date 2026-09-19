@@ -648,6 +648,11 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(640_00);
     clearClientSessionCaches();
     expect(document.cookie).not.toContain("numa.lastHome.v1=");
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    clearClientSessionCaches({ keepHomeCookie: true });
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    expect(lastHomeSnapshot()).toBeNull();
     Reflect.deleteProperty(globalThis, "document");
   });
 

@@ -5,10 +5,7 @@ import { redirect } from "next/navigation";
 import { PREVIEW_COOKIE, withPreviewQuery } from "@/lib/site";
 import { z } from "zod";
 import { createSupabaseServerClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import {
-  clearLastHomeCookie,
-  discardLastHomeCookieIfNotUser,
-} from "@/features/home/last-home-cookie.server";
+import { discardLastHomeCookieIfNotUser } from "@/features/home/last-home-cookie.server";
 import { loadOnboardingState } from "@/features/onboarding/load";
 import {
   clearOnboardingCookie,
@@ -72,7 +69,8 @@ export async function signOutAction(): Promise<void> {
     }
   }
   await clearOnboardingCookie();
-  await clearLastHomeCookie();
+  // Keep slim numa.lastHome.v1 so same-user cold login can SSR Kvar
+  // (SPEC H). Other-account login still discardLastHomeCookieIfNotUser.
   const jar = await cookies();
   const preview = jar.get(PREVIEW_COOKIE)?.value === "1";
   redirect(preview ? withPreviewQuery("/logga-in") : "/logga-in");

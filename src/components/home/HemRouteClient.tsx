@@ -19,10 +19,11 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
- * Session-confirmed last-known paints immediately; hydrate alone shows
- * HemPending until the quiet fetch confirms. Optional cookieShell lets
- * hard-refresh SSR paint last-known Kvar/Över in the first HTML (SPEC 6b).
- * SPA keep-alive mounts this once so tab switches never remount or re-await RSC.
+ * Session-confirmed last-known paints immediately; cookie SSR paints as a
+ * shell (adoptSnap false). Cookie-miss shows HemPending without holding
+ * LoginBoot (SPEC H). Optional cookieShell lets hard-refresh SSR paint
+ * last-known Kvar/Över in the first HTML (SPEC 6b). SPA keep-alive mounts
+ * this once so tab switches never remount or re-await RSC.
  */
 export function HemRouteClient({
   cookieShell = null,
@@ -40,6 +41,12 @@ export function HemRouteClient({
     lastGettingStarted,
   );
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Last-known cookie shell or HemPending is visible — do not hold
+    // LoginBoot for the live snapshot (SPEC H; #116 layout await ~23s).
+    clearLoginBoot();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

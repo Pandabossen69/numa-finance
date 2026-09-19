@@ -33,6 +33,10 @@ describe("main first-load chrome", () => {
     expect(homeCookieServer).not.toContain("getVerifiedAuthUser");
     expect(homeCookieServer).not.toContain("getProfile");
     expect(homeCookieServer).not.toContain("auth.getUser()");
+    expect(layout).not.toContain("loadHomeSnapshot");
+    expect(layout).not.toContain("resolveHomeShell");
+    expect(homeCookieServer).not.toContain("loadHomeSnapshot");
+    expect(homeCookieServer).not.toContain("resolveHomeShell");
   });
 
   it("keeps loading.tsx as content-only so the shell is not nested", () => {
