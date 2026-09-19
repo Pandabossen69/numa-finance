@@ -57,6 +57,22 @@ describe("Rörelser expense color", () => {
     expect(src).not.toContain("{filtered.length} rörelser");
   });
 
+  it("makes Per kategori rows tap targets that filter the list", () => {
+    expect(src).toContain("matchesCategory");
+    expect(src).toContain("toggleCategory");
+    expect(src).toContain("spendCategoryName");
+    expect(src).toContain("aria-pressed={selected}");
+    expect(src).toContain("`Visa ${cat.name}`");
+    expect(src).toContain("Visa alla kategorier");
+    expect(src).toContain("Tryck på en kategori för att filtrera listan.");
+    expect(src).toContain("Tryck igen för att visa alla.");
+    expect(src).toContain("is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]");
+    expect(src).toContain("numa-category-chip");
+    expect(src).toContain("selectCategory(spendCategoryName(tx.category))");
+    expect(src).toContain("rememberMovementsView({ filter, period, category })");
+    expect(src).not.toContain("Inga träffar för filtret — prova Alla eller All tid.");
+  });
+
   it("keeps period and filter chips equal and stats off a phone 3-up", () => {
     expect(src).toContain("numa-equal-chips");
     expect(src).toContain("is-quad");
