@@ -1015,8 +1015,12 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
     home.needsAvailableInput ||
     home.livingMode === "bridge" ||
     home.usesBankBalance;
+  const cashPool = balanceMinor + spentToday - reserved;
+  const planPool = (home.remainingFreeMinor ?? 0) + spentToday;
   const livingPoolMinor = refreshDayEnvelope
-    ? Math.max(0, balanceMinor + spentToday - reserved)
+    ? cashPool > 0
+      ? cashPool
+      : Math.max(0, planPool)
     : home.livingPoolMinor;
   const dayBudgetMinor = refreshDayEnvelope
     ? perDayBudgetMinor(livingPoolMinor, Math.max(1, home.spendDaysLeft))

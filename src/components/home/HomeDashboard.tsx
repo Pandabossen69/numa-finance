@@ -175,6 +175,9 @@ export function HomeDashboard({
         ? `${formatMoneyHint(remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar`
         : null;
 
+  const showDayEnvelope =
+    view.dayBudgetMinor > 0 || (view.livingPoolMinor ?? 0) > 0;
+
   const nextAction = lowKvarNextAction({
     dayBudgetMinor: view.dayBudgetMinor,
     remainingTodayMinor,
@@ -232,7 +235,7 @@ export function HomeDashboard({
                 overToday ? "is-over" : null,
                 // No dagsbudget yet: hug the copy instead of stretching to
                 // match the piles column and leaving a tall empty card.
-                view.dayBudgetMinor > 0 ? null : "md:h-auto md:self-start",
+                showDayEnvelope ? null : "md:h-auto md:self-start",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -242,7 +245,7 @@ export function HomeDashboard({
                 {SV.kvarIdag}
               </p>
 
-              {view.dayBudgetMinor > 0 ? (
+              {showDayEnvelope ? (
                 <>
                   <div className="flex flex-col items-center gap-1.5">
                     <DayDial usedRatio={dayUsedRatio} over={overToday}>
@@ -311,6 +314,7 @@ export function HomeDashboard({
                             view.calculatedBalanceMinor ??
                             0,
                           reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+                          saldoMinor: view.calculatedBalanceMinor,
                           daysUntilHorizon: view.daysUntilIncome,
                           nextIncomeLabelSv: view.nextIncomeLabelSv,
                           currency,

@@ -95,13 +95,13 @@ export function remainingReservedUntilHorizon(
   return reserved;
 }
 
-function untilLonnSv(days: number, label: string | null): string {
+function untilIncomeSv(days: number, label: string | null): string {
   const n = Math.max(0, Math.floor(days));
   if (n <= 0) {
-    return label ? `lön ${label} idag` : "nästa inkomst idag";
+    return label ? `${label} idag` : "nästa inkomst idag";
   }
   const count = formatCountSv(n, "dag", "dagar");
-  return label ? `${count} till lön ${label}` : `${count} till nästa inkomst`;
+  return label ? `${count} till ${label}` : `${count} till nästa inkomst`;
 }
 
 function moneySv(amountMinor: number, currency: CurrencyCode): string {
@@ -112,13 +112,13 @@ function moneySv(amountMinor: number, currency: CurrencyCode): string {
 /**
  * Always-visible Hem lines under dagsbudget. No tap, readable in under 5s.
  * 1) Du kan leva på X / dag
- * 2) Y kvar efter planerat · Z dagar till lön [datum]
- * 3) If reserved: Saldo A − planerat B = Y
+ * 2) Saldo A − planerat B = Y · Z dagar till [datum]
  */
 export function livingBudgetHintSv(input: {
   dayBudgetMinor: number;
   poolMinor: number;
   reservedMinor: number;
+  saldoMinor?: number | null;
   daysUntilHorizon: number;
   nextIncomeLabelSv: string | null;
   currency?: CurrencyCode;
@@ -126,17 +126,21 @@ export function livingBudgetHintSv(input: {
   const currency = input.currency ?? "THB";
   const day = moneySv(input.dayBudgetMinor, currency);
   const pool = moneySv(input.poolMinor, currency);
-  const until = untilLonnSv(input.daysUntilHorizon, input.nextIncomeLabelSv);
-  const lines = [
+  const until = untilIncomeSv(input.daysUntilHorizon, input.nextIncomeLabelSv);
+  const saldoMinor =
+    input.saldoMinor != null && Number.isFinite(input.saldoMinor)
+      ? Math.max(0, Math.round(input.saldoMinor))
+      : Math.max(0, input.poolMinor) + Math.max(0, input.reservedMinor);
+  const reservedMinor =
+    input.reservedMinor > 0
+      ? input.reservedMinor
+      : Math.max(0, saldoMinor - Math.max(0, input.poolMinor));
+  const saldo = moneySv(saldoMinor, currency);
+  const reserved = moneySv(reservedMinor, currency);
+  return [
     `Du kan leva på ${day} / dag`,
-    `${pool} kvar efter planerat · ${until}`,
+    `Saldo ${saldo} − planerat ${reserved} = ${pool} · ${until}`,
   ];
-  if (input.reservedMinor > 0) {
-    const saldo = moneySv(input.poolMinor + input.reservedMinor, currency);
-    const reserved = moneySv(input.reservedMinor, currency);
-    lines.push(`Saldo ${saldo} − planerat ${reserved} = ${pool}`);
-  }
-  return lines;
 }
 
 function bridgeHorizonIso(
@@ -355,12 +359,19 @@ export function projectLivingBudget(input: {
   const horizon = paycheckHorizonIso(cycle);
   const reservedUntilIncomeMinor = remainingReservedUntilHorizon(cycle, horizon);
   const hasBalance = bankBalanceMinor != null;
-  const poolAtMorning = hasBalance
+  const planPoolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
+  const cashPoolAtMorning = hasBalance
     ? bankBalanceMinor - reservedUntilIncomeMinor + spentToday
-    : cycle.freeToSpendMinor - spentBeforeToday;
-  const availableMinor = hasBalance
-    ? bankBalanceMinor - reservedUntilIncomeMinor
-    : remainingFree;
+    : null;
+  // Never hide a prod-like plan leftover behind an over-reserved cash pool.
+  const poolAtMorning =
+    cashPoolAtMorning != null && cashPoolAtMorning > 0
+      ? cashPoolAtMorning
+      : planPoolAtMorning;
+  const availableMinor =
+    cashPoolAtMorning != null && cashPoolAtMorning > 0
+      ? bankBalanceMinor! - reservedUntilIncomeMinor
+      : remainingFree;
   const calendarDays = horizon
     ? calendarDaysBetween(now, horizon, timeZone)
     : 0;

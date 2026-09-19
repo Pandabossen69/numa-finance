@@ -520,6 +520,56 @@ describe("projectLivingBudget", () => {
     expect(living.dayBudgetMinor).not.toBe(Math.floor(cycle.freeToSpendMinor / 6));
   });
 
+  it("does not hide Hugo live 275,12 when reserved would zero the cash pool", () => {
+    const now = new Date("2026-09-19T03:00:00.000Z");
+    const payday = [
+      item({
+        name: "Lön aug",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-08-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Lön sep",
+        kind: "expected",
+        amountMinor: 40_000_00,
+        cadence: "income",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      }),
+      item({
+        name: "Hyra",
+        kind: "mandatory",
+        amountMinor: 30_000_00,
+        nextDueAt: "2026-09-22T12:00:00.000Z",
+      }),
+      item({
+        name: MONTHLY_SAVE_NAME,
+        kind: "goal",
+        amountMinor: 8_349_25,
+        cadence: "monthly",
+        nextDueAt: "2026-09-20T12:00:00.000Z",
+      }),
+    ];
+    const cycle = {
+      ...projectPayCycle(payday, now, tz),
+      freeToSpendMinor: 1_650_75,
+    };
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 3_421_95,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.mode).toBe("cycle");
+    expect(living.daysLeft).toBe(6);
+    expect(living.livingPoolMinor).toBe(1_650_75);
+    expect(living.dayBudgetMinor).toBe(275_12);
+    expect(living.dayBudgetMinor).toBeGreaterThan(0);
+  });
+
   it("reserves only open bills due before next paycheck and shows the leftover pool", () => {
     const now = new Date("2026-09-19T03:00:00.000Z");
     const payday = [
@@ -654,13 +704,14 @@ describe("livingBudgetHintSv", () => {
           dayBudgetMinor: 570_16,
           poolMinor: 3_421_00,
           reservedMinor: 0,
+          saldoMinor: 3_421_00,
           daysUntilHorizon: 6,
           nextIncomeLabelSv: "25 sep.",
         }),
       ),
     ).toEqual([
       "Du kan leva på 570,16 THB / dag",
-      "3 421 THB kvar efter planerat · 6 dagar till lön 25 sep.",
+      "Saldo 3 421 THB − planerat 0 THB = 3 421 THB · 6 dagar till 25 sep.",
     ]);
   });
 
@@ -704,8 +755,7 @@ describe("livingBudgetHintSv", () => {
       ),
     ).toEqual([
       "Du kan leva på 275 THB / dag",
-      "1 650 THB kvar efter planerat · 6 dagar till lön 25 sep.",
-      "Saldo 3 421 THB − planerat 1 771 THB = 1 650 THB",
+      "Saldo 3 421 THB − planerat 1 771 THB = 1 650 THB · 6 dagar till 25 sep.",
     ]);
   });
 });

@@ -147,7 +147,10 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("view.dayBudgetMinor");
     expect(src).toContain("view.livingPoolMinor");
     expect(src).toContain("view.reservedUntilIncomeMinor");
+    expect(src).toContain("view.calculatedBalanceMinor");
     expect(src).toContain("view.daysUntilIncome");
+    expect(src).toContain("showDayEnvelope");
+    expect(src).toContain('showDayEnvelope ? null : "md:h-auto md:self-start"');
     const metrics = src.slice(src.indexOf("numa-day-metrics"));
     expect(metrics).toContain("livingBudgetHintSv");
     expect(metrics).toContain("numa-living-math");
@@ -177,7 +180,6 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("Sätt saldo →");
     expect(src).toContain('href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}');
     expect(src).toMatch(/\{hasSaldo\s*\n?\s*\?/);
-    expect(src).toContain('view.dayBudgetMinor > 0 ? null : "md:h-auto md:self-start"');
   });
 
   it("stacks the dial above piles on the phone and splits them only at md", () => {
