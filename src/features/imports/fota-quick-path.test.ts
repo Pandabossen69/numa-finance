@@ -6,6 +6,8 @@ import {
   fotaPickerMark,
   readLastCaptureMethod,
   rememberLastCaptureMethod,
+  resetLastCaptureMethodCache,
+  subscribeLastCaptureMethod,
 } from "./fota-quick-path";
 
 function memoryStorage() {
@@ -29,6 +31,7 @@ function mockLocalStorage() {
 }
 
 afterEach(() => {
+  resetLastCaptureMethodCache();
   Reflect.deleteProperty(globalThis, "localStorage");
 });
 
@@ -65,13 +68,29 @@ describe("fota quick path", () => {
     expect(readLastCaptureMethod()).toBe("bank_sms");
   });
 
-  it("ignores junk and missing storage", () => {
+  it("notifies same-tab subscribers so Senast appears after a pick", () => {
+    mockLocalStorage();
+    let hits = 0;
+    const stop = subscribeLastCaptureMethod(() => {
+      hits += 1;
+    });
+    rememberLastCaptureMethod("receipt");
+    expect(hits).toBe(1);
+    expect(readLastCaptureMethod()).toBe("receipt");
+    expect(fotaPickerMark("receipt", readLastCaptureMethod())).toBe("Senast");
+    expect(fotaPickerMark("bank_sms", readLastCaptureMethod())).toBe("Snabbast");
+    stop();
+  });
+
+  it("keeps last-used in memory when localStorage is missing", () => {
+    rememberLastCaptureMethod("manual");
+    expect(readLastCaptureMethod()).toBe("manual");
+    expect(fotaPickerMark("manual", readLastCaptureMethod())).toBe("Senast");
+  });
+
+  it("ignores junk in storage", () => {
     mockLocalStorage();
     globalThis.localStorage.setItem(LAST_CAPTURE_METHOD_KEY, "camera");
-    expect(readLastCaptureMethod()).toBeNull();
-    Reflect.deleteProperty(globalThis, "localStorage");
-    expect(readLastCaptureMethod()).toBeNull();
-    rememberLastCaptureMethod("manual");
     expect(readLastCaptureMethod()).toBeNull();
   });
 });

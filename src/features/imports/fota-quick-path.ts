@@ -16,6 +16,24 @@ export const FOTA_QUICK_PATH_COPY = {
 
 const CHOICES = ["bank_sms", "bank_app", "receipt", "manual"] as const;
 
+const listeners = new Set<() => void>();
+/** `undefined` = not hydrated on this JS lifetime. */
+let cached: CaptureMethodChoice | null | undefined;
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+function readFromLocalStorage(): CaptureMethodChoice | null {
+  try {
+    if (typeof globalThis.localStorage === "undefined") return null;
+    const saved = globalThis.localStorage.getItem(LAST_CAPTURE_METHOD_KEY);
+    return isCaptureMethodChoice(saved) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
 export function isCaptureMethodChoice(
   value: string | null | undefined,
 ): value is CaptureMethodChoice {
@@ -35,31 +53,57 @@ export function fotaPickerMark(
 }
 
 export function readLastCaptureMethod(): CaptureMethodChoice | null {
-  try {
-    if (typeof globalThis.localStorage === "undefined") return null;
-    const saved = globalThis.localStorage.getItem(LAST_CAPTURE_METHOD_KEY);
-    return isCaptureMethodChoice(saved) ? saved : null;
-  } catch {
+  if (cached !== undefined) return cached;
+  // SSR: do not freeze cache at null — the client still hydrates from storage.
+  if (
+    typeof window === "undefined" &&
+    typeof globalThis.localStorage === "undefined"
+  ) {
     return null;
   }
+  cached = readFromLocalStorage();
+  return cached;
 }
 
+/**
+ * Persist last-used and notify same-tab subscribers.
+ * `storage` events do not fire in the writing document — in-memory
+ * listeners are what keep the Fota picker (and last-view hold) in sync.
+ */
 export function rememberLastCaptureMethod(mode: CaptureMode) {
   if (!isCaptureMethodChoice(mode)) return;
+  cached = mode;
   try {
-    if (typeof globalThis.localStorage === "undefined") return;
-    globalThis.localStorage.setItem(LAST_CAPTURE_METHOD_KEY, mode);
+    if (typeof globalThis.localStorage !== "undefined") {
+      globalThis.localStorage.setItem(LAST_CAPTURE_METHOD_KEY, mode);
+    }
   } catch {
-    // Private mode / quota — picker still works without last-used.
+    // Private mode / quota — in-memory last-used still updates this session.
   }
+  emit();
 }
 
 export function subscribeLastCaptureMethod(onStoreChange: () => void) {
+  listeners.add(onStoreChange);
   const onStorage = (event: StorageEvent) => {
-    if (event.key === LAST_CAPTURE_METHOD_KEY || event.key === null) {
-      onStoreChange();
-    }
+    if (event.key !== LAST_CAPTURE_METHOD_KEY && event.key !== null) return;
+    cached = undefined;
+    cached = readFromLocalStorage();
+    onStoreChange();
   };
-  window.addEventListener("storage", onStorage);
-  return () => window.removeEventListener("storage", onStorage);
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", onStorage);
+    return () => {
+      listeners.delete(onStoreChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }
+  return () => {
+    listeners.delete(onStoreChange);
+  };
+}
+
+/** Test-only: drop the in-memory cache so cases start unknown. */
+export function resetLastCaptureMethodCache() {
+  cached = undefined;
 }

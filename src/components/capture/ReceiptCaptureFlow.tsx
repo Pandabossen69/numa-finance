@@ -32,6 +32,7 @@ import {
   readLastCaptureMethod,
   rememberLastCaptureMethod,
   subscribeLastCaptureMethod,
+  type CaptureMethodChoice,
 } from "@/features/imports/fota-quick-path";
 import { ONBOARDING_SV } from "@/features/onboarding/copy";
 import { SV } from "@/features/copy/labels-sv";
@@ -89,6 +90,11 @@ export function ReceiptCaptureFlow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const lastUsed = useSyncExternalStore(
+    subscribeLastCaptureMethod,
+    readLastCaptureMethod,
+    () => null,
+  );
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
   const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
   if (resumeKey !== seenResumeKey) {
@@ -310,6 +316,7 @@ export function ReceiptCaptureFlow({
           rememberLastCaptureMethod(next);
           setMode(next);
         }}
+        lastUsed={lastUsed}
         hasAccount={Boolean(accountId)}
         variant={variant}
       />
@@ -776,19 +783,16 @@ export function ReceiptCaptureFlow({
 
 function ModePicker({
   onChoose,
+  lastUsed = null,
   hasAccount,
   variant = "default",
 }: {
   onChoose: (mode: CaptureMode) => void;
+  lastUsed?: CaptureMethodChoice | null;
   hasAccount: boolean;
   variant?: "default" | "onboarding";
 }) {
   const onboarding = variant === "onboarding";
-  const lastUsed = useSyncExternalStore(
-    subscribeLastCaptureMethod,
-    readLastCaptureMethod,
-    () => null,
-  );
   const items: Array<{
     id: Exclude<CaptureMode, "pick">;
     title: string;
@@ -861,16 +865,14 @@ function ModePicker({
               className={`${fastest ? "numa-panel-strong" : "numa-panel"} numa-press flex min-h-20 w-full min-w-0 items-center justify-between gap-4 px-4 py-4 text-left disabled:opacity-40`}
             >
               <span className="min-w-0">
-                <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-[15px] font-semibold tracking-tight">
-                    {item.title}
-                  </span>
-                  {mark ? (
-                    <span className="text-xs font-medium text-[var(--numa-accent)]">
-                      {mark}
-                    </span>
-                  ) : null}
+                <span className="block text-[15px] font-semibold tracking-tight">
+                  {item.title}
                 </span>
+                {mark ? (
+                  <span className="mt-0.5 block text-xs font-medium whitespace-nowrap text-[var(--numa-accent)]">
+                    {mark}
+                  </span>
+                ) : null}
                 <span className="mt-0.5 block text-sm leading-snug text-[var(--numa-muted)]">
                   {item.hint}
                 </span>

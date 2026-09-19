@@ -49,8 +49,11 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).toContain("fotaPickerMark");
     expect(src).toContain("rememberLastCaptureMethod");
     expect(src).toContain("readLastCaptureMethod");
+    expect(src).toContain("subscribeLastCaptureMethod");
+    expect(src).toContain("lastUsed={lastUsed}");
     expect(src).toContain("FASTEST_CAPTURE_METHOD");
     expect(src).toContain("numa-panel-strong");
+    expect(src).toContain("whitespace-nowrap");
     expect(src).toContain("Bank-SMS");
     expect(src).toContain("Bankapp");
     expect(src).toContain("Kvitto");
