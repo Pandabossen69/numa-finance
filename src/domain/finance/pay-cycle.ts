@@ -335,7 +335,6 @@ export function projectPayCycle(
   let expenseEndIso: string;
   let savingsMinor = 0;
   let remainingSavingsMinor = 0;
-  let savingsDueAt: string | null = null;
   let isActive = false;
 
   if (phase === "pre") {
@@ -418,7 +417,7 @@ export function projectPayCycle(
     flexibleMinor,
     savingsMinor,
     remainingSavingsMinor,
-    savingsDueAt,
+    savingsDueAt: null,
     freeToSpendMinor,
     daysLeft,
     perDayMinor,
