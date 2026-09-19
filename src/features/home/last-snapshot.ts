@@ -331,11 +331,18 @@ function shouldAdoptFinanceSnapshot(
   return true;
 }
 
-/** Fetch/sync leftover 275,12 must not undo a 15k→20k living adopt. */
+/**
+ * Fetch/sync leftover 275,12 must not undo a 15k→20k living adopt.
+ * Only after a savings mutation (plan-month avsätt). Additive Plan warmup
+ * that raises period spend (locked SEK) must still adopt.
+ */
 export function isLeftoverSparLivingRevert(
   current: HomeSnapshot,
   incoming: HomeSnapshot,
 ): boolean {
+  const adoptedMonthSave = current.planMonthSavingsMinor ?? 0;
+  if (adoptedMonthSave <= 0) return false;
+  if (incoming.cycleSpendingMinor > current.cycleSpendingMinor) return false;
   const currentSave =
     current.planMonthSavingsMinor ?? current.savingsTotalMinor;
   const incomingSave =

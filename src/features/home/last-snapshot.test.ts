@@ -867,6 +867,27 @@ describe("last view memory", () => {
     expect(lastHomeSnapshot()?.remainingTodayMinor).toBe(275_12);
   });
 
+  it("does not treat additive Plan warmup spend as a leftover savings revert", () => {
+    const thbOnly = homeSnap({
+      cycleSpendingMinor: 38_712_00,
+      remainingTodayMinor: 1_200_00,
+      dayBudgetMinor: 1_200_00,
+      planMonthSavingsMinor: 0,
+      savingsTotalMinor: 0,
+    });
+    const withSek = homeSnap({
+      cycleSpendingMinor: 38_712_00 + 105_00,
+      remainingTodayMinor: 2_000_00,
+      dayBudgetMinor: 2_000_00,
+      planMonthSavingsMinor: 0,
+      savingsTotalMinor: 0,
+    });
+    expect(isLeftoverSparLivingRevert(thbOnly, withSek)).toBe(false);
+    rememberHomeSnapshot(thbOnly);
+    rememberHomeSnapshot(withSek);
+    expect(lastHomeSnapshot()?.cycleSpendingMinor).toBe(38_712_00 + 105_00);
+  });
+
   it("force-adopts a mutation snapshot even when verifiedAt is older", () => {
     rememberHomeSnapshot(
       homeSnap({
