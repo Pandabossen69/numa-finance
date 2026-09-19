@@ -6,13 +6,10 @@ import type { CurrencyCode } from "@/domain/money";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PileLine } from "@/components/ui/PileLine";
 import { SV } from "@/features/copy/labels-sv";
-import { formatPlanFigure } from "@/components/plan/plan-format";
-
-export type SavingsLivePreview = {
-  overMinor: number;
-  remainingFreeMinor: number;
-  dayBudgetMinor: number;
-};
+import {
+  savingsPreviewLineSv,
+  type MonthSavingsPreview,
+} from "@/features/plan/savings-preview";
 
 export function PlanPiles({
   coverage,
@@ -31,8 +28,6 @@ export function PlanPiles({
   savingsBusy = false,
   clearBusy = false,
   livePreview = null,
-  currentRemainingFreeMinor = null,
-  currentDayBudgetMinor = null,
 }: {
   coverage: CashCoverageView;
   monthName: string;
@@ -49,9 +44,7 @@ export function PlanPiles({
   onClearSavings: () => void;
   savingsBusy?: boolean;
   clearBusy?: boolean;
-  livePreview?: SavingsLivePreview | null;
-  currentRemainingFreeMinor?: number | null;
-  currentDayBudgetMinor?: number | null;
+  livePreview?: MonthSavingsPreview | null;
 }) {
   const overOk = coverage.overMinor >= 0;
   const totalMinor = planWealthTotalMinor(coverage.overMinor, savingsTotalMinor);
@@ -255,14 +248,7 @@ export function PlanPiles({
             </div>
             {livePreview ? (
               <p className="text-[12px] leading-snug text-[var(--numa-muted)]">
-                {previewLineSv({
-                  overFrom: coverage.overMinor,
-                  overTo: livePreview.overMinor,
-                  kvarFrom: currentRemainingFreeMinor,
-                  kvarTo: livePreview.remainingFreeMinor,
-                  dayFrom: currentDayBudgetMinor,
-                  dayTo: livePreview.dayBudgetMinor,
-                })}
+                {savingsPreviewLineSv(livePreview)}
               </p>
             ) : null}
           </div>
@@ -270,26 +256,4 @@ export function PlanPiles({
       </div>
     </div>
   );
-}
-
-function previewLineSv(input: {
-  overFrom: number;
-  overTo: number;
-  kvarFrom: number | null;
-  kvarTo: number;
-  dayFrom: number | null;
-  dayTo: number;
-}): string {
-  const parts = [`Över ${formatPlanFigure(input.overFrom)} → ${formatPlanFigure(input.overTo)}`];
-  if (input.kvarFrom != null && input.kvarFrom !== input.kvarTo) {
-    parts.push(
-      `Kvar i perioden ${formatPlanFigure(input.kvarFrom)} → ${formatPlanFigure(input.kvarTo)}`,
-    );
-  }
-  if (input.dayFrom != null && input.dayFrom !== input.dayTo) {
-    parts.push(
-      `Dagsbudget ${formatPlanFigure(input.dayFrom)} → ${formatPlanFigure(input.dayTo)}`,
-    );
-  }
-  return parts.join(" · ");
 }

@@ -1,4 +1,5 @@
 import {
+  hasCycleFundingEvidence,
   projectCashCoverage,
   projectLivingBudget,
   projectPayCycle,
@@ -6,15 +7,28 @@ import {
   type PlanItem,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import { formatPlanFigure } from "@/components/plan/plan-format";
 import { applyMonthSavings } from "@/features/plan/optimistic";
 
 export type MonthSavingsPreview = {
+  overFrom: number;
+  overTo: number;
+  remainingTodayFrom: number;
+  remainingTodayTo: number;
+  remainingFreeFrom: number;
+  remainingFreeTo: number;
+  dayBudgetFrom: number;
+  dayBudgetTo: number;
+};
+
+type PreviewLiving = {
   overMinor: number;
+  remainingTodayMinor: number;
   remainingFreeMinor: number;
   dayBudgetMinor: number;
 };
 
-/** Draft avsättning → Över / Kvar / dagsbudget, same functions as the write path. */
+/** Draft avsättning → Över / Kvar idag / dagsbudget, same functions as the write path. */
 export function previewMonthSavings(input: {
   items: PlanItem[];
   monthKey: string;
@@ -30,6 +44,7 @@ export function previewMonthSavings(input: {
   now?: Date;
 }): MonthSavingsPreview | null {
   if (input.draftMinor === input.currentMinor) return null;
+  const now = input.now ?? new Date();
   const applied = applyMonthSavings(
     input.items,
     input.monthKey,
@@ -37,15 +52,62 @@ export function previewMonthSavings(input: {
     input.currency,
     input.timeZone,
   );
+  const from = livingAfterItems(input.items, input, now);
+  const to = livingAfterItems(applied.items, input, now);
+  return {
+    overFrom: from.overMinor,
+    overTo: to.overMinor,
+    remainingTodayFrom: from.remainingTodayMinor,
+    remainingTodayTo: to.remainingTodayMinor,
+    remainingFreeFrom: from.remainingFreeMinor,
+    remainingFreeTo: to.remainingFreeMinor,
+    dayBudgetFrom: from.dayBudgetMinor,
+    dayBudgetTo: to.dayBudgetMinor,
+  };
+}
+
+/** Always-visible Hem-facing preview — Över, Kvar idag, dagsbudget, plus Kvar i perioden. */
+export function savingsPreviewLineSv(preview: MonthSavingsPreview): string {
+  return [
+    `Över ${formatPlanFigure(preview.overFrom)} → ${formatPlanFigure(preview.overTo)}`,
+    `Kvar idag ${formatPlanFigure(preview.remainingTodayFrom)} → ${formatPlanFigure(preview.remainingTodayTo)}`,
+    `Dagsbudget ${formatPlanFigure(preview.dayBudgetFrom)} → ${formatPlanFigure(preview.dayBudgetTo)}`,
+    `Kvar i perioden ${formatPlanFigure(preview.remainingFreeFrom)} → ${formatPlanFigure(preview.remainingFreeTo)}`,
+  ].join(" · ");
+}
+
+function livingAfterItems(
+  items: PlanItem[],
+  input: {
+    monthKey: string;
+    timeZone: string;
+    ledgerTransactions: CanonicalTransaction[];
+    saldoMinor: number | null;
+    cycleSpendingMinor: number;
+    todaySpendingMinor: number;
+    fundingConfirmed?: boolean;
+  },
+  now: Date,
+): PreviewLiving {
+  const cycle = projectPayCycle(items, now, input.timeZone);
+  const evidence = hasCycleFundingEvidence({
+    cycleStartAt: cycle.startAt,
+    cycleEndAt: cycle.endAt,
+    transactions: input.ledgerTransactions,
+  });
+  const fundingConfirmed =
+    input.fundingConfirmed === true
+      ? true
+      : input.fundingConfirmed === false
+        ? evidence
+        : evidence || undefined;
   const coverage = projectCashCoverage({
-    planItems: applied.items,
+    planItems: items,
     transactions: input.ledgerTransactions,
     monthKey: input.monthKey,
     timeZone: input.timeZone,
     saldoMinor: input.saldoMinor,
   });
-  const now = input.now ?? new Date();
-  const cycle = projectPayCycle(applied.items, now, input.timeZone);
   const living = projectLivingBudget({
     cycle,
     now,
@@ -53,10 +115,11 @@ export function previewMonthSavings(input: {
     bankBalanceMinor: input.saldoMinor,
     cycleSpendingMinor: input.cycleSpendingMinor,
     todaySpendingMinor: input.todaySpendingMinor,
-    fundingConfirmed: input.fundingConfirmed,
+    fundingConfirmed,
   });
   return {
     overMinor: coverage.overMinor,
+    remainingTodayMinor: living.remainingTodayMinor,
     remainingFreeMinor: living.remainingFreeMinor,
     dayBudgetMinor: living.dayBudgetMinor,
   };

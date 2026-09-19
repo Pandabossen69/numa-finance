@@ -768,12 +768,6 @@ export function PlanEditor({
           savingsBusy={busy === "savings"}
           clearBusy={busy === "savings-clear"}
           livePreview={savingsPreview}
-          currentRemainingFreeMinor={
-            homeLivingStamp ? lastHomeSnapshot()?.remainingFreeMinor ?? null : null
-          }
-          currentDayBudgetMinor={
-            homeLivingStamp ? lastHomeSnapshot()?.dayBudgetMinor ?? null : null
-          }
           onSaveSavings={() => {
             const parsed = parsePlanAmount(
               savingsAmount.trim() === "" ? "0" : savingsAmount,

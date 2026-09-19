@@ -28,11 +28,11 @@ describe("Sparande empty state and Sätt av från Över", () => {
     expect(src).not.toContain("SV.vaxer");
   });
 
-  it("previews Över / Kvar / dagsbudget before Uppdatera", () => {
+  it("previews Över / Kvar idag / dagsbudget before Uppdatera", () => {
     expect(src).toContain("livePreview");
-    expect(src).toContain("Över ${formatPlanFigure(input.overFrom)}");
-    expect(src).toContain("Kvar i perioden");
-    expect(src).toContain("Dagsbudget");
+    expect(src).toContain("savingsPreviewLineSv");
+    expect(src).not.toContain("currentRemainingFreeMinor");
+    expect(src).not.toContain("previewLineSv");
   });
 
   it("labels Över with a matching aria heading id", () => {
