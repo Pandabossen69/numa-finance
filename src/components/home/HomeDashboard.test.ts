@@ -147,6 +147,9 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("view.dayBudgetMinor");
     expect(src).toContain("view.livingPoolMinor");
     expect(src).toContain("view.reservedUntilIncomeMinor");
+    expect(src).toContain("inferReservedSavingsMinor");
+    expect(src).toContain("labelMonthNameSv(view.monthKey)");
+    expect(src).toContain("savingsMonthName");
     expect(src).toContain("view.calculatedBalanceMinor");
     expect(src).toContain("view.daysUntilIncome");
     expect(src).toContain("showDayEnvelope");

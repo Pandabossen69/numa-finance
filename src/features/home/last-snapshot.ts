@@ -582,6 +582,8 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       remainingTodayMinor: living.remainingTodayMinor,
       livingPoolMinor: living.livingPoolMinor,
       reservedUntilIncomeMinor: living.reservedUntilIncomeMinor,
+      reservedSavingsUntilIncomeMinor: living.reservedSavingsMinor,
+      reservedSavingsMonthKey: living.reservedSavingsMonthKey,
       daysUntilIncome: living.daysUntilHorizon,
       nextIncomeLabelSv: living.nextIncomeLabelSv,
       incomingMinor: coverage.incomingMinor,
@@ -924,6 +926,8 @@ export function applyOptimisticPlanSettle(input: {
   let remainingTodayMinor = previous.remainingTodayMinor;
   let livingPoolMinor = previous.livingPoolMinor;
   let reservedUntilIncomeMinor = previous.reservedUntilIncomeMinor;
+  let reservedSavingsUntilIncomeMinor = previous.reservedSavingsUntilIncomeMinor;
+  let reservedSavingsMonthKey = previous.reservedSavingsMonthKey;
   let usesBankBalance = previous.usesBankBalance;
   if (planSnap) {
     const now = new Date();
@@ -945,6 +949,8 @@ export function applyOptimisticPlanSettle(input: {
       remainingTodayMinor = living.remainingTodayMinor;
       livingPoolMinor = living.livingPoolMinor;
       reservedUntilIncomeMinor = living.reservedUntilIncomeMinor;
+      reservedSavingsUntilIncomeMinor = living.reservedSavingsMinor;
+      reservedSavingsMonthKey = living.reservedSavingsMonthKey;
       usesBankBalance = living.usesBankBalance;
     }
   }
@@ -965,6 +971,8 @@ export function applyOptimisticPlanSettle(input: {
       remainingTodayMinor,
       livingPoolMinor,
       reservedUntilIncomeMinor,
+      reservedSavingsUntilIncomeMinor,
+      reservedSavingsMonthKey,
       usesBankBalance,
       safeToSpendTodayMinor: remainingTodayMinor,
       wealthTotalMinor: planWealthTotalMinor(

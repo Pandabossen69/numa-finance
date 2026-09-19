@@ -1,6 +1,11 @@
 import { calendarDaysBetween, formatCountSv, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
 import type { PayCycleProjection } from "./pay-cycle";
-import { perDayBudgetMinor, remainingOpenMinor } from "./plan-months";
+import {
+  labelSavingsMonthsSv,
+  monthKeyFromDate,
+  perDayBudgetMinor,
+  remainingOpenMinor,
+} from "./plan-months";
 import { isBankSmsLedgerRow } from "./balance";
 import type { TransactionSource } from "./types";
 import { formatMoneyCompact, money, type CurrencyCode } from "@/domain/money";
@@ -56,6 +61,12 @@ export type LivingBudget = {
   livingPoolMinor: number;
   /** Remaining planned expenses + savings reserved from saldo until next income. */
   reservedUntilIncomeMinor: number;
+  /** Open bills in `reservedUntilIncomeMinor`. */
+  reservedExpensesMinor: number;
+  /** Open savings in `reservedUntilIncomeMinor`. */
+  reservedSavingsMinor: number;
+  /** Calendar months of reserved savings (`2026-09` or `2026-09,2026-10`). */
+  reservedSavingsMonthKey: string | null;
   nextIncomeAt: string | null;
   nextIncomeLabelSv: string | null;
   cycleEndLabelSv: string | null;
@@ -70,29 +81,83 @@ export function remainingTodayOf(
   return dayBudgetMinor - Math.max(0, spentTodayMinor);
 }
 
+export type ReservedUntilHorizon = {
+  expensesMinor: number;
+  savingsMinor: number;
+  totalMinor: number;
+  savingsMonthKey: string | null;
+};
+
 /**
  * Remaining planned bills + savings that still sit in saldo until the next
  * paycheck. Items due on/after the horizon are paid from that income.
  */
-export function remainingReservedUntilHorizon(
+export function remainingReservedBreakdownUntilHorizon(
   cycle: PayCycleProjection,
   horizonIso: string | null,
-): number {
+  timeZone = "Asia/Bangkok",
+): ReservedUntilHorizon {
   const horizonMs = horizonIso ? Date.parse(horizonIso) : Number.POSITIVE_INFINITY;
-  let reserved = 0;
+  let expensesMinor = 0;
   for (const { item, dueAt } of cycle.expenses) {
     const due = Date.parse(dueAt);
     if (!Number.isFinite(due)) continue;
     if (Number.isFinite(horizonMs) && due >= horizonMs) continue;
-    reserved += remainingOpenMinor(item);
+    expensesMinor += remainingOpenMinor(item);
   }
-  if (cycle.remainingSavingsMinor > 0) {
+
+  let savingsMinor = 0;
+  const savingsMonthKeys: string[] = [];
+  const rows = cycle.remainingSavingsRows ?? [];
+  if (rows.length > 0) {
+    for (const row of rows) {
+      const due = Date.parse(row.dueAt);
+      if (!Number.isFinite(due)) continue;
+      if (Number.isFinite(horizonMs) && due >= horizonMs) continue;
+      savingsMinor += row.amountMinor;
+      const monthKey = monthKeyFromDate(new Date(row.dueAt), timeZone);
+      if (!savingsMonthKeys.includes(monthKey)) savingsMonthKeys.push(monthKey);
+    }
+  } else if (cycle.remainingSavingsMinor > 0) {
     const due = cycle.savingsDueAt ? Date.parse(cycle.savingsDueAt) : NaN;
     if (!horizonIso || !Number.isFinite(due) || due < horizonMs) {
-      reserved += cycle.remainingSavingsMinor;
+      savingsMinor += cycle.remainingSavingsMinor;
+      if (cycle.savingsDueAt && Number.isFinite(due)) {
+        savingsMonthKeys.push(monthKeyFromDate(new Date(cycle.savingsDueAt), timeZone));
+      }
     }
   }
-  return reserved;
+
+  return {
+    expensesMinor,
+    savingsMinor,
+    totalMinor: expensesMinor + savingsMinor,
+    savingsMonthKey: savingsMonthKeys.length > 0 ? savingsMonthKeys.join(",") : null,
+  };
+}
+
+export function remainingReservedUntilHorizon(
+  cycle: PayCycleProjection,
+  horizonIso: string | null,
+  timeZone = "Asia/Bangkok",
+): number {
+  return remainingReservedBreakdownUntilHorizon(cycle, horizonIso, timeZone)
+    .totalMinor;
+}
+
+function reservedFields(breakdown: ReservedUntilHorizon): Pick<
+  LivingBudget,
+  | "reservedUntilIncomeMinor"
+  | "reservedExpensesMinor"
+  | "reservedSavingsMinor"
+  | "reservedSavingsMonthKey"
+> {
+  return {
+    reservedUntilIncomeMinor: breakdown.totalMinor,
+    reservedExpensesMinor: breakdown.expensesMinor,
+    reservedSavingsMinor: breakdown.savingsMinor,
+    reservedSavingsMonthKey: breakdown.savingsMonthKey,
+  };
 }
 
 function untilIncomeSv(days: number, label: string | null): string {
@@ -109,16 +174,108 @@ function moneySv(amountMinor: number, currency: CurrencyCode): string {
   return formatMoneyCompact(money(Math.max(0, minor), currency));
 }
 
+function roundedMinor(value: number): number {
+  return Number.isFinite(value) ? Math.round(value) : 0;
+}
+
+/** Cookie/SSR snapshots may lack the reserved-savings split — infer safely. */
+export function inferReservedSavingsMinor(input: {
+  reservedMinor: number;
+  reservedSavingsMinor?: number | null;
+  planSavingsMinor?: number | null;
+  savingsTotalMinor?: number | null;
+}): number {
+  if (
+    input.reservedSavingsMinor != null &&
+    Number.isFinite(input.reservedSavingsMinor)
+  ) {
+    return Math.max(0, roundedMinor(input.reservedSavingsMinor));
+  }
+  const reserved = Math.max(0, roundedMinor(input.reservedMinor));
+  if (reserved <= 0) return 0;
+  const plan = Math.max(0, roundedMinor(input.planSavingsMinor ?? 0));
+  const total = Math.max(0, roundedMinor(input.savingsTotalMinor ?? 0));
+  if (reserved === plan || reserved === total) return reserved;
+  if (plan > 0 && reserved > plan) return Math.min(plan, reserved);
+  if (total > 0 && reserved <= total) return reserved;
+  return 0;
+}
+
+/**
+ * True only when the displayed subtraction is arithmetically exact.
+ * Morning pool is saldo − reserved + spenderat idag (0 when nothing spent).
+ */
+export function livingBudgetEquationHolds(input: {
+  saldoMinor: number;
+  reservedMinor: number;
+  poolMinor: number;
+  spentTodayMinor?: number;
+}): boolean {
+  const saldo = roundedMinor(input.saldoMinor);
+  const reserved = roundedMinor(input.reservedMinor);
+  const pool = roundedMinor(input.poolMinor);
+  const spent = Math.max(0, roundedMinor(input.spentTodayMinor ?? 0));
+  return saldo - reserved + spent === pool;
+}
+
+function sparaISv(monthLabel: string | null | undefined): string {
+  const month = monthLabel?.trim();
+  return month ? `Spara i ${month}` : "sparande";
+}
+
+function reservedSubtrahendSv(input: {
+  reservedMinor: number;
+  reservedSavingsMinor?: number | null;
+  reservedExpensesMinor?: number | null;
+  savingsMonthLabelSv?: string | null;
+  currency: CurrencyCode;
+}): string | null {
+  const reserved = Math.max(0, roundedMinor(input.reservedMinor));
+  if (reserved <= 0) return null;
+  const savings = inferReservedSavingsMinor({
+    reservedMinor: reserved,
+    reservedSavingsMinor: input.reservedSavingsMinor,
+  });
+  const expenses = Math.max(
+    0,
+    input.reservedExpensesMinor != null &&
+      Number.isFinite(input.reservedExpensesMinor)
+      ? roundedMinor(input.reservedExpensesMinor)
+      : reserved - savings,
+  );
+  const parts: string[] = [];
+  if (savings > 0) {
+    parts.push(
+      `${sparaISv(input.savingsMonthLabelSv)} ${moneySv(savings, input.currency)}`,
+    );
+  }
+  if (expenses > 0) {
+    parts.push(`kvar att betala ${moneySv(expenses, input.currency)}`);
+  }
+  if (parts.length === 0) {
+    parts.push(
+      `${sparaISv(input.savingsMonthLabelSv)} ${moneySv(reserved, input.currency)}`,
+    );
+  }
+  return parts.join(" − ");
+}
+
 /**
  * Always-visible Hem lines under dagsbudget. No tap, readable in under 5s.
  * 1) Du kan leva på X / dag
- * 2) Saldo A − planerat B = Y · Z dagar till [datum]
+ * 2) Saldo A − sparande/Spara i [månad] B = Y · Z dagar till [datum]
+ *    — only when A − B (+ spenderat idag) = Y. Never a false equation.
  */
 export function livingBudgetHintSv(input: {
   dayBudgetMinor: number;
   poolMinor: number;
   reservedMinor: number;
+  reservedSavingsMinor?: number | null;
+  reservedExpensesMinor?: number | null;
+  savingsMonthLabelSv?: string | null;
+  reservedSavingsMonthKey?: string | null;
   saldoMinor?: number | null;
+  spentTodayMinor?: number | null;
   daysUntilHorizon: number;
   nextIncomeLabelSv: string | null;
   currency?: CurrencyCode;
@@ -127,20 +284,60 @@ export function livingBudgetHintSv(input: {
   const day = moneySv(input.dayBudgetMinor, currency);
   const pool = moneySv(input.poolMinor, currency);
   const until = untilIncomeSv(input.daysUntilHorizon, input.nextIncomeLabelSv);
+  const spentTodayMinor = Math.max(0, roundedMinor(input.spentTodayMinor ?? 0));
   const saldoMinor =
     input.saldoMinor != null && Number.isFinite(input.saldoMinor)
-      ? Math.max(0, Math.round(input.saldoMinor))
-      : Math.max(0, input.poolMinor) + Math.max(0, input.reservedMinor);
+      ? Math.max(0, roundedMinor(input.saldoMinor))
+      : Math.max(0, roundedMinor(input.poolMinor)) +
+        Math.max(0, roundedMinor(input.reservedMinor)) -
+        spentTodayMinor;
   const reservedMinor =
     input.reservedMinor > 0
-      ? input.reservedMinor
-      : Math.max(0, saldoMinor - Math.max(0, input.poolMinor));
+      ? Math.max(0, roundedMinor(input.reservedMinor))
+      : Math.max(0, saldoMinor + spentTodayMinor - Math.max(0, roundedMinor(input.poolMinor)));
+  const monthLabel =
+    input.savingsMonthLabelSv?.trim() ||
+    labelSavingsMonthsSv(input.reservedSavingsMonthKey) ||
+    null;
+  const savingsMinor = inferReservedSavingsMinor({
+    reservedMinor,
+    reservedSavingsMinor: input.reservedSavingsMinor,
+  });
   const saldo = moneySv(saldoMinor, currency);
-  const reserved = moneySv(reservedMinor, currency);
-  return [
-    `Du kan leva på ${day} / dag`,
-    `Saldo ${saldo} − planerat ${reserved} = ${pool} · ${until}`,
-  ];
+  const holds = livingBudgetEquationHolds({
+    saldoMinor,
+    reservedMinor,
+    poolMinor: input.poolMinor,
+    spentTodayMinor,
+  });
+  const subtrahend = reservedSubtrahendSv({
+    reservedMinor,
+    reservedSavingsMinor: savingsMinor,
+    reservedExpensesMinor: input.reservedExpensesMinor,
+    savingsMonthLabelSv: monthLabel,
+    currency,
+  });
+
+  const lines = [`Du kan leva på ${day} / dag`];
+  if (holds && subtrahend) {
+    const spentBit =
+      spentTodayMinor > 0
+        ? ` + spenderat idag ${moneySv(spentTodayMinor, currency)}`
+        : "";
+    lines.push(`Saldo ${saldo} − ${subtrahend}${spentBit} = ${pool} · ${until}`);
+  } else if (holds) {
+    lines.push(`Saldo ${saldo} · ${until}`);
+  } else {
+    lines.push(`Saldo ${saldo} · Kvar i perioden ${pool} · ${until}`);
+    if (savingsMinor > 0) {
+      lines.push(
+        `${sparaISv(monthLabel)} ${moneySv(savingsMinor, currency)} — avsatt i planen`,
+      );
+    } else if (reservedMinor > 0 && subtrahend) {
+      lines.push(`${subtrahend} — avsatt i planen`);
+    }
+  }
+  return lines;
 }
 
 function bridgeHorizonIso(
@@ -183,12 +380,13 @@ function projectBridge(input: {
 }): LivingBudget {
   const { cycle, now, timeZone, bankBalanceMinor, spentToday } = input;
   const hasBalance = bankBalanceMinor != null;
-  const reservedUntilIncomeMinor = remainingReservedUntilHorizon(
+  const reserved = remainingReservedBreakdownUntilHorizon(
     cycle,
     input.nextIncomeAt,
+    timeZone,
   );
   const liveOn = hasBalance
-    ? bankBalanceMinor - reservedUntilIncomeMinor
+    ? bankBalanceMinor - reserved.totalMinor
     : 0;
   const availableMinor = hasBalance ? liveOn : 0;
   const morningAvailable = hasBalance
@@ -213,7 +411,7 @@ function projectBridge(input: {
     dayBudgetMinor,
     remainingTodayMinor: remainingToday,
     livingPoolMinor: morningAvailable,
-    reservedUntilIncomeMinor,
+    ...reservedFields(reserved),
     nextIncomeAt: input.nextIncomeAt,
     nextIncomeLabelSv: input.nextIncomeLabelSv,
     cycleEndLabelSv: cycle.endLabelSv,
@@ -322,6 +520,9 @@ export function projectLivingBudget(input: {
       remainingTodayMinor: 0,
       livingPoolMinor: 0,
       reservedUntilIncomeMinor: 0,
+      reservedExpensesMinor: 0,
+      reservedSavingsMinor: 0,
+      reservedSavingsMonthKey: null,
       nextIncomeAt: null,
       nextIncomeLabelSv: null,
       cycleEndLabelSv: null,
@@ -357,11 +558,15 @@ export function projectLivingBudget(input: {
   const remainingFree = cycle.freeToSpendMinor - cycleSpendingMinor;
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
   const horizon = paycheckHorizonIso(cycle);
-  const reservedUntilIncomeMinor = remainingReservedUntilHorizon(cycle, horizon);
+  const reserved = remainingReservedBreakdownUntilHorizon(
+    cycle,
+    horizon,
+    timeZone,
+  );
   const hasBalance = bankBalanceMinor != null;
   const planPoolAtMorning = cycle.freeToSpendMinor - spentBeforeToday;
   const cashPoolAtMorning = hasBalance
-    ? bankBalanceMinor - reservedUntilIncomeMinor + spentToday
+    ? bankBalanceMinor - reserved.totalMinor + spentToday
     : null;
   // Never hide a prod-like plan leftover behind an over-reserved cash pool.
   const poolAtMorning =
@@ -370,7 +575,7 @@ export function projectLivingBudget(input: {
       : planPoolAtMorning;
   const availableMinor =
     cashPoolAtMorning != null && cashPoolAtMorning > 0
-      ? bankBalanceMinor! - reservedUntilIncomeMinor
+      ? bankBalanceMinor! - reserved.totalMinor
       : remainingFree;
   const calendarDays = horizon
     ? calendarDaysBetween(now, horizon, timeZone)
@@ -391,7 +596,7 @@ export function projectLivingBudget(input: {
     dayBudgetMinor,
     remainingTodayMinor: remainingToday,
     livingPoolMinor: Math.max(0, poolAtMorning),
-    reservedUntilIncomeMinor,
+    ...reservedFields(reserved),
     nextIncomeAt: horizon,
     nextIncomeLabelSv: paycheckHorizonLabelSv(cycle, horizon),
     cycleEndLabelSv: cycle.endLabelSv,

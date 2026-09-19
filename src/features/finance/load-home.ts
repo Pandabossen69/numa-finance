@@ -46,6 +46,10 @@ export type HomeSnapshot = {
   livingPoolMinor: number;
   /** Remaining planned expenses + savings reserved from saldo until next income. */
   reservedUntilIncomeMinor: number;
+  /** Open savings inside reservedUntilIncome — omitted on older last-home cookies. */
+  reservedSavingsUntilIncomeMinor?: number;
+  /** Calendar month(s) of reserved savings (`2026-09` or `2026-09,2026-10`). */
+  reservedSavingsMonthKey?: string | null;
   daysUntilIncome: number;
   nextIncomeLabelSv: string | null;
   extraSaldoMinor: number;

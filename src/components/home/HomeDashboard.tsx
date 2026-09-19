@@ -13,7 +13,13 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
-import { formatDaysUntilSv, livingBudgetHintSv } from "@/domain/finance";
+import {
+  formatDaysUntilSv,
+  inferReservedSavingsMinor,
+  labelMonthNameSv,
+  labelSavingsMonthsSv,
+  livingBudgetHintSv,
+} from "@/domain/finance";
 import {
   formatMoney,
   formatMoneyCompact,
@@ -314,7 +320,19 @@ export function HomeDashboard({
                             view.calculatedBalanceMinor ??
                             0,
                           reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+                          reservedSavingsMinor: inferReservedSavingsMinor({
+                            reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+                            reservedSavingsMinor:
+                              view.reservedSavingsUntilIncomeMinor,
+                            planSavingsMinor: view.planSavingsMinor,
+                            savingsTotalMinor: view.savingsTotalMinor,
+                          }),
+                          reservedSavingsMonthKey: view.reservedSavingsMonthKey,
+                          savingsMonthLabelSv:
+                            labelSavingsMonthsSv(view.reservedSavingsMonthKey) ||
+                            labelMonthNameSv(view.monthKey),
                           saldoMinor: view.calculatedBalanceMinor,
+                          spentTodayMinor: todaySpendingMinor,
                           daysUntilHorizon: view.daysUntilIncome,
                           nextIncomeLabelSv: view.nextIncomeLabelSv,
                           currency,
@@ -419,6 +437,7 @@ export function HomeDashboard({
                   unpaidMinor={view.unpaidMinor}
                   overMinor={view.overMinor}
                   savingsMinor={view.savingsTotalMinor}
+                  savingsMonthName={labelMonthNameSv(view.monthKey)}
                   currency={currency}
                 />
                 {accountsView && accountsView.accounts.length > 0 ? (

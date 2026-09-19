@@ -82,6 +82,7 @@ export function CompactPiles({
   unpaidMinor,
   overMinor,
   savingsMinor,
+  savingsMonthName,
   currency,
 }: {
   saldoMinor: number | null;
@@ -89,6 +90,8 @@ export function CompactPiles({
   unpaidMinor: number;
   overMinor: number;
   savingsMinor: number;
+  /** Same heading as Plan: «Spara i [månad]». */
+  savingsMonthName?: string;
   currency: CurrencyCode;
 }) {
   const overOk = overMinor >= 0;
@@ -120,7 +123,11 @@ export function CompactPiles({
       </div>
       <div className="is-park min-w-0">
         <div className="numa-pile-save-copy">
-          <p className="numa-section-title">{SV.sparande}</p>
+          <p className="numa-section-title">
+            {savingsMinor > 0 && savingsMonthName
+              ? SV.sparaI(savingsMonthName)
+              : SV.sparande}
+          </p>
           <p className="numa-pile-hint">{SV.sparandeHintHem}</p>
         </div>
         <div className="numa-pile-save-value min-w-0 text-[var(--numa-ink)]">

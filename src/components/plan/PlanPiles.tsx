@@ -126,7 +126,7 @@ export function PlanPiles({
         >
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <p id="plan-sparande-heading" className="numa-section-title min-w-0">
-              Spara i {monthName}
+              {SV.sparaI(monthName)}
             </p>
             <span className="numa-chip numa-chip-ink shrink-0">{savingsChip}</span>
           </div>

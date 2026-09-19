@@ -21,6 +21,8 @@ describe("CompactPiles cash stack", () => {
     expect(compact).not.toContain("numa-panel-park");
     expect(compact).not.toContain("Mer än planerat.");
     expect(compact).not.toContain("SV.motPlanen");
+    expect(compact).toContain("SV.sparaI(savingsMonthName)");
+    expect(compact).toContain("savingsMonthName");
     expect(compact).not.toContain('size="xs"');
     expect(compact).not.toContain("text-[11px]");
   });
