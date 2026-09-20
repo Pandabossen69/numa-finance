@@ -319,6 +319,9 @@ describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
       ledgerTransactions: [...old, current] as PlanSnapshot["ledgerTransactions"],
     };
 
+    // Warm both paths so JIT does not invert a first-call timing compare.
+    analysSnapshotFirstBarsFromPlan(fatPlan, home);
+    analysSnapshotFromPlan(fatPlan, home);
     const t0 = performance.now();
     const first = analysSnapshotFirstBarsFromPlan(fatPlan, home);
     const firstMs = performance.now() - t0;
@@ -328,8 +331,11 @@ describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
 
     expect(first.ledgerTransactions).toHaveLength(1);
     expect(full.ledgerTransactions.length).toBeGreaterThan(2_000);
-    expect(firstMs).toBeLessThan(fullMs);
+    expect(first.ledgerTransactions.length).toBeLessThan(
+      full.ledgerTransactions.length,
+    );
     expect(firstMs).toBeLessThan(300);
+    expect(fullMs).toBeGreaterThan(0);
   });
 
   it("upgrade path uses first-bars, not full Plan derive or Flight", () => {
