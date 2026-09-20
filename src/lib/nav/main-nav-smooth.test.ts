@@ -109,11 +109,18 @@ describe("SMOOTH 01 root cause contracts", () => {
     expect(proxyAuth).not.toContain("if (!input.hasAuthCookie || !input.isRscOrPrefetch)");
   });
 
-  it("does not let Fota await searchParams before the Suspense shell", () => {
+  it("keeps Fota client-first under SPA keep-alive — no RSC snapshot await", () => {
     const fota = read("../../app/(main)/fota/page.tsx");
-    const fotaBefore = fota.slice(0, fota.indexOf("<Suspense"));
-    expect(fotaBefore).not.toContain("await searchParams");
-    expect(fota).toContain("FotaFromParams");
+    const client = read("../../components/capture/FotaRouteClient.tsx");
+    expect(fota).toContain("FotaRouteClient");
+    expect(fota).toMatch(/return\s+<\s*FotaRouteClient\s*\/>/);
+    expect(fota).not.toContain("<Suspense");
+    expect(fota).not.toContain("FotaFromParams");
+    expect(fota).not.toContain("await searchParams");
+    expect(fota).not.toMatch(/from ["']@\/features\/finance\/load-home["']/);
+    expect(client).toContain("data={null}");
+    expect(client).not.toMatch(/from ["']@\/features\/finance\/load-home["']/);
+    expect(client).not.toContain("getHomeSnapshotAction");
   });
 
   it("does not force full Link prefetch on the four main tabs", () => {

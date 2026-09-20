@@ -1,7 +1,8 @@
 /**
- * Primary tabs that must switch in the same tick as the tap — no App Router
+ * Destinations that must switch in the same tick as the tap — no App Router
  * soft-nav / force-dynamic RSC. NextStep Sales keeps panels mounted; we do the
- * same under the NUMA shell.
+ * same under the NUMA shell. Fota (+) is keep-alive so dest chrome is not
+ * parked under the hidden RSC shadow.
  */
 
 export const SPA_TAB_HREFS = [
@@ -10,6 +11,7 @@ export const SPA_TAB_HREFS = [
   "/analys",
   "/mer",
   "/transaktioner",
+  "/fota",
 ] as const;
 
 export type SpaTabHref = (typeof SPA_TAB_HREFS)[number];
@@ -25,6 +27,7 @@ export function spaTabKey(pathname: string): SpaTabHref | null {
   if (path === "/transaktioner" || path.startsWith("/transaktioner/")) {
     return "/transaktioner";
   }
+  if (path === "/fota" || path.startsWith("/fota/")) return "/fota";
   return null;
 }
 

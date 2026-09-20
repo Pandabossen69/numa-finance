@@ -107,6 +107,32 @@ describe("instant tap — phone-width dest paint", () => {
     expect(mer).toContain("prefetch={false}");
   });
 
+  it("paints Fota dest shell on Hem→Fota before RSC children arrive", () => {
+    expect(
+      resolveVisibleTab({
+        loading: true,
+        leaving: false,
+        destTab: "/fota",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        pathTab: "/fota",
+      }),
+    ).toBe("dest-loading");
+    expect(
+      resolveVisibleTab({
+        loading: false,
+        leaving: true,
+        destTab: "/fota",
+        heldTab: "/idag",
+        destIsTabRoot: true,
+        hasDestCache: false,
+        intentMismatch: true,
+        pathTab: "/idag",
+      }),
+    ).toBe("dest-loading");
+  });
+
   it("paints Konton dest shell on Mer→Konton before RSC children arrive", () => {
     expect(
       resolveVisibleTab({

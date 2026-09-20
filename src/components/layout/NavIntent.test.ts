@@ -26,6 +26,7 @@ describe("NavIntent", () => {
     expect(src).toContain('document.addEventListener("click", onClick, true)');
     expect(src).toContain("spaHrefFromAnchor");
     expect(src).toContain("rememberPlanFocusFromHref");
+    expect(src).toContain("rememberFotaIntentFromHref");
     expect(src).toContain("url.search");
     expect(src).toContain("event.preventDefault()");
     expect(src).toContain("event.stopPropagation()");
