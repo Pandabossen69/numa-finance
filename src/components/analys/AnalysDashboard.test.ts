@@ -305,6 +305,8 @@ describe("Analys month result color", () => {
 
   it("shows a Swedish fail-soft if Analys never arrives", () => {
     expect(src).toContain("AnalysFailSoft");
+    expect(src).toContain("ensurePaintableAnalysSnapshot");
+    expect(src).toContain("retrying");
     expect(src).not.toContain("RetryLoadButton");
     expect(src).not.toContain("financeTruthMessageSv");
   });

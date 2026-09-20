@@ -4,8 +4,10 @@ import {
   ANALYS_CLIENT_TIMEOUT_MS,
   analysPendingHasExpired,
   analysViewCanPaint,
+  canAnalysAutoRetry,
   fetchAnalysSnapshotClient,
   lastAnalysFetchResult,
+  markAnalysAutoRetryUsed,
   markAnalysPendingStarted,
   resetAnalysClientFetchForTests,
 } from "./analys-client-fetch";
@@ -103,5 +105,13 @@ describe("analys pending clock", () => {
         month: { key: "2026-09" },
       } as never),
     ).toBe(true);
+  });
+});
+
+describe("analys auto-retry", () => {
+  it("allows one automatic retry after fail-soft", () => {
+    expect(canAnalysAutoRetry()).toBe(true);
+    markAnalysAutoRetryUsed();
+    expect(canAnalysAutoRetry()).toBe(false);
   });
 });

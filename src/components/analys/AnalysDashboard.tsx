@@ -38,6 +38,7 @@ import {
   type CurrencyCode,
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
+import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 
 type AnalysScope = "period" | "month";
@@ -45,9 +46,11 @@ type AnalysScope = "period" | "month";
 export function AnalysDashboard({
   data,
   error,
+  retrying = false,
 }: {
   data: AnalysSnapshot | null;
   error?: string | null;
+  retrying?: boolean;
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
@@ -57,7 +60,7 @@ export function AnalysDashboard({
   const sharedMonth = useSyncExternalStore(subscribePlanView, lastPlanView, () => null);
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
-  const view = data ?? lastAnalysSnapshot();
+  const view = data ?? lastAnalysSnapshot() ?? ensurePaintableAnalysSnapshot();
   const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 
   // Same numbers as the server sends for today's month, recomputed locally for
@@ -95,6 +98,7 @@ export function AnalysDashboard({
   }, [view, scope, activeMonthKey]);
 
   if (!view || !month || !activeMonthKey) {
+    if (retrying) return <AnalysFailSoft error={error} retrying />;
     if (!error) return <AnalysPending />;
     return <AnalysFailSoft error={error} />;
   }

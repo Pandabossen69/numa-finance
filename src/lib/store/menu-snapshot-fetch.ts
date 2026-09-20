@@ -34,6 +34,10 @@ export type MenuSnapshotSources = {
   loadAccounts: () => Promise<Account[]>;
   loadPlanItems: () => Promise<PlanItem[]>;
   loadCheckpoint: (accountId: string) => Promise<BalanceCheckpoint | null>;
+  /** One round-trip for latest checkpoint per account — preferred over N. */
+  loadCheckpoints?: (
+    accountIds: string[],
+  ) => Promise<Array<BalanceCheckpoint | null>>;
   loadTransactions: (options: {
     sinceIso: string;
     accountId?: string;
@@ -75,9 +79,9 @@ export async function fetchMenuSnapshotBundle(
 
   const accounts = await accountsP;
   const primary = accounts.find((a) => a.isDefault) ?? accounts[0] ?? null;
-  const checkpointsP = Promise.all(
-    accounts.map((account) => sources.loadCheckpoint(account.id)),
-  );
+  const checkpointsP = sources.loadCheckpoints
+    ? sources.loadCheckpoints(accounts.map((account) => account.id))
+    : Promise.all(accounts.map((account) => sources.loadCheckpoint(account.id)));
 
   const [profile, planItems] = await Promise.all([profileP, planItemsP]);
 

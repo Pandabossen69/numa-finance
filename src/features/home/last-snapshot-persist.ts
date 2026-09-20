@@ -13,6 +13,7 @@ import type {
 export const LAST_KNOWN_STORAGE_KEY = "numa.lastKnown.v1";
 
 const MAX_MOVEMENT_ITEMS = 50;
+const MAX_QUOTA_PLAN_LEDGER = 40;
 
 export type PersistedLastKnown = {
   v: 1;
@@ -57,6 +58,16 @@ function slimAnalys(snap: AnalysSnapshot | null): AnalysSnapshot | null {
   };
 }
 
+/** Quota fallback — keep Plan so Analys can derive instead of a false empty. */
+function slimPlanForQuota(snap: PlanSnapshot | null): PlanSnapshot | null {
+  if (!snap) return null;
+  if (snap.ledgerTransactions.length <= MAX_QUOTA_PLAN_LEDGER) return snap;
+  return {
+    ...snap,
+    ledgerTransactions: snap.ledgerTransactions.slice(0, MAX_QUOTA_PLAN_LEDGER),
+  };
+}
+
 export function readPersistedLastKnown(): PersistedLastKnown | null {
   const storage = persistStorage();
   if (!storage) return null;
@@ -95,7 +106,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
           v: 1,
           userId: payload.userId,
           home: payload.home,
-          plan: null,
+          plan: slimPlanForQuota(payload.plan),
           analys: null,
           mer: payload.mer,
           accounts: payload.accounts,

@@ -14,6 +14,7 @@ import {
   applyQuietMenuBundleForTests,
   quietMenuCacheReady,
   resetQuietMenuWarmForTests,
+  waitForQuietMenuWarm,
 } from "./quiet-menu-warm";
 
 function read(rel: string) {
@@ -67,9 +68,10 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("requestIdleCallback");
     expect(warm).toContain("rememberPlanSnapshot");
     expect(warm).toContain("rememberAnalysSnapshot");
-    expect(warm).toContain("analysSnapshotFromPlan");
-    expect(warm).toContain("lastSessionHomeSnapshot");
+    expect(warm).toContain("ensurePaintableAnalysSnapshot");
+    expect(warm).toContain("getAnalysSnapshotAction");
     expect(warm).toContain("lastAnalysSnapshot() == null");
+    expect(warm).toContain("waitForQuietMenuWarm");
     expect(warm).toContain("rememberMovementsSnapshot");
     expect(warm).toContain("rememberAccountsSnapshot");
     expect(warm).toContain("isMovementsDirty");
@@ -229,6 +231,10 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
       },
     });
     expect(lastAnalysSnapshot()?.todaySpendingMinor).toBe(50_00);
+  });
+
+  it("waitForQuietMenuWarm resolves immediately when nothing was scheduled", async () => {
+    await expect(waitForQuietMenuWarm()).resolves.toBeUndefined();
   });
 
   it("does not overwrite a dirty accounts last-known from quiet warm", () => {

@@ -49,7 +49,9 @@ describe("Hem / Plan / Analys loader contract", () => {
     expect(NUMA_MENU_SNAPSHOT_TAG).toBe("numa-menu-snapshot");
     expect(home).toContain("export const getCachedTodaySnapshot = cache(");
     expect(plan).toContain("getCachedTodaySnapshot");
-    expect(analys).toContain("getCachedTodaySnapshot");
+    // Analys actions are a fresh request — 4s budget, not Hem's 3s React cache.
+    expect(analys).toContain("getTodaySnapshot");
+    expect(analys).toContain("ANALYS_SNAPSHOT_TIMEOUT_MS");
     expect(movements).not.toContain("getCachedTodaySnapshot");
 
     for (const table of MENU_SNAPSHOT_UNUSED_TABLES) {
@@ -98,6 +100,7 @@ describe("menu snapshot repository contract", () => {
       (() => { const i = repo.indexOf("async function loadTodaySnapshotUncached"); const m = repo.slice(i+10).match(/\nexport (?:async )?function (\w+)/); return m ? i+10+repo.slice(i+10).indexOf(m[0]) : repo.length; })(),
     );
     expect(snapshotFn).toContain("fetchMenuSnapshotBundle");
+    expect(snapshotFn).toContain("loadCheckpoints: latestCheckpointsForAccounts");
     expect(snapshotFn).not.toContain("getUserProgress");
     expect(repository).not.toContain("await api().getProfile()");
     expect(repository).toContain("SNAPSHOT_TIMEOUT_MS = 3_000");

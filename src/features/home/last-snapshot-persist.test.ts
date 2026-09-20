@@ -166,5 +166,53 @@ describe("last-known persist", () => {
     expect(next?.goals).toEqual([]);
     expect(next?.ledgerTransactions).toHaveLength(1);
   });
+
+  it("keeps slim Plan on quota so Analys can derive instead of a false empty", () => {
+    const map = new Map<string, string>();
+    let writes = 0;
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          writes += 1;
+          if (writes === 1) throw new Error("QuotaExceededError");
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    mockDocumentCookie();
+    writePersistedLastKnown(
+      payload({
+        plan: {
+          items: [],
+          currency: "THB",
+          timeZone: "Asia/Bangkok",
+          bankBalanceMinor: 10_000_00,
+          spendingByMonthKey: { "2026-09": 1 },
+          ledgerTransactions: Array.from({ length: 80 }, (_, i) => ({
+            id: `t${i}`,
+          })) as never,
+          financeRevision: "rev-1",
+          verifiedAt: "2026-09-19T05:00:00.000Z",
+          truthStatus: "verified",
+        },
+        analys: {
+          currency: "THB",
+          cycle: { incomes: [], expenses: [] },
+          goals: [],
+          ledgerTransactions: [{ id: "t1" }],
+        } as never,
+      }),
+    );
+    const next = readPersistedLastKnown();
+    expect(next?.plan).toBeTruthy();
+    expect(next?.plan?.ledgerTransactions).toHaveLength(40);
+    expect(next?.analys).toBeNull();
+    expect(next?.movements).toBeNull();
+  });
 });
 

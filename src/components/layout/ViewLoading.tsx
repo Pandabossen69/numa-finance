@@ -70,12 +70,22 @@ export function HomeViewLoading() {
 }
 
 /** Swedish fail-soft — no auto router.refresh (that put prod back on pending). */
-export function AnalysFailSoft({ error }: { error?: string | null }) {
+export function AnalysFailSoft({
+  error,
+  retrying = false,
+}: {
+  error?: string | null;
+  retrying?: boolean;
+}) {
   return (
     <div className="numa-panel-strong animate-rise space-y-3 p-5">
-      <p className="text-sm font-semibold">Kunde inte hämta analysen</p>
+      <p className="text-sm font-semibold">
+        {retrying ? "Försöker igen…" : "Kunde inte hämta analysen"}
+      </p>
       <p className="text-sm text-[var(--numa-muted)]">
-        {error ?? LOAD_TIMEOUT_MESSAGE_SV}
+        {retrying
+          ? "Det tog längre tid än vanligt. Hämtar i bakgrunden."
+          : (error ?? LOAD_TIMEOUT_MESSAGE_SV)}
       </p>
       <p className="text-sm leading-snug text-[var(--numa-faint)]">
         {SV.analysHint}

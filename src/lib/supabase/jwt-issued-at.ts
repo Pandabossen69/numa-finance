@@ -1,6 +1,6 @@
 /**
  * PostgREST PGRST303 ("JWT issued at future") hits Analys when
- * loadAnalysSnapshot → getCachedTodaySnapshot → numa REST reads
+ * loadAnalysSnapshot → getTodaySnapshot → numa REST reads
  * the session access token. Proxy already called auth.getUser()
  * against Auth (issuer clock); RSC uses getSession() and then
  * PostgREST checks iat.
