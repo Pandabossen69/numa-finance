@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanonicalTransaction } from "@/domain/finance";
+import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
@@ -10,6 +11,8 @@ import {
   applyOptimisticHomeSpend,
   applyOptimisticPlanSettle,
   lastAccountsSnapshot,
+  lastAnalysSnapshot,
+  paintableAccountsSnapshot,
   lastAnalysScope,
   lastFotaBoot,
   lastHomeSnapshot,
@@ -28,6 +31,7 @@ import {
   invalidateHomeSessionPaint,
   isHomeSessionConfirmed,
   lastSessionHomeSnapshot,
+  adoptAccountsLastKnown,
   rememberAccountsSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
@@ -1206,5 +1210,213 @@ describe("last view memory", () => {
     });
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.todaySpendingMinor).not.toBe(21_200_00);
+  });
+
+  it("drops a stale lastAccountsSnapshot when Hem På kontona moves", () => {
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 7_950_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    expect(lastAccountsSnapshot()?.totalThbMinor).toBe(7_950_00);
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+  });
+
+  it("keeps a Hem-aligned lastAccountsSnapshot so Konton first-tap can skip fetch", () => {
+    const aligned = {
+      accounts: [
+        accountRow({ id: "bb", calculatedMinor: 3_231_95 }),
+        accountRow({
+          id: "tm",
+          name: "TrueMoney",
+          isDefault: false,
+          calculatedMinor: 190_00,
+        }),
+      ],
+      archivedAccounts: [] as [],
+      totalThbMinor: 3_421_95,
+    };
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    rememberAccountsSnapshot(aligned);
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 3_421_95,
+        financeRevision: "hem-same",
+        verifiedAt: "2026-09-20T06:00:00.000Z",
+      }),
+    );
+    expect(lastAccountsSnapshot()?.accounts.map((row) => row.id)).toEqual([
+      "bb",
+      "tm",
+    ]);
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
+  });
+
+  it("replaces last-known missing TrueMoney when Plan accounts are richer and match Hem", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 3_421_95 })],
+      archivedAccounts: [],
+      totalThbMinor: 3_421_95,
+    });
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 3_421_95,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      accounts: {
+        accounts: [
+          accountRow({ id: "bb", calculatedMinor: 3_231_95 }),
+          accountRow({
+            id: "tm",
+            name: "TrueMoney",
+            isDefault: false,
+            calculatedMinor: 190_00,
+          }),
+        ],
+        archivedAccounts: [],
+        totalThbMinor: 3_421_95,
+      },
+      financeRevision: "plan-fresh",
+      verifiedAt: "2026-09-20T06:00:00.000Z",
+      truthStatus: "verified",
+    });
+    expect(lastAccountsSnapshot()?.accounts.map((row) => row.id)).toEqual([
+      "bb",
+      "tm",
+    ]);
+    expect(lastAccountsSnapshot()?.accounts.some((row) => row.name === "TrueMoney")).toBe(
+      true,
+    );
+  });
+
+  it("does not clobber a richer Konton last-known with a poorer Plan list", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    rememberAccountsSnapshot({
+      accounts: [
+        accountRow({ id: "bb", calculatedMinor: 3_231_95 }),
+        accountRow({
+          id: "tm",
+          name: "TrueMoney",
+          isDefault: false,
+          calculatedMinor: 190_00,
+        }),
+      ],
+      archivedAccounts: [],
+      totalThbMinor: 3_421_95,
+    });
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 3_421_95,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      accounts: {
+        accounts: [accountRow({ id: "bb", calculatedMinor: 3_421_95 })],
+        archivedAccounts: [],
+        totalThbMinor: 3_421_95,
+      },
+      financeRevision: "plan-poor",
+      verifiedAt: "2026-09-20T06:00:00.000Z",
+      truthStatus: "verified",
+    });
+    expect(lastAccountsSnapshot()?.accounts.map((row) => row.id)).toEqual([
+      "bb",
+      "tm",
+    ]);
+  });
+
+  it("does not rehydrate a persisted lastAccountsSnapshot that disagrees with Hem", async () => {
+    const map = new Map<string, string>();
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => map.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          map.set(key, value);
+        },
+        removeItem: (key: string) => {
+          map.delete(key);
+        },
+      },
+    });
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 3_421_95 })],
+      archivedAccounts: [],
+      totalThbMinor: 3_421_95,
+    });
+    await Promise.resolve();
+    const raw = map.get("numa.lastKnown.v1");
+    expect(raw).toBeTruthy();
+    const parsed = JSON.parse(raw!) as {
+      accounts: { totalThbMinor: number };
+      home: { calculatedBalanceMinor: number };
+    };
+    parsed.accounts.totalThbMinor = 7_950_00;
+    const mutated = JSON.stringify(parsed);
+    clearClientSessionCaches();
+    map.set("numa.lastKnown.v1", mutated);
+    hydrateLastKnownFromPersist();
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(3_421_95);
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+    Reflect.deleteProperty(globalThis, "localStorage");
+  });
+
+  it("keeps Analys last-known when Spec S invalidates stale Konton", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    const analys = lastAnalysSnapshot();
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 7_950_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 3_421_95,
+        financeRevision: "hem-after-konton",
+        verifiedAt: "2026-09-20T07:00:00.000Z",
+      }),
+    );
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()?.cycle.remainingFreeMinor).toBe(
+      analys?.cycle.remainingFreeMinor,
+    );
+  });
+
+  it("does not treat quiet-warm Konton adopt as a live session remember", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    adoptAccountsLastKnown({
+      accounts: [
+        accountRow({ id: "bb", calculatedMinor: 3_231_95 }),
+        accountRow({
+          id: "tm",
+          name: "TrueMoney",
+          isDefault: false,
+          calculatedMinor: 190_00,
+        }),
+      ],
+      archivedAccounts: [],
+      totalThbMinor: 3_421_95,
+    });
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 5_000_00,
+        financeRevision: "hem-moved",
+        verifiedAt: "2026-09-20T08:00:00.000Z",
+      }),
+    );
+    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
   });
 });

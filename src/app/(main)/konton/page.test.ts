@@ -18,8 +18,8 @@ describe("/konton instant shell", () => {
     expect(loading).toContain("AccountsDashboard");
     expect(loading).not.toContain("AccountsViewLoading");
     expect(client).toContain("getAccountsSnapshotAction");
-    expect(client).toContain("lastAccountsSnapshot");
-    expect(client).toContain("if (lastAccountsSnapshot()) return;");
-    expect(client).toContain("if (!lastAccountsSnapshot()) setError");
+    expect(client).toContain("paintableAccountsSnapshot");
+    expect(client).toContain("if (paintableAccountsSnapshot()) return;");
+    expect(client).toContain("if (!paintableAccountsSnapshot()) setError");
   });
 });

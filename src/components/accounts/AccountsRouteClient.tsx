@@ -5,28 +5,28 @@ import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
 import { getAccountsSnapshotAction } from "@/features/finance/accounts-snapshot";
 import {
   isAccountsDirty,
-  lastAccountsSnapshot,
+  paintableAccountsSnapshot,
   rememberAccountsSnapshot,
   subscribeAccountsSnapshot,
 } from "@/features/home/last-snapshot";
 
 /**
  * Client-first Konton (NextStep quiet-load pattern).
- * Paint last-known immediately; fetch only when the dest shell has nothing.
- * Quiet menu warm owns background fill after Hem — never wipe last-known.
+ * Paint last-known immediately only when it agrees with Hem «På kontona»
+ * and is not missing fresher account ids. Stale last-known skips paint
+ * (shell) and fetches immediately so soft-nav matches a hard reload.
  */
 export function AccountsRouteClient() {
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
-    lastAccountsSnapshot,
-    lastAccountsSnapshot,
+    paintableAccountsSnapshot,
+    paintableAccountsSnapshot,
   );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    // Quiet menu warm owns background refresh when cache is warm.
-    if (lastAccountsSnapshot()) return;
+    if (paintableAccountsSnapshot()) return;
     void getAccountsSnapshotAction().then((result) => {
       if (cancelled) return;
       if (result.ok) {
@@ -34,12 +34,12 @@ export function AccountsRouteClient() {
         setError(null);
         return;
       }
-      if (!lastAccountsSnapshot()) setError(result.error);
+      if (!paintableAccountsSnapshot()) setError(result.error);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [stored]);
 
   return <AccountsDashboard data={stored} error={error} />;
 }

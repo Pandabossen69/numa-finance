@@ -6,6 +6,7 @@ import {
   clearClientSessionCaches,
   lastAccountsSnapshot,
   lastAnalysSnapshot,
+  paintableAccountsSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysSnapshot,
   rememberHomeSnapshot,
@@ -73,10 +74,10 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("lastAnalysSnapshot() == null");
     expect(warm).toContain("waitForQuietMenuWarm");
     expect(warm).toContain("rememberMovementsSnapshot");
-    expect(warm).toContain("rememberAccountsSnapshot");
+    expect(warm).toContain("adoptAccountsLastKnown");
     expect(warm).toContain("isMovementsDirty");
     expect(warm).toContain("isAccountsDirty");
-    expect(warm).toContain("lastAccountsSnapshot() == null");
+    expect(warm).toContain("adoptAccountsLastKnown(accounts)");
     expect(warm).toContain("opts?.restart");
     expect(home).toContain("scheduleQuietMenuWarm");
     const adoptStart = home.indexOf("useEffect(() => {");
@@ -235,6 +236,169 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
 
   it("waitForQuietMenuWarm resolves immediately when nothing was scheduled", async () => {
     await expect(waitForQuietMenuWarm()).resolves.toBeUndefined();
+  });
+
+  it("does not gap-fill a stale accounts total that disagrees with Hem På kontona", () => {
+    rememberHomeSnapshot({
+      userId: "user-hugo",
+      displayName: "Hugo",
+      timeZone: "Asia/Bangkok",
+      primaryAccountId: "acc",
+      currency: "THB",
+      monthKey: "2026-09",
+      monthLabelSv: "september",
+      hasBankTruth: true,
+      calculatedBalanceMinor: 3_421_95,
+      verificationLabel: null,
+      todaySpendingMinor: 0,
+      todayPlannedPaidMinor: 0,
+      monthSpendingMinor: 0,
+      cycleSpendingMinor: 0,
+      safeToSpendTodayMinor: 0,
+      cycleStartLabelSv: null,
+      cycleEndLabelSv: null,
+      cycleEndInferred: false,
+      cycleIsActive: true,
+      livingMode: "cycle",
+      needsAvailableInput: false,
+      usesBankBalance: true,
+      planIncomeMinor: 0,
+      planExpenseMinor: 0,
+      planSavingsMinor: 0,
+      freeToSpendMinor: 0,
+      remainingFreeMinor: 0,
+      spendDaysLeft: 10,
+      dayBudgetMinor: 0,
+      remainingTodayMinor: 0,
+      livingPoolMinor: 0,
+      reservedUntilIncomeMinor: 0,
+      daysUntilIncome: 10,
+      nextIncomeLabelSv: null,
+      extraSaldoMinor: 0,
+      extraSaldoDrawnMinor: 0,
+      extraSaldoHint: null,
+      extraCarriedInMinor: 0,
+      savingsTotalMinor: 0,
+      wealthTotalMinor: 0,
+      monthResultMinor: 0,
+      incomingMinor: 0,
+      unpaidMinor: 0,
+      overMinor: 0,
+      financeRevision: "hem-fresh",
+      verifiedAt: "2026-09-20T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: { ...sampleAccounts, totalThbMinor: 7_950_00 },
+      },
+    });
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(lastAnalysSnapshot()?.month).toBeTruthy();
+    expect(lastAnalysSnapshot()?.currentMonthKey).toBeTruthy();
+  });
+
+  it("replaces last-known that is missing TrueMoney with a Hem-aligned fresher list", () => {
+    rememberHomeSnapshot({
+      userId: "user-hugo",
+      displayName: "Hugo",
+      timeZone: "Asia/Bangkok",
+      primaryAccountId: "bb",
+      currency: "THB",
+      monthKey: "2026-09",
+      monthLabelSv: "september",
+      hasBankTruth: true,
+      calculatedBalanceMinor: 3_421_95,
+      verificationLabel: null,
+      todaySpendingMinor: 0,
+      todayPlannedPaidMinor: 0,
+      monthSpendingMinor: 0,
+      cycleSpendingMinor: 0,
+      safeToSpendTodayMinor: 0,
+      cycleStartLabelSv: null,
+      cycleEndLabelSv: null,
+      cycleEndInferred: false,
+      cycleIsActive: true,
+      livingMode: "cycle",
+      needsAvailableInput: false,
+      usesBankBalance: true,
+      planIncomeMinor: 0,
+      planExpenseMinor: 0,
+      planSavingsMinor: 0,
+      freeToSpendMinor: 0,
+      remainingFreeMinor: 0,
+      spendDaysLeft: 10,
+      dayBudgetMinor: 0,
+      remainingTodayMinor: 0,
+      livingPoolMinor: 0,
+      reservedUntilIncomeMinor: 0,
+      daysUntilIncome: 10,
+      nextIncomeLabelSv: null,
+      extraSaldoMinor: 0,
+      extraSaldoDrawnMinor: 0,
+      extraSaldoHint: null,
+      extraCarriedInMinor: 0,
+      savingsTotalMinor: 0,
+      wealthTotalMinor: 0,
+      monthResultMinor: 0,
+      incomingMinor: 0,
+      unpaidMinor: 0,
+      overMinor: 0,
+      financeRevision: "hem-fresh",
+      verifiedAt: "2026-09-20T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberAccountsSnapshot({
+      accounts: [
+        { ...sampleAccounts.accounts[0]!, id: "bb", calculatedMinor: 7_950_00, thbMinor: 7_950_00 },
+      ],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    const fresh: AccountsSnapshot = {
+      accounts: [
+        {
+          ...sampleAccounts.accounts[0]!,
+          id: "bb",
+          calculatedMinor: 3_231_95,
+          thbMinor: 3_231_95,
+        },
+        {
+          ...sampleAccounts.accounts[0]!,
+          id: "tm",
+          name: "TrueMoney",
+          kind: "other",
+          kindLabelSv: "Annat",
+          isDefault: false,
+          calculatedMinor: 190_00,
+          thbMinor: 190_00,
+        },
+      ],
+      archivedAccounts: [],
+      totalThbMinor: 3_421_95,
+    };
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: fresh,
+      },
+    });
+    expect(lastAccountsSnapshot()?.accounts.map((row) => row.id)).toEqual([
+      "bb",
+      "tm",
+    ]);
+    expect(lastAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
   });
 
   it("does not overwrite a dirty accounts last-known from quiet warm", () => {

@@ -17,7 +17,7 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import {
   isAccountsDirty,
-  lastAccountsSnapshot,
+  paintableAccountsSnapshot,
   rememberAccountsSnapshot,
   subscribeAccountsSnapshot,
 } from "@/features/home/last-snapshot";
@@ -35,18 +35,18 @@ export function AccountsDashboard({
   const [openVerifyId, setOpenVerifyId] = useState<string | null>(null);
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
-    lastAccountsSnapshot,
-    lastAccountsSnapshot,
+    paintableAccountsSnapshot,
+    paintableAccountsSnapshot,
   );
 
   useEffect(() => {
     if (!data) return;
-    if (lastAccountsSnapshot() == null || !isAccountsDirty()) {
-      rememberAccountsSnapshot(data);
-    }
+    if (isAccountsDirty()) return;
+    if (paintableAccountsSnapshot()) return;
+    rememberAccountsSnapshot(data);
   }, [data]);
 
-  const view = stored ?? data ?? lastAccountsSnapshot();
+  const view = stored ?? paintableAccountsSnapshot();
 
   if (!view) {
     if (!error) return <AccountsViewLoading />;

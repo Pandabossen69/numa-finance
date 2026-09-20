@@ -6,6 +6,7 @@ import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   clearClientSessionCaches,
   lastAnalysSnapshot,
+  rememberAccountsSnapshot,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -92,6 +93,41 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
     expect(lastAnalysSnapshot()?.cycle.daysLeft).toBe(home.spendDaysLeft);
     const again = ensurePaintableAnalysSnapshot();
     expect(again?.cycle.remainingFreeMinor).toBe(home.remainingFreeMinor);
+  });
+
+  it("still paints last-known after Spec S drops stale Konton last-known", () => {
+    rememberHomeSnapshot(home);
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          id: "bb",
+          name: "Bangkok Bank",
+          institution: null,
+          maskedIdentifier: null,
+          kind: "thai_bank",
+          kindLabelSv: "Thai-bank",
+          currency: "THB",
+          isDefault: true,
+          isActive: true,
+          calculatedMinor: 7_950_00,
+          thbMinor: 7_950_00,
+          fxRate: 1,
+          fxSource: "identity",
+        },
+      ],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    rememberHomeSnapshot({
+      ...home,
+      financeRevision: "hem-guard",
+      verifiedAt: "2026-09-20T07:00:00.000Z",
+    });
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(ensurePaintableAnalysSnapshot()?.month).toBeTruthy();
+    expect(ensurePaintableAnalysSnapshot()?.currentMonthKey).toBeTruthy();
+    expect(route).toContain("if (ensurePaintableAnalysSnapshot()) return");
+    expect(route).not.toContain("waitForQuietMenuWarm");
   });
 
   it("keeps Perioden / Månad chrome on the empty shell", () => {

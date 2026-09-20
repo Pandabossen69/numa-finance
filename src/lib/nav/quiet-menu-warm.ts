@@ -5,13 +5,13 @@ import { analysClientFetchInflight } from "@/features/finance/analys-client-fetc
 import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
 import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
+  adoptAccountsLastKnown,
   isAccountsDirty,
   isMovementsDirty,
-  lastAccountsSnapshot,
   lastAnalysSnapshot,
   lastMovementsSnapshot,
   lastPlanSnapshot,
-  rememberAccountsSnapshot,
+  paintableAccountsSnapshot,
   rememberAnalysSnapshot,
   rememberGettingStarted,
   rememberMovementsSnapshot,
@@ -63,10 +63,15 @@ function applyQuietBundle(
   if (movements && !isMovementsDirty()) {
     rememberMovementsSnapshot(movements);
   }
-  // Gap-fill only. Plan's TodaySnapshot omits archived accounts — never
-  // clobber a richer last-known from a prior /konton visit.
-  if (accounts && lastAccountsSnapshot() == null && !isAccountsDirty()) {
-    rememberAccountsSnapshot(accounts);
+  // Spec S: gap-fill only when incoming agrees with Hem and is not poorer
+  // than a richer last-known. Stale/incomplete last-known is dropped so
+  // Konton refetches instead of painting Sept-11 ~9k over Hem ~3450.
+  // Konton-only — must not clear or block Spec R Analys last-known.
+  if (!isAccountsDirty()) {
+    adoptAccountsLastKnown(accounts);
+  }
+  if (lastAnalysSnapshot() == null) {
+    ensurePaintableAnalysSnapshot();
   }
 }
 
@@ -160,7 +165,7 @@ export function quietMenuCacheReady() {
     lastPlanSnapshot() != null ||
     lastAnalysSnapshot() != null ||
     lastMovementsSnapshot() != null ||
-    lastAccountsSnapshot() != null
+    paintableAccountsSnapshot() != null
   );
 }
 
