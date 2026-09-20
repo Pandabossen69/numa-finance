@@ -19,7 +19,8 @@ describe("FotaRouteClient", () => {
     expect(src).toContain("subscribeFotaIntent");
     expect(src).toContain("rememberFotaIntentFromHref");
     expect(src).toContain("getCaptureResumeAction");
-    expect(src).toContain("if (!intent.observationId)");
+    expect(src).toContain("if (!observationId) return");
+    expect(src).toContain("resume?.observationId === intent.observationId");
     expect(src).not.toMatch(/from ["']@\/features\/finance\/load-home["']/);
     expect(src).not.toContain("getHomeSnapshotAction");
     expect(src).not.toContain("getCachedTodaySnapshot");

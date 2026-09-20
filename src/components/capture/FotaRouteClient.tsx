@@ -32,6 +32,7 @@ export function FotaRouteClient() {
     lastHomeSnapshot,
   );
   const [resume, setResume] = useState<{
+    observationId: string;
     mode: CaptureImportKind;
     preview: CapturePreview | null;
   } | null>(null);
@@ -43,25 +44,28 @@ export function FotaRouteClient() {
   }, []);
 
   useEffect(() => {
-    if (!intent.observationId) {
-      setResume(null);
-      return;
-    }
+    const observationId = intent.observationId;
+    if (!observationId) return;
     let cancelled = false;
-    void getCaptureResumeAction(intent.observationId).then((result) => {
-      if (cancelled) return;
-      setResume(result);
+    void getCaptureResumeAction(observationId).then((result) => {
+      if (cancelled || !result) return;
+      setResume({ observationId, ...result });
     });
     return () => {
       cancelled = true;
     };
   }, [intent.observationId]);
 
+  const activeResume =
+    intent.observationId && resume?.observationId === intent.observationId
+      ? resume
+      : null;
+
   return (
     <FotaScreen
       data={null}
-      initialMode={resume?.mode ?? intent.mode}
-      initialPreview={resume?.preview ?? null}
+      initialMode={activeResume?.mode ?? intent.mode}
+      initialPreview={activeResume?.preview ?? null}
       observationId={intent.observationId}
     />
   );

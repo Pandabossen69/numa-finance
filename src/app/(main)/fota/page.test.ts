@@ -19,7 +19,7 @@ describe("/fota resume", () => {
     expect(client).toContain("observation");
     expect(client).toContain("getCaptureResumeAction");
     expect(client).toContain("initialPreview");
-    expect(client).toContain("if (!intent.observationId)");
+    expect(client).toContain("if (!observationId) return");
     expect(screen).toContain("obs:${observationId}");
   });
 
