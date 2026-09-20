@@ -11,6 +11,11 @@ import {
   rememberAnalysSnapshot,
   rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
+import { analysSnapshotHasDatapaint } from "@/features/finance/analys-from-known";
+import {
+  resetAnalysPlanUpgradeForTests,
+  upgradeAnalysFromPlanNow,
+} from "@/features/finance/ensure-analys-last-known";
 import {
   applyQuietMenuBundleForTests,
   quietMenuCacheReady,
@@ -58,6 +63,7 @@ const sampleAccounts: AccountsSnapshot = {
 
 describe("quiet menu warm — NextStep-style last-known fill", () => {
   beforeEach(() => {
+    resetAnalysPlanUpgradeForTests();
     resetQuietMenuWarmForTests();
     clearClientSessionCaches();
   });
@@ -70,6 +76,8 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("rememberPlanSnapshot");
     expect(warm).toContain("rememberAnalysSnapshot");
     expect(warm).toContain("ensurePaintableAnalysSnapshot");
+    expect(warm).toContain("scheduleUpgradeAnalysFromPlan");
+    expect(warm).toContain("analysSnapshotHasDatapaint");
     expect(warm).toContain("getAnalysSnapshotAction");
     expect(warm).toContain("lastAnalysSnapshot() == null");
     expect(warm).toContain("waitForQuietMenuWarm");
@@ -232,6 +240,89 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
       },
     });
     expect(lastAnalysSnapshot()?.todaySpendingMinor).toBe(50_00);
+  });
+
+  it("upgrades quiet-warm Plan ledger into first bars without Flight", () => {
+    rememberHomeSnapshot({
+      userId: "user-hugo",
+      displayName: "Hugo",
+      timeZone: "Asia/Bangkok",
+      primaryAccountId: "acc",
+      currency: "THB",
+      monthKey: "2026-09",
+      monthLabelSv: "september",
+      hasBankTruth: true,
+      calculatedBalanceMinor: 10_000_00,
+      verificationLabel: null,
+      todaySpendingMinor: 200_00,
+      todayPlannedPaidMinor: 0,
+      monthSpendingMinor: 1_000_00,
+      cycleSpendingMinor: 400_00,
+      safeToSpendTodayMinor: 800_00,
+      cycleStartLabelSv: null,
+      cycleEndLabelSv: null,
+      cycleEndInferred: false,
+      cycleIsActive: true,
+      livingMode: "cycle",
+      needsAvailableInput: false,
+      usesBankBalance: true,
+      planIncomeMinor: 20_000_00,
+      planExpenseMinor: 8_000_00,
+      planSavingsMinor: 0,
+      freeToSpendMinor: 12_000_00,
+      remainingFreeMinor: 11_600_00,
+      spendDaysLeft: 10,
+      dayBudgetMinor: 1_000_00,
+      remainingTodayMinor: 800_00,
+      livingPoolMinor: 10_000_00,
+      reservedUntilIncomeMinor: 0,
+      daysUntilIncome: 10,
+      nextIncomeLabelSv: null,
+      extraSaldoMinor: 0,
+      extraSaldoDrawnMinor: 0,
+      extraSaldoHint: null,
+      extraCarriedInMinor: 0,
+      savingsTotalMinor: 2_000_00,
+      wealthTotalMinor: 14_000_00,
+      monthResultMinor: 0,
+      incomingMinor: 5_000_00,
+      unpaidMinor: 3_000_00,
+      overMinor: 12_000_00,
+      financeRevision: "plan-rev",
+      verifiedAt: "2026-09-19T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: {
+          ...samplePlan,
+          ledgerTransactions: [
+            {
+              id: "tx-warm",
+              accountId: "acc-1",
+              amountMinor: 80_00,
+              currency: "THB",
+              transactionType: "expense",
+              direction: "debit",
+              status: "confirmed",
+              occurredAt: "2026-09-18T04:00:00.000Z",
+              description: "Warm",
+            },
+          ] as PlanSnapshot["ledgerTransactions"],
+        },
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: null,
+      },
+    });
+    expect(analysSnapshotHasDatapaint(lastAnalysSnapshot())).toBe(false);
+    upgradeAnalysFromPlanNow();
+    expect(analysSnapshotHasDatapaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()?.ledgerTransactions.map((tx) => tx.id)).toEqual([
+      "tx-warm",
+    ]);
   });
 
   it("waitForQuietMenuWarm resolves immediately when nothing was scheduled", async () => {

@@ -3,6 +3,7 @@ import {
   NEXT_INCOME_NAME,
   computeClassifiedSpendingWindows,
   hasCycleFundingEvidence,
+  isInPayCycleWindow,
   isPlanIncome,
   isPlanSavings,
   monthKeyFromDate,
@@ -91,6 +92,8 @@ type AnalysBuildInput = {
   spendingByMonthKey: Record<string, number>;
   ledgerTransactions: CanonicalTransaction[];
   fxMap: Map<string, FxCheckpoint | null>;
+  /** Caller already ran projectLedgerToCanonicalThb — do not FX+copy again. */
+  alreadyCanonicalLedger?: boolean;
   financeRevision: string;
   verifiedAt: string;
   truthStatus: AnalysSnapshot["truthStatus"];
@@ -214,10 +217,14 @@ function buildAnalysSnapshot(
   // rows were skipped in Per kategori (currency !== THB) and Senaste still
   // painted KR (−1/−1/−20/−10) instead of THB (−3,50/−3,50/−70/−35).
   // Fixture: 10+20+1+1 SEK @ 3.5 = 112 THB → Övrigt 8× not 4×.
-  const ledgerTransactions = projectLedgerToCanonicalThb(
-    input.ledgerTransactions,
-    input.fxMap,
-  );
+  // fromPlan / first-bars project once and pass alreadyCanonicalLedger so
+  // the Qualityltf critical path does not FX+copy the ledger twice.
+  const ledgerTransactions = input.alreadyCanonicalLedger
+    ? input.ledgerTransactions
+    : projectLedgerToCanonicalThb(
+        input.ledgerTransactions,
+        input.fxMap,
+      );
   const categoriesByMonthKey = spendingCategoriesByMonthKey({
     transactions: ledgerTransactions,
     currency: input.currency,
@@ -300,6 +307,33 @@ export function isThinAnalysSnapshot(
     (snap.planItems?.length ?? 0) === 0 &&
     (snap.ledgerTransactions?.length ?? 0) === 0
   );
+}
+
+/** Bars / Senaste / category spend from real ledger rows — not Hem-thin stub. */
+export function analysSnapshotHasDatapaint(
+  snap: AnalysSnapshot | null | undefined,
+): boolean {
+  return (snap?.ledgerTransactions?.length ?? 0) > 0;
+}
+
+function sliceLedgerForFirstBars(
+  transactions: readonly CanonicalTransaction[],
+  timeZone: string,
+  monthKey: string,
+  cycleStartAt: string | null,
+  cycleEndAt: string | null,
+): CanonicalTransaction[] {
+  const out: CanonicalTransaction[] = [];
+  for (const tx of transactions) {
+    if (isInPayCycleWindow(tx.occurredAt, cycleStartAt, cycleEndAt)) {
+      out.push(tx);
+      continue;
+    }
+    if (monthKeyFromDate(new Date(tx.occurredAt), timeZone) === monthKey) {
+      out.push(tx);
+    }
+  }
+  return out;
 }
 
 /**
@@ -405,37 +439,47 @@ export function analysSnapshotFromToday(
   );
 }
 
-/**
- * Paint-able Analys from Plan (+ Hem when warm). Same living/spend projections
- * as the server loader so leftover / daysLeft cannot drift on first tap.
- */
-export function analysSnapshotFromPlan(
+type AnalysFromPlanMode = "full" | "first-bars";
+
+function deriveAnalysFromPlan(
   plan: PlanSnapshot,
-  home?: HomeSnapshot | null,
-  now = new Date(),
+  home: HomeSnapshot | null | undefined,
+  now: Date,
+  mode: AnalysFromPlanMode,
 ): AnalysSnapshot {
   const timeZone = plan.timeZone || home?.timeZone || "Asia/Bangkok";
+  const monthKey = monthKeyFromDate(now, timeZone);
   const cycle = projectPayCycle(plan.items ?? [], now, timeZone);
   const fxMap = fxMapFromPlanAccounts(plan.accounts);
-  const projectedLedger = projectLedgerToCanonicalThb(
-    plan.ledgerTransactions ?? [],
-    fxMap,
-  );
-  const windows = computeClassifiedSpendingWindows({
-    transactions: projectedLedger,
-    currency: plan.currency,
-    now,
-    timeZone,
-    cycleStartAt: cycle.startAt,
-    cycleEndAt: cycle.endAt,
-  });
-  const monthKey = monthKeyFromDate(now, timeZone);
+  const nativeLedger = plan.ledgerTransactions ?? [];
+  const scopedLedger =
+    mode === "first-bars"
+      ? sliceLedgerForFirstBars(
+          nativeLedger,
+          timeZone,
+          monthKey,
+          cycle.startAt,
+          cycle.endAt,
+        )
+      : nativeLedger;
+  const projectedLedger = projectLedgerToCanonicalThb(scopedLedger, fxMap);
+  const windows =
+    home == null
+      ? computeClassifiedSpendingWindows({
+          transactions: projectedLedger,
+          currency: plan.currency,
+          now,
+          timeZone,
+          cycleStartAt: cycle.startAt,
+          cycleEndAt: cycle.endAt,
+        })
+      : null;
   const fundingConfirmed =
     home?.cycleIsActive === true ||
     hasCycleFundingEvidence({
       cycleStartAt: cycle.startAt,
       cycleEndAt: cycle.endAt,
-      transactions: plan.ledgerTransactions,
+      transactions: scopedLedger,
     });
 
   return buildAnalysSnapshot(
@@ -446,20 +490,49 @@ export function analysSnapshotFromPlan(
       calculatedBalanceMinor:
         home?.calculatedBalanceMinor ?? plan.bankBalanceMinor,
       todaySpendingMinor:
-        home?.todaySpendingMinor ?? windows.today.discretionary.amountMinor,
+        home?.todaySpendingMinor ??
+        windows?.today.discretionary.amountMinor ??
+        0,
       monthSpendingMinor:
         home?.monthSpendingMinor ?? (plan.spendingByMonthKey[monthKey] ?? 0),
       cycleSpendingMinor:
-        home?.cycleSpendingMinor ?? windows.cycle.total.amountMinor,
+        home?.cycleSpendingMinor ?? windows?.cycle.total.amountMinor ?? 0,
       fundingConfirmed,
       planItems: plan.items ?? [],
       spendingByMonthKey: plan.spendingByMonthKey ?? {},
-      ledgerTransactions: plan.ledgerTransactions ?? [],
+      ledgerTransactions: projectedLedger,
       fxMap,
+      alreadyCanonicalLedger: true,
       financeRevision: plan.financeRevision,
       verifiedAt: plan.verifiedAt,
       truthStatus: plan.truthStatus,
     },
     now,
   );
+}
+
+/**
+ * Paint-able Analys from Plan (+ Hem when warm). Same living/spend projections
+ * as the server loader so leftover / daysLeft cannot drift on first tap.
+ * FX+classify runs once — never again inside buildAnalysSnapshot.
+ */
+export function analysSnapshotFromPlan(
+  plan: PlanSnapshot,
+  home?: HomeSnapshot | null,
+  now = new Date(),
+): AnalysSnapshot {
+  return deriveAnalysFromPlan(plan, home, now, "full");
+}
+
+/**
+ * First bars / Senaste after chrome. Current month + pay-cycle window only.
+ * Skips full-history FX+windows so datapaint does not wait on Flight or a
+ * Qualityltf-sized ledger walk.
+ */
+export function analysSnapshotFirstBarsFromPlan(
+  plan: PlanSnapshot,
+  home?: HomeSnapshot | null,
+  now = new Date(),
+): AnalysSnapshot {
+  return deriveAnalysFromPlan(plan, home, now, "first-bars");
 }

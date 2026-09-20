@@ -180,10 +180,13 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
     const fetchIdx = body.indexOf("fetchAnalysSnapshotClient");
     expect(viewIdx).toBeGreaterThan(-1);
     expect(fetchIdx).toBeGreaterThan(viewIdx);
-    expect(route).toContain("if (ensurePaintableAnalysSnapshot()) return");
+    expect(route).toContain("if (ensurePaintableAnalysSnapshot())");
+    expect(route).toContain("scheduleUpgradeAnalysFromPlan");
     expect(route).toContain("<AnalysDashboard data={view}");
     expect(route).not.toContain("waitForQuietMenuWarm");
     expect(route).not.toContain("await getAnalysSnapshotAction");
+    expect(route).not.toContain("analysSnapshotFromPlan");
+    expect(route).not.toContain("upgradeAnalysFromPlanNow");
     expect(route).toContain("requestAnimationFrame");
   });
 
@@ -230,7 +233,8 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
     expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
     expect(ensurePaintableAnalysSnapshot()?.month).toBeTruthy();
     expect(ensurePaintableAnalysSnapshot()?.currentMonthKey).toBeTruthy();
-    expect(route).toContain("if (ensurePaintableAnalysSnapshot()) return");
+    expect(route).toContain("if (ensurePaintableAnalysSnapshot())");
+    expect(route).toContain("scheduleUpgradeAnalysFromPlan");
     expect(route).not.toContain("waitForQuietMenuWarm");
   });
 

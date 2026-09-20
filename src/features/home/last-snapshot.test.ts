@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanonicalTransaction } from "@/domain/finance";
+import { analysSnapshotHasDatapaint } from "@/features/finance/analys-from-known";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
+import { upgradeAnalysFromPlanNow } from "@/features/finance/ensure-analys-last-known";
 import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
@@ -33,6 +36,7 @@ import {
   lastSessionHomeSnapshot,
   adoptAccountsLastKnown,
   rememberAccountsSnapshot,
+  rememberAnalysSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
   isLeftoverSparLivingRevert,
@@ -1418,5 +1422,98 @@ describe("last view memory", () => {
     );
     expect(paintableAccountsSnapshot()).toBeNull();
     expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+  });
+
+  it("gapFill falls through to Hem when remember no-ops an unpaintable Analys", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 3_421_95,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "older-plan",
+      verifiedAt: "2026-08-01T00:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberAnalysSnapshot({
+      ...lastAnalysSnapshot()!,
+      month: null as never,
+      currentMonthKey: "",
+      financeRevision: "newer-than-plan",
+      verifiedAt: "2026-09-21T00:00:00.000Z",
+    });
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(false);
+
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 3_421_95,
+        financeRevision: "older-echo",
+        verifiedAt: "2026-08-01T00:00:00.000Z",
+      }),
+    );
+
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()?.cycle.remainingFreeMinor).toBe(
+      homeSnap().remainingFreeMinor,
+    );
+  });
+
+  it("Konton adopt still invalidates stale accounts after Analys first-bars", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 3_421_95,
+      spendingByMonthKey: { "2026-09": 175_00 },
+      ledgerTransactions: [
+        {
+          id: "tx-bar",
+          accountId: "acc",
+          amountMinor: 175_00,
+          currency: "THB",
+          transactionType: "expense",
+          direction: "debit",
+          status: "confirmed",
+          occurredAt: "2026-09-18T04:00:00.000Z",
+          description: "Lunch",
+        },
+      ] as PlanSnapshot["ledgerTransactions"],
+      financeRevision: "rev-1",
+      verifiedAt: "2026-09-19T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    upgradeAnalysFromPlanNow();
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(analysSnapshotHasDatapaint(lastAnalysSnapshot())).toBe(true);
+    const analys = lastAnalysSnapshot();
+    adoptAccountsLastKnown({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 7_950_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(analysSnapshotHasDatapaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()).toBe(analys);
+  });
+
+  it("Konton adopt invalidates stale accounts without clearing Analys paint", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    const analys = lastAnalysSnapshot();
+    adoptAccountsLastKnown({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 7_950_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()).toBe(analys);
   });
 });

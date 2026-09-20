@@ -14,7 +14,10 @@ import {
   resetAnalysClientFetch,
 } from "@/features/finance/analys-client-fetch";
 import { getAnalysSnapshotAction } from "@/features/finance/analys-snapshot";
-import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
+import {
+  ensurePaintableAnalysSnapshot,
+  scheduleUpgradeAnalysFromPlan,
+} from "@/features/finance/ensure-analys-last-known";
 import type { AnalysSnapshotResult } from "@/features/finance/load-analys";
 import {
   lastAnalysSnapshot,
@@ -92,7 +95,12 @@ export function AnalysRouteClient() {
       }
     };
 
-    if (ensurePaintableAnalysSnapshot()) return;
+    if (ensurePaintableAnalysSnapshot()) {
+      // Heading+Perioden already paintable (Hem-thin / last-known).
+      // First bars from Plan after this paint — never Flight, never full ledger.
+      scheduleUpgradeAnalysFromPlan();
+      return;
+    }
 
     const prior = lastAnalysFetchResult();
     if (
