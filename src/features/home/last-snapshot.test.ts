@@ -33,6 +33,7 @@ import {
   lastSessionHomeSnapshot,
   adoptAccountsLastKnown,
   rememberAccountsSnapshot,
+  rememberAnalysSnapshot,
   rememberAnalysScope,
   rememberFotaBoot,
   isLeftoverSparLivingRevert,
@@ -1418,5 +1419,57 @@ describe("last view memory", () => {
     );
     expect(paintableAccountsSnapshot()).toBeNull();
     expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+  });
+
+  it("gapFill falls through to Hem when remember no-ops an unpaintable Analys", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    rememberPlanSnapshot({
+      items: [],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 3_421_95,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "older-plan",
+      verifiedAt: "2026-08-01T00:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberAnalysSnapshot({
+      ...lastAnalysSnapshot()!,
+      month: null as never,
+      currentMonthKey: "",
+      financeRevision: "newer-than-plan",
+      verifiedAt: "2026-09-21T00:00:00.000Z",
+    });
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(false);
+
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 3_421_95,
+        financeRevision: "older-echo",
+        verifiedAt: "2026-08-01T00:00:00.000Z",
+      }),
+    );
+
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()?.cycle.remainingFreeMinor).toBe(
+      homeSnap().remainingFreeMinor,
+    );
+  });
+
+  it("Konton adopt invalidates stale accounts without clearing Analys paint", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    const analys = lastAnalysSnapshot();
+    adoptAccountsLastKnown({
+      accounts: [accountRow({ id: "bb", calculatedMinor: 7_950_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 7_950_00,
+    });
+    expect(lastAccountsSnapshot()).toBeNull();
+    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(lastAnalysSnapshot()).toBe(analys);
   });
 });

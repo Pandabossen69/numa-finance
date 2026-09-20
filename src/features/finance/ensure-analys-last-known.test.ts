@@ -1,10 +1,16 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
-import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
+import { isThinAnalysSnapshot } from "@/features/finance/analys-from-known";
+import {
+  ensurePaintableAnalysSnapshot,
+  resetAnalysPlanUpgradeForTests,
+} from "@/features/finance/ensure-analys-last-known";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import {
   clearClientSessionCaches,
+  invalidateAnalysSnapshot,
   lastAnalysSnapshot,
   rememberAnalysSnapshot,
   rememberHomeSnapshot,
@@ -90,7 +96,34 @@ const home = {
   truthStatus: "verified",
 } as HomeSnapshot;
 
+const ensureSrc = readFileSync(new URL("./ensure-analys-last-known.ts", import.meta.url), "utf8");
+
+function heavyPlanLedger(): PlanSnapshot {
+  let ledgerAccesses = 0;
+  const txs = [
+    {
+      id: "tx-heavy",
+      accountId: "acc",
+      amountMinor: 1_00,
+      currency: "THB" as const,
+      transactionType: "expense" as const,
+      direction: "debit" as const,
+      occurredAt: "2026-09-19T04:00:00.000Z",
+      description: "Must not classify on tap",
+    },
+  ];
+  return {
+    ...plan,
+    get ledgerTransactions() {
+      ledgerAccesses += 1;
+      return txs;
+    },
+    ledgerAccesses: () => ledgerAccesses,
+  } as PlanSnapshot & { ledgerAccesses: () => number };
+}
+
 afterEach(() => {
+  resetAnalysPlanUpgradeForTests();
   clearClientSessionCaches();
 });
 
@@ -122,14 +155,29 @@ describe("ensurePaintableAnalysSnapshot", () => {
     expect(lastAnalysSnapshot()).toBe(snap);
   });
 
-  it("derives from Plan + Hem when Analys persist is empty", () => {
+  it("paints Hem-thin without Plan ledger work when Plan is in memory", () => {
+    const fn = ensureSrc.slice(
+      ensureSrc.indexOf("export function ensurePaintableAnalysSnapshot"),
+      ensureSrc.indexOf("export function scheduleUpgradeAnalysFromPlan"),
+    );
+    expect(fn).toContain("analysSnapshotFromHome");
+    expect(fn).not.toContain("analysSnapshotFromPlan");
+
     rememberHomeSnapshot(home);
-    rememberPlanSnapshot(plan);
+    const heavy = heavyPlanLedger();
+    rememberPlanSnapshot(heavy);
+    const accessesAfterPlan = (heavy as PlanSnapshot & { ledgerAccesses: () => number }).ledgerAccesses();
+    invalidateAnalysSnapshot();
     const snap = ensurePaintableAnalysSnapshot();
     expect(analysViewCanPaint(snap)).toBe(true);
+    expect(isThinAnalysSnapshot(snap)).toBe(true);
+    expect(snap?.ledgerTransactions).toEqual([]);
+    expect(snap?.planItems).toEqual([]);
     expect(snap?.todaySpendingMinor).toBe(200_00);
-    expect(snap?.calculatedBalanceMinor).toBe(10_000_00);
+    expect(snap?.cycle.remainingFreeMinor).toBe(home.remainingFreeMinor);
     expect(snap?.currentMonthKey).toBe("2026-09");
-    expect(lastAnalysSnapshot()).toBe(snap);
+    expect(
+      (heavy as PlanSnapshot & { ledgerAccesses: () => number }).ledgerAccesses(),
+    ).toBe(accessesAfterPlan);
   });
 });

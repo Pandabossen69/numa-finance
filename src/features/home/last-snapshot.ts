@@ -20,11 +20,7 @@ import {
   type FxCheckpoint,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
-import {
-  analysSnapshotFromHome,
-  analysSnapshotFromPlan,
-  isThinAnalysSnapshot,
-} from "@/features/finance/analys-from-known";
+import { analysSnapshotFromHome } from "@/features/finance/analys-from-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -304,11 +300,9 @@ export function hydrateLastKnownFromPersist() {
     analysScope = data.analysScope;
     movementsView = data.movementsView;
     if (home) maybeRememberLeftoverLivingBaseline(home, { fromPersist: true });
-    if (!analysLastKnownCanPaint(analys)) {
-      if (plan) analys = analysSnapshotFromPlan(plan, home);
-      if (!analysLastKnownCanPaint(analys) && home) {
-        analys = analysSnapshotFromHome(home);
-      }
+    if (!analysLastKnownCanPaint(analys) && home) {
+      // Hem-thin only — Plan ledger FX+windows must not run on hydrate.
+      analys = analysSnapshotFromHome(home);
     }
     persistPaused = false;
     return;
@@ -905,17 +899,11 @@ function analysLastKnownCanPaint(
 }
 
 function gapFillAnalysFromKnown() {
-  if (plan) {
-    const derived = analysSnapshotFromPlan(plan, home);
-    if (analysLastKnownCanPaint(derived)) {
-      const shouldUpgrade =
-        !analysLastKnownCanPaint(analys) ||
-        (isThinAnalysSnapshot(analys) && !isThinAnalysSnapshot(derived));
-      if (shouldUpgrade) rememberAnalysSnapshot(derived);
-      return;
-    }
-  }
-  if (!analysLastKnownCanPaint(analys) && home) {
+  if (analysLastKnownCanPaint(analys)) return;
+  // Hem-thin only. Plan ledger FX + classified windows must not run on
+  // Hem confirm, Plan remember, or Spec S Konton adopt — that was the
+  // Qualityltf Analys tap stall when lastAnalys was empty.
+  if (home) {
     const derived = analysSnapshotFromHome(home);
     if (analysLastKnownCanPaint(derived)) {
       rememberAnalysSnapshot(derived);
@@ -925,7 +913,12 @@ function gapFillAnalysFromKnown() {
 
 export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
   if (analys === snap) return;
-  if (analys && !shouldAdoptFinanceSnapshot(analys, snap, false)) {
+  // Unpaintable incumbents must not block Hem-thin via shouldAdopt
+  // (gapFill early-return left heading+Perioden empty on Qualityltf).
+  if (
+    analysLastKnownCanPaint(analys) &&
+    !shouldAdoptFinanceSnapshot(analys, snap, false)
+  ) {
     return;
   }
   analys = snap;
@@ -963,8 +956,8 @@ export function rememberPlanSnapshot(
   }
   const prevRev = plan?.financeRevision;
   plan = snapshot;
-  // Drop a stale Analys revision, then re-derive in the same tick so the
-  // keep-alive panel never paints empty while waiting on a Flight POST.
+  // Drop a stale Analys revision, then Hem-thin gap-fill in this tick so
+  // heading+Perioden never wait on Plan ledger FX or a Flight POST.
   if (
     analys &&
     snapshot.financeRevision &&
