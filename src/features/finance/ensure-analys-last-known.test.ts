@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
-import { isThinAnalysSnapshot } from "@/features/finance/analys-from-known";
+import {
+  analysSnapshotFromPlan,
+  isThinAnalysSnapshot,
+} from "@/features/finance/analys-from-known";
 import {
   ensurePaintableAnalysSnapshot,
   resetAnalysPlanUpgradeForTests,
@@ -179,5 +182,39 @@ describe("ensurePaintableAnalysSnapshot", () => {
     expect(
       (heavy as PlanSnapshot & { ledgerAccesses: () => number }).ledgerAccesses(),
     ).toBe(accessesAfterPlan);
+  });
+
+  it("Hem-thin tap stays cheap versus Plan ledger derive", () => {
+    const txs = Array.from({ length: 2_500 }, (_, i) => ({
+      id: `tx-${i}`,
+      accountId: "acc",
+      amountMinor: 1_00,
+      currency: "THB" as const,
+      transactionType: "expense" as const,
+      direction: "debit" as const,
+      occurredAt: "2026-09-19T04:00:00.000Z",
+      description: "Qualityltf-sized row",
+    }));
+    const fatPlan: PlanSnapshot = {
+      ...plan,
+      ledgerTransactions: txs as PlanSnapshot["ledgerTransactions"],
+    };
+    rememberHomeSnapshot(home);
+    rememberPlanSnapshot(fatPlan);
+    invalidateAnalysSnapshot();
+
+    const t0 = performance.now();
+    const thin = ensurePaintableAnalysSnapshot();
+    const thinMs = performance.now() - t0;
+    expect(analysViewCanPaint(thin)).toBe(true);
+    expect(isThinAnalysSnapshot(thin)).toBe(true);
+
+    const t1 = performance.now();
+    const derived = analysSnapshotFromPlan(fatPlan, home);
+    const planMs = performance.now() - t1;
+    expect(analysViewCanPaint(derived)).toBe(true);
+    expect(isThinAnalysSnapshot(derived)).toBe(false);
+    expect(thinMs).toBeLessThan(50);
+    expect(thinMs).toBeLessThan(planMs);
   });
 });
