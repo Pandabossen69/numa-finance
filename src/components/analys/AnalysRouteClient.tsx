@@ -97,7 +97,7 @@ export function AnalysRouteClient() {
 
     if (ensurePaintableAnalysSnapshot()) {
       // Heading+Perioden already paintable (Hem-thin / last-known).
-      // Defer Plan ledger categories until after first paint.
+      // First bars from Plan after this paint — never Flight, never full ledger.
       scheduleUpgradeAnalysFromPlan();
       return;
     }

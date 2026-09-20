@@ -1,7 +1,8 @@
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import {
+  analysSnapshotFirstBarsFromPlan,
   analysSnapshotFromHome,
-  analysSnapshotFromPlan,
+  analysSnapshotHasDatapaint,
   isThinAnalysSnapshot,
 } from "@/features/finance/analys-from-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
@@ -21,7 +22,7 @@ function homeForAnalys() {
  * Paint-able Analys chrome for the tap tick. Hem-thin / existing last-known
  * only — never project Plan ledger FX + classified windows here. Qualityltf
  * ledgers take seconds; heading+Perioden must paint within ~300ms.
- * Full categories upgrade via scheduleUpgradeAnalysFromPlan after paint.
+ * First bars upgrade via scheduleUpgradeAnalysFromPlan after paint.
  */
 export function ensurePaintableAnalysSnapshot(): AnalysSnapshot | null {
   const existing = lastAnalysSnapshot();
@@ -42,8 +43,9 @@ export function ensurePaintableAnalysSnapshot(): AnalysSnapshot | null {
 let upgradeScheduled = false;
 
 /**
- * After heading+Perioden paint, upgrade a Hem-thin stub from Plan ledger.
- * Idle / rAF — never on the tap tick.
+ * After heading+Perioden paint, upgrade Hem-thin → first bars from Plan.
+ * Double-rAF so the chrome frame commits first. Never the tap tick, never
+ * full-history FX, never Flight.
  */
 export function scheduleUpgradeAnalysFromPlan() {
   if (typeof window === "undefined") return;
@@ -51,30 +53,52 @@ export function scheduleUpgradeAnalysFromPlan() {
   const plan = lastPlanSnapshot();
   const existing = lastAnalysSnapshot();
   if (!plan) return;
-  if (analysViewCanPaint(existing) && !isThinAnalysSnapshot(existing)) return;
+  if (analysSnapshotHasDatapaint(existing)) return;
   upgradeScheduled = true;
 
   const run = () => {
-    upgradeScheduled = false;
-    const current = lastAnalysSnapshot();
-    const nextPlan = lastPlanSnapshot();
-    if (!nextPlan) return;
-    if (analysViewCanPaint(current) && !isThinAnalysSnapshot(current)) return;
-    const derived = analysSnapshotFromPlan(nextPlan, homeForAnalys());
-    if (!analysViewCanPaint(derived)) return;
-    const shouldUpgrade =
-      !analysViewCanPaint(current) ||
-      (isThinAnalysSnapshot(current) && !isThinAnalysSnapshot(derived));
-    if (shouldUpgrade) rememberAnalysSnapshot(derived);
+    upgradeAnalysFromPlanNow();
   };
 
-  if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(run, { timeout: 1_200 });
-  } else if (typeof requestAnimationFrame === "function") {
-    requestAnimationFrame(run);
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(run);
+      } else {
+        run();
+      }
+    });
   } else {
     window.setTimeout(run, 0);
   }
+}
+
+function shouldRememberDatapaint(
+  current: AnalysSnapshot | null,
+  derived: AnalysSnapshot,
+): boolean {
+  if (!analysViewCanPaint(derived)) return false;
+  if (!analysSnapshotHasDatapaint(derived)) return false;
+  if (!analysViewCanPaint(current)) return true;
+  return isThinAnalysSnapshot(current) || !analysSnapshotHasDatapaint(current);
+}
+
+/**
+ * Sync first-bars from Plan already in memory. Call after chrome paint or
+ * from tests — never from ensurePaintableAnalysSnapshot.
+ */
+export function upgradeAnalysFromPlanNow() {
+  upgradeScheduled = false;
+  const current = lastAnalysSnapshot();
+  const nextPlan = lastPlanSnapshot();
+  if (!nextPlan) return current;
+  if (analysSnapshotHasDatapaint(current)) return current;
+  const derived = analysSnapshotFirstBarsFromPlan(nextPlan, homeForAnalys());
+  if (shouldRememberDatapaint(current, derived)) {
+    rememberAnalysSnapshot(derived);
+    return lastAnalysSnapshot() ?? derived;
+  }
+  return current;
 }
 
 /** Test helper — allow another idle upgrade after a case mutates last-known. */
