@@ -6,6 +6,7 @@ import {
   clearClientSessionCaches,
   lastAccountsSnapshot,
   lastAnalysSnapshot,
+  lastMerSnapshot,
   paintableAccountsSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysSnapshot,
@@ -86,6 +87,10 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("isMovementsDirty");
     expect(warm).toContain("isAccountsDirty");
     expect(warm).toContain("adoptAccountsLastKnown(accounts)");
+    expect(warm).toContain("rememberMerSnapshot");
+    expect(warm).toContain("ensurePaintableMerSnapshot");
+    expect(warm).toContain("getMerSnapshotAction");
+    expect(warm).toContain("scheduleQuietMerRefresh");
     expect(warm).toContain("opts?.restart");
     expect(home).toContain("scheduleQuietMenuWarm");
     const adoptStart = home.indexOf("useEffect(() => {");
@@ -116,6 +121,9 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     const bundle = read("../../features/finance/quiet-menu-bundle.ts");
     expect(bundle).toContain("accounts: AccountsSnapshot | null");
     expect(bundle).toContain("accounts: plan?.accounts ?? null");
+    expect(bundle).toContain("mer: MerSnapshot | null");
+    expect(bundle).toContain("mer: null");
+    expect(bundle).not.toContain("getMerSnapshotAction");
     expect(bundle).not.toMatch(/import \{[^}]*loadAccountsSnapshot/);
     expect(bundle).not.toContain("await loadAccounts");
     expect(bundle).not.toContain("loadAnalysSnapshot");
@@ -131,6 +139,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: sampleAccounts,
       },
     });
@@ -145,6 +154,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: {
           ...sampleAccounts,
           totalThbMinor: 99_00,
@@ -217,6 +227,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: null,
       },
     });
@@ -236,6 +247,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: null,
       },
     });
@@ -314,6 +326,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: null,
       },
     });
@@ -386,6 +399,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: { ...sampleAccounts, totalThbMinor: 7_950_00 },
       },
     });
@@ -481,6 +495,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: fresh,
       },
     });
@@ -504,6 +519,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: sampleAccounts,
       },
     });
@@ -524,5 +540,119 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("PlanScreen");
     expect(loading).not.toContain("ViewLoading");
+  });
+
+  it("gap-fills lastMerSnapshot from Hem so dest hub can paint same-tick", () => {
+    expect(lastMerSnapshot()).toBeNull();
+    rememberHomeSnapshot({
+      userId: "user-hugo",
+      displayName: "Hugo",
+      timeZone: "Asia/Bangkok",
+      primaryAccountId: "acc",
+      currency: "THB",
+      monthKey: "2026-09",
+      monthLabelSv: "september",
+      hasBankTruth: true,
+      calculatedBalanceMinor: 10_000_00,
+      verificationLabel: null,
+      todaySpendingMinor: 200_00,
+      todayPlannedPaidMinor: 0,
+      monthSpendingMinor: 1_000_00,
+      cycleSpendingMinor: 400_00,
+      safeToSpendTodayMinor: 800_00,
+      cycleStartLabelSv: null,
+      cycleEndLabelSv: null,
+      cycleEndInferred: false,
+      cycleIsActive: true,
+      livingMode: "cycle",
+      needsAvailableInput: false,
+      usesBankBalance: true,
+      planIncomeMinor: 20_000_00,
+      planExpenseMinor: 8_000_00,
+      planSavingsMinor: 0,
+      freeToSpendMinor: 12_000_00,
+      remainingFreeMinor: 11_600_00,
+      spendDaysLeft: 10,
+      dayBudgetMinor: 1_000_00,
+      remainingTodayMinor: 800_00,
+      livingPoolMinor: 10_000_00,
+      reservedUntilIncomeMinor: 0,
+      daysUntilIncome: 10,
+      nextIncomeLabelSv: null,
+      extraSaldoMinor: 0,
+      extraSaldoDrawnMinor: 0,
+      extraSaldoHint: null,
+      extraCarriedInMinor: 0,
+      savingsTotalMinor: 2_000_00,
+      wealthTotalMinor: 14_000_00,
+      monthResultMinor: 0,
+      incomingMinor: 5_000_00,
+      unpaidMinor: 3_000_00,
+      overMinor: 12_000_00,
+      financeRevision: "plan-rev",
+      verifiedAt: "2026-09-19T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    expect(lastMerSnapshot()?.userId).toBe("user-hugo");
+    expect(lastMerSnapshot()?.displayName).toBe("Hugo");
+    expect(lastMerSnapshot()?.isAdmin).toBe(false);
+    expect(quietMenuCacheReady()).toBe(true);
+
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        mer: null,
+        accounts: null,
+      },
+    });
+    expect(lastMerSnapshot()?.displayName).toBe("Hugo");
+    expect(lastMerSnapshot()?.isAdmin).toBe(false);
+
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        mer: {
+          userId: "user-hugo",
+          displayName: "Hugo",
+          isAdmin: true,
+        },
+        accounts: null,
+      },
+    });
+    expect(lastMerSnapshot()?.isAdmin).toBe(true);
+
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        mer: null,
+        accounts: null,
+      },
+    });
+    expect(lastMerSnapshot()?.isAdmin).toBe(true);
+  });
+
+  it("paints Mer loading as last-known MerScreen, not MerViewLoading", () => {
+    const loading = read("../../app/(main)/mer/loading.tsx");
+    const mer = read("../../components/mer/MerScreen.tsx");
+    const client = read("../../components/mer/MerRouteClient.tsx");
+    expect(loading).toContain("LoadingSlot");
+    expect(loading).toContain("MerScreen");
+    expect(loading).not.toContain("MerViewLoading");
+    expect(mer).toContain("ensurePaintableMerSnapshot");
+    expect(mer).toContain("lastMerSnapshot() ?? ensurePaintableMerSnapshot()");
+    expect(client).toContain("if (lastMerSnapshot()) return;");
+    expect(client).toContain("Quiet-warm seeds lastMerSnapshot");
   });
 });

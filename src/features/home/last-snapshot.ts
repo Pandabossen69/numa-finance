@@ -304,6 +304,7 @@ export function hydrateLastKnownFromPersist() {
       // Hem-thin only — Plan ledger FX+windows must not run on hydrate.
       analys = analysSnapshotFromHome(home);
     }
+    if (!mer && home) mer = merSnapshotFromHome(home);
     persistPaused = false;
     return;
   }
@@ -314,6 +315,7 @@ export function hydrateLastKnownFromPersist() {
     if (!analysLastKnownCanPaint(analys)) {
       analys = analysSnapshotFromHome(cookieHome);
     }
+    if (!mer) mer = merSnapshotFromHome(cookieHome);
   }
   persistPaused = false;
 }
@@ -544,6 +546,7 @@ export function rememberHomeSnapshot(
     (!confirmSession || homeSessionConfirmed)
   ) {
     gapFillAnalysFromKnown();
+    gapFillMerFromHome();
     return;
   }
   if (
@@ -554,6 +557,7 @@ export function rememberHomeSnapshot(
       isLeftoverSparLivingRevert(home, incoming))
   ) {
     gapFillAnalysFromKnown();
+    gapFillMerFromHome();
     return;
   }
   home = nextDirty
@@ -581,6 +585,7 @@ export function rememberHomeSnapshot(
   // subscribers or Spec S Konton adopt. Time-to-first-paint is last-known,
   // not fetch-done. Konton invalidate must not clear or delay this write.
   gapFillAnalysFromKnown();
+  gapFillMerFromHome();
   emit(homeListeners);
   if (!nextDirty) {
     adoptAccountsLastKnown(null);
@@ -1153,6 +1158,28 @@ export function adoptAccountsLastKnown(incoming: AccountsSnapshot | null) {
   // Konton-only write. Restore Spec R Analys last-known if Plan revision-null
   // or persist quota left it empty — never delay heading+Perioden on adopt.
   gapFillAnalysFromKnown();
+}
+
+export function merSnapshotFromHome(snap: HomeSnapshot | null): MerSnapshot | null {
+  if (!snap) return null;
+  return {
+    userId: snap.userId,
+    displayName: chromeDisplayName(snap.displayName),
+    isAdmin: false,
+  };
+}
+
+function gapFillMerFromHome() {
+  ensurePaintableMerSnapshot();
+}
+
+/** Paint-able Mer hub from last-known or Hem — same tick, no Flight. */
+export function ensurePaintableMerSnapshot(): MerSnapshot | null {
+  if (mer) return mer;
+  const derived = merSnapshotFromHome(home);
+  if (!derived) return null;
+  rememberMerSnapshot(derived);
+  return mer;
 }
 
 export function rememberMerSnapshot(snap: MerSnapshot) {

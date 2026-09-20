@@ -22,6 +22,7 @@ import {
 import { MerInstallCta } from "@/components/mer/MerInstallCta";
 import { MerViewLoading } from "@/components/mer/MerViewLoading";
 import {
+  ensurePaintableMerSnapshot,
   lastMerSnapshot,
   rememberMerSnapshot,
 } from "@/features/home/last-snapshot";
@@ -100,7 +101,7 @@ export function MerScreen({
   useEffect(() => {
     if (data) rememberMerSnapshot(data);
   }, [data]);
-  const view = data ?? lastMerSnapshot();
+  const view = data ?? lastMerSnapshot() ?? ensurePaintableMerSnapshot();
 
   if (!view) return <MerViewLoading />;
 

@@ -7,6 +7,7 @@ import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
+import type { MerSnapshot } from "@/features/home/last-snapshot";
 
 export type QuietMenuBundle = {
   plan: PlanSnapshot | null;
@@ -15,6 +16,12 @@ export type QuietMenuBundle = {
   movements: MovementsSnapshot | null;
   /** From Plan's TodaySnapshot — no extra ledger read. */
   accounts: AccountsSnapshot | null;
+  /**
+   * Mer hub chrome. Server leaves this null — a profile/admin read here
+   * would block Plan/Rörelser last-known the way a second Analys load did.
+   * Client gap-fills from Hem and quiet-refreshes isAdmin after idle.
+   */
+  mer: MerSnapshot | null;
 };
 
 export type QuietMenuBundleResult =
@@ -53,6 +60,8 @@ export async function getQuietMenuBundleAction(): Promise<QuietMenuBundleResult>
         // Same TodaySnapshot as Plan — a second ledger read here would
         // block Plan/Analys/Rörelser last-known on the idle warm.
         accounts: plan?.accounts ?? null,
+        // Client gap-fills from Hem — no extra profile/admin read here.
+        mer: null,
       },
     };
   } catch (error) {

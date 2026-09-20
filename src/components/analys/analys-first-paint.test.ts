@@ -258,6 +258,7 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: staleAccounts,
       },
     });
@@ -283,6 +284,7 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: staleAccounts,
       },
     });
@@ -305,6 +307,7 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: staleAccounts,
       },
     });
@@ -358,6 +361,7 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
         gettingStarted: null,
         analys: null,
         movements: null,
+        mer: null,
         accounts: staleAccounts,
       },
     });

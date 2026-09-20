@@ -10,8 +10,9 @@ import {
 } from "@/features/home/last-snapshot";
 
 /**
- * Client-first Mer — last-known paints immediately; quiet profile fetch
- * in the background. SPA keep-alive never remounts this on tab switches.
+ * Client-first Mer — last-known (quiet-warm / Hem seed) paints immediately.
+ * Quiet-warm owns the background profile/admin refresh when cache is warm.
+ * SPA keep-alive never remounts this on tab switches.
  */
 export function MerRouteClient() {
   const stored = useSyncExternalStore(
@@ -22,7 +23,7 @@ export function MerRouteClient() {
 
   useEffect(() => {
     let cancelled = false;
-    // Quiet menu warm owns background refresh when cache is warm.
+    // Quiet-warm seeds lastMerSnapshot from Hem and refreshes isAdmin.
     if (lastMerSnapshot()) return;
     void getMerSnapshotAction().then((result) => {
       if (cancelled) return;
