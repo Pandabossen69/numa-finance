@@ -263,11 +263,49 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
     expect(ensurePaintableAnalysSnapshot()?.currentMonthKey).toBeTruthy();
     // Route client skips getAnalysSnapshotAction when last-known can paint.
     expect(Boolean(ensurePaintableAnalysSnapshot())).toBe(true);
+    // Stale 7_950 must not win; Hem-aligned Plan accounts may gap-fill.
+    expect(lastAccountsSnapshot()?.totalThbMinor).not.toBe(7_950_00);
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
+
+    adoptAccountsLastKnown(staleAccounts);
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(Boolean(ensurePaintableAnalysSnapshot())).toBe(true);
+
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: staleAccounts,
+      },
+    });
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+  });
+
+  it("stale-only quiet-warm adopt invalidates Konton but keeps Analys last-known", () => {
+    rememberHomeSnapshot({
+      ...home,
+      calculatedBalanceMinor: 3_421_95,
+      financeRevision: "hem-stale-only",
+      verifiedAt: "2026-09-20T05:00:00.000Z",
+    });
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    applyQuietMenuBundleForTests({
+      ok: true,
+      data: {
+        plan: null,
+        gettingStarted: null,
+        analys: null,
+        movements: null,
+        accounts: staleAccounts,
+      },
+    });
     expect(lastAccountsSnapshot()).toBeNull();
     expect(paintableAccountsSnapshot()).toBeNull();
-
-    adoptAccountsLastKnown(freshAccounts);
-    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
     expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
     expect(Boolean(ensurePaintableAnalysSnapshot())).toBe(true);
   });
@@ -321,7 +359,8 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
     });
     expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
     expect(Boolean(ensurePaintableAnalysSnapshot())).toBe(true);
-    expect(paintableAccountsSnapshot()).toBeNull();
+    expect(lastAccountsSnapshot()?.totalThbMinor).not.toBe(7_950_00);
+    expect(paintableAccountsSnapshot()?.totalThbMinor).toBe(3_421_95);
   });
 
   it("confirmOptimisticFinance does not leave Analys empty after a verified Hem", () => {
