@@ -133,6 +133,18 @@ export function AnalysPending() {
       <p className="max-w-[36ch] text-sm leading-snug text-[var(--numa-muted)]">
         {SV.analysHint}
       </p>
+      <div
+        className="numa-equal-chips"
+        role="tablist"
+        aria-label="Analysvy"
+      >
+        <span className="numa-scope-chip is-active min-h-11 rounded-full px-3 text-sm font-semibold bg-[var(--numa-ink)] text-[var(--numa-card)]">
+          {SV.perioden}
+        </span>
+        <span className="numa-scope-chip min-h-11 rounded-full px-3 text-sm font-semibold bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]">
+          {SV.manad}
+        </span>
+      </div>
       <p className="text-sm font-semibold text-[var(--numa-ink)]">
         {SV.vartGickPengarna}
       </p>

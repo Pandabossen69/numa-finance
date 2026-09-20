@@ -113,9 +113,18 @@ describe("ensurePaintableAnalysSnapshot", () => {
     expect(next?.todaySpendingMinor).toBe(50_00);
   });
 
-  it("derives from Plan + Hem when Analys persist is empty", () => {
-    rememberPlanSnapshot(plan);
+  it("derives from Hem alone when Plan persist is empty", () => {
     rememberHomeSnapshot(home);
+    const snap = ensurePaintableAnalysSnapshot();
+    expect(analysViewCanPaint(snap)).toBe(true);
+    expect(snap?.cycle.remainingFreeMinor).toBe(home.remainingFreeMinor);
+    expect(snap?.cycle.daysLeft).toBe(home.spendDaysLeft);
+    expect(lastAnalysSnapshot()).toBe(snap);
+  });
+
+  it("derives from Plan + Hem when Analys persist is empty", () => {
+    rememberHomeSnapshot(home);
+    rememberPlanSnapshot(plan);
     const snap = ensurePaintableAnalysSnapshot();
     expect(analysViewCanPaint(snap)).toBe(true);
     expect(snap?.todaySpendingMinor).toBe(200_00);

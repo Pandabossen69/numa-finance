@@ -8,8 +8,9 @@ describe("AnalysRouteClient", () => {
     expect(src).toContain("lastAnalysSnapshot");
     expect(src).toContain("lastPlanSnapshot");
     expect(src).toContain("ensurePaintableAnalysSnapshot");
-    expect(src).toContain("waitForQuietMenuWarm");
+    expect(src).toContain("lastHomeSnapshot");
     expect(src).toContain("analysViewCanPaint");
+    expect(src).not.toContain("waitForQuietMenuWarm");
     expect(src).toContain("if (!analysActive) return");
     expect(src).toContain("fetchAnalysSnapshotClient");
     expect(src).toContain("lastAnalysFetchResult");

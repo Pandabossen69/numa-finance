@@ -291,6 +291,93 @@ function buildAnalysSnapshot(
   };
 }
 
+/** Last-known from Hem only — no ledger/plan yet. Enough to paint chrome. */
+export function isThinAnalysSnapshot(
+  snap: AnalysSnapshot | null | undefined,
+): boolean {
+  if (!snap) return true;
+  return (
+    (snap.planItems?.length ?? 0) === 0 &&
+    (snap.ledgerTransactions?.length ?? 0) === 0
+  );
+}
+
+/**
+ * Paint-able Analys chrome from Hem last-known. Copies leftover / daysLeft
+ * from Hem — does not recompute living math from an empty plan.
+ */
+export function analysSnapshotFromHome(
+  home: HomeSnapshot,
+  now = new Date(),
+): AnalysSnapshot {
+  const timeZone = home.timeZone || "Asia/Bangkok";
+  const monthKey = home.monthKey || monthKeyFromDate(now, timeZone);
+  const month = buildAnalysMonth({
+    planItems: [],
+    spendingByMonthKey: { [monthKey]: home.monthSpendingMinor },
+    ledgerTransactions: [],
+    saldoMinor: home.calculatedBalanceMinor,
+    monthKey,
+    currentMonthKey: monthKey,
+    timeZone,
+  });
+  return {
+    currency: home.currency,
+    hasBankTruth: home.hasBankTruth,
+    monthKey,
+    calculatedBalanceMinor: home.calculatedBalanceMinor,
+    todaySpendingMinor: home.todaySpendingMinor,
+    monthSpendingMinor: home.monthSpendingMinor,
+    cycleSpendingMinor: home.cycleSpendingMinor,
+    cycle: {
+      startAt: null,
+      endAt: null,
+      startLabelSv: home.cycleStartLabelSv,
+      endLabelSv: home.cycleEndLabelSv,
+      isActive: home.cycleIsActive,
+      livingMode: home.livingMode,
+      incomeMinor: home.planIncomeMinor,
+      expenseMinor: home.planExpenseMinor,
+      savingsMinor: home.planSavingsMinor,
+      freeToSpendMinor: home.freeToSpendMinor,
+      remainingFreeMinor: home.remainingFreeMinor,
+      daysLeft: home.spendDaysLeft,
+      nextIncomeLabelSv: home.nextIncomeLabelSv,
+      dayBudgetMinor: home.dayBudgetMinor,
+      remainingTodayMinor: home.remainingTodayMinor,
+      incomes: [],
+      expenses: [],
+    },
+    month,
+    timeZone,
+    currentMonthKey: monthKey,
+    planItems: [],
+    spendingByMonthKey: { [monthKey]: home.monthSpendingMinor },
+    ledgerTransactions: [],
+    categoriesByMonthKey:
+      home.monthSpendingMinor > 0
+        ? {
+            [monthKey]: [
+              {
+                name: "Spenderat",
+                amountMinor: home.monthSpendingMinor,
+                count: 1,
+              },
+            ],
+          }
+        : {},
+    goals: [],
+    formula: {
+      steps: [
+        "Analys visar senast känt läge från Hem. Kategorier fylls i när hela analysen kommit.",
+      ],
+    },
+    financeRevision: home.financeRevision,
+    verifiedAt: home.verifiedAt,
+    truthStatus: home.truthStatus === "unavailable" ? "unavailable" : "stale",
+  };
+}
+
 /** Same numbers as `loadAnalysSnapshot`, without a second store read. */
 export function analysSnapshotFromToday(
   snap: TodaySnapshot,

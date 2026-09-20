@@ -22,6 +22,7 @@ describe("Hem first paint", () => {
   it("gap-fills Analys dest-loading from Plan + Hem so the timeout banner stays off", () => {
     expect(src).toContain("ensurePaintableAnalysSnapshot");
     expect(src).toContain("lastPlanSnapshot");
+    expect(src).toContain("lastHomeSnapshot");
     expect(src).toContain("subscribePlanSnapshot");
     expect(src).toContain("analysViewCanPaint");
   });

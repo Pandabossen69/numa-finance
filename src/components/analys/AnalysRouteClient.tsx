@@ -5,13 +5,11 @@ import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import {
   ANALYS_AUTO_RETRY_BACKOFF_MS,
-  analysPendingRemainingMs,
   analysViewCanPaint,
   canAnalysAutoRetry,
   fetchAnalysSnapshotClient,
   lastAnalysFetchResult,
   markAnalysAutoRetryUsed,
-  markAnalysPendingStarted,
   registerAnalysClientRetry,
   resetAnalysClientFetch,
 } from "@/features/finance/analys-client-fetch";
@@ -20,28 +18,24 @@ import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-
 import type { AnalysSnapshotResult } from "@/features/finance/load-analys";
 import {
   lastAnalysSnapshot,
+  lastHomeSnapshot,
   lastPlanSnapshot,
   rememberAnalysSnapshot,
   subscribeAnalysSnapshot,
+  subscribeHomeSnapshot,
   subscribePlanSnapshot,
 } from "@/features/home/last-snapshot";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
-import {
-  scheduleQuietMenuWarm,
-  waitForQuietMenuWarm,
-} from "@/lib/nav/quiet-menu-warm";
+import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 /**
- * Client-first Analys — paint last-known immediately, quiet-fetch in background.
+ * Client-first Analys — paint last-known in the same tick as the tap.
+ * Time-to-first-paint is last-known / Hem-derived chrome, never fetch-done.
  * A hung server action must fail-soft within ~5s, never «Hämtar analysen…» forever.
- * Production remounts the route while the action Flight POST is open; the
- * client cap and last result live at module scope so remount cannot reset them.
  *
- * Hidden keep-alive must not start a Flight POST. That raced Hem idle warm
- * and stalled the first Analys tap. Quiet-warm / Plan last-known gap-fills
- * a paint-able snapshot first; fetch only when the tab is visible and cannot
- * paint — and only after the idle Plan bundle has settled, so two TodaySnapshot
- * reads do not share the 4.5s fail-soft budget.
+ * Hidden keep-alive must not start a Flight POST. Quiet-warm / Hem last-known
+ * gap-fills a paint-able snapshot as soon as Hem confirms; fetch only when the
+ * tab is visible and still cannot paint.
  */
 export function AnalysRouteClient() {
   const { pathname } = useNavIntent();
@@ -56,10 +50,17 @@ export function AnalysRouteClient() {
     lastPlanSnapshot,
     lastPlanSnapshot,
   );
+  const homeStored = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    lastHomeSnapshot,
+  );
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
-  const view = stored ?? (planStored ? ensurePaintableAnalysSnapshot() : null);
+  const view =
+    stored ??
+    (planStored || homeStored ? ensurePaintableAnalysSnapshot() : null);
 
   useEffect(() => {
     return registerAnalysClientRetry(() => {
@@ -83,46 +84,30 @@ export function AnalysRouteClient() {
         setError(null);
         return;
       }
-      // Last-known that cannot paint must not swallow fail-soft — that left
-      // production on «Hämtar analysen…» after the timeout.
       if (!analysViewCanPaint(lastAnalysSnapshot())) {
         setError(result.error);
       }
     };
 
+    if (ensurePaintableAnalysSnapshot()) return;
+
+    const prior = lastAnalysFetchResult();
+    if (
+      prior &&
+      !prior.ok &&
+      !canAnalysAutoRetry() &&
+      !analysViewCanPaint(lastAnalysSnapshot())
+    ) {
+      apply(prior);
+      return;
+    }
+
+    if (!analysActive) return;
+
     let cancelled = false;
-
-    const run = async () => {
-      if (ensurePaintableAnalysSnapshot()) return;
-
-      markAnalysPendingStarted();
-      scheduleQuietMenuWarm();
-      await Promise.race([
-        waitForQuietMenuWarm(),
-        new Promise<void>((resolve) => {
-          window.setTimeout(resolve, analysPendingRemainingMs());
-        }),
-      ]);
-      if (cancelled) return;
-      if (ensurePaintableAnalysSnapshot()) return;
-
-      const prior = lastAnalysFetchResult();
-      if (
-        prior &&
-        !prior.ok &&
-        !canAnalysAutoRetry() &&
-        !analysViewCanPaint(lastAnalysSnapshot())
-      ) {
-        apply(prior);
-        return;
-      }
-
-      if (!analysActive) return;
-
-      const result = await fetchAnalysSnapshotClient(getAnalysSnapshotAction);
+    void fetchAnalysSnapshotClient(getAnalysSnapshotAction).then((result) => {
       if (cancelled) return;
       apply(result);
-
       if (
         !result.ok &&
         !ensurePaintableAnalysSnapshot() &&
@@ -137,13 +122,11 @@ export function AnalysRouteClient() {
           setRetryNonce((value) => value + 1);
         }, ANALYS_AUTO_RETRY_BACKOFF_MS);
       }
-    };
-
-    void run();
+    });
     return () => {
       cancelled = true;
     };
-  }, [retryNonce, analysActive, planStored]);
+  }, [retryNonce, analysActive, planStored, homeStored]);
 
   return <AnalysDashboard data={view} error={error} retrying={retrying} />;
 }

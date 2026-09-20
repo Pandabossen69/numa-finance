@@ -20,6 +20,11 @@ import {
   type FxCheckpoint,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import {
+  analysSnapshotFromHome,
+  analysSnapshotFromPlan,
+  isThinAnalysSnapshot,
+} from "@/features/finance/analys-from-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -282,6 +287,10 @@ export function hydrateLastKnownFromPersist() {
     analysScope = data.analysScope;
     movementsView = data.movementsView;
     if (home) maybeRememberLeftoverLivingBaseline(home, { fromPersist: true });
+    if (!analys) {
+      if (plan) analys = analysSnapshotFromPlan(plan, home);
+      else if (home) analys = analysSnapshotFromHome(home);
+    }
     persistPaused = false;
     return;
   }
@@ -289,6 +298,7 @@ export function hydrateLastKnownFromPersist() {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
     maybeRememberLeftoverLivingBaseline(cookieHome, { fromPersist: true });
+    if (!analys) analys = analysSnapshotFromHome(cookieHome);
   }
   persistPaused = false;
 }
@@ -550,6 +560,7 @@ export function rememberHomeSnapshot(
   // SSR needs numa.lastHome.v1 present after authenticated Hem has totals.
   writeLastHomeCookie(home);
   emit(homeListeners);
+  gapFillAnalysFromKnown();
 }
 
 export function lastHomeSnapshot(): HomeSnapshot | null {
@@ -855,6 +866,28 @@ export function syncHomeCoverageFromPlan(snapshot: PlanSnapshot) {
   syncHomeLivingFromPlan(snapshot);
 }
 
+function gapFillAnalysFromKnown() {
+  if (plan) {
+    const derived = analysSnapshotFromPlan(plan, home);
+    const richerThanStub =
+      isThinAnalysSnapshot(analys) && !isThinAnalysSnapshot(derived);
+    if (
+      derived.month &&
+      derived.currentMonthKey &&
+      (!analys || richerThanStub)
+    ) {
+      rememberAnalysSnapshot(derived);
+    }
+    return;
+  }
+  if (!analys && home) {
+    const derived = analysSnapshotFromHome(home);
+    if (derived.month && derived.currentMonthKey) {
+      rememberAnalysSnapshot(derived);
+    }
+  }
+}
+
 export function rememberAnalysSnapshot(snap: AnalysSnapshot) {
   if (analys === snap) return;
   if (analys && !shouldAdoptFinanceSnapshot(analys, snap, false)) {
@@ -893,7 +926,8 @@ export function rememberPlanSnapshot(
   }
   const prevRev = plan?.financeRevision;
   plan = snapshot;
-  // Drop Analys cache when Plan truth moved — forces shared revision on next load.
+  // Drop a stale Analys revision, then re-derive in the same tick so the
+  // keep-alive panel never paints empty while waiting on a Flight POST.
   if (
     analys &&
     snapshot.financeRevision &&
@@ -904,6 +938,7 @@ export function rememberPlanSnapshot(
     analys = null;
   }
   emit(planListeners);
+  gapFillAnalysFromKnown();
 }
 
 export function lastPlanSnapshot(): PlanSnapshot | null {

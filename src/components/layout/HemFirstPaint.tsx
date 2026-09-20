@@ -12,6 +12,7 @@ import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
 import {
   lastAnalysSnapshot,
+  lastHomeSnapshot,
   lastMerSnapshot,
   lastPlanSnapshot,
   lastSessionHomeSnapshot,
@@ -47,9 +48,14 @@ export function AnalysFirstPaint() {
     lastPlanSnapshot,
     () => null,
   );
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    () => null,
+  );
   const view =
     (analysViewCanPaint(analys) ? analys : null) ??
-    (plan ? ensurePaintableAnalysSnapshot() : null);
+    (plan || home ? ensurePaintableAnalysSnapshot() : null);
   if (view && analysViewCanPaint(view)) return <AnalysDashboard data={view} />;
   return <AnalysPending />;
 }

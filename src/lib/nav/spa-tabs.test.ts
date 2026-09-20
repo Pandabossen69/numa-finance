@@ -70,7 +70,8 @@ describe("SPA keep-alive primary tabs", () => {
     expect(analys).toContain("lastAnalysFetchResult");
     expect(analys).toContain("analysViewCanPaint");
     expect(analys).toContain("ensurePaintableAnalysSnapshot");
-    expect(analys).toContain("waitForQuietMenuWarm");
+    expect(analys).toContain("lastHomeSnapshot");
+    expect(analys).not.toContain("waitForQuietMenuWarm");
     expect(analys).toContain("if (!analysActive) return");
     expect(analys).not.toContain("if (lastAnalysSnapshot()) return");
     expect(analys).not.toContain("if (!lastAnalysSnapshot()) setError");
