@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import {
+  analysSnapshotFirstBarsFromPlan,
   analysSnapshotFromHome,
   analysSnapshotFromPlan,
   analysSnapshotFromToday,
+  analysSnapshotHasDatapaint,
   isThinAnalysSnapshot,
 } from "@/features/finance/analys-from-known";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -106,6 +108,20 @@ describe("analysSnapshotFromHome", () => {
   });
 });
 
+function ledgerTx(id: string, occurredAt: string, amountMinor = 100_00) {
+  return {
+    id,
+    accountId: "acc",
+    amountMinor,
+    currency: "THB" as const,
+    transactionType: "expense" as const,
+    direction: "debit" as const,
+    status: "confirmed" as const,
+    occurredAt,
+    description: id,
+  };
+}
+
 describe("analysSnapshotFromPlan", () => {
   it("builds a paint-able Analys last-known from Plan + Hem", () => {
     const snap = analysSnapshotFromPlan(plan, home, now);
@@ -116,6 +132,28 @@ describe("analysSnapshotFromPlan", () => {
     expect(snap.calculatedBalanceMinor).toBe(10_000_00);
     expect(snap.currentMonthKey).toBe("2026-09");
     expect(snap.month).toBeTruthy();
+  });
+
+  it("first-bars keeps current-month spend and drops old-history rows", () => {
+    const withLedger = {
+      ...plan,
+      ledgerTransactions: [
+        ledgerTx("tx-now", "2026-09-18T04:00:00.000Z", 250_00),
+        ledgerTx("tx-old", "2024-01-10T04:00:00.000Z", 9_000_00),
+      ] as PlanSnapshot["ledgerTransactions"],
+    };
+    const first = analysSnapshotFirstBarsFromPlan(withLedger, home, now);
+    const full = analysSnapshotFromPlan(withLedger, home, now);
+    expect(analysViewCanPaint(first)).toBe(true);
+    expect(analysSnapshotHasDatapaint(first)).toBe(true);
+    expect(isThinAnalysSnapshot(first)).toBe(false);
+    expect(first.ledgerTransactions.map((tx) => tx.id)).toEqual(["tx-now"]);
+    expect(full.ledgerTransactions.map((tx) => tx.id)).toEqual([
+      "tx-now",
+      "tx-old",
+    ]);
+    expect(first.categoriesByMonthKey["2026-09"]?.[0]?.amountMinor).toBe(250_00);
+    expect(first.todaySpendingMinor).toBe(home.todaySpendingMinor);
   });
 
   it("does not invent leftover when Hem spend figures are present", () => {

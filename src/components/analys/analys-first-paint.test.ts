@@ -185,6 +185,8 @@ describe("Analys time-to-first-paint (not fetch-done)", () => {
     expect(route).toContain("<AnalysDashboard data={view}");
     expect(route).not.toContain("waitForQuietMenuWarm");
     expect(route).not.toContain("await getAnalysSnapshotAction");
+    expect(route).not.toContain("analysSnapshotFromPlan");
+    expect(route).not.toContain("upgradeAnalysFromPlanNow");
     expect(route).toContain("requestAnimationFrame");
   });
 
