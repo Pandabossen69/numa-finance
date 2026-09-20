@@ -51,12 +51,16 @@ import { rememberLivePlan } from "@/components/plan/plan-cache";
 import {
   ensurePlanMonthPaint,
   ensurePlanMonthSuggestions,
+  planMonthPaintEpoch,
   planMonthPaintStamp,
   planMonthSuggestionEpoch,
   readPlanMonthSuggestions,
+  resolvePlanMonthPaint,
+  scheduleEnsurePlanMonthPaint,
   scheduleEnsurePlanMonthSuggestions,
   schedulePrefetchAdjacentPlanMonths,
   softSwitchPlanMonth,
+  subscribePlanMonthPaints,
   subscribePlanMonthSuggestions,
 } from "@/features/plan/plan-month-cache";
 import { useValueForKey } from "@/lib/hooks/use-value-for-key";
@@ -277,8 +281,6 @@ export function PlanEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
 
-  const isPastMonth = monthKey < currentMonthKey;
-  const previousMonthKey = addMonthsKey(monthKey, -1);
   const monthPaintInput = {
     items: viewItems,
     ledgerTransactions,
@@ -287,7 +289,16 @@ export function PlanEditor({
     saldoMinor: coverageSaldoMinor,
   };
   const monthPaintStamp = planMonthPaintStamp(monthPaintInput);
-  const monthPaint = ensurePlanMonthPaint(monthPaintInput, monthPaintStamp);
+  const paintEpoch = useSyncExternalStore(
+    subscribePlanMonthPaints,
+    planMonthPaintEpoch,
+    planMonthPaintEpoch,
+  );
+  void paintEpoch;
+  const { paint: monthPaint, ready: monthReady } = resolvePlanMonthPaint(
+    monthPaintInput,
+    monthPaintStamp,
+  );
   const { projection, coverage, importableFixed, linkedPlanIds } = monthPaint;
   const suggestionEpoch = useSyncExternalStore(
     subscribePlanMonthSuggestions,
@@ -295,10 +306,15 @@ export function PlanEditor({
     planMonthSuggestionEpoch,
   );
   void suggestionEpoch;
-  const linkSuggestions =
-    readPlanMonthSuggestions(monthKey, monthPaintStamp) ?? [];
-  const canImportFixed = !isPastMonth && importableFixed.length > 0;
+  const linkSuggestions = monthReady
+    ? (readPlanMonthSuggestions(monthKey, monthPaintStamp) ?? [])
+    : [];
+  const displayMonthKey = monthReady ? monthKey : monthPaint.monthKey;
+  const previousMonthKey = addMonthsKey(displayMonthKey, -1);
+  const displayIsPastMonth = displayMonthKey < currentMonthKey;
+  const canImportFixed = !displayIsPastMonth && importableFixed.length > 0;
   useEffect(() => {
+    scheduleEnsurePlanMonthPaint(monthPaintInput, monthPaintStamp);
     schedulePrefetchAdjacentPlanMonths(monthPaintInput, monthPaintStamp);
     scheduleEnsurePlanMonthSuggestions(
       monthPaintInput,
@@ -309,8 +325,8 @@ export function PlanEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthPaintStamp, monthKey]);
   const savingsTotalMinor = coverage.reservedSavingsMinor;
-  const monthName = labelMonthNameSv(monthKey);
-  const priorMonthName = labelMonthNameSv(addMonthsKey(monthKey, -1));
+  const monthName = labelMonthNameSv(displayMonthKey);
+  const priorMonthName = labelMonthNameSv(addMonthsKey(displayMonthKey, -1));
   const yearThroughKey = monthKeys[monthKeys.length - 1] ?? monthKey;
   const yearExtra = useMemo(
     () =>
@@ -349,7 +365,7 @@ export function PlanEditor({
   );
   const [savingsAmount, setSavingsAmount] = useValueForKey(
     projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
-    `${monthKey}:${projection.savingsMinor}`,
+    `${displayMonthKey}:${projection.savingsMinor}`,
   );
   const draftSavingsMinor = useMemo(() => {
     const parsed = parsePlanAmount(
@@ -360,7 +376,7 @@ export function PlanEditor({
   void homeLivingStamp;
   const home = lastHomeSnapshot();
   const savingsPreview =
-    draftSavingsMinor == null
+    !monthReady || draftSavingsMinor == null
       ? null
       : previewMonthSavings({
           items: viewItems,
@@ -379,19 +395,19 @@ export function PlanEditor({
   const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
   const [expenseDate, setExpenseDate] = useState(`${monthKey}-01`);
   const [dateMonthKey, setDateMonthKey] = useState(monthKey);
-  if (dateMonthKey !== monthKey) {
+  useEffect(() => {
+    if (dateMonthKey === monthKey) return;
     setDateMonthKey(monthKey);
     setIncomeDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-25`));
     setExtraDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-15`));
     setExpenseDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-01`));
-  }
+  }, [monthKey, dateMonthKey]);
 
   function selectMonth(key: string) {
     if (key === monthKey) return;
-    // Urgent — startTransition sat behind in-flight server actions (quiet
-    // menu warm) and left Plan on the old month for seconds.
+    // Chrome first — dest project used to block the pil (~326ms). Warm
+    // cache hits still paint totals in this tick (Spec P).
     const nextInput = { ...monthPaintInput, monthKey: key };
-    softSwitchPlanMonth(nextInput, monthPaintStamp);
     flushSync(() => {
       setMonthKey(key);
       setViewYear(yearFromMonthKey(key));
@@ -399,6 +415,7 @@ export function PlanEditor({
       setPartialId(null);
       setAddKind(null);
     });
+    softSwitchPlanMonth(nextInput, monthPaintStamp);
     schedulePrefetchAdjacentPlanMonths(nextInput, monthPaintStamp);
   }
 
@@ -734,7 +751,7 @@ export function PlanEditor({
     <div
       className="space-y-8"
       data-plan-month-key={monthKey}
-      data-plan-month-ready="1"
+      data-plan-month-ready={monthReady ? "1" : "0"}
     >
       <section className="animate-rise-delay-1 space-y-4">
         <PlanMonthNav

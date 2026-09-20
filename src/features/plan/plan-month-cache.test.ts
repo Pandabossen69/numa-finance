@@ -3,14 +3,18 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import {
   ensurePlanMonthPaint,
+  lastPlanMonthPaint,
   planMonthPaintStamp,
   prefetchAdjacentPlanMonths,
   readPlanMonthPaint,
   resetPlanMonthCacheForTests,
+  resolvePlanMonthPaint,
   softSwitchPlanMonth,
 } from "./plan-month-cache";
 import {
+  PLAN_MONTH_BLANK_BUDGET_MS,
   PLAN_MONTH_VISIBLE_BUDGET_MS,
+  buildPlanMonthChrome,
   buildPlanMonthPaint,
 } from "./plan-month-paint";
 
@@ -179,6 +183,7 @@ describe("plan month paint cache", () => {
       stamp,
     );
     expect(switchToOkt.fromCache).toBe(true);
+    expect(switchToOkt.ready).toBe(true);
     expect(switchToOkt.elapsedMs).toBeLessThan(PLAN_MONTH_VISIBLE_BUDGET_MS);
     expect(switchToOkt.paint.coverage.monthKey).toBe("2026-10");
     expect(switchToOkt.paint.coverage.overMinor).toBeTypeOf("number");
@@ -190,25 +195,80 @@ describe("plan month paint cache", () => {
     expect(backToSep.paint.coverage.monthKey).toBe("2026-09");
   });
 
-  it("keeps the soft-switch path free of the link matcher and server actions", () => {
+  it("keeps the soft-switch path free of dest project, the link matcher, and server actions", () => {
     const src = readFileSync(new URL("./plan-month-cache.ts", import.meta.url), "utf8");
     const soft = src.slice(
       src.indexOf("export function softSwitchPlanMonth"),
       src.indexOf("export function scheduleEnsurePlanMonthSuggestions"),
     );
-    expect(soft).toContain("ensurePlanMonthPaint");
+    expect(soft).toContain("allowBuild: false");
+    expect(soft).toContain("scheduleEnsurePlanMonthPaint");
+    expect(soft).not.toContain("buildPlanMonthPaint");
     expect(soft).not.toContain("ensurePlanMonthSuggestions");
     expect(soft).not.toContain("buildPlanMonthSuggestions");
     expect(src).not.toContain("getPlanPageDataAction");
     expect(src).not.toContain("router.refresh");
   });
 
-  it("builds a cold month without a network hop and stays under the visible budget", () => {
-    const cold = softSwitchPlanMonth(hugoLikeInput("2026-10"));
+  it("paints cold pil chrome from last-known shell without a dest project", () => {
+    const sepInput = hugoLikeInput("2026-09");
+    const stamp = planMonthPaintStamp(sepInput);
+    const sep = ensurePlanMonthPaint(sepInput, stamp);
+    expect(lastPlanMonthPaint()).toBe(sep);
+
+    const cold = softSwitchPlanMonth(
+      { ...sepInput, monthKey: "2026-10" },
+      stamp,
+    );
     expect(cold.fromCache).toBe(false);
+    expect(cold.ready).toBe(false);
+    expect(cold.paint).toBe(sep);
+    expect(cold.paint.coverage.monthKey).toBe("2026-09");
     expect(cold.elapsedMs).toBeLessThan(PLAN_MONTH_VISIBLE_BUDGET_MS);
-    expect(cold.paint.coverage.monthKey).toBe("2026-10");
-    expect(cold.paint.linkedPlanIds).toBeInstanceOf(Set);
-    expect(cold.paint).not.toHaveProperty("linkSuggestions");
+
+    const dest = readPlanMonthPaint("2026-10", stamp);
+    expect(dest).not.toBeNull();
+    expect(dest?.coverage.monthKey).toBe("2026-10");
+    expect(dest?.coverage.savingsThisMonthMinor).toBe(15_000_00);
+    expect(dest?.linkedPlanIds).toBeInstanceOf(Set);
+    expect(dest).not.toHaveProperty("linkSuggestions");
+  });
+
+  it("chrome helper never scans the ledger or projects dest coverage", () => {
+    const src = readFileSync(new URL("./plan-month-paint.ts", import.meta.url), "utf8");
+    const chrome = src.slice(
+      src.indexOf("export function buildPlanMonthChrome"),
+      src.indexOf("export function buildPlanMonthPaint"),
+    );
+    expect(chrome).toContain("labelMonthSv");
+    expect(chrome).not.toContain("projectCashCoverage");
+    expect(chrome).not.toContain("projectPlanForMonth");
+    expect(chrome).not.toContain("importableFixedExpenses");
+    expect(chrome).not.toContain("explicitlyLinkedPlanItemIds");
+  });
+
+  it("chrome stub skips dest project and dest datapaint stays under the blank budget", () => {
+    const chrome = buildPlanMonthChrome("2026-10", 18_650_75);
+    expect(chrome.monthKey).toBe("2026-10");
+    expect(chrome.projection.items).toEqual([]);
+    expect(chrome.coverage.incomingMinor).toBe(0);
+
+    const started =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    const dest = ensurePlanMonthPaint(hugoLikeInput("2026-10"));
+    const destMs =
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+      started;
+    expect(dest.coverage.monthKey).toBe("2026-10");
+    expect(destMs).toBeLessThan(PLAN_MONTH_BLANK_BUDGET_MS);
+  });
+
+  it("resolves a same-month stamp miss by building, not last-known of another month", () => {
+    const sep = hugoLikeInput("2026-09");
+    ensurePlanMonthPaint(sep);
+    const resolved = resolvePlanMonthPaint({ ...sep, saldoMinor: 20_000_00 });
+    expect(resolved.ready).toBe(true);
+    expect(resolved.paint.coverage.saldoMinor).toBe(20_000_00);
+    expect(resolved.paint.coverage.monthKey).toBe("2026-09");
   });
 });

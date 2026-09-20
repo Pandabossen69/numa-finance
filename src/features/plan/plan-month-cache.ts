@@ -1,6 +1,7 @@
 import { addMonthsKey, type PlanLinkSuggestion } from "@/domain/finance";
 import { stampPlanItems } from "@/features/plan/optimistic";
 import {
+  buildPlanMonthChrome,
   buildPlanMonthPaint,
   buildPlanMonthSuggestions,
   type PlanMonthPaint,
@@ -13,7 +14,10 @@ type SuggestionEntry = { stamp: string; suggestions: PlanLinkSuggestion[] };
 const paints = new Map<string, PaintEntry>();
 const suggestions = new Map<string, SuggestionEntry>();
 const suggestionListeners = new Set<() => void>();
+const paintListeners = new Set<() => void>();
 let suggestionEpoch = 0;
+let paintEpoch = 0;
+let lastPaint: PlanMonthPaint | null = null;
 
 function emitSuggestions() {
   suggestionEpoch += 1;
@@ -29,6 +33,26 @@ export function subscribePlanMonthSuggestions(listener: () => void) {
 
 export function planMonthSuggestionEpoch() {
   return suggestionEpoch;
+}
+
+function emitPaints() {
+  paintEpoch += 1;
+  for (const listener of paintListeners) listener();
+}
+
+export function subscribePlanMonthPaints(listener: () => void) {
+  paintListeners.add(listener);
+  return () => {
+    paintListeners.delete(listener);
+  };
+}
+
+export function planMonthPaintEpoch() {
+  return paintEpoch;
+}
+
+export function lastPlanMonthPaint(): PlanMonthPaint | null {
+  return lastPaint;
 }
 
 function ledgerStamp(
@@ -68,6 +92,7 @@ export function rememberPlanMonthPaint(
   paint: PlanMonthPaint,
 ) {
   paints.set(monthKey, { stamp, paint });
+  lastPaint = paint;
 }
 
 export function readPlanMonthSuggestions(
@@ -89,6 +114,69 @@ export function ensurePlanMonthPaint(
   const paint = buildPlanMonthPaint(input);
   rememberPlanMonthPaint(input.monthKey, stamp, paint);
   return paint;
+}
+
+/**
+ * Chrome tick: dest cache, else last-known keep-shell, else a cheap stub.
+ * Never project dest coverage on this path — that is datapaint.
+ */
+export function resolvePlanMonthPaint(
+  input: PlanMonthPaintInput,
+  stamp = planMonthPaintStamp(input),
+  opts?: { allowBuild?: boolean },
+): { paint: PlanMonthPaint; ready: boolean; fromCache: boolean } {
+  const hit = readPlanMonthPaint(input.monthKey, stamp);
+  if (hit) return { paint: hit, ready: true, fromCache: true };
+
+  const last = lastPlanMonthPaint();
+  if (last && last.monthKey !== input.monthKey) {
+    return { paint: last, ready: false, fromCache: false };
+  }
+
+  if (opts?.allowBuild === false) {
+    return {
+      paint: last ?? buildPlanMonthChrome(input.monthKey, input.saldoMinor),
+      ready: false,
+      fromCache: false,
+    };
+  }
+
+  return {
+    paint: ensurePlanMonthPaint(input, stamp),
+    ready: true,
+    fromCache: false,
+  };
+}
+
+function scheduleAfterChrome(run: () => void) {
+  if (typeof window === "undefined") {
+    run();
+    return;
+  }
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(run);
+      } else {
+        run();
+      }
+    });
+    return;
+  }
+  window.setTimeout(run, 0);
+}
+
+/** Dest datapaint after the month-nav chrome frame. Double-rAF like Analys S2. */
+export function scheduleEnsurePlanMonthPaint(
+  input: PlanMonthPaintInput,
+  stamp = planMonthPaintStamp(input),
+) {
+  if (readPlanMonthPaint(input.monthKey, stamp)) return;
+  scheduleAfterChrome(() => {
+    if (readPlanMonthPaint(input.monthKey, stamp)) return;
+    ensurePlanMonthPaint(input, stamp);
+    emitPaints();
+  });
 }
 
 export function ensurePlanMonthSuggestions(
@@ -121,8 +209,8 @@ export function prefetchAdjacentPlanMonths(
 }
 
 /**
- * Soft month switch: resolve totals + list without a network hop.
- * Adjacent months should already be in cache from prefetch.
+ * Soft month switch chrome: dest cache or last-known shell, no dest project.
+ * Adjacent warm months stay a cache hit. Cold dest datapaint is scheduled.
  */
 export function softSwitchPlanMonth(
   input: PlanMonthPaintInput,
@@ -131,14 +219,17 @@ export function softSwitchPlanMonth(
   paint: PlanMonthPaint;
   elapsedMs: number;
   fromCache: boolean;
+  ready: boolean;
 } {
   const started =
     typeof performance !== "undefined" ? performance.now() : Date.now();
-  const fromCache = readPlanMonthPaint(input.monthKey, stamp) != null;
-  const paint = ensurePlanMonthPaint(input, stamp);
+  const resolved = resolvePlanMonthPaint(input, stamp, { allowBuild: false });
   const ended =
     typeof performance !== "undefined" ? performance.now() : Date.now();
-  return { paint, elapsedMs: ended - started, fromCache };
+  if (!resolved.ready) {
+    scheduleEnsurePlanMonthPaint(input, stamp);
+  }
+  return { ...resolved, elapsedMs: ended - started };
 }
 
 export function scheduleEnsurePlanMonthSuggestions(
@@ -183,4 +274,6 @@ export function resetPlanMonthCacheForTests() {
   paints.clear();
   suggestions.clear();
   suggestionEpoch = 0;
+  paintEpoch = 0;
+  lastPaint = null;
 }

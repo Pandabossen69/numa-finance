@@ -305,11 +305,24 @@ describe("Plan dates and add-form", () => {
     expect(plan).not.toContain("useRouter");
     expect(editor).toContain("softSwitchPlanMonth");
     expect(editor).toContain("flushSync");
+    const select = editor.slice(
+      editor.indexOf("function selectMonth"),
+      editor.indexOf("function prefetchMonth"),
+    );
+    expect(select.indexOf("flushSync")).toBeLessThan(
+      select.indexOf("softSwitchPlanMonth"),
+    );
+    expect(select).not.toContain("buildPlanMonthPaint");
+    expect(editor).toContain("resolvePlanMonthPaint");
+    expect(editor).toContain("scheduleEnsurePlanMonthPaint");
+    expect(editor).toContain('data-plan-month-ready={monthReady ? "1" : "0"}');
     expect(editor).not.toContain("startMonthTransition");
     expect(editor).not.toContain("useTransition");
     expect(editor).toContain("schedulePrefetchAdjacentPlanMonths");
     expect(monthCache).toContain("prefetchAdjacentPlanMonths");
     expect(monthPaint).toContain("PLAN_MONTH_VISIBLE_BUDGET_MS = 300");
+    expect(monthPaint).toContain("buildPlanMonthChrome");
+    expect(monthCache).toContain("allowBuild: false");
   });
 
   it("adopts savings mutation snapshots so Hem/Plan remount keep the edit", () => {
