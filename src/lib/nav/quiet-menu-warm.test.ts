@@ -300,6 +300,8 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     });
     expect(lastAccountsSnapshot()).toBeNull();
     expect(paintableAccountsSnapshot()).toBeNull();
+    expect(lastAnalysSnapshot()?.month).toBeTruthy();
+    expect(lastAnalysSnapshot()?.currentMonthKey).toBeTruthy();
   });
 
   it("replaces last-known that is missing TrueMoney with a Hem-aligned fresher list", () => {

@@ -304,7 +304,7 @@ export function hydrateLastKnownFromPersist() {
     analysScope = data.analysScope;
     movementsView = data.movementsView;
     if (home) maybeRememberLeftoverLivingBaseline(home, { fromPersist: true });
-    if (!analys) {
+    if (!analys?.month || !analys?.currentMonthKey) {
       if (plan) analys = analysSnapshotFromPlan(plan, home);
       else if (home) analys = analysSnapshotFromHome(home);
     }
@@ -545,6 +545,7 @@ export function rememberHomeSnapshot(
     homeDirty === nextDirty &&
     (!confirmSession || homeSessionConfirmed)
   ) {
+    if (!analys) gapFillAnalysFromKnown();
     return;
   }
   if (
@@ -554,6 +555,7 @@ export function rememberHomeSnapshot(
     (!shouldAdoptFinanceSnapshot(home, incoming, homeDirty) ||
       isLeftoverSparLivingRevert(home, incoming))
   ) {
+    if (!analys) gapFillAnalysFromKnown();
     return;
   }
   home = nextDirty
@@ -577,10 +579,13 @@ export function rememberHomeSnapshot(
   // Sync cookie write — do not wait on persist microtask. Warm hard-refresh
   // SSR needs numa.lastHome.v1 present after authenticated Hem has totals.
   writeLastHomeCookie(home);
-  emit(homeListeners);
+  // Spec R: write Analys last-known in this tick — before subscribers or
+  // Spec S Konton adopt. Time-to-first-paint is last-known, not fetch-done.
   gapFillAnalysFromKnown();
+  emit(homeListeners);
   if (!nextDirty) {
     adoptAccountsLastKnown(null);
+    gapFillAnalysFromKnown();
   }
 }
 
@@ -944,6 +949,7 @@ export function rememberPlanSnapshot(
   if (plan && planStamp(plan) === planStamp(snapshot)) {
     plan = snapshot;
     adoptAccountsLastKnown(snapshot.accounts ?? null);
+    if (!analys) gapFillAnalysFromKnown();
     return;
   }
   const prevRev = plan?.financeRevision;
@@ -959,9 +965,10 @@ export function rememberPlanSnapshot(
   } else if (prevRev && snapshot.financeRevision && prevRev !== snapshot.financeRevision) {
     analys = null;
   }
-  emit(planListeners);
   gapFillAnalysFromKnown();
+  emit(planListeners);
   adoptAccountsLastKnown(snapshot.accounts ?? null);
+  gapFillAnalysFromKnown();
 }
 
 export function lastPlanSnapshot(): PlanSnapshot | null {
@@ -1116,6 +1123,18 @@ export function invalidateAccountsSnapshot() {
  * Plan TodaySnapshot over a richer last-known (#138). Never keeps a stale
  * total or a strict subset of fresher ids (Spec S).
  */
+/**
+ * Last-known / quiet-warm / Hem-Plan adopt. Must not mark a live session
+ * (that bypasses the Spec S paint guard) and must not touch Analys.
+ */
+function writeAccountsLastKnown(snap: AccountsSnapshot) {
+  if (accounts === snap && !accountsDirty && !accountsSessionConfirmed) return;
+  accounts = snap;
+  accountsDirty = false;
+  accountsSessionConfirmed = false;
+  emit(accountsListeners);
+}
+
 export function adoptAccountsLastKnown(incoming: AccountsSnapshot | null) {
   if (accountsDirty) return;
   const decision = decideAccountsLastKnown(accounts, incoming, {
@@ -1123,7 +1142,7 @@ export function adoptAccountsLastKnown(incoming: AccountsSnapshot | null) {
     fresherAccounts: incoming ?? accountsGuardRefs().fresherAccounts,
   });
   if (decision === "replace" && incoming) {
-    rememberAccountsSnapshot(incoming);
+    writeAccountsLastKnown(incoming);
     return;
   }
   if (decision === "invalidate") {

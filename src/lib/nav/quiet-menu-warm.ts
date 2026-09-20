@@ -66,8 +66,12 @@ function applyQuietBundle(
   // Spec S: gap-fill only when incoming agrees with Hem and is not poorer
   // than a richer last-known. Stale/incomplete last-known is dropped so
   // Konton refetches instead of painting Sept-11 ~9k over Hem ~3450.
+  // Konton-only — must not clear or block Spec R Analys last-known.
   if (!isAccountsDirty()) {
     adoptAccountsLastKnown(accounts);
+  }
+  if (lastAnalysSnapshot() == null) {
+    ensurePaintableAnalysSnapshot();
   }
 }
 
