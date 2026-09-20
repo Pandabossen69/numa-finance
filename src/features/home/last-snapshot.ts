@@ -304,9 +304,11 @@ export function hydrateLastKnownFromPersist() {
     analysScope = data.analysScope;
     movementsView = data.movementsView;
     if (home) maybeRememberLeftoverLivingBaseline(home, { fromPersist: true });
-    if (!analys?.month || !analys?.currentMonthKey) {
+    if (!analysLastKnownCanPaint(analys)) {
       if (plan) analys = analysSnapshotFromPlan(plan, home);
-      else if (home) analys = analysSnapshotFromHome(home);
+      if (!analysLastKnownCanPaint(analys) && home) {
+        analys = analysSnapshotFromHome(home);
+      }
     }
     persistPaused = false;
     return;
@@ -315,7 +317,9 @@ export function hydrateLastKnownFromPersist() {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
     maybeRememberLeftoverLivingBaseline(cookieHome, { fromPersist: true });
-    if (!analys) analys = analysSnapshotFromHome(cookieHome);
+    if (!analysLastKnownCanPaint(analys)) {
+      analys = analysSnapshotFromHome(cookieHome);
+    }
   }
   persistPaused = false;
 }
@@ -545,7 +549,7 @@ export function rememberHomeSnapshot(
     homeDirty === nextDirty &&
     (!confirmSession || homeSessionConfirmed)
   ) {
-    if (!analys) gapFillAnalysFromKnown();
+    gapFillAnalysFromKnown();
     return;
   }
   if (
@@ -555,7 +559,7 @@ export function rememberHomeSnapshot(
     (!shouldAdoptFinanceSnapshot(home, incoming, homeDirty) ||
       isLeftoverSparLivingRevert(home, incoming))
   ) {
-    if (!analys) gapFillAnalysFromKnown();
+    gapFillAnalysFromKnown();
     return;
   }
   home = nextDirty
@@ -579,13 +583,13 @@ export function rememberHomeSnapshot(
   // Sync cookie write — do not wait on persist microtask. Warm hard-refresh
   // SSR needs numa.lastHome.v1 present after authenticated Hem has totals.
   writeLastHomeCookie(home);
-  // Spec R: write Analys last-known in this tick — before subscribers or
-  // Spec S Konton adopt. Time-to-first-paint is last-known, not fetch-done.
+  // Spec R / S2: write paint-able Analys last-known in this tick — before
+  // subscribers or Spec S Konton adopt. Time-to-first-paint is last-known,
+  // not fetch-done. Konton invalidate must not clear or delay this write.
   gapFillAnalysFromKnown();
   emit(homeListeners);
   if (!nextDirty) {
     adoptAccountsLastKnown(null);
-    gapFillAnalysFromKnown();
   }
 }
 
@@ -643,7 +647,9 @@ export function confirmOptimisticFinance() {
   analys = null;
   if (home && home.truthStatus === "stale") {
     rememberHomeSnapshot({ ...home, truthStatus: "verified" });
+    return;
   }
+  gapFillAnalysFromKnown();
 }
 
 /** Mutation result is the canonical revision — never lose it to a stale RSC echo. */
@@ -892,23 +898,26 @@ export function syncHomeCoverageFromPlan(snapshot: PlanSnapshot) {
   syncHomeLivingFromPlan(snapshot);
 }
 
+function analysLastKnownCanPaint(
+  snap: AnalysSnapshot | null | undefined,
+): boolean {
+  return Boolean(snap?.month && snap.currentMonthKey);
+}
+
 function gapFillAnalysFromKnown() {
   if (plan) {
     const derived = analysSnapshotFromPlan(plan, home);
-    const richerThanStub =
-      isThinAnalysSnapshot(analys) && !isThinAnalysSnapshot(derived);
-    if (
-      derived.month &&
-      derived.currentMonthKey &&
-      (!analys || richerThanStub)
-    ) {
-      rememberAnalysSnapshot(derived);
+    if (analysLastKnownCanPaint(derived)) {
+      const shouldUpgrade =
+        !analysLastKnownCanPaint(analys) ||
+        (isThinAnalysSnapshot(analys) && !isThinAnalysSnapshot(derived));
+      if (shouldUpgrade) rememberAnalysSnapshot(derived);
+      return;
     }
-    return;
   }
-  if (!analys && home) {
+  if (!analysLastKnownCanPaint(analys) && home) {
     const derived = analysSnapshotFromHome(home);
-    if (derived.month && derived.currentMonthKey) {
+    if (analysLastKnownCanPaint(derived)) {
       rememberAnalysSnapshot(derived);
     }
   }
@@ -948,8 +957,8 @@ export function rememberPlanSnapshot(
   }
   if (plan && planStamp(plan) === planStamp(snapshot)) {
     plan = snapshot;
+    gapFillAnalysFromKnown();
     adoptAccountsLastKnown(snapshot.accounts ?? null);
-    if (!analys) gapFillAnalysFromKnown();
     return;
   }
   const prevRev = plan?.financeRevision;
@@ -968,7 +977,6 @@ export function rememberPlanSnapshot(
   gapFillAnalysFromKnown();
   emit(planListeners);
   adoptAccountsLastKnown(snapshot.accounts ?? null);
-  gapFillAnalysFromKnown();
 }
 
 export function lastPlanSnapshot(): PlanSnapshot | null {
@@ -1136,18 +1144,22 @@ function writeAccountsLastKnown(snap: AccountsSnapshot) {
 }
 
 export function adoptAccountsLastKnown(incoming: AccountsSnapshot | null) {
-  if (accountsDirty) return;
+  if (accountsDirty) {
+    gapFillAnalysFromKnown();
+    return;
+  }
   const decision = decideAccountsLastKnown(accounts, incoming, {
     hemBalanceMinor: accountsGuardRefs().hemBalanceMinor,
     fresherAccounts: incoming ?? accountsGuardRefs().fresherAccounts,
   });
   if (decision === "replace" && incoming) {
     writeAccountsLastKnown(incoming);
-    return;
-  }
-  if (decision === "invalidate") {
+  } else if (decision === "invalidate") {
     invalidateAccountsSnapshot();
   }
+  // Konton-only write. Restore Spec R Analys last-known if Plan revision-null
+  // or persist quota left it empty — never delay heading+Perioden on adopt.
+  gapFillAnalysFromKnown();
 }
 
 export function rememberMerSnapshot(snap: MerSnapshot) {

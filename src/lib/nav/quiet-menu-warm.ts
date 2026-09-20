@@ -48,14 +48,13 @@ function applyQuietBundle(
   const { plan, gettingStarted, analys, movements, accounts } = data.data;
 
   // Quiet success only fills gaps / refreshes — never clears existing UI.
+  // Spec S2: write Analys last-known before Konton adopt so a stale-accounts
+  // invalidate cannot leave heading+Perioden waiting on getAnalysSnapshotAction.
   if (plan) {
     rememberPlanSnapshot(plan);
     syncHomeLivingFromPlan(plan);
-    // Gap-fill only. A richer last-known from a prior /analys visit wins.
-    if (lastAnalysSnapshot() == null) {
-      ensurePaintableAnalysSnapshot();
-    }
   }
+  ensurePaintableAnalysSnapshot();
   if (gettingStarted) rememberGettingStarted(gettingStarted);
   if (analys && lastAnalysSnapshot() == null) {
     rememberAnalysSnapshot(analys);
@@ -70,9 +69,7 @@ function applyQuietBundle(
   if (!isAccountsDirty()) {
     adoptAccountsLastKnown(accounts);
   }
-  if (lastAnalysSnapshot() == null) {
-    ensurePaintableAnalysSnapshot();
-  }
+  ensurePaintableAnalysSnapshot();
 }
 
 function scheduleQuietAnalysRefresh() {
