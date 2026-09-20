@@ -1,7 +1,9 @@
 import {
   addMonthsKey,
+  cashOverMinor,
   explicitlyLinkedPlanItemIds,
   importableFixedExpenses,
+  labelMonthSv,
   projectCashCoverage,
   projectPlanForMonth,
   suggestPlanLinks,
@@ -36,6 +38,50 @@ export type PlanMonthPaint = {
   importableFixed: PlanItem[];
   linkedPlanIds: Set<string>;
 };
+
+/** Nav / month-key chrome only — no ledger scan, no coverage project. */
+export function buildPlanMonthChrome(
+  monthKey: string,
+  saldoMinor: number | null,
+): PlanMonthPaint {
+  return {
+    monthKey,
+    projection: {
+      monthKey,
+      labelSv: labelMonthSv(monthKey),
+      items: [],
+      fixedItems: [],
+      extraItems: [],
+      incomes: [],
+      savings: null,
+      reservedMinor: 0,
+      bufferMinor: 0,
+      flexibleMinor: 0,
+      incomeMinor: 0,
+      savingsMinor: 0,
+      fixedMinor: 0,
+      extraMinor: 0,
+      freeToSpendMinor: 0,
+      totalPlannedMinor: 0,
+    },
+    coverage: {
+      monthKey,
+      saldoMinor,
+      incomingMinor: 0,
+      unpaidMinor: 0,
+      savingsThisMonthMinor: 0,
+      savingsPriorMinor: 0,
+      reservedSavingsMinor: 0,
+      overMinor: cashOverMinor({
+        saldoMinor,
+        incomingMinor: 0,
+        unpaidMinor: 0,
+      }),
+    },
+    importableFixed: [],
+    linkedPlanIds: new Set(),
+  };
+}
 
 export function buildPlanMonthPaint(input: PlanMonthPaintInput): PlanMonthPaint {
   const { items, ledgerTransactions, monthKey, timeZone, saldoMinor } = input;
