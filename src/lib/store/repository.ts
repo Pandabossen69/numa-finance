@@ -231,11 +231,13 @@ async function loadTodaySnapshotOnce(): Promise<TodaySnapshot> {
   return api().getTodaySnapshot();
 }
 
-export async function getTodaySnapshot(): Promise<TodaySnapshot> {
+export async function getTodaySnapshot(opts?: {
+  timeoutMs?: number;
+}): Promise<TodaySnapshot> {
   try {
     return await withTimeoutRetry(
       () => loadTodaySnapshotOnce(),
-      SNAPSHOT_TIMEOUT_MS,
+      opts?.timeoutMs ?? SNAPSHOT_TIMEOUT_MS,
       "getTodaySnapshot",
       0,
     );

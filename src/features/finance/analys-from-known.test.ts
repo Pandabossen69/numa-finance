@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import {
+  analysSnapshotFromHome,
   analysSnapshotFromPlan,
   analysSnapshotFromToday,
+  isThinAnalysSnapshot,
 } from "@/features/finance/analys-from-known";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
@@ -88,6 +90,21 @@ const home: HomeSnapshot = {
   verifiedAt: "2026-09-19T05:00:00.000Z",
   truthStatus: "verified",
 };
+
+describe("analysSnapshotFromHome", () => {
+  it("copies leftover and daysLeft from Hem and can paint chrome", () => {
+    const snap = analysSnapshotFromHome(home, now);
+    expect(analysViewCanPaint(snap)).toBe(true);
+    expect(isThinAnalysSnapshot(snap)).toBe(true);
+    expect(snap.cycle.remainingFreeMinor).toBe(home.remainingFreeMinor);
+    expect(snap.cycle.daysLeft).toBe(home.spendDaysLeft);
+    expect(snap.cycle.dayBudgetMinor).toBe(home.dayBudgetMinor);
+    expect(snap.cycle.remainingTodayMinor).toBe(home.remainingTodayMinor);
+    expect(snap.todaySpendingMinor).toBe(home.todaySpendingMinor);
+    expect(snap.monthSpendingMinor).toBe(home.monthSpendingMinor);
+    expect(snap.truthStatus).toBe("stale");
+  });
+});
 
 describe("analysSnapshotFromPlan", () => {
   it("builds a paint-able Analys last-known from Plan + Hem", () => {

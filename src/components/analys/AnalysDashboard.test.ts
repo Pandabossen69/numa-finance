@@ -161,7 +161,8 @@ describe("Analys month result color", () => {
     expect(src).toContain("mindre");
     // Hero and comparison come from the listed rows, so they cannot
     // contradict the categories under them (Spec 4: Per kategori vs Spenderat).
-    expect(src).toContain("const spentMinor = sumSpendingCategories(categories)");
+    expect(src).toContain("const listedSpent = sumSpendingCategories(listedCategories)");
+    expect(src).toContain("const spentMinor = listedSpent > 0 ? listedSpent : thinFallback");
     expect(src).toContain("spentMinor={isEmpty ? 0 : spentMinor}");
     expect(src).toContain("spentMinor={spentMinor}");
     expect(src).not.toContain("spentMinor={month.spentMinor}");
@@ -305,6 +306,9 @@ describe("Analys month result color", () => {
 
   it("shows a Swedish fail-soft if Analys never arrives", () => {
     expect(src).toContain("AnalysFailSoft");
+    expect(src).toContain("ensurePaintableAnalysSnapshot");
+    expect(src).toContain("isThinAnalysSnapshot");
+    expect(src).toContain("retrying");
     expect(src).not.toContain("RetryLoadButton");
     expect(src).not.toContain("financeTruthMessageSv");
   });

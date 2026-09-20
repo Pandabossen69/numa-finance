@@ -10,10 +10,14 @@ import type {
 /** Client cap so reload never sits on «Hämtar analysen…» past ~5s. */
 export const ANALYS_CLIENT_TIMEOUT_MS = 4_500;
 
+/** One automatic retry after fail-soft — must not reset the 4.5s pending cap. */
+export const ANALYS_AUTO_RETRY_BACKOFF_MS = 700;
+
 let inflight: Promise<AnalysSnapshotResult> | null = null;
 let lastResult: AnalysSnapshotResult | null = null;
 let pendingStartedAt = 0;
 let retryHandler: (() => void) | null = null;
+let autoRetryUsed = false;
 
 /** Last-known must have the fields the dashboard needs to leave pending. */
 export function analysViewCanPaint(
@@ -24,6 +28,18 @@ export function analysViewCanPaint(
 
 export function lastAnalysFetchResult(): AnalysSnapshotResult | null {
   return lastResult;
+}
+
+export function analysClientFetchInflight(): boolean {
+  return inflight != null;
+}
+
+export function canAnalysAutoRetry(): boolean {
+  return !autoRetryUsed;
+}
+
+export function markAnalysAutoRetryUsed(): void {
+  autoRetryUsed = true;
 }
 
 export function markAnalysPendingStarted(now = Date.now()): void {
@@ -60,6 +76,7 @@ export function resetAnalysClientFetch(): void {
 export function requestAnalysClientRetry(): void {
   const handler = retryHandler;
   resetAnalysClientFetch();
+  autoRetryUsed = false;
   handler?.();
 }
 
@@ -67,6 +84,7 @@ export function requestAnalysClientRetry(): void {
 export function resetAnalysClientFetchForTests(): void {
   resetAnalysClientFetch();
   retryHandler = null;
+  autoRetryUsed = false;
 }
 
 /**

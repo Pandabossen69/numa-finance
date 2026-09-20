@@ -8,12 +8,17 @@ import { MerScreen } from "@/components/mer/MerScreen";
 import { PlanScreen } from "@/components/plan/PlanScreen";
 import { AnalysPending, HemPending } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
+import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
+import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
 import {
   lastAnalysSnapshot,
+  lastHomeSnapshot,
   lastMerSnapshot,
+  lastPlanSnapshot,
   lastSessionHomeSnapshot,
   subscribeAnalysSnapshot,
   subscribeHomeSnapshot,
+  subscribePlanSnapshot,
 } from "@/features/home/last-snapshot";
 
 /** Session-confirmed Hem only — never hydrate/cookie as live kvar/Över. */
@@ -38,7 +43,20 @@ export function AnalysFirstPaint() {
     lastAnalysSnapshot,
     () => null,
   );
-  if (analys) return <AnalysDashboard data={analys} />;
+  const plan = useSyncExternalStore(
+    subscribePlanSnapshot,
+    lastPlanSnapshot,
+    () => null,
+  );
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    () => null,
+  );
+  const view =
+    (analysViewCanPaint(analys) ? analys : null) ??
+    (plan || home ? ensurePaintableAnalysSnapshot() : null);
+  if (view && analysViewCanPaint(view)) return <AnalysDashboard data={view} />;
   return <AnalysPending />;
 }
 

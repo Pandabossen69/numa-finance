@@ -1,6 +1,8 @@
 "use client";
 
-import { analysSnapshotFromPlan } from "@/features/finance/analys-from-known";
+import { getAnalysSnapshotAction } from "@/features/finance/analys-snapshot";
+import { analysClientFetchInflight } from "@/features/finance/analys-client-fetch";
+import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
 import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
   isAccountsDirty,
@@ -9,7 +11,6 @@ import {
   lastAnalysSnapshot,
   lastMovementsSnapshot,
   lastPlanSnapshot,
-  lastSessionHomeSnapshot,
   rememberAccountsSnapshot,
   rememberAnalysSnapshot,
   rememberGettingStarted,
@@ -27,6 +28,15 @@ import {
 let warmGeneration = 0;
 let inflight: Promise<void> | null = null;
 let scheduled = false;
+let warmCompleted = false;
+let warmWaiters: Array<() => void> = [];
+let quietAnalysStarted = false;
+
+function settleWarmWaiters() {
+  const waiters = warmWaiters;
+  warmWaiters = [];
+  for (const waiter of waiters) waiter();
+}
 
 function applyQuietBundle(
   generation: number,
@@ -43,9 +53,7 @@ function applyQuietBundle(
     syncHomeLivingFromPlan(plan);
     // Gap-fill only. A richer last-known from a prior /analys visit wins.
     if (lastAnalysSnapshot() == null) {
-      rememberAnalysSnapshot(
-        analysSnapshotFromPlan(plan, lastSessionHomeSnapshot()),
-      );
+      ensurePaintableAnalysSnapshot();
     }
   }
   if (gettingStarted) rememberGettingStarted(gettingStarted);
@@ -62,10 +70,38 @@ function applyQuietBundle(
   }
 }
 
+function scheduleQuietAnalysRefresh() {
+  if (typeof window === "undefined") return;
+  if (quietAnalysStarted) return;
+  if (analysClientFetchInflight()) return;
+  quietAnalysStarted = true;
+
+  const start = () => {
+    if (analysClientFetchInflight()) {
+      quietAnalysStarted = false;
+      return;
+    }
+    void getAnalysSnapshotAction()
+      .then((result) => {
+        if (result.ok) rememberAnalysSnapshot(result.data);
+      })
+      .catch(() => {
+        quietAnalysStarted = false;
+      });
+  };
+
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(start, { timeout: 1_200 });
+  } else {
+    window.setTimeout(start, 200);
+  }
+}
+
 async function runQuietWarm(generation: number) {
   try {
     const result = await getQuietMenuBundleAction();
     applyQuietBundle(generation, result);
+    if (generation === warmGeneration) scheduleQuietAnalysRefresh();
   } catch {
     // Quiet: keep whatever last-known Hem already showed.
   }
@@ -78,14 +114,23 @@ export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
     warmGeneration += 1;
     scheduled = false;
     inflight = null;
+    warmCompleted = false;
+    quietAnalysStarted = false;
+    settleWarmWaiters();
   }
-  if (scheduled && inflight) return;
+  if (inflight) return;
+  if (scheduled && !warmCompleted) return;
   scheduled = true;
+  warmCompleted = false;
 
   const start = () => {
     const generation = ++warmGeneration;
     inflight = runQuietWarm(generation).finally(() => {
-      if (generation === warmGeneration) inflight = null;
+      if (generation === warmGeneration) {
+        inflight = null;
+        warmCompleted = true;
+        settleWarmWaiters();
+      }
     });
   };
 
@@ -94,6 +139,19 @@ export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
   } else {
     window.setTimeout(start, 50);
   }
+}
+
+/**
+ * Resolves when the idle Plan/Rörelser bundle has applied (or was never
+ * scheduled). Analys must wait for this before starting its own TodaySnapshot
+ * so two fat reads do not share the 4.5s fail-soft budget.
+ */
+export function waitForQuietMenuWarm(): Promise<void> {
+  if (inflight) return inflight;
+  if (warmCompleted || !scheduled) return Promise.resolve();
+  return new Promise((resolve) => {
+    warmWaiters.push(resolve);
+  });
 }
 
 /** True when dest shells can paint real money without waiting for RSC. */
@@ -111,6 +169,9 @@ export function resetQuietMenuWarmForTests() {
   warmGeneration = 0;
   inflight = null;
   scheduled = false;
+  warmCompleted = false;
+  quietAnalysStarted = false;
+  settleWarmWaiters();
 }
 
 /** Test helper — apply a bundle as idle warm would. */

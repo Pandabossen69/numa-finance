@@ -21,6 +21,8 @@ describe("first-paint pending", () => {
     const oldAnalys = renderToStaticMarkup(createElement(AnalysViewLoading));
 
     expect(analys).toContain("Hämtar analysen");
+    expect(analys).toContain("Perioden");
+    expect(analys).toContain("Månad");
     expect(analys).toContain("Vart gick pengarna");
     expect(analys).toContain("Hur går det");
     expect(analys).toContain("Se vart pengarna gick");

@@ -19,6 +19,14 @@ describe("Hem first paint", () => {
     expect(src).not.toContain("AnalysViewLoading");
   });
 
+  it("gap-fills Analys dest-loading from Plan + Hem so the timeout banner stays off", () => {
+    expect(src).toContain("ensurePaintableAnalysSnapshot");
+    expect(src).toContain("lastPlanSnapshot");
+    expect(src).toContain("lastHomeSnapshot");
+    expect(src).toContain("subscribePlanSnapshot");
+    expect(src).toContain("analysViewCanPaint");
+  });
+
   it("marks the server loading slot so SSR dest-loading can replace it", () => {
     expect(slot).toContain("data-numa-view-loading");
     expect(slot).not.toContain("use client");

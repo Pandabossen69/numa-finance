@@ -38,6 +38,8 @@ import {
   type CurrencyCode,
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
+import { isThinAnalysSnapshot } from "@/features/finance/analys-from-known";
+import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 
 type AnalysScope = "period" | "month";
@@ -45,9 +47,11 @@ type AnalysScope = "period" | "month";
 export function AnalysDashboard({
   data,
   error,
+  retrying = false,
 }: {
   data: AnalysSnapshot | null;
   error?: string | null;
+  retrying?: boolean;
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
@@ -57,7 +61,7 @@ export function AnalysDashboard({
   const sharedMonth = useSyncExternalStore(subscribePlanView, lastPlanView, () => null);
   if (data) rememberAnalysSnapshot(data);
   rememberAnalysScope(scope);
-  const view = data ?? lastAnalysSnapshot();
+  const view = data ?? lastAnalysSnapshot() ?? ensurePaintableAnalysSnapshot();
   const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 
   // Same numbers as the server sends for today's month, recomputed locally for
@@ -95,6 +99,7 @@ export function AnalysDashboard({
   }, [view, scope, activeMonthKey]);
 
   if (!view || !month || !activeMonthKey) {
+    if (retrying) return <AnalysFailSoft error={error} retrying />;
     if (!error) return <AnalysPending />;
     return <AnalysFailSoft error={error} />;
   }
@@ -113,10 +118,23 @@ export function AnalysDashboard({
     startAt: cycle.startAt,
     endAt: cycle.endAt,
   });
-  const categories = scope === "month" ? monthCategories : periodCategories;
+  const listedCategories = scope === "month" ? monthCategories : periodCategories;
+  const listedSpent = sumSpendingCategories(listedCategories);
+  const thinFallback =
+    isThinAnalysSnapshot(view) && listedSpent === 0
+      ? scope === "month"
+        ? view.monthSpendingMinor
+        : view.cycleSpendingMinor
+      : 0;
   // Hero Spenderat is the sum of the listed rows, so it cannot contradict
   // "Vart gick pengarna?" — Spec 4: Per kategori vs Spenderat must be one number.
-  const spentMinor = sumSpendingCategories(categories);
+  const spentMinor = listedSpent > 0 ? listedSpent : thinFallback;
+  const categories =
+    listedCategories.length > 0
+      ? listedCategories
+      : spentMinor > 0
+        ? [{ name: "Spenderat", amountMinor: spentMinor, count: 1 }]
+        : [];
   const previousMonthKey = addMonthsKey(activeMonthKey, -1);
   const previousSpentMinor = sumSpendingCategories(
     view.categoriesByMonthKey[previousMonthKey] ?? [],

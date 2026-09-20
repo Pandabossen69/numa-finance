@@ -239,4 +239,29 @@ describe("menu snapshot query contract", () => {
     expect(txSince).toHaveLength(2);
     expect(Date.parse(txSince[1]!)).toBeLessThan(Date.parse(txSince[0]!));
   });
+
+  it("uses one batched checkpoint read when loadCheckpoints is provided", async () => {
+    let batchCalls = 0;
+    let singleCalls = 0;
+    const second: Account = { ...account, id: "acc-2", isDefault: false };
+    const sources: MenuSnapshotSources = {
+      loadProfile: async () => profile,
+      loadAccounts: async () => [account, second],
+      loadPlanItems: async () => [] as PlanItem[],
+      loadCheckpoint: async () => {
+        singleCalls += 1;
+        return null;
+      },
+      loadCheckpoints: async (ids) => {
+        batchCalls += 1;
+        return ids.map(() => null);
+      },
+      loadTransactions: async () => [] as CanonicalTransaction[],
+    };
+
+    const bundle = await fetchMenuSnapshotBundle(sources, NOW);
+    expect(batchCalls).toBe(1);
+    expect(singleCalls).toBe(0);
+    expect(bundle.checkpoints).toEqual([null, null]);
+  });
 });

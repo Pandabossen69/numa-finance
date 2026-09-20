@@ -1423,6 +1423,33 @@ export async function getObservationMediaUrl(
   return data.signedUrl;
 }
 
+export async function latestCheckpointsForAccounts(
+  accountIds: string[],
+): Promise<Array<BalanceCheckpoint | null>> {
+  if (accountIds.length === 0) return [];
+  if (accountIds.length === 1) {
+    return [await latestCheckpointForAccount(accountIds[0]!)];
+  }
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("balance_checkpoints")
+    .select(numaSelect(CHECKPOINT_SELECT))
+    .eq("user_id", userId)
+    .in("account_id", accountIds)
+    .order("verified_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  const latest = new Map<string, BalanceCheckpoint>();
+  for (const row of data ?? []) {
+    const mapped = mapCheckpoint(row);
+    if (!latest.has(mapped.accountId)) {
+      latest.set(mapped.accountId, mapped);
+    }
+  }
+  return accountIds.map((id) => latest.get(id) ?? null);
+}
+
 export async function latestCheckpointForAccount(
   accountId: string,
 ): Promise<BalanceCheckpoint | null> {
@@ -1671,6 +1698,7 @@ async function loadTodaySnapshotUncached(): Promise<TodaySnapshot> {
     // Uncached: request-scoped listPlanItems would still be the pre-write 15k.
     loadPlanItems: listPlanItemsUncached,
     loadCheckpoint: latestCheckpointForAccount,
+    loadCheckpoints: latestCheckpointsForAccounts,
     loadTransactions: (options) =>
       listTransactions(options.accountId, {
         sinceIso: options.sinceIso,

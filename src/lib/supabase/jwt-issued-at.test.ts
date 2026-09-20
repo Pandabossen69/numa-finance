@@ -614,7 +614,8 @@ describe("Analys JWT error path", () => {
     const server = readFileSync(new URL("./server.ts", import.meta.url), "utf8");
     const auth = readFileSync(new URL("./auth-user.ts", import.meta.url), "utf8");
     expect(analys).toContain('reportError("loader.analys"');
-    expect(analys).toContain("getCachedTodaySnapshot");
+    expect(analys).toContain("getTodaySnapshot");
+    expect(analys).toContain("ANALYS_SNAPSHOT_TIMEOUT_MS");
     expect(auth).toContain("auth.getSession()");
     expect(server).toContain("fetchWithJwtIssuedAtRetry");
     expect(server).not.toContain("autoRefreshToken: true");
