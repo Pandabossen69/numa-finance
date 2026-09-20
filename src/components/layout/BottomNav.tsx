@@ -68,7 +68,7 @@ export function BottomNav() {
             onPointerDown={() => onIntent("/fota")}
             onMouseEnter={() => prefetch("/fota")}
             onFocus={() => prefetch("/fota")}
-            onClick={() => onIntent("/fota")}
+            onClick={(event) => onTabClick("/fota", event)}
             className="numa-press numa-fab relative flex items-center justify-center rounded-full"
             aria-label="Lägg till"
           >

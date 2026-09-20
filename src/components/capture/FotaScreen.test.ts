@@ -37,4 +37,19 @@ describe("FotaScreen soft-nav", () => {
     expect(loading).toContain("data={null}");
     expect(outlet).toContain("destLoadingForTab");
   });
+
+  it("is mounted as an SPA keep-alive panel so + paints dest chrome same tick", () => {
+    const keepAlive = readFileSync(
+      new URL("../layout/TabKeepAlive.tsx", import.meta.url),
+      "utf8",
+    );
+    const tabs = readFileSync(
+      new URL("../../lib/nav/spa-tabs.ts", import.meta.url),
+      "utf8",
+    );
+    expect(keepAlive).toContain("FotaRouteClient");
+    expect(keepAlive).toContain('"/fota": <FotaRouteClient />');
+    expect(tabs).toContain('"/fota"');
+    expect(tabs).toContain('if (path === "/fota"');
+  });
 });

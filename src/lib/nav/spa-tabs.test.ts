@@ -7,13 +7,14 @@ function read(rel: string) {
 }
 
 describe("SPA keep-alive primary tabs", () => {
-  it("maps routes onto the five keep-alive panels", () => {
+  it("maps routes onto the keep-alive panels including Fota", () => {
     expect(SPA_TAB_HREFS).toEqual([
       "/idag",
       "/plan",
       "/analys",
       "/mer",
       "/transaktioner",
+      "/fota",
     ]);
     expect(spaTabKey("/")).toBe("/idag");
     expect(spaTabKey("/idag")).toBe("/idag");
@@ -27,8 +28,11 @@ describe("SPA keep-alive primary tabs", () => {
     expect(spaTabKey("/transaktioner")).toBe("/transaktioner");
     expect(spaTabKey("/transaktioner/1")).toBe("/transaktioner");
     expect(spaTabKey("/konton")).toBeNull();
-    expect(spaTabKey("/fota")).toBeNull();
+    expect(spaTabKey("/fota")).toBe("/fota");
+    expect(spaTabKey("/fota?mode=bank_sms")).toBe("/fota");
+    expect(spaTabKey("/fota/")).toBe("/fota");
     expect(isSpaTabHref("/idag")).toBe(true);
+    expect(isSpaTabHref("/fota")).toBe(true);
     expect(isSpaTabHref("/konton")).toBe(false);
     expect(SPA_TAB_HREFS).not.toContain("/konton");
   });
@@ -39,9 +43,12 @@ describe("SPA keep-alive primary tabs", () => {
     expect(bottom).toContain("navigateSpaTab");
     expect(bottom).toContain("event.preventDefault()");
     expect(bottom).toContain("if (navigateSpaTab(href))");
+    expect(bottom).toContain('onClick={(event) => onTabClick("/fota", event)}');
     expect(side).toContain("navigateSpaTab");
     expect(side).toContain("event.preventDefault()");
     expect(side).toContain("if (navigateSpaTab(href))");
+    expect(side).toContain('onPointerDown={() => onIntent("/fota")}');
+    expect(side).toContain('onClick={(event) => onTabClick("/fota", event)}');
   });
 
   it("does not let SideNav navigateSpaTab on mouse enter or hover", () => {
@@ -81,7 +88,7 @@ describe("SPA keep-alive primary tabs", () => {
     expect(accounts).toContain("if (paintableAccountsSnapshot()) return;");
   });
 
-  it("wraps the shell outlet in TabKeepAlive with the five route clients", () => {
+  it("wraps the shell outlet in TabKeepAlive with the route clients", () => {
     const shell = read("../../components/layout/AppShell.tsx");
     const keepAlive = read("../../components/layout/TabKeepAlive.tsx");
     expect(shell).toContain("TabKeepAlive");
@@ -94,6 +101,7 @@ describe("SPA keep-alive primary tabs", () => {
     expect(keepAlive).toContain("AnalysRouteClient");
     expect(keepAlive).toContain("MerRouteClient");
     expect(keepAlive).toContain("MovementsRouteClient");
+    expect(keepAlive).toContain("FotaRouteClient");
     expect(keepAlive).toContain("data-numa-spa-tab");
     expect(keepAlive).toContain("spaTabKey");
   });

@@ -36,4 +36,10 @@ describe("TabKeepAlive", () => {
     expect(src).toContain("cookieShell={homeCookieShell}");
     expect(src).toContain("<HemRouteClient cookieShell={homeCookieShell} />");
   });
+
+  it("mounts Fota as a keep-alive panel so dest chrome is not in the RSC shadow", () => {
+    expect(src).toContain("FotaRouteClient");
+    expect(src).toContain('"/fota": <FotaRouteClient />');
+    expect(src).toContain("data-numa-rsc-shadow");
+  });
 });

@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState, type ReactNode } from "react";
 import { AnalysRouteClient } from "@/components/analys/AnalysRouteClient";
+import { FotaRouteClient } from "@/components/capture/FotaRouteClient";
 import { HemRouteClient } from "@/components/home/HemRouteClient";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { MerRouteClient } from "@/components/mer/MerRouteClient";
@@ -13,10 +14,11 @@ import { SPA_TAB_HREFS, spaTabKey, type SpaTabHref } from "@/lib/nav/spa-tabs";
 /**
  * True SPA keep-alive for primary tabs (NextStep Sales pattern).
  *
- * All five panels mount with the shell and stay mounted. Taps only flip the
- * `hidden` attribute (see paintSpaPanelsNow). Lazy first-mount was a multi-
- * second stall: the DOM paint helper could not reveal a panel React had not
- * created yet. Do NOT use `.numa-view-park` (`display: none`) here — that
+ * All primary-tab panels plus Fota mount with the shell and stay mounted.
+ * Taps only flip the `hidden` attribute (see paintSpaPanelsNow). Lazy
+ * first-mount was a multi-second stall: the DOM paint helper could not
+ * reveal a panel React had not created yet. Do NOT use `.numa-view-park`
+ * (`display: none`) here — that
  * class survived the DOM paint and kept the dest invisible until React
  * caught up (often seconds while server actions resolved).
  *
@@ -41,6 +43,7 @@ export function TabKeepAlive({
     "/analys": <AnalysRouteClient />,
     "/mer": <MerRouteClient />,
     "/transaktioner": <MovementsRouteClient />,
+    "/fota": <FotaRouteClient />,
   }));
 
   useLayoutEffect(() => {

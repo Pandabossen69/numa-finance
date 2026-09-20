@@ -26,4 +26,12 @@ describe("BottomNav a11y", () => {
     expect(src).not.toContain("text-[10px]");
     expect(src).not.toContain("h-12 w-12");
   });
+
+  it("treats + / Fota as an SPA dest — pointerdown paints, click preventDefault", () => {
+    expect(src).toContain("onIntent(\"/fota\")");
+    expect(src).toContain('onClick={(event) => onTabClick("/fota", event)}');
+    expect(src).toContain("if (isSpaTabHref(href))");
+    expect(src).toContain("event.preventDefault()");
+    expect(src).not.toContain("onClick={() => onIntent(\"/fota\")}");
+  });
 });

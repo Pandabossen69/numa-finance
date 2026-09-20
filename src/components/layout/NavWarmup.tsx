@@ -7,9 +7,8 @@ import { isSpaTabHref } from "@/lib/nav/spa-tabs";
 import { scheduleIdleWarm, warmHrefs } from "@/lib/nav/prefetch-intent";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
-/** Non-SPA destinations only — primary tabs are keep-alive panels. */
+/** Non-SPA destinations only — primary tabs and Fota are keep-alive panels. */
 const WARM_HREFS = [
-  "/fota",
   "/lagg-till",
 ] as const;
 

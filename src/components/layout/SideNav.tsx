@@ -89,12 +89,9 @@ export function SideNav({ displayName }: { displayName: React.ReactNode }) {
           <Link
             href="/fota"
             prefetch={false}
-            onPointerDown={() => {
-              prefetch("/fota");
-              markIntent("/fota");
-            }}
+            onPointerDown={() => onIntent("/fota")}
             onMouseEnter={() => prefetch("/fota")}
-            onClick={() => markIntent("/fota")}
+            onClick={(event) => onTabClick("/fota", event)}
             className="numa-btn numa-btn-accent flex w-full items-center justify-center gap-2 rounded-full"
             aria-label="Lägg till — fota saldo eller kvitto"
           >

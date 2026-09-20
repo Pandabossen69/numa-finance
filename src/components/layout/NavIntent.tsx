@@ -12,6 +12,7 @@ import {
 } from "react";
 import { usePathname } from "next/navigation";
 import { isNavActive, optimisticNavPath } from "@/components/layout/nav";
+import { rememberFotaIntentFromHref } from "@/features/imports/fota-intent";
 import { rememberPlanFocusFromHref } from "@/features/plan/plan-focus";
 import { isSpaTabHref, spaTabKey } from "@/lib/nav/spa-tabs";
 
@@ -99,7 +100,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
     if (!spaOwnedRef.current) return;
     if (spaTabKey(routerPathname) == null) {
       spaOwnedRef.current = false;
-      // Drop keep-alive when App Router lands on Fota / Mer drill-ins.
+      // Drop keep-alive when App Router lands on Mer drill-ins / non-SPA dests.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync to router leaving SPA tabs
       setSpaPath(null);
     }
@@ -110,6 +111,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       const next = pathOnly(window.location.pathname);
       if (spaTabKey(next)) {
         spaOwnedRef.current = true;
+        rememberFotaIntentFromHref(`${next}${window.location.search}`);
         paintSpaPanelsNow(next);
         setSpaPath(next);
         setPending(null);
@@ -198,6 +200,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       );
       if (painted && pathOnly(pathname) === dest) {
         rememberPlanFocusFromHref(href);
+        rememberFotaIntentFromHref(href);
         try {
           window.history.pushState({ numaSpa: true, href }, "", href);
         } catch {
@@ -214,6 +217,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       setPending(null);
       setIntent(null);
       rememberPlanFocusFromHref(href);
+      rememberFotaIntentFromHref(href);
       try {
         window.history.pushState({ numaSpa: true, href }, "", href);
       } catch {
