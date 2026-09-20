@@ -42,17 +42,16 @@ import {
   type GettingStartedView,
 } from "@/features/getting-started/progress";
 import {
+  adoptAccountsLastKnown,
   adoptMutationFinance,
   applyAccountBalance,
   applyAccountDelta,
   applyMovementsAdd,
   applyOptimisticHomeSpend,
-  isAccountsDirty,
   isHomeDirty,
-  lastAccountsSnapshot,
   lastGettingStarted,
   lastSessionHomeSnapshot,
-  rememberAccountsSnapshot,
+  paintableAccountsSnapshot,
   rememberGettingStarted,
   rememberHomeSnapshot,
   subscribeGettingStarted,
@@ -90,8 +89,8 @@ export function HomeDashboard({
   );
   const accountsView = useSyncExternalStore(
     subscribeAccountsSnapshot,
-    lastAccountsSnapshot,
-    lastAccountsSnapshot,
+    paintableAccountsSnapshot,
+    paintableAccountsSnapshot,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
@@ -108,8 +107,8 @@ export function HomeDashboard({
     // The old "== null" guard left Hem stuck on the first in-memory
     // snapshot (often 0) after saldo, Fota, or a later RSC load.
     if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap);
-    if (accounts && (lastAccountsSnapshot() == null || !isAccountsDirty())) {
-      rememberAccountsSnapshot(accounts);
+    if (accounts) {
+      adoptAccountsLastKnown(accounts);
     }
     if (gettingStarted && lastGettingStarted() == null) {
       rememberGettingStarted(gettingStarted);

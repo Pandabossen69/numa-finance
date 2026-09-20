@@ -36,8 +36,8 @@ import {
   applyAccountDelta,
   applyOptimisticPlanSettle,
   adoptMutationFinance,
-  lastAccountsSnapshot,
-  rememberAccountsSnapshot,
+  adoptAccountsLastKnown,
+  paintableAccountsSnapshot,
   lastHomeSnapshot,
   lastPlanSnapshot,
   lastPlanView,
@@ -202,13 +202,11 @@ export function PlanEditor({
   }
   const storedAccounts = useSyncExternalStore(
     subscribeAccountsSnapshot,
-    lastAccountsSnapshot,
-    lastAccountsSnapshot,
+    paintableAccountsSnapshot,
+    paintableAccountsSnapshot,
   );
   useEffect(() => {
-    if (accounts && lastAccountsSnapshot() == null) {
-      rememberAccountsSnapshot(accounts);
-    }
+    if (accounts) adoptAccountsLastKnown(accounts);
   }, [accounts]);
   const accountsView = storedAccounts ?? accounts;
   const settleAccounts = (accountsView?.accounts ?? []).map((account) => ({

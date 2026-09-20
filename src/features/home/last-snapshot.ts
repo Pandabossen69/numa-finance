@@ -40,6 +40,10 @@ import {
   writeLastHomeCookie,
 } from "@/features/home/last-home-cookie";
 import {
+  accountsLastKnownCanPaint,
+  decideAccountsLastKnown,
+} from "@/features/home/accounts-last-known";
+import {
   clearPersistedLastKnown,
   readPersistedLastKnown,
   writePersistedLastKnown,
@@ -220,6 +224,8 @@ let movementsDirty = false;
 let movementsView: MovementsView | null = null;
 let accounts: AccountsSnapshot | null = null;
 let accountsDirty = false;
+/** Live remember this JS lifetime — hydrate/quiet-warm last-known stays gated. */
+let accountsSessionConfirmed = false;
 let mer: MerSnapshot | null = null;
 let fota: FotaBootSnapshot | null = null;
 let importera: ImporteraRow[] | null = null;
@@ -281,6 +287,17 @@ export function hydrateLastKnownFromPersist() {
     analys = data.analys;
     mer = data.mer;
     accounts = data.accounts;
+    accountsSessionConfirmed = false;
+    if (
+      accounts &&
+      !accountsLastKnownCanPaint(accounts, {
+        hemBalanceMinor:
+          home?.calculatedBalanceMinor ?? plan?.bankBalanceMinor ?? null,
+        fresherAccounts: plan?.accounts ?? null,
+      })
+    ) {
+      accounts = null;
+    }
     movements = data.movements;
     gettingStarted = data.gettingStarted;
     planView = data.planView;
@@ -355,6 +372,7 @@ function wipeSessionCaches() {
   movementsView = null;
   accounts = null;
   accountsDirty = false;
+  accountsSessionConfirmed = false;
   mer = null;
   fota = null;
   importera = null;
@@ -561,6 +579,9 @@ export function rememberHomeSnapshot(
   writeLastHomeCookie(home);
   emit(homeListeners);
   gapFillAnalysFromKnown();
+  if (!nextDirty) {
+    adoptAccountsLastKnown(null);
+  }
 }
 
 export function lastHomeSnapshot(): HomeSnapshot | null {
@@ -922,6 +943,7 @@ export function rememberPlanSnapshot(
   }
   if (plan && planStamp(plan) === planStamp(snapshot)) {
     plan = snapshot;
+    adoptAccountsLastKnown(snapshot.accounts ?? null);
     return;
   }
   const prevRev = plan?.financeRevision;
@@ -939,6 +961,7 @@ export function rememberPlanSnapshot(
   }
   emit(planListeners);
   gapFillAnalysFromKnown();
+  adoptAccountsLastKnown(snapshot.accounts ?? null);
 }
 
 export function lastPlanSnapshot(): PlanSnapshot | null {
@@ -1039,14 +1062,73 @@ export function rememberAccountsSnapshot(
   opts?: { dirty?: boolean },
 ) {
   const nextDirty = opts?.dirty ?? false;
-  if (accounts === snap && accountsDirty === nextDirty) return;
+  if (
+    accounts === snap &&
+    accountsDirty === nextDirty &&
+    accountsSessionConfirmed
+  ) {
+    return;
+  }
   accounts = snap;
   accountsDirty = nextDirty;
+  accountsSessionConfirmed = true;
   emit(accountsListeners);
 }
 
 export function lastAccountsSnapshot(): AccountsSnapshot | null {
   return accounts;
+}
+
+function accountsGuardRefs(): {
+  hemBalanceMinor: number | null;
+  fresherAccounts: AccountsSnapshot | null;
+} {
+  return {
+    hemBalanceMinor:
+      home?.calculatedBalanceMinor ?? plan?.bankBalanceMinor ?? null,
+    fresherAccounts: plan?.accounts ?? null,
+  };
+}
+
+/**
+ * Last-known Konton may paint only when it agrees with Hem «På kontona»
+ * and is not missing ids a fresher Plan/Hem source already has. A live
+ * remember this session (fetch / mutation) always paints — Hem may lag.
+ */
+export function paintableAccountsSnapshot(): AccountsSnapshot | null {
+  if (!accounts) return null;
+  if (accountsDirty || accountsSessionConfirmed) return accounts;
+  return accountsLastKnownCanPaint(accounts, accountsGuardRefs())
+    ? accounts
+    : null;
+}
+
+export function invalidateAccountsSnapshot() {
+  if (accounts == null && !accountsSessionConfirmed) return;
+  if (accountsDirty) return;
+  accounts = null;
+  accountsSessionConfirmed = false;
+  emit(accountsListeners);
+}
+
+/**
+ * Gap-fill or drop last-known Konton vs Hem/Plan. Never paints a poorer
+ * Plan TodaySnapshot over a richer last-known (#138). Never keeps a stale
+ * total or a strict subset of fresher ids (Spec S).
+ */
+export function adoptAccountsLastKnown(incoming: AccountsSnapshot | null) {
+  if (accountsDirty) return;
+  const decision = decideAccountsLastKnown(accounts, incoming, {
+    hemBalanceMinor: accountsGuardRefs().hemBalanceMinor,
+    fresherAccounts: incoming ?? accountsGuardRefs().fresherAccounts,
+  });
+  if (decision === "replace" && incoming) {
+    rememberAccountsSnapshot(incoming);
+    return;
+  }
+  if (decision === "invalidate") {
+    invalidateAccountsSnapshot();
+  }
 }
 
 export function rememberMerSnapshot(snap: MerSnapshot) {
