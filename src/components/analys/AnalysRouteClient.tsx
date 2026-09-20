@@ -58,9 +58,12 @@ export function AnalysRouteClient() {
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [retryNonce, setRetryNonce] = useState(0);
+  // Paint last-known / Hem-derived chrome in this render. planStored /
+  // homeStored subscriptions re-render when Hem confirm or quiet-warm
+  // writes — do not gate first paint on those snapshots being non-null.
   const view =
-    stored ??
-    (planStored || homeStored ? ensurePaintableAnalysSnapshot() : null);
+    (analysViewCanPaint(stored) ? stored : null) ??
+    ensurePaintableAnalysSnapshot();
 
   useEffect(() => {
     return registerAnalysClientRetry(() => {
@@ -105,26 +108,40 @@ export function AnalysRouteClient() {
     if (!analysActive) return;
 
     let cancelled = false;
-    void fetchAnalysSnapshotClient(getAnalysSnapshotAction).then((result) => {
-      if (cancelled) return;
-      apply(result);
-      if (
-        !result.ok &&
-        !ensurePaintableAnalysSnapshot() &&
-        canAnalysAutoRetry()
-      ) {
-        markAnalysAutoRetryUsed();
-        setRetrying(true);
-        window.setTimeout(() => {
-          if (cancelled) return;
-          resetAnalysClientFetch();
-          setError(null);
-          setRetryNonce((value) => value + 1);
-        }, ANALYS_AUTO_RETRY_BACKOFF_MS);
-      }
-    });
+    const launch = () => {
+      if (cancelled || ensurePaintableAnalysSnapshot()) return;
+      void fetchAnalysSnapshotClient(getAnalysSnapshotAction).then((result) => {
+        if (cancelled) return;
+        apply(result);
+        if (
+          !result.ok &&
+          !ensurePaintableAnalysSnapshot() &&
+          canAnalysAutoRetry()
+        ) {
+          markAnalysAutoRetryUsed();
+          setRetrying(true);
+          window.setTimeout(() => {
+            if (cancelled) return;
+            resetAnalysClientFetch();
+            setError(null);
+            setRetryNonce((value) => value + 1);
+          }, ANALYS_AUTO_RETRY_BACKOFF_MS);
+        }
+      });
+    };
+    // Spec S2: production Flight POST must not stall heading+Perioden.
+    // Empty Perioden chrome is already painted; start the action after paint.
+    const scheduled =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame(launch)
+        : window.setTimeout(launch, 0);
     return () => {
       cancelled = true;
+      if (typeof requestAnimationFrame === "function") {
+        cancelAnimationFrame(scheduled);
+      } else {
+        window.clearTimeout(scheduled);
+      }
     };
   }, [retryNonce, analysActive, planStored, homeStored]);
 
