@@ -21,6 +21,7 @@ import {
   lastHomeSnapshot,
   lastImporteraRows,
   lastMerSnapshot,
+  ensurePaintableMerSnapshot,
   lastMovementsSnapshot,
   lastMovementsView,
   lastPlanSnapshot,
@@ -362,6 +363,21 @@ describe("last view memory", () => {
     expect(lastFotaBoot()?.remainingTodayMinor).toBe(250_00);
     expect(lastImporteraRows()?.[0]?.id).toBe("obs-1");
     expect(lastSettingsSnapshot()?.timezone).toBe("Asia/Bangkok");
+  });
+
+  it("gap-fills Mer hub last-known from Hem so first paint is not MerViewLoading", () => {
+    expect(lastMerSnapshot()).toBeNull();
+    rememberHomeSnapshot(homeSnap());
+    expect(lastMerSnapshot()?.userId).toBe("user-hugo");
+    expect(lastMerSnapshot()?.displayName).toBe("Hugo");
+    expect(lastMerSnapshot()?.isAdmin).toBe(false);
+    expect(ensurePaintableMerSnapshot()?.displayName).toBe("Hugo");
+    rememberMerSnapshot({
+      userId: "user-hugo",
+      displayName: "Hugo",
+      isAdmin: true,
+    });
+    expect(ensurePaintableMerSnapshot()?.isAdmin).toBe(true);
   });
 
   it("voids a Rörelser expense locally without waiting for RSC", () => {

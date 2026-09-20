@@ -7,17 +7,21 @@ import {
   ensurePaintableAnalysSnapshot,
   scheduleUpgradeAnalysFromPlan,
 } from "@/features/finance/ensure-analys-last-known";
+import { getMerSnapshotAction } from "@/features/finance/mer-snapshot";
 import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
   adoptAccountsLastKnown,
+  ensurePaintableMerSnapshot,
   isAccountsDirty,
   isMovementsDirty,
   lastAnalysSnapshot,
+  lastMerSnapshot,
   lastMovementsSnapshot,
   lastPlanSnapshot,
   paintableAccountsSnapshot,
   rememberAnalysSnapshot,
   rememberGettingStarted,
+  rememberMerSnapshot,
   rememberMovementsSnapshot,
   rememberPlanSnapshot,
   syncHomeLivingFromPlan,
@@ -35,6 +39,7 @@ let scheduled = false;
 let warmCompleted = false;
 let warmWaiters: Array<() => void> = [];
 let quietAnalysStarted = false;
+let quietMerStarted = false;
 
 function settleWarmWaiters() {
   const waiters = warmWaiters;
@@ -49,7 +54,7 @@ function applyQuietBundle(
   if (generation !== warmGeneration) return;
   if (!data.ok) return;
 
-  const { plan, gettingStarted, analys, movements, accounts } = data.data;
+  const { plan, gettingStarted, analys, movements, accounts, mer } = data.data;
 
   // Quiet success only fills gaps / refreshes — never clears existing UI.
   // Spec S2: write Analys last-known before Konton adopt so a stale-accounts
@@ -77,6 +82,11 @@ function applyQuietBundle(
     adoptAccountsLastKnown(accounts);
   }
   ensurePaintableAnalysSnapshot();
+  // Spec P2.3b: seed Mer hub last-known so dest chrome paints same-tick.
+  // Bundle mer is authoritative (profile + isAdmin). Otherwise gap-fill
+  // from Hem — never clear an existing last-known.
+  if (mer) rememberMerSnapshot(mer);
+  ensurePaintableMerSnapshot();
 }
 
 function scheduleQuietAnalysRefresh() {
@@ -107,11 +117,36 @@ function scheduleQuietAnalysRefresh() {
   }
 }
 
+function scheduleQuietMerRefresh() {
+  if (typeof window === "undefined") return;
+  if (quietMerStarted) return;
+  quietMerStarted = true;
+
+  const start = () => {
+    void getMerSnapshotAction()
+      .then((result) => {
+        if (result.ok) rememberMerSnapshot(result.data);
+      })
+      .catch(() => {
+        quietMerStarted = false;
+      });
+  };
+
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(start, { timeout: 1_200 });
+  } else {
+    window.setTimeout(start, 200);
+  }
+}
+
 async function runQuietWarm(generation: number) {
   try {
     const result = await getQuietMenuBundleAction();
     applyQuietBundle(generation, result);
-    if (generation === warmGeneration) scheduleQuietAnalysRefresh();
+    if (generation === warmGeneration) {
+      scheduleQuietAnalysRefresh();
+      scheduleQuietMerRefresh();
+    }
   } catch {
     // Quiet: keep whatever last-known Hem already showed.
   }
@@ -126,6 +161,7 @@ export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
     inflight = null;
     warmCompleted = false;
     quietAnalysStarted = false;
+    quietMerStarted = false;
     settleWarmWaiters();
   }
   if (inflight) return;
@@ -170,7 +206,8 @@ export function quietMenuCacheReady() {
     lastPlanSnapshot() != null ||
     lastAnalysSnapshot() != null ||
     lastMovementsSnapshot() != null ||
-    paintableAccountsSnapshot() != null
+    paintableAccountsSnapshot() != null ||
+    lastMerSnapshot() != null
   );
 }
 
@@ -181,6 +218,7 @@ export function resetQuietMenuWarmForTests() {
   scheduled = false;
   warmCompleted = false;
   quietAnalysStarted = false;
+  quietMerStarted = false;
   settleWarmWaiters();
 }
 

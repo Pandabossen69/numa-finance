@@ -70,6 +70,7 @@ describe("Mer HIGH regress", () => {
 
   it("shows last-known Mer and prefetches drill-ins", () => {
     expect(mer).toContain("lastMerSnapshot");
+    expect(mer).toContain("ensurePaintableMerSnapshot");
     expect(mer).toContain("DestinationWarmup");
     expect(mer).toContain("/transaktioner");
     expect(mer).toContain("/konton");
