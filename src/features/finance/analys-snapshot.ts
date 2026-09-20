@@ -12,7 +12,7 @@ export type { AnalysSnapshot, AnalysSnapshotResult } from "@/features/finance/lo
 /** Slightly under the client cap so a hung action still returns. */
 const ANALYS_ACTION_TIMEOUT_MS = 4_000;
 
-/** Client refresh / quiet warm — RSC pages call `loadAnalysSnapshot` directly. */
+/** Visible-tab refresh / fail-soft — quiet warm derives Analys from Plan. */
 export async function getAnalysSnapshotAction(): Promise<AnalysSnapshotResult> {
   try {
     return await withTimeout(

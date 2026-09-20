@@ -15,6 +15,10 @@ import {
 const home = readFileSync(new URL("./load-home.ts", import.meta.url), "utf8");
 const plan = readFileSync(new URL("./load-plan.ts", import.meta.url), "utf8");
 const analys = readFileSync(new URL("./load-analys.ts", import.meta.url), "utf8");
+const analysFromKnown = readFileSync(
+  new URL("./analys-from-known.ts", import.meta.url),
+  "utf8",
+);
 const report = readFileSync(
   new URL("../../lib/observe/report.ts", import.meta.url),
   "utf8",
@@ -138,6 +142,6 @@ describe("financial truth fail-closed contract", () => {
     );
     expect(home).toContain("financeRevision");
     expect(plan).toContain("financeRevision");
-    expect(analys).toContain("financeRevision");
+    expect(analysFromKnown).toContain("financeRevision");
   });
 });

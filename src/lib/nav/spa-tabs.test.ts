@@ -64,10 +64,13 @@ describe("SPA keep-alive primary tabs", () => {
     const movements = read("../../components/movements/MovementsRouteClient.tsx");
     const mer = read("../../components/mer/MerRouteClient.tsx");
     expect(plan).toContain("if (lastPlanSnapshot()) return;");
-    // Analys always fetches under a client timeout — last-known is not enough
-    // to skip, because a hung reload otherwise stays on «Hämtar analysen…».
+    // Analys fetches under a client timeout only when last-known cannot paint
+    // and the tab is visible — a hidden keep-alive Flight POST stalled first tap.
     expect(analys).toContain("fetchAnalysSnapshotClient");
     expect(analys).toContain("lastAnalysFetchResult");
+    expect(analys).toContain("analysViewCanPaint");
+    expect(analys).toContain("analysSnapshotFromPlan");
+    expect(analys).toContain("if (!analysActive) return");
     expect(analys).not.toContain("if (lastAnalysSnapshot()) return");
     expect(analys).not.toContain("if (!lastAnalysSnapshot()) setError");
     expect(movements).toContain("if (lastMovementsSnapshot()) return;");
