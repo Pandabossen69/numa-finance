@@ -146,7 +146,8 @@ describe("Analys month result color", () => {
     expect(loader).toContain("projectLedgerToCanonicalThb(");
     expect(loader).toContain("fxMapFromTodaySnap");
     expect(movements).toContain("projectLedgerToCanonicalThb(");
-    expect(loader).toMatch(/const ledgerTransactions = projectLedgerToCanonicalThb\(/);
+    expect(loader).toContain("alreadyCanonicalLedger");
+    expect(loader).toMatch(/projectLedgerToCanonicalThb\(/);
     expect(src).toContain("currency={tx.currency}");
     expect(src).toContain("view.categoriesByMonthKey[activeMonthKey]");
     expect(src).toContain("addMonthsKey(activeMonthKey, -1)");

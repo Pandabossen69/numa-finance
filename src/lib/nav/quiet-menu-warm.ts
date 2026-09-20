@@ -2,7 +2,11 @@
 
 import { getAnalysSnapshotAction } from "@/features/finance/analys-snapshot";
 import { analysClientFetchInflight } from "@/features/finance/analys-client-fetch";
-import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
+import { analysSnapshotHasDatapaint } from "@/features/finance/analys-from-known";
+import {
+  ensurePaintableAnalysSnapshot,
+  scheduleUpgradeAnalysFromPlan,
+} from "@/features/finance/ensure-analys-last-known";
 import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
   adoptAccountsLastKnown,
@@ -55,6 +59,9 @@ function applyQuietBundle(
     syncHomeLivingFromPlan(plan);
   }
   ensurePaintableAnalysSnapshot();
+  // Quiet-warm Plan already has the ledger. First-bars from that partial —
+  // do not wait for a second getAnalysSnapshotAction Flight (~13s warm).
+  scheduleUpgradeAnalysFromPlan();
   if (gettingStarted) rememberGettingStarted(gettingStarted);
   if (analys && lastAnalysSnapshot() == null) {
     rememberAnalysSnapshot(analys);
@@ -83,6 +90,7 @@ function scheduleQuietAnalysRefresh() {
       quietAnalysStarted = false;
       return;
     }
+    if (analysSnapshotHasDatapaint(lastAnalysSnapshot())) return;
     void getAnalysSnapshotAction()
       .then((result) => {
         if (result.ok) rememberAnalysSnapshot(result.data);
