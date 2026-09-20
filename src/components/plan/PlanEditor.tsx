@@ -394,14 +394,15 @@ export function PlanEditor({
   const [incomeDate, setIncomeDate] = useState(`${monthKey}-25`);
   const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
   const [expenseDate, setExpenseDate] = useState(`${monthKey}-01`);
-  const [dateMonthKey, setDateMonthKey] = useState(monthKey);
-  useEffect(() => {
-    if (dateMonthKey === monthKey) return;
-    setDateMonthKey(monthKey);
-    setIncomeDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-25`));
-    setExtraDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-15`));
-    setExpenseDate((prev) => (prev.startsWith(monthKey) ? prev : `${monthKey}-01`));
-  }, [monthKey, dateMonthKey]);
+  const incomeDateView = incomeDate.startsWith(monthKey)
+    ? incomeDate
+    : `${monthKey}-25`;
+  const extraDateView = extraDate.startsWith(monthKey)
+    ? extraDate
+    : `${monthKey}-15`;
+  const expenseDateView = expenseDate.startsWith(monthKey)
+    ? expenseDate
+    : `${monthKey}-01`;
 
   function selectMonth(key: string) {
     if (key === monthKey) return;
@@ -992,7 +993,7 @@ export function PlanEditor({
           <InlineAdd
             name={incomeName}
             amount={incomeAmount}
-            extra={incomeDate}
+            extra={incomeDateView}
             extraLabel="Datum"
             namePlaceholder="t.ex. Lön, Trukks, CSN"
             amountPlaceholder={`Belopp (${currency})`}
@@ -1012,11 +1013,11 @@ export function PlanEditor({
                 addKind: "income",
                 name: incomeName,
                 amount: incomeAmount,
-                date: incomeDate,
+                date: incomeDateView,
                 item: {
                   kind: "expected",
                   cadence: "income",
-                  nextDueAt: `${incomeDate}T12:00:00.000Z`,
+                  nextDueAt: `${incomeDateView}T12:00:00.000Z`,
                 },
                 clear: () => {
                   setIncomeName("");
@@ -1161,7 +1162,7 @@ export function PlanEditor({
           <InlineAdd
             name={expenseName}
             amount={expenseAmount}
-            extra={expenseDate}
+            extra={expenseDateView}
             extraLabel="Datum"
             namePlaceholder="t.ex. Hyra, El, Netflix"
             amountPlaceholder={`Belopp (${currency})`}
@@ -1181,11 +1182,11 @@ export function PlanEditor({
                 addKind: "fixed",
                 name: expenseName,
                 amount: expenseAmount,
-                date: expenseDate,
+                date: expenseDateView,
                 item: {
                   kind: "mandatory",
                   cadence: "monthly",
-                  nextDueAt: `${expenseDate}T12:00:00.000Z`,
+                  nextDueAt: `${expenseDateView}T12:00:00.000Z`,
                 },
                 clear: () => {
                   setExpenseName("");
@@ -1285,7 +1286,7 @@ export function PlanEditor({
           <InlineAdd
             name={extraName}
             amount={extraAmount}
-            extra={extraDate}
+            extra={extraDateView}
             extraLabel="Datum"
             namePlaceholder="t.ex. Lån, Flygbiljett"
             amountPlaceholder={`Belopp (${currency})`}
@@ -1304,11 +1305,11 @@ export function PlanEditor({
                 addKind: "extra",
                 name: extraName,
                 amount: extraAmount,
-                date: extraDate,
+                date: extraDateView,
                 item: {
                   kind: "expected",
                   cadence: "once",
-                  nextDueAt: `${extraDate}T12:00:00.000Z`,
+                  nextDueAt: `${extraDateView}T12:00:00.000Z`,
                 },
                 clear: () => {
                   setExtraName("");
