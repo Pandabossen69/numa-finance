@@ -235,6 +235,7 @@ const movementsListeners = new Set<() => void>();
 const accountsListeners = new Set<() => void>();
 const merListeners = new Set<() => void>();
 const planViewListeners = new Set<() => void>();
+const movementsViewListeners = new Set<() => void>();
 
 function emit(listeners: Set<() => void>) {
   for (const listener of listeners) listener();
@@ -384,6 +385,7 @@ function wipeSessionCaches() {
   emit(accountsListeners);
   emit(merListeners);
   emit(planViewListeners);
+  emit(movementsViewListeners);
 }
 
 export function bindSessionOwner(userId: string) {
@@ -1057,9 +1059,36 @@ export function lastMovementsSnapshot(): MovementsSnapshot | null {
   return movements;
 }
 
+function sameMovementsView(
+  current: MovementsView | null,
+  next: MovementsView,
+): boolean {
+  if (!current) return false;
+  return (
+    current.filter === next.filter &&
+    current.period === next.period &&
+    (current.category ?? null) === (next.category ?? null)
+  );
+}
+
+/**
+ * Rörelser filter chips, including the category chosen from Analys.
+ *
+ * Notifies subscribers so a screen that is already mounted follows along —
+ * tabs stay mounted, so reading this only at mount time would leave Rörelser
+ * on the previous chip after a category tap.
+ */
 export function rememberMovementsView(view: MovementsView) {
+  if (sameMovementsView(movementsView, view)) return;
   movementsView = view;
-  schedulePersist();
+  emit(movementsViewListeners);
+}
+
+export function subscribeMovementsView(listener: () => void) {
+  movementsViewListeners.add(listener);
+  return () => {
+    movementsViewListeners.delete(listener);
+  };
 }
 
 export function lastMovementsView(): MovementsView | null {

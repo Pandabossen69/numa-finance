@@ -70,6 +70,7 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("numa-category-chip");
     expect(src).toContain("selectCategory(spendCategoryName(tx.category))");
     expect(src).toContain("rememberMovementsView({ filter, period, category })");
+    expect(src).toContain("subscribeMovementsView");
     expect(src).not.toContain("Inga träffar för filtret — prova Alla eller All tid.");
   });
 

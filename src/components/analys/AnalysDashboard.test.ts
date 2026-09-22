@@ -305,6 +305,37 @@ describe("Analys month result color", () => {
     expect(src).toContain("{cycleRangeLabel}");
   });
 
+  it("opens Rörelser on the tapped category and dates Senaste", () => {
+    expect(src).toContain("movementsViewForCategoryDrill(");
+    expect(src).toContain("rememberMovementsView(");
+    expect(src).toContain("lastMovementsView()");
+    expect(src).toContain("flushSync");
+    expect(src).toContain("data-analys-category={category.name}");
+    expect(src).toContain('href="/transaktioner"');
+    expect(src).toContain("prefetch={false}");
+    expect(src).toContain('markIntent("/transaktioner")');
+    expect(src).toContain("onPointerDown");
+    expect(src).toContain("onMouseEnter");
+    expect(src).toContain("onFocus");
+    // Window capture beats NavIntent's document-capture panel paint.
+    expect(src).toContain(
+      'window.addEventListener("pointerdown", onPointerDown, true)',
+    );
+    expect(src).toContain('window.addEventListener("click", onClick, true)');
+    expect(src).toContain("min-h-11 w-full");
+    expect(src).toContain("formatListDateSv(tx.occurredAt, view.timeZone");
+    expect(src).toContain("withTime: true");
+    expect(src).toContain("humanizeMovementTitle(tx.description, signed)");
+    expect(src).toContain("senasteRowCategoryLabel(tx)");
+    expect(src).toContain('tone="signed"');
+    expect(src).not.toContain("{tx.category ? (");
+    expect(src).toContain("ovrigtDominatesSpend(categories)");
+    expect(src).toContain("SV.analysCategoryDrillHint");
+    // Still one Spenderat: the hero is the category sum, no second total.
+    expect(src).toContain("const spentMinor = listedSpent > 0 ? listedSpent : thinFallback");
+    expect(src).not.toContain('aria-label="Per kategori"');
+  });
+
   it("shows a Swedish fail-soft if Analys never arrives", () => {
     expect(src).toContain("AnalysFailSoft");
     expect(src).toContain("ensurePaintableAnalysSnapshot");
