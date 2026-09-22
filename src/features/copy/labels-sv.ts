@@ -104,6 +104,8 @@ export const SV = {
   vartGickPengarna: "Vart gick pengarna?",
   hurGarDet: "Hur går det?",
   analysCategoryHint: "Samma belopp som Spenderat, störst först.",
+  /** Shown only when Övrigt is at least half of listed Spenderat. */
+  analysCategoryDrillHint: "Tryck en kategori för detaljer",
   analysEmptySpendPeriod: "Inget spenderat i perioden ännu. När du handlar syns det här.",
   analysEmptySpendMonth:
     "Inget spenderat i den här månaden ännu. När du handlar syns det här.",

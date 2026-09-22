@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -10,6 +11,7 @@ import { PlanMonthNav } from "@/components/plan/PlanMonthNav";
 import { buildAnalysMonth } from "@/features/finance/analys-month";
 import {
   addMonthsKey,
+  formatListDateSv,
   isInPayCycleWindow,
   monthKeyFromDate,
   labelMonthNameSv,
@@ -22,12 +24,18 @@ import {
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
+  lastMovementsView,
   lastPlanView,
+  rememberMovementsView,
   rememberPlanView,
   subscribePlanView,
   rememberAnalysScope,
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
+import {
+  movementsViewForCategoryDrill,
+  ovrigtDominatesSpend,
+} from "@/components/analys/analys-category-drill";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
@@ -296,6 +304,9 @@ export function AnalysDashboard({
                 categories={categories}
                 currency={currency}
                 empty={categoryEmpty}
+                scope={scope}
+                activeMonthKey={activeMonthKey}
+                currentMonthKey={view.currentMonthKey}
               />
             </>
           )}
@@ -340,6 +351,9 @@ export function AnalysDashboard({
             categories={categories}
             currency={currency}
             empty={categoryEmpty}
+            scope={scope}
+            activeMonthKey={activeMonthKey}
+            currentMonthKey={view.currentMonthKey}
           />
         </section>
       )}
@@ -392,11 +406,16 @@ export function AnalysDashboard({
                     <p className="truncate text-sm font-medium text-[var(--numa-ink)]">
                       {humanizeMovementTitle(tx.description, signed)}
                     </p>
-                    {tx.category ? (
-                      <p className="mt-0.5 truncate text-xs text-[var(--numa-faint)]">
-                        {tx.category}
-                      </p>
-                    ) : null}
+                    <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-[var(--numa-faint)]">
+                      {tx.category ? (
+                        <span className="truncate">{tx.category}</span>
+                      ) : null}
+                      <span className="shrink-0">
+                        {formatListDateSv(tx.occurredAt, view.timeZone, {
+                          withTime: true,
+                        })}
+                      </span>
+                    </p>
                   </div>
                   <span className="numa-money-line-amt">
                     <MoneyDisplay
@@ -496,17 +515,73 @@ function SpendHero({
 /**
  * Where the money went. Same rows as the Spenderat hero, split by the
  * category saved on each transaction, biggest first. No second total.
+ * Each row opens Rörelser with that category already selected.
  */
 function SpendByCategory({
   categories,
   currency,
   empty,
+  scope,
+  activeMonthKey,
+  currentMonthKey,
 }: {
   categories: SpendingCategoryTotal[];
   currency: CurrencyCode;
   empty: string;
+  scope: AnalysScope;
+  activeMonthKey: string;
+  currentMonthKey: string;
 }) {
+  const { prefetch } = usePrefetchOnIntent();
+  const { markIntent } = useNavIntent();
   const biggest = categories[0]?.amountMinor || 1;
+  const showDrillHint = ovrigtDominatesSpend(categories);
+  const openCategoryRef = useRef<(name: string) => void>(() => {});
+
+  // NavIntent paints Rörelser on document capture pointerdown, which runs
+  // before this link's own handler. Window capture runs first, so the
+  // category is committed before the panel is revealed.
+  useLayoutEffect(() => {
+    function openCategory(name: string) {
+      flushSync(() => {
+        rememberMovementsView(
+          movementsViewForCategoryDrill(name, {
+            scope,
+            activeMonthKey,
+            currentMonthKey,
+            existing: lastMovementsView(),
+          }),
+        );
+      });
+    }
+    openCategoryRef.current = openCategory;
+    function categoryFromEvent(event: Event): string | null {
+      if (!(event.target instanceof Element)) return null;
+      const link = event.target.closest("[data-analys-category]");
+      if (!(link instanceof HTMLElement)) return null;
+      return link.getAttribute("data-analys-category");
+    }
+    function onPointerDown(event: PointerEvent) {
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const name = categoryFromEvent(event);
+      if (!name) return;
+      openCategory(name);
+    }
+    function onClick(event: MouseEvent) {
+      if (event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const name = categoryFromEvent(event);
+      if (!name) return;
+      openCategory(name);
+    }
+    window.addEventListener("pointerdown", onPointerDown, true);
+    window.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, true);
+      window.removeEventListener("click", onClick, true);
+    };
+  }, [scope, activeMonthKey, currentMonthKey]);
 
   return (
     <section className="space-y-3" aria-label={SV.vartGickPengarna}>
@@ -515,36 +590,63 @@ function SpendByCategory({
           {SV.vartGickPengarna}
         </h3>
         <p className="mt-0.5 text-xs text-[var(--numa-faint)]">{SV.analysCategoryHint}</p>
+        {showDrillHint ? (
+          <p className="mt-0.5 text-xs text-[var(--numa-faint)]">
+            {SV.analysCategoryDrillHint}
+          </p>
+        ) : null}
       </div>
       {categories.length === 0 ? (
         <p className="px-0.5 text-sm leading-snug text-[var(--numa-muted)]">{empty}</p>
       ) : (
         <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
           {categories.map((category) => (
-            <li key={category.name} className="px-4 py-3">
-              <div className="numa-money-line mb-1.5 text-sm">
-                <span className="numa-money-line-label text-[var(--numa-muted)]">
-                  {category.name}
-                  <span className="ml-2 text-xs text-[var(--numa-faint)]">
-                    {category.count}×
+            <li key={category.name}>
+              <Link
+                href="/transaktioner"
+                prefetch={false}
+                data-analys-category={category.name}
+                aria-label={`Visa ${category.name}`}
+                onPointerDown={() => {
+                  openCategoryRef.current(category.name);
+                  prefetch("/transaktioner");
+                  markIntent("/transaktioner");
+                }}
+                onMouseEnter={() => prefetch("/transaktioner")}
+                onFocus={() => prefetch("/transaktioner")}
+                onClick={() => {
+                  openCategoryRef.current(category.name);
+                  markIntent("/transaktioner");
+                }}
+                className="numa-press block min-h-11 w-full px-4 py-3 text-left"
+              >
+                <div className="numa-money-line mb-1.5 text-sm">
+                  <span className="numa-money-line-label text-[var(--numa-muted)]">
+                    {category.name}
+                    <span className="ml-2 text-xs text-[var(--numa-faint)]">
+                      {category.count}×
+                      <span className="ml-1.5" aria-hidden>
+                        ›
+                      </span>
+                    </span>
                   </span>
-                </span>
-                <span className="numa-money-line-amt">
-                  <MoneyDisplay
-                    amountMinor={category.amountMinor}
-                    currency={currency}
-                    size="sm"
-                    wrap={false}
+                  <span className="numa-money-line-amt">
+                    <MoneyDisplay
+                      amountMinor={category.amountMinor}
+                      currency={currency}
+                      size="sm"
+                      wrap={false}
+                    />
+                  </span>
+                </div>
+                <div className="numa-progress animate-bar" aria-hidden>
+                  <span
+                    style={{
+                      width: `${Math.max(6, (category.amountMinor / biggest) * 100)}%`,
+                    }}
                   />
-                </span>
-              </div>
-              <div className="numa-progress animate-bar" aria-hidden>
-                <span
-                  style={{
-                    width: `${Math.max(6, (category.amountMinor / biggest) * 100)}%`,
-                  }}
-                />
-              </div>
+                </div>
+              </Link>
             </li>
           ))}
         </ul>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
@@ -30,6 +30,7 @@ import {
   rememberMovementsSnapshot,
   rememberMovementsView,
   subscribeMovementsSnapshot,
+  subscribeMovementsView,
   type MovementsFilter,
   type MovementsPeriod,
 } from "@/features/home/last-snapshot";
@@ -151,6 +152,32 @@ export function MovementsScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmId]);
 
+  // Keep-alive: Analys selects a category while this screen is hidden.
+  // Adopt it before paint so the chip and matchesCategory filter are
+  // already committed when the panel is revealed.
+  useLayoutEffect(() => {
+    return subscribeMovementsView(() => {
+      const next = lastMovementsView();
+      if (!next) {
+        setFilter("all");
+        setPeriod("month");
+        setCategory(null);
+        return;
+      }
+      setFilter((prev) => (prev === next.filter ? prev : next.filter));
+      setPeriod((prev) => (prev === next.period ? prev : next.period));
+      setCategory((prev) =>
+        (prev ?? null) === (next.category ?? null)
+          ? prev
+          : (next.category ?? null),
+      );
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    rememberMovementsView({ filter, period, category });
+  }, [filter, period, category]);
+
   useEffect(() => {
     if (!data) return;
     const current = lastMovementsSnapshot();
@@ -163,7 +190,6 @@ export function MovementsScreen({
     });
   }, [data]);
 
-  rememberMovementsView({ filter, period, category });
   const view =
     stored ?? data ?? lastMovementsSnapshot() ?? (error ? null : pendingMovementsShell());
 
