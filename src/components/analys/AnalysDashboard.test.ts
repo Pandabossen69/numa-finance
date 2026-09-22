@@ -326,7 +326,9 @@ describe("Analys month result color", () => {
     expect(src).toContain("formatListDateSv(tx.occurredAt, view.timeZone");
     expect(src).toContain("withTime: true");
     expect(src).toContain("humanizeMovementTitle(tx.description, signed)");
+    expect(src).toContain("senasteRowCategoryLabel(tx)");
     expect(src).toContain('tone="signed"');
+    expect(src).not.toContain("{tx.category ? (");
     expect(src).toContain("ovrigtDominatesSpend(categories)");
     expect(src).toContain("SV.analysCategoryDrillHint");
     // Still one Spenderat: the hero is the category sum, no second total.

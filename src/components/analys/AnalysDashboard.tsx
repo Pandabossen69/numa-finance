@@ -36,6 +36,7 @@ import {
   movementsViewForCategoryDrill,
   ovrigtDominatesSpend,
 } from "@/components/analys/analys-category-drill";
+import { senasteRowCategoryLabel } from "@/components/analys/senaste-row";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
@@ -397,6 +398,7 @@ export function AnalysDashboard({
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {recent.map((tx) => {
               const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              const categoryLabel = senasteRowCategoryLabel(tx);
               return (
                 <li
                   key={tx.id}
@@ -407,8 +409,8 @@ export function AnalysDashboard({
                       {humanizeMovementTitle(tx.description, signed)}
                     </p>
                     <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-[var(--numa-faint)]">
-                      {tx.category ? (
-                        <span className="truncate">{tx.category}</span>
+                      {categoryLabel ? (
+                        <span className="truncate">{categoryLabel}</span>
                       ) : null}
                       <span className="shrink-0">
                         {formatListDateSv(tx.occurredAt, view.timeZone, {
