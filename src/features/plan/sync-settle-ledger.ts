@@ -9,6 +9,7 @@ import {
   createManualExpense,
   createManualIncome,
   ensureDefaultBankAccount,
+  getLatestCheckpoint,
   listConfirmedPlanSettleLedgers,
   listPlanItems,
   listTransactions,
@@ -77,9 +78,13 @@ async function insertSettleBooking(input: {
 }
 
 /**
- * Void previous synthetic bookings, then write one confirmed row for the
- * new settled amount — unless a bank/SMS row already funded the plan item.
- * Never voids a row without plan_item_id.
+ * Keep synthetic bookings equal to the settled amount.
+ * An existing booking moves by the delta only. A row still in the open
+ * balance window is updated in place and keeps occurred_at. A booking
+ * already inside the saldo checkpoint stays put; only the delta is posted
+ * after it. Voiding that row and inserting the full new amount stacks the
+ * whole price on På kontona. A bank/SMS row that already funded the item
+ * still drops the synthetics. Never voids a row without plan_item_id.
  */
 export async function syncPlanItemSettleLedger(params: {
   item: PlanItem;
@@ -131,21 +136,40 @@ export async function syncPlanItemSettleLedger(params: {
     const voided = await voidPlanSettleBookings(params.item.id);
     accountId = voided.accountId ?? accountId;
     bookedMinor = 0;
-  } else if (existing.length === 1 && existing[0]) {
-    const current = existing[0];
-    if (current.amountMinor !== target) {
+  } else if (existing.length > 0) {
+    const delta = target - previousBookedMinor;
+    const checkpoint = await getLatestCheckpoint(accountId);
+    const checkpointMs = checkpoint ? Date.parse(checkpoint.verifiedAt) : NaN;
+    const keeper = existing.find(
+      (tx) =>
+        !Number.isFinite(checkpointMs) ||
+        Date.parse(tx.occurredAt) >= checkpointMs,
+    );
+    if (delta !== 0 && keeper) {
+      const nextAmount = keeper.amountMinor + delta;
+      if (nextAmount <= 0) {
+        throw new Error("Kunde inte boka beloppet mot saldot");
+      }
       await updateTransaction({
-        id: current.id,
-        amountMinor: target,
-        occurredAt: new Date().toISOString(),
+        id: keeper.id,
+        amountMinor: nextAmount,
       });
+      accountId = keeper.accountId;
+    } else if (delta > 0) {
+      const created = await insertSettleBooking({
+        kind,
+        accountId,
+        amountMinor: delta,
+        description: params.item.name,
+        occurredAt: new Date().toISOString(),
+        planItemId: params.item.id,
+      });
+      accountId = created.accountId;
+    } else if (delta < 0) {
+      throw new Error("Kunde inte boka beloppet mot saldot");
     }
     bookedMinor = target;
-    accountId = current.accountId;
   } else {
-    if (existing.length > 1) {
-      await voidPlanSettleBookings(params.item.id);
-    }
     try {
       const created = await insertSettleBooking({
         kind,

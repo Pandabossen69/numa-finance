@@ -168,7 +168,49 @@ describe("Betald/Mottagen amount edit", () => {
     ).toBe(0);
   });
 
-  it("raises Mottagen by the delta only when the receipt is already in the checkpoint", () => {
+  it("extra Betald then edit changes account balance by −Δ only", () => {
+    const item = dator({ cadence: "once", kind: "expected", name: "Flygbiljett" });
+    const txs: CanonicalTransaction[] = [];
+    applySettleInMemory({
+      item,
+      transactions: txs,
+      accounts: [account],
+      settled: true,
+      targetSettledMinor: OLD,
+      remainingDueAt: null,
+      nowIso: PAID_AT,
+      newId: () => "synth-extra",
+      userId: "u1",
+      checkpoints: [{ accountId: "bank", verifiedAt: OPENING_AT }],
+    });
+    const embedded = OPENING - OLD;
+    const edited = applyPlanItemEdits(item, { amountMinor: NEXT });
+    item.amountMinor = edited.amountMinor;
+    item.settledAt = edited.settledAt;
+    item.settledMinor = edited.settledMinor;
+    const result = applySettleInMemory({
+      item,
+      transactions: txs,
+      accounts: [account],
+      settled: true,
+      targetSettledMinor: item.settledMinor ?? 0,
+      remainingDueAt: null,
+      nowIso: EDIT_AT,
+      newId: () => "synth-extra-delta",
+      userId: "u1",
+      checkpoints: [
+        { accountId: "bank", verifiedAt: OPENING_AT },
+        { accountId: "bank", verifiedAt: RESAVED_AT },
+      ],
+    });
+    const change = saldoAfter(txs, RESAVED_AT, embedded) - embedded;
+    expect(result.saldoDeltaMinor).toBe(-DELTA);
+    expect(change).toBe(-DELTA);
+    expect(change).not.toBe(-NEXT);
+    expect(change).not.toBe(-(OLD + NEXT));
+  });
+
+  it("Mottagen then edit changes account balance by +Δ only", () => {
     const item = dator({ cadence: "income", name: "Lön" });
     const txs: CanonicalTransaction[] = [];
     applySettleInMemory({
@@ -189,7 +231,8 @@ describe("Betald/Mottagen amount edit", () => {
     item.amountMinor = edited.amountMinor;
     item.settledAt = edited.settledAt;
     item.settledMinor = edited.settledMinor;
-    applySettleInMemory({
+    const original = confirmedSettle(txs)[0];
+    const result = applySettleInMemory({
       item,
       transactions: txs,
       accounts: [account],
@@ -205,7 +248,12 @@ describe("Betald/Mottagen amount edit", () => {
       ],
     });
     const saldo = saldoAfter(txs, RESAVED_AT, embedded);
-    expect(saldo - embedded).toBe(DELTA);
+    const change = saldo - embedded;
+    expect(original?.status).toBe("confirmed");
+    expect(result.saldoDeltaMinor).toBe(DELTA);
+    expect(change).toBe(DELTA);
+    expect(change).not.toBe(NEXT);
+    expect(change).not.toBe(OLD + NEXT);
     expect(overMinor(item, saldo) - overBefore).toBe(DELTA);
     expect(thbOf(confirmedSettle(txs))).toBe(NEXT);
   });
