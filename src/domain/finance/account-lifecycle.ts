@@ -27,6 +27,8 @@ export const DELETE_UNKNOWN_SALDO_SV =
   "Uppdatera saldot till 0 innan du raderar. Flytta eller töm pengarna först.";
 export const CHOOSE_OTHER_DEFAULT_SV =
   "Välj ett annat förvalt konto först.";
+export const MAKE_OTHER_DEFAULT_HINT_SV =
+  "Gör ett annat konto förvalt först. Då kan du arkivera eller radera detta.";
 export const CURRENCY_LOCKED_SV =
   "Valutan är låst eftersom kontot har transaktioner. Historisk växelkurs och THB-värde behålls.";
 export const ARCHIVED_NO_NEW_TX_SV =
@@ -123,6 +125,53 @@ export function evaluateArchiveAccount(
     return { ok: false, error: ARCHIVE_REQUIRES_ZERO_SV };
   }
   return { ok: true };
+}
+
+export type AccountRetireAction = "archive" | "delete";
+
+export type AccountRetireUi = {
+  action: AccountRetireAction;
+  blocked: boolean;
+  reason: string | null;
+};
+
+/** Same retire rules as the server, for showing the button instead of hiding it. */
+export function explainAccountRetireUi(facts: {
+  isDefault: boolean;
+  activeCount: number;
+  hasLedgerHistory: boolean;
+  balanceMinor: number | null;
+}): AccountRetireUi {
+  const action: AccountRetireAction = facts.hasLedgerHistory
+    ? "archive"
+    : "delete";
+  if (facts.isDefault) {
+    return {
+      action,
+      blocked: true,
+      reason: `${CHOOSE_OTHER_DEFAULT_SV} ${DEFAULT_ACCOUNT_BLOCK_SV}`,
+    };
+  }
+  if (facts.activeCount <= 1) {
+    return { action, blocked: true, reason: LAST_ACTIVE_ACCOUNT_SV };
+  }
+  if (facts.balanceMinor == null) {
+    return {
+      action,
+      blocked: true,
+      reason:
+        action === "archive" ? ARCHIVE_UNKNOWN_SALDO_SV : DELETE_UNKNOWN_SALDO_SV,
+    };
+  }
+  if (facts.balanceMinor !== 0) {
+    return {
+      action,
+      blocked: true,
+      reason:
+        action === "archive" ? ARCHIVE_REQUIRES_ZERO_SV : DELETE_REQUIRES_ZERO_SV,
+    };
+  }
+  return { action, blocked: false, reason: null };
 }
 
 export function evaluateRestoreAccount(
