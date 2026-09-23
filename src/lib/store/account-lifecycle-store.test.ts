@@ -28,6 +28,17 @@ describe("account management ownership", () => {
       remote.indexOf("export async function archiveAccount"),
     );
     expect(del).toContain("const account = await getAccount(id)");
+    const removed = remote.slice(
+      remote.indexOf("export async function removeAccount"),
+      remote.indexOf("export async function deleteAccount"),
+    );
+    expect(removed).toContain("evaluateRemoveAccount");
+    expect(removed).toContain("is_active: false");
+    expect(removed).toContain("is_default: false");
+    expect(removed).toContain('.eq("user_id", userId)');
+    expect(removed).toContain('.eq("id", id)');
+    expect(removed).toContain("promoteNextActiveDefault");
+
     expect(del).toContain("evaluateDeleteAccount");
     expect(del).toContain('.eq("user_id", userId)');
     expect(del).toContain('.eq("id", id)');
@@ -57,6 +68,7 @@ describe("account management ownership", () => {
   });
 
   it("evaluates lifecycle rules before local delete/archive/restore", () => {
+    expect(local).toContain("evaluateRemoveAccount");
     expect(local).toContain("evaluateDeleteAccount");
     expect(local).toContain("evaluateArchiveAccount");
     expect(local).toContain("evaluateRestoreAccount");

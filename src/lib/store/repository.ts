@@ -97,6 +97,10 @@ export async function updateAccount(
   return api().updateAccount(input);
 }
 
+export async function removeAccount(id: string) {
+  return api().removeAccount(id);
+}
+
 export async function deleteAccount(id: string) {
   return api().deleteAccount(id);
 }

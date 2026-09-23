@@ -13,6 +13,7 @@ import {
   createTransfer,
   deleteAccount,
   ensureDefaultBankAccount,
+  removeAccount,
   getProfile,
   restoreAccount,
   stampOnboardingCompletedAt,
@@ -71,6 +72,7 @@ export type ActionResult =
       id?: string;
       refreshPending?: boolean;
       refreshPendingMessage?: string;
+      removedAccount?: { mode: "delete" | "archive" };
       home?: HomeSnapshot;
       plan?: PlanSnapshot;
       accounts?: AccountsSnapshot;
@@ -156,6 +158,27 @@ export async function updateAccountAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Kunde inte uppdatera kontot",
+    };
+  }
+}
+
+export async function removeAccountAction(id: string): Promise<ActionResult> {
+  try {
+    const removed = await removeAccount(z.string().uuid().parse(id));
+    const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
+    if (refreshed.refreshPending) {
+      return {
+        ok: true,
+        removedAccount: removed,
+        refreshPending: true,
+        refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
+      };
+    }
+    return { ok: true, removedAccount: removed, ...refreshed.snapshots };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Kunde inte ta bort kontot",
     };
   }
 }

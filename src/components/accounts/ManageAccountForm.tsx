@@ -5,25 +5,22 @@ import { useRouter } from "next/navigation";
 import {
   ACCOUNT_KIND_LABEL_SV,
   ACCOUNT_KINDS,
-  CHOOSE_OTHER_DEFAULT_SV,
   CURRENCY_LOCKED_SV,
-  DEFAULT_ACCOUNT_BLOCK_SV,
   DEFAULT_ACCOUNT_COPY_SV,
   DEFAULT_ACCOUNT_HELP_SV,
-  DELETE_REQUIRES_ZERO_SV,
-  DELETE_UNKNOWN_SALDO_SV,
   currenciesForAccountKind,
   defaultCurrencyForKind,
   type AccountKind,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import {
-  archiveAccountAction,
-  deleteAccountAction,
+  removeAccountAction,
   restoreAccountAction,
   updateAccountAction,
 } from "@/features/finance/actions";
+import type { AccountBalanceRow } from "@/features/finance/load-accounts";
 import type { AccountDetail } from "@/features/finance/load-account-detail";
+import { adoptRemovedAccount } from "@/features/home/last-snapshot";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 
 function currencyLabel(code: CurrencyCode): string {
@@ -38,7 +35,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
   const [error, setError] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState<null | "delete" | "archive">(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [form, setForm] = useState<{
     name: string;
     kind: AccountKind;
@@ -72,7 +69,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
   function finish(result: { ok: true } | { ok: false; error: string }) {
     if (!result.ok) {
       setError(result.error);
-      setConfirm(null);
+      setConfirmRemove(false);
       return;
     }
     router.push("/konton");
@@ -96,19 +93,19 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     });
   }
 
-  function onDelete() {
+  function onRemove() {
     if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
-      finish(await deleteAccountAction(account.id));
-    });
-  }
-
-  function onArchive() {
-    if (!guard.tryBegin()) return;
-    setError(null);
-    startTransition(async () => {
-      finish(await archiveAccountAction(account.id));
+      const result = await removeAccountAction(account.id);
+      if (!result.ok) {
+        setError(result.error);
+        setConfirmRemove(false);
+        return;
+      }
+      adoptRemovedAccount(result, account.id, removalRow(account));
+      router.push("/konton");
+      router.refresh();
     });
   }
 
@@ -249,108 +246,72 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         disabled={pending || !form.name.trim()}
         className="numa-btn numa-btn-accent min-h-14 w-full text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
       >
-        {pending && confirm == null ? "Sparar…" : "Spara ändringar"}
+        {pending && !confirmRemove ? "Sparar…" : "Spara ändringar"}
       </button>
 
-      {account.isDefault ? (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            {CHOOSE_OTHER_DEFAULT_SV} {DEFAULT_ACCOUNT_BLOCK_SV}
-          </p>
-        </div>
-      ) : account.hasLedgerHistory ? (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          {confirm === "archive" ? (
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                Arkivera {account.name}? Historiken sparas, men kontot döljs från
-                aktiva listor och nya utgifter. Saldo måste vara 0.
-              </p>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={onArchive}
-                className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
-              >
-                {pending ? "Arkiverar…" : "Ja, arkivera konto"}
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => setConfirm(null)}
-                className="numa-btn numa-btn-soft min-h-14 w-full"
-              >
-                Avbryt
-              </button>
-            </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  setError(null);
-                  setConfirm("archive");
-                }}
-                className="numa-btn numa-btn-soft min-h-14 w-full"
-              >
-                Arkivera konto
-              </button>
-              <p className="text-xs leading-relaxed text-[var(--numa-faint)]">
-                Konton med historik kan inte raderas. Flytta eller töm saldot till
-                0 innan du arkiverar.
-              </p>
-            </>
-          )}
-        </div>
-      ) : account.calculatedMinor === 0 ? (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          {confirm === "delete" ? (
-            <div className="space-y-3">
-              <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-                Radera {account.name}? Det går inte att ångra. Inga transaktioner
-                finns på kontot, och saldot är 0.
-              </p>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={onDelete}
-                className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
-              >
-                {pending ? "Raderar…" : "Ja, radera konto"}
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => setConfirm(null)}
-                className="numa-btn numa-btn-soft min-h-14 w-full"
-              >
-                Avbryt
-              </button>
-            </div>
-          ) : (
+      <div className="space-y-3 border-t border-[var(--numa-border)] pt-4">
+        {confirmRemove ? (
+          <>
+            <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
+              {removeCopy(account)}
+            </p>
             <button
               type="button"
               disabled={pending}
-              onClick={() => {
-                setError(null);
-                setConfirm("delete");
-              }}
-              className="numa-btn numa-btn-soft min-h-14 w-full text-[var(--numa-danger)]"
+              onClick={onRemove}
+              className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
             >
-              Radera konto
+              {pending ? "Tar bort…" : "Ta bort"}
             </button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-2 border-t border-[var(--numa-border)] pt-4">
-          <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
-            {account.calculatedMinor == null
-              ? DELETE_UNKNOWN_SALDO_SV
-              : DELETE_REQUIRES_ZERO_SV}
-          </p>
-        </div>
-      )}
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setConfirmRemove(false)}
+              className="numa-btn numa-btn-soft min-h-14 w-full"
+            >
+              Avbryt
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              setConfirmRemove(true);
+            }}
+            className="numa-btn numa-btn-soft min-h-14 w-full text-[var(--numa-danger)]"
+          >
+            Ta bort konto
+          </button>
+        )}
+      </div>
     </form>
   );
+}
+
+function removalRow(account: AccountDetail): AccountBalanceRow {
+  return {
+    id: account.id,
+    name: account.name,
+    institution: null,
+    maskedIdentifier: null,
+    kind: account.kind,
+    kindLabelSv: account.kindLabelSv,
+    currency: account.currency,
+    isDefault: account.isDefault,
+    isActive: true,
+    calculatedMinor: account.calculatedMinor,
+    thbMinor: account.currency === "THB" ? account.calculatedMinor : null,
+    fxRate: null,
+    fxSource: null,
+  };
+}
+
+function removeCopy(account: AccountDetail): string {
+  const last = account.activeCount <= 1 ? " Du kan lägga till ett nytt konto efteråt." : "";
+  if (account.hasLedgerHistory) {
+    return `Ta bort ${account.name}? Kontot försvinner från Konton och från På kontona. Rörelserna finns kvar, och du kan återställa kontot under Arkiverade.${last}`;
+  }
+  return `Ta bort ${account.name}? Kontot och saldot tas bort. Det går inte att ångra.${last}`;
 }

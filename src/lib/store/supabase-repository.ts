@@ -6,6 +6,7 @@ import {
   evaluateCurrencyChange,
   evaluateDeleteAccount,
   evaluateKindChange,
+  evaluateRemoveAccount,
   evaluateRestoreAccount,
   requireLifecycle,
   NEXT_INCOME_NAME,
@@ -339,6 +340,64 @@ export async function updateAccount(input: {
   }
 
   return mapAccount(data);
+}
+
+async function promoteNextActiveDefault(userId: string): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .select(numaSelect(ACCOUNT_SELECT))
+    .eq("user_id", userId)
+    .eq("is_active", true);
+  if (error) throw new Error(error.message);
+  const active = sortAccountsForList((data ?? []).map(mapAccount));
+  if (active.some((row) => row.isDefault)) return;
+  const next = active[0];
+  if (!next) return;
+  const { error: updateError } = await supabase
+    .from("accounts")
+    .update({ is_default: true, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("id", next.id)
+    .eq("is_active", true);
+  if (updateError) throw new Error(updateError.message);
+}
+
+/** Archive when rörelser exist. Hard-delete only an empty account. */
+export async function removeAccount(
+  id: string,
+): Promise<{ mode: "delete" | "archive" }> {
+  const userId = await requireUserId();
+  const account = await getAccount(id);
+  if (!account) throw new Error("Kontot hittades inte");
+  const decision = evaluateRemoveAccount(await remoteLifecycleFacts(account));
+  if (!decision.ok) throw new Error(decision.error);
+
+  const supabase = await createSupabaseServerClient();
+  if (decision.mode === "archive") {
+    const { error } = await supabase
+      .from("accounts")
+      .update({
+        is_active: false,
+        is_default: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await supabase
+      .from("accounts")
+      .delete()
+      .eq("user_id", userId)
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
+  if (account.isDefault) {
+    await promoteNextActiveDefault(userId);
+  }
+  return { mode: decision.mode };
 }
 
 export async function deleteAccount(id: string): Promise<void> {
