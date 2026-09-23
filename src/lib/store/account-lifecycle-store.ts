@@ -38,6 +38,7 @@ export function accountLifecycleFacts(input: {
     isDefault: input.account.isDefault,
     activeCount: input.activeCount,
     hasLedgerHistory: accountHasLedgerHistory(input.transactions),
+    ledgerRowCount: input.transactions.length,
     balanceMinor,
   };
 }

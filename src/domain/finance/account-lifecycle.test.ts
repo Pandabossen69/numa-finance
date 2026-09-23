@@ -24,6 +24,7 @@ import {
   evaluateCurrencyChange,
   evaluateDeleteAccount,
   evaluateKindChange,
+  evaluateRemoveAccount,
   evaluateRestoreAccount,
   type AccountLifecycleFacts,
 } from "./account-lifecycle";
@@ -131,6 +132,50 @@ describe("archive with history", () => {
     expect(evaluateArchiveAccount(facts({ hasLedgerHistory: false }))).toEqual({
       ok: false,
       error: ARCHIVE_REQUIRES_HISTORY_SV,
+    });
+  });
+});
+
+describe("remove account", () => {
+  it("archives a funded default account so history stays readable", () => {
+    expect(
+      evaluateRemoveAccount(
+        facts({
+          isDefault: true,
+          activeCount: 1,
+          hasLedgerHistory: true,
+          balanceMinor: 45_000_00,
+        }),
+      ),
+    ).toEqual({ ok: true, mode: "archive" });
+  });
+
+  it("archives when only voided rows still reference the account", () => {
+    expect(
+      evaluateRemoveAccount(
+        facts({ hasLedgerHistory: false, ledgerRowCount: 2, balanceMinor: 0 }),
+      ),
+    ).toEqual({ ok: true, mode: "archive" });
+  });
+
+  it("hard-deletes an empty account even when it is the last and the default", () => {
+    expect(
+      evaluateRemoveAccount(
+        facts({
+          isDefault: true,
+          activeCount: 1,
+          hasLedgerHistory: false,
+          ledgerRowCount: 0,
+          balanceMinor: 12_000_00,
+        }),
+      ),
+    ).toEqual({ ok: true, mode: "delete" });
+  });
+
+  it("refuses an account that is already archived", () => {
+    expect(evaluateRemoveAccount(facts({ isActive: false }))).toEqual({
+      ok: false,
+      error: ALREADY_ARCHIVED_SV,
     });
   });
 });

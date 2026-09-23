@@ -22,7 +22,10 @@ import {
 import type { CurrencyCode } from "@/domain/money";
 import { analysSnapshotFromHome } from "@/features/finance/analys-from-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
-import type { AccountsSnapshot } from "@/features/finance/load-accounts";
+import type {
+  AccountBalanceRow,
+  AccountsSnapshot,
+} from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type {
   MovementRow,
@@ -1515,6 +1518,122 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
     { dirty: true },
   );
   return home;
+}
+
+function thbTotal(rows: readonly AccountBalanceRow[]): number | null {
+  let total: number | null = null;
+  for (const row of rows) {
+    const thb =
+      row.thbMinor ?? (row.currency === "THB" ? row.calculatedMinor : null);
+    if (thb == null) continue;
+    total = (total ?? 0) + thb;
+  }
+  return total;
+}
+
+/**
+ * Drop an account from the active Konton list. Archive keeps the row so
+ * Rörelser can still name it. Hem «På kontona» uses the remaining total.
+ */
+export function applyAccountRemoval(
+  accountId: string,
+  mode: "delete" | "archive",
+  fallbackRow?: AccountBalanceRow,
+): AccountsSnapshot | null {
+  if (!accounts) return accounts;
+  const removed =
+    accounts.accounts.find((row) => row.id === accountId) ?? fallbackRow;
+  let nextActive = accounts.accounts.filter((row) => row.id !== accountId);
+  if (
+    removed?.isDefault &&
+    nextActive.length > 0 &&
+    !nextActive.some((row) => row.isDefault)
+  ) {
+    nextActive = nextActive.map((row, index) =>
+      index === 0 ? { ...row, isDefault: true } : row,
+    );
+  }
+  let archived = (accounts.archivedAccounts ?? []).filter(
+    (row) => row.id !== accountId,
+  );
+  if (mode === "archive" && removed) {
+    archived = [...archived, { ...removed, isActive: false, isDefault: false }];
+  }
+  const totalThbMinor = thbTotal(nextActive);
+  rememberAccountsSnapshot(
+    {
+      accounts: nextActive,
+      archivedAccounts: archived,
+      totalThbMinor,
+    },
+    { dirty: true },
+  );
+  if (home) {
+    if (totalThbMinor != null) {
+      applyHomeBankBalance(totalThbMinor);
+    } else if (nextActive.length === 0) {
+      rememberHomeSnapshot(
+        {
+          ...home,
+          calculatedBalanceMinor: null,
+          hasBankTruth: false,
+        },
+        { dirty: true },
+      );
+    }
+  }
+  return accounts;
+}
+
+/** Server snapshots win for Hem. Archived rows stay visible under Konton. */
+export function adoptRemovedAccount(
+  result: {
+    home?: HomeSnapshot | null;
+    plan?: PlanSnapshot | null;
+    accounts?: AccountsSnapshot | null;
+    movements?: MovementsSnapshot | null;
+    removedAccount?: { mode: "delete" | "archive" };
+  },
+  accountId: string,
+  fallbackRow?: AccountBalanceRow,
+): void {
+  const mode = result.removedAccount?.mode ?? "archive";
+  if (!result.accounts && !result.home && !result.movements && !result.plan) {
+    applyAccountRemoval(accountId, mode, fallbackRow);
+    return;
+  }
+  const previous = accounts;
+  const incoming = result.accounts ?? null;
+  const removed =
+    previous?.accounts.find((row) => row.id === accountId) ?? fallbackRow;
+  const nextActive = (incoming?.accounts ?? previous?.accounts ?? []).filter(
+    (row) => row.id !== accountId,
+  );
+  const seen = new Set<string>();
+  const nextArchived: AccountBalanceRow[] = [];
+  for (const row of [
+    ...(previous?.archivedAccounts ?? []),
+    ...(incoming?.archivedAccounts ?? []),
+  ]) {
+    if (row.id === accountId || seen.has(row.id)) continue;
+    seen.add(row.id);
+    nextArchived.push(row);
+  }
+  if (mode === "archive" && removed) {
+    nextArchived.push({ ...removed, isActive: false, isDefault: false });
+  }
+  const serverExcluded =
+    incoming != null && !incoming.accounts.some((row) => row.id === accountId);
+  adoptMutationFinance({
+    home: result.home,
+    plan: result.plan,
+    movements: result.movements,
+    accounts: {
+      accounts: nextActive,
+      archivedAccounts: nextArchived,
+      totalThbMinor: serverExcluded ? incoming.totalThbMinor : thbTotal(nextActive),
+    },
+  });
 }
 
 /** Accounts list only — Hem saldo is updated by spend/income/checkpoint helpers. */

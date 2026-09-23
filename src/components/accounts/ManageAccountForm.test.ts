@@ -18,39 +18,26 @@ describe("ManageAccountForm", () => {
     expect(src).toContain("account.hasLedgerHistory");
   });
 
-  it("deletes empty zero-saldo accounts only after confirmation", () => {
-    expect(src).toContain("deleteAccountAction");
-    expect(src).toContain("Radera konto");
-    expect(src).toContain("Ja, radera konto");
-    expect(src).toContain("account.calculatedMinor === 0");
-    expect(src).toContain("saldot är 0");
+  it("offers Ta bort konto on every active account, confirmed before the write", () => {
+    expect(src).toContain("removeAccountAction");
+    expect(src).toContain("Ta bort konto");
+    expect(src).toContain('{pending ? "Tar bort…" : "Ta bort"}');
+    expect(src).toContain("Avbryt");
+    expect(src).toContain("adoptRemovedAccount");
+    expect(src).toContain("confirmRemove");
+    expect(src).not.toContain("Radera konto");
+    expect(src).not.toContain("Arkivera konto");
+    const confirm = src.slice(src.indexOf("confirmRemove ? ("));
+    expect(confirm).toContain("onRemove");
+    expect(confirm).toContain("setConfirmRemove(false)");
   });
 
-  it("never shows the delete flow on the default account", () => {
-    expect(src).toContain("account.isDefault");
-    expect(src).toContain("CHOOSE_OTHER_DEFAULT_SV");
-    expect(src).toContain("DEFAULT_ACCOUNT_BLOCK_SV");
-    const defaultBranch = src.slice(
-      src.indexOf("{account.isDefault ? ("),
-      src.indexOf(") : account.hasLedgerHistory ? ("),
-    );
-    expect(defaultBranch).toContain("CHOOSE_OTHER_DEFAULT_SV");
-    expect(defaultBranch).not.toContain("Radera konto");
-    expect(defaultBranch).not.toContain("Ja, radera konto");
-    expect(defaultBranch).not.toContain("setConfirm(\"delete\")");
-  });
-
-  it("hides delete when an empty account still has saldo", () => {
-    expect(src).toContain("DELETE_REQUIRES_ZERO_SV");
-    expect(src).toContain("DELETE_UNKNOWN_SALDO_SV");
-  });
-
-  it("offers archive — not hard delete — when history exists", () => {
-    expect(src).toContain("archiveAccountAction");
-    expect(src).toContain("Arkivera konto");
-    expect(src).toContain("Ja, arkivera konto");
-    expect(src).toContain("Saldo måste vara 0");
-    expect(src).toContain("Konton med historik kan inte raderas");
+  it("explains archive when history exists and hard delete when the account is empty", () => {
+    expect(src).toContain("Rörelserna finns kvar");
+    expect(src).toContain("Arkiverade");
+    expect(src).toContain("Det går inte att ångra");
+    expect(src).toContain("account.hasLedgerHistory");
+    expect(src).toContain("Du kan lägga till ett nytt konto efteråt.");
   });
 
   it("restores archived accounts", () => {

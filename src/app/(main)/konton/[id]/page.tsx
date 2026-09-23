@@ -24,7 +24,7 @@ export default async function KontoDetaljPage({
         <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
           {result.ok && !result.data.isActive
             ? "Arkiverat konto. Historiken är kvar."
-            : "Ändra namn och typ, eller arkivera och radera."}
+            : "Ändra namn och typ, eller ta bort kontot."}
         </p>
       </header>
       {result.ok ? (

@@ -8,6 +8,7 @@ import {
   evaluateCurrencyChange,
   evaluateDeleteAccount,
   evaluateKindChange,
+  evaluateRemoveAccount,
   evaluateRestoreAccount,
   requireLifecycle,
   NEXT_INCOME_NAME,
@@ -324,6 +325,44 @@ export async function updateAccount(input: {
   const next = updated.accounts.find((row) => row.id === input.id);
   if (!next) throw new Error("Kontot hittades inte");
   return next;
+}
+
+function promoteNextDefault(store: NumaStoreData) {
+  const active = store.accounts.filter((row) => row.isActive);
+  if (active.some((row) => row.isDefault)) return;
+  const next = sortAccountsForList(active)[0];
+  if (!next) return;
+  for (const row of store.accounts) {
+    row.isDefault = row.id === next.id;
+  }
+}
+
+/** Archive when rörelser exist. Hard-delete only an empty account. */
+export async function removeAccount(
+  id: string,
+): Promise<{ mode: "delete" | "archive" }> {
+  const store = await readStore();
+  const account = store.accounts.find((row) => row.id === id) ?? null;
+  if (!account) throw new Error("Kontot hittades inte");
+  const decision = evaluateRemoveAccount(localLifecycleFacts(store, account));
+  if (!decision.ok) throw new Error(decision.error);
+  if (decision.mode === "archive") {
+    await updateStore((s) => {
+      const row = s.accounts.find((item) => item.id === id);
+      if (!row) throw new Error("Kontot hittades inte");
+      row.isActive = false;
+      row.isDefault = false;
+      row.updatedAt = nowIso();
+      promoteNextDefault(s);
+    });
+    return { mode: "archive" };
+  }
+  await updateStore((s) => {
+    s.accounts = s.accounts.filter((row) => row.id !== id);
+    s.checkpoints = s.checkpoints.filter((row) => row.accountId !== id);
+    promoteNextDefault(s);
+  });
+  return { mode: "delete" };
 }
 
 export async function deleteAccount(id: string): Promise<void> {

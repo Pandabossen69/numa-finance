@@ -42,6 +42,8 @@ describe("createTransferAction / createCashWithdrawalAction", () => {
 describe("account management actions", () => {
   it("updates, deletes, archives and restores through owned repository writes", () => {
     expect(src).toContain("export async function updateAccountAction");
+    expect(src).toContain("export async function removeAccountAction");
+    expect(src).toContain("await removeAccount(");
     expect(src).toContain("export async function deleteAccountAction");
     expect(src).toContain("export async function archiveAccountAction");
     expect(src).toContain("export async function restoreAccountAction");

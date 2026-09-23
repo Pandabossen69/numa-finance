@@ -44,9 +44,18 @@ export type AccountLifecycleFacts = {
   isDefault: boolean;
   activeCount: number;
   hasLedgerHistory: boolean;
+  /**
+   * Any ledger row, including voided. Hard-delete is unsafe when this is
+   * above zero because transactions reference the account.
+   */
+  ledgerRowCount?: number;
   /** Native calculated balance. Null = unknown. */
   balanceMinor: number | null;
 };
+
+export type RemoveAccountDecision =
+  | { ok: true; mode: "delete" | "archive" }
+  | { ok: false; error: string };
 
 export type LifecycleDecision = { ok: true } | { ok: false; error: string };
 
@@ -87,6 +96,25 @@ function assertCanRetire(facts: AccountLifecycleFacts): LifecycleDecision {
     return { ok: false, error: LAST_ACTIVE_ACCOUNT_SV };
   }
   return { ok: true };
+}
+
+/**
+ * User-facing «Ta bort konto».
+ * History stays readable: any ledger row is archived, not deleted.
+ * An empty account is hard-deleted, including the default and the last one.
+ * Konton already has an empty state and «Nytt konto».
+ */
+export function evaluateRemoveAccount(
+  facts: AccountLifecycleFacts,
+): RemoveAccountDecision {
+  const owned = assertAccountOwned(facts.ownerUserId, facts.actorUserId);
+  if (!owned.ok) return owned;
+  if (!facts.isActive) return { ok: false, error: ALREADY_ARCHIVED_SV };
+  const rows = facts.ledgerRowCount ?? (facts.hasLedgerHistory ? 1 : 0);
+  if (rows > 0 || facts.hasLedgerHistory) {
+    return { ok: true, mode: "archive" };
+  }
+  return { ok: true, mode: "delete" };
 }
 
 /** Empty (no ledger rows) accounts may be hard-deleted only at saldo 0. */
