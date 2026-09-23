@@ -409,9 +409,7 @@ export function AnalysDashboard({
                       {humanizeMovementTitle(tx.description, signed)}
                     </p>
                     <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-[var(--numa-faint)]">
-                      {categoryLabel ? (
-                        <span className="truncate">{categoryLabel}</span>
-                      ) : null}
+                      <span className="truncate">{categoryLabel}</span>
                       <span className="shrink-0">
                         {formatListDateSv(tx.occurredAt, view.timeZone, {
                           withTime: true,

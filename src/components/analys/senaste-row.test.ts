@@ -12,6 +12,13 @@ describe("senasteRowCategoryLabel", () => {
     ).toBe("Lön");
     expect(
       senasteRowCategoryLabel({
+        category: "Mat",
+        transactionType: "expense",
+        direction: "debit",
+      }),
+    ).toBe("Mat");
+    expect(
+      senasteRowCategoryLabel({
         category: "Övrigt",
         transactionType: "expense",
         direction: "debit",
@@ -37,33 +44,73 @@ describe("senasteRowCategoryLabel", () => {
     expect(
       senasteRowCategoryLabel({
         category: null,
+        transactionType: "income",
+        direction: "debit",
+      }),
+    ).toBe("Inkomst");
+    // Trukks / Alltid ID: credit with no saved category.
+    expect(
+      senasteRowCategoryLabel({
+        category: null,
         transactionType: "unknown",
         direction: "credit",
       }),
     ).toBe("Inkomst");
   });
 
-  it("does not invent a category for blank expenses or transfers", () => {
+  it("fills a blank expense with Övrigt", () => {
+    // Dator / Unseen: expense with a missing or blank category.
     expect(
       senasteRowCategoryLabel({
         category: null,
         transactionType: "expense",
         direction: "debit",
       }),
-    ).toBeNull();
+    ).toBe("Övrigt");
+    expect(
+      senasteRowCategoryLabel({
+        category: "  ",
+        transactionType: "expense",
+        direction: "debit",
+      }),
+    ).toBe("Övrigt");
     expect(
       senasteRowCategoryLabel({
         category: null,
-        transactionType: "transfer",
-        direction: "credit",
+        transactionType: "unknown",
+        direction: "debit",
       }),
-    ).toBeNull();
+    ).toBe("Övrigt");
     expect(
       senasteRowCategoryLabel({
         category: null,
-        transactionType: "refund",
+        transactionType: "expense",
         direction: "credit",
       }),
-    ).toBeNull();
+    ).toBe("Övrigt");
+  });
+
+  it("never leaves Senaste meta blank", () => {
+    const types = [
+      "expense",
+      "income",
+      "transfer",
+      "cash_withdrawal",
+      "refund",
+      "adjustment",
+      "unknown",
+      null,
+    ] as const;
+    const directions = ["debit", "credit", null] as const;
+    for (const transactionType of types) {
+      for (const direction of directions) {
+        const label = senasteRowCategoryLabel({
+          category: null,
+          transactionType,
+          direction,
+        });
+        expect(label.trim().length).toBeGreaterThan(0);
+      }
+    }
   });
 });
