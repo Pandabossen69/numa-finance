@@ -1927,6 +1927,10 @@ export async function updatePlanItem(input: {
         nowIso: nowIso(),
         newId,
         userId: LOCAL_DEMO_USER_ID,
+        checkpoints: s.checkpoints.map((checkpoint) => ({
+          accountId: checkpoint.accountId,
+          verifiedAt: checkpoint.verifiedAt,
+        })),
       });
     }
     found = item;
@@ -1979,6 +1983,10 @@ export async function settlePlanItemAtomic(input: {
       newId,
       userId: LOCAL_DEMO_USER_ID,
       clientMutationId: input.clientMutationId ?? null,
+      checkpoints: s.checkpoints.map((checkpoint) => ({
+        accountId: checkpoint.accountId,
+        verifiedAt: checkpoint.verifiedAt,
+      })),
     });
     if (input.clientMutationId) {
       s.mutationKeys = s.mutationKeys ?? [];
