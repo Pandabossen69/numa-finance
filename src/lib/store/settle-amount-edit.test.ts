@@ -95,7 +95,7 @@ function overMinor(item: PlanItem, saldoMinor: number): number {
 const account = { id: "bank", isDefault: true, currency: "THB" };
 
 describe("Betald/Mottagen amount edit", () => {
-  it("changes Över by the delta when a later checkpoint already contains the payment", () => {
+  it("Betald X then edit to X+Δ changes account balance by −Δ only", () => {
     const item = dator();
     const txs: CanonicalTransaction[] = [];
     applySettleInMemory({
@@ -147,16 +147,23 @@ describe("Betald/Mottagen amount edit", () => {
     expect(item.settledMinor).toBe(NEXT);
     expect(result.saldoDeltaMinor).toBe(-DELTA);
 
-    const saldo = saldoAfter(txs, RESAVED_AT, embedded);
-    expect(saldo - embedded).toBe(-DELTA);
-    expect(overMinor(item, saldo) - overBefore).toBe(-DELTA);
+    // Checkpoint already contains the voided/original −X booking.
+    // På kontona must move by saldo_delta −Δ, not by the new full price
+    // and not by old+new.
+    const balanceAfterBetald = embedded;
+    const balanceAfterEdit = saldoAfter(txs, RESAVED_AT, balanceAfterBetald);
+    const balanceChange = balanceAfterEdit - balanceAfterBetald;
+    expect(balanceChange).toBe(-DELTA);
+    expect(balanceChange).not.toBe(-NEXT);
+    expect(balanceChange).not.toBe(-(OLD + NEXT));
+    expect(overMinor(item, balanceAfterEdit) - overBefore).toBe(-DELTA);
     expect(
       projectCashCoverage({
         planItems: [item],
         transactions: [],
         monthKey: "2026-09",
         timeZone: "Asia/Bangkok",
-        saldoMinor: saldo,
+        saldoMinor: balanceAfterEdit,
       }).unpaidMinor,
     ).toBe(0);
   });

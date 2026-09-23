@@ -141,12 +141,14 @@ export function applySettleInMemory(params: {
     };
   }
 
-  // Rows dated before the latest checkpoint are already inside that
-  // verified balance. Rewriting them as a new full-amount row *after*
-  // the checkpoint subtracts the whole price again (Betald 44k, edit to
-  // 45k, Över drops by 45k). Freeze those rows and post only the delta
-  // in the open window. A row still inside the window is the single
-  // booking: update its amount and keep occurred_at.
+  // QA: Betald 44k then edit to 45k voided the 44k row and inserted a
+  // confirmed 45k row at the same time. Rörelser hid the void and showed
+  // one −45k, which matched the ledger. På kontona still had the −44k
+  // (the void does not put back a payment already inside the checkpoint)
+  // and then applied the full −45k again. The balance change must be
+  // saldo_delta = −(new−old) only. Rows already inside the checkpoint
+  // stay put; the open window receives only the delta. A booking still
+  // inside the window is updated in place and keeps occurred_at.
   const checkpointAt = latestCheckpointVerifiedAt(params.checkpoints, accountId);
   const checkpointMs =
     checkpointAt != null && Number.isFinite(Date.parse(checkpointAt))

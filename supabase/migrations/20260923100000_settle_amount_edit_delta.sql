@@ -1,7 +1,9 @@
--- Editing a Betald/Mottagen amount used to void the synthetic booking and
--- insert the full new amount at now(). A saldo checkpoint saved after the
--- original tap already contains that payment, so the new row subtracted the
--- whole price again and Över fell by the new amount instead of the delta.
+-- QA on plan item 99c4ef7a-1e8e-4ea3-916e-f905300649ae «Dator»:
+-- Betald wrote a 44k plan_settle row, then the amount edit voided it and
+-- inserted a confirmed 45k row at the same timestamp. Rörelser hid the void
+-- and showed one −45k (ledger list was right). På kontona already included
+-- the −44k, and the new row applied −45k again. saldo_delta must be
+-- −(new−old) only.
 --
 -- Confirmed plan_settle rows are the settled amount. Rows dated before the
 -- latest checkpoint stay as they are (they are already in that balance).
