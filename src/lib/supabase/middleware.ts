@@ -15,7 +15,12 @@ import {
   shouldSkipProxyGetUser,
 } from "./proxy-auth";
 
-const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga"];
+/**
+ * `/api/cron` has no user session (Vercel Cron). The route checks
+ * CRON_SECRET itself and fails closed — the login redirect here made
+ * every scheduled purge a 307 to /logga-in.
+ */
+const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga", "/api/cron"];
 
 const AUTH_TIMEOUT_MS = 2_500;
 

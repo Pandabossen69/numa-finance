@@ -2131,7 +2131,7 @@ export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
 export async function purgeExpiredObservations(input?: {
   now?: Date;
   retentionDays?: number;
-}): Promise<{ purged: number }> {
+}): Promise<{ purged: number; filesRemoved: number }> {
   let purged = 0;
   await updateStore((s) => {
     const due = observationsDueForPurge(
@@ -2150,7 +2150,8 @@ export async function purgeExpiredObservations(input?: {
       purged += 1;
     }
   });
-  return { purged };
+  // Dev-only single-tenant store: media files under .data are not removed.
+  return { purged, filesRemoved: 0 };
 }
 
 export async function getTodaySnapshot(): Promise<TodaySnapshot> {
