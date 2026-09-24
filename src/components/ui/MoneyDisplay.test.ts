@@ -28,6 +28,18 @@ describe("formatSvGroupedNumber", () => {
   });
 });
 
+describe("MoneyDisplay signed tone", () => {
+  it("colors only a strictly negative amount as alarm and a strictly positive amount as green", () => {
+    expect(src).toContain('tone?: "neutral" | "signed"');
+    expect(src).toContain('tone === "signed" && safeMinor < 0');
+    expect(src).toContain('? "text-[var(--numa-alarm)]"');
+    expect(src).toContain('tone === "signed" && safeMinor > 0');
+    expect(src).toContain('? "text-[var(--numa-positive)]"');
+    expect(src).not.toMatch(/safeMinor\s*<=\s*0/);
+    expect(src).not.toMatch(/safeMinor\s*>=\s*0/);
+  });
+});
+
 describe("MoneyDisplay wrapping contract", () => {
   it("joins nowrap as its own class and paints grouping as flex groups, not a second number", () => {
     expect(src).toContain("wrap = false");

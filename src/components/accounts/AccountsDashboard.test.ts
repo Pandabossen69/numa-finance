@@ -24,6 +24,17 @@ describe("AccountsDashboard", () => {
     expect(src).not.toMatch(/>\s*Totalt\s*</);
   });
 
+  it("paints the total, the THB equivalent and the account balance with signed tone", () => {
+    const displays = [...src.matchAll(/<MoneyDisplay[\s\S]*?\/>/g)].map((match) => match[0]);
+    expect(displays).toHaveLength(3);
+    expect(displays[0]).toContain("amountMinor={view.totalThbMinor}");
+    expect(displays[1]).toContain("amountMinor={account.thbMinor}");
+    expect(displays[2]).toContain("amountMinor={account.calculatedMinor}");
+    for (const block of displays) {
+      expect(block).toContain('tone="signed"');
+    }
+  });
+
   it("keeps the empty-state Swedish copy and Fota path", () => {
     expect(src).toContain("Inga konton ännu. Snabbast är att fota bank-SMS via +.");
     expect(src).toContain("/fota?mode=sms");
