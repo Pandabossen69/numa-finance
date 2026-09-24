@@ -39,6 +39,7 @@ import {
 } from "@/domain/finance";
 import { type CurrencyCode } from "@/domain/money";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import {
@@ -1712,19 +1713,64 @@ export async function deletePlanItem(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+const PURGE_PAGE_SIZE = 500;
+const PURGE_REMOVE_CHUNK = 100;
+
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 export async function purgeExpiredObservations(input?: {
   now?: Date;
   retentionDays?: number;
-}): Promise<{ purged: number }> {
+}): Promise<{ purged: number; filesRemoved: number }> {
   const { createSupabaseServiceRoleClient } = await import("@/lib/supabase/admin");
   const supabase = createSupabaseServiceRoleClient();
+  const now = input?.now ?? new Date();
+  const retentionDays = input?.retentionDays ?? 30;
+  // Same instant as numa_internal.purge_expired_source_images:
+  // v_cutoff := p_now - make_interval(days => p_retention_days)
+  // on UTC (this database's TimeZone). No status, user, or notes predicate.
+  const cutoffIso = observationPurgeCutoffIso(now, retentionDays);
+
+  // 1) Delete the image files first. The RPC below only clears the DB path,
+  //    so without this step the bytes stayed in Storage forever.
+  // Rows: storage_path is not null AND captured_at <= cutoff. Nothing else.
+  const paths: string[] = [];
+  for (let from = 0; ; from += PURGE_PAGE_SIZE) {
+    const { data: rows, error: listError } = await supabase
+      .from("source_observations")
+      .select("id, storage_path")
+      .not("storage_path", "is", null)
+      .lte("captured_at", cutoffIso)
+      .order("id", { ascending: true })
+      .range(from, from + PURGE_PAGE_SIZE - 1);
+    if (listError) throw new Error(listError.message);
+    for (const row of rows ?? []) {
+      if (typeof row.storage_path === "string" && row.storage_path) {
+        paths.push(row.storage_path);
+      }
+    }
+    if (!rows || rows.length < PURGE_PAGE_SIZE) break;
+  }
+  for (const chunk of chunked(paths, PURGE_REMOVE_CHUNK)) {
+    const { error: removeError } = await supabase.storage
+      .from(MEDIA_BUCKET)
+      .remove(chunk);
+    // Fail before touching the DB so the next run retries the same files.
+    if (removeError) throw new Error(removeError.message);
+  }
+
+  // 2) Clear storage_path + note on the same rows (same p_now and retention).
   const { data, error } = await supabase.rpc("purge_expired_source_images", {
-    p_now: (input?.now ?? new Date()).toISOString(),
-    p_retention_days: input?.retentionDays ?? 30,
+    p_now: now.toISOString(),
+    p_retention_days: retentionDays,
   });
   if (error) throw new Error(error.message);
   const payload = data as { purged?: number } | null;
-  return { purged: Number(payload?.purged ?? 0) };
+  return { purged: Number(payload?.purged ?? 0), filesRemoved: paths.length };
 }
 
 export async function setNextIncomeDate(isoDate: string): Promise<PlanItem> {
