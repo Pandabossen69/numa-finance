@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
 
 vi.mock("server-only", () => ({}));
 
@@ -60,9 +61,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createSupabaseServiceRoleClient: () => fakeClient(),
 }));
 
-const { purgeExpiredObservations, purgeCutoffIso } = await import(
-  "./supabase-repository"
-);
+const { purgeExpiredObservations } = await import("./supabase-repository");
 
 beforeEach(() => {
   state.rows = [];
@@ -92,7 +91,7 @@ describe("purgeExpiredObservations (Supabase)", () => {
   it("uses the same 30-day cutoff as the SQL function", async () => {
     await purgeExpiredObservations({ now: NOW });
     expect(state.cutoff).toBe("2026-08-25T03:00:00.000Z");
-    expect(state.cutoff).toBe(purgeCutoffIso(NOW, 30));
+    expect(state.cutoff).toBe(observationPurgeCutoffIso(NOW, 30));
     expect(state.rpcArgs).toEqual({
       p_now: NOW.toISOString(),
       p_retention_days: 30,
@@ -118,9 +117,7 @@ describe("purgeExpiredObservations (Supabase)", () => {
   it("does not clear the DB path when Storage removal fails", async () => {
     state.rows = [{ id: "a", storage_path: "u1/a.jpg" }];
     state.removeError = { message: "storage down" };
-    await expect(purgeExpiredObservations({ now: NOW })).rejects.toThrow(
-      "storage down",
-    );
+    await expect(purgeExpiredObservations({ now: NOW })).rejects.toThrow("storage down");
     expect(state.calls).not.toContain("rpc:purge_expired_source_images");
   });
 

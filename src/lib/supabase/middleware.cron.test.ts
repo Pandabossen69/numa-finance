@@ -37,7 +37,14 @@ describe("proxy and Vercel Cron", () => {
   });
 
   it("still sends other session-less requests to /logga-in", async () => {
-    for (const path of ["/idag", "/api/numa-media", "/api/cronjobs"]) {
+    for (const path of [
+      "/idag",
+      "/api/numa-media",
+      "/api/cron",
+      "/api/cron-x",
+      "/api/cronjobs",
+      "/api/cron/other",
+    ]) {
       const res = await updateSession(request(path));
       expect(res.status, path).toBe(307);
       expect(res.headers.get("location"), path).toBe(`${ORIGIN}/logga-in`);

@@ -16,11 +16,18 @@ import {
 } from "./proxy-auth";
 
 /**
- * `/api/cron` has no user session (Vercel Cron). The route checks
+ * The purge route has no user session (Vercel Cron). It checks
  * CRON_SECRET itself and fails closed — the login redirect here made
  * every scheduled purge a 307 to /logga-in.
+ * Exact path only: `/api/cronjobs`, `/api/cron-x`, and any other
+ * `/api/cron/...` route stay behind the session gate.
  */
-const PUBLIC_PATHS = ["/logga-in", "/auth", "/laga", "/api/cron"];
+const PUBLIC_PATHS = [
+  "/logga-in",
+  "/auth",
+  "/laga",
+  "/api/cron/purge-observations",
+];
 
 const AUTH_TIMEOUT_MS = 2_500;
 
