@@ -12,6 +12,8 @@ export type ReceiptUploadEvent = {
   fingerprint: string;
   description: string;
   labelSv: string;
+  /** AI-suggested category (one of the app's known categories) when confidently read from the screenshot. */
+  categoryHint: string | null;
 };
 
 export type ReceiptUploadResult = {

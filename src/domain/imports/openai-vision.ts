@@ -393,6 +393,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "occurredAt as ISO minute: 2026-07-23T16:46 from '23 juli 2026 16:46'.",
               "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
               "failed=true OR strikethrough=true for Failed/Expired/misslyckade (do NOT treat as spend).",
+              "categoryHint: one of Mat, Transport, Shopping, Boende, Övrigt — pick the closest by merchant type (e.g. restaurant/grocery→Mat, taxi/Grab/Bolt/fuel→Transport, retail/webshop→Shopping, rent/utilities→Boende); omit (null) if genuinely unsure. Never invent a category not in that list.",
               "JSON: kind=bank_app_detail|bank_app_list, institutionHint, fullText, transactions[{merchant,direction,amountMajor,currency,originalAmountMajor,originalCurrency,occurredAt,categoryHint,failed,strikethrough,statusText,rawText}], confidence.",
               "Never invent amounts. Skip UI chrome (Tillbaka, Begär betalning, Dela).",
             ].join(" ")

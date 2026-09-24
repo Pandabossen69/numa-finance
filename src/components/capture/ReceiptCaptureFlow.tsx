@@ -43,6 +43,18 @@ function minorToInput(minor: number): string {
   return (minor / 100).toFixed(2).replace(".", ",");
 }
 
+/**
+ * The AI may read a merchant category off a bank-app screenshot
+ * (see categoryHint in openai-vision.ts). Only trust it when it exactly
+ * matches one of our known categories — anything else falls back to the
+ * existing default rather than showing a category the user can't pick.
+ */
+function resolveCategoryFromHint(hint: string | null | undefined): string | null {
+  if (!hint) return null;
+  const normalized = hint.trim().toLowerCase();
+  return CATEGORIES.find((c) => c.toLowerCase() === normalized) ?? null;
+}
+
 export function ReceiptCaptureFlow({
   accountId,
   accounts,
@@ -187,7 +199,15 @@ export function ReceiptCaptureFlow({
         direction: e.direction,
         amountMinor: e.amountMinor,
         labelSv: e.labelSv,
+        categoryHint: e.categoryHint,
       }));
+      // Default the category chip to the AI's read when it matches a known
+      // category, instead of always starting on "Mat" — the first debit
+      // event's hint applies since only debits get a category selector.
+      const suggestedCategory = resolveCategoryFromHint(
+        events.find((e) => e.direction === "debit")?.categoryHint,
+      );
+      if (suggestedCategory) setCategory(suggestedCategory);
       const hasAmount =
         data.suggestedAmountMinor != null || events.length > 0;
       const major =

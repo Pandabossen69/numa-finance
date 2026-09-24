@@ -15,6 +15,8 @@ export type CapturePreviewEvent = {
   direction: "debit" | "credit";
   amountMinor: number;
   labelSv: string;
+  /** AI-suggested category (one of the app's known categories), when confidently read. */
+  categoryHint: string | null;
 };
 
 export type CapturePreview = {
@@ -117,6 +119,10 @@ function toEvent(candidate: ExtractedTransactionCandidate): CapturePreviewEvent 
       typeof candidate.rawPayload?.labelSv === "string"
         ? candidate.rawPayload.labelSv
         : (candidate.description ?? ""),
+    categoryHint:
+      typeof candidate.rawPayload?.categoryHint === "string"
+        ? candidate.rawPayload.categoryHint
+        : null,
   };
 }
 
