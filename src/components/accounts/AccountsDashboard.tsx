@@ -126,6 +126,7 @@ export function AccountsDashboard({
                     amountMinor={view.totalThbMinor}
                     currency="THB"
                     size="md"
+                    tone="signed"
                     wrap={false}
                   />
                 </MerListRow>
@@ -166,6 +167,7 @@ export function AccountsDashboard({
                               amountMinor={account.thbMinor}
                               currency="THB"
                               size="sm"
+                              tone="signed"
                               wrap={false}
                             />
                             {account.fxRate != null
@@ -180,6 +182,7 @@ export function AccountsDashboard({
                             amountMinor={account.calculatedMinor}
                             currency={account.currency}
                             size="md"
+                            tone="signed"
                             wrap={false}
                           />
                         ) : (
