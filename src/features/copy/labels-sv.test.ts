@@ -22,6 +22,7 @@ describe("Swedish money labels", () => {
     expect(SV.hurGarDet).toBe("Hur går det?");
     expect(SV.analysCategoryHint).toMatch(/samma belopp som spenderat/i);
     expect(SV.analysCategoryDrillHint).toBe("Tryck en kategori för detaljer");
+    expect(SV.analysOvrigtTitles).toBe("Största utgifterna i Övrigt");
     expect(SV.analysEmptySpendPeriod).toMatch(/när du handlar/i);
     expect(SV.analysPlanPointer).toMatch(/plan/i);
   });

@@ -9,7 +9,7 @@ import {
   projectPlanForMonth,
 } from "./plan-months";
 import type { CanonicalTransaction, PlanItem } from "./types";
-import type { CurrencyCode } from "@/domain/money";
+import { humanizeMovementTitle, type CurrencyCode } from "@/domain/money";
 
 /**
  * Actual leftover from one calendar month follows into the next as extra saldo.
@@ -264,6 +264,86 @@ export function spendingCategoriesInWindow(params: {
     accumulateCategory(bucket, tx);
   }
   return [...bucket.values()].sort(compareSpendDesc);
+}
+
+/** How many Övrigt titles Analys lists under the category row. */
+export const OVRIGT_TITLE_LIMIT = 5;
+
+export type OvrigtTitleTotal = {
+  title: string;
+  amountMinor: number;
+  count: number;
+};
+
+/** Ledger row the Övrigt title rollup can read. Description may be blank. */
+export type OvrigtTitleTx = SpendingCategoryTx & {
+  description?: string | null;
+};
+
+const UNTITLED_OVRIGT_EXPENSE = "Utgift";
+
+function rollsIntoOvrigt(category: string | null | undefined): boolean {
+  return (category?.trim() || UNCATEGORISED_SPEND_NAME) === UNCATEGORISED_SPEND_NAME;
+}
+
+/**
+ * Same title Senaste prints. Blank descriptions become «Utgift», the name
+ * Quick Add already stores when the user leaves the field empty.
+ * Expenses are debits, so the signed amount is negative (bank-SMS → Utgift).
+ */
+export function ovrigtExpenseTitle(
+  description: string | null | undefined,
+  amountMinor: number,
+): string {
+  const signed = -Math.abs(amountMinor);
+  const title = humanizeMovementTitle(description ?? "", signed).trim();
+  return title || UNTITLED_OVRIGT_EXPENSE;
+}
+
+/**
+ * Top expense titles inside Övrigt, for the Spenderat window Analys is showing.
+ *
+ * Period uses the same filter as `spendingCategoriesInWindow`. Month uses the
+ * same filter as `spendingCategoriesByMonthKey`. Only confirmed expense debits
+ * that roll into Övrigt (blank category or the Övrigt name). Grouped by
+ * humanized title, biggest first. These rows are parts of the Övrigt total —
+ * they must not be added on top of Spenderat.
+ */
+export function ovrigtTitleBreakdown(params: {
+  transactions: readonly OvrigtTitleTx[];
+  currency: CurrencyCode;
+  scope: "period" | "month";
+  startAt: string | null;
+  endAt: string | null;
+  monthKey: string;
+  timeZone: string;
+  limit?: number;
+}): OvrigtTitleTotal[] {
+  const limit = params.limit ?? OVRIGT_TITLE_LIMIT;
+  if (limit <= 0) return [];
+  const bucket = new Map<string, OvrigtTitleTotal>();
+  for (const tx of params.transactions) {
+    if (!appliesToSpending(tx)) continue;
+    if (tx.currency !== params.currency) continue;
+    const inWindow =
+      params.scope === "month"
+        ? monthKeyFromDate(new Date(tx.occurredAt), params.timeZone) === params.monthKey
+        : isInPayCycleWindow(tx.occurredAt, params.startAt, params.endAt);
+    if (!inWindow || !rollsIntoOvrigt(tx.category)) continue;
+    const title = ovrigtExpenseTitle(tx.description, tx.amountMinor);
+    const prev = bucket.get(title) ?? { title, amountMinor: 0, count: 0 };
+    prev.amountMinor += tx.amountMinor;
+    prev.count += 1;
+    bucket.set(title, prev);
+  }
+  return [...bucket.values()]
+    .sort((a, b) =>
+      compareSpendDesc(
+        { amountMinor: a.amountMinor, name: a.title },
+        { amountMinor: b.amountMinor, name: b.title },
+      ),
+    )
+    .slice(0, limit);
 }
 
 export function monthKeysInclusive(fromKey: string, toKey: string): string[] {

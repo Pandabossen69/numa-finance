@@ -16,9 +16,12 @@ import {
   monthKeyFromDate,
   labelMonthNameSv,
   labelMonthSv,
+  ovrigtTitleBreakdown,
   spendingCategoriesInWindow,
   sumSpendingCategories,
+  UNCATEGORISED_SPEND_NAME,
   yearFromMonthKey,
+  type OvrigtTitleTx,
   type SpendingCategoryTotal,
 } from "@/domain/finance";
 import {
@@ -303,11 +306,15 @@ export function AnalysDashboard({
 
               <SpendByCategory
                 categories={categories}
+                ledgerTransactions={view.ledgerTransactions}
                 currency={currency}
                 empty={categoryEmpty}
                 scope={scope}
                 activeMonthKey={activeMonthKey}
                 currentMonthKey={view.currentMonthKey}
+                cycleStartAt={cycle.startAt}
+                cycleEndAt={cycle.endAt}
+                timeZone={view.timeZone}
               />
             </>
           )}
@@ -350,11 +357,15 @@ export function AnalysDashboard({
 
           <SpendByCategory
             categories={categories}
+            ledgerTransactions={view.ledgerTransactions}
             currency={currency}
             empty={categoryEmpty}
             scope={scope}
             activeMonthKey={activeMonthKey}
             currentMonthKey={view.currentMonthKey}
+            cycleStartAt={cycle.startAt}
+            cycleEndAt={cycle.endAt}
+            timeZone={view.timeZone}
           />
         </section>
       )}
@@ -519,23 +530,42 @@ function SpendHero({
  */
 function SpendByCategory({
   categories,
+  ledgerTransactions,
   currency,
   empty,
   scope,
   activeMonthKey,
   currentMonthKey,
+  cycleStartAt,
+  cycleEndAt,
+  timeZone,
 }: {
   categories: SpendingCategoryTotal[];
+  ledgerTransactions: readonly OvrigtTitleTx[];
   currency: CurrencyCode;
   empty: string;
   scope: AnalysScope;
   activeMonthKey: string;
   currentMonthKey: string;
+  cycleStartAt: string | null;
+  cycleEndAt: string | null;
+  timeZone: string;
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
   const biggest = categories[0]?.amountMinor || 1;
   const showDrillHint = ovrigtDominatesSpend(categories);
+  const ovrigtTitles = showDrillHint
+    ? ovrigtTitleBreakdown({
+        transactions: ledgerTransactions,
+        currency,
+        scope,
+        startAt: cycleStartAt,
+        endAt: cycleEndAt,
+        monthKey: activeMonthKey,
+        timeZone,
+      })
+    : [];
   const openCategoryRef = useRef<(name: string) => void>(() => {});
 
   // NavIntent paints Rörelser on document capture pointerdown, which runs
@@ -647,6 +677,37 @@ function SpendByCategory({
                   />
                 </div>
               </Link>
+              {category.name === UNCATEGORISED_SPEND_NAME && ovrigtTitles.length > 0 ? (
+                <ul
+                  className="space-y-1.5 border-t border-[var(--numa-border)] py-2.5 pr-4 pl-8"
+                  aria-label={SV.analysOvrigtTitles}
+                >
+                  {ovrigtTitles.map((line) => (
+                    <li
+                      key={line.title}
+                      data-analys-ovrigt-title={line.title}
+                      className="numa-money-line text-xs"
+                    >
+                      <span className="flex min-w-0 items-baseline">
+                        <span className="numa-money-line-label text-[var(--numa-muted)]">
+                          {line.title}
+                        </span>
+                        <span className="ml-2 shrink-0 text-[var(--numa-faint)]">
+                          {line.count}×
+                        </span>
+                      </span>
+                      <span className="numa-money-line-amt">
+                        <MoneyDisplay
+                          amountMinor={line.amountMinor}
+                          currency={currency}
+                          size="xs"
+                          wrap={false}
+                        />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
           ))}
         </ul>
