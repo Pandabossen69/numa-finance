@@ -333,9 +333,39 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("{tx.category ? (");
     expect(src).toContain("ovrigtDominatesSpend(categories)");
     expect(src).toContain("SV.analysCategoryDrillHint");
+    expect(src).toContain("SV.analysOvrigtTitles");
     // Still one Spenderat: the hero is the category sum, no second total.
     expect(src).toContain("const spentMinor = listedSpent > 0 ? listedSpent : thinFallback");
     expect(src).not.toContain('aria-label="Per kategori"');
+  });
+
+  it("expands Övrigt titles on Analys only when Övrigt dominates", () => {
+    const fnStart = src.indexOf("function SpendByCategory");
+    const fn = src.slice(fnStart);
+    expect(fnStart).toBeGreaterThan(-1);
+    expect(fn).toContain("const showDrillHint = ovrigtDominatesSpend(categories)");
+    expect(fn).toContain("const ovrigtTitles = showDrillHint\n    ? ovrigtTitleBreakdown({");
+    expect(fn).toContain("transactions: ledgerTransactions");
+    expect(fn).toContain("scope,");
+    expect(fn).toContain("startAt: cycleStartAt");
+    expect(fn).toContain("monthKey: activeMonthKey");
+    expect(fn).toContain(
+      "category.name === UNCATEGORISED_SPEND_NAME && ovrigtTitles.length > 0",
+    );
+    expect(fn).toContain("aria-label={SV.analysOvrigtTitles}");
+    expect(fn).toContain("data-analys-ovrigt-title={line.title}");
+    expect(fn).toContain("{line.title}");
+    expect(fn).toContain("{line.count}×");
+    expect(fn).toContain("amountMinor={line.amountMinor}");
+    // Parent row still opens Rörelser. Title rows are display-only.
+    expect(fn).toContain("data-analys-category={category.name}");
+    const titlesStart = fn.indexOf("ovrigtTitles.map");
+    const titles = fn.slice(titlesStart, fn.indexOf("</ul>", titlesStart));
+    expect(titlesStart).toBeGreaterThan(-1);
+    expect(titles).not.toContain("data-analys-category");
+    expect(titles).not.toContain("<Link");
+    expect(titles).not.toContain("href=");
+    expect(src).toContain('const spentMinor = listedSpent > 0 ? listedSpent : thinFallback');
   });
 
   it("shows a Swedish fail-soft if Analys never arrives", () => {

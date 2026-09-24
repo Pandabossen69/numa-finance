@@ -106,6 +106,8 @@ export const SV = {
   analysCategoryHint: "Samma belopp som Spenderat, störst först.",
   /** Shown only when Övrigt is at least half of listed Spenderat. */
   analysCategoryDrillHint: "Tryck en kategori för detaljer",
+  /** Screen-reader name for the title rows under a dominating Övrigt. */
+  analysOvrigtTitles: "Största utgifterna i Övrigt",
   analysEmptySpendPeriod: "Inget spenderat i perioden ännu. När du handlar syns det här.",
   analysEmptySpendMonth:
     "Inget spenderat i den här månaden ännu. När du handlar syns det här.",
