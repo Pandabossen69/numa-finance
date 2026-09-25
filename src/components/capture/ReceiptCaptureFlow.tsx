@@ -36,8 +36,12 @@ import {
 } from "@/features/imports/fota-quick-path";
 import { ONBOARDING_SV } from "@/features/onboarding/copy";
 import { SV } from "@/features/copy/labels-sv";
+import {
+  CAPTURE_CATEGORIES,
+  categoryFromEvents,
+} from "@/features/imports/category-hint";
 
-const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
+const CATEGORIES = CAPTURE_CATEGORIES;
 
 function minorToInput(minor: number): string {
   return (minor / 100).toFixed(2).replace(".", ",");
@@ -75,7 +79,9 @@ export function ReceiptCaptureFlow({
   const [preview, setPreview] = useState<CapturePreview | null>(
     initialPreview,
   );
-  const [category, setCategory] = useState<string>("Mat");
+  const [category, setCategory] = useState<string>(() =>
+    categoryFromEvents(initialPreview?.events),
+  );
   const [amountEditable, setAmountEditable] = useState(
     Boolean(
       initialPreview &&
@@ -110,12 +116,14 @@ export function ReceiptCaptureFlow({
         initialPreview.importKind !== "bank_sms" &&
           initialPreview.importKind !== "bank_app",
       );
+      setCategory(categoryFromEvents(initialPreview.events));
       setError(null);
       setScanning(false);
     } else {
       setPreview(null);
       setMode(initialMode);
       setAmountEditable(false);
+      setCategory("Mat");
     }
   }
 
@@ -187,7 +195,12 @@ export function ReceiptCaptureFlow({
         direction: e.direction,
         amountMinor: e.amountMinor,
         labelSv: e.labelSv,
+        categoryHint: e.categoryHint,
       }));
+      // Default the category chip to the AI's read when it matches a known
+      // category. An unknown, empty, or missing hint falls back to Mat —
+      // including a later scan, so a previous hint does not stick.
+      setCategory(categoryFromEvents(events));
       const hasAmount =
         data.suggestedAmountMinor != null || events.length > 0;
       const major =

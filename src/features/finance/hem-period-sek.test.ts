@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyMovementsEdit,
   clearClientSessionCaches,
@@ -270,7 +270,15 @@ function planFromToday(snap: ReturnType<typeof assemble>): PlanSnapshot {
 
 describe("Hem period total vs Rörelser for native SEK expenses", () => {
   beforeEach(() => {
+    // syncHomeLivingFromPlan reads the wall clock. These fixtures sit in the
+    // 5 Sep cycle; a real "today" on or after the 25 Sep payday drops them.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(now);
     clearClientSessionCaches();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("keeps Hem-perioden aligned with Rörelser before edit, after edit, and after reload", () => {

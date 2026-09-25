@@ -2126,6 +2126,10 @@ export async function uploadReceiptAndExtract(input: {
               "annotationSv" in event && typeof event.annotationSv === "string"
                 ? event.annotationSv
                 : null,
+            categoryHint:
+              "categoryHint" in event && typeof event.categoryHint === "string"
+                ? event.categoryHint
+                : null,
           },
         })
         .select("*")
@@ -2236,6 +2240,10 @@ export async function uploadReceiptAndExtract(input: {
         typeof c.rawPayload?.labelSv === "string"
           ? c.rawPayload.labelSv
           : (c.description ?? ""),
+      categoryHint:
+        typeof c.rawPayload?.categoryHint === "string"
+          ? c.rawPayload.categoryHint
+          : null,
     }));
 
   const visionMessage =
