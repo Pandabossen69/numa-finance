@@ -8,6 +8,7 @@ import {
   parseBankAppOccurredAt,
   parseBankAppVisionRows,
   parseBunqDetailFromText,
+  resolveBankAppPostedCurrency,
   selectImportableBankAppEvents,
 } from "./bank-app-parsers";
 import { planBankAppLedger } from "./bank-app-ledger";
@@ -242,6 +243,50 @@ describe("bank app bunq-style", () => {
     const known = first.selectedBatch.map((e) => e.fingerprint.fingerprint);
     const again = selectImportableBankAppEvents(rows, known);
     expect(again.status).toBe("all_known");
+  });
+
+  it("keeps −54,12 SEK in kronor when vision labels the row EUR", () => {
+    const rows = parseBankAppVisionRows(
+      [
+        {
+          merchant: "ICA",
+          direction: "debit",
+          amountMajor: 54.12,
+          currency: "EUR",
+          occurredAt: "2026-09-25T12:00",
+          rawText: "−54,12 SEK",
+        },
+      ],
+      { institutionHint: "revolut", fullText: "Saldo 1 200,00 €\n−54,12 SEK" },
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.currency).toBe("SEK");
+    expect(rows[0]?.amountMinor).toBe(5_412);
+    const shown = formatMoney(money(5_412, rows[0]!.currency)).replace(
+      /\u00a0/g,
+      " ",
+    );
+    expect(shown).toContain("54,12");
+    expect(shown).toContain("kr");
+    expect(shown).not.toContain("€");
+    expect(
+      resolveBankAppPostedCurrency({
+        currency: "EUR",
+        rawText: "−54,12 SEK",
+        screenText: "1 200,00 €",
+      }),
+    ).toBe("SEK");
+    expect(resolveBankAppPostedCurrency({ currency: "kr" })).toBe("SEK");
+  });
+
+  it("parses a SEK detail screen without inventing euro", () => {
+    const text = `ICA
+25 september 2026 12:00
+−54,12 SEK`;
+    const parsed = parseBunqDetailFromText(text);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.currency).toBe("SEK");
+    expect(parsed[0]?.amountMinor).toBe(5_412);
   });
 
   it("parses bunq detail text heuristic as EUR with THB annotation", () => {

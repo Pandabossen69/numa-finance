@@ -8,6 +8,8 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
+  captureOptimisticBalance,
+  undoOptimisticBalance,
   applyLocalTransfer,
   applyMovementsEdit,
   applyMovementsVoid,
@@ -493,6 +495,49 @@ describe("last view memory", () => {
     expect(next?.monthExpenseMinor).toBe(35_00);
     expect(next?.balanceMinor).toBe(85_00);
     expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(85_00);
+  });
+
+  it("puts a rejected first saldo on an empty account back to empty", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 10_000_00 }));
+    rememberAccountsSnapshot({
+      accounts: [
+        {
+          ...accountRow({ id: "empty", name: "Revolut" }),
+          calculatedMinor: null,
+          thbMinor: null,
+        },
+      ],
+      totalThbMinor: null,
+    });
+    rememberMovementsSnapshot({ ...sampleMovements, balanceMinor: 10_000_00 });
+
+    const before = captureOptimisticBalance();
+    applyAccountBalance("empty", 5_412);
+
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(5_412);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(5_412);
+
+    undoOptimisticBalance(before);
+
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBeNull();
+    expect(lastAccountsSnapshot()?.totalThbMinor).toBeNull();
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(10_000_00);
+    expect(lastMovementsSnapshot()?.balanceMinor).toBe(10_000_00);
+  });
+
+  it("puts a rejected saldo back on the previous number", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 100_00 }));
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ calculatedMinor: 100_00 })],
+      totalThbMinor: 100_00,
+    });
+
+    const before = captureOptimisticBalance();
+    applyAccountBalance("a1", 999_00);
+    undoOptimisticBalance(before);
+
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(100_00);
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(100_00);
   });
 
   it("writes a new saldo into Konton and Hem immediately", () => {

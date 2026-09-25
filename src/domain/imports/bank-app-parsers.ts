@@ -217,6 +217,62 @@ export type BankAppVisionRow = {
   rawText?: string | null;
 };
 
+const AMOUNT_CURRENCY_RE =
+  /(\d{1,3}(?:[ \u00a0.]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*(€|eur|sek|kr|kronor|thb|฿|usd)(?![a-z])/gi;
+
+/** Currency written next to an amount in OCR text. €/EUR wins over a THB annotation. */
+export function inferAmountCurrency(
+  text: string | null | undefined,
+): CurrencyCode | null {
+  if (!text) return null;
+  const found = new Set<CurrencyCode>();
+  for (const match of text.matchAll(AMOUNT_CURRENCY_RE)) {
+    const code = parseCurrencyToken(match[2]);
+    if (code) found.add(code);
+  }
+  if (found.has("SEK") && !found.has("EUR")) return "SEK";
+  if (found.has("USD") && !found.has("EUR")) return "USD";
+  if (found.has("EUR")) return "EUR";
+  if (found.has("THB")) return "THB";
+  if (found.has("SEK")) return "SEK";
+  if (found.has("USD")) return "USD";
+  return null;
+}
+
+/**
+ * Card currency for a bank-app row.
+ * An explicit SEK/kr (or USD/THB) wins. A vision "EUR" is dropped when the
+ * amount text only says SEK — the prompt biases missing cards toward euro,
+ * which turned «−54,12 SEK» into «−54,12 €» and a new EUR «Bankapp» account.
+ * Returns null when nothing was named, so we do not invent EUR.
+ */
+export function resolveBankAppPostedCurrency(input: {
+  currency?: string | null;
+  originalCurrency?: string | null;
+  /** The transaction line itself («−54,12 SEK»). Wins over a euro header. */
+  rawText?: string | null;
+  /** Whole screenshot, used only when the line itself has no currency. */
+  screenText?: string | null;
+}): CurrencyCode | null {
+  const explicit = parseCurrencyToken(input.currency);
+  const fromRow = inferAmountCurrency(input.rawText);
+  const fromScreen = inferAmountCurrency(input.screenText);
+  // The amount's own suffix beats a vision EUR default and an account header in €.
+  if (fromRow === "SEK" || fromRow === "USD") return fromRow;
+  if (explicit === "SEK" || explicit === "USD" || explicit === "THB") {
+    return explicit;
+  }
+  if (explicit === "EUR") {
+    if (fromScreen === "SEK" || fromScreen === "USD") return fromScreen;
+    return "EUR";
+  }
+  if (fromRow) return fromRow;
+  if (fromScreen) return fromScreen;
+  const original = parseCurrencyToken(input.originalCurrency);
+  if (original && original !== "THB") return original;
+  return null;
+}
+
 function majorFieldToMinor(value: number | string | null | undefined): number | null {
   if (value == null) return null;
   const raw = typeof value === "number" ? String(value) : String(value);
@@ -254,8 +310,13 @@ export function parseBankAppVisionRows(
         : "debit";
 
     const displayAmountMinor = majorFieldToMinor(row.amountMajor);
-    const displayCurrency = parseCurrencyToken(row.currency) ??
-      (row.currency ? String(row.currency).toUpperCase() : null);
+    const displayCurrency = resolveBankAppPostedCurrency({
+      currency: row.currency,
+      originalCurrency:
+        typeof row.originalCurrency === "string" ? row.originalCurrency : null,
+      rawText: row.rawText,
+      screenText: options?.fullText,
+    });
     const originalAmountMinor = majorFieldToMinor(row.originalAmountMajor);
     const originalCurrency = parseCurrencyToken(row.originalCurrency) ??
       (row.originalCurrency ? String(row.originalCurrency).toUpperCase() : null);
@@ -283,7 +344,11 @@ export function parseBankAppVisionRows(
         merchant,
         direction,
         amountMinor: ledger?.amountMinor ?? displayAmountMinor ?? 1,
-        currency: ledger?.currency ?? parseCurrencyToken(displayCurrency) ?? "EUR",
+        currency:
+          ledger?.currency ??
+          displayCurrency ??
+          parseCurrencyToken(row.currency) ??
+          "EUR",
         displayAmountMinor,
         displayCurrency:
           typeof displayCurrency === "string" ? displayCurrency : null,
@@ -349,6 +414,9 @@ export function parseBunqDetailFromText(text: string): ParsedBankAppTransaction[
   const eurMatch = text.match(
     /(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})|-?\d+,\d{2})\s*€/,
   );
+  const sekMatch = text.match(
+    /(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})|-?\d+,\d{2})\s*(?:SEK|kr|kronor)\b/i,
+  );
 
   let originalAmountMinor: number | null = null;
   if (thbMatch) {
@@ -360,19 +428,23 @@ export function parseBunqDetailFromText(text: string): ParsedBankAppTransaction[
   }
 
   let displayAmountMinor: number | null = null;
-  if (eurMatch) {
+  let displayCurrency: CurrencyCode | null = null;
+  const amountMatch = eurMatch ?? sekMatch;
+  if (amountMatch) {
     try {
       displayAmountMinor = europeanAmountToMinor(
-        eurMatch[1]!.replace(/^-/, ""),
+        amountMatch[1]!.replace(/^-/, ""),
       );
+      displayCurrency = eurMatch ? "EUR" : "SEK";
     } catch {
       displayAmountMinor = null;
+      displayCurrency = null;
     }
   }
 
   const ledger = pickLedgerAmount({
     amountMinor: displayAmountMinor,
-    currency: displayAmountMinor != null ? "EUR" : null,
+    currency: displayCurrency,
     originalAmountMinor,
     originalCurrency: originalAmountMinor != null ? "THB" : null,
     institution,
@@ -393,7 +465,7 @@ export function parseBunqDetailFromText(text: string): ParsedBankAppTransaction[
   const planned =
     pickLedgerAmount({
       amountMinor: displayAmountMinor,
-      currency: displayAmountMinor != null ? "EUR" : null,
+      currency: displayCurrency,
       originalAmountMinor,
       originalCurrency: originalAmountMinor != null ? "THB" : null,
       institution,
@@ -414,7 +486,7 @@ export function parseBunqDetailFromText(text: string): ParsedBankAppTransaction[
       amountMinor: planned.amountMinor,
       currency: planned.currency,
       displayAmountMinor,
-      displayCurrency: displayAmountMinor != null ? "EUR" : null,
+      displayCurrency,
       originalAmountMinor,
       originalCurrency: originalAmountMinor != null ? "THB" : null,
       annotationSv: planned.annotationSv,

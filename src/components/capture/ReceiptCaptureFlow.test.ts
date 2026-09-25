@@ -45,6 +45,11 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).not.toContain("h-8 w-8");
   });
 
+  it("sends the preselected account when a bank-app screenshot is confirmed", () => {
+    expect(src).toContain("accountId,");
+    expect(src).not.toContain('preview.importKind === "bank_app" ? null');
+  });
+
   it("marks last-used and the fastest Fota path without hiding other methods", () => {
     expect(src).toContain("fotaPickerMark");
     expect(src).toContain("rememberLastCaptureMethod");
