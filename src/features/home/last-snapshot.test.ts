@@ -36,6 +36,7 @@ import {
   hydrateLastKnownFromPersist,
   invalidateHomeSessionPaint,
   isHomeSessionConfirmed,
+  lastKnownHomeShell,
   lastSessionHomeSnapshot,
   adoptAccountsLastKnown,
   rememberAccountsSnapshot,
@@ -804,10 +805,62 @@ describe("last view memory", () => {
     invalidateHomeSessionPaint();
     expect(lastHomeSnapshot()?.unpaidMinor).toBe(120_00);
     expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(lastKnownHomeShell()?.unpaidMinor).toBe(120_00);
     rememberHomeSnapshot(
       homeSnap({ unpaidMinor: 0, overMinor: 108_287_00 }),
     );
     expect(lastSessionHomeSnapshot()?.overMinor).toBe(108_287_00);
+  });
+
+  it("keeps numa.lastHome.v1 on logout so the next same-user Hem can SSR", () => {
+    let jar = "";
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        get cookie() {
+          return jar;
+        },
+        set cookie(next: string) {
+          const [pair] = next.split(";");
+          const eq = pair.indexOf("=");
+          const name = pair.slice(0, eq);
+          const value = pair.slice(eq + 1);
+          if (next.includes("Max-Age=0")) {
+            jar = jar
+              .split("; ")
+              .filter((part) => part && !part.startsWith(`${name}=`))
+              .join("; ");
+            return;
+          }
+          const rest = jar
+            .split("; ")
+            .filter((part) => part && !part.startsWith(`${name}=`));
+          rest.push(`${name}=${value}`);
+          jar = rest.join("; ");
+        },
+      },
+    });
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    clearClientSessionCaches({ keepHomeCookie: true });
+    expect(lastHomeSnapshot()).toBeNull();
+    expect(lastSessionHomeSnapshot()).toBeNull();
+    expect(document.cookie).toContain("numa.lastHome.v1=");
+    expect(document.cookie).toContain("64000");
+    bindSessionOwner("user-hugo");
+    expect(lastKnownHomeShell()?.remainingTodayMinor).toBe(640_00);
+    expect(lastSessionHomeSnapshot()).toBeNull();
+    Reflect.deleteProperty(globalThis, "document");
+  });
+
+  it("lastKnownHomeShell prefers SSR cookie then same-owner memory", () => {
+    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    invalidateHomeSessionPaint();
+    const ssr = homeSnap({ remainingTodayMinor: 111_00, userId: "user-hugo" });
+    expect(lastKnownHomeShell(ssr)?.remainingTodayMinor).toBe(111_00);
+    expect(lastKnownHomeShell()?.remainingTodayMinor).toBe(640_00);
+    bindSessionOwner("user-christian");
+    expect(lastKnownHomeShell()).toBeNull();
   });
 
   it("fills Hem from the cookie when persist has no home", () => {

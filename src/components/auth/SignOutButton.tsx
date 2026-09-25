@@ -8,7 +8,7 @@ export function SignOutForm({ children }: { children: React.ReactNode }) {
     <form
       action={signOutAction}
       onSubmit={() => {
-        clearClientSessionCaches();
+        clearClientSessionCaches({ keepHomeCookie: true });
       }}
     >
       {children}

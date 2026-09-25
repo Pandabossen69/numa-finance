@@ -405,10 +405,29 @@ export function bindSessionOwner(userId: string) {
   sessionOwnerId = userId;
 }
 
-export function clearClientSessionCaches() {
+export function clearClientSessionCaches(options?: {
+  keepHomeCookie?: boolean;
+}) {
+  persistPaused = true;
   wipeSessionCaches();
   sessionOwnerId = null;
-  clearPersistedLastKnown();
+  clearPersistedLastKnown({ keepHomeCookie: options?.keepHomeCookie === true });
+  persistPaused = false;
+}
+
+/**
+ * Last-known Hem for first paint — cookie SSR, same-owner memory, or the
+ * document cookie. Never elevates to session-confirmed (issue 107).
+ */
+export function lastKnownHomeShell(
+  cookieShell: HomeSnapshot | null = null,
+): HomeSnapshot | null {
+  if (cookieShell) return cookieShell;
+  if (!sessionOwnerId) return null;
+  if (home?.userId === sessionOwnerId) return home;
+  const fromDoc = readLastHomeCookieFromDocument();
+  if (fromDoc?.userId === sessionOwnerId) return fromDoc;
+  return null;
 }
 
 /**
