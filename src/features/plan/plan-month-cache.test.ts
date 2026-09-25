@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
+import { planRowView, type CanonicalTransaction, type PlanItem } from "@/domain/finance";
 import {
   ensurePlanMonthPaint,
   lastPlanMonthPaint,
+  planMonthPaintEpoch,
   planMonthPaintStamp,
   prefetchAdjacentPlanMonths,
   readPlanMonthPaint,
@@ -210,7 +211,7 @@ describe("plan month paint cache", () => {
     expect(src).not.toContain("router.refresh");
   });
 
-  it("paints cold pil chrome from last-known shell without a dest project", () => {
+  it("paints cold pil chrome from a header stub, never another month", () => {
     const sepInput = hugoLikeInput("2026-09");
     const stamp = planMonthPaintStamp(sepInput);
     const sep = ensurePlanMonthPaint(sepInput, stamp);
@@ -222,8 +223,10 @@ describe("plan month paint cache", () => {
     );
     expect(cold.fromCache).toBe(false);
     expect(cold.ready).toBe(false);
-    expect(cold.paint).toBe(sep);
-    expect(cold.paint.coverage.monthKey).toBe("2026-09");
+    expect(cold.paint.monthKey).toBe("2026-10");
+    expect(cold.paint.coverage.monthKey).toBe("2026-10");
+    expect(cold.paint.projection.items).toEqual([]);
+    expect(cold.paint).not.toBe(sep);
     expect(cold.elapsedMs).toBeLessThan(PLAN_MONTH_VISIBLE_BUDGET_MS);
 
     const dest = readPlanMonthPaint("2026-10", stamp);
@@ -270,5 +273,139 @@ describe("plan month paint cache", () => {
     expect(resolved.ready).toBe(true);
     expect(resolved.paint.coverage.saldoMinor).toBe(20_000_00);
     expect(resolved.paint.coverage.monthKey).toBe("2026-09");
+  });
+
+  it("changes the paint stamp when settledAt or settledMinor changes", () => {
+    const sep = hugoLikeInput("2026-09");
+    const before = planMonthPaintStamp(sep);
+    const withSettledAt = sep.items.map((row) =>
+      row.id === "hyra"
+        ? { ...row, settledAt: "2026-09-25T08:08:33.952Z" }
+        : row,
+    );
+    const withSettledMinor = sep.items.map((row) =>
+      row.id === "hyra" ? { ...row, settledMinor: 1_000_00 } : row,
+    );
+    expect(planMonthPaintStamp({ ...sep, items: withSettledAt })).not.toBe(before);
+    expect(planMonthPaintStamp({ ...sep, items: withSettledMinor })).not.toBe(
+      before,
+    );
+  });
+
+  it("shows September including a new row after October was prefetched", () => {
+    const sep = hugoLikeInput("2026-09");
+    const stamp = planMonthPaintStamp(sep);
+    ensurePlanMonthPaint(sep, stamp);
+    prefetchAdjacentPlanMonths(sep, stamp);
+    expect(lastPlanMonthPaint()?.monthKey).toBe("2026-10");
+
+    const added = item({
+      id: "qa-race-2",
+      name: "QA-race-2",
+      kind: "flexible",
+      cadence: "once",
+      amountMinor: 99_00,
+      nextDueAt: "2026-09-15T12:00:00.000Z",
+    });
+    const next = { ...sep, items: [...sep.items, added] };
+    const nextStamp = planMonthPaintStamp(next);
+    const shown = resolvePlanMonthPaint(next, nextStamp, { allowBuild: false });
+    expect(shown.paint.monthKey).toBe("2026-09");
+    expect(shown.paint.coverage.monthKey).toBe("2026-09");
+
+    const ready = resolvePlanMonthPaint(next, nextStamp, { allowBuild: false });
+    expect(ready.ready).toBe(true);
+    expect(ready.paint.monthKey).toBe("2026-09");
+    expect(
+      ready.paint.projection.extraItems.some((row) => row.id === "qa-race-2"),
+    ).toBe(true);
+    expect(
+      ready.paint.projection.extraItems.some((row) => row.amountMinor === 99_00),
+    ).toBe(true);
+  });
+
+  it("keeps the settled badge after settle and revalidate", () => {
+    const sep = hugoLikeInput("2026-09");
+    const unpaid = ensurePlanMonthPaint(sep);
+    const unpaidRow = unpaid.projection.fixedItems.find((row) => row.id === "hyra");
+    expect(unpaidRow).toBeTruthy();
+    expect(planRowView(unpaidRow!).settled).toBe(false);
+
+    const settledItems = sep.items.map((row) =>
+      row.id === "hyra"
+        ? {
+            ...row,
+            settledAt: "2026-09-25T08:08:33.952Z",
+            settledMinor: row.amountMinor,
+          }
+        : row,
+    );
+    const settled = { ...sep, items: settledItems };
+    const settledStamp = planMonthPaintStamp(settled);
+    expect(settledStamp).not.toBe(planMonthPaintStamp(sep));
+
+    const pending = resolvePlanMonthPaint(settled, settledStamp, {
+      allowBuild: false,
+    });
+    expect(pending.paint.monthKey).toBe("2026-09");
+
+    const painted = resolvePlanMonthPaint(settled, settledStamp, {
+      allowBuild: false,
+    });
+    expect(painted.ready).toBe(true);
+    expect(painted.paint.monthKey).toBe("2026-09");
+    const row = painted.paint.projection.fixedItems.find((item) => item.id === "hyra");
+    expect(row?.settledMinor).toBe(15_000_00);
+    expect(planRowView(row!).settled).toBe(true);
+    expect(painted.paint.coverage.unpaidMinor).toBeLessThan(
+      unpaid.coverage.unpaidMinor,
+    );
+
+    const again = resolvePlanMonthPaint(settled, settledStamp, {
+      allowBuild: false,
+    });
+    expect(again.ready).toBe(true);
+    expect(again.paint).toBe(painted.paint);
+    expect(
+      planRowView(
+        again.paint.projection.fixedItems.find((item) => item.id === "hyra")!,
+      ).settled,
+    ).toBe(true);
+  });
+
+  it("schedules a build on stamp miss and never shows another month", () => {
+    const sep = hugoLikeInput("2026-09");
+    const sepStamp = planMonthPaintStamp(sep);
+    ensurePlanMonthPaint(sep, sepStamp);
+    prefetchAdjacentPlanMonths(sep, sepStamp);
+    expect(lastPlanMonthPaint()?.monthKey).toBe("2026-10");
+
+    const missedInput = { ...sep, saldoMinor: (sep.saldoMinor ?? 0) + 1 };
+    const missedStamp = planMonthPaintStamp(missedInput);
+    const epoch = planMonthPaintEpoch();
+    const shown = resolvePlanMonthPaint(missedInput, missedStamp, {
+      allowBuild: false,
+    });
+    expect(shown.ready).toBe(false);
+    expect(shown.paint.monthKey).toBe("2026-09");
+    expect(shown.paint.coverage.monthKey).toBe("2026-09");
+    expect(shown.paint.monthKey).not.toBe("2026-10");
+    expect(planMonthPaintEpoch()).toBeGreaterThan(epoch);
+    const built = readPlanMonthPaint("2026-09", missedStamp);
+    expect(built?.coverage.monthKey).toBe("2026-09");
+    expect(built?.coverage.saldoMinor).toBe(missedInput.saldoMinor);
+
+    const coldEpoch = planMonthPaintEpoch();
+    const cold = resolvePlanMonthPaint(
+      { ...sep, monthKey: "2026-11" },
+      sepStamp,
+      { allowBuild: false },
+    );
+    expect(cold.ready).toBe(false);
+    expect(cold.paint.monthKey).toBe("2026-11");
+    expect(cold.paint.coverage.monthKey).toBe("2026-11");
+    expect(cold.paint.projection.items).toEqual([]);
+    expect(planMonthPaintEpoch()).toBeGreaterThan(coldEpoch);
+    expect(readPlanMonthPaint("2026-11", sepStamp)?.monthKey).toBe("2026-11");
   });
 });

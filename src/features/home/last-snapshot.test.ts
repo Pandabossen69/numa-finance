@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CanonicalTransaction } from "@/domain/finance";
+import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import { analysSnapshotHasDatapaint } from "@/features/finance/analys-from-known";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import { upgradeAnalysFromPlanNow } from "@/features/finance/ensure-analys-last-known";
@@ -1150,6 +1150,67 @@ describe("last view memory", () => {
     rememberHomeSnapshot(server, { force: true });
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.todayPlannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("adopts a newer server plan over a :local snapshot when the client clock is ahead", () => {
+    // rememberHomeSnapshot stamps dirty writes with the client clock (L571).
+    // Plan publish does the same and stores revision `:local`. Clean adopt
+    // (rememberPlanSnapshot passes dirty=false) must not refuse the server
+    // just because that client clock is ahead of the server verifiedAt.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T12:00:00.000Z"));
+    const unpaid: PlanItem = {
+      id: "audit-hyra",
+      userId: "user-hugo",
+      name: "Audit hyra 12345",
+      kind: "mandatory",
+      amountMinor: 12_345_00,
+      currency: "THB",
+      cadence: "monthly",
+      nextDueAt: "2026-09-04T12:00:00.000Z",
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-09-04T11:00:43.763Z",
+      updatedAt: "2026-09-04T11:00:43.763Z",
+    };
+    const localPlan: PlanSnapshot = {
+      items: [unpaid],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 116_588_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "rev-unpaid:local",
+      verifiedAt: new Date().toISOString(),
+      truthStatus: "stale",
+    };
+    rememberPlanSnapshot(localPlan);
+    expect(lastPlanSnapshot()?.financeRevision).toBe("rev-unpaid:local");
+    expect(lastPlanSnapshot()?.verifiedAt).toBe("2026-09-25T12:00:00.000Z");
+
+    const serverPlan: PlanSnapshot = {
+      ...localPlan,
+      items: [
+        {
+          ...unpaid,
+          settledAt: "2026-09-25T08:08:33.952Z",
+          settledMinor: 12_345_00,
+          updatedAt: "2026-09-25T08:08:33.952Z",
+        },
+      ],
+      financeRevision: "rev-settled",
+      verifiedAt: "2026-09-25T08:43:21.414Z",
+      truthStatus: "verified",
+    };
+    rememberPlanSnapshot(serverPlan);
+
+    expect(lastPlanSnapshot()?.financeRevision).toBe("rev-settled");
+    expect(lastPlanSnapshot()?.items[0]?.settledAt).toBe(
+      "2026-09-25T08:08:33.952Z",
+    );
+    expect(lastPlanSnapshot()?.items[0]?.settledMinor).toBe(12_345_00);
   });
 
   it("does not treat an unclassified settle as Spenderat idag", () => {
