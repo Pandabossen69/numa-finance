@@ -390,8 +390,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Handle DETAIL screens (one payment) and LIST screens (Senaste transaktioner).",
               "Swedish UI OK. Comma decimals: 6,60 € → amountMajor 6.60 currency EUR.",
               "amountMajor/currency = what left the card. Keep SEK/kr as SEK and USD as USD — never rewrite them as EUR. NEVER put a THB merchant amount there.",
+              "currency and originalCurrency are ISO 4217 codes (EUR, SEK, USD, THB), never a symbol.",
               "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB only.",
-              "occurredAt as ISO minute: 2026-07-23T16:46 from '23 juli 2026 16:46'.",
+              "occurredAt is ISO 8601 local time with no timezone suffix, minute precision: 2026-07-23T16:46. Convert '23 juli 2026 16:46', '23 jul. 2026', '23 Jul 2026 16:46', 'Idag 16:46' and 'Igår' into that form. Do not return month names or relative words.",
               "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
               "failed=true OR strikethrough=true for Failed/Expired/misslyckade (do NOT treat as spend).",
               "categoryHint: one of Mat, Transport, Shopping, Boende, Övrigt — pick the closest by merchant type (e.g. restaurant/grocery→Mat, taxi/Grab/Bolt/fuel→Transport, retail/webshop→Shopping, rent/utilities→Boende); omit (null) if genuinely unsure. Never invent a category not in that list.",
@@ -401,7 +402,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           : [
               "Read finance screenshots for NUMA.",
               "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
-              "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[]. Card amount = EUR when shown.",
+              "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[]. currency is an ISO 4217 code. occurredAt is ISO 8601 local time YYYY-MM-DDTHH:mm with no timezone.",
               "Else receipt total → kind=receipt.",
               "JSON: kind, institutionHint, fullText, messages[…], transactions[…], amountMajor, currency, confidence.",
             ].join(" ");
@@ -410,7 +411,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       mode === "bank_sms"
         ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
         : mode === "bank_app"
-          ? "Extract every real bank-app transaction (skip failed/strikethrough). amountMajor = card currency (EUR), original* = merchant THB if shown. JSON only."
+          ? "Extract every real bank-app transaction (skip failed/strikethrough). amountMajor = card amount. currency is an ISO 4217 code. occurredAt is ISO 8601 local time YYYY-MM-DDTHH:mm with no timezone. original* = merchant THB if shown. JSON only."
           : "Extract bank SMS bubbles, bank-app transactions, or receipt total. JSON only.";
 
     const body = {

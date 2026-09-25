@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   europeanAmountToMinor,
   sanitizeOcrDigitNoise,
   westernAmountToMinor,
 } from "./ocr-amounts";
 import {
+  fotaVisionNoneSummary,
   parseBankAppOccurredAt,
   parseBankAppVisionRows,
   parseBunqDetailFromText,
@@ -151,6 +152,114 @@ describe("bank app bunq-style", () => {
     expect(parseBankAppOccurredAt("2026-07-23T23:30")).toBe(
       "2026-07-23T23:30:00+07:00",
     );
+  });
+
+  it("accepts short, English, numeric, relative and time-only stamps", () => {
+    const now = new Date("2026-09-24T18:00:00.000Z");
+    expect(parseBankAppOccurredAt("23 jul. 2026")).toBe(
+      "2026-07-23T12:00:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("23 Jul 2026 16:46")).toBe(
+      "2026-07-23T16:46:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("23 September 2026 08:05")).toBe(
+      "2026-09-23T08:05:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("23 Sept. 2026")).toBe(
+      "2026-09-23T12:00:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("23/07/2026 16:46")).toBe(
+      "2026-07-23T16:46:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("23.07.2026")).toBe(
+      "2026-07-23T12:00:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("2026-07-23T16:46:05")).toBe(
+      "2026-07-23T16:46:05+07:00",
+    );
+    expect(parseBankAppOccurredAt("Idag 16:46", { now })).toBe(
+      "2026-09-25T16:46:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("Igår", { now })).toBe(
+      "2026-09-24T12:00:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("Today 4:05", { now })).toBe(
+      "2026-09-25T04:05:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("Yesterday 09:15", { now })).toBe(
+      "2026-09-24T09:15:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("16:46", { now })).toBe(
+      "2026-09-25T16:46:00+07:00",
+    );
+    expect(parseBankAppOccurredAt("32 juli 2026")).toBeNull();
+  });
+
+  it("logs a redacted gap when a bank-app row has no usable timestamp", () => {
+    const summary = fotaVisionNoneSummary({
+      model: "gpt-4o",
+      mode: "bank_app",
+      detectedKind: "bank_app_detail",
+      now: new Date("2026-09-25T02:00:00.000Z"),
+      rows: [
+        {
+          merchant: "SECRET SHOP",
+          amountMajor: 12.5,
+          currency: null,
+          occurredAt: "not a date",
+          rawText: "must-not-leak",
+        },
+      ],
+    });
+    expect(summary).toEqual({
+      model: "gpt-4o",
+      mode: "bank_app",
+      detectedKind: "bank_app_detail",
+      rowCount: 1,
+      rows: [{ amount: "present", currency: "null", occurredAt: "null" }],
+    });
+    expect(JSON.stringify(summary)).not.toContain("SECRET");
+    expect(JSON.stringify(summary)).not.toContain("must-not-leak");
+    expect(JSON.stringify(summary)).not.toContain("12.5");
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const resolved = resolveScreenshotImport(
+      {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          model: "gpt-4o",
+          mode: "bank_app",
+          detectedKind: "bank_app_detail",
+          transactions: [
+            {
+              merchant: "SECRET SHOP",
+              direction: "debit",
+              amountMajor: 12.5,
+              currency: "EUR",
+              occurredAt: "not a date",
+            },
+          ],
+        },
+      },
+      [],
+      { preferBankApp: true },
+    );
+    expect(resolved.kind).toBe("bank_app");
+    expect(resolved.messageSv).toContain("komplett bankapp-transaktion");
+    expect(warn).toHaveBeenCalledWith(
+      "[fota-vision]",
+      expect.objectContaining({
+        model: "gpt-4o",
+        mode: "bank_app",
+        detectedKind: "bank_app_detail",
+        rowCount: 1,
+      }),
+    );
+    const payload = JSON.stringify(warn.mock.calls);
+    expect(payload).not.toContain("SECRET");
+    expect(payload).not.toContain("12.5");
+    warn.mockRestore();
   });
 
   it("uses EUR card amount and stable fingerprints across detail/list", () => {

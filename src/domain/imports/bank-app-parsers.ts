@@ -15,6 +15,7 @@ import {
 } from "@/domain/finance/fingerprint";
 import {
   DEFAULT_TIMEZONE,
+  zonedDayKey,
   zonedWallTimeToUtcIso,
 } from "@/domain/finance/datetime";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
@@ -78,19 +79,40 @@ export type SelectBankAppImportResult =
 const FAILED_RE =
   /\b(failed|expired|misslyckad|utg[aå]ngen|avbruten|cancelled|canceled|declined)\b/i;
 
-const MONTHS_SV: Record<string, string> = {
+const MONTHS: Record<string, string> = {
   januari: "01",
+  january: "01",
+  jan: "01",
   februari: "02",
+  february: "02",
+  feb: "02",
   mars: "03",
+  march: "03",
+  mar: "03",
   april: "04",
+  apr: "04",
   maj: "05",
+  may: "05",
   juni: "06",
+  june: "06",
+  jun: "06",
   juli: "07",
+  july: "07",
+  jul: "07",
   augusti: "08",
+  august: "08",
+  aug: "08",
   september: "09",
+  sep: "09",
+  sept: "09",
   oktober: "10",
+  october: "10",
+  okt: "10",
+  oct: "10",
   november: "11",
+  nov: "11",
   december: "12",
+  dec: "12",
 };
 
 export function detectBankAppInstitution(
@@ -137,36 +159,145 @@ export function looksLikeBankAppScreenshot(
   );
 }
 
-/** Parse "23 juli 2026 16:46" or ISO-ish strings → absolute UTC ISO (Bangkok wall). */
-export function parseBankAppOccurredAt(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const s = raw.trim();
-  const iso = s.match(
-    /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/,
+function monthNumber(token: string): string | null {
+  return MONTHS[token.toLowerCase().replace(/\./g, "")] ?? null;
+}
+
+function validYmd(year: string, month: string, day: string): boolean {
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (!Number.isInteger(y) || m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return (
+    dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
   );
-  let wall: string | null = null;
-  if (iso) {
-    wall = `${iso[1]}T${iso[2]}:${iso[3]}:${iso[4] ?? "00"}`;
-  } else {
-    const sv = s.match(
-      /(\d{1,2})\s+(januari|februari|mars|april|maj|juni|juli|augusti|september|oktober|november|december)\s+(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/i,
-    );
-    if (sv) {
-      const day = sv[1]!.padStart(2, "0");
-      const month = MONTHS_SV[sv[2]!.toLowerCase()];
-      const year = sv[3]!;
-      const hh = (sv[4] ?? "12").padStart(2, "0");
-      const mm = (sv[5] ?? "00").padStart(2, "0");
-      if (!month) return null;
-      wall = `${year}-${month}-${day}T${hh}:${mm}:00`;
-    }
-  }
-  if (!wall) return null;
+}
+
+function bangkokDayKey(now: Date, deltaDays: number): string {
+  const key = zonedDayKey(now, DEFAULT_TIMEZONE);
+  const anchor = Date.parse(`${key}T12:00:00+07:00`);
+  return zonedDayKey(new Date(anchor + deltaDays * 86_400_000), DEFAULT_TIMEZONE);
+}
+
+function wallIso(
+  year: string,
+  month: string,
+  day: string,
+  hour: string,
+  minute: string,
+  second = "00",
+): string | null {
+  const mo = month.padStart(2, "0");
+  const dd = day.padStart(2, "0");
+  const hh = hour.padStart(2, "0");
+  const mm = minute.padStart(2, "0");
+  const ss = second.padStart(2, "0");
+  if (!validYmd(year, mo, dd)) return null;
+  if (Number(hh) > 23 || Number(mm) > 59 || Number(ss) > 59) return null;
   try {
-    return zonedWallTimeToUtcIso(wall, DEFAULT_TIMEZONE);
+    return zonedWallTimeToUtcIso(
+      `${year}-${mo}-${dd}T${hh}:${mm}:${ss}`,
+      DEFAULT_TIMEZONE,
+    );
   } catch {
     return null;
   }
+}
+
+function parseBankAppOccurredLine(line: string, now: Date): string | null {
+  const iso = line.match(
+    /(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/,
+  );
+  if (iso) {
+    const hit = wallIso(
+      iso[1]!,
+      iso[2]!,
+      iso[3]!,
+      iso[4] ?? "12",
+      iso[5] ?? "00",
+      iso[6] ?? "00",
+    );
+    if (hit) return hit;
+  }
+
+  const named = line.match(
+    /(\d{1,2})\s+([A-Za-zåäö.]+)\s+(\d{4})(?:(?:\s+|,\s*)(\d{1,2})[:.](\d{2})(?::(\d{2}))?)?/i,
+  );
+  if (named) {
+    const month = monthNumber(named[2]!);
+    if (month) {
+      const hit = wallIso(
+        named[3]!,
+        month,
+        named[1]!,
+        named[4] ?? "12",
+        named[5] ?? "00",
+        named[6] ?? "00",
+      );
+      if (hit) return hit;
+    }
+  }
+
+  const numeric = line.match(
+    /(?:^|\s)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?:[T\s]+(\d{1,2})[:.](\d{2})(?::(\d{2}))?)?(?!\d)/,
+  );
+  if (numeric) {
+    const hit = wallIso(
+      numeric[3]!,
+      numeric[2]!,
+      numeric[1]!,
+      numeric[4] ?? "12",
+      numeric[5] ?? "00",
+      numeric[6] ?? "00",
+    );
+    if (hit) return hit;
+  }
+
+  const relative = line.match(
+    /^(idag|igår|igar|today|yesterday)(?:[,\s]+(\d{1,2})[:.](\d{2})(?::(\d{2}))?)?$/i,
+  );
+  if (relative) {
+    const word = relative[1]!.toLowerCase();
+    const delta =
+      word === "igår" || word === "igar" || word === "yesterday" ? -1 : 0;
+    const [year, month, day] = bangkokDayKey(now, delta).split("-");
+    return wallIso(
+      year!,
+      month!,
+      day!,
+      relative[2] ?? "12",
+      relative[3] ?? "00",
+      relative[4] ?? "00",
+    );
+  }
+
+  const timeOnly = line.match(/^(\d{1,2})[:.](\d{2})(?::(\d{2}))?$/);
+  if (timeOnly) {
+    const [year, month, day] = bangkokDayKey(now, 0).split("-");
+    return wallIso(year!, month!, day!, timeOnly[1]!, timeOnly[2]!, timeOnly[3] ?? "00");
+  }
+
+  return null;
+}
+
+/**
+ * Bank-app timestamps as Bangkok wall time.
+ * Accepts ISO local, Swedish/English month names (short or with a dot),
+ * day-first numbers, Idag/Igår/Today/Yesterday, and a clock time on the
+ * capture day.
+ */
+export function parseBankAppOccurredAt(
+  raw: string | null | undefined,
+  options?: { now?: Date },
+): string | null {
+  if (!raw?.trim()) return null;
+  const now = options?.now ?? new Date();
+  for (const line of raw.split(/\r?\n/)) {
+    const hit = parseBankAppOccurredLine(line.trim(), now);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 function pickLedgerAmount(input: {
@@ -286,12 +417,17 @@ function majorFieldToMinor(value: number | string | null | undefined): number | 
 
 export function parseBankAppVisionRows(
   rows: BankAppVisionRow[],
-  options?: { institutionHint?: string | null; fullText?: string | null },
+  options?: {
+    institutionHint?: string | null;
+    fullText?: string | null;
+    capturedAt?: Date | string | null;
+  },
 ): ParsedBankAppTransaction[] {
   const institution = detectBankAppInstitution(
     options?.fullText ?? "",
     options?.institutionHint,
   );
+  const capturedAt = options?.capturedAt ? new Date(options.capturedAt) : new Date();
   const out: ParsedBankAppTransaction[] = [];
 
   rows.forEach((row, sourceIndex) => {
@@ -321,7 +457,10 @@ export function parseBankAppVisionRows(
     const originalCurrency = parseCurrencyToken(row.originalCurrency) ??
       (row.originalCurrency ? String(row.originalCurrency).toUpperCase() : null);
 
-    const occurredAt = parseBankAppOccurredAt(row.occurredAt);
+    const occurredAt = parseBankAppOccurredAt(
+      typeof row.occurredAt === "string" ? row.occurredAt : null,
+      { now: capturedAt },
+    );
     if (!occurredAt) return;
 
     const ledger = pickLedgerAmount({
@@ -397,10 +536,13 @@ export function parseBankAppVisionRows(
  * Heuristic parse from OCR fullText for a single bunq-style detail screen.
  * Used when vision returns text but sparse structured rows.
  */
-export function parseBunqDetailFromText(text: string): ParsedBankAppTransaction[] {
+export function parseBunqDetailFromText(
+  text: string,
+  options?: { now?: Date },
+): ParsedBankAppTransaction[] {
   const institution = detectBankAppInstitution(text, "bunq");
   const failed = FAILED_RE.test(text);
-  const occurredAt = parseBankAppOccurredAt(text);
+  const occurredAt = parseBankAppOccurredAt(text, options);
   if (!occurredAt) return [];
 
   const merchantMatch =
@@ -521,6 +663,56 @@ export function toBankAppEventCandidate(
   const labelSv = `${dir} ${kind} ${amount} · ${row.merchant}${note}`;
 
   return { ...row, fingerprint, labelSv };
+}
+
+export type FotaVisionFieldGap = {
+  amount: "present" | "null";
+  currency: "present" | "null";
+  occurredAt: "present" | "null";
+};
+
+/** Redacted drop summary. Values, merchants and image bytes stay out. */
+export function fotaVisionNoneSummary(input: {
+  model?: string | null;
+  mode?: string | null;
+  detectedKind?: string | null;
+  rows: BankAppVisionRow[];
+  now?: Date;
+}): {
+  model: string | null;
+  mode: string | null;
+  detectedKind: string | null;
+  rowCount: number;
+  rows: FotaVisionFieldGap[];
+} {
+  const now = input.now ?? new Date();
+  return {
+    model: input.model ?? null,
+    mode: input.mode ?? null,
+    detectedKind: input.detectedKind ?? null,
+    rowCount: input.rows.length,
+    rows: input.rows.map((row) => ({
+      amount: majorFieldToMinor(row.amountMajor) == null ? "null" : "present",
+      currency:
+        parseCurrencyToken(typeof row.currency === "string" ? row.currency : null) ==
+        null
+          ? "null"
+          : "present",
+      occurredAt:
+        parseBankAppOccurredAt(
+          typeof row.occurredAt === "string" ? row.occurredAt : null,
+          { now },
+        ) == null
+          ? "null"
+          : "present",
+    })),
+  };
+}
+
+export function warnFotaVisionNone(
+  summary: ReturnType<typeof fotaVisionNoneSummary>,
+) {
+  console.warn("[fota-vision]", summary);
 }
 
 export function selectImportableBankAppEvents(
