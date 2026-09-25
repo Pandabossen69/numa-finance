@@ -4,6 +4,7 @@ import type {
 } from "@/domain/finance";
 import { majorToMinor } from "@/domain/imports/amount-parse";
 import { resolveReceiptPaidAmountMinor } from "@/domain/imports/receipt-total";
+import type { CaptureAccountCandidate } from "@/domain/imports/capture-account";
 import type { CurrencyCode } from "@/domain/money";
 import {
   modeForObservation,
@@ -17,6 +18,7 @@ export type CapturePreviewEvent = {
   labelSv: string;
   /** AI-suggested category (one of the app's known categories), when confidently read. */
   categoryHint: string | null;
+  occurredAt?: string | null;
 };
 
 export type CapturePreview = {
@@ -37,6 +39,9 @@ export type CapturePreview = {
   amountFromScan: boolean;
   direction: "debit" | "credit" | null;
   events: CapturePreviewEvent[];
+  categoryHint?: string | null;
+  accounts?: CaptureAccountCandidate[];
+  newAccountName?: string | null;
 };
 
 function minorToInput(minor: number): string {
@@ -123,6 +128,7 @@ function toEvent(candidate: ExtractedTransactionCandidate): CapturePreviewEvent 
       typeof candidate.rawPayload?.categoryHint === "string"
         ? candidate.rawPayload.categoryHint
         : null,
+    occurredAt: candidate.occurredAt,
   };
 }
 
@@ -198,5 +204,9 @@ export function buildCapturePreview(input: {
         ? receiptRow.direction
         : null,
     events: alreadyKnown ? [] : pending.map(toEvent),
+    categoryHint:
+      typeof receiptRow?.rawPayload?.categoryHint === "string"
+        ? receiptRow.rawPayload.categoryHint
+        : null,
   };
 }

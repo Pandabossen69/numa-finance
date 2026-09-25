@@ -17,6 +17,11 @@ import {
   DEFAULT_TIMEZONE,
   zonedWallTimeToUtcIso,
 } from "@/domain/finance/datetime";
+import {
+  alreadyKnownMovementsMessage,
+  skippedFailedMovementsMessage,
+  skippedSavedMovementsMessage,
+} from "@/domain/imports/movement-count-copy";
 import { formatMoney, money, type CurrencyCode } from "@/domain/money";
 import { parseCurrencyToken } from "@/domain/money/currency";
 import {
@@ -558,10 +563,12 @@ export function selectImportableBankAppEvents(
       all: viable,
       skippedDuplicateCount,
       skippedFailedCount: failedCount,
-      messageSv:
-        viable.length > 1
-          ? `Alla ${viable.length} rörelser finns redan sparade i NUMA.`
-          : "Den här utgiften finns redan sparad i NUMA — inget nytt att lägga till.",
+      messageSv: [
+        alreadyKnownMovementsMessage(viable.length),
+        failedCount > 0 ? skippedFailedMovementsMessage(failedCount) : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
     };
   }
 
@@ -572,10 +579,10 @@ export function selectImportableBankAppEvents(
     parts.push(`${selectedBatch.length} nya rörelser från bankappen.`);
   }
   if (skippedDuplicateCount > 0) {
-    parts.push(`${skippedDuplicateCount} redan sparade hoppades över.`);
+    parts.push(skippedSavedMovementsMessage(skippedDuplicateCount));
   }
   if (failedCount > 0) {
-    parts.push(`${failedCount} misslyckade hoppades över.`);
+    parts.push(skippedFailedMovementsMessage(failedCount));
   }
 
   return {

@@ -243,6 +243,44 @@ describe("bank app bunq-style", () => {
     const known = first.selectedBatch.map((e) => e.fingerprint.fingerprint);
     const again = selectImportableBankAppEvents(rows, known);
     expect(again.status).toBe("all_known");
+    if (again.status !== "all_known") return;
+    expect(again.messageSv).toBe("Den här rörelsen finns redan.");
+  });
+
+  it("counts every known row in the already-saved sentence", () => {
+    const rows = parseBankAppVisionRows([
+      {
+        merchant: "ICA",
+        direction: "debit",
+        amountMajor: 89.5,
+        currency: "SEK",
+        occurredAt: "2026-09-25T10:00",
+      },
+      {
+        merchant: "Pressbyrån",
+        direction: "debit",
+        amountMajor: 25,
+        currency: "SEK",
+        occurredAt: "2026-09-25T11:00",
+      },
+      {
+        merchant: "SL",
+        direction: "debit",
+        amountMajor: 42,
+        currency: "SEK",
+        occurredAt: "2026-09-25T12:00",
+      },
+    ]);
+    const first = selectImportableBankAppEvents(rows, []);
+    expect(first.status).toBe("ready");
+    if (first.status !== "ready") return;
+    const known = first.all.map((e) => e.fingerprint.fingerprint);
+    const again = selectImportableBankAppEvents(rows, known);
+    expect(again.status).toBe("all_known");
+    if (again.status !== "all_known") return;
+    expect(again.all).toHaveLength(3);
+    expect(again.messageSv).toBe("Alla 3 rörelser finns redan.");
+    expect(again.messageSv).not.toContain("Alla 2");
   });
 
   it("keeps −54,12 SEK in kronor when vision labels the row EUR", () => {

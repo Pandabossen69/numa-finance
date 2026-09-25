@@ -23,6 +23,7 @@ const MONEY_FORMS = [
   "accounts/CreateAccountForm.tsx",
   "accounts/VerifyBalanceForm.tsx",
   "onboarding/OnboardingManualSaldo.tsx",
+  "capture/ReceiptCaptureFlow.tsx",
 ];
 
 describe("submit lock", () => {

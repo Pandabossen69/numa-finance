@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CAPTURE_CATEGORIES,
   KNOWN_CATEGORY_HINTS,
+  categoryForCapturePreview,
   categoryFromEvents,
   resolveCategoryFromHint,
 } from "./category-hint";
@@ -58,6 +59,18 @@ describe("categoryFromEvents", () => {
     expect(
       categoryFromEvents([{ direction: "debit", categoryHint: "Restaurant" }]),
     ).toBe("Mat");
+  });
+
+  it("maps a receipt categoryHint of Resor or Travel onto Transport", () => {
+    expect(
+      categoryForCapturePreview({ events: [], categoryHint: "Resor" }),
+    ).toBe("Transport");
+    expect(
+      categoryForCapturePreview({ categoryHint: "Travel" }),
+    ).toBe("Transport");
+    expect(categoryForCapturePreview({ events: [], categoryHint: null })).toBe(
+      "Mat",
+    );
   });
 
   it.each(KNOWN_CATEGORY_HINTS)("maps %s → %s", (hint, category) => {

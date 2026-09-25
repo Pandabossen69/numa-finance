@@ -97,6 +97,11 @@ const confirmSchema = z.object({
   direction: z.enum(["debit", "credit"]).optional().nullable(),
   fromOnboarding: z.boolean().optional(),
   clientMutationId: z.string().uuid().optional(),
+  occurredOn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .nullable(),
 });
 
 export async function confirmReceiptExpenseAction(
@@ -138,6 +143,7 @@ export async function confirmReceiptExpenseAction(
       maskedAccount: input.maskedAccount,
       direction: input.direction,
       clientMutationId: input.clientMutationId,
+      occurredOn: input.occurredOn,
     });
 
     try {
