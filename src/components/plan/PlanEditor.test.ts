@@ -314,6 +314,7 @@ describe("Plan dates and add-form", () => {
     );
     expect(select).not.toContain("buildPlanMonthPaint");
     expect(editor).toContain("resolvePlanMonthPaint");
+    expect(editor).toContain("{ allowBuild: false }");
     expect(editor).toContain("scheduleEnsurePlanMonthPaint");
     expect(editor).toContain('data-plan-month-ready={monthReady ? "1" : "0"}');
     expect(editor).not.toContain("startMonthTransition");

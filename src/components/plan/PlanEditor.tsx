@@ -295,9 +295,13 @@ export function PlanEditor({
     planMonthPaintEpoch,
   );
   void paintEpoch;
+  // Otherwise flushSync in selectMonth() forces a synchronous rebuild of the
+  // month before softSwitchPlanMonth, on every month switch and every
+  // add/settle. Real numbers land 1-2 frames later via scheduleEnsurePlanMonthPaint.
   const { paint: monthPaint, ready: monthReady } = resolvePlanMonthPaint(
     monthPaintInput,
     monthPaintStamp,
+    { allowBuild: false },
   );
   const { projection, coverage, importableFixed, linkedPlanIds } = monthPaint;
   const suggestionEpoch = useSyncExternalStore(

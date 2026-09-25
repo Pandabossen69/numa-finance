@@ -18,6 +18,8 @@ const paintListeners = new Set<() => void>();
 let suggestionEpoch = 0;
 let paintEpoch = 0;
 let lastPaint: PlanMonthPaint | null = null;
+/** Latest built paint per month. Prefetch must not replace another month. */
+const lastPaintByMonth = new Map<string, PlanMonthPaint>();
 
 function emitSuggestions() {
   suggestionEpoch += 1;
@@ -92,6 +94,9 @@ export function rememberPlanMonthPaint(
   paint: PlanMonthPaint,
 ) {
   paints.set(monthKey, { stamp, paint });
+  // Keyed by monthKey so prefetch of an adjacent month cannot overwrite the
+  // paint the displayed month falls back to on a stamp miss.
+  lastPaintByMonth.set(monthKey, paint);
   lastPaint = paint;
 }
 
@@ -117,8 +122,9 @@ export function ensurePlanMonthPaint(
 }
 
 /**
- * Chrome tick: dest cache, else last-known keep-shell, else a cheap stub.
- * Never project dest coverage on this path — that is datapaint.
+ * Chrome tick: exact cache, else the latest paint for this same monthKey,
+ * else a stub that follows the header month. A stamp miss never shows
+ * another month. Dest project stays off the allowBuild:false path.
  */
 export function resolvePlanMonthPaint(
   input: PlanMonthPaintInput,
@@ -128,17 +134,14 @@ export function resolvePlanMonthPaint(
   const hit = readPlanMonthPaint(input.monthKey, stamp);
   if (hit) return { paint: hit, ready: true, fromCache: true };
 
-  const last = lastPlanMonthPaint();
-  if (last && last.monthKey !== input.monthKey) {
-    return { paint: last, ready: false, fromCache: false };
-  }
-
   if (opts?.allowBuild === false) {
-    return {
-      paint: last ?? buildPlanMonthChrome(input.monthKey, input.saldoMinor),
-      ready: false,
-      fromCache: false,
-    };
+    const fallback =
+      lastPaintByMonth.get(input.monthKey) ??
+      buildPlanMonthChrome(input.monthKey, input.saldoMinor);
+    // Miss for the displayed month must schedule the build and bump
+    // paintEpoch. Otherwise Plan can sit on ready:false forever.
+    scheduleEnsurePlanMonthPaint(input, stamp);
+    return { paint: fallback, ready: false, fromCache: false };
   }
 
   return {
@@ -173,8 +176,11 @@ export function scheduleEnsurePlanMonthPaint(
 ) {
   if (readPlanMonthPaint(input.monthKey, stamp)) return;
   scheduleAfterChrome(() => {
-    if (readPlanMonthPaint(input.monthKey, stamp)) return;
-    ensurePlanMonthPaint(input, stamp);
+    if (!readPlanMonthPaint(input.monthKey, stamp)) {
+      ensurePlanMonthPaint(input, stamp);
+    }
+    // Always bump, even if another caller filled the cache without emitting.
+    // Otherwise Plan can stay on the fallback with ready:false.
     emitPaints();
   });
 }
@@ -209,8 +215,8 @@ export function prefetchAdjacentPlanMonths(
 }
 
 /**
- * Soft month switch chrome: dest cache or last-known shell, no dest project.
- * Adjacent warm months stay a cache hit. Cold dest datapaint is scheduled.
+ * Soft month switch chrome: dest cache, else same-month last paint, else a
+ * header stub. Never another month. Cold dest datapaint is scheduled.
  */
 export function softSwitchPlanMonth(
   input: PlanMonthPaintInput,
@@ -276,4 +282,5 @@ export function resetPlanMonthCacheForTests() {
   suggestionEpoch = 0;
   paintEpoch = 0;
   lastPaint = null;
+  lastPaintByMonth.clear();
 }
