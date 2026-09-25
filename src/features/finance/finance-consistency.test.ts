@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, beforeEach, vi } from "vitest";
 import type { PlanItem } from "@/domain/finance";
 import {
   applyOptimisticPlanSettle,
@@ -102,7 +102,15 @@ function planSnap(items: PlanItem[], partial: Partial<PlanSnapshot> = {}): PlanS
 
 describe("finance consistency contract", () => {
   beforeEach(() => {
+    // Next income in these fixtures is 25 Sep 2026. On that calendar day the
+    // live clock rolls the pay cycle and the expected Hem figures change.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-19T10:00:00.000Z"));
     clearClientSessionCaches();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("confirmOptimisticFinance clears dirty so Plan adopts server payload", () => {
