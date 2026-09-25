@@ -40,6 +40,13 @@ export function VerifyBalanceForm({
       const previous = lastAccountsSnapshot()?.accounts.find(
         (row) => row.id === accountId,
       );
+      const rollbackOptimistic = () => {
+        if (!previous || previous.calculatedMinor == null) return;
+        applyAccountBalance(accountId, previous.calculatedMinor, {
+          thbMinor: previous.thbMinor ?? undefined,
+          currency: previous.currency,
+        });
+      };
       // Patch Hem/Konton immediately; persist in the background.
       applyAccountBalance(accountId, balanceMinor, {
         thbMinor: currency === "THB" ? balanceMinor : undefined,
@@ -47,19 +54,24 @@ export function VerifyBalanceForm({
       });
       setBalance("");
       setFxRate("");
-      const result = await createCheckpointAction({
-        accountId,
-        balance: balanceInput,
-        source: "manual_verification",
-        fxRate: needsFx ? fxInput || null : null,
-      });
+      let result: Awaited<ReturnType<typeof createCheckpointAction>>;
+      try {
+        result = await createCheckpointAction({
+          accountId,
+          balance: balanceInput,
+          source: "manual_verification",
+          fxRate: needsFx ? fxInput || null : null,
+        });
+      } catch (error) {
+        // Server actions can reject before returning { ok: false } (network).
+        rollbackOptimistic();
+        setError(
+          error instanceof Error ? error.message : "Kunde inte spara saldo",
+        );
+        return;
+      }
       if (!result.ok) {
-        if (previous && previous.calculatedMinor != null) {
-          applyAccountBalance(accountId, previous.calculatedMinor, {
-            thbMinor: previous.thbMinor ?? undefined,
-            currency: previous.currency,
-          });
-        }
+        rollbackOptimistic();
         setError(result.error);
         return;
       }
