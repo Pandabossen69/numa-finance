@@ -27,6 +27,15 @@ describe("CreateAccountForm", () => {
     expect(src).not.toContain("Använd på Idag");
   });
 
+  it("disables Spara konto and blocks a second tap while saving", () => {
+    expect(src).toContain("useSubmitGuard(pending)");
+    expect(src).toContain("if (!guard.tryBegin()) return;");
+    expect(src).toContain(
+      "disabled={pending || !form.name.trim() || !form.openingBalance.trim()}",
+    );
+    expect(src).toContain('pending ? "Sparar…" : "Spara konto"');
+  });
+
   it("asks for kind + name + currency + amount, not institution", () => {
     expect(src).toContain("Typ av konto");
     expect(src).toContain("Hur mycket har du just nu?");

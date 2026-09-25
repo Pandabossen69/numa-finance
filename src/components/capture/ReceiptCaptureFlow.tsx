@@ -198,8 +198,9 @@ export function ReceiptCaptureFlow({
         categoryHint: e.categoryHint,
       }));
       // Default the category chip to the AI's read when it matches a known
-      // category. An unknown, empty, or missing hint falls back to Mat —
-      // including a later scan, so a previous hint does not stick.
+      // hint (Resor/Travel → Transport). No hint stays on Mat. An unknown
+      // hint becomes Övrigt, including a later scan, so a previous hint
+      // does not stick and does not fall through to Mat.
       setCategory(categoryFromEvents(events));
       const hasAmount =
         data.suggestedAmountMinor != null || events.length > 0;
@@ -279,8 +280,10 @@ export function ReceiptCaptureFlow({
         preview.importKind === "bank_sms" ||
         preview.importKind === "bank_app";
       const result = await confirmReceiptExpenseAction({
-        accountId:
-          preview.importKind === "bank_app" ? null : accountId,
+        // Pass the preselected account. The server still refuses a currency
+        // mismatch (SEK must not land on a THB account) and only then opens
+        // a matching-currency account — it must not ignore this id up front.
+        accountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         confirmAllPending: isAutoImport,
