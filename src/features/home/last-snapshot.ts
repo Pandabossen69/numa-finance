@@ -467,6 +467,18 @@ function shouldAdoptFinanceSnapshot(
     return true;
   }
 
+  // :local optimistic snapshots stamp verifiedAt with the client clock.
+  // When that clock is ahead of the server, timestamp order would refuse a
+  // newer server revision. Server truth wins over :local when revisions differ.
+  if (
+    curRev.endsWith(":local") &&
+    nextRev &&
+    !nextRev.endsWith(":local") &&
+    curRev !== nextRev
+  ) {
+    return true;
+  }
+
   // Clean client: adopt unless the payload is an older revision than we show.
   if (
     curRev &&
