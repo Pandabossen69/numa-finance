@@ -36,10 +36,17 @@ describe("proxy and Vercel Cron", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("lets bank-mail ingest through without a session", async () => {
+    const res = await updateSession(request("/api/import/bank-mail"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+  });
+
   it("still sends other session-less requests to /logga-in", async () => {
     for (const path of [
       "/idag",
       "/api/numa-media",
+      "/api/import/other",
       "/api/cron",
       "/api/cron-x",
       "/api/cronjobs",

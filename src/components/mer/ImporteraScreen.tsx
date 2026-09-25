@@ -108,6 +108,8 @@ function kindLabel(kind: string): string {
       return "Kvitto";
     case "screenshot":
       return "Skärmbild";
+    case "bank_mail":
+      return "Bangkok Bank-mejl";
     case "price":
       return "Pris";
     default:

@@ -20,6 +20,7 @@ export async function reportError(
     | "mutation.refresh"
     | "ocr.upload"
     | "ocr.confirm"
+    | "bank-mail.confirm"
     | "reconcile",
   error: unknown,
   extra?: Record<string, unknown>,

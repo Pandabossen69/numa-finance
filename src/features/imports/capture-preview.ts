@@ -5,6 +5,7 @@ import type {
 import { majorToMinor } from "@/domain/imports/amount-parse";
 import { resolveReceiptPaidAmountMinor } from "@/domain/imports/receipt-total";
 import type { CurrencyCode } from "@/domain/money";
+import { BANK_MAIL_SOURCE_LABEL } from "@/features/imports/bank-mail-label";
 import {
   modeForObservation,
   type CaptureImportKind,
@@ -37,6 +38,12 @@ export type CapturePreview = {
   amountFromScan: boolean;
   direction: "debit" | "credit" | null;
   events: CapturePreviewEvent[];
+  /** Bangkok Bank mail only. Screenshot previews leave these unset. */
+  sourceLabel?: string;
+  preselectedAccountId?: string | null;
+  accountName?: string | null;
+  occurredAt?: string | null;
+  isWalletTopUp?: boolean;
 };
 
 function minorToInput(minor: number): string {
@@ -126,6 +133,59 @@ function toEvent(candidate: ExtractedTransactionCandidate): CapturePreviewEvent 
   };
 }
 
+function payloadString(
+  raw: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  const value = raw?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Mail has no image. Screenshot resume still returns null without media. */
+function buildBankMailPreview(input: {
+  observation: Pick<SourceObservation, "id" | "kind" | "status" | "notes">;
+  candidates: ExtractedTransactionCandidate[];
+  fallbackCurrency: CurrencyCode;
+}): CapturePreview | null {
+  const pending = input.candidates
+    .filter((c) => c.status === "needs_review" && usableRow(c))
+    .sort((a, b) => batchIndex(a) - batchIndex(b));
+  const confirmed = input.candidates.filter(
+    (c) => c.status === "confirmed" && usableRow(c),
+  );
+  const row = pending[0] ?? confirmed[0] ?? null;
+  if (!row || row.amountMinor == null || row.amountMinor <= 0) return null;
+  const alreadyKnown = pending.length === 0;
+  return {
+    observationId: input.observation.id,
+    candidateId: row.id,
+    amount: minorToInput(row.amountMinor),
+    description:
+      payloadString(row.rawPayload, "counterparty") ?? row.description ?? "",
+    currency: row.currency ?? input.fallbackCurrency,
+    ocrStatus: alreadyKnown ? "all_known" : "ok",
+    confidence: row.confidence,
+    message: input.observation.notes,
+    previewUrl: "",
+    importKind: "bank_mail",
+    balanceAfterMinor: null,
+    fingerprint: row.fingerprint,
+    alreadyKnown,
+    skippedOlderCount: 0,
+    amountFromScan: true,
+    direction:
+      row.direction === "credit" || row.direction === "debit"
+        ? row.direction
+        : "debit",
+    events: alreadyKnown ? [] : pending.map(toEvent),
+    sourceLabel: BANK_MAIL_SOURCE_LABEL,
+    preselectedAccountId: payloadString(row.rawPayload, "accountId"),
+    accountName: payloadString(row.rawPayload, "accountName"),
+    occurredAt: row.occurredAt,
+    isWalletTopUp: row.rawPayload?.isWalletTopUp === true,
+  };
+}
+
 /** Map a stored observation + candidates back to the capture confirm DTO. */
 export function buildCapturePreview(input: {
   observation: Pick<
@@ -136,6 +196,9 @@ export function buildCapturePreview(input: {
   previewUrl: string | null;
   fallbackCurrency: CurrencyCode;
 }): CapturePreview | null {
+  if (input.observation.kind === "bank_mail") {
+    return buildBankMailPreview(input);
+  }
   if (!input.previewUrl) return null;
 
   const importKind = modeForObservation(input.observation);
