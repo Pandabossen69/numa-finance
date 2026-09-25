@@ -7,7 +7,10 @@ import { DEFAULT_TIMEZONE, formatListDateSv, newClientMutationId } from "@/domai
 import { formatMoney, money } from "@/domain/money";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import { confirmBankMailAction } from "@/features/imports/bank-mail-actions";
-import { BANK_MAIL_SOURCE_LABEL } from "@/features/imports/bank-mail-label";
+import {
+  BANK_MAIL_SOURCE_LABEL,
+  bankMailAccountLabel,
+} from "@/features/imports/bank-mail-label";
 import { goHomeInstant } from "@/lib/nav/instant";
 
 export function BankMailConfirm({
@@ -30,10 +33,11 @@ export function BankMailConfirm({
     );
   }
 
-  const accountName =
-    accounts.find((account) => account.id === preview.preselectedAccountId)?.name ??
-    preview.accountName ??
-    "Konto";
+  const matched = accounts.find((account) => account.id === preview.preselectedAccountId);
+  const accountName = bankMailAccountLabel({
+    liveName: matched?.name,
+    storedName: preview.accountName,
+  });
   const amountMinor = preview.events[0]?.amountMinor ?? null;
   const when = preview.occurredAt
     ? formatListDateSv(preview.occurredAt, DEFAULT_TIMEZONE, { withTime: true })

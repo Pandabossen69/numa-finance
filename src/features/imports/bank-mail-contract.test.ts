@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { bankMailAccountLabel } from "@/features/imports/bank-mail-label";
 import { buildCapturePreview } from "@/features/imports/capture-preview";
 import {
   fotaHrefForObservation,
@@ -47,6 +48,17 @@ describe("bank mail stays out of the screenshot writer", () => {
     expect(flow).not.toContain("Bangkok Bank-mejl");
     expect(flow).not.toContain("bank_mail");
     expect(flow).not.toContain("confirmBankMailAction");
+  });
+});
+
+describe("bank mail account label", () => {
+  it("keeps the account chosen at ingest when Hem still says Konto", () => {
+    expect(
+      bankMailAccountLabel({ liveName: "Konto", storedName: "Bangkok Bank" }),
+    ).toBe("Bangkok Bank");
+    expect(
+      bankMailAccountLabel({ liveName: "Sparkonto", storedName: "Bangkok Bank" }),
+    ).toBe("Sparkonto");
   });
 });
 
