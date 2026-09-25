@@ -45,6 +45,7 @@ import {
   alreadyKnownMovementsMessage,
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
+import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { observationsDueForPurge } from "@/features/imports/observation-retention";
@@ -482,20 +483,23 @@ export async function listKnownFingerprints(options?: {
   includePendingCandidates?: boolean;
 }): Promise<string[]> {
   const store = await readStore();
-  const fromTx = store.transactions
-    .filter(
-      (t) => t.userId === LOCAL_DEMO_USER_ID && t.fingerprint && t.status === "confirmed",
-    )
-    .map((t) => t.fingerprint!);
-  const pending = options?.includePendingCandidates !== false;
-  const fromCandidates = store.candidates
-    .filter((c) => {
-      if (c.userId !== LOCAL_DEMO_USER_ID || !c.fingerprint) return false;
-      if (c.status === "confirmed" || c.status === "duplicate") return true;
-      return pending && c.status === "needs_review";
-    })
-    .map((c) => c.fingerprint!);
-  return [...new Set([...fromTx, ...fromCandidates])];
+  return liveImportFingerprints({
+    includePendingCandidates: options?.includePendingCandidates === true,
+    transactions: store.transactions
+      .filter((tx) => tx.userId === LOCAL_DEMO_USER_ID)
+      .map((tx) => ({
+        id: tx.id,
+        fingerprint: tx.fingerprint,
+        status: tx.status,
+      })),
+    candidates: store.candidates
+      .filter((candidate) => candidate.userId === LOCAL_DEMO_USER_ID)
+      .map((candidate) => ({
+        fingerprint: candidate.fingerprint,
+        status: candidate.status,
+        canonicalTransactionId: candidate.canonicalTransactionId,
+      })),
+  });
 }
 
 /** Confirmed ledger only — used when writing a transaction. */

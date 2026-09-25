@@ -47,6 +47,7 @@ import {
   alreadyKnownMovementsMessage,
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
+import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
 import { rankForOnTrackDays } from "@/domain/gamification";
@@ -1339,30 +1340,33 @@ export async function listKnownFingerprints(options?: {
 }): Promise<string[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  const pending = options?.includePendingCandidates !== false;
-  const candStatuses = pending
-    ? ["confirmed", "duplicate", "needs_review"]
-    : ["confirmed", "duplicate"];
+  const pending = options?.includePendingCandidates === true;
   const [{ data: txs }, { data: cands }] = await Promise.all([
     supabase
       .from("transactions")
-      .select("fingerprint")
+      .select("id, fingerprint, status")
       .eq("user_id", userId)
-      .eq("status", "confirmed")
       .not("fingerprint", "is", null),
     supabase
       .from("extracted_transaction_candidates")
-      .select("fingerprint, status")
+      .select("fingerprint, status, canonical_transaction_id")
       .eq("user_id", userId)
-      .not("fingerprint", "is", null)
-      .in("status", candStatuses),
+      .not("fingerprint", "is", null),
   ]);
 
-  const fps = [
-    ...(txs ?? []).map((r) => r.fingerprint as string),
-    ...(cands ?? []).map((r) => r.fingerprint as string),
-  ].filter(Boolean);
-  return [...new Set(fps)];
+  return liveImportFingerprints({
+    includePendingCandidates: pending,
+    transactions: (txs ?? []).map((row) => ({
+      id: row.id as string,
+      fingerprint: row.fingerprint as string | null,
+      status: row.status as string | null,
+    })),
+    candidates: (cands ?? []).map((row) => ({
+      fingerprint: row.fingerprint as string | null,
+      status: row.status as string | null,
+      canonicalTransactionId: row.canonical_transaction_id as string | null,
+    })),
+  });
 }
 
 export async function listConfirmedFingerprints(): Promise<string[]> {
