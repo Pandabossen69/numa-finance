@@ -5,6 +5,7 @@ import {
   type ExtractionRequest,
 } from "./extraction";
 import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
+import { resolveBankAppPostedCurrency } from "@/domain/imports/bank-app-parsers";
 import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
 import {
   extractPaidTotalFromText,
@@ -388,7 +389,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Expert OCR for European bank-app screenshots (bunq, Revolut).",
               "Handle DETAIL screens (one payment) and LIST screens (Senaste transaktioner).",
               "Swedish UI OK. Comma decimals: 6,60 € → amountMajor 6.60 currency EUR.",
-              "amountMajor/currency = what left the card (usually EUR). NEVER put THB there.",
+              "amountMajor/currency = what left the card. Keep SEK/kr as SEK and USD as USD — never rewrite them as EUR. NEVER put a THB merchant amount there.",
               "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB only.",
               "occurredAt as ISO minute: 2026-07-23T16:46 from '23 juli 2026 16:46'.",
               "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
@@ -556,23 +557,17 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         : isBankApp && txsIn.length > 0
           ? txsIn.map((t) => {
               const displayMinor = bankAppMajorToMinor(t.amountMajor);
-              const displayCur = isCurrencyCode(
-                String(t.currency ?? "").toUpperCase(),
-              )
-                ? (String(t.currency).toUpperCase() as CurrencyCode)
-                : t.currency === "€"
-                  ? ("EUR" as const)
-                  : null;
-              const origCurRaw = t.originalCurrency
-                ? String(t.originalCurrency).toUpperCase()
-                : null;
-              const origCur = origCurRaw && isCurrencyCode(origCurRaw)
-                ? origCurRaw
-                : null;
-              // Prefer card/account currency (EUR) — THB original stays in rawPayload.
-              const ledgerCurrency = displayCur ?? origCur ?? "EUR";
+              const posted = resolveBankAppPostedCurrency({
+                currency: typeof t.currency === "string" ? t.currency : null,
+                originalCurrency:
+                  t.originalCurrency != null ? String(t.originalCurrency) : null,
+                rawText: t.rawText,
+                screenText: fullText,
+              });
+              // Missing currency stays EUR only when the screenshot did not name SEK/USD.
+              const ledgerCurrency = posted ?? "EUR";
               const ledgerMinor =
-                displayCur && displayMinor != null
+                posted && displayMinor != null
                   ? displayMinor
                   : bankAppMajorToMinor(t.originalAmountMajor);
               return {

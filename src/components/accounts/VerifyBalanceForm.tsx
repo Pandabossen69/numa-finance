@@ -4,7 +4,11 @@ import { useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { createCheckpointAction } from "@/features/finance/actions";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
-import { applyAccountBalance, lastAccountsSnapshot } from "@/features/home/last-snapshot";
+import {
+  applyAccountBalance,
+  captureOptimisticBalance,
+  undoOptimisticBalance,
+} from "@/features/home/last-snapshot";
 
 export function VerifyBalanceForm({
   accountId,
@@ -34,18 +38,12 @@ export function VerifyBalanceForm({
       }
       const balanceInput = balance;
       const fxInput = fxRate;
-      // Remember what was there before, so a rejected save can be undone —
-      // otherwise a failed checkpoint leaves Hem/Konton showing a balance
-      // that was never actually written.
-      const previous = lastAccountsSnapshot()?.accounts.find(
-        (row) => row.id === accountId,
-      );
+      // Remember the whole paint, including an empty account (no saldo yet).
+      // A rejected first saldo must show "—" again immediately — not the
+      // number the server refused, until the next reload.
+      const before = captureOptimisticBalance();
       const rollbackOptimistic = () => {
-        if (!previous || previous.calculatedMinor == null) return;
-        applyAccountBalance(accountId, previous.calculatedMinor, {
-          thbMinor: previous.thbMinor ?? undefined,
-          currency: previous.currency,
-        });
+        undoOptimisticBalance(before);
       };
       // Patch Hem/Konton immediately; persist in the background.
       applyAccountBalance(accountId, balanceMinor, {

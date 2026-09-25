@@ -1679,6 +1679,49 @@ export function applyAccountDelta(
   return accounts;
 }
 
+export type OptimisticBalancePaint = {
+  accounts: AccountsSnapshot | null;
+  home: HomeSnapshot | null;
+  movements: MovementsSnapshot | null;
+  accountsDirty: boolean;
+  homeDirty: boolean;
+  movementsDirty: boolean;
+};
+
+/** Hem, Konton and Rörelser as they were before an optimistic saldo write. */
+export function captureOptimisticBalance(): OptimisticBalancePaint {
+  return {
+    accounts,
+    home,
+    movements,
+    accountsDirty,
+    homeDirty,
+    movementsDirty,
+  };
+}
+
+/**
+ * Put the three paints back after a rejected saldo.
+ * applyAccountBalance cannot write a null balance, so a first saldo on an
+ * empty account would otherwise stay on screen until reload.
+ */
+export function undoOptimisticBalance(paint: OptimisticBalancePaint): void {
+  if (paint.home) {
+    rememberHomeSnapshot(paint.home, {
+      dirty: paint.homeDirty,
+      force: true,
+    });
+  }
+  if (paint.movements) {
+    rememberMovementsSnapshot(paint.movements, {
+      dirty: paint.movementsDirty,
+    });
+  }
+  if (paint.accounts) {
+    rememberAccountsSnapshot(paint.accounts, { dirty: paint.accountsDirty });
+  }
+}
+
 export function applyAccountBalance(
   accountId: string,
   balanceMinor: number,
