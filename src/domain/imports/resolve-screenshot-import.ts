@@ -16,6 +16,7 @@ import {
 } from "./bank-app-parsers";
 import type { ExtractionProviderResult } from "./extraction";
 import { resolveReceiptPaidAmountMinor } from "./receipt-total";
+import { warnFotaVisionDrop } from "./fota-vision-log";
 
 export type ResolvedScreenshotImport =
   | {
@@ -229,19 +230,34 @@ function resolveBankAppImport(
             : null,
       }));
 
+  const capturedAt = new Date();
   let parsed = parseBankAppVisionRows(visionRows, {
     institutionHint,
     fullText: combinedText,
+    capturedAt,
   });
 
   if (parsed.length === 0 && combinedText.trim()) {
-    parsed = parseBunqDetailFromText(combinedText);
+    parsed = parseBunqDetailFromText(combinedText, { capturedAt });
   }
 
   const selection = selectImportableBankAppEvents(
     parsed,
     existingFingerprints,
   );
+
+  if (selection.status === "none") {
+    warnFotaVisionDrop({
+      model: meta.model,
+      mode: meta.mode,
+      detectedKind,
+      rows: visionRows.map((row) => ({
+        amountMajor: row.amountMajor,
+        currency: row.currency,
+        occurredAt: row.occurredAt,
+      })),
+    });
+  }
 
   if (selection.status === "ready") {
     const s = selection.selectedBatch[0]!;

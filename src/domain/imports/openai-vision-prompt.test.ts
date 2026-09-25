@@ -13,4 +13,11 @@ describe("vision categoryHint prompt", () => {
       "categoryHint: one of Mat, Transport, Shopping, Boende, Övrigt",
     );
   });
+
+  it("asks for ISO 8601 local time and an ISO currency code", () => {
+    expect(src).toContain("ISO 8601 local time");
+    expect(src).toContain("YYYY-MM-DDTHH:mm");
+    expect(src).toContain("ISO 4217");
+    expect(src).not.toContain("occurredAt as ISO minute");
+  });
 });
