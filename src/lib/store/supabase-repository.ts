@@ -1528,6 +1528,26 @@ export async function latestCheckpointForAccount(
   return data ? mapCheckpoint(data) : null;
 }
 
+/** Earliest ingående saldo for the account. Later SMS tips are not opening dates. */
+export async function openingBalanceVerifiedAt(
+  accountId: string,
+): Promise<string | null> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("balance_checkpoints")
+    .select("verified_at")
+    .eq("user_id", userId)
+    .eq("account_id", accountId)
+    .eq("source", "manual_opening_balance")
+    .order("verified_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return typeof data?.verified_at === "string" ? data.verified_at : null;
+}
+
 async function listPlanItemsUncached(): Promise<PlanItem[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();

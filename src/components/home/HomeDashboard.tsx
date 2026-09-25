@@ -10,6 +10,7 @@ import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { BankMailHemCue } from "@/components/home/BankMailHemCue";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
@@ -223,6 +224,7 @@ export function HomeDashboard({
           </>
         ) : null}
       </header>
+      <BankMailHemCue />
       {isEmpty && checklist?.visible ? <GettingStartedCard view={checklist} /> : null}
       {view.needsAvailableInput ? (
         <AvailableNowCard

@@ -7,10 +7,12 @@ import {
   type SelectImportableResult,
 } from "./bank-parsers";
 import {
+  fotaVisionNoneSummary,
   looksLikeBankAppScreenshot,
   parseBankAppVisionRows,
   parseBunqDetailFromText,
   selectImportableBankAppEvents,
+  warnFotaVisionNone,
   type BankAppEventCandidate,
   type SelectBankAppImportResult,
 } from "./bank-app-parsers";
@@ -229,19 +231,33 @@ function resolveBankAppImport(
             : null,
       }));
 
+  const capturedAt = new Date();
   let parsed = parseBankAppVisionRows(visionRows, {
     institutionHint,
     fullText: combinedText,
+    capturedAt,
   });
 
   if (parsed.length === 0 && combinedText.trim()) {
-    parsed = parseBunqDetailFromText(combinedText);
+    parsed = parseBunqDetailFromText(combinedText, { now: capturedAt });
   }
 
   const selection = selectImportableBankAppEvents(
     parsed,
     existingFingerprints,
   );
+
+  if (selection.status === "none") {
+    warnFotaVisionNone(
+      fotaVisionNoneSummary({
+        model: typeof meta.model === "string" ? meta.model : null,
+        mode: typeof meta.mode === "string" ? meta.mode : null,
+        detectedKind,
+        rows: visionRows,
+        now: capturedAt,
+      }),
+    );
+  }
 
   if (selection.status === "ready") {
     const s = selection.selectedBatch[0]!;
