@@ -109,9 +109,13 @@ function lastDigits(value: string | null, count = 4): string | null {
   return digits.slice(-count).padStart(Math.min(count, digits.length), "0");
 }
 
-/** Only the standalone "Reference no." line — not "Reference no. 1" / "2". */
+/**
+ * Only the standalone "Reference no." line — not "Reference no. 1" / "2".
+ * The label suffix is a lone 1 or 2. The receipt value may itself start
+ * with 1 or 2, so that digit needs a word boundary to count as the label.
+ */
 function matchFinalReferenceNo(text: string): string | null {
-  const m = text.match(/Reference no\.(?!\s*[12])\s*\t?\s*([A-Za-z0-9]+)/i);
+  const m = text.match(/Reference no\.(?!\s*[12]\b)\s*\t?\s*([A-Za-z0-9]+)/i);
   return m ? m[1]!.trim() : null;
 }
 
