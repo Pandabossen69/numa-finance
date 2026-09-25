@@ -108,3 +108,22 @@ export function categoryFromEvents(
   if (raw == null || (typeof raw === "string" && raw.trim() === "")) return "Mat";
   return resolveCategoryFromHint(raw) ?? "Övrigt";
 }
+
+/**
+ * Chip for the review. A receipt often has no event rows, so a top-level
+ * categoryHint (Resor / Travel on an AirAsia image) still maps to Transport.
+ */
+export function categoryForCapturePreview(input: {
+  events?: Array<{ direction: string; categoryHint?: string | null }>;
+  categoryHint?: string | null;
+}): string {
+  if (input.events && input.events.length > 0) {
+    return categoryFromEvents(input.events);
+  }
+  if (input.categoryHint?.trim()) {
+    return categoryFromEvents([
+      { direction: "debit", categoryHint: input.categoryHint },
+    ]);
+  }
+  return "Mat";
+}

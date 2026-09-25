@@ -101,6 +101,39 @@ export function zonedDayAnchorMs(
   return Date.parse(`${zonedDayKey(date, timeZone)}T12:00:00.000Z`);
 }
 
+/** Calendar day (`YYYY-MM-DD`) of an instant in `timeZone`. */
+export function calendarDateInZone(
+  instant: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return zonedDayKey(instant, timeZone);
+}
+
+/**
+ * Keep the clock time from an OCR stamp (or noon) and place it on `ymd`
+ * in `timeZone`. Used when the review date is edited before Bekräfta.
+ */
+export function occurredAtOnCalendarDay(input: {
+  ymd: string;
+  keepTimeFrom?: string | null;
+  timeZone?: string;
+}): string {
+  let hh = "12";
+  let mm = "00";
+  const match = (input.keepTimeFrom ?? "").match(/T(\d{2}):(\d{2})/);
+  if (match) {
+    hh = match[1]!;
+    mm = match[2]!;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.ymd)) {
+    throw new Error("Ogiltigt datum");
+  }
+  return zonedWallTimeToUtcIso(
+    `${input.ymd}T${hh}:${mm}`,
+    input.timeZone ?? DEFAULT_TIMEZONE,
+  );
+}
+
 /**
  * Interpret a naive wall-clock `YYYY-MM-DDTHH:mm[:ss]` as local time in
  * `timeZone` and return an absolute ISO string. Prevents evening Bangkok

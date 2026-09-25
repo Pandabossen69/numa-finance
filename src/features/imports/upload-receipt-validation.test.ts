@@ -15,6 +15,7 @@ vi.mock("@/lib/store/repository", () => ({
 vi.mock("@/lib/observe/report", () => ({ reportError: mocks.report }));
 
 import { uploadReceiptAction } from "./actions";
+import { LIVE_MOVEMENT_ALREADY_SAVED_SV } from "@/domain/imports/candidate-reuse";
 import {
   IMAGE_MIME_MISMATCH_SV,
   INVALID_IMAGE_SV,
@@ -62,8 +63,27 @@ describe("uploadReceiptAction image validation vs OCR errors", () => {
       formWithFile(jpegBytes, "image/jpeg"),
     );
 
-    expect(result).toEqual({ ok: false, error: "storage timeout" });
+    expect(result).toEqual({
+      ok: false,
+      error: "Kunde inte spara bilden. Försök igen.",
+    });
+    expect(result.ok === false && result.error).not.toMatch(/storage timeout/);
     expect(mocks.extract).toHaveBeenCalledOnce();
+    expect(mocks.report).toHaveBeenCalledWith("ocr.upload", boom);
+  });
+
+  it("maps a raw candidate fingerprint collision to Swedish copy and still reports it", async () => {
+    const boom = new Error(
+      'duplicate key value violates unique constraint "numa_candidates_user_fingerprint_unique"',
+    );
+    mocks.extract.mockRejectedValue(boom);
+
+    const result = await uploadReceiptAction(
+      formWithFile(jpegBytes, "image/jpeg"),
+    );
+
+    expect(result).toEqual({ ok: false, error: LIVE_MOVEMENT_ALREADY_SAVED_SV });
+    expect(result.ok === false && result.error).not.toMatch(/duplicate key|unique constraint/);
     expect(mocks.report).toHaveBeenCalledWith("ocr.upload", boom);
   });
 });

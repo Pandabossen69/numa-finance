@@ -14,6 +14,15 @@ export type ReceiptUploadEvent = {
   labelSv: string;
   /** AI-suggested category (one of the app's known categories) when confidently read from the screenshot. */
   categoryHint: string | null;
+  occurredAt?: string | null;
+};
+
+export type CaptureAccountOption = {
+  id: string;
+  name: string;
+  currency: string;
+  isActive: boolean;
+  lastUsedAt: string | null;
 };
 
 export type ReceiptUploadResult = {
@@ -34,6 +43,12 @@ export type ReceiptUploadResult = {
   alreadyKnown: boolean;
   skippedOlderCount: number;
   direction: "debit" | "credit" | null;
+  /** Active and archived accounts the review can choose from. */
+  accounts?: CaptureAccountOption[];
+  /** Hint for a receipt that has no event rows. */
+  categoryHint?: string | null;
+  /** Name used if Bekräfta has to open a new account (Bankapp, bunq, Revolut). */
+  newAccountName?: string | null;
 };
 
 export type ConfirmReceiptInput = {
@@ -52,4 +67,6 @@ export type ConfirmReceiptInput = {
   maskedAccount?: string | null;
   direction?: "debit" | "credit" | null;
   clientMutationId?: string | null;
+  /** YYYY-MM-DD from the review. Null keeps each row's own timestamp. */
+  occurredOn?: string | null;
 };

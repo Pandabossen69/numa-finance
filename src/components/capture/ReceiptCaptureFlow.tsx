@@ -38,8 +38,28 @@ import { ONBOARDING_SV } from "@/features/onboarding/copy";
 import { SV } from "@/features/copy/labels-sv";
 import {
   CAPTURE_CATEGORIES,
-  categoryFromEvents,
+  categoryForCapturePreview,
 } from "@/features/imports/category-hint";
+import {
+  CREATE_CAPTURE_ACCOUNT,
+  chooseCaptureAccount,
+  mergeCaptureAccountSources,
+  type CaptureAccountCandidate,
+} from "@/domain/imports/capture-account";
+import {
+  occurredOnForConfirm,
+  suggestedCaptureDate,
+} from "@/domain/imports/capture-review";
+import {
+  messageMentionsAlreadyKnownCount,
+  presentAlreadyKnownMessage,
+  skippedSavedMovementsMessage,
+} from "@/domain/imports/movement-count-copy";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import {
+  lastAccountsSnapshot,
+  subscribeAccountsSnapshot,
+} from "@/features/home/last-snapshot";
 
 const CATEGORIES = CAPTURE_CATEGORIES;
 
@@ -80,8 +100,13 @@ export function ReceiptCaptureFlow({
     initialPreview,
   );
   const [category, setCategory] = useState<string>(() =>
-    categoryFromEvents(initialPreview?.events),
+    categoryForCapturePreview({
+      events: initialPreview?.events,
+      categoryHint: initialPreview?.categoryHint,
+    }),
   );
+  const [pickedAccountId, setPickedAccountId] = useState<string | null>(null);
+  const [dateOn, setDateOn] = useState("");
   const [amountEditable, setAmountEditable] = useState(
     Boolean(
       initialPreview &&
@@ -93,12 +118,18 @@ export function ReceiptCaptureFlow({
   const [scanning, setScanning] = useState(false);
   const [scanPreviewUrl, setScanPreviewUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const lastUsed = useSyncExternalStore(
     subscribeLastCaptureMethod,
     readLastCaptureMethod,
+    () => null,
+  );
+  const knownAccounts = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
     () => null,
   );
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
@@ -116,7 +147,14 @@ export function ReceiptCaptureFlow({
         initialPreview.importKind !== "bank_sms" &&
           initialPreview.importKind !== "bank_app",
       );
-      setCategory(categoryFromEvents(initialPreview.events));
+      setCategory(
+        categoryForCapturePreview({
+          events: initialPreview.events,
+          categoryHint: initialPreview.categoryHint,
+        }),
+      );
+      setPickedAccountId(null);
+      setDateOn("");
       setError(null);
       setScanning(false);
     } else {
@@ -124,7 +162,19 @@ export function ReceiptCaptureFlow({
       setMode(initialMode);
       setAmountEditable(false);
       setCategory("Mat");
+      setPickedAccountId(null);
+      setDateOn("");
     }
+  }
+
+  function accountsFor(
+    uploaded: readonly CaptureAccountCandidate[] | undefined,
+  ) {
+    return mergeCaptureAccountSources({
+      shell: accounts,
+      known: knownAccounts?.accounts,
+      uploaded,
+    });
   }
 
   const roomBefore = Math.max(0, remainingTodayMinor);
@@ -196,12 +246,20 @@ export function ReceiptCaptureFlow({
         amountMinor: e.amountMinor,
         labelSv: e.labelSv,
         categoryHint: e.categoryHint,
+        occurredAt: e.occurredAt ?? null,
       }));
       // Default the category chip to the AI's read when it matches a known
       // hint (Resor/Travel → Transport). No hint stays on Mat. An unknown
       // hint becomes Övrigt, including a later scan, so a previous hint
       // does not stick and does not fall through to Mat.
-      setCategory(categoryFromEvents(events));
+      setCategory(
+        categoryForCapturePreview({
+          events,
+          categoryHint: data.categoryHint,
+        }),
+      );
+      setPickedAccountId(null);
+      setDateOn("");
       const hasAmount =
         data.suggestedAmountMinor != null || events.length > 0;
       const major =
@@ -259,6 +317,9 @@ export function ReceiptCaptureFlow({
         amountFromScan: hasAmount,
         direction: data.direction ?? events[0]?.direction ?? null,
         events,
+        categoryHint: data.categoryHint ?? null,
+        accounts: data.accounts,
+        newAccountName: data.newAccountName ?? null,
       });
     });
   }
@@ -274,16 +335,30 @@ export function ReceiptCaptureFlow({
       setError("Bilden måste läsas automatiskt — ta en tydligare bild.");
       return;
     }
+    if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
       const isAutoImport =
         preview.importKind === "bank_sms" ||
         preview.importKind === "bank_app";
+      const choice = chooseCaptureAccount({
+        movementCurrency: preview.currency,
+        preselectedAccountId: pickedAccountId ?? accountId,
+        accounts: accountsFor(preview.accounts),
+        newAccountName: preview.newAccountName,
+      });
+      const chosenAccountId = choice.action === "use" ? choice.accountId : null;
+      const suggestedOn = suggestedCaptureDate(
+        preview.events.map((event) => event.occurredAt),
+      );
+      const occurredOn = occurredOnForConfirm({
+        isAutoImport,
+        eventCount: preview.events.length,
+        suggestedOn,
+        editedOn: dateOn || suggestedOn,
+      });
       const result = await confirmReceiptExpenseAction({
-        // Pass the preselected account. The server still refuses a currency
-        // mismatch (SEK must not land on a THB account) and only then opens
-        // a matching-currency account — it must not ignore this id up front.
-        accountId,
+        accountId: chosenAccountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         confirmAllPending: isAutoImport,
@@ -309,6 +384,7 @@ export function ReceiptCaptureFlow({
               : "receipt_camera",
         direction: preview.direction,
         fromOnboarding,
+        occurredOn,
       });
       if (!result.ok) {
         setError(result.error);
@@ -514,16 +590,36 @@ export function ReceiptCaptureFlow({
   }
 
   if (preview.alreadyKnown || preview.ocrStatus === "all_known") {
+    const knownMessage = presentAlreadyKnownMessage({
+      listedCount: preview.events.length,
+      serverMessage: preview.message,
+    });
     return (
       <div className="animate-rise space-y-8">
         <PreviewThumb src={preview.previewUrl} />
         <div className="space-y-2 text-center">
           <p className="text-xl font-semibold tracking-tight">Inget nytt</p>
           <p className="mx-auto max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-            {preview.message ??
-              "Det här finns redan sparat i NUMA. Vänta på nästa notis eller ny utgift."}
+            {knownMessage}
           </p>
         </div>
+        {preview.events.length > 0 ? (
+          <ul className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+            {preview.events.map((event) => (
+              <li key={event.candidateId} className="numa-money-line py-3.5">
+                <span className="numa-money-line-label text-sm font-semibold text-[var(--numa-ink)]">
+                  {event.labelSv?.includes("·")
+                    ? event.labelSv.split("·").slice(1).join("·").trim()
+                    : event.labelSv || "Rörelse"}
+                </span>
+                <span className="numa-money-line-amt money text-lg font-semibold text-[var(--numa-ink)]">
+                  {event.direction === "credit" ? "+" : "−"}
+                  {formatMoney(money(event.amountMinor, preview.currency))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <button
           type="button"
           className="numa-tap mx-auto block text-sm font-semibold text-[var(--numa-accent)]"
@@ -555,6 +651,22 @@ export function ReceiptCaptureFlow({
       ? "text-[var(--numa-alarm)]"
       : "text-[var(--numa-positive)]";
   const eventCount = preview.events.length;
+  const captureAccounts = accountsFor(preview.accounts);
+  const accountChoice = chooseCaptureAccount({
+    movementCurrency: preview.currency,
+    preselectedAccountId: pickedAccountId ?? accountId,
+    accounts: captureAccounts,
+    newAccountName: preview.newAccountName,
+  });
+  const sameCurrencyAccounts = captureAccounts.filter(
+    (row) =>
+      row.isActive &&
+      row.currency.trim().toUpperCase() === preview.currency.trim().toUpperCase(),
+  );
+  const suggestedOn = suggestedCaptureDate(
+    preview.events.map((event) => event.occurredAt),
+  );
+  const dateValue = dateOn || suggestedOn;
   const creditCount = preview.events.filter((e) => e.direction === "credit")
     .length;
   const debitCount = preview.events.filter((e) => e.direction === "debit")
@@ -591,7 +703,12 @@ export function ReceiptCaptureFlow({
           </p>
           {preview.message ? (
             <p className="mx-auto max-w-[34ch] pt-1 text-sm text-[var(--numa-muted)]">
-              {preview.message}
+              {messageMentionsAlreadyKnownCount(preview.message)
+                ? presentAlreadyKnownMessage({
+                    listedCount: eventCount,
+                    serverMessage: preview.message,
+                  })
+                : preview.message}
             </p>
           ) : null}
         </div>
@@ -688,7 +805,7 @@ export function ReceiptCaptureFlow({
 
       {isAutoImport && preview.skippedOlderCount > 0 ? (
         <p className="text-xs text-[var(--numa-faint)]">
-          {preview.skippedOlderCount} redan sparade hoppades över.
+          {skippedSavedMovementsMessage(preview.skippedOlderCount)}
         </p>
       ) : null}
 
@@ -713,6 +830,58 @@ export function ReceiptCaptureFlow({
           className="min-h-11 w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
         />
       ) : null}
+
+      <div className="space-y-4">
+        <label className="block">
+          <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
+            Konto
+          </span>
+          <select
+            aria-label="Konto"
+            value={
+              accountChoice.action === "use"
+                ? accountChoice.accountId
+                : CREATE_CAPTURE_ACCOUNT
+            }
+            onChange={(e) => {
+              const next = e.target.value;
+              setPickedAccountId(
+                next === CREATE_CAPTURE_ACCOUNT ? null : next,
+              );
+            }}
+            className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
+          >
+            {sameCurrencyAccounts.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name} · {row.currency}
+              </option>
+            ))}
+            {accountChoice.action === "create" ? (
+              <option value={CREATE_CAPTURE_ACCOUNT}>
+                {accountChoice.noticeSv}
+              </option>
+            ) : null}
+          </select>
+        </label>
+        {accountChoice.action === "create" ? (
+          <p className="text-sm text-[var(--numa-ink)]" role="status">
+            {accountChoice.noticeSv}
+          </p>
+        ) : null}
+        <label className="block">
+          <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
+            Datum
+          </span>
+          <input
+            type="date"
+            aria-label="Datum"
+            value={dateValue}
+            onChange={(e) => setDateOn(e.target.value)}
+            className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
+            required
+          />
+        </label>
+      </div>
 
       {(!isAutoImport && !isCredit) || (isAutoImport && debitCount > 0) ? (
         <div className="space-y-2">

@@ -153,6 +153,43 @@ describe("bank app bunq-style", () => {
     );
   });
 
+  it("accepts short Swedish months, English months, day-first and relative times", () => {
+    const captured = new Date("2026-09-25T03:00:00.000Z");
+    const at = (raw: string) =>
+      parseBankAppOccurredAt(raw, { now: captured, timeZone: "Asia/Bangkok" });
+    expect(at("23 jul 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23 jul. 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("5 sep. 2026 08:01")).toBe("2026-09-05T08:01:00+07:00");
+    expect(at("23 okt 2026 12:00")).toBe("2026-10-23T12:00:00+07:00");
+    expect(at("1 maj 2026 09:00")).toBe("2026-05-01T09:00:00+07:00");
+    expect(at("23 Jul 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23 July 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23 Sept 2026 16:46")).toBe("2026-09-23T16:46:00+07:00");
+    expect(at("23/07/2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23.07.2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23-07-2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("2026-07-23 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("Idag 16:46")).toBe("2026-09-25T16:46:00+07:00");
+    expect(at("Igår 09:12")).toBe("2026-09-24T09:12:00+07:00");
+    expect(at("Today 16:46")).toBe("2026-09-25T16:46:00+07:00");
+    expect(at("Yesterday 09:12")).toBe("2026-09-24T09:12:00+07:00");
+    expect(at("16:46")).toBe("2026-09-25T16:46:00+07:00");
+    const rows = parseBankAppVisionRows(
+      [
+        {
+          merchant: "ICA",
+          direction: "debit",
+          amountMajor: 89.5,
+          currency: "SEK",
+          occurredAt: "23 jul. 2026 16:46",
+        },
+      ],
+      { capturedAt: captured },
+    );
+    expect(rows).toHaveLength(1);
+    expect(selectImportableBankAppEvents(rows, []).status).toBe("ready");
+  });
+
   it("uses EUR card amount and stable fingerprints across detail/list", () => {
     const rows = parseBankAppVisionRows(
       [
@@ -243,6 +280,44 @@ describe("bank app bunq-style", () => {
     const known = first.selectedBatch.map((e) => e.fingerprint.fingerprint);
     const again = selectImportableBankAppEvents(rows, known);
     expect(again.status).toBe("all_known");
+    if (again.status !== "all_known") return;
+    expect(again.messageSv).toBe("Den här rörelsen finns redan.");
+  });
+
+  it("counts every known row in the already-saved sentence", () => {
+    const rows = parseBankAppVisionRows([
+      {
+        merchant: "ICA",
+        direction: "debit",
+        amountMajor: 89.5,
+        currency: "SEK",
+        occurredAt: "2026-09-25T10:00",
+      },
+      {
+        merchant: "Pressbyrån",
+        direction: "debit",
+        amountMajor: 25,
+        currency: "SEK",
+        occurredAt: "2026-09-25T11:00",
+      },
+      {
+        merchant: "SL",
+        direction: "debit",
+        amountMajor: 42,
+        currency: "SEK",
+        occurredAt: "2026-09-25T12:00",
+      },
+    ]);
+    const first = selectImportableBankAppEvents(rows, []);
+    expect(first.status).toBe("ready");
+    if (first.status !== "ready") return;
+    const known = first.all.map((e) => e.fingerprint.fingerprint);
+    const again = selectImportableBankAppEvents(rows, known);
+    expect(again.status).toBe("all_known");
+    if (again.status !== "all_known") return;
+    expect(again.all).toHaveLength(3);
+    expect(again.messageSv).toBe("Alla 3 rörelser finns redan.");
+    expect(again.messageSv).not.toContain("Alla 2");
   });
 
   it("keeps −54,12 SEK in kronor when vision labels the row EUR", () => {

@@ -70,6 +70,8 @@ type VisionJson = {
   currency?: string | null;
   description?: string | null;
   merchant?: string | null;
+  /** Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. */
+  categoryHint?: string | null;
   confidence?: number | null;
 };
 
@@ -389,12 +391,12 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Expert OCR for European bank-app screenshots (bunq, Revolut).",
               "Handle DETAIL screens (one payment) and LIST screens (Senaste transaktioner).",
               "Swedish UI OK. Comma decimals: 6,60 € → amountMajor 6.60 currency EUR.",
-              "amountMajor/currency = what left the card. Keep SEK/kr as SEK and USD as USD — never rewrite them as EUR. NEVER put a THB merchant amount there.",
+              "amountMajor/currency = what left the card. currency and originalCurrency are ISO 4217 codes (EUR, SEK, USD, THB), never a symbol. Keep SEK/kr as SEK and USD as USD — never rewrite them as EUR. NEVER put a THB merchant amount there.",
               "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB only.",
-              "occurredAt as ISO minute: 2026-07-23T16:46 from '23 juli 2026 16:46'.",
+              "occurredAt is ISO 8601 local time without a timezone suffix, YYYY-MM-DDTHH:mm, for example 2026-07-23T16:46 from '23 juli 2026 16:46'.",
               "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
               "failed=true OR strikethrough=true for Failed/Expired/misslyckade (do NOT treat as spend).",
-              "categoryHint: one of Mat, Transport, Shopping, Boende, Övrigt — pick the closest by merchant type (e.g. restaurant/grocery→Mat, taxi/Grab/Bolt/fuel→Transport, retail/webshop→Shopping, rent/utilities→Boende); omit (null) if genuinely unsure. Never invent a category not in that list.",
+              "categoryHint: Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. If the row or image says Resor, Travel, or Transport (airline, AirAsia, flight, train), return that word — Resor or Travel, never null and never Mat. Taxi/Grab/Bolt/fuel → Transport, restaurant/grocery → Mat, retail/webshop → Shopping, rent/utilities → Boende. Never invent a category outside that set.",
               "JSON: kind=bank_app_detail|bank_app_list, institutionHint, fullText, transactions[{merchant,direction,amountMajor,currency,originalAmountMajor,originalCurrency,occurredAt,categoryHint,failed,strikethrough,statusText,rawText}], confidence.",
               "Never invent amounts. Skip UI chrome (Tillbaka, Begär betalning, Dela).",
             ].join(" ")
@@ -403,7 +405,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
               "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[]. Card amount = EUR when shown.",
               "Else receipt total → kind=receipt.",
-              "JSON: kind, institutionHint, fullText, messages[…], transactions[…], amountMajor, currency, confidence.",
+              "Receipts and travel screens include categoryHint: Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. An airline ticket or the word Resor/Travel/Transport (AirAsia) is Resor or Travel, never Mat and never null.",
+              "JSON: kind, institutionHint, fullText, categoryHint, messages[…], transactions[…], amountMajor, currency, merchant, confidence.",
             ].join(" ");
 
     const userText =
