@@ -25,6 +25,7 @@ import {
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
 } from "@/domain/finance";
+import { uploadErrorMessageSv } from "@/domain/imports/candidate-reuse";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { SAVED_REFRESH_PENDING_SV } from "@/features/finance/mutation-refresh";
 
@@ -76,8 +77,9 @@ export async function uploadReceiptAction(
     }
     return {
       ok: false,
-      error:
-        error instanceof Error ? error.message : "Kunde inte ladda upp bilden",
+      error: isExpectedImageValidationError(error)
+        ? error.message
+        : uploadErrorMessageSv(error),
     };
   }
 }

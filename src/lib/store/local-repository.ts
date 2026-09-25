@@ -46,6 +46,11 @@ import {
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
+import {
+  LIVE_MOVEMENT_ALREADY_SAVED_SV,
+  candidateIdsToRejectAfterVoid,
+  stageCandidateFingerprintWrite,
+} from "@/domain/imports/candidate-reuse";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { observationsDueForPurge } from "@/features/imports/observation-retention";
@@ -1055,6 +1060,12 @@ export async function voidTransaction(id: string): Promise<CanonicalTransaction>
       row.status = "voided";
       row.updatedAt = ts;
     }
+    const rejectIds = new Set(candidateIdsToRejectAfterVoid(s.candidates, ids));
+    for (const candidate of s.candidates) {
+      if (!rejectIds.has(candidate.id)) continue;
+      candidate.status = "rejected";
+      candidate.updatedAt = ts;
+    }
     found = s.transactions.find((t) => t.id === id) ?? null;
   });
   if (!found) throw new Error("Rörelsen hittades inte");
@@ -1334,8 +1345,19 @@ export async function uploadReceiptAndExtract(input: {
           createdAt: ts,
           updatedAt: ts,
         };
-        s.candidates.push(cand);
-        createdCandidates.push(cand);
+        const staged = stageCandidateFingerprintWrite({
+          rows: s.candidates,
+          transactions: s.transactions.map((tx) => ({
+            id: tx.id,
+            status: tx.status,
+          })),
+          incoming: cand,
+        });
+        if ("error" in staged) {
+          throw new Error(LIVE_MOVEMENT_ALREADY_SAVED_SV);
+        }
+        s.candidates = staged.rows;
+        createdCandidates.push(staged.written);
       });
     } else if (hasSingle) {
       const cand: ExtractedTransactionCandidate = {
@@ -1372,8 +1394,19 @@ export async function uploadReceiptAndExtract(input: {
         createdAt: ts,
         updatedAt: ts,
       };
-      s.candidates.push(cand);
-      createdCandidates.push(cand);
+      const staged = stageCandidateFingerprintWrite({
+        rows: s.candidates,
+        transactions: s.transactions.map((tx) => ({
+          id: tx.id,
+          status: tx.status,
+        })),
+        incoming: cand,
+      });
+      if ("error" in staged) {
+        throw new Error(LIVE_MOVEMENT_ALREADY_SAVED_SV);
+      }
+      s.candidates = staged.rows;
+      createdCandidates.push(staged.written);
     }
   });
 

@@ -48,6 +48,11 @@ import {
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
+import {
+  LIVE_MOVEMENT_ALREADY_SAVED_SV,
+  UPLOAD_SAVE_FAILED_SV,
+  decideCandidatePlacement,
+} from "@/domain/imports/candidate-reuse";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
 import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
 import { rankForOnTrackDays } from "@/domain/gamification";
@@ -1326,6 +1331,13 @@ export async function voidTransaction(id: string): Promise<CanonicalTransaction>
     .in("id", ids);
   if (updateError) throw new Error(updateError.message);
 
+  const { error: candidateError } = await supabase
+    .from("extracted_transaction_candidates")
+    .update({ status: "rejected", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .in("canonical_transaction_id", ids);
+  if (candidateError) throw new Error(candidateError.message);
+
   const { data: voided, error: afterError } = await supabase
     .from("transactions")
     .select("*")
@@ -1949,6 +1961,127 @@ export async function recordOnTrackDayIfNeeded(
   return mapUserProgress(updated);
 }
 
+type CandidateWriteRow = {
+  extraction_run_id: string;
+  observation_id: string;
+  user_id: string;
+  direction: string | null;
+  amount_minor: number | null;
+  currency: string | null;
+  balance_after_minor: number | null;
+  occurred_at: string | null;
+  description: string | null;
+  confidence: number | null;
+  fingerprint: string | null;
+  status: "needs_review";
+  raw_payload: Record<string, unknown>;
+};
+
+async function reuseDeadCandidate(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  fingerprint: string,
+  row: CandidateWriteRow,
+): Promise<ExtractedTransactionCandidate | null> {
+  const { data: matches, error } = await supabase
+    .from("extracted_transaction_candidates")
+    .select("id, status, canonical_transaction_id")
+    .eq("user_id", userId)
+    .eq("fingerprint", fingerprint);
+  if (error) throw new Error(error.message);
+
+  const canonicalIds = [
+    ...new Set(
+      (matches ?? [])
+        .map((match) => match.canonical_transaction_id as string | null)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const statusById = new Map<string, string>();
+  if (canonicalIds.length > 0) {
+    const { data: txs, error: txError } = await supabase
+      .from("transactions")
+      .select("id, status")
+      .eq("user_id", userId)
+      .in("id", canonicalIds);
+    if (txError) throw new Error(txError.message);
+    for (const tx of txs ?? []) {
+      statusById.set(tx.id as string, tx.status as string);
+    }
+  }
+
+  const decision = decideCandidatePlacement({
+    matches: (matches ?? []).map((match) => {
+      const canonicalTransactionId =
+        (match.canonical_transaction_id as string | null) ?? null;
+      return {
+        id: match.id as string,
+        status: match.status as string,
+        canonicalTransactionId,
+        canonicalStatus: canonicalTransactionId
+          ? (statusById.get(canonicalTransactionId) ?? null)
+          : null,
+      };
+    }),
+  });
+
+  if (decision.action === "insert") return null;
+  if (decision.action === "live_duplicate") {
+    throw new Error(LIVE_MOVEMENT_ALREADY_SAVED_SV);
+  }
+
+  const { data, error: updateError } = await supabase
+    .from("extracted_transaction_candidates")
+    .update({
+      extraction_run_id: row.extraction_run_id,
+      observation_id: row.observation_id,
+      direction: row.direction,
+      amount_minor: row.amount_minor,
+      currency: row.currency,
+      balance_after_minor: row.balance_after_minor,
+      occurred_at: row.occurred_at,
+      description: row.description,
+      confidence: row.confidence,
+      fingerprint: row.fingerprint,
+      status: "needs_review",
+      canonical_transaction_id: null,
+      raw_payload: row.raw_payload,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("id", decision.candidateId)
+    .select("*")
+    .single();
+  if (updateError) throw new Error(updateError.message);
+  return mapCandidate(data);
+}
+
+async function saveExtractedCandidate(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+  row: CandidateWriteRow,
+): Promise<ExtractedTransactionCandidate> {
+  const fingerprint = row.fingerprint?.trim() || null;
+  if (fingerprint) {
+    const reused = await reuseDeadCandidate(supabase, userId, fingerprint, row);
+    if (reused) return reused;
+  }
+
+  const { data, error } = await supabase
+    .from("extracted_transaction_candidates")
+    .insert(row)
+    .select("*")
+    .single();
+  if (!error && data) return mapCandidate(data);
+  if (error && fingerprint && isUniqueViolationMessage(error.message)) {
+    const reused = await reuseDeadCandidate(supabase, userId, fingerprint, row);
+    if (reused) return reused;
+    throw new Error(LIVE_MOVEMENT_ALREADY_SAVED_SV);
+  }
+  if (error) throw new Error(error.message);
+  throw new Error(UPLOAD_SAVE_FAILED_SV);
+}
+
 export async function uploadReceiptAndExtract(input: {
   fileName: string;
   mimeType: string;
@@ -2107,9 +2240,7 @@ export async function uploadReceiptAndExtract(input: {
       if (event.amountMinor == null || !event.direction || !event.fingerprint) {
         continue;
       }
-      const { data: candRow, error: candError } = await supabase
-        .from("extracted_transaction_candidates")
-        .insert({
+      const candRow = await saveExtractedCandidate(supabase, userId, {
           extraction_run_id: runRow.id,
           observation_id: observation.id,
           user_id: userId,
@@ -2156,16 +2287,11 @@ export async function uploadReceiptAndExtract(input: {
                 ? event.categoryHint
                 : null,
           },
-        })
-        .select("*")
-        .single();
-      if (candError) throw new Error(candError.message);
-      createdCandidates.push(mapCandidate(candRow));
+        });
+      createdCandidates.push(candRow);
     }
   } else if (hasSingle) {
-    const { data: candRow, error: candError } = await supabase
-      .from("extracted_transaction_candidates")
-      .insert({
+    const candRow = await saveExtractedCandidate(supabase, userId, {
         extraction_run_id: runRow.id,
         observation_id: observation.id,
         user_id: userId,
@@ -2194,11 +2320,8 @@ export async function uploadReceiptAndExtract(input: {
               ? extraction.candidates[0].rawPayload.categoryHint
               : null,
         },
-      })
-      .select("*")
-      .single();
-    if (candError) throw new Error(candError.message);
-    createdCandidates.push(mapCandidate(candRow));
+      });
+    createdCandidates.push(candRow);
   }
 
   const candidate = createdCandidates[0] ?? null;
