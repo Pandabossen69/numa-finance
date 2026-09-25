@@ -44,6 +44,8 @@ export type CapturePreview = {
   accountName?: string | null;
   occurredAt?: string | null;
   isWalletTopUp?: boolean;
+  /** Earliest manual_opening_balance for the preselected account. */
+  openingBalanceAt?: string | null;
 };
 
 function minorToInput(minor: number): string {
@@ -146,6 +148,7 @@ function buildBankMailPreview(input: {
   observation: Pick<SourceObservation, "id" | "kind" | "status" | "notes">;
   candidates: ExtractedTransactionCandidate[];
   fallbackCurrency: CurrencyCode;
+  openingBalanceAt?: string | null;
 }): CapturePreview | null {
   const pending = input.candidates
     .filter((c) => c.status === "needs_review" && usableRow(c))
@@ -183,6 +186,7 @@ function buildBankMailPreview(input: {
     accountName: payloadString(row.rawPayload, "accountName"),
     occurredAt: row.occurredAt,
     isWalletTopUp: row.rawPayload?.isWalletTopUp === true,
+    openingBalanceAt: input.openingBalanceAt ?? null,
   };
 }
 
@@ -195,6 +199,7 @@ export function buildCapturePreview(input: {
   candidates: ExtractedTransactionCandidate[];
   previewUrl: string | null;
   fallbackCurrency: CurrencyCode;
+  openingBalanceAt?: string | null;
 }): CapturePreview | null {
   if (input.observation.kind === "bank_mail") {
     return buildBankMailPreview(input);

@@ -10,6 +10,8 @@
  *
  * --dry-run prints the JSON body and does not send it.
  * The token is read from BANK_MAIL_INGEST_TOKEN and is never printed.
+ * When VERCEL_AUTOMATION_BYPASS_SECRET is set, the request also sends
+ * x-vercel-protection-bypass. The secret is never printed or hardcoded.
  */
 
 import { readFileSync } from "node:fs";
@@ -29,7 +31,11 @@ Flaggor:
   --account-id   kontot som redan är valt (krävs)
   --url          full URL till routen (krävs, ingen förvald adress)
   --message-id   om filen saknar Message-ID
-  --dry-run      skriv JSON, posta inte`);
+  --dry-run      skriv JSON, posta inte
+
+Miljö:
+  BANK_MAIL_INGEST_TOKEN              krävs vid post
+  VERCEL_AUTOMATION_BYPASS_SECRET     valfri, skickas som x-vercel-protection-bypass`);
 }
 
 function readArg(argv, name) {
@@ -42,6 +48,19 @@ function readArg(argv, name) {
 
 function unfold(headers) {
   return headers.replace(/\r?\n[ \t]+/g, " ");
+}
+
+/** @param {{ BANK_MAIL_INGEST_TOKEN?: string, VERCEL_AUTOMATION_BYPASS_SECRET?: string }} env @returns {Record<string, string>} */
+export function buildIngestHeaders(env) {
+  const token = env.BANK_MAIL_INGEST_TOKEN?.trim() ?? "";
+  /** @type {Record<string, string>} */
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  const bypass = env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+  if (bypass) headers["x-vercel-protection-bypass"] = bypass;
+  return headers;
 }
 
 export function parseMailFile(text, filename, messageIdFlag) {
@@ -121,10 +140,7 @@ async function main() {
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
+    headers: buildIngestHeaders(process.env),
     body: JSON.stringify(payload),
   });
   const responseText = await response.text();

@@ -3,6 +3,7 @@ import {
   getObservationMediaUrl,
   getProfile,
   listObservationCandidates,
+  openingBalanceVerifiedAt,
 } from "@/lib/store/repository";
 import { buildCapturePreview, type CapturePreview } from "./capture-preview";
 import {
@@ -28,6 +29,20 @@ export async function loadCaptureResume(observationId: string): Promise<{
     getProfile(),
   ]);
 
+  let openingBalanceAt: string | null = null;
+  if (observation.kind === "bank_mail") {
+    const accountId = candidates
+      .map((candidate) => candidate.rawPayload?.accountId)
+      .find((id): id is string => typeof id === "string" && id.length > 0);
+    if (accountId) {
+      try {
+        openingBalanceAt = await openingBalanceVerifiedAt(accountId);
+      } catch {
+        openingBalanceAt = null;
+      }
+    }
+  }
+
   return {
     mode: modeForObservation(observation),
     preview: buildCapturePreview({
@@ -35,6 +50,7 @@ export async function loadCaptureResume(observationId: string): Promise<{
       candidates,
       previewUrl,
       fallbackCurrency: profile.primaryCurrency,
+      openingBalanceAt,
     }),
   };
 }

@@ -11,6 +11,11 @@ import {
   BANK_MAIL_SOURCE_LABEL,
   bankMailAccountLabel,
 } from "@/features/imports/bank-mail-label";
+import { bankMailDateNotices } from "@/features/imports/bank-mail-notices";
+import {
+  bankMailSavedToast,
+  publishBankMailSavedToast,
+} from "@/features/imports/bank-mail-toast";
 import { goHomeInstant } from "@/lib/nav/instant";
 
 export function BankMailConfirm({
@@ -42,6 +47,14 @@ export function BankMailConfirm({
   const when = preview.occurredAt
     ? formatListDateSv(preview.occurredAt, DEFAULT_TIMEZONE, { withTime: true })
     : null;
+  const notices = bankMailDateNotices({
+    occurredAt: preview.occurredAt,
+    openingBalanceAt: preview.openingBalanceAt,
+  });
+  const amountLabel =
+    amountMinor != null
+      ? `−${formatMoney(money(amountMinor, preview.currency))}`
+      : null;
 
   function onConfirm() {
     if (!preview || preview.alreadyKnown) return;
@@ -54,6 +67,15 @@ export function BankMailConfirm({
       if (!result.ok) {
         setError(result.error);
         return;
+      }
+      if (amountLabel) {
+        publishBankMailSavedToast(
+          bankMailSavedToast({
+            merchant: preview.description || "Betalning",
+            amountLabel,
+            accountName,
+          }),
+        );
       }
       goHomeInstant(router);
     });
@@ -78,6 +100,11 @@ export function BankMailConfirm({
         ) : null}
         {when ? <p className="text-sm text-[var(--numa-muted)]">{when}</p> : null}
         <p className="text-sm text-[var(--numa-muted)]">{accountName}</p>
+        {notices.map((notice) => (
+          <p key={notice} className="text-sm text-[var(--numa-muted)]">
+            {notice}
+          </p>
+        ))}
       </div>
 
       {preview.alreadyKnown ? (

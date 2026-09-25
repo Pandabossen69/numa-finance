@@ -12,6 +12,10 @@ import { ImporteraViewLoading } from "@/components/mer/MerViewLoading";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
 import { fotaHrefForObservation } from "@/features/imports/capture-resume";
 import {
+  bankMailConfirmHeading,
+  splitImporteraRows,
+} from "@/features/imports/bank-mail-queue";
+import {
   lastImporteraRows,
   rememberImporteraRows,
   type ImporteraRow,
@@ -29,6 +33,8 @@ export function ImporteraScreen({
 
   if (!observations) return <ImporteraViewLoading />;
 
+  const { pendingMail, rest } = splitImporteraRows(observations);
+
   return (
     <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
       <MerPageHeader back title="Tidigare bilder" />
@@ -40,8 +46,16 @@ export function ImporteraScreen({
           </MerListGroup>
         </MerSection>
 
+        {pendingMail.length > 0 ? (
+          <MerSection title={bankMailConfirmHeading(pendingMail.length)}>
+            <div id="att-bekrafta">
+              <ObservationList rows={pendingMail} prefetch={prefetch} />
+            </div>
+          </MerSection>
+        ) : null}
+
         <MerSection title="Senaste">
-          {observations.length === 0 ? (
+          {rest.length === 0 ? (
             <MerListGroup>
               <MerListRow>
                 <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
@@ -50,55 +64,65 @@ export function ImporteraScreen({
               </MerListRow>
             </MerListGroup>
           ) : (
-            <MerListGroup>
-              {observations.map((o) => {
-                const status = statusMeta(o.status);
-                const resumeHref = fotaHrefForObservation(o);
-                return (
-                  <MerListRow key={o.id} className="space-y-1.5 py-3.5">
-                    <div className="numa-money-line items-start">
-                      <p className="numa-money-line-label text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
-                        {kindLabel(o.kind)}
-                      </p>
-                      <span
-                        className={`numa-status-chip text-[11px] font-medium ${status.className}`}
-                      >
-                        {status.label}
-                      </span>
-                    </div>
-                    <p className="text-[12px] text-[var(--numa-faint)]">
-                      {formatListDateSv(o.createdAt, DEFAULT_TIMEZONE, {
-                        withTime: true,
-                      })}
-                    </p>
-                    {o.notes ? (
-                      <p className="text-sm leading-snug text-[var(--numa-muted)]">
-                        {o.notes}
-                      </p>
-                    ) : null}
-                    {o.status === "needs_review" || o.status === "failed" ? (
-                      <p className="pt-1">
-                        <Link
-                          href={resumeHref}
-                          prefetch
-                          onMouseEnter={() => prefetch(resumeHref)}
-                          onFocus={() => prefetch(resumeHref)}
-                          className="numa-tap text-sm font-semibold text-[var(--numa-accent)]"
-                        >
-                          {o.status === "failed"
-                            ? "Fota igen →"
-                            : "Fortsätt i + →"}
-                        </Link>
-                      </p>
-                    ) : null}
-                  </MerListRow>
-                );
-              })}
-            </MerListGroup>
+            <ObservationList rows={rest} prefetch={prefetch} />
           )}
         </MerSection>
       </div>
     </div>
+  );
+}
+
+function ObservationList({
+  rows,
+  prefetch,
+}: {
+  rows: ImporteraRow[];
+  prefetch: (href: string) => void;
+}) {
+  return (
+    <MerListGroup>
+      {rows.map((o) => {
+        const status = statusMeta(o.status);
+        const resumeHref = fotaHrefForObservation(o);
+        return (
+          <MerListRow key={o.id} className="space-y-1.5 py-3.5">
+            <div className="numa-money-line items-start">
+              <p className="numa-money-line-label text-[15px] font-medium tracking-tight text-[var(--numa-ink)]">
+                {kindLabel(o.kind)}
+              </p>
+              <span
+                className={`numa-status-chip text-[11px] font-medium ${status.className}`}
+              >
+                {status.label}
+              </span>
+            </div>
+            <p className="text-[12px] text-[var(--numa-faint)]">
+              {formatListDateSv(o.createdAt, DEFAULT_TIMEZONE, {
+                withTime: true,
+              })}
+            </p>
+            {o.notes ? (
+              <p className="text-sm leading-snug text-[var(--numa-muted)]">
+                {o.notes}
+              </p>
+            ) : null}
+            {o.status === "needs_review" || o.status === "failed" ? (
+              <p className="pt-1">
+                <Link
+                  href={resumeHref}
+                  prefetch
+                  onMouseEnter={() => prefetch(resumeHref)}
+                  onFocus={() => prefetch(resumeHref)}
+                  className="numa-tap text-sm font-semibold text-[var(--numa-accent)]"
+                >
+                  {o.status === "failed" ? "Fota igen →" : "Fortsätt i + →"}
+                </Link>
+              </p>
+            ) : null}
+          </MerListRow>
+        );
+      })}
+    </MerListGroup>
   );
 }
 

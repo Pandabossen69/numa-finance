@@ -1877,6 +1877,19 @@ export function latestCheckpointForAccount(
   return list[0] ?? null;
 }
 
+export async function openingBalanceVerifiedAt(
+  accountId: string,
+): Promise<string | null> {
+  const store = await readStore();
+  const list = store.checkpoints
+    .filter(
+      (row) =>
+        row.accountId === accountId && row.source === "manual_opening_balance",
+    )
+    .sort((a, b) => Date.parse(a.verifiedAt) - Date.parse(b.verifiedAt));
+  return list[0]?.verifiedAt ?? null;
+}
+
 export async function listPlanItems(): Promise<PlanItem[]> {
   const store = await readStore();
   return [...(store.planItems ?? [])]

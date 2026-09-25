@@ -114,9 +114,11 @@ describe("confirmation queue label", () => {
       candidates: [candidate],
       previewUrl: null,
       fallbackCurrency: "THB",
+      openingBalanceAt: "2026-08-01T00:00:00.000Z",
     });
 
     expect(preview?.importKind).toBe("bank_mail");
+    expect(preview?.openingBalanceAt).toBe("2026-08-01T00:00:00.000Z");
     expect(preview?.sourceLabel).toBe("Bangkok Bank-mejl");
     expect(preview?.preselectedAccountId).toBe(ACCOUNT);
     expect(preview?.accountName).toBe("Bangkok Bank");
