@@ -100,6 +100,20 @@ describe("last-known persist", () => {
     expect(document.cookie).not.toContain(`${LAST_HOME_COOKIE}=`);
   });
 
+  it("can clear persist and keep the slim last-home cookie (SPEC H)", () => {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: memoryStorage(),
+    });
+    mockDocumentCookie();
+    writePersistedLastKnown(payload());
+    expect(document.cookie).toContain(LAST_HOME_COOKIE);
+    clearPersistedLastKnown({ keepHomeCookie: true });
+    expect(readPersistedLastKnown()).toBeNull();
+    expect(document.cookie).toContain(LAST_HOME_COOKIE);
+    expect(document.cookie).toContain("400");
+  });
+
   it("writes numa.lastHome.v1 even when localStorage is unavailable (SPEC 6b)", () => {
     mockDocumentCookie();
     // No localStorage — previous path returned before cookie write.

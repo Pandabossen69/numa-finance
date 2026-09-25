@@ -405,10 +405,16 @@ export function bindSessionOwner(userId: string) {
   sessionOwnerId = userId;
 }
 
-export function clearClientSessionCaches() {
+export function clearClientSessionCaches(options?: {
+  keepHomeCookie?: boolean;
+}) {
+  // Pause persist so wipe's emit cannot rewrite the cookie to empty
+  // before keepHomeCookie is applied (SPEC H same-user logout).
+  persistPaused = true;
   wipeSessionCaches();
   sessionOwnerId = null;
-  clearPersistedLastKnown();
+  clearPersistedLastKnown({ keepHomeCookie: options?.keepHomeCookie === true });
+  persistPaused = false;
 }
 
 /**

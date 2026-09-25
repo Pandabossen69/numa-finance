@@ -87,11 +87,13 @@ describe("sign-in next path", () => {
     expect(actions).toContain("nextPath: state.nextPath");
     expect(actions).toContain("clearOnboardingCookie");
     expect(actions).toContain("discardLastHomeCookieIfNotUser(userId)");
-    expect(actions).toContain("clearLastHomeCookie");
     const signOut = actions.slice(actions.indexOf("export async function signOutAction"));
-    expect(signOut).toContain("clearLastHomeCookie");
-    expect(signOut.indexOf("clearLastHomeCookie")).toBeLessThan(
-      signOut.indexOf("redirect("),
+    expect(signOut).not.toContain("clearLastHomeCookie");
+    expect(signOut).toContain("clearOnboardingCookie");
+    const signOutButton = readFileSync(
+      new URL("./SignOutButton.tsx", import.meta.url),
+      "utf8",
     );
+    expect(signOutButton).toContain("clearClientSessionCaches({ keepHomeCookie: true })");
   });
 });
