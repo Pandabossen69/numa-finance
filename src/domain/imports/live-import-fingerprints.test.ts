@@ -56,7 +56,7 @@ describe("liveImportFingerprints", () => {
     expect(afterLive.status).toBe("all_known");
     if (afterLive.status !== "all_known") return;
     expect(afterLive.messageSv).toBe(
-      "Den här transaktionen finns redan (25 sep, 89,50 kr).",
+      "Den här transaktionen finns redan (ICA, 89,50 kr, 25 sep).",
     );
   });
 

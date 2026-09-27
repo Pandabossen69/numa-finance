@@ -1365,11 +1365,13 @@ export async function listKnownFingerprints(options?: {
       .from("transactions")
       .select("id, fingerprint, status")
       .eq("user_id", userId)
+      .neq("status", "voided")
       .not("fingerprint", "is", null),
     supabase
       .from("extracted_transaction_candidates")
       .select("fingerprint, status, canonical_transaction_id")
       .eq("user_id", userId)
+      .neq("status", "rejected")
       .not("fingerprint", "is", null),
   ]);
 

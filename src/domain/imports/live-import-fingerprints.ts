@@ -7,6 +7,15 @@
 
 const LIVE_TX_STATUSES = new Set(["confirmed", "pending_sync", "needs_review"]);
 
+/** Candidate rows that must never occupy the “finns redan” set. */
+const IGNORED_CANDIDATE_STATUSES = new Set([
+  "rejected",
+  "voided",
+  "deleted",
+  "soft_deleted",
+  "soft-deleted",
+]);
+
 export function isVoidedTransactionStatus(status: string | null | undefined): boolean {
   const normalized = (status ?? "").trim().toLowerCase();
   return (
@@ -45,11 +54,14 @@ export function liveImportFingerprints(input: {
   const pending = input.includePendingCandidates === true;
   for (const candidate of input.candidates ?? []) {
     const status = (candidate.status ?? "").trim().toLowerCase();
+    if (IGNORED_CANDIDATE_STATUSES.has(status)) continue;
     const counts =
       status === "confirmed" ||
       status === "duplicate" ||
       (pending && status === "needs_review");
     if (!counts) continue;
+    // A confirmed/duplicate candidate only counts while its ledger row is live.
+    // Voided, missing, or unlinked canonical ids are ignored.
     const linked = candidate.canonicalTransactionId;
     if (!linked || !liveIds.has(linked)) continue;
     const fingerprint = candidate.fingerprint?.trim();
