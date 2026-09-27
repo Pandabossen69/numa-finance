@@ -51,6 +51,7 @@ import {
   type CaptureAccountCandidate,
 } from "@/domain/imports/capture-account";
 import {
+  clampCaptureDateInput,
   occurredOnForConfirm,
   suggestedCaptureDate,
 } from "@/domain/imports/capture-review";
@@ -372,7 +373,10 @@ export function ReceiptCaptureFlow({
         isAutoImport,
         eventCount: preview.events.length,
         suggestedOn,
-        editedOn: dateOn || suggestedOn,
+        editedOn: clampCaptureDateInput(
+          dateOn || suggestedOn,
+          calendarDateInZone(new Date(), profileTimeZone),
+        ),
       });
       const result = await confirmReceiptExpenseAction({
         accountId: chosenAccountId,
@@ -685,8 +689,8 @@ export function ReceiptCaptureFlow({
     new Date(),
     profileTimeZone,
   );
-  const dateValue = dateOn || suggestedOn;
   const today = calendarDateInZone(new Date(), profileTimeZone);
+  const dateValue = clampCaptureDateInput(dateOn || suggestedOn, today);
   const creditCount = preview.events.filter((e) => e.direction === "credit")
     .length;
   const debitCount = preview.events.filter((e) => e.direction === "debit")
@@ -897,7 +901,12 @@ export function ReceiptCaptureFlow({
             aria-label="Datum"
             value={dateValue}
             max={today}
-            onChange={(e) => setDateOn(e.target.value)}
+            onChange={(e) =>
+              setDateOn(clampCaptureDateInput(e.target.value, today))
+            }
+            onBlur={(e) =>
+              setDateOn(clampCaptureDateInput(e.target.value, today))
+            }
             className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
             required
           />

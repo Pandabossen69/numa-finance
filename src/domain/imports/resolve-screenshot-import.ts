@@ -170,12 +170,14 @@ function resolveBankAppImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
   combinedText: string,
+  options?: { force?: boolean },
 ): ResolvedScreenshotImport | null {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
     typeof meta.detectedKind === "string" ? meta.detectedKind : null;
 
   if (
+    !options?.force &&
     !looksLikeBankAppScreenshot(combinedText, detectedKind) &&
     detectedKind !== "bank_app" &&
     detectedKind !== "bank_app_detail" &&
@@ -267,7 +269,7 @@ function resolveBankAppImport(
       selected: s,
       selectedBatch: selection.selectedBatch,
       suggestedAmountMinor: s.amountMinor,
-      suggestedDescription: s.labelSv,
+      suggestedDescription: s.merchant,
       balanceAfterMinor: null,
       fingerprint: s.fingerprint.fingerprint,
       direction: s.direction,
@@ -470,6 +472,7 @@ export function resolveScreenshotImport(
       extraction,
       existingFingerprints,
       combinedText,
+      { force: options?.preferBankApp === true },
     );
     if (bankApp) return bankApp;
   }
