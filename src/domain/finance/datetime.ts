@@ -73,6 +73,7 @@ export function isSameZonedDay(
 }
 
 const zonedDayKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+const zonedHmFormatters = new Map<string, Intl.DateTimeFormat>();
 
 function zonedDayKeyFormatter(timeZone: string): Intl.DateTimeFormat {
   const cached = zonedDayKeyFormatters.get(timeZone);
@@ -85,6 +86,52 @@ function zonedDayKeyFormatter(timeZone: string): Intl.DateTimeFormat {
   });
   zonedDayKeyFormatters.set(timeZone, formatter);
   return formatter;
+}
+
+function zonedHmFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = zonedHmFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  zonedHmFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/**
+ * Wall clock (`HH:mm`) of an absolute instant in `timeZone`.
+ * Parses with `Date`, never by slicing `HH:mm` out of the ISO string.
+ * An unparseable stamp means "no time".
+ */
+function wallClockHm(
+  stamp: string | null | undefined,
+  timeZone: string,
+): { hh: string; mm: string } | null {
+  const trimmed = stamp?.trim();
+  if (!trimmed) return null;
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) return null;
+  let hh = "";
+  let mm = "";
+  for (const part of zonedHmFormatter(timeZone).formatToParts(new Date(ms))) {
+    if (part.type === "hour") hh = part.value;
+    else if (part.type === "minute") mm = part.value;
+  }
+  if (!/^\d{1,2}$/.test(hh) || !/^\d{1,2}$/.test(mm)) return null;
+  return {
+    hh: String(Number(hh) % 24).padStart(2, "0"),
+    mm: String(Number(mm)).padStart(2, "0"),
+  };
+}
+
+/** Keep `iso` when it is at or before `now`; otherwise now − 2s. */
+export function clampOccurredAt(iso: string, now: Date): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms) || ms <= now.getTime()) return iso;
+  return new Date(now.getTime() - 2_000).toISOString();
 }
 
 /**
@@ -120,28 +167,35 @@ export function calendarDateInZone(
 }
 
 /**
- * Keep the clock time from an OCR stamp (or noon) and place it on `ymd`
- * in `timeZone`. Used when the review date is edited before Bekräfta.
+ * Absolute instant for a review calendar day in `timeZone`.
+ *
+ * A parseable OCR/candidate stamp keeps its wall clock in `timeZone`
+ * (via `Date` + cached Intl, not a regex on the ISO string) on `ymd`.
+ * Without a time, today is `now − 2s` and an earlier day stays at 12:00
+ * local. A future day, or any result after `now`, clamps to `now − 2s`.
  */
 export function occurredAtOnCalendarDay(input: {
   ymd: string;
   keepTimeFrom?: string | null;
   timeZone?: string;
+  now?: Date;
 }): string {
-  let hh = "12";
-  let mm = "00";
-  const match = (input.keepTimeFrom ?? "").match(/T(\d{2}):(\d{2})/);
-  if (match) {
-    hh = match[1]!;
-    mm = match[2]!;
-  }
+  const timeZone = input.timeZone ?? DEFAULT_TIMEZONE;
+  const now = input.now ?? new Date();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.ymd)) {
     throw new Error("Ogiltigt datum");
   }
-  return zonedWallTimeToUtcIso(
-    `${input.ymd}T${hh}:${mm}`,
-    input.timeZone ?? DEFAULT_TIMEZONE,
-  );
+  const hm = wallClockHm(input.keepTimeFrom, timeZone);
+  const today = zonedDayKey(now, timeZone);
+  let iso: string;
+  if (hm) {
+    iso = zonedWallTimeToUtcIso(`${input.ymd}T${hm.hh}:${hm.mm}`, timeZone);
+  } else if (input.ymd === today || input.ymd > today) {
+    iso = new Date(now.getTime() - 2_000).toISOString();
+  } else {
+    iso = zonedWallTimeToUtcIso(`${input.ymd}T12:00`, timeZone);
+  }
+  return clampOccurredAt(iso, now);
 }
 
 /**

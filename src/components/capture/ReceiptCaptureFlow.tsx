@@ -18,7 +18,11 @@ import {
   deleteObservationAction,
   uploadReceiptAction,
 } from "@/features/imports/actions";
-import { newClientMutationId } from "@/domain/finance";
+import {
+  calendarDateInZone,
+  DEFAULT_TIMEZONE,
+  newClientMutationId,
+} from "@/domain/finance";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import { compressImageForUpload } from "@/lib/media/compress-image";
@@ -58,10 +62,16 @@ import {
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import {
   lastAccountsSnapshot,
+  lastHomeSnapshot,
   subscribeAccountsSnapshot,
+  subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 
 const CATEGORIES = CAPTURE_CATEGORIES;
+
+function captureProfileTimeZone(): string {
+  return lastHomeSnapshot()?.timeZone || DEFAULT_TIMEZONE;
+}
 
 function minorToInput(minor: number): string {
   return (minor / 100).toFixed(2).replace(".", ",");
@@ -131,6 +141,11 @@ export function ReceiptCaptureFlow({
     subscribeAccountsSnapshot,
     lastAccountsSnapshot,
     () => null,
+  );
+  const profileTimeZone = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    captureProfileTimeZone,
+    () => DEFAULT_TIMEZONE,
   );
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
   const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
@@ -350,6 +365,8 @@ export function ReceiptCaptureFlow({
       const chosenAccountId = choice.action === "use" ? choice.accountId : null;
       const suggestedOn = suggestedCaptureDate(
         preview.events.map((event) => event.occurredAt),
+        new Date(),
+        profileTimeZone,
       );
       const occurredOn = occurredOnForConfirm({
         isAutoImport,
@@ -665,8 +682,11 @@ export function ReceiptCaptureFlow({
   );
   const suggestedOn = suggestedCaptureDate(
     preview.events.map((event) => event.occurredAt),
+    new Date(),
+    profileTimeZone,
   );
   const dateValue = dateOn || suggestedOn;
+  const today = calendarDateInZone(new Date(), profileTimeZone);
   const creditCount = preview.events.filter((e) => e.direction === "credit")
     .length;
   const debitCount = preview.events.filter((e) => e.direction === "debit")
@@ -876,6 +896,7 @@ export function ReceiptCaptureFlow({
             type="date"
             aria-label="Datum"
             value={dateValue}
+            max={today}
             onChange={(e) => setDateOn(e.target.value)}
             className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
             required

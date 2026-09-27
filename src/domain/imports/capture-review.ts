@@ -1,5 +1,6 @@
 import {
   calendarDateInZone,
+  clampOccurredAt,
   DEFAULT_TIMEZONE,
   occurredAtOnCalendarDay,
 } from "@/domain/finance/datetime";
@@ -46,12 +47,15 @@ export function confirmOccurredAt(input: {
   candidateOccurredAt?: string | null;
   fallbackIso: string;
   timeZone?: string | null;
+  now?: Date;
 }): string {
+  const now = input.now ?? new Date();
   const ymd = input.occurredOn?.trim();
-  if (!ymd) return input.fallbackIso;
+  if (!ymd) return clampOccurredAt(input.fallbackIso, now);
   return occurredAtOnCalendarDay({
     ymd,
     keepTimeFrom: input.candidateOccurredAt,
     timeZone: input.timeZone || DEFAULT_TIMEZONE,
+    now,
   });
 }
