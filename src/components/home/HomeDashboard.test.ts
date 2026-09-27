@@ -21,9 +21,9 @@ describe("Hem PWA hint and HIGH copy", () => {
   });
 
   it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {
-    expect(src).toContain("applyOptimisticHomeSpend");
-    expect(src).toContain("applyMovementsAdd");
-    expect(src).toContain("applyAccountDelta");
+    expect(src).toContain("paintOptimisticQuickAdd");
+    expect(src).toContain("rollbackOptimisticQuickAdd");
+    expect(src).toContain("confirmOptimisticQuickAdd");
     expect(src).toContain("warmupPlanPageData");
     expect(src).toContain("scheduleQuietMenuWarm");
     const adopt = src.slice(
@@ -53,7 +53,10 @@ describe("Hem PWA hint and HIGH copy", () => {
     const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
     expect(quickExpense).not.toContain("Sparar");
     expect(quickExpense).not.toContain("getHomeSnapshotAction");
-    expect(quickExpense).toContain("onOptimisticSpend(thbMinor)");
+    expect(quickExpense).toContain("paintOptimisticQuickAdd");
+    expect(quickExpense.indexOf("paintOptimisticQuickAdd")).toBeLessThan(
+      quickExpense.indexOf("await createExpenseAction"),
+    );
   });
 
   it("paints signed Över on the dial, not a clamped 0", () => {

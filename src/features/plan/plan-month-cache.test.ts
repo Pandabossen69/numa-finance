@@ -6,7 +6,9 @@ import {
   lastPlanMonthPaint,
   planMonthPaintEpoch,
   planMonthPaintStamp,
+  planMonthPaintWriteSeq,
   prefetchAdjacentPlanMonths,
+  prewarmNeighbourPlanMonths,
   readPlanMonthPaint,
   resetPlanMonthCacheForTests,
   resolvePlanMonthPaint,
@@ -462,5 +464,26 @@ describe("plan month paint cache", () => {
       live.paint.projection.fixedItems.find((row) => row.id === "hyra")
         ?.amountMinor,
     ).toBe(15_500_00);
+  });
+
+  it("prewarms neighbour months once and does not overwrite a newer paint", () => {
+    const sep = hugoLikeInput("2026-09");
+    const stamp = planMonthPaintStamp(sep);
+    ensurePlanMonthPaint(sep, stamp);
+    const scheduledAt = planMonthPaintWriteSeq();
+    const newerInput = { ...sep, monthKey: "2026-10", saldoMinor: 123_00 };
+    const newerStamp = planMonthPaintStamp(newerInput);
+    const newer = ensurePlanMonthPaint(newerInput, newerStamp);
+
+    const warmed = prewarmNeighbourPlanMonths(sep, stamp, scheduledAt);
+    expect(warmed).toEqual(["2026-08", "2026-10"]);
+    expect(readPlanMonthPaint("2026-10", newerStamp)).toBe(newer);
+    expect(readPlanMonthPaint("2026-10", stamp)).toBeNull();
+    const august = readPlanMonthPaint("2026-08", stamp);
+    expect(august?.coverage.monthKey).toBe("2026-08");
+
+    prewarmNeighbourPlanMonths(sep, stamp, scheduledAt);
+    expect(readPlanMonthPaint("2026-08", stamp)).toBe(august);
+    expect(readPlanMonthPaint("2026-10", newerStamp)).toBe(newer);
   });
 });

@@ -1063,15 +1063,133 @@ export function isMovementsDirty(): boolean {
   return movementsDirty;
 }
 
+function stampLocalMovements(snap: MovementsSnapshot): MovementsSnapshot {
+  const base = (snap.financeRevision ?? "").replace(/:local$/, "");
+  return {
+    ...snap,
+    financeRevision: `${base}:local`,
+    verifiedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Same idea as Plan's adopt + the Z2 revision guard: an older Rörelser
+ * payload must not rewind an optimistic amount or drop a temp row.
+ * Unversioned echoes are not confirmation of a `:local` paint.
+ */
+function shouldAdoptMovementsSnapshot(
+  current: MovementsSnapshot,
+  incoming: MovementsSnapshot,
+): boolean {
+  if (!shouldAdoptFinanceSnapshot(current, incoming, false)) return false;
+  const curRev = financeRevisionOf(current);
+  const nextRev = financeRevisionOf(incoming);
+  if (curRev.endsWith(":local") && !nextRev) return false;
+  return true;
+}
+
+export function isStaleMovementsSnapshot(incoming: MovementsSnapshot): boolean {
+  if (!movements || movements === incoming) return false;
+  return !shouldAdoptMovementsSnapshot(movements, incoming);
+}
+
+function stitchOptimisticMovements(
+  local: MovementsSnapshot,
+  incoming: MovementsSnapshot,
+): MovementsSnapshot {
+  const optimistic = local.items.filter(
+    (row) => row.listKey != null && row.listKey === row.id,
+  );
+  if (optimistic.length === 0) return incoming;
+  const byMutation = new Map<string, MovementRow>();
+  for (const row of optimistic) {
+    byMutation.set(row.clientMutationId ?? row.id, row);
+  }
+  const consumed = new Set<string>();
+  let changed = false;
+  const items = incoming.items.map((row) => {
+    const key = row.clientMutationId;
+    if (!key) return row;
+    const temp = byMutation.get(key);
+    if (!temp) return row;
+    consumed.add(temp.id);
+    const listKey = temp.listKey ?? temp.id;
+    if (row.listKey === listKey) return row;
+    changed = true;
+    return { ...row, listKey };
+  });
+  const pending = optimistic.filter(
+    (row) =>
+      !consumed.has(row.id) && !incoming.items.some((item) => item.id === row.id),
+  );
+  if (!changed && pending.length === 0) return incoming;
+  return {
+    ...incoming,
+    items:
+      pending.length > 0 ? sortNewestFirst([...items, ...pending]) : items,
+  };
+}
+
 export function rememberMovementsSnapshot(
   snap: MovementsSnapshot,
-  opts?: { dirty?: boolean },
+  opts?: { dirty?: boolean; force?: boolean },
 ) {
   const nextDirty = opts?.dirty ?? false;
-  if (movements === snap && movementsDirty === nextDirty) return;
-  movements = snap;
+  // Z1: same object, including the dirty-clear when native fields already match.
+  if (movements === snap) {
+    if (movementsDirty === nextDirty) return;
+    movementsDirty = nextDirty;
+    emit(movementsListeners);
+    return;
+  }
+
+  let next = snap;
+  if (!opts?.force && !opts?.dirty && movements) {
+    if (!shouldAdoptMovementsSnapshot(movements, next)) return;
+    next = stitchOptimisticMovements(movements, next);
+    if (movements === next && movementsDirty === nextDirty) return;
+  }
+  if (opts?.dirty && !opts?.force) next = stampLocalMovements(next);
+  if (movements === next && movementsDirty === nextDirty) return;
+  movements = next;
   movementsDirty = nextDirty;
   emit(movementsListeners);
+}
+
+/** Keep Hem's optimistic revision so a same-base echo cannot rewind it. */
+export function pinLocalHomeRevision(): void {
+  if (!home) return;
+  const rev = home.financeRevision ?? "";
+  if (rev.endsWith(":local")) return;
+  home = { ...home, financeRevision: `${rev}:local` };
+  writeLastHomeCookie(home);
+  emit(homeListeners);
+}
+
+/**
+ * Swap a quick-add temp id for the server id. `listKey` stays so the row
+ * does not remount.
+ */
+export function replaceOptimisticMovementId(
+  tempId: string,
+  serverId: string | undefined,
+): void {
+  if (!movements || !serverId || serverId === tempId) return;
+  const temp = movements.items.find((row) => row.id === tempId);
+  if (!temp) return;
+  const listKey = temp.listKey ?? tempId;
+  const hasServer = movements.items.some((row) => row.id === serverId);
+  const items = hasServer
+    ? movements.items
+        .filter((row) => row.id !== tempId)
+        .map((row) => (row.id === serverId ? { ...row, listKey } : row))
+    : movements.items.map((row) =>
+        row.id === tempId ? { ...row, id: serverId, listKey } : row,
+      );
+  rememberMovementsSnapshot(
+    { ...movements, items },
+    { force: true, dirty: movementsDirty },
+  );
 }
 
 export function lastMovementsSnapshot(): MovementsSnapshot | null {
@@ -1731,6 +1849,7 @@ export function undoOptimisticBalance(paint: OptimisticBalancePaint): void {
   if (paint.movements) {
     rememberMovementsSnapshot(paint.movements, {
       dirty: paint.movementsDirty,
+      force: true,
     });
   }
   if (paint.accounts) {

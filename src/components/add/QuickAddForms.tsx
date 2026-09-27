@@ -16,12 +16,13 @@ import {
   newClientMutationId,
 } from "@/domain/finance";
 import {
+  confirmOptimisticQuickAdd,
+  paintOptimisticQuickAdd,
+  rollbackOptimisticQuickAdd,
+} from "@/features/finance/quick-add-optimistic";
+import {
   adoptMutationFinance,
-  applyAccountDelta,
   applyLocalTransfer,
-  applyMovementsAdd,
-  applyOptimisticHomeIncome,
-  applyOptimisticHomeSpend,
   confirmOptimisticFinance,
 } from "@/features/home/last-snapshot";
 import { ChipStrip } from "@/components/ui/ChipStrip";
@@ -187,46 +188,46 @@ function ExpenseForm({
             setError("Konto saknar växelkurs");
             return;
           }
-          applyOptimisticHomeSpend(thbMinor);
-          applyAccountDelta(-amountMinor, chosenAccountId);
           try {
             localStorage.setItem(LAST_CATEGORY_KEY, category);
           } catch {
             // ignore
           }
           const mutationId = newClientMutationId();
-          const result = await createExpenseAction({
-            accountId: chosenAccountId,
-            amount,
-            category,
-            description: description || undefined,
-            clientMutationId: mutationId,
-          });
-          if (!result.ok) {
-            applyOptimisticHomeSpend(-thbMinor);
-            applyAccountDelta(amountMinor, chosenAccountId);
-            setError(result.error);
-            return;
-          }
-          adoptMutationFinance(result);
-          applyMovementsAdd({
-            id: result.id ?? crypto.randomUUID(),
+          const optimistic = paintOptimisticQuickAdd({
+            kind: "expense",
+            mutationId,
+            nativeAmountMinor: amountMinor,
+            thbMinor,
             description: descriptionText,
             category,
-            transactionType: "expense",
-            direction: "debit",
-            amountMinor: thbMinor,
-            currency: "THB",
-            nativeAmountMinor: amountMinor,
             nativeCurrency,
             accountId: chosenAccountId,
             fxRate,
-            occurredAt: new Date().toISOString(),
-            source: "manual",
           });
           setAmount("");
           setDescription("");
           onSuccess?.();
+          try {
+            const result = await createExpenseAction({
+              accountId: chosenAccountId,
+              amount,
+              category,
+              description: description || undefined,
+              clientMutationId: mutationId,
+            });
+            if (!result.ok) {
+              rollbackOptimisticQuickAdd(optimistic, result.error);
+              setError(result.error);
+              return;
+            }
+            confirmOptimisticQuickAdd(mutationId, result);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Kunde inte spara utgift";
+            rollbackOptimisticQuickAdd(optimistic, message);
+            setError(message);
+          }
         });
       }}
     >
@@ -323,39 +324,39 @@ function IncomeForm({
             setError("Konto saknar växelkurs");
             return;
           }
-          applyOptimisticHomeIncome(thbMinor);
-          applyAccountDelta(amountMinor, targetId);
-          const result = await createIncomeAction({
-            accountId: targetId,
-            amount,
-            description: description || undefined,
-            clientMutationId: newClientMutationId(),
-          });
-          if (!result.ok) {
-            applyOptimisticHomeIncome(-thbMinor);
-            applyAccountDelta(-amountMinor, targetId);
-            setError(result.error);
-            return;
-          }
-          adoptMutationFinance(result);
-          applyMovementsAdd({
-            id: result.id ?? crypto.randomUUID(),
-            description: descriptionText,
-            category: null,
-            transactionType: "income",
-            direction: "credit",
-            amountMinor: thbMinor,
-            currency: "THB",
+          const mutationId = newClientMutationId();
+          const optimistic = paintOptimisticQuickAdd({
+            kind: "income",
+            mutationId,
             nativeAmountMinor: amountMinor,
+            thbMinor,
+            description: descriptionText,
             nativeCurrency,
             accountId: targetId,
             fxRate,
-            occurredAt: new Date().toISOString(),
-            source: "manual",
           });
           setAmount("");
           setDescription("");
           onSuccess?.();
+          try {
+            const result = await createIncomeAction({
+              accountId: targetId,
+              amount,
+              description: description || undefined,
+              clientMutationId: mutationId,
+            });
+            if (!result.ok) {
+              rollbackOptimisticQuickAdd(optimistic, result.error);
+              setError(result.error);
+              return;
+            }
+            confirmOptimisticQuickAdd(mutationId, result);
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Kunde inte spara inkomst";
+            rollbackOptimisticQuickAdd(optimistic, message);
+            setError(message);
+          }
         });
       }}
     >
