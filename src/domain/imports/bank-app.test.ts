@@ -282,7 +282,7 @@ describe("bank app bunq-style", () => {
     expect(again.status).toBe("all_known");
     if (again.status !== "all_known") return;
     expect(again.messageSv).toBe(
-      "Den här transaktionen finns redan (23 jul, 6,60 €).",
+      "Den här transaktionen finns redan (Grab, 6,60 €, 23 jul).",
     );
   });
 

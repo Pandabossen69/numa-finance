@@ -769,9 +769,11 @@ function bankAppAlreadySavedMessage(row: BankAppEventCandidate): string {
     /\u00a0/g,
     " ",
   );
-  return when
-    ? `Den här transaktionen finns redan (${when}, ${amount}).`
-    : `Den här transaktionen finns redan (${amount}).`;
+  const merchant = row.merchant.trim();
+  const parts = [merchant || null, amount, when].filter(
+    (part): part is string => Boolean(part),
+  );
+  return `Den här transaktionen finns redan (${parts.join(", ")}).`;
 }
 
 export function selectImportableBankAppEvents(

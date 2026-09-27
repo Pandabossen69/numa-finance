@@ -506,6 +506,34 @@ export function resolveScreenshotImport(
         ? "Osäker läsning — dubbelkolla beloppet noga innan du sparar."
         : "Vi läste totalsumman (det du faktiskt betalade) — dubbelkolla innan du sparar.";
 
+  // Bankapp mode never uses the receipt sentence, even when the shot is not
+  // classified as bunq/Revolut and the bank-app parser returned nothing.
+  if (options?.preferBankApp) {
+    const messageSv =
+      "Kunde inte läsa en komplett bankapp-transaktion (behöver belopp i THB/SEK + tidpunkt).";
+    return {
+      kind: "bank_app",
+      selection: {
+        status: "none",
+        all: [],
+        skippedFailedCount: 0,
+        messageSv,
+      },
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency,
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv,
+      alreadyKnown: false,
+    };
+  }
+
   return {
     kind: "receipt_or_other",
     selectedBatch: [],

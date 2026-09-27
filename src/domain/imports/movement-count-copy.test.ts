@@ -36,7 +36,8 @@ describe("already known movement copy", () => {
   });
 
   it("keeps a bank-app duplicate sentence that names the day and amount", () => {
-    const sentence = "Den här transaktionen finns redan (25 sep, 63,00 THB).";
+    const sentence =
+      "Den här transaktionen finns redan (7-Eleven, 63,00 THB, 25 sep).";
     expect(
       presentAlreadyKnownMessage({ listedCount: 1, serverMessage: sentence }),
     ).toBe(sentence);

@@ -302,11 +302,18 @@ export function ReceiptCaptureFlow({
         !data.alreadyKnown
       ) {
         URL.revokeObjectURL(previewUrl);
-        setError(
+        const bankAppFallback =
+          "Kunde inte läsa en komplett bankapp-transaktion (behöver belopp i THB/SEK + tidpunkt).";
+        const raw =
           data.message ??
-            (mode === "bank_app"
-              ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
-              : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump."),
+          (mode === "bank_app"
+            ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
+            : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump.");
+        setError(
+          mode === "bank_app" &&
+            raw.includes("Kunde inte läsa beloppet säkert")
+            ? bankAppFallback
+            : raw,
         );
         return;
       }

@@ -10,6 +10,7 @@ import {
   parseBunqDetailFromText,
   selectImportableBankAppEvents,
 } from "./bank-app-parsers";
+import { liveImportFingerprints } from "./live-import-fingerprints";
 import { presentAlreadyKnownMessage } from "./movement-count-copy";
 import { resolveScreenshotImport } from "./resolve-screenshot-import";
 
@@ -340,7 +341,7 @@ describe("Kasikorn screenshots z4c z4h z4e z4g", () => {
     expect(again.kind).toBe("bank_app");
     expect(again.alreadyKnown).toBe(true);
     expect(again.messageSv).toBe(
-      "Den här transaktionen finns redan (25 sep, 63,00 THB).",
+      "Den här transaktionen finns redan (7-Eleven Z4C QA, 63,00 THB, 25 sep).",
     );
     expect(again.messageSv).not.toContain(RECEIPT_FAIL);
     expect(
@@ -349,6 +350,56 @@ describe("Kasikorn screenshots z4c z4h z4e z4g", () => {
         serverMessage: again.messageSv,
       }),
     ).toBe(again.messageSv);
+  });
+
+  it("lets a voided copy of each screenshot through", () => {
+    for (const id of ["z4c", "z4h", "z4g", "z4e"] as const) {
+      const shot = shots[id];
+      const text = screen(id);
+      const first = resolveScreenshotImport(
+        kasikornExtraction(text, {
+          merchant: shot.merchant,
+          amountMajor: shot.minor / 100,
+          occurredAt: shot.when,
+        }),
+        [],
+        { preferBankApp: true },
+      );
+      expect(first.kind).toBe("bank_app");
+      if (first.kind !== "bank_app" || !first.fingerprint) return;
+      const known = liveImportFingerprints({
+        transactions: [
+          { id: "tx-void", fingerprint: first.fingerprint, status: "voided" },
+        ],
+        candidates: [
+          {
+            fingerprint: first.fingerprint,
+            status: "confirmed",
+            canonicalTransactionId: "tx-void",
+          },
+          {
+            fingerprint: first.fingerprint,
+            status: "rejected",
+            canonicalTransactionId: "tx-void",
+          },
+        ],
+      });
+      expect(known).toEqual([]);
+      const again = resolveScreenshotImport(
+        kasikornExtraction(text, {
+          merchant: `− Utgift ${shot.amount} · ${shot.merchant}`,
+          amountMajor: 2026,
+          occurredAt: shot.when,
+        }),
+        known,
+        { preferBankApp: true },
+      );
+      expect(again.kind).toBe("bank_app");
+      expect(again.alreadyKnown).toBe(false);
+      expect(again.suggestedAmountMinor).toBe(shot.minor);
+      expect(again.suggestedDescription).toBe(shot.merchant);
+      expect(again.messageSv).not.toContain(RECEIPT_FAIL);
+    }
   });
 
   it("keeps an unreadable Bankapp shot off the receipt sentence", () => {
