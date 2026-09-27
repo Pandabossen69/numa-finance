@@ -30,6 +30,12 @@ import {
   tryEuropeanAmountToMinor,
 } from "@/domain/imports/ocr-amounts";
 import { planBankAppLedger } from "@/domain/imports/bank-app-ledger";
+import {
+  cleanBankAppMerchant,
+  merchantLineFromBankAppText,
+  reconcileBankAppAmountMinor,
+  textForBankAppAmount,
+} from "@/domain/imports/bank-app-amounts";
 
 export type BankAppInstitution = "bunq" | "revolut" | "unknown_bank_app";
 
@@ -472,20 +478,41 @@ export function parseBankAppVisionRows(
       row.strikethrough === true ||
       FAILED_RE.test(statusBlob);
 
-    const merchant = (row.merchant ?? "").trim() || "Okänd";
+    const amountText = textForBankAppAmount({
+      rawText: row.rawText,
+      occurredAt: row.occurredAt,
+      fullText: options?.fullText,
+    });
+    const merchant =
+      cleanBankAppMerchant(row.merchant) ??
+      merchantLineFromBankAppText(amountText) ??
+      merchantLineFromBankAppText(options?.fullText ?? "") ??
+      "Okänd";
     const direction =
       row.direction === "credit" || row.direction === "debit"
         ? row.direction
         : "debit";
 
-    const displayAmountMinor = majorFieldToMinor(row.amountMajor);
-    const displayCurrency = resolveBankAppPostedCurrency({
+    const visionMinor = majorFieldToMinor(row.amountMajor);
+    const reconciled = reconcileBankAppAmountMinor({
+      visionMinor,
+      text: amountText,
+    });
+    const displayAmountMinor = reconciled.amountMinor;
+    let displayCurrency = resolveBankAppPostedCurrency({
       currency: row.currency,
       originalCurrency:
         typeof row.originalCurrency === "string" ? row.originalCurrency : null,
       rawText: row.rawText,
       screenText: options?.fullText,
     });
+    if (
+      reconciled.currency &&
+      reconciled.amountMinor != null &&
+      reconciled.amountMinor !== visionMinor
+    ) {
+      displayCurrency = reconciled.currency;
+    }
     const originalAmountMinor = majorFieldToMinor(row.originalAmountMajor);
     const originalCurrency = parseCurrencyToken(row.originalCurrency) ??
       (row.originalCurrency ? String(row.originalCurrency).toUpperCase() : null);
@@ -584,7 +611,10 @@ export function parseBunqDetailFromText(
   const merchantMatch =
     text.match(/\b([A-Z][A-Za-z0-9 &.'-]{1,40})\s*>/m) ||
     text.match(/\b(Grab|Bolt|Uber|Foodpanda|Apple|Google)\b/i);
-  const merchant = merchantMatch?.[1]?.trim() || "Okänd";
+  const merchant =
+    cleanBankAppMerchant(merchantMatch?.[1]) ??
+    merchantLineFromBankAppText(text) ??
+    "Okänd";
 
   const thbMatch = text.match(
     /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*THB\b/i,

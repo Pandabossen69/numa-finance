@@ -37,6 +37,7 @@ import {
   sortNewestFirst,
   type TransactionSource,
 } from "@/domain/finance";
+import { importEventDescription } from "@/domain/imports/bank-app-amounts";
 import { type CurrencyCode } from "@/domain/money";
 import {
   captureAccountCandidates,
@@ -2253,7 +2254,10 @@ export async function uploadReceiptAndExtract(input: {
             "occurredAt" in event && typeof event.occurredAt === "string"
               ? event.occurredAt
               : null,
-          description: event.labelSv,
+          description: importEventDescription({
+            labelSv: event.labelSv,
+            merchant: "merchant" in event ? event.merchant : null,
+          }),
           confidence: event.confidence,
           fingerprint: event.fingerprint.fingerprint,
           status: "needs_review",
