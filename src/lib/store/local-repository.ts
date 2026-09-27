@@ -43,7 +43,7 @@ import {
 } from "@/domain/imports/capture-account";
 import { confirmOccurredAt } from "@/domain/imports/capture-review";
 import {
-  alreadyKnownMovementsMessage,
+  knownImportMessage,
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
@@ -1492,10 +1492,11 @@ export async function uploadReceiptAndExtract(input: {
       ? extraction.rawMetadata.message
       : null;
 
-  const knownCountMessage =
-    resolved.alreadyKnown && events.length > 0
-      ? alreadyKnownMovementsMessage(events.length)
-      : null;
+  const knownCountMessage = knownImportMessage({
+    alreadyKnown: resolved.alreadyKnown,
+    eventCount: events.length,
+    serverMessage: resolved.messageSv,
+  });
   const failedOnKnown =
     resolved.kind === "bank_app" && resolved.selection.status === "all_known"
       ? resolved.selection.skippedFailedCount

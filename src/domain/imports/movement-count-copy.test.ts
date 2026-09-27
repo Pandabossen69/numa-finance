@@ -35,6 +35,19 @@ describe("already known movement copy", () => {
     ).toBe("Alla 3 rörelser finns redan. 1 misslyckad hoppades över.");
   });
 
+  it("keeps a bank-app duplicate sentence that names the day and amount", () => {
+    const sentence = "Den här transaktionen finns redan (25 sep, 63,00 THB).";
+    expect(
+      presentAlreadyKnownMessage({ listedCount: 1, serverMessage: sentence }),
+    ).toBe(sentence);
+    expect(
+      presentAlreadyKnownMessage({
+        listedCount: 1,
+        serverMessage: "Den här rörelsen finns redan.",
+      }),
+    ).toBe("Den här rörelsen finns redan.");
+  });
+
   it("keeps singular and plural on skipped rows", () => {
     expect(skippedSavedMovementsMessage(1)).toBe("1 redan sparad hoppades över.");
     expect(skippedSavedMovementsMessage(3)).toBe("3 redan sparade hoppades över.");
