@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { useRouter } from "next/navigation";
 import { createAccountAction } from "@/features/finance/actions";
+import { invalidateAccountsSnapshot } from "@/features/home/last-snapshot";
 import {
   ACCOUNT_KIND_LABEL_SV,
   ACCOUNT_KINDS,
@@ -83,8 +84,8 @@ export function CreateAccountForm({
         setError(result.error);
         return;
       }
+      invalidateAccountsSnapshot();
       router.push(useOnIdag ? "/idag" : "/konton");
-      router.refresh();
     });
   }
 

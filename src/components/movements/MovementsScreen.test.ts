@@ -35,6 +35,7 @@ describe("Rörelser expense color", () => {
   it("prefills native amount even when the dirty snapshot copied THB", () => {
     expect(src).toContain("movementEditPrefill");
     expect(src).toContain("mergeMovementNativeFromServer");
+    expect(src).toContain("if (data === lastMovementsSnapshot()) return;");
     expect(src).toContain("@/features/finance/movement-native");
     expect(src).toContain("lastAccountsSnapshot");
     expect(src).toMatch(

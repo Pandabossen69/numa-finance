@@ -7,6 +7,8 @@ import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import {
   applyAccountBalance,
   captureOptimisticBalance,
+  lastMovementsSnapshot,
+  rememberMovementsSnapshot,
   undoOptimisticBalance,
 } from "@/features/home/last-snapshot";
 
@@ -79,6 +81,10 @@ export function VerifyBalanceForm({
           currency,
         });
       }
+      // Checkpoint response is in. applyAccountBalance marked Rörelser dirty
+      // and never cleared it; balance figures above are left as painted.
+      const movementsSnap = lastMovementsSnapshot();
+      if (movementsSnap) rememberMovementsSnapshot(movementsSnap);
     });
   }
 

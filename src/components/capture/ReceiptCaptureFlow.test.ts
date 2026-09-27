@@ -45,6 +45,18 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).not.toContain("h-8 w-8");
   });
 
+  it("resets the kept-alive panel after Bekräfta so the next visit is the picker", () => {
+    const confirm = src.slice(
+      src.indexOf("function onConfirm"),
+      src.indexOf('if (mode === "pick")'),
+    );
+    const resetAt = confirm.indexOf("resetToPick()");
+    expect(resetAt).toBeGreaterThan(-1);
+    expect(resetAt).toBeLessThan(confirm.indexOf("goHomeInstant"));
+    expect(resetAt).toBeLessThan(confirm.indexOf("router.push(successHref)"));
+    expect(confirm).not.toContain("URL.revokeObjectURL(preview.previewUrl)");
+  });
+
   it("sends the resolved account when a bank-app screenshot is confirmed", () => {
     expect(src).toContain("accountId: chosenAccountId");
     expect(src).toContain("chooseCaptureAccount");

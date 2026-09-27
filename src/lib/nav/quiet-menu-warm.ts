@@ -164,10 +164,11 @@ export function scheduleQuietMenuWarm(opts?: { restart?: boolean }) {
     quietMerStarted = false;
     settleWarmWaiters();
   }
-  if (inflight) return;
-  if (scheduled && !warmCompleted) return;
+  // One bundle per session. Hem re-emits after every mutation; restarting
+  // a finished warm queues that mutation behind another full fetch.
+  // Login is the exception and passes { restart: true }.
+  if (warmCompleted || inflight || scheduled) return;
   scheduled = true;
-  warmCompleted = false;
 
   const start = () => {
     const generation = ++warmGeneration;

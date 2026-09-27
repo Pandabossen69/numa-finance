@@ -46,6 +46,15 @@ describe("ManageAccountForm", () => {
     expect(src).toContain("är arkiverat");
   });
 
+  it("refetches Konton after rename or default instead of router.refresh", () => {
+    const finish = src.slice(
+      src.indexOf("function finish"),
+      src.indexOf("function onSave"),
+    );
+    expect(finish).toContain("invalidateAccountsSnapshot()");
+    expect(finish).not.toContain("router.refresh()");
+  });
+
   it("reuses the default-account copy", () => {
     expect(src).toContain("DEFAULT_ACCOUNT_COPY_SV");
     expect(src).toContain("DEFAULT_ACCOUNT_HELP_SV");
