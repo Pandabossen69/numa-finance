@@ -19,6 +19,7 @@ import {
   collectPairedVoidIds,
   requireCompletePairedReplay,
   resolveSmsBatchOccurredAt,
+  DEFAULT_TIMEZONE,
   zonedDayKey,
   type Account,
   type AccountKind,
@@ -55,6 +56,11 @@ import {
   decideCandidatePlacement,
 } from "@/domain/imports/candidate-reuse";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import {
+  UPLOAD_HOURLY_IMAGE_LIMIT,
+  UploadRateLimitError,
+  uploadRateLimitRetryAt,
+} from "@/domain/imports/upload-rate-limit";
 import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { getAuthUser } from "@/lib/supabase/auth-user";
@@ -2091,7 +2097,7 @@ export async function uploadReceiptAndExtract(input: {
   preferBankApp?: boolean;
 }): Promise<ReceiptUploadResult> {
   const userId = await requireUserId();
-  await ensureProfile();
+  const uploader = await ensureProfile();
   const supabase = await createSupabaseServerClient();
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count, error: rateError } = await supabase
@@ -2100,8 +2106,24 @@ export async function uploadReceiptAndExtract(input: {
     .eq("user_id", userId)
     .gte("created_at", hourAgo);
   if (rateError) throw new Error(rateError.message);
-  if ((count ?? 0) >= 20) {
-    throw new Error("För många bilder den här timmen. Försök igen senare.");
+  if ((count ?? 0) >= UPLOAD_HOURLY_IMAGE_LIMIT) {
+    const { data: oldest, error: oldestError } = await supabase
+      .from("source_observations")
+      .select("created_at")
+      .eq("user_id", userId)
+      .gte("created_at", hourAgo)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (oldestError) throw new Error(oldestError.message);
+    const oldestAt = oldest?.created_at;
+    const retryAt = oldestAt
+      ? uploadRateLimitRetryAt(String(oldestAt))
+      : new Date(Date.now() + 60 * 60 * 1000);
+    throw new UploadRateLimitError({
+      retryAt,
+      timeZone: uploader.timezone || DEFAULT_TIMEZONE,
+    });
   }
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: orphans } = await supabase

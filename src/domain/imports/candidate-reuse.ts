@@ -1,5 +1,9 @@
 import { isUniqueViolationMessage } from "@/domain/finance/sms-batch-confirm";
 import { isVoidedTransactionStatus } from "./live-import-fingerprints";
+import {
+  isUploadRateLimitError,
+  uploadRateLimitMessageSv,
+} from "./upload-rate-limit";
 
 /** Statuses that occupy numa_candidates_user_fingerprint_unique. */
 const FINGERPRINT_BLOCKING_STATUSES = new Set([
@@ -169,6 +173,12 @@ export function candidateIdsToRejectAfterVoid(
 
 /** User-facing Fota upload failure. Never returns a raw database message. */
 export function uploadErrorMessageSv(error: unknown): string {
+  if (isUploadRateLimitError(error)) {
+    return uploadRateLimitMessageSv({
+      retryAt: error.retryAt,
+      timeZone: error.timeZone,
+    });
+  }
   const message = error instanceof Error ? error.message : "";
   if (message.includes("finns redan") || isUniqueViolationMessage(message)) {
     return LIVE_MOVEMENT_ALREADY_SAVED_SV;

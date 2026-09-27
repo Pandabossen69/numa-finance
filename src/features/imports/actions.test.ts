@@ -21,8 +21,11 @@ describe("import upload error classification", () => {
       src.indexOf("export async function confirmReceiptExpenseAction"),
     );
     expect(upload).toContain("isExpectedImageValidationError");
+    expect(upload).toContain("isUploadRateLimitError");
     expect(upload).toContain('void reportError("ocr.upload"');
-    expect(upload).toContain("if (!isExpectedImageValidationError(error))");
+    expect(upload).toContain(
+      "if (!rateLimited && !isExpectedImageValidationError(error))",
+    );
     expect(upload).not.toContain("revalidatePath");
   });
 });
