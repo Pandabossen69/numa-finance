@@ -7,6 +7,7 @@ function read(name: string): string {
 
 const editor = read("./PlanEditor.tsx");
 const rows = read("./PlanRows.tsx");
+const forms = read("./PlanRowForms.tsx");
 const dateField = read("./PlanDateField.tsx");
 const inlineAdd = read("./InlineAdd.tsx");
 const monthStrip = read("./MonthChipStrip.tsx");
@@ -25,6 +26,7 @@ const css = read("../../app/globals.css");
 const plan = [
   editor,
   rows,
+  forms,
   dateField,
   inlineAdd,
   monthStrip,
@@ -247,7 +249,7 @@ describe("Plan dates and add-form", () => {
     expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
     expect(editor).toContain("adoptServerPlanItems(localItems, items)");
-    expect(editor).toContain("const viewItems = busy");
+    expect(editor).toContain("busy ? localItems : adoptServerPlanItems(localItems, items)");
     expect(editor).not.toContain("setItemsStamp");
     // Live coverage must not re-trigger publish (Delvis settle loop).
     expect(editor).toContain(
@@ -264,7 +266,7 @@ describe("Plan dates and add-form", () => {
   it("shows 51 000 − 22 000 = 29 000 and labels remaining cash as Kvar att få/betala", () => {
     expect(rows).toContain("planRowHeroMinor");
     expect(rows).toContain("planPartialBreakdown");
-    expect(rows).toContain("previewAdditionalPartialRemaining");
+    expect(forms).toContain("previewAdditionalPartialRemaining");
     expect(rows).toContain("PlanEquation");
     expect(equation).toContain("formatPlanFigure");
     expect(editor).toContain("coverage={coverage}");
@@ -328,12 +330,12 @@ describe("Plan dates and add-form", () => {
 
   it("adopts savings mutation snapshots so Hem/Plan remount keep the edit", () => {
     const save = editor.slice(
-      editor.indexOf("onSaveSavings={() => {"),
-      editor.indexOf("onClearSavings={() => {"),
+      editor.indexOf("const saveSavings = useCallback"),
+      editor.indexOf("const clearSavings = useCallback"),
     );
     const clear = editor.slice(
-      editor.indexOf("onClearSavings={() => {"),
-      editor.indexOf("{error ? ("),
+      editor.indexOf("const clearSavings = useCallback"),
+      editor.indexOf("\n  return ("),
     );
     for (const block of [save, clear]) {
       expect(block).toContain("adoptMutationFinance(result)");

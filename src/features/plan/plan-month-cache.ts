@@ -138,9 +138,8 @@ export function resolvePlanMonthPaint(
     const fallback =
       lastPaintByMonth.get(input.monthKey) ??
       buildPlanMonthChrome(input.monthKey, input.saldoMinor);
-    // Miss for the displayed month must schedule the build and bump
-    // paintEpoch. Otherwise Plan can sit on ready:false forever.
-    scheduleEnsurePlanMonthPaint(input, stamp);
+    // Month-switch chrome only. Scheduling here runs during React render.
+    // softSwitchPlanMonth and Plan's effect own the deferred build.
     return { paint: fallback, ready: false, fromCache: false };
   }
 

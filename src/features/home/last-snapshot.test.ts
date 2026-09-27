@@ -1213,6 +1213,56 @@ describe("last view memory", () => {
     expect(lastPlanSnapshot()?.items[0]?.settledMinor).toBe(12_345_00);
   });
 
+  it("refuses a same-revision server echo over a :local plan delete", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T12:00:00.000Z"));
+    const kept: PlanItem = {
+      id: "keep",
+      userId: "user-hugo",
+      name: "Lön",
+      kind: "expected",
+      amountMinor: 51_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt: "2026-09-25T12:00:00.000Z",
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-09-04T11:00:43.763Z",
+      updatedAt: "2026-09-04T11:00:43.763Z",
+    };
+    const doomed: PlanItem = {
+      ...kept,
+      id: "doomed",
+      name: "Hyra",
+      kind: "mandatory",
+      amountMinor: 12_345_00,
+      cadence: "monthly",
+    };
+    const base: PlanSnapshot = {
+      items: [kept],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 116_588_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "rev-same:local",
+      verifiedAt: "2026-09-25T12:00:00.000Z",
+      truthStatus: "stale",
+    };
+    rememberPlanSnapshot(base);
+    rememberPlanSnapshot({
+      ...base,
+      items: [kept, doomed],
+      financeRevision: "rev-same",
+      verifiedAt: "2026-09-25T08:00:00.000Z",
+      truthStatus: "verified",
+    });
+    expect(lastPlanSnapshot()?.financeRevision).toBe("rev-same:local");
+    expect(lastPlanSnapshot()?.items.map((row) => row.id)).toEqual(["keep"]);
+  });
+
   it("does not treat an unclassified settle as Spenderat idag", () => {
     rememberHomeSnapshot(
       homeSnap({
