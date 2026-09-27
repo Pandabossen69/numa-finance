@@ -38,7 +38,9 @@ describe("plan create/save does not freeze the current route", () => {
   });
 
   it("adopts server props without setState during render", () => {
-    expect(editor).toContain("const viewItems = busy");
+    expect(editor).toContain(
+      "busy ? localItems : adoptServerPlanItems(localItems, items)",
+    );
     expect(editor).toContain("adoptServerPlanItems(localItems, items)");
     expect(editor).not.toContain("if (!busy && incomingStamp !== itemsStamp)");
     expect(editor).not.toContain("setItemsStamp");

@@ -448,6 +448,10 @@ function financeRevisionOf(
   return snap?.financeRevision ?? "";
 }
 
+function financeRevisionBase(rev: string): string {
+  return rev.endsWith(":local") ? rev.slice(0, -":local".length) : rev;
+}
+
 /** Adopt server money snapshots only when revision is newer or equal and not dirty. */
 function shouldAdoptFinanceSnapshot(
   current: { financeRevision?: string; verifiedAt?: string } | null,
@@ -469,13 +473,13 @@ function shouldAdoptFinanceSnapshot(
 
   // :local optimistic snapshots stamp verifiedAt with the client clock.
   // When that clock is ahead of the server, timestamp order would refuse a
-  // newer server revision. Server truth wins over :local when revisions differ.
-  if (
-    curRev.endsWith(":local") &&
-    nextRev &&
-    !nextRev.endsWith(":local") &&
-    curRev !== nextRev
-  ) {
+  // newer server revision. Server truth wins over :local when the base
+  // revision differs (#158). The same revision once `:local` is stripped is
+  // the pre-mutation echo — adopting it brings a deleted Plan row back.
+  if (curRev.endsWith(":local") && nextRev && !nextRev.endsWith(":local")) {
+    if (financeRevisionBase(curRev) === financeRevisionBase(nextRev)) {
+      return false;
+    }
     return true;
   }
 

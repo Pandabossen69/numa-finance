@@ -10,6 +10,7 @@ import {
   readPlanMonthPaint,
   resetPlanMonthCacheForTests,
   resolvePlanMonthPaint,
+  scheduleEnsurePlanMonthPaint,
   softSwitchPlanMonth,
 } from "./plan-month-cache";
 import {
@@ -310,9 +311,14 @@ describe("plan month paint cache", () => {
     const next = { ...sep, items: [...sep.items, added] };
     const nextStamp = planMonthPaintStamp(next);
     const shown = resolvePlanMonthPaint(next, nextStamp, { allowBuild: false });
+    expect(shown.ready).toBe(false);
     expect(shown.paint.monthKey).toBe("2026-09");
     expect(shown.paint.coverage.monthKey).toBe("2026-09");
+    expect(
+      shown.paint.projection.extraItems.some((row) => row.id === "qa-race-2"),
+    ).toBe(false);
 
+    scheduleEnsurePlanMonthPaint(next, nextStamp);
     const ready = resolvePlanMonthPaint(next, nextStamp, { allowBuild: false });
     expect(ready.ready).toBe(true);
     expect(ready.paint.monthKey).toBe("2026-09");
@@ -348,7 +354,9 @@ describe("plan month paint cache", () => {
       allowBuild: false,
     });
     expect(pending.paint.monthKey).toBe("2026-09");
+    expect(pending.ready).toBe(false);
 
+    scheduleEnsurePlanMonthPaint(settled, settledStamp);
     const painted = resolvePlanMonthPaint(settled, settledStamp, {
       allowBuild: false,
     });
@@ -390,22 +398,69 @@ describe("plan month paint cache", () => {
     expect(shown.paint.monthKey).toBe("2026-09");
     expect(shown.paint.coverage.monthKey).toBe("2026-09");
     expect(shown.paint.monthKey).not.toBe("2026-10");
+    expect(planMonthPaintEpoch()).toBe(epoch);
+    expect(readPlanMonthPaint("2026-09", missedStamp)).toBeNull();
+
+    scheduleEnsurePlanMonthPaint(missedInput, missedStamp);
     expect(planMonthPaintEpoch()).toBeGreaterThan(epoch);
     const built = readPlanMonthPaint("2026-09", missedStamp);
     expect(built?.coverage.monthKey).toBe("2026-09");
     expect(built?.coverage.saldoMinor).toBe(missedInput.saldoMinor);
 
     const coldEpoch = planMonthPaintEpoch();
-    const cold = resolvePlanMonthPaint(
-      { ...sep, monthKey: "2026-11" },
-      sepStamp,
-      { allowBuild: false },
-    );
+    const coldInput = { ...sep, monthKey: "2026-11" };
+    const cold = resolvePlanMonthPaint(coldInput, sepStamp, {
+      allowBuild: false,
+    });
     expect(cold.ready).toBe(false);
     expect(cold.paint.monthKey).toBe("2026-11");
     expect(cold.paint.coverage.monthKey).toBe("2026-11");
     expect(cold.paint.projection.items).toEqual([]);
+    expect(planMonthPaintEpoch()).toBe(coldEpoch);
+    scheduleEnsurePlanMonthPaint(coldInput, sepStamp);
     expect(planMonthPaintEpoch()).toBeGreaterThan(coldEpoch);
     expect(readPlanMonthPaint("2026-11", sepStamp)?.monthKey).toBe("2026-11");
+  });
+
+  it("builds a same-month optimistic edit immediately, not the previous paint", () => {
+    const sep = hugoLikeInput("2026-09");
+    const before = ensurePlanMonthPaint(sep);
+    expect(
+      before.projection.fixedItems.find((row) => row.id === "hyra")?.amountMinor,
+    ).toBe(15_000_00);
+
+    const edited = {
+      ...sep,
+      items: sep.items.map((row) =>
+        row.id === "hyra"
+          ? {
+              ...row,
+              amountMinor: 15_500_00,
+              updatedAt: "2026-09-02T00:00:00.000Z",
+            }
+          : row,
+      ),
+    };
+    const editedStamp = planMonthPaintStamp(edited);
+    const stale = resolvePlanMonthPaint(edited, editedStamp, {
+      allowBuild: false,
+    });
+    expect(stale.ready).toBe(false);
+    expect(
+      stale.paint.projection.fixedItems.find((row) => row.id === "hyra")
+        ?.amountMinor,
+    ).toBe(15_000_00);
+
+    const live = resolvePlanMonthPaint(edited, editedStamp, {
+      allowBuild: true,
+    });
+    expect(live.ready).toBe(true);
+    expect(live.fromCache).toBe(false);
+    expect(live.paint).not.toBe(stale.paint);
+    expect(live.paint).not.toBe(before);
+    expect(
+      live.paint.projection.fixedItems.find((row) => row.id === "hyra")
+        ?.amountMinor,
+    ).toBe(15_500_00);
   });
 });
