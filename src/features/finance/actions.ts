@@ -56,6 +56,11 @@ const accountSchema = z.object({
   /** Manual THB-per-1-unit rate when currency ≠ THB. Optional if Frankfurter works. */
   fxRate: z.string().trim().optional().nullable(),
   makeDefault: z.boolean().optional(),
+  /**
+   * Client dedupe key. numa.accounts has no client_mutation_id column yet,
+   * so the id is not written. Retries still send the same value.
+   */
+  clientMutationId: z.string().uuid().optional(),
 });
 
 const expenseSchema = z.object({
@@ -101,6 +106,9 @@ export async function createAccountAction(
     if (input.currency !== "THB" && input.fxRate && manualRate == null) {
       return { ok: false, error: "Ogiltig växelkurs" };
     }
+
+    // Kept on the payload so a later unique index can upsert this id.
+    void input.clientMutationId;
 
     const account = await createAccount({
       name: input.name,

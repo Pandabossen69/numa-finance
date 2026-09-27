@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
+import { adoptServerAccountsSnapshot } from "@/features/finance/account-edit-store";
 import { getAccountsSnapshotAction } from "@/features/finance/accounts-snapshot";
 import {
   isAccountsDirty,
@@ -30,6 +31,10 @@ export function AccountsRouteClient() {
     void getAccountsSnapshotAction().then((result) => {
       if (cancelled) return;
       if (result.ok) {
+        if (adoptServerAccountsSnapshot(result.data)) {
+          setError(null);
+          return;
+        }
         if (!isAccountsDirty()) rememberAccountsSnapshot(result.data);
         setError(null);
         return;

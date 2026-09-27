@@ -46,7 +46,14 @@ describe("ManageAccountForm", () => {
     expect(src).toContain("är arkiverat");
   });
 
-  it("refetches Konton after rename or default instead of router.refresh", () => {
+  it("paints the Konton list before the rename round-trip", () => {
+    const save = src.slice(
+      src.indexOf("function onSave"),
+      src.indexOf("function onRemove"),
+    );
+    expect(save).toContain("publishAccountDetailsEdit");
+    expect(save).toContain('router.push("/konton")');
+    expect(save).not.toContain("router.refresh()");
     const finish = src.slice(
       src.indexOf("function finish"),
       src.indexOf("function onSave"),
