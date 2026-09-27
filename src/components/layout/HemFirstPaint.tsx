@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
@@ -9,13 +9,17 @@ import { PlanScreen } from "@/components/plan/PlanScreen";
 import { AnalysPending, HemPending } from "@/components/layout/ViewLoading";
 import { holdKey } from "@/components/layout/nav";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
-import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
+import {
+  derivePaintableAnalysSnapshot,
+  ensurePaintableAnalysSnapshot,
+} from "@/features/finance/ensure-analys-last-known";
 import {
   lastAnalysSnapshot,
   lastHomeSnapshot,
   lastMerSnapshot,
   lastPlanSnapshot,
   lastSessionHomeSnapshot,
+  rememberAnalysSnapshot,
   subscribeAnalysSnapshot,
   subscribeHomeSnapshot,
   subscribePlanSnapshot,
@@ -53,9 +57,20 @@ export function AnalysFirstPaint() {
     lastHomeSnapshot,
     () => null,
   );
-  const view =
-    (analysViewCanPaint(analys) ? analys : null) ??
-    (plan || home ? ensurePaintableAnalysSnapshot() : null);
+  const view = useMemo(() => {
+    if (analysViewCanPaint(analys)) return analys;
+    if (!(plan || home)) return null;
+    return derivePaintableAnalysSnapshot(
+      null,
+      lastSessionHomeSnapshot() ?? home,
+    );
+  }, [analys, home, plan]);
+
+  useEffect(() => {
+    if (view && view !== analys) rememberAnalysSnapshot(view);
+    else if (plan || home) ensurePaintableAnalysSnapshot();
+  }, [analys, home, plan, view]);
+
   if (view && analysViewCanPaint(view)) return <AnalysDashboard data={view} />;
   return <AnalysPending />;
 }

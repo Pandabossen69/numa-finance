@@ -1,6 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
@@ -31,6 +38,7 @@ import {
   lastPlanView,
   rememberMovementsView,
   rememberPlanView,
+  subscribeAnalysSnapshot,
   subscribePlanView,
   rememberAnalysScope,
   rememberAnalysSnapshot,
@@ -51,7 +59,10 @@ import {
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
 import { isThinAnalysSnapshot } from "@/features/finance/analys-from-known";
-import { ensurePaintableAnalysSnapshot } from "@/features/finance/ensure-analys-last-known";
+import {
+  derivePaintableAnalysNow,
+  ensurePaintableAnalysSnapshot,
+} from "@/features/finance/ensure-analys-last-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 
 type AnalysScope = "period" | "month";
@@ -71,9 +82,22 @@ export function AnalysDashboard({
   // Share the month with Plan. Subscribed, not read once at mount, because
   // tabs stay mounted between visits.
   const sharedMonth = useSyncExternalStore(subscribePlanView, lastPlanView, () => null);
-  if (data) rememberAnalysSnapshot(data);
-  rememberAnalysScope(scope);
-  const view = data ?? lastAnalysSnapshot() ?? ensurePaintableAnalysSnapshot();
+  const storedAnalys = useSyncExternalStore(
+    subscribeAnalysSnapshot,
+    lastAnalysSnapshot,
+    () => null,
+  );
+  const view = useMemo(
+    () => data ?? derivePaintableAnalysNow(storedAnalys),
+    [data, storedAnalys],
+  );
+
+  useEffect(() => {
+    if (data) rememberAnalysSnapshot(data);
+    else if (view && view !== storedAnalys) rememberAnalysSnapshot(view);
+    else ensurePaintableAnalysSnapshot();
+    rememberAnalysScope(scope);
+  }, [data, scope, storedAnalys, view]);
   const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
 
   // Same numbers as the server sends for today's month, recomputed locally for
