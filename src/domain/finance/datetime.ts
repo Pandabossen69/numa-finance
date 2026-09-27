@@ -137,6 +137,17 @@ function wallClockHms(
   };
 }
 
+/** `HH:mm` in `timeZone` (24h, zero-padded). Never slices an offset string. */
+export function formatZonedHm(
+  instant: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const date = instant instanceof Date ? instant : new Date(instant);
+  const clock = wallClockHms(date, timeZone);
+  if (!clock) return "";
+  return `${clock.hh}:${clock.mm}`;
+}
+
 /** Keep `iso` when it is at or before `now`; otherwise now − 2s. */
 export function clampOccurredAt(iso: string, now: Date): string {
   const ms = Date.parse(iso);

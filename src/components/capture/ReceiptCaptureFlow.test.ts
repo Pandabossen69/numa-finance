@@ -84,6 +84,14 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).not.toContain('preview.importKind === "bank_app" ? null');
   });
 
+  it("shows a capture failure as text, with manual entry and no Försök igen button", () => {
+    expect(src).toContain('role="alert"');
+    expect(src).toContain("{error}");
+    expect(src).not.toContain("RetryLoadButton");
+    expect(src).not.toMatch(/<button[^>]*>[\s\S]{0,40}Försök igen/);
+    expect(src).toContain('title: "Manuellt"');
+  });
+
   it("marks last-used and the fastest Fota path without hiding other methods", () => {
     expect(src).toContain("fotaPickerMark");
     expect(src).toContain("rememberLastCaptureMethod");
