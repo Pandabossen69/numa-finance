@@ -20,7 +20,10 @@ import {
 } from "@/features/finance/actions";
 import type { AccountBalanceRow } from "@/features/finance/load-accounts";
 import type { AccountDetail } from "@/features/finance/load-account-detail";
-import { adoptRemovedAccount } from "@/features/home/last-snapshot";
+import {
+  adoptRemovedAccount,
+  invalidateAccountsSnapshot,
+} from "@/features/home/last-snapshot";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 
 function currencyLabel(code: CurrencyCode): string {
@@ -72,8 +75,8 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
       setConfirmRemove(false);
       return;
     }
+    invalidateAccountsSnapshot();
     router.push("/konton");
-    router.refresh();
   }
 
   function onSave(e: React.FormEvent) {

@@ -180,14 +180,17 @@ export function MovementsScreen({
 
   useEffect(() => {
     if (!data) return;
+    // `data` is the store snapshot on the client-first route. Merging it
+    // with itself used to allocate, emit, and re-enter this effect.
+    if (data === lastMovementsSnapshot()) return;
     const current = lastMovementsSnapshot();
     if (current == null || !isMovementsDirty()) {
       rememberMovementsSnapshot(data);
       return;
     }
-    rememberMovementsSnapshot(mergeMovementNativeFromServer(current, data), {
-      dirty: true,
-    });
+    // Server native fields are adopted — drop the dirty lock. Keeping it
+    // made the next emit look like another server snapshot.
+    rememberMovementsSnapshot(mergeMovementNativeFromServer(current, data));
   }, [data]);
 
   const view =

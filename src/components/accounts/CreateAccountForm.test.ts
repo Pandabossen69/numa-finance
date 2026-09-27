@@ -36,6 +36,11 @@ describe("CreateAccountForm", () => {
     expect(src).toContain('pending ? "Sparar…" : "Spara konto"');
   });
 
+  it("drops the cached Konton list after save instead of router.refresh", () => {
+    expect(src).toContain("invalidateAccountsSnapshot()");
+    expect(src).not.toContain("router.refresh()");
+  });
+
   it("asks for kind + name + currency + amount, not institution", () => {
     expect(src).toContain("Typ av konto");
     expect(src).toContain("Hur mycket har du just nu?");

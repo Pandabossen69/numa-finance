@@ -66,10 +66,6 @@ export async function uploadReceiptAction(
       preferBankApp,
     });
 
-    revalidatePath("/importera");
-    revalidatePath("/mer");
-    revalidatePath("/fota");
-    revalidatePath("/idag");
     return { ok: true, data: result };
   } catch (error) {
     if (!isExpectedImageValidationError(error)) {

@@ -63,19 +63,32 @@ export function mergeMovementNativeFromServer(
   incoming: MovementsSnapshot,
 ): MovementsSnapshot {
   const incomingById = new Map(incoming.items.map((row) => [row.id, row]));
-  return {
-    ...current,
-    items: current.items.map((item) => {
-      const fresh = incomingById.get(item.id);
-      if (!fresh) return item;
-      return {
-        ...item,
-        nativeAmountMinor: fresh.nativeAmountMinor,
-        nativeCurrency: fresh.nativeCurrency,
-        fxRate: fresh.fxRate ?? item.fxRate,
-        amountMinor: fresh.amountMinor,
-        currency: fresh.currency,
-      };
-    }),
-  };
+  let changed = false;
+  const items = current.items.map((item) => {
+    const fresh = incomingById.get(item.id);
+    if (!fresh) return item;
+    const fxRate = fresh.fxRate ?? item.fxRate;
+    if (
+      item.nativeAmountMinor === fresh.nativeAmountMinor &&
+      item.nativeCurrency === fresh.nativeCurrency &&
+      item.fxRate === fxRate &&
+      item.amountMinor === fresh.amountMinor &&
+      item.currency === fresh.currency
+    ) {
+      return item;
+    }
+    changed = true;
+    return {
+      ...item,
+      nativeAmountMinor: fresh.nativeAmountMinor,
+      nativeCurrency: fresh.nativeCurrency,
+      fxRate,
+      amountMinor: fresh.amountMinor,
+      currency: fresh.currency,
+    };
+  });
+  // Same reference when the server rows already match, so a dirty Rörelser
+  // effect does not emit a new snapshot and run again.
+  if (!changed) return current;
+  return { ...current, items };
 }

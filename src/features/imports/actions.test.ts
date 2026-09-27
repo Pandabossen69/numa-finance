@@ -23,5 +23,6 @@ describe("import upload error classification", () => {
     expect(upload).toContain("isExpectedImageValidationError");
     expect(upload).toContain('void reportError("ocr.upload"');
     expect(upload).toContain("if (!isExpectedImageValidationError(error))");
+    expect(upload).not.toContain("revalidatePath");
   });
 });

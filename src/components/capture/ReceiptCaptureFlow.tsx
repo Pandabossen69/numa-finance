@@ -391,7 +391,7 @@ export function ReceiptCaptureFlow({
         return;
       }
       rememberLastCaptureMethod(mode);
-      URL.revokeObjectURL(preview.previewUrl);
+      resetToPick();
       if (successHref) {
         router.push(successHref);
         router.refresh();

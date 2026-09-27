@@ -72,6 +72,21 @@ export function isSameZonedDay(
   return zonedDayKey(a, timezone) === zonedDayKey(b, timezone);
 }
 
+const zonedDayKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function zonedDayKeyFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = zonedDayKeyFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  zonedDayKeyFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
 /**
  * Calendar day key (`YYYY-MM-DD`) in the given IANA timezone.
  * Never derive this from `Date#toISOString().slice(0, 10)` — for Asia/Bangkok
@@ -82,12 +97,7 @@ export function zonedDayKey(
   timeZone: string = DEFAULT_TIMEZONE,
 ): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
+  return zonedDayKeyFormatter(timeZone).format(d);
 }
 
 /**
@@ -271,20 +281,34 @@ export function snapshotLedgerWindow(params: {
   };
 }
 
+const listDateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function listDateFormatter(
+  timeZone: string,
+  withTime: boolean,
+): Intl.DateTimeFormat {
+  const key = `${withTime ? "t" : "d"}\0${timeZone}`;
+  const cached = listDateFormatters.get(key);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    day: "numeric",
+    month: "short",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  });
+  listDateFormatters.set(key, formatter);
+  return formatter;
+}
+
 /** List dates in Swedish locale — never US `M/D/YYYY`. */
 export function formatListDateSv(
   iso: string,
   timeZone: string,
   opts?: { withTime?: boolean },
 ): string {
-  return new Date(iso).toLocaleString("sv-SE", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-    ...(opts?.withTime
-      ? { hour: "2-digit", minute: "2-digit" }
-      : {}),
-  });
+  return listDateFormatter(timeZone, opts?.withTime === true).format(
+    new Date(iso),
+  );
 }
 
 const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
