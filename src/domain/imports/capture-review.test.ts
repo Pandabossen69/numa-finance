@@ -117,22 +117,9 @@ describe("confirmOccurredAt", () => {
       timeZone: tz,
       now,
     });
-    expect(result).toBe("2026-09-28T01:15:00+07:00");
+    expect(result).toBe("2026-09-27T18:15:00.000Z");
     expect(Date.parse(result)).toBe(Date.parse("2026-09-28T01:15:00+07:00"));
-  });
-
-  it("reads a UTC OCR stamp as Bangkok wall time, not the UTC clock", () => {
-    for (const stamp of ["2026-09-27T18:15:00+00:00", "2026-09-27T18:15:00Z"]) {
-      const result = confirmOccurredAt({
-        occurredOn: "2026-09-28",
-        candidateOccurredAt: stamp,
-        fallbackIso,
-        timeZone: tz,
-        now,
-      });
-      expect(result).toBe("2026-09-28T01:15:00+07:00");
-      expect(result).not.toContain("T18:15");
-    }
+    expect(zonedDayKey(result, tz)).toBe("2026-09-28");
   });
 
   it("clamps a future chosen day to now", () => {
@@ -183,6 +170,95 @@ describe("confirmOccurredAt", () => {
         now,
       }),
     ).toBe("2026-09-26T01:15:00+07:00");
+  });
+
+  it("keeps a Supabase +00:00 bank stamp on the same instant (11:02 ICT)", () => {
+    // "25 sep. 2026 11:02" stored as 2026-09-25T04:02:00+00:00.
+    // Reading 04:02 from that string as Bangkok time stored 2026-09-24T21:02Z.
+    const result = confirmOccurredAt({
+      occurredOn: "2026-09-25",
+      candidateOccurredAt: "2026-09-25T04:02:00+00:00",
+      fallbackIso,
+      timeZone: tz,
+      now,
+    });
+    expect(Date.parse(result)).toBe(Date.parse("2026-09-25T04:02:00Z"));
+    expect(result).toBe("2026-09-25T04:02:00.000Z");
+    expect(zonedDayKey(result, tz)).toBe("2026-09-25");
+  });
+
+  it("keeps a pre-07:00 ICT stamp on the Bangkok day, not the UTC day", () => {
+    // 2026-09-24T22:30:00Z is 05:30 ICT on the 25th.
+    const result = confirmOccurredAt({
+      occurredOn: "2026-09-25",
+      candidateOccurredAt: "2026-09-24T22:30:00+00:00",
+      fallbackIso,
+      timeZone: tz,
+      now,
+    });
+    expect(Date.parse(result)).toBe(Date.parse("2026-09-24T22:30:00Z"));
+    expect(result).toBe("2026-09-24T22:30:00.000Z");
+    expect(zonedDayKey(result, tz)).toBe("2026-09-25");
+  });
+
+  it("treats Z, +00:00 and +07:00 forms of the same instant alike", () => {
+    const eleven = [
+      "2026-09-25T04:02:00+00:00",
+      "2026-09-25T04:02:00Z",
+      "2026-09-25T11:02:00+07:00",
+    ].map((candidateOccurredAt) =>
+      confirmOccurredAt({
+        occurredOn: "2026-09-25",
+        candidateOccurredAt,
+        fallbackIso,
+        timeZone: tz,
+        now,
+      }),
+    );
+    expect(new Set(eleven).size).toBe(1);
+    expect(Date.parse(eleven[0]!)).toBe(Date.parse("2026-09-25T04:02:00Z"));
+
+    const early = [
+      "2026-09-24T22:30:00+00:00",
+      "2026-09-24T22:30:00Z",
+      "2026-09-25T05:30:00+07:00",
+    ].map((candidateOccurredAt) =>
+      confirmOccurredAt({
+        occurredOn: "2026-09-25",
+        candidateOccurredAt,
+        fallbackIso,
+        timeZone: tz,
+        now,
+      }),
+    );
+    expect(new Set(early).size).toBe(1);
+    expect(Date.parse(early[0]!)).toBe(Date.parse("2026-09-24T22:30:00Z"));
+    expect(zonedDayKey(early[0]!, tz)).toBe("2026-09-25");
+  });
+
+  it("moves a +00:00 bank stamp's local clock onto another chosen day", () => {
+    const result = confirmOccurredAt({
+      occurredOn: "2026-09-24",
+      candidateOccurredAt: "2026-09-25T04:02:00+00:00",
+      fallbackIso,
+      timeZone: tz,
+      now,
+    });
+    expect(result).toBe("2026-09-24T11:02:00+07:00");
+    expect(Date.parse(result)).toBe(Date.parse("2026-09-24T04:02:00Z"));
+    expect(zonedDayKey(result, tz)).toBe("2026-09-24");
+  });
+
+  it("clamps a moved bank stamp when the chosen day is still in the future", () => {
+    const result = confirmOccurredAt({
+      occurredOn: "2026-09-29",
+      candidateOccurredAt: "2026-09-25T04:02:00+00:00",
+      fallbackIso,
+      timeZone: tz,
+      now,
+    });
+    expect(Date.parse(result)).toBe(now.getTime() - 2_000);
+    expect(Date.parse(result)).toBeLessThanOrEqual(now.getTime());
   });
 
   it("treats an unparseable OCR stamp as no time", () => {
