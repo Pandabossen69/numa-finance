@@ -78,4 +78,10 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(src).toContain("Manuellt");
     expect(src).toContain("onboarding ? null : fotaPickerMark");
   });
+
+  it("caps the Datum field at today in the profile time zone", () => {
+    expect(src).toContain("max={today}");
+    expect(src).toContain("calendarDateInZone");
+    expect(src).toContain("captureProfileTimeZone");
+  });
 });

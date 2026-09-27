@@ -2707,6 +2707,7 @@ export async function confirmReceiptExpense(
           tipInBatch: tipInBatchEffective || isBankAppBatch,
         }),
         timeZone,
+        now: new Date(baseMs),
       });
       return {
         id: crypto.randomUUID(),
@@ -2952,6 +2953,7 @@ export async function confirmReceiptExpense(
     candidateOccurredAt,
     fallbackIso: new Date(baseMs - 2_000).toISOString(),
     timeZone,
+    now: new Date(baseMs),
   });
   const checkpointAt = new Date(baseMs).toISOString();
 
