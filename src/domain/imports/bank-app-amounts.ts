@@ -90,6 +90,22 @@ function score(candidate: BankAppAmountCandidate): number {
   );
 }
 
+/**
+ * Vision often echoes the year (2026) or the day (25) as amountMajor.
+ * Those are not money when the same digits sit in the date.
+ */
+function isBareDateNoise(amountMinor: number, text: string): boolean {
+  const major = amountMinor / 100;
+  if (!Number.isInteger(major)) return false;
+  if (major >= 1900 && major <= 2100) {
+    return new RegExp(`\\b${major}\\b`).test(text);
+  }
+  if (major >= 1 && major <= 31) {
+    return new RegExp(`\\b${major}\\b`).test(text);
+  }
+  return false;
+}
+
 export function textForBankAppAmount(input: {
   rawText?: string | null;
   occurredAt?: string | null;
@@ -108,8 +124,13 @@ export function textForBankAppAmount(input: {
     ...localScan.clockMinors,
     ...screenScan.clockMinors,
   ]);
+  const context = [local, screen].filter(Boolean).join("\n");
   const localAmounts = localScan.candidates.filter(
-    (candidate) => !clockMinors.has(candidate.amountMinor),
+    (candidate) =>
+      !clockMinors.has(candidate.amountMinor) &&
+      (candidate.signed ||
+        candidate.currency ||
+        !isBareDateNoise(candidate.amountMinor, context)),
   );
   if (localAmounts.length > 0) return local;
 
@@ -184,8 +205,29 @@ export function reconcileBankAppAmountMinor(input: {
   text: string;
 }): { amountMinor: number | null; currency: CurrencyCode | null } {
   const { candidates, clockMinors } = collectBankAppAmountCandidates(input.text);
+  const strong = candidates.filter(
+    (candidate) =>
+      (candidate.signed || candidate.currency) &&
+      !clockMinors.has(candidate.amountMinor),
+  );
+  const strongAmounts = [...new Set(strong.map((candidate) => candidate.amountMinor))];
   const visionIsClock =
     input.visionMinor != null && clockMinors.has(input.visionMinor);
+  const visionIsNoise =
+    input.visionMinor != null &&
+    (visionIsClock || isBareDateNoise(input.visionMinor, input.text));
+  // One signed or currency-tagged amount wins over a clock, a year, or a day.
+  if (
+    strongAmounts.length === 1 &&
+    (input.visionMinor == null ||
+      visionIsNoise ||
+      input.visionMinor === strongAmounts[0])
+  ) {
+    const winner = strong.find(
+      (candidate) => candidate.amountMinor === strongAmounts[0],
+    )!;
+    return { amountMinor: winner.amountMinor, currency: winner.currency };
+  }
   if (input.visionMinor != null && !visionIsClock) {
     return { amountMinor: input.visionMinor, currency: null };
   }

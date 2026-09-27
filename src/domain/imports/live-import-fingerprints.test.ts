@@ -55,7 +55,9 @@ describe("liveImportFingerprints", () => {
     const afterLive = selectImportableBankAppEvents(icaRows(), live);
     expect(afterLive.status).toBe("all_known");
     if (afterLive.status !== "all_known") return;
-    expect(afterLive.messageSv).toBe("Den här rörelsen finns redan.");
+    expect(afterLive.messageSv).toBe(
+      "Den här transaktionen finns redan (25 sep, 89,50 kr).",
+    );
   });
 
   it("does not treat deleted or soft-deleted statuses as saved", () => {

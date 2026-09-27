@@ -10,6 +10,7 @@ import {
   parseBunqDetailFromText,
   selectImportableBankAppEvents,
 } from "./bank-app-parsers";
+import { presentAlreadyKnownMessage } from "./movement-count-copy";
 import { resolveScreenshotImport } from "./resolve-screenshot-import";
 
 const capturedAt = new Date("2026-09-27T12:00:00.000Z");
@@ -193,6 +194,179 @@ describe("bank-app merchant cleanup", () => {
     expect(importEventDescription({ labelSv: "− Utgift 50,00 THB" })).toBe(
       "− Utgift 50,00 THB",
     );
+  });
+});
+
+const RECEIPT_FAIL = "Kunde inte läsa beloppet säkert";
+
+function kasikornExtraction(
+  text: string,
+  input: {
+    merchant: string;
+    amountMajor: number;
+    occurredAt: string;
+  },
+) {
+  return {
+    provider: "vision_api" as const,
+    candidates: [],
+    rawMetadata: {
+      detectedKind: "receipt",
+      fullText: text,
+      transactions: [
+        {
+          merchant: input.merchant,
+          direction: "debit" as const,
+          amountMajor: input.amountMajor,
+          currency: null,
+          occurredAt: input.occurredAt,
+          rawText: text,
+        },
+      ],
+    },
+  };
+}
+
+describe("Kasikorn screenshots z4c z4h z4e z4g", () => {
+  const shots = {
+    z4c: {
+      merchant: "7-Eleven Z4C QA",
+      amount: "−63.00 THB",
+      when: "25 sep. 2026 11:02",
+      minor: 6_300,
+    },
+    z4h: {
+      merchant: "7-Eleven Z4C QA",
+      amount: "−63.00 THB",
+      when: "25 sep. 2026 05:30",
+      minor: 6_300,
+    },
+    z4g: {
+      merchant: "7-Eleven Z4G QA",
+      amount: "−63.00 THB",
+      when: "26 sep. 2026 05:30",
+      minor: 6_300,
+    },
+    z4e: {
+      merchant: "Grab Z4E QA",
+      amount: "−64.00 THB",
+      when: "26 sep. 2026 11:30",
+      minor: 6_400,
+    },
+  } as const;
+
+  function screen(id: keyof typeof shots): string {
+    const shot = shots[id];
+    return [
+      "Kasikorn K PLUS",
+      "Transaction details",
+      shot.merchant,
+      shot.amount,
+      shot.when,
+      "2026",
+      "25",
+      "Completed",
+    ].join("\n");
+  }
+
+  it("reads each screenshot even when vision returns the year", () => {
+    for (const id of ["z4c", "z4h", "z4g", "z4e"] as const) {
+      const shot = shots[id];
+      const text = screen(id);
+      const resolved = resolveScreenshotImport(
+        kasikornExtraction(text, {
+          merchant: `− Utgift ${shot.amount} · ${shot.merchant}`,
+          amountMajor: 2026,
+          occurredAt: shot.when,
+        }),
+        [],
+        { preferBankApp: true },
+      );
+      expect(resolved.kind).toBe("bank_app");
+      expect(resolved.suggestedAmountMinor).toBe(shot.minor);
+      expect(resolved.suggestedDescription).toBe(shot.merchant);
+      expect(resolved.messageSv).not.toContain(RECEIPT_FAIL);
+    }
+  });
+
+  it("does not treat 05:30 on the same day as the saved 11:02 row", () => {
+    const z4c = resolveScreenshotImport(
+      kasikornExtraction(screen("z4c"), {
+        merchant: shots.z4c.merchant,
+        amountMajor: 63,
+        occurredAt: shots.z4c.when,
+      }),
+      [],
+      { preferBankApp: true },
+    );
+    expect(z4c.kind).toBe("bank_app");
+    if (z4c.kind !== "bank_app" || !z4c.fingerprint) return;
+    const z4h = resolveScreenshotImport(
+      kasikornExtraction(screen("z4h"), {
+        merchant: shots.z4h.merchant,
+        amountMajor: 5.3,
+        occurredAt: shots.z4h.when,
+      }),
+      [z4c.fingerprint],
+      { preferBankApp: true },
+    );
+    expect(z4h.kind).toBe("bank_app");
+    expect(z4h.alreadyKnown).toBe(false);
+    expect(z4h.suggestedAmountMinor).toBe(6_300);
+    expect(z4h.messageSv).not.toContain(RECEIPT_FAIL);
+  });
+
+  it("names an already imported duplicate instead of the receipt error", () => {
+    const first = resolveScreenshotImport(
+      kasikornExtraction(screen("z4c"), {
+        merchant: shots.z4c.merchant,
+        amountMajor: 11.02,
+        occurredAt: shots.z4c.when,
+      }),
+      [],
+      { preferBankApp: true },
+    );
+    expect(first.kind).toBe("bank_app");
+    if (first.kind !== "bank_app" || !first.fingerprint) return;
+    const again = resolveScreenshotImport(
+      kasikornExtraction(screen("z4c"), {
+        merchant: shots.z4c.merchant,
+        amountMajor: 2026,
+        occurredAt: shots.z4c.when,
+      }),
+      [first.fingerprint],
+      { preferBankApp: true },
+    );
+    expect(again.kind).toBe("bank_app");
+    expect(again.alreadyKnown).toBe(true);
+    expect(again.messageSv).toBe(
+      "Den här transaktionen finns redan (25 sep, 63,00 THB).",
+    );
+    expect(again.messageSv).not.toContain(RECEIPT_FAIL);
+    expect(
+      presentAlreadyKnownMessage({
+        listedCount: 1,
+        serverMessage: again.messageSv,
+      }),
+    ).toBe(again.messageSv);
+  });
+
+  it("keeps an unreadable Bankapp shot off the receipt sentence", () => {
+    const resolved = resolveScreenshotImport(
+      {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          detectedKind: "receipt",
+          fullText: "oklar skärm",
+          transactions: [],
+        },
+      },
+      [],
+      { preferBankApp: true },
+    );
+    expect(resolved.kind).toBe("bank_app");
+    expect(resolved.messageSv).not.toContain(RECEIPT_FAIL);
   });
 });
 

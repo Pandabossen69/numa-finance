@@ -28,20 +28,42 @@ const ALREADY_KNOWN_RE = /Alla \d+ rörelser finns redan/;
  * speak the rendered count. «Alla 2 rörelser finns redan» must not sit on
  * a list of 3.
  */
+/** Keep a bank-app duplicate sentence that already names the day and amount. */
+export function knownImportMessage(input: {
+  alreadyKnown: boolean;
+  eventCount: number;
+  serverMessage: string;
+}): string | null {
+  if (!input.alreadyKnown || input.eventCount <= 0) return null;
+  const server = input.serverMessage.trim();
+  if (
+    input.eventCount === 1 &&
+    /^Den här transaktionen finns redan \(/.test(server)
+  ) {
+    return server;
+  }
+  return alreadyKnownMovementsMessage(input.eventCount);
+}
+
 export function presentAlreadyKnownMessage(input: {
   listedCount: number;
   serverMessage?: string | null;
 }): string {
   const listed = Math.max(0, Math.trunc(input.listedCount));
+  const server = (input.serverMessage ?? "").trim();
+  if (
+    listed === 1 &&
+    /^Den här transaktionen finns redan \(/.test(server)
+  ) {
+    return server;
+  }
   if (listed > 0) {
     const fresh = alreadyKnownMovementsMessage(listed);
-    const server = (input.serverMessage ?? "").trim();
     const suffix = server.match(/Alla \d+ rörelser finns redan\.?\s*(.*)$/);
     const rest = suffix?.[1]?.trim() ?? "";
     if (rest && !/^sparade\b/i.test(rest)) return `${fresh} ${rest}`;
     return fresh;
   }
-  const server = input.serverMessage ?? "";
   const match = server.match(/Alla (\d+) rörelser finns redan/);
   if (match) return alreadyKnownMovementsMessage(Number(match[1]));
   if (server.trim()) return server;

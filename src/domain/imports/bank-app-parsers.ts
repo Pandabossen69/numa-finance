@@ -611,10 +611,15 @@ export function parseBunqDetailFromText(
   const merchantMatch =
     text.match(/\b([A-Z][A-Za-z0-9 &.'-]{1,40})\s*>/m) ||
     text.match(/\b(Grab|Bolt|Uber|Foodpanda|Apple|Google)\b/i);
+  const fromLine = merchantLineFromBankAppText(text);
+  const fromBrand = cleanBankAppMerchant(merchantMatch?.[1]);
   const merchant =
-    cleanBankAppMerchant(merchantMatch?.[1]) ??
-    merchantLineFromBankAppText(text) ??
-    "Okänd";
+    fromLine &&
+    fromBrand &&
+    fromLine.toLowerCase().includes(fromBrand.toLowerCase()) &&
+    fromLine.length > fromBrand.length
+      ? fromLine
+      : (fromBrand ?? fromLine ?? "Okänd");
 
   const thbMatch = text.match(
     /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*THB\b/i,
@@ -647,6 +652,14 @@ export function parseBunqDetailFromText(
     } catch {
       displayAmountMinor = null;
       displayCurrency = null;
+    }
+  }
+
+  if (displayAmountMinor == null && originalAmountMinor == null) {
+    const reconciled = reconcileBankAppAmountMinor({ visionMinor: null, text });
+    if (reconciled.amountMinor != null) {
+      displayAmountMinor = reconciled.amountMinor;
+      displayCurrency = reconciled.currency ?? inferAmountCurrency(text);
     }
   }
 
@@ -731,6 +744,36 @@ export function toBankAppEventCandidate(
   return { ...row, fingerprint, labelSv };
 }
 
+const SV_MONTHS = [
+  "jan",
+  "feb",
+  "mar",
+  "apr",
+  "maj",
+  "jun",
+  "jul",
+  "aug",
+  "sep",
+  "okt",
+  "nov",
+  "dec",
+];
+
+function bankAppAlreadySavedMessage(row: BankAppEventCandidate): string {
+  const ymd = calendarDateInZone(row.occurredAt, DEFAULT_TIMEZONE);
+  const match = ymd?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const when = match
+    ? `${Number(match[3])} ${SV_MONTHS[Number(match[2]) - 1]}`
+    : null;
+  const amount = formatMoney(money(row.amountMinor, row.currency)).replace(
+    /\u00a0/g,
+    " ",
+  );
+  return when
+    ? `Den här transaktionen finns redan (${when}, ${amount}).`
+    : `Den här transaktionen finns redan (${amount}).`;
+}
+
 export function selectImportableBankAppEvents(
   rows: ParsedBankAppTransaction[],
   existingFingerprints: Iterable<string>,
@@ -761,13 +804,17 @@ export function selectImportableBankAppEvents(
   const skippedDuplicateCount = viable.length - selectedBatch.length;
 
   if (selectedBatch.length === 0) {
+    const knownCopy =
+      viable.length === 1
+        ? bankAppAlreadySavedMessage(viable[0]!)
+        : alreadyKnownMovementsMessage(viable.length);
     return {
       status: "all_known",
       all: viable,
       skippedDuplicateCount,
       skippedFailedCount: failedCount,
       messageSv: [
-        alreadyKnownMovementsMessage(viable.length),
+        knownCopy,
         failedCount > 0 ? skippedFailedMovementsMessage(failedCount) : null,
       ]
         .filter(Boolean)

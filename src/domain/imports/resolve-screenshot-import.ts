@@ -300,8 +300,11 @@ function resolveBankAppImport(
     };
   }
 
-  // Fall through to receipt only when we are not sure this is a bank app.
+  // Bankapp mode must not fall through to the receipt sentence. Kasikorn
+  // is not classified as bunq/Revolut, and an empty read was showing
+  // «Kunde inte läsa beloppet säkert» on the Bankapp screen.
   if (
+    options?.force ||
     detectedKind === "bank_app" ||
     detectedKind === "bank_app_detail" ||
     detectedKind === "bank_app_list" ||
