@@ -20,6 +20,7 @@ import {
 } from "@/features/finance/actions";
 import type { AccountBalanceRow } from "@/features/finance/load-accounts";
 import type { AccountDetail } from "@/features/finance/load-account-detail";
+import { publishAccountDetailsEdit } from "@/features/finance/account-edit-store";
 import {
   adoptRemovedAccount,
   invalidateAccountsSnapshot,
@@ -83,6 +84,17 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     e.preventDefault();
     if (!guard.tryBegin()) return;
     setError(null);
+    const optimistic = publishAccountDetailsEdit({
+      id: account.id,
+      name: form.name,
+      kind: form.kind,
+      currency: form.currency,
+      makeDefault: form.makeDefault,
+    });
+    if (optimistic) {
+      router.push("/konton");
+      return;
+    }
     startTransition(async () => {
       finish(
         await updateAccountAction({

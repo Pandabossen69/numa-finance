@@ -3,6 +3,12 @@
 import { useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { createCheckpointAction } from "@/features/finance/actions";
+import {
+  beginAccountBalanceEdit,
+  commitAccountEdit,
+  refineAccountBalanceThb,
+  rollbackAccountEdit,
+} from "@/features/finance/account-edit-store";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import {
   applyAccountBalance,
@@ -40,18 +46,53 @@ export function VerifyBalanceForm({
       }
       const balanceInput = balance;
       const fxInput = fxRate;
-      // Remember the whole paint, including an empty account (no saldo yet).
-      // A rejected first saldo must show "—" again immediately — not the
-      // number the server refused, until the next reload.
-      const before = captureOptimisticBalance();
-      const rollbackOptimistic = () => {
-        undoOptimisticBalance(before);
-      };
-      // Patch Hem/Konton immediately; persist in the background.
-      applyAccountBalance(accountId, balanceMinor, {
-        thbMinor: currency === "THB" ? balanceMinor : undefined,
+      const generation = beginAccountBalanceEdit(accountId, balanceMinor, {
         currency,
       });
+      if (generation == null) {
+        // No Konton cache yet. Remember the whole paint, including an empty
+        // account (no saldo yet). A rejected first saldo must show "—" again
+        // immediately — not the number the server refused.
+        const before = captureOptimisticBalance();
+        const rollbackOptimistic = () => {
+          undoOptimisticBalance(before);
+        };
+        applyAccountBalance(accountId, balanceMinor, {
+          thbMinor: currency === "THB" ? balanceMinor : undefined,
+          currency,
+        });
+        setBalance("");
+        setFxRate("");
+        let legacy: Awaited<ReturnType<typeof createCheckpointAction>>;
+        try {
+          legacy = await createCheckpointAction({
+            accountId,
+            balance: balanceInput,
+            source: "manual_verification",
+            fxRate: needsFx ? fxInput || null : null,
+          });
+        } catch (error) {
+          rollbackOptimistic();
+          setError(
+            error instanceof Error ? error.message : "Kunde inte spara saldo",
+          );
+          return;
+        }
+        if (!legacy.ok) {
+          rollbackOptimistic();
+          setError(legacy.error);
+          return;
+        }
+        if (legacy.thbMinor != null && currency !== "THB") {
+          applyAccountBalance(accountId, balanceMinor, {
+            thbMinor: legacy.thbMinor,
+            currency,
+          });
+        }
+        const legacyMovements = lastMovementsSnapshot();
+        if (legacyMovements) rememberMovementsSnapshot(legacyMovements);
+        return;
+      }
       setBalance("");
       setFxRate("");
       let result: Awaited<ReturnType<typeof createCheckpointAction>>;
@@ -64,27 +105,24 @@ export function VerifyBalanceForm({
         });
       } catch (error) {
         // Server actions can reject before returning { ok: false } (network).
-        rollbackOptimistic();
-        setError(
-          error instanceof Error ? error.message : "Kunde inte spara saldo",
-        );
+        // A newer saldo owns the row; this response must not roll it back.
+        if (rollbackAccountEdit(accountId, generation)) {
+          setError(
+            error instanceof Error ? error.message : "Kunde inte spara saldo",
+          );
+        }
         return;
       }
       if (!result.ok) {
-        rollbackOptimistic();
-        setError(result.error);
+        if (rollbackAccountEdit(accountId, generation)) setError(result.error);
         return;
       }
       if (result.thbMinor != null && currency !== "THB") {
-        applyAccountBalance(accountId, balanceMinor, {
-          thbMinor: result.thbMinor,
-          currency,
-        });
+        refineAccountBalanceThb(accountId, generation, result.thbMinor);
       }
-      // Checkpoint response is in. applyAccountBalance marked Rörelser dirty
-      // and never cleared it; balance figures above are left as painted.
-      const movementsSnap = lastMovementsSnapshot();
-      if (movementsSnap) rememberMovementsSnapshot(movementsSnap);
+      // Only the latest saldo may drop the Rörelser lock. A late response
+      // for an older amount leaves the newer paint dirty.
+      if (!commitAccountEdit(accountId, generation)) return;
     });
   }
 

@@ -3,7 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { useRouter } from "next/navigation";
+import { createStableMutationId } from "@/domain/finance";
 import { createAccountAction } from "@/features/finance/actions";
+import { createAccountOnce } from "@/features/finance/create-account-once";
 import { invalidateAccountsSnapshot } from "@/features/home/last-snapshot";
 import {
   ACCOUNT_KIND_LABEL_SV,
@@ -24,7 +26,10 @@ export function CreateAccountForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [saving, setSaving] = useState(false);
+  const busy = pending || saving;
+  const guard = useSubmitGuard(busy);
+  const [mutation] = useState(createStableMutationId);
   const [error, setError] = useState<string | null>(null);
   const [useOnIdag, setUseOnIdag] = useState(false);
   const initialKind: AccountKind =
@@ -68,24 +73,35 @@ export function CreateAccountForm({
     e.preventDefault();
     if (!guard.tryBegin()) return;
     setError(null);
+    setSaving(true);
+    const clientMutationId = mutation.take();
     startTransition(async () => {
-      const result = await createAccountAction({
-        name: form.name,
-        institution: null,
-        accountType: form.kind === "cash" ? "cash" : "checking",
-        kind: form.kind,
-        currency: form.currency,
-        maskedIdentifier: null,
-        openingBalance: form.openingBalance,
-        fxRate: needsFx ? form.fxRate || null : null,
-        makeDefault: useOnIdag,
-      });
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      try {
+        const result = await createAccountOnce(
+          {
+            name: form.name,
+            institution: null,
+            accountType: form.kind === "cash" ? "cash" : "checking",
+            kind: form.kind,
+            currency: form.currency,
+            maskedIdentifier: null,
+            openingBalance: form.openingBalance,
+            fxRate: needsFx ? form.fxRate || null : null,
+            makeDefault: useOnIdag,
+            clientMutationId,
+          },
+          createAccountAction,
+        );
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        mutation.clear();
+        invalidateAccountsSnapshot();
+        router.push(useOnIdag ? "/idag" : "/konton");
+      } finally {
+        setSaving(false);
       }
-      invalidateAccountsSnapshot();
-      router.push(useOnIdag ? "/idag" : "/konton");
     });
   }
 
@@ -215,10 +231,10 @@ export function CreateAccountForm({
 
       <button
         type="submit"
-        disabled={pending || !form.name.trim() || !form.openingBalance.trim()}
+        disabled={busy || !form.name.trim() || !form.openingBalance.trim()}
         className="numa-btn numa-btn-accent numa-cta-glow min-h-14 w-full text-[15px]"
       >
-        {pending ? "Sparar…" : "Spara konto"}
+        {busy ? "Sparar…" : "Spara konto"}
       </button>
       <p className="text-center text-xs leading-relaxed text-[var(--numa-faint)]">
         Hem och Plan räknar alltid ihop alla konton till THB.
