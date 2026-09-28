@@ -8,7 +8,7 @@ import {
   type PlanMonthPaintInput,
 } from "@/features/plan/plan-month-paint";
 
-type PaintEntry = { stamp: string; paint: PlanMonthPaint };
+type PaintEntry = { stamp: string; paint: PlanMonthPaint; writtenAt: number };
 type SuggestionEntry = { stamp: string; suggestions: PlanLinkSuggestion[] };
 
 const paints = new Map<string, PaintEntry>();
@@ -17,7 +17,10 @@ const suggestionListeners = new Set<() => void>();
 const paintListeners = new Set<() => void>();
 let suggestionEpoch = 0;
 let paintEpoch = 0;
+let paintWriteSeq = 0;
 let lastPaint: PlanMonthPaint | null = null;
+/** `${monthKey}:${stamp}` — one idle build per neighbour stamp. */
+const prewarmedMonthStamps = new Set<string>();
 /** Latest built paint per month. Prefetch must not replace another month. */
 const lastPaintByMonth = new Map<string, PlanMonthPaint>();
 
@@ -93,11 +96,16 @@ export function rememberPlanMonthPaint(
   stamp: string,
   paint: PlanMonthPaint,
 ) {
-  paints.set(monthKey, { stamp, paint });
+  const writtenAt = ++paintWriteSeq;
+  paints.set(monthKey, { stamp, paint, writtenAt });
   // Keyed by monthKey so prefetch of an adjacent month cannot overwrite the
   // paint the displayed month falls back to on a stamp miss.
   lastPaintByMonth.set(monthKey, paint);
   lastPaint = paint;
+}
+
+export function planMonthPaintWriteSeq(): number {
+  return paintWriteSeq;
 }
 
 export function readPlanMonthSuggestions(
@@ -257,17 +265,50 @@ export function scheduleEnsurePlanMonthSuggestions(
   window.setTimeout(run, 1);
 }
 
+/**
+ * Build the previous and next Plan months once per stamp while idle.
+ * A paint written after this was scheduled wins — the late callback skips it.
+ */
+export function prewarmNeighbourPlanMonths(
+  input: PlanMonthPaintInput,
+  stamp = planMonthPaintStamp(input),
+  scheduledAt = paintWriteSeq,
+): string[] {
+  const keys = [
+    addMonthsKey(input.monthKey, -1),
+    addMonthsKey(input.monthKey, 1),
+  ];
+  for (const monthKey of keys) {
+    const once = `${monthKey}:${stamp}`;
+    if (prewarmedMonthStamps.has(once)) continue;
+    const existing = paints.get(monthKey);
+    if (existing && existing.writtenAt > scheduledAt) {
+      prewarmedMonthStamps.add(once);
+      continue;
+    }
+    prewarmedMonthStamps.add(once);
+    if (readPlanMonthPaint(monthKey, stamp)) continue;
+    const latest = paints.get(monthKey);
+    if (latest && latest.writtenAt > scheduledAt) continue;
+    const next = { ...input, monthKey };
+    const paint = ensurePlanMonthPaint(next, stamp);
+    ensurePlanMonthSuggestions(next, stamp, paint.projection);
+  }
+  return keys;
+}
+
 export function schedulePrefetchAdjacentPlanMonths(
   input: PlanMonthPaintInput,
   stamp = planMonthPaintStamp(input),
 ) {
+  const scheduledAt = paintWriteSeq;
+  const run = () => {
+    prewarmNeighbourPlanMonths(input, stamp, scheduledAt);
+  };
   if (typeof window === "undefined") {
-    prefetchAdjacentPlanMonths(input, stamp);
+    run();
     return;
   }
-  const run = () => {
-    prefetchAdjacentPlanMonths(input, stamp);
-  };
   if (typeof requestIdleCallback === "function") {
     requestIdleCallback(run, { timeout: 300 });
     return;
@@ -280,6 +321,8 @@ export function resetPlanMonthCacheForTests() {
   suggestions.clear();
   suggestionEpoch = 0;
   paintEpoch = 0;
+  paintWriteSeq = 0;
   lastPaint = null;
   lastPaintByMonth.clear();
+  prewarmedMonthStamps.clear();
 }

@@ -85,6 +85,7 @@ export function mergeMovementNativeFromServer(
       fxRate,
       amountMinor: fresh.amountMinor,
       currency: fresh.currency,
+      clientMutationId: fresh.clientMutationId ?? item.clientMutationId,
     };
   });
   // Same reference when the server rows already match, so a dirty Rörelser

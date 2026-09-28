@@ -22,6 +22,7 @@ import {
   applyMovementsEdit,
   applyMovementsVoid,
   isMovementsDirty,
+  isStaleMovementsSnapshot,
   lastAccountsSnapshot,
   lastAnalysSnapshot,
   lastHomeSnapshot,
@@ -184,6 +185,8 @@ export function MovementsScreen({
     // with itself used to allocate, emit, and re-enter this effect.
     if (data === lastMovementsSnapshot()) return;
     const current = lastMovementsSnapshot();
+    // Older than the optimistic paint — keep the edited amount / temp row.
+    if (current != null && isStaleMovementsSnapshot(data)) return;
     if (current == null || !isMovementsDirty()) {
       rememberMovementsSnapshot(data);
       return;
@@ -448,7 +451,7 @@ export function MovementsScreen({
                 )?.currency;
                 const editPrefill = movementEditPrefill(tx, accountCurrency);
                 return (
-                  <li key={tx.id} className="space-y-3 px-4 py-3.5">
+                  <li key={tx.listKey ?? tx.id} className="space-y-3 px-4 py-3.5">
                     <input
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
@@ -559,7 +562,7 @@ export function MovementsScreen({
 
               return (
                 <li
-                  key={tx.id}
+                  key={tx.listKey ?? tx.id}
                   className="numa-money-line items-start px-4 py-3.5 transition-colors hover:bg-[var(--numa-bg)]/30"
                 >
                   <div className="numa-money-line-label">

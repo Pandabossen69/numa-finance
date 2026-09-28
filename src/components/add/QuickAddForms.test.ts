@@ -19,21 +19,40 @@ describe("Flytta/Kontant empty copy", () => {
     expect(src).not.toContain("min-h-10");
   });
 
-  it("patches Hem locally but confirms server before navigation on money writes", () => {
-    expect(src).toContain("applyOptimisticHomeSpend");
-    expect(src).toContain("applyOptimisticHomeIncome");
-    expect(src).toContain("applyAccountDelta");
-    expect(src).toContain("applyMovementsAdd");
+  it("patches Hem and Rörelser before the server, then reconciles", () => {
+    expect(src).toContain("paintOptimisticQuickAdd");
+    expect(src).toContain("rollbackOptimisticQuickAdd");
+    expect(src).toContain("confirmOptimisticQuickAdd");
+    expect(src).toContain("clientMutationId: mutationId");
+    expect(src).toContain("useSubmitGuard");
     expect(src).toContain("confirmOptimisticFinance");
     expect(src).toContain("createExpenseAction");
     expect(src).toContain("applyLocalTransfer");
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
-    const expenseBlock = src.slice(src.indexOf("function ExpenseForm"));
-    expect(expenseBlock.indexOf("onSuccess?.()")).toBeGreaterThan(
+    const expenseBlock = src.slice(
+      src.indexOf("function ExpenseForm"),
+      src.indexOf("function IncomeForm"),
+    );
+    expect(expenseBlock.indexOf("paintOptimisticQuickAdd")).toBeLessThan(
+      expenseBlock.indexOf("onSuccess?.()"),
+    );
+    expect(expenseBlock.indexOf("onSuccess?.()")).toBeLessThan(
       expenseBlock.indexOf("await createExpenseAction"),
     );
+    expect(expenseBlock).toContain("setError(result.error)");
+    const incomeBlock = src.slice(
+      src.indexOf("function IncomeForm"),
+      src.indexOf("function TransferForm"),
+    );
+    expect(incomeBlock.indexOf("paintOptimisticQuickAdd")).toBeLessThan(
+      incomeBlock.indexOf("onSuccess?.()"),
+    );
+    expect(incomeBlock.indexOf("onSuccess?.()")).toBeLessThan(
+      incomeBlock.indexOf("await createIncomeAction"),
+    );
+    expect(incomeBlock).toContain("setError(result.error)");
     const transferBlock = src.slice(src.indexOf("function TransferForm"));
     expect(transferBlock.indexOf("onSuccess?.()")).toBeGreaterThan(
       transferBlock.indexOf("await createTransferAction"),

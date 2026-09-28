@@ -5,7 +5,7 @@ import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import { upgradeAnalysFromPlanNow } from "@/features/finance/ensure-analys-last-known";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
-import type { MovementsSnapshot } from "@/features/finance/load-movements";
+import type { MovementRow, MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
   captureOptimisticBalance,
@@ -53,10 +53,18 @@ import {
   rememberSettingsSnapshot,
   revertOptimisticHomeSpend,
   subscribeHomeSnapshot,
+  isStaleMovementsSnapshot,
   syncHomeCoverageFromPlan,
   syncHomeLivingFromPlan,
 } from "./last-snapshot";
 import { serializeLastHomeCookie } from "./last-home-cookie";
+import {
+  confirmOptimisticQuickAdd,
+  lastQuickAddError,
+  paintOptimisticQuickAdd,
+  resetQuickAddErrorForTests,
+  rollbackOptimisticQuickAdd,
+} from "@/features/finance/quick-add-optimistic";
 
 const sampleMovements: MovementsSnapshot = {
   currency: "THB",
@@ -1687,5 +1695,246 @@ describe("last view memory", () => {
     expect(paintableAccountsSnapshot()).toBeNull();
     expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
     expect(lastAnalysSnapshot()).toBe(analys);
+  });
+});
+
+function movementRow(
+  partial: Partial<MovementRow> & Pick<MovementRow, "id" | "amountMinor">,
+): MovementRow {
+  return {
+    description: "Lunch",
+    category: "Mat",
+    transactionType: "expense",
+    direction: "debit",
+    currency: "THB",
+    nativeAmountMinor: partial.amountMinor,
+    nativeCurrency: "THB",
+    occurredAt: "2026-08-10T12:00:00.000Z",
+    source: "manual",
+    ...partial,
+  };
+}
+
+describe("Rörelser stale guard and optimistic quick-add", () => {
+  beforeEach(() => {
+    clearClientSessionCaches();
+    resetQuickAddErrorForTests();
+  });
+
+  const revOld =
+    "2026-08-01T00:00:00.000Z::mov:1:1000000|tx1:2000:2026-08-01T00:00:00.000Z";
+  const revNew =
+    "2026-08-02T00:00:00.000Z::mov:1:975000|tx1:3500:2026-08-02T00:00:00.000Z";
+
+  function versionedMovements(
+    revision: string,
+    verifiedAt: string,
+    amountMinor: number,
+  ): MovementsSnapshot {
+    return {
+      ...sampleMovements,
+      balanceMinor: 10_000_00 - amountMinor,
+      monthExpenseMinor: amountMinor,
+      monthNetMinor: -amountMinor,
+      allExpenseMinor: amountMinor,
+      allNetMinor: -amountMinor,
+      financeRevision: revision,
+      verifiedAt,
+      items: [movementRow({ id: "tx1", amountMinor })],
+    };
+  }
+
+  it("refuses a stale Rörelser snapshot and adopts a newer one", () => {
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 10_000_00 }));
+    rememberMovementsSnapshot(
+      versionedMovements(revOld, "2026-08-01T00:00:00.000Z", 20_00),
+    );
+
+    applyMovementsEdit("tx1", {
+      amountMinor: 35_00,
+      description: "Middag",
+      category: "Mat",
+    });
+    expect(lastMovementsSnapshot()?.items[0]?.amountMinor).toBe(35_00);
+    expect(lastMovementsSnapshot()?.financeRevision).toBe(`${revOld}:local`);
+
+    rememberMovementsSnapshot(
+      versionedMovements(revOld, "2026-08-01T00:00:00.000Z", 20_00),
+    );
+    expect(isStaleMovementsSnapshot(
+      versionedMovements(revOld, "2026-08-01T00:00:00.000Z", 20_00),
+    )).toBe(true);
+    expect(lastMovementsSnapshot()?.items[0]?.amountMinor).toBe(35_00);
+    expect(lastMovementsSnapshot()?.items[0]?.description).toBe("Middag");
+
+    rememberMovementsSnapshot(
+      versionedMovements(revNew, "2026-08-02T00:00:00.000Z", 35_00),
+    );
+    expect(lastMovementsSnapshot()?.financeRevision).toBe(revNew);
+    expect(lastMovementsSnapshot()?.items[0]?.amountMinor).toBe(35_00);
+    expect(lastMovementsSnapshot()?.items[0]?.description).toBe("Lunch");
+  });
+
+  it("paints a quick-add row before the server, swaps the id, and rolls back on failure", () => {
+    const mutationId = "11111111-1111-4111-8111-111111111111";
+    const serverId = "22222222-2222-4222-8222-222222222222";
+    rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 10_000_00 }));
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ id: "acc", calculatedMinor: 10_000_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 10_000_00,
+    });
+    rememberMovementsSnapshot({
+      ...sampleMovements,
+      balanceMinor: 10_000_00,
+      financeRevision: revOld,
+      verifiedAt: "2026-08-01T00:00:00.000Z",
+    });
+
+    paintOptimisticQuickAdd({
+      kind: "expense",
+      mutationId,
+      nativeAmountMinor: 50_00,
+      thbMinor: 50_00,
+      description: "Kaffe",
+      category: "Mat",
+      nativeCurrency: "THB",
+      accountId: "acc",
+      fxRate: 1,
+    });
+
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(9_950_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(9_950_00);
+    const temp = lastMovementsSnapshot()?.items.find((row) => row.id === mutationId);
+    expect(temp?.description).toBe("Kaffe");
+    expect(temp?.listKey).toBe(mutationId);
+    expect(temp?.amountMinor).toBe(50_00);
+    expect(lastMovementsSnapshot()?.balanceMinor).toBe(9_950_00);
+
+    const serverMovements: MovementsSnapshot = {
+      ...sampleMovements,
+      balanceMinor: 9_950_00,
+      monthExpenseMinor: 50_00,
+      monthNetMinor: -50_00,
+      allExpenseMinor: 50_00,
+      allNetMinor: -50_00,
+      financeRevision: revNew,
+      verifiedAt: "2026-08-02T00:00:00.000Z",
+      items: [
+        movementRow({
+          id: serverId,
+          amountMinor: 50_00,
+          description: "Kaffe",
+          clientMutationId: mutationId,
+          occurredAt: "2026-08-26T08:00:00.000Z",
+        }),
+      ],
+    };
+    confirmOptimisticQuickAdd(mutationId, {
+      id: serverId,
+      home: homeSnap({
+        calculatedBalanceMinor: 9_950_00,
+        financeRevision: "home-after",
+        verifiedAt: "2026-08-02T00:00:00.000Z",
+      }),
+      movements: serverMovements,
+    });
+
+    const confirmed = lastMovementsSnapshot()?.items.find(
+      (row) => row.clientMutationId === mutationId,
+    );
+    expect(confirmed?.id).toBe(serverId);
+    expect(confirmed?.listKey).toBe(mutationId);
+    expect(lastMovementsSnapshot()?.items.some((row) => row.id === mutationId)).toBe(
+      false,
+    );
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(9_950_00);
+
+    const again = paintOptimisticQuickAdd({
+      kind: "income",
+      mutationId: "33333333-3333-4333-8333-333333333333",
+      nativeAmountMinor: 20_00,
+      thbMinor: 20_00,
+      description: "Lön",
+      nativeCurrency: "THB",
+      accountId: "acc",
+      fxRate: 1,
+    });
+    expect(
+      lastMovementsSnapshot()?.items.some(
+        (row) => row.id === "33333333-3333-4333-8333-333333333333",
+      ),
+    ).toBe(true);
+    const balanceWhilePending = lastHomeSnapshot()?.calculatedBalanceMinor;
+    expect(balanceWhilePending).toBe(9_970_00);
+
+    rollbackOptimisticQuickAdd(again, "Kunde inte spara");
+    expect(lastQuickAddError()).toBe("Kunde inte spara");
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(9_950_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(9_950_00);
+    expect(
+      lastMovementsSnapshot()?.items.some(
+        (row) => row.id === "33333333-3333-4333-8333-333333333333",
+      ),
+    ).toBe(false);
+    expect(lastMovementsSnapshot()?.items.find((row) => row.id === serverId)?.listKey).toBe(
+      mutationId,
+    );
+  });
+
+  it("keeps the optimistic quick-add when the server snapshot is older", () => {
+    const mutationId = "11111111-1111-4111-8111-111111111111";
+    const serverId = "22222222-2222-4222-8222-222222222222";
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 10_000_00,
+        financeRevision: "home-before",
+        verifiedAt: "2026-08-01T00:00:00.000Z",
+      }),
+    );
+    rememberAccountsSnapshot({
+      accounts: [accountRow({ id: "acc", calculatedMinor: 10_000_00 })],
+      archivedAccounts: [],
+      totalThbMinor: 10_000_00,
+    });
+    rememberMovementsSnapshot({
+      ...sampleMovements,
+      balanceMinor: 10_000_00,
+      financeRevision: revOld,
+      verifiedAt: "2026-08-01T00:00:00.000Z",
+    });
+
+    paintOptimisticQuickAdd({
+      kind: "expense",
+      mutationId,
+      nativeAmountMinor: 50_00,
+      thbMinor: 50_00,
+      description: "Kaffe",
+      category: "Mat",
+      nativeCurrency: "THB",
+      accountId: "acc",
+      fxRate: 1,
+    });
+
+    confirmOptimisticQuickAdd(mutationId, {
+      id: serverId,
+      home: homeSnap({
+        calculatedBalanceMinor: 10_000_00,
+        financeRevision: "home-before",
+        verifiedAt: "2026-08-01T00:00:00.000Z",
+      }),
+      movements: {
+        ...sampleMovements,
+        balanceMinor: 10_000_00,
+        financeRevision: revOld,
+        verifiedAt: "2026-08-01T00:00:00.000Z",
+      },
+    });
+
+    expect(lastHomeSnapshot()?.calculatedBalanceMinor).toBe(9_950_00);
+    const row = lastMovementsSnapshot()?.items.find((item) => item.listKey === mutationId);
+    expect(row?.id).toBe(serverId);
+    expect(row?.amountMinor).toBe(50_00);
+    expect(lastAccountsSnapshot()?.accounts[0]?.calculatedMinor).toBe(9_950_00);
   });
 });

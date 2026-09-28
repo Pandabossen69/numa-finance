@@ -30,6 +30,13 @@ import {
 import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import { SV } from "@/features/copy/labels-sv";
 import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
+import {
+  confirmOptimisticQuickAdd,
+  lastQuickAddError,
+  paintOptimisticQuickAdd,
+  rollbackOptimisticQuickAdd,
+  subscribeQuickAddError,
+} from "@/features/finance/quick-add-optimistic";
 import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
@@ -43,11 +50,7 @@ import {
 } from "@/features/getting-started/progress";
 import {
   adoptAccountsLastKnown,
-  adoptMutationFinance,
   applyAccountBalance,
-  applyAccountDelta,
-  applyMovementsAdd,
-  applyOptimisticHomeSpend,
   isHomeDirty,
   lastGettingStarted,
   lastSessionHomeSnapshot,
@@ -55,7 +58,6 @@ import {
   rememberGettingStarted,
   rememberHomeSnapshot,
   subscribeGettingStarted,
-  revertOptimisticHomeSpend,
   subscribeAccountsSnapshot,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
@@ -96,6 +98,11 @@ export function HomeDashboard({
     subscribeGettingStarted,
     lastGettingStarted,
     lastGettingStarted,
+  );
+  const quickAddError = useSyncExternalStore(
+    subscribeQuickAddError,
+    lastQuickAddError,
+    () => null,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
   // Prefer session-confirmed, then prop snap (incl. cookie SSR shell).
@@ -199,6 +206,11 @@ export function HomeDashboard({
 
   return (
     <div className="numa-page numa-page-wide min-w-0 space-y-6">
+      {quickAddError ? (
+        <p className="text-sm text-[var(--numa-danger)]" role="alert">
+          {quickAddError}
+        </p>
+      ) : null}
       {staleBanner && staleBanner.title ? (
         <div className="numa-panel animate-rise space-y-1 p-4 text-sm">
           <p className="font-semibold">{staleBanner.title}</p>
@@ -529,8 +541,6 @@ export function HomeDashboard({
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
-            onOptimisticSpend={(thbMinor) => applyOptimisticHomeSpend(thbMinor)}
-            onSpendFailed={(thbMinor) => revertOptimisticHomeSpend(thbMinor)}
           />
         </>
       ) : null}
@@ -747,8 +757,6 @@ function QuickExpense({
   disabled,
   remainingTodayMinor,
   overToday,
-  onOptimisticSpend,
-  onSpendFailed,
 }: {
   accountId: string | null;
   accounts: Array<{
@@ -763,8 +771,6 @@ function QuickExpense({
   disabled: boolean;
   remainingTodayMinor: number;
   overToday: boolean;
-  onOptimisticSpend: (amountMinor: number) => void;
-  onSpendFailed: (amountMinor: number) => void;
 }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -884,13 +890,20 @@ function QuickExpense({
                 const description = note.trim() || "Utgift";
                 const amountInput = amount;
                 const mutationId = newClientMutationId();
+                const optimistic = paintOptimisticQuickAdd({
+                  kind: "expense",
+                  mutationId,
+                  nativeAmountMinor: amountMinor,
+                  thbMinor,
+                  description,
+                  nativeCurrency,
+                  accountId: targetAccountId,
+                  fxRate,
+                });
                 setError(null);
                 setNotice(null);
                 setAmount("");
                 setNote("");
-                // Instant UI — dial + konton; server + rörelser catch up.
-                onOptimisticSpend(thbMinor);
-                applyAccountDelta(-amountMinor, targetAccountId);
                 void (async () => {
                   try {
                     const result = await createExpenseAction({
@@ -900,32 +913,23 @@ function QuickExpense({
                       clientMutationId: mutationId,
                     });
                     if (!result.ok) {
-                      onSpendFailed(thbMinor);
-                      applyAccountDelta(amountMinor, targetAccountId);
+                      rollbackOptimisticQuickAdd(optimistic, result.error);
                       setError(result.error);
                       return;
                     }
-                    adoptMutationFinance(result);
+                    confirmOptimisticQuickAdd(mutationId, result);
                     if (result.refreshPending) {
                       setNotice(
                         result.refreshPendingMessage ?? "Sparat. Uppdaterar siffrorna…",
                       );
                     }
-                    applyMovementsAdd({
-                      id: result.id ?? crypto.randomUUID(),
-                      description,
-                      category: null,
-                      transactionType: "expense",
-                      direction: "debit",
-                      amountMinor: thbMinor,
-                      currency: "THB",
-                      nativeAmountMinor: amountMinor,
-                      nativeCurrency,
-                      accountId: targetAccountId,
-                      fxRate,
-                      occurredAt: new Date().toISOString(),
-                      source: "manual",
-                    });
+                  } catch (error) {
+                    const message =
+                      error instanceof Error
+                        ? error.message
+                        : "Kunde inte spara utgift";
+                    rollbackOptimisticQuickAdd(optimistic, message);
+                    setError(message);
                   } finally {
                     guard.end();
                   }

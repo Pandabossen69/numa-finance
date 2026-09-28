@@ -15,6 +15,7 @@ import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   buildMovementsSnapshot,
+  movementsLedgerRevision,
   type MovementsSnapshot,
 } from "@/features/finance/load-movements";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
@@ -227,11 +228,16 @@ export function movementsSnapshotFromToday(
       };
     },
   );
-  return buildMovementsSnapshot({
+  const transactions = snap.ledgerTransactions ?? [];
+  const data = buildMovementsSnapshot({
     accounts: snap.accounts,
-    transactions: snap.ledgerTransactions ?? [],
+    transactions,
     checkpoints,
     timeZone: snap.profile.timezone || "Asia/Bangkok",
     now,
   });
+  return {
+    ...data,
+    ...movementsLedgerRevision(transactions, data.balanceMinor),
+  };
 }
