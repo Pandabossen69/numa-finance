@@ -69,9 +69,13 @@ export function uploadLimitFlags(input: {
   amountMinors: Array<number | null | undefined>;
   alreadyKnown: boolean;
   detectedKind?: string | null;
+  groundingRejected?: boolean;
 }): { ocrFailed: boolean; countsTowardUploadLimit: boolean } {
   if (input.provider === "none") {
     return { ocrFailed: false, countsTowardUploadLimit: true };
+  }
+  if (input.groundingRejected) {
+    return { ocrFailed: true, countsTowardUploadLimit: false };
   }
   if (input.alreadyKnown) {
     return { ocrFailed: false, countsTowardUploadLimit: true };

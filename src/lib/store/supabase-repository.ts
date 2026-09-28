@@ -2260,9 +2260,11 @@ export async function uploadReceiptAndExtract(input: {
       typeof extraction.rawMetadata?.detectedKind === "string"
         ? extraction.rawMetadata.detectedKind
         : null,
+    groundingRejected: extraction.rawMetadata?.groundingRejected === true,
   });
   const runStatus =
     extraction.provider === "none" || limitFlags.ocrFailed ? "failed" : "succeeded";
+  const recordedAt = new Date().toISOString();
   const { data: runRow, error: runError } = await supabase
     .from("extraction_runs")
     .insert({
@@ -2278,7 +2280,8 @@ export async function uploadReceiptAndExtract(input: {
         tipBalanceAfterMinor:
           resolved.kind === "bank_sms" ? resolved.balanceAfterMinor : null,
       },
-      finished_at: new Date().toISOString(),
+      started_at: recordedAt,
+      finished_at: recordedAt,
     })
     .select("*")
     .single();

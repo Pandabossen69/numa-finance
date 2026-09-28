@@ -18,6 +18,7 @@ import {
 import type { ExtractionProviderResult } from "./extraction";
 import { resolveReceiptPaidAmountMinor } from "./receipt-total";
 import { warnFotaVisionDrop } from "./fota-vision-log";
+import { COULD_NOT_READ_SV } from "./vision-grounding";
 
 export type ResolvedScreenshotImport =
   | {
@@ -67,6 +68,62 @@ export type ResolvedScreenshotImport =
       messageSv: string;
       alreadyKnown: boolean;
     };
+
+function unreadableScreenshot(
+  messageSv: string,
+  options?: { preferBankSms?: boolean; preferBankApp?: boolean },
+): ResolvedScreenshotImport {
+  if (options?.preferBankSms) {
+    return {
+      kind: "bank_sms",
+      selection: { status: "none", all: [], messageSv },
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency: "THB",
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv,
+      alreadyKnown: false,
+    };
+  }
+  if (options?.preferBankApp) {
+    return {
+      kind: "bank_app",
+      selection: { status: "none", all: [], skippedFailedCount: 0, messageSv },
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency: "THB",
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv,
+      alreadyKnown: false,
+    };
+  }
+  return {
+    kind: "receipt_or_other",
+    selectedBatch: [],
+    suggestedAmountMinor: null,
+    suggestedDescription: null,
+    balanceAfterMinor: null,
+    fingerprint: null,
+    direction: null,
+    currency: "THB",
+    observationKind: "receipt",
+    source: "receipt_camera",
+    messageSv,
+    alreadyKnown: false,
+  };
+}
 
 function looksLikeBankSmsText(text: string, detectedKind: string | null): boolean {
   const t = text.toLowerCase();
@@ -352,6 +409,13 @@ export function resolveScreenshotImport(
   },
 ): ResolvedScreenshotImport {
   const meta = extraction.rawMetadata ?? {};
+  if (meta.groundingRejected === true) {
+    const messageSv =
+      typeof meta.message === "string" && meta.message.trim()
+        ? meta.message
+        : COULD_NOT_READ_SV;
+    return unreadableScreenshot(messageSv, options);
+  }
   const detectedKind =
     typeof meta.detectedKind === "string" ? meta.detectedKind : null;
 

@@ -8,6 +8,10 @@ import { resolveBankAppPostedCurrency } from "@/domain/imports/bank-app-parsers"
 import { resolveImageCurrency } from "@/domain/imports/image-currency";
 import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
 import { resolveReceiptPaidAmountMinor } from "./receipt-total";
+import { groundVisionExtraction } from "./vision-grounding";
+
+const VISIBLE_TEXT_RULE =
+  "Transcribe only text that is actually visible in the image. If the image has no readable text, return kind unknown and an empty fullText. Never invent merchants, amounts, dates, examples, or placeholders.";
 
 function bankAppMajorToMinor(
   value: number | string | null | undefined,
@@ -221,12 +225,18 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     return !full && messages.length === 0 && txs.length === 0 && !this.hasMoney(parsed) && !this.storeName(parsed);
   }
 
+  private hasReadableTranscript(parsed: VisionJson): boolean {
+    const full = typeof parsed.fullText === "string" ? parsed.fullText.trim() : "";
+    return full.length >= 8 && /\d/.test(full);
+  }
+
   /** One extra call when the read is unknown, empty, or has no store/description. */
   private needsRetry(
     pass: VisionAttempt,
     mode: "bank_sms" | "bank_app" | "general",
   ): boolean {
     if (!pass.ok || !pass.parsed) return true;
+    if (!this.hasReadableTranscript(pass.parsed)) return true;
     const parsed = pass.parsed;
     const kind = String(parsed.kind ?? "").trim();
     if (mode === "bank_sms" || kind === "bangkok_bank_sms") {
@@ -274,6 +284,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     if (kind && kind !== "unknown") score += 1;
     if (this.hasMoney(pass.parsed)) score += 2;
     if (this.storeName(pass.parsed) || this.hasUsableSms(pass.parsed)) score += 2;
+    if (this.hasReadableTranscript(pass.parsed)) score += 1;
     return score;
   }
 
@@ -315,8 +326,16 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     mode: string,
   ): ExtractionProviderResult {
     const meta = this.attemptMetadata(attempts);
-    if (!chosen.ok || !chosen.parsed) {
-      return {
+    const ordered = [chosen, ...attempts.filter((attempt) => attempt !== chosen)];
+    let rejected: ExtractionProviderResult | null = null;
+    for (const attempt of ordered) {
+      if (!attempt.ok || !attempt.parsed) continue;
+      const grounded = this.groundAttempt(request, attempt, attempts, mode, meta);
+      if (grounded.rawMetadata.groundingRejected !== true) return grounded;
+      rejected ??= grounded;
+    }
+    return (
+      rejected ?? {
         provider: "vision_api",
         candidates: [],
         rawMetadata: {
@@ -326,19 +345,42 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           detectedKind: "unknown",
           ...meta,
         },
+      }
+    );
+  }
+
+  private groundAttempt(
+    request: ExtractionRequest,
+    attempt: VisionAttempt,
+    attempts: VisionAttempt[],
+    mode: string,
+    meta: Record<string, unknown>,
+  ): ExtractionProviderResult {
+    const parsed = attempt.parsed;
+    if (!parsed) {
+      return {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          message: attempt.error || "Kunde inte läsa bilden",
+          model: VISION_MODEL,
+          mode,
+          detectedKind: "unknown",
+          ...meta,
+        },
       };
     }
-    const result = this.toResult(request, chosen.parsed, chosen.model || VISION_MODEL, {
+    const result = this.toResult(request, parsed, attempt.model || VISION_MODEL, {
       apiCalls: attempts.length,
       mode,
     });
-    return {
+    return groundVisionExtraction({
       ...result,
       rawMetadata: {
         ...result.rawMetadata,
         ...meta,
       },
-    };
+    });
   }
 
   private hasUsableSms(parsed: VisionJson): boolean {
@@ -398,6 +440,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
             "direction=debit for Withdrawal; credit for PromptPay/MoneyPlus to account.",
             "JSON: kind=bangkok_bank_sms, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], currency=THB, confidence.",
             "Never invent numbers. Ignore UI chrome (idag, Textmeddelande).",
+            "The templates above are format hints only. Do not copy them unless those exact words are visible.",
+            VISIBLE_TEXT_RULE,
             "Digit care: 0 vs O, 1 vs l — prefer digits next to Bt/THB amounts.",
           ].join(" ")
         : mode === "bank_app"
@@ -413,6 +457,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "categoryHint: Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. If the row or image says Resor, Travel, or Transport (airline, AirAsia, flight, train), return that word — Resor or Travel, never null and never Mat. Taxi/Grab/Bolt/fuel → Transport, restaurant/grocery → Mat, retail/webshop → Shopping, rent/utilities → Boende. Never invent a category outside that set.",
               "JSON: kind=bank_app_detail|bank_app_list, institutionHint, fullText, transactions[{merchant,direction,amountMajor,currency,originalAmountMajor,originalCurrency,occurredAt,categoryHint,failed,strikethrough,statusText,rawText}], confidence.",
               "Never invent amounts. Skip UI chrome (Tillbaka, Begär betalning, Dela).",
+              VISIBLE_TEXT_RULE,
             ].join(" ")
           : [
               "Read finance screenshots for NUMA.",
@@ -421,14 +466,15 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Else receipt total → kind=receipt. merchant is the store name and is required when it is visible. currency is the code printed on the receipt (THB, ฿, บาท, EUR, SEK, USD). Never assume EUR.",
               "Receipts and travel screens include categoryHint: Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. An airline ticket or the word Resor/Travel/Transport (AirAsia) is Resor or Travel, never Mat and never null.",
               "JSON: kind, institutionHint, fullText, categoryHint, messages[…], transactions[…], amountMajor, currency, merchant, description, confidence.",
+              VISIBLE_TEXT_RULE,
             ].join(" ");
 
     const userText =
       mode === "bank_sms"
-        ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
+        ? `Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. ${VISIBLE_TEXT_RULE} JSON only.`
         : mode === "bank_app"
-          ? "Extract every real bank-app transaction (skip failed/strikethrough). amountMajor uses the currency printed on the row (THB, ฿, บาท, SEK, EUR or USD). Do not default to EUR. original* is the other currency when an FX line is shown. merchant is the store name. JSON only."
-          : "Extract bank SMS bubbles, bank-app transactions, or the receipt total. merchant is the store name. currency is whatever the image prints. JSON only.";
+          ? `Extract every real bank-app transaction (skip failed/strikethrough). amountMajor uses the currency printed on the row (THB, ฿, บาท, SEK, EUR or USD). Do not default to EUR. original* is the other currency when an FX line is shown. merchant is the store name. ${VISIBLE_TEXT_RULE} JSON only.`
+          : `Extract bank SMS bubbles, bank-app transactions, or the receipt total. merchant is the store name. currency is whatever the image prints. ${VISIBLE_TEXT_RULE} JSON only.`;
 
     const body = {
       model,
@@ -537,8 +583,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       .map((m) => (typeof m.rawText === "string" ? m.rawText.trim() : ""))
       .filter(Boolean);
 
+    const modelFullText = typeof parsed.fullText === "string" ? parsed.fullText : "";
     const fullText =
-      (typeof parsed.fullText === "string" && parsed.fullText.trim()) ||
+      modelFullText.trim() ||
       smsTexts.join("\n\n") ||
       txsIn.map((t) => t.rawText).filter(Boolean).join("\n");
 
@@ -671,6 +718,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         detectedKind: kind,
         institutionHint: parsed.institutionHint ?? null,
         fullText,
+        modelFullText,
         smsTexts,
         messages: normalizedMessages,
         transactions: txsIn,

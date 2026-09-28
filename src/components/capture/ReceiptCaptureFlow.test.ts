@@ -87,6 +87,8 @@ describe("ReceiptCaptureFlow copy wiring", () => {
   it("shows a capture failure as text, with manual entry and no Försök igen button", () => {
     expect(src).toContain('role="alert"');
     expect(src).toContain("{error}");
+    expect(src).toContain("Skriv manuellt");
+    expect(src).toContain('setMode("manual")');
     expect(src).not.toContain("RetryLoadButton");
     expect(src).not.toMatch(/<button[^>]*>[\s\S]{0,40}Försök igen/);
     expect(src).toContain('title: "Manuellt"');

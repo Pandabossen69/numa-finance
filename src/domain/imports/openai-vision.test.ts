@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OpenAiVisionExtractionProvider } from "./openai-vision";
+import { uploadLimitFlags } from "./upload-rate-limit";
+import { COULD_NOT_READ_SV } from "./vision-grounding";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -170,5 +172,42 @@ describe("vision OCR retry and raw metadata", () => {
     expect(result.candidates[0]?.currency).toBe("THB");
     expect(result.candidates[0]?.description).toContain("KAFE QA");
     expect(result.candidates[0]?.amountMinor).toBe(6_100);
+    expect(result.rawMetadata.groundingRejected).toBeUndefined();
+  });
+
+  it("rejects invented bank rows from an empty image and does not count them", async () => {
+    const invented = {
+      kind: "bank_app_list",
+      fullText: "",
+      transactions: [
+        { merchant: "7-Eleven", amountMajor: 248, currency: "THB", occurredAt: "2023-10-01", direction: "debit" },
+        { merchant: "Starbucks", amountMajor: 150, currency: "THB", occurredAt: "2023-10-02", direction: "debit" },
+        { merchant: "Amazon", amountMajor: 500, currency: "THB", occurredAt: "2023-10-03", direction: "debit" },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue(completion(invented));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await new OpenAiVisionExtractionProvider("test-key").extract({
+      observationId: "obs",
+      storagePath: "u/empty.jpg",
+      imageBase64: "aGVsbG8=",
+      mimeType: "image/jpeg",
+      institutionHint: "bank_app",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.candidates).toEqual([]);
+    expect(result.rawMetadata.detectedKind).toBe("unknown");
+    expect(result.rawMetadata.groundingReason).toBe("fulltext_empty");
+    expect(result.rawMetadata.message).toBe(COULD_NOT_READ_SV);
+    expect(result.rawMetadata.transactions).toEqual([]);
+    expect(
+      uploadLimitFlags({
+        provider: result.provider,
+        amountMinors: result.candidates.map((row) => row.amountMinor),
+        alreadyKnown: false,
+        detectedKind: String(result.rawMetadata.detectedKind),
+        groundingRejected: result.rawMetadata.groundingRejected === true,
+      }).countsTowardUploadLimit,
+    ).toBe(false);
   });
 });

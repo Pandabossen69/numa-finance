@@ -346,10 +346,15 @@ export function ReceiptCaptureFlow({
                   : "receipt";
 
       // Auto-scan imports never fall back to manual typing — retry photo.
-      if (
-        (mode === "bank_sms" || mode === "bank_app") &&
+      const manualPath =
         events.length === 0 &&
-        !data.alreadyKnown
+        !data.alreadyKnown &&
+        (data.message ?? "").includes("Skriv beloppet under Manuellt");
+      if (
+        manualPath ||
+        ((mode === "bank_sms" || mode === "bank_app") &&
+          events.length === 0 &&
+          !data.alreadyKnown)
       ) {
         URL.revokeObjectURL(previewUrl);
         const bankAppFallback =
@@ -680,9 +685,23 @@ export function ReceiptCaptureFlow({
         </p>
 
         {error ? (
-          <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
-            {error}
-          </p>
+          <div className="space-y-3">
+            <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
+              {error}
+            </p>
+            {/kunde inte läsa/i.test(error) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setMode("manual");
+                }}
+                className="numa-press mx-auto flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-semibold text-[var(--numa-ink)]"
+              >
+                Skriv manuellt
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     );

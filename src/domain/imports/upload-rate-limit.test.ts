@@ -78,6 +78,9 @@ describe("hourly image cap", () => {
     expect(cap).toContain("uploadRateLimitRetryAt");
     expect(cap).toContain("new UploadRateLimitError");
     expect(src).toContain("uploadLimitFlags");
+    expect(src).toContain("const recordedAt = new Date().toISOString()");
+    expect(src).toContain("started_at: recordedAt");
+    expect(src).toContain("finished_at: recordedAt");
     expect(cap).not.toContain("För många bilder");
     expect(cap).not.toContain("Försök igen");
     expect(src).not.toContain(
@@ -149,5 +152,14 @@ describe("hourly image cap", () => {
         detectedKind: "bank_app_detail",
       }).countsTowardUploadLimit,
     ).toBe(true);
+    expect(
+      uploadLimitFlags({
+        provider: "vision_api",
+        amountMinors: [24_800, 15_000, 50_000],
+        alreadyKnown: false,
+        detectedKind: "bank_app_list",
+        groundingRejected: true,
+      }),
+    ).toEqual({ ocrFailed: true, countsTowardUploadLimit: false });
   });
 });

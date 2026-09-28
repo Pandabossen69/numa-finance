@@ -1285,6 +1285,7 @@ export async function uploadReceiptAndExtract(input: {
         typeof extraction.rawMetadata?.detectedKind === "string"
           ? extraction.rawMetadata.detectedKind
           : null,
+      groundingRejected: extraction.rawMetadata?.groundingRejected === true,
     });
     const run: ExtractionRun = {
       id: runId,
