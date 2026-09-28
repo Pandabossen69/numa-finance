@@ -42,6 +42,7 @@ describe("AccountsDashboard", () => {
     expect(src).toContain("Uppdatera saldo");
     expect(src).toContain("Hantera");
     expect(src).toContain("aria-label={`Hantera ${account.name}`}");
+    expect(src).toContain("accountEditError");
     expect(src).toContain("Arkiverade konton");
     expect(src).toContain("Återställ");
     expect(src).toContain("openVerifyId");

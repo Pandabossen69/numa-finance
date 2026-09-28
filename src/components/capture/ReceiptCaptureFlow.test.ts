@@ -55,6 +55,27 @@ describe("ReceiptCaptureFlow copy wiring", () => {
     expect(resetAt).toBeLessThan(confirm.indexOf("goHomeInstant"));
     expect(resetAt).toBeLessThan(confirm.indexOf("router.push(successHref)"));
     expect(confirm).not.toContain("URL.revokeObjectURL(preview.previewUrl)");
+    expect(confirm.indexOf("paintConfirmedCapture")).toBeLessThan(
+      confirm.indexOf("await confirmReceiptExpenseAction"),
+    );
+    expect(confirm.indexOf("confirmOptimisticQuickAdd")).toBeGreaterThan(
+      confirm.indexOf("await confirmReceiptExpenseAction"),
+    );
+    expect(confirm.indexOf("confirmOptimisticQuickAdd")).toBeLessThan(
+      confirm.indexOf("goHomeInstant"),
+    );
+    expect(confirm).toContain("rollbackOptimisticQuickAdd");
+  });
+
+  it("returns Manuellt to the picker before leaving for Hem", () => {
+    const success = src.slice(
+      src.indexOf("onSuccess={() => {"),
+      src.indexOf("if (scanning"),
+    );
+    expect(success.indexOf("resetToPick()")).toBeGreaterThan(-1);
+    expect(success.indexOf("resetToPick()")).toBeLessThan(
+      success.indexOf("goHomeInstant"),
+    );
   });
 
   it("sends the resolved account when a bank-app screenshot is confirmed", () => {

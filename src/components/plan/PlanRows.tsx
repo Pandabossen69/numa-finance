@@ -238,6 +238,7 @@ export function PlanRows({
   onStartPartial,
   onCancelPartial,
   onSavePartial,
+  saveError = null,
   settleAccounts = [],
   settleAccountId = "",
   onSettleAccountId,
@@ -264,6 +265,7 @@ export function PlanRows({
   onStartPartial: (item: PlanItem) => void;
   onCancelPartial: () => void;
   onSavePartial: (id: string, draft: PlanPartialDraft) => void;
+  saveError?: string | null;
   settleAccounts?: Array<{ id: string; name: string; currency: string }>;
   settleAccountId?: string;
   onSettleAccountId?: (id: string) => void;
@@ -313,6 +315,7 @@ export function PlanRows({
               settleAccountId={settleAccountId}
               onSettleAccountId={onSettleAccountId}
               onSave={onSavePartial}
+              saveError={saveError}
               onCancel={onCancelPartial}
             />
           );

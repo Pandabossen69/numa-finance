@@ -118,6 +118,21 @@ export function installGuideTitle(platform: InstallPlatform): string {
   }
 }
 
+/**
+ * Settings → På hemskärmen. Safari on iOS, Chrome on Android and computers.
+ * No host names or deploy words — the steps are enough.
+ */
+export function homescreenSettingsGuide(platform: InstallPlatform): string {
+  switch (platform) {
+    case "ios":
+      return "I Safari: Dela → Lägg till på hemskärmen.";
+    case "android":
+      return "I Chrome: tryck menyn (⋮) → Lägg till på startskärmen.";
+    default:
+      return "I Chrome: meny → Installera NUMA.";
+  }
+}
+
 /** Short, platform-specific how-to when the browser never fires BIP. */
 export function installGuideSteps(platform: InstallPlatform): string {
   switch (platform) {

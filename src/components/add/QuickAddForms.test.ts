@@ -36,23 +36,24 @@ describe("Flytta/Kontant empty copy", () => {
       src.indexOf("function IncomeForm"),
     );
     expect(expenseBlock.indexOf("paintOptimisticQuickAdd")).toBeLessThan(
-      expenseBlock.indexOf("onSuccess?.()"),
-    );
-    expect(expenseBlock.indexOf("onSuccess?.()")).toBeLessThan(
       expenseBlock.indexOf("await createExpenseAction"),
     );
-    expect(expenseBlock).toContain("setError(result.error)");
+    expect(expenseBlock.indexOf("await createExpenseAction")).toBeLessThan(
+      expenseBlock.indexOf("onSuccess?.()"),
+    );
+    expect(expenseBlock).toContain("userFacingSaveError");
     const incomeBlock = src.slice(
       src.indexOf("function IncomeForm"),
       src.indexOf("function TransferForm"),
     );
     expect(incomeBlock.indexOf("paintOptimisticQuickAdd")).toBeLessThan(
-      incomeBlock.indexOf("onSuccess?.()"),
-    );
-    expect(incomeBlock.indexOf("onSuccess?.()")).toBeLessThan(
       incomeBlock.indexOf("await createIncomeAction"),
     );
-    expect(incomeBlock).toContain("setError(result.error)");
+    expect(incomeBlock.indexOf("await createIncomeAction")).toBeLessThan(
+      incomeBlock.indexOf("onSuccess?.()"),
+    );
+    expect(incomeBlock).toContain("userFacingSaveError");
+    expect(incomeBlock).toContain('label="Till konto"');
     const transferBlock = src.slice(src.indexOf("function TransferForm"));
     expect(transferBlock.indexOf("onSuccess?.()")).toBeGreaterThan(
       transferBlock.indexOf("await createTransferAction"),

@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { isNavActive, optimisticNavPath } from "@/components/layout/nav";
 import { rememberFotaIntentFromHref } from "@/features/imports/fota-intent";
 import { rememberPlanFocusFromHref } from "@/features/plan/plan-focus";
+import { bindSpaNavigate } from "@/lib/nav/instant";
 import { isSpaTabHref, spaTabKey } from "@/lib/nav/spa-tabs";
 
 type Pending = { href: string; fromPath: string };
@@ -230,6 +231,10 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     navigateRef.current = navigateSpaTab;
+    bindSpaNavigate(navigateSpaTab);
+    return () => {
+      bindSpaNavigate(null);
+    };
   }, [navigateSpaTab]);
 
   const value = useMemo(

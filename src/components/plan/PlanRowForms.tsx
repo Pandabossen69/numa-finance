@@ -100,6 +100,7 @@ export const PlanRowPartialFields = memo(function PlanRowPartialFields({
   settleAccountId,
   onSettleAccountId,
   onSave,
+  saveError = null,
   onCancel,
 }: {
   item: PlanItem;
@@ -115,6 +116,7 @@ export const PlanRowPartialFields = memo(function PlanRowPartialFields({
   settleAccountId: string;
   onSettleAccountId?: (id: string) => void;
   onSave: (id: string, draft: PlanPartialDraft) => void;
+  saveError?: string | null;
   onCancel: () => void;
 }) {
   const [amount, setAmount] = useState("");
@@ -217,6 +219,11 @@ export const PlanRowPartialFields = memo(function PlanRowPartialFields({
           Avbryt
         </button>
       </div>
+      {saveError ? (
+        <p className="text-sm text-[var(--numa-danger)]" role="alert">
+          {saveError}
+        </p>
+      ) : null}
     </li>
   );
 });

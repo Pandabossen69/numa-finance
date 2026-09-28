@@ -19,7 +19,7 @@ describe("/konton instant shell", () => {
     expect(loading).not.toContain("AccountsViewLoading");
     expect(client).toContain("getAccountsSnapshotAction");
     expect(client).toContain("paintableAccountsSnapshot");
-    expect(client).toContain("if (paintableAccountsSnapshot()) return;");
+    expect(client).toContain("archivedAccountsNeedRefresh");
     expect(client).toContain("if (!paintableAccountsSnapshot()) setError");
   });
 });

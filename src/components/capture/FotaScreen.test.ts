@@ -24,6 +24,8 @@ describe("FotaScreen soft-nav", () => {
     expect(src).toContain("lastFotaBoot");
     expect(src).toContain("rememberFotaBoot");
     expect(src).toContain("lastHomeSnapshot");
+    expect(src).toContain("subscribeAccountsSnapshot");
+    expect(src).toContain("manualAccountsFromSources");
     expect(src).toContain("FotaPending");
     expect(src).toContain("ReceiptCaptureFlow");
     expect(src).not.toContain("useLayoutEffect");

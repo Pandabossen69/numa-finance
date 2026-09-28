@@ -97,4 +97,10 @@ describe("Rörelser expense color", () => {
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
   });
+
+  it("clears the category chip when leaving Rörelser", () => {
+    expect(src).toContain('spaTabKey(prev) === "/transaktioner"');
+    expect(src).toContain("spaTabKey(pathname) !== \"/transaktioner\"");
+    expect(src).toContain("setCategory(null)");
+  });
 });

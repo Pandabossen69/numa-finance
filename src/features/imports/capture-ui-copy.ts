@@ -22,7 +22,7 @@ export const CAPTURE_UI_COPY = {
     camera: "Fota skärmen nu",
     gallery: "Välj skärmdump",
     footer:
-      "Bäst: detalj eller lista · € postas på bunq-konto · samma köp hoppas över · AI läser bilden, du raderar när du vill",
+      "Bäst: detalj eller lista · beloppet postas i kontots valuta · samma köp hoppas över · AI läser bilden, du raderar när du vill",
     scanning: "Läser bankapp…",
     scanningHint: "Dubbelkolla beloppet innan du sparar.",
   },

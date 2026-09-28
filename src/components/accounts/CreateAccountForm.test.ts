@@ -28,12 +28,16 @@ describe("CreateAccountForm", () => {
   });
 
   it("disables Spara konto and blocks a second tap while saving", () => {
-    expect(src).toContain("useSubmitGuard(pending)");
+    expect(src).toContain("useSubmitGuard(busy)");
     expect(src).toContain("if (!guard.tryBegin()) return;");
+    expect(src).toContain("createStableMutationId");
+    expect(src).toContain("createAccountOnce");
+    expect(src).toContain("clientMutationId");
+    expect(src).toContain("mutation.take()");
     expect(src).toContain(
-      "disabled={pending || !form.name.trim() || !form.openingBalance.trim()}",
+      "disabled={busy || !form.name.trim() || !form.openingBalance.trim()}",
     );
-    expect(src).toContain('pending ? "Sparar…" : "Spara konto"');
+    expect(src).toContain('busy ? "Sparar…" : "Spara konto"');
   });
 
   it("drops the cached Konton list after save instead of router.refresh", () => {

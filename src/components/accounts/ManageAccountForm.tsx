@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ACCOUNT_KIND_LABEL_SV,
@@ -21,10 +21,40 @@ import {
 import type { AccountBalanceRow } from "@/features/finance/load-accounts";
 import type { AccountDetail } from "@/features/finance/load-account-detail";
 import {
+  publishAccountDetailsEdit,
+  rememberSavedAccountName,
+  savedAccountName,
+  subscribeSavedAccountNames,
+} from "@/features/finance/account-edit-store";
+import {
   adoptRemovedAccount,
   invalidateAccountsSnapshot,
 } from "@/features/home/last-snapshot";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import { userFacingSaveError } from "@/lib/net/offline-save";
+
+function useSavedAccountName(id: string | null, fallback: string): string {
+  const saved = useSyncExternalStore(
+    subscribeSavedAccountNames,
+    () => (id ? savedAccountName(id) : null),
+    () => null,
+  );
+  return saved ?? fallback;
+}
+
+/** H1 for /konton/[id]. Soft nav can replay a stale RSC payload; the saved name wins. */
+export function AccountDetailHeading({
+  id,
+  name,
+}: {
+  id: string | null;
+  name: string;
+}) {
+  const saved = useSavedAccountName(id, name);
+  return (
+    <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">{saved}</h1>
+  );
+}
 
 function currencyLabel(code: CurrencyCode): string {
   if (code === "THB") return "THB — baht";
@@ -36,16 +66,19 @@ function currencyLabel(code: CurrencyCode): string {
 export function ManageAccountForm({ account }: { account: AccountDetail }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [saving, setSaving] = useState(false);
+  const busy = pending || saving;
+  const guard = useSubmitGuard(busy);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const savedName = useSavedAccountName(account.id, account.name);
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const name = nameDraft ?? savedName;
   const [form, setForm] = useState<{
-    name: string;
     kind: AccountKind;
     currency: CurrencyCode;
     makeDefault: boolean;
   }>({
-    name: account.name,
     kind: account.kind,
     currency: account.currency,
     makeDefault: account.isDefault,
@@ -69,9 +102,14 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     }));
   }
 
+  function showRenameError(message: string) {
+    setError(message);
+    setNameDraft(null);
+  }
+
   function finish(result: { ok: true } | { ok: false; error: string }) {
     if (!result.ok) {
-      setError(result.error);
+      setError(userFacingSaveError(result.error, "Kunde inte spara kontot"));
       setConfirmRemove(false);
       return;
     }
@@ -83,16 +121,52 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     e.preventDefault();
     if (!guard.tryBegin()) return;
     setError(null);
+    setSaving(true);
+    const edit = publishAccountDetailsEdit({
+      id: account.id,
+      name,
+      kind: form.kind,
+      currency: form.currency,
+      makeDefault: form.makeDefault,
+    });
+    if (edit.painted) {
+      void (async () => {
+        try {
+          const result = await edit.done;
+          if (!result.ok) {
+            showRenameError(result.error);
+            return;
+          }
+          router.push("/konton");
+        } finally {
+          setSaving(false);
+        }
+      })();
+      return;
+    }
     startTransition(async () => {
-      finish(
-        await updateAccountAction({
+      try {
+        const result = await updateAccountAction({
           id: account.id,
-          name: form.name,
+          name,
           kind: form.kind,
           currency: form.currency,
           makeDefault: form.makeDefault,
-        }),
-      );
+        });
+        if (!result.ok) {
+          showRenameError(
+            userFacingSaveError(result.error, "Kunde inte spara kontot"),
+          );
+          return;
+        }
+        rememberSavedAccountName(account.id, name.trim());
+        invalidateAccountsSnapshot();
+        router.push("/konton");
+      } catch (error) {
+        showRenameError(userFacingSaveError(error, "Kunde inte spara kontot"));
+      } finally {
+        setSaving(false);
+      }
     });
   }
 
@@ -100,15 +174,20 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
-      const result = await removeAccountAction(account.id);
-      if (!result.ok) {
-        setError(result.error);
+      try {
+        const result = await removeAccountAction(account.id);
+        if (!result.ok) {
+          setError(userFacingSaveError(result.error, "Kunde inte ta bort kontot"));
+          setConfirmRemove(false);
+          return;
+        }
+        adoptRemovedAccount(result, account.id, removalRow(account));
+        router.push("/konton");
+        router.refresh();
+      } catch (error) {
+        setError(userFacingSaveError(error, "Kunde inte ta bort kontot"));
         setConfirmRemove(false);
-        return;
       }
-      adoptRemovedAccount(result, account.id, removalRow(account));
-      router.push("/konton");
-      router.refresh();
     });
   }
 
@@ -116,7 +195,11 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
-      finish(await restoreAccountAction(account.id));
+      try {
+        finish(await restoreAccountAction(account.id));
+      } catch (error) {
+        setError(userFacingSaveError(error, "Kunde inte återställa kontot"));
+      }
     });
   }
 
@@ -137,11 +220,11 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         ) : null}
         <button
           type="button"
-          disabled={pending}
+          disabled={busy}
           onClick={onRestore}
           className="numa-btn numa-btn-accent min-h-14 w-full text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
         >
-          {pending ? "Återställer…" : "Återställ konto"}
+          {busy ? "Återställer…" : "Återställ konto"}
         </button>
       </div>
     );
@@ -175,8 +258,8 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
           Namn
         </span>
         <input
-          value={form.name}
-          onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+          value={name}
+          onChange={(e) => setNameDraft(e.target.value)}
           className="min-h-14 w-full rounded-[1.15rem] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         />
         <p className="mt-1.5 text-xs leading-relaxed text-[var(--numa-faint)]">
@@ -246,10 +329,10 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
 
       <button
         type="submit"
-        disabled={pending || !form.name.trim()}
+        disabled={busy || !name.trim()}
         className="numa-btn numa-btn-accent min-h-14 w-full text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
       >
-        {pending && !confirmRemove ? "Sparar…" : "Spara ändringar"}
+        {busy && !confirmRemove ? "Sparar…" : "Spara ändringar"}
       </button>
 
       <div className="space-y-3 border-t border-[var(--numa-border)] pt-4">
@@ -260,15 +343,15 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
             </p>
             <button
               type="button"
-              disabled={pending}
+              disabled={busy}
               onClick={onRemove}
               className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
             >
-              {pending ? "Tar bort…" : "Ta bort"}
+              {busy ? "Tar bort…" : "Ta bort"}
             </button>
             <button
               type="button"
-              disabled={pending}
+              disabled={busy}
               onClick={() => setConfirmRemove(false)}
               className="numa-btn numa-btn-soft min-h-14 w-full"
             >
@@ -278,7 +361,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         ) : (
           <button
             type="button"
-            disabled={pending}
+            disabled={busy}
             onClick={() => {
               setError(null);
               setConfirmRemove(true);

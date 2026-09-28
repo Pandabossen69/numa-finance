@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import { userFacingSaveError } from "@/lib/net/offline-save";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -913,8 +914,12 @@ function QuickExpense({
                       clientMutationId: mutationId,
                     });
                     if (!result.ok) {
-                      rollbackOptimisticQuickAdd(optimistic, result.error);
-                      setError(result.error);
+                      const message = userFacingSaveError(
+                        result.error,
+                        "Kunde inte spara utgift",
+                      );
+                      rollbackOptimisticQuickAdd(optimistic, message);
+                      setError(message);
                       return;
                     }
                     confirmOptimisticQuickAdd(mutationId, result);
@@ -924,10 +929,10 @@ function QuickExpense({
                       );
                     }
                   } catch (error) {
-                    const message =
-                      error instanceof Error
-                        ? error.message
-                        : "Kunde inte spara utgift";
+                    const message = userFacingSaveError(
+                      error,
+                      "Kunde inte spara utgift",
+                    );
                     rollbackOptimisticQuickAdd(optimistic, message);
                     setError(message);
                   } finally {
