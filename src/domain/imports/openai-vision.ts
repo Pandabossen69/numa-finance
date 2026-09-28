@@ -4,13 +4,14 @@ import {
   type ExtractionProviderResult,
   type ExtractionRequest,
 } from "./extraction";
-import { isCurrencyCode, type CurrencyCode } from "@/domain/money/currency";
 import { resolveBankAppPostedCurrency } from "@/domain/imports/bank-app-parsers";
+import { resolveImageCurrency } from "@/domain/imports/image-currency";
 import { tryEuropeanAmountToMinor, visionMajorToMinor } from "./ocr-amounts";
-import {
-  extractPaidTotalFromText,
-  resolveReceiptPaidAmountMinor,
-} from "./receipt-total";
+import { resolveReceiptPaidAmountMinor } from "./receipt-total";
+import { groundVisionExtraction } from "./vision-grounding";
+
+const VISIBLE_TEXT_RULE =
+  "Transcribe only text that is actually visible in the image. If the image has no readable text, return kind unknown and an empty fullText. Never invent merchants, amounts, dates, examples, or placeholders.";
 
 function bankAppMajorToMinor(
   value: number | string | null | undefined,
@@ -75,12 +76,22 @@ type VisionJson = {
   confidence?: number | null;
 };
 
-type VisionCallOk = { ok: true; parsed: VisionJson; model: string };
-type VisionCallFail = {
-  ok: false;
-  error: string;
-  parsed?: undefined;
-  model?: undefined;
+const VISION_MODEL = "gpt-4o";
+const VISION_TEMPERATURE = 0;
+const VISION_DETAIL = "high" as const;
+const VISION_TIMEOUT_MS = 45_000;
+const RAW_CONTENT_CAP = 8_000;
+
+type VisionAttempt = {
+  ok: boolean;
+  parsed: VisionJson | null;
+  model: string;
+  httpStatus: number | null;
+  error: string | null;
+  rawContent: string | null;
+  latencyMs: number;
+  detail: typeof VISION_DETAIL;
+  temperature: typeof VISION_TEMPERATURE;
 };
 
 /**
@@ -131,11 +142,9 @@ function synthesizeRawText(m: VisionSmsMessage): string | null {
 }
 
 /**
- * OpenAI Vision — Bangkok Bank SMS first-class, bank-app screenshots second.
- * Token rules:
- * - Bank-SMS mode = ONE high-detail call (no duplicate retry with same prompt).
- * - Bank-app / receipt mode = ONE low-detail call; bank SMS retry only if needed.
- * - API/transport errors get one retry; weak JSON does not.
+ * OpenAI Vision — Bangkok Bank SMS, bank-app screenshots, then receipts.
+ * Every call uses temperature 0 and image detail high.
+ * At most one retry when the read is unknown, empty, or missing a store name.
  */
 export class OpenAiVisionExtractionProvider implements ExtractionProvider {
   readonly name = "vision_api" as const;
@@ -147,7 +156,17 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       return {
         provider: "vision_api",
         candidates: [],
-        rawMetadata: { message: "Missing image bytes for vision extraction" },
+        rawMetadata: {
+          message: "Missing image bytes for vision extraction",
+          temperature: VISION_TEMPERATURE,
+          detail: VISION_DETAIL,
+          attemptCount: 0,
+          attempts: [],
+          lastError: "Missing image bytes for vision extraction",
+          httpStatus: null,
+          latencyMs: null,
+          detectedKind: "unknown",
+        },
       };
     }
 
@@ -156,161 +175,211 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       request.institutionHint === "bank_app" ||
       request.institutionHint === "bunq" ||
       request.institutionHint === "revolut";
-    let apiCalls = 0;
+    const mode: "bank_sms" | "bank_app" | "general" = preferBank
+      ? "bank_sms"
+      : preferBankApp
+        ? "bank_app"
+        : "general";
 
-    if (preferBank) {
-      apiCalls += 1;
-      let pass = await this.callVision(request, {
-        mode: "bank_sms",
-        detail: "high",
+    const first = await this.callVision(request, { mode });
+    const attempts: VisionAttempt[] = [first];
+    let chosen = first;
+    if (this.needsRetry(first, mode)) {
+      const second = await this.callVision(request, {
+        mode: this.retryMode(first, mode),
       });
-      if (!pass.ok) {
-        apiCalls += 1;
-        pass = await this.callVision(request, {
-          mode: "bank_sms",
-          detail: "high",
-        });
+      attempts.push(second);
+      chosen = this.preferAttempt(first, second);
+    }
+
+    return this.finish(request, chosen, attempts, mode);
+  }
+
+  private storeName(parsed: VisionJson): string | null {
+    for (const bit of [parsed.merchant, parsed.description]) {
+      if (typeof bit === "string" && bit.trim()) return bit.trim();
+    }
+    const txs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+    for (const tx of txs) {
+      if (typeof tx.merchant === "string" && tx.merchant.trim()) return tx.merchant.trim();
+    }
+    return null;
+  }
+
+  private hasMoney(parsed: VisionJson): boolean {
+    if (parsed.amountMajor != null && String(parsed.amountMajor).trim() !== "") {
+      return true;
+    }
+    const txs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+    if (txs.some((tx) => tx.amountMajor != null || tx.originalAmountMajor != null)) {
+      return true;
+    }
+    const messages = Array.isArray(parsed.messages) ? parsed.messages : [];
+    return messages.some((message) => message.amountMajor != null);
+  }
+
+  private isEmptyRead(parsed: VisionJson): boolean {
+    const full = typeof parsed.fullText === "string" ? parsed.fullText.trim() : "";
+    const messages = Array.isArray(parsed.messages) ? parsed.messages : [];
+    const txs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+    return !full && messages.length === 0 && txs.length === 0 && !this.hasMoney(parsed) && !this.storeName(parsed);
+  }
+
+  private hasReadableTranscript(parsed: VisionJson): boolean {
+    const full = typeof parsed.fullText === "string" ? parsed.fullText.trim() : "";
+    return full.length >= 8 && /\d/.test(full);
+  }
+
+  /** One extra call when the read is unknown, empty, or has no store/description. */
+  private needsRetry(
+    pass: VisionAttempt,
+    mode: "bank_sms" | "bank_app" | "general",
+  ): boolean {
+    if (!pass.ok || !pass.parsed) return true;
+    if (!this.hasReadableTranscript(pass.parsed)) return true;
+    const parsed = pass.parsed;
+    const kind = String(parsed.kind ?? "").trim();
+    if (mode === "bank_sms" || kind === "bangkok_bank_sms") {
+      return !this.hasUsableSms(parsed);
+    }
+    if (
+      mode === "bank_app" ||
+      kind === "bank_app" ||
+      kind === "bank_app_detail" ||
+      kind === "bank_app_list"
+    ) {
+      return !this.storeName(parsed) || !this.hasMoney(parsed);
+    }
+    if (this.hasUsableSms(parsed)) return false;
+    if (!kind || kind === "unknown" || this.isEmptyRead(parsed) || !this.storeName(parsed)) {
+      return true;
+    }
+    return false;
+  }
+
+  private retryMode(
+    first: VisionAttempt,
+    mode: "bank_sms" | "bank_app" | "general",
+  ): "bank_sms" | "bank_app" | "general" {
+    if (mode !== "general" || !first.ok || !first.parsed) return mode;
+    const hint =
+      typeof first.parsed.fullText === "string" ? first.parsed.fullText : "";
+    const kind = String(first.parsed.kind ?? "");
+    if (kind === "bangkok_bank_sms" || looksLikeBankText(hint)) return "bank_sms";
+    if (
+      kind === "bank_app" ||
+      kind === "bank_app_detail" ||
+      kind === "bank_app_list" ||
+      looksLikeBankAppText(hint)
+    ) {
+      return "bank_app";
+    }
+    return "general";
+  }
+
+  private scoreAttempt(pass: VisionAttempt): number {
+    if (!pass.ok || !pass.parsed) return 0;
+    let score = 1;
+    const kind = String(pass.parsed.kind ?? "unknown").trim();
+    if (kind && kind !== "unknown") score += 1;
+    if (this.hasMoney(pass.parsed)) score += 2;
+    if (this.storeName(pass.parsed) || this.hasUsableSms(pass.parsed)) score += 2;
+    if (this.hasReadableTranscript(pass.parsed)) score += 1;
+    return score;
+  }
+
+  /** Keep the first read when the retry is not strictly better, so a stable amount stays. */
+  private preferAttempt(first: VisionAttempt, second: VisionAttempt): VisionAttempt {
+    return this.scoreAttempt(second) > this.scoreAttempt(first) ? second : first;
+  }
+
+  private attemptMetadata(attempts: VisionAttempt[]): Record<string, unknown> {
+    const last = attempts[attempts.length - 1];
+    const lastError =
+      [...attempts].reverse().find((attempt) => attempt.error)?.error ?? null;
+    return {
+      temperature: VISION_TEMPERATURE,
+      detail: VISION_DETAIL,
+      attemptCount: attempts.length,
+      lastError,
+      httpStatus: last?.httpStatus ?? null,
+      latencyMs: last?.latencyMs ?? null,
+      attempts: attempts.map((attempt, index) => ({
+        index: index + 1,
+        ok: attempt.ok,
+        httpStatus: attempt.httpStatus,
+        latencyMs: attempt.latencyMs,
+        error: attempt.error,
+        rawContent: attempt.rawContent,
+        temperature: attempt.temperature,
+        detail: attempt.detail,
+        kind: attempt.parsed?.kind ?? null,
+        description: attempt.parsed ? this.storeName(attempt.parsed) : null,
+      })),
+    };
+  }
+
+  private finish(
+    request: ExtractionRequest,
+    chosen: VisionAttempt,
+    attempts: VisionAttempt[],
+    mode: string,
+  ): ExtractionProviderResult {
+    const meta = this.attemptMetadata(attempts);
+    const ordered = [chosen, ...attempts.filter((attempt) => attempt !== chosen)];
+    let rejected: ExtractionProviderResult | null = null;
+    for (const attempt of ordered) {
+      if (!attempt.ok || !attempt.parsed) continue;
+      const grounded = this.groundAttempt(request, attempt, attempts, mode, meta);
+      if (grounded.rawMetadata.groundingRejected !== true) return grounded;
+      rejected ??= grounded;
+    }
+    return (
+      rejected ?? {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          message: chosen.error || "Kunde inte läsa bilden",
+          model: VISION_MODEL,
+          mode,
+          detectedKind: "unknown",
+          ...meta,
+        },
       }
-      if (pass.ok) {
-        return this.toResult(request, pass.parsed, pass.model, {
-          apiCalls,
-          mode: "bank_sms",
-        });
-      }
+    );
+  }
+
+  private groundAttempt(
+    request: ExtractionRequest,
+    attempt: VisionAttempt,
+    attempts: VisionAttempt[],
+    mode: string,
+    meta: Record<string, unknown>,
+  ): ExtractionProviderResult {
+    const parsed = attempt.parsed;
+    if (!parsed) {
       return {
         provider: "vision_api",
         candidates: [],
         rawMetadata: {
-          message: pass.error || "Kunde inte läsa bilden",
-          apiCalls,
-          mode: "bank_sms",
+          message: attempt.error || "Kunde inte läsa bilden",
+          model: VISION_MODEL,
+          mode,
+          detectedKind: "unknown",
+          ...meta,
         },
       };
     }
-
-    if (preferBankApp) {
-      apiCalls += 1;
-      let pass = await this.callVision(request, {
-        mode: "bank_app",
-        detail: "high",
-      });
-      if (!pass.ok) {
-        apiCalls += 1;
-        pass = await this.callVision(request, {
-          mode: "bank_app",
-          detail: "high",
-        });
-      }
-      if (pass.ok) {
-        return this.toResult(request, pass.parsed, pass.model, {
-          apiCalls,
-          mode: "bank_app",
-        });
-      }
-      return {
-        provider: "vision_api",
-        candidates: [],
-        rawMetadata: {
-          message: pass.error || "Kunde inte läsa bankappen",
-          apiCalls,
-          mode: "bank_app",
-        },
-      };
-    }
-
-    // Receipt / unknown: cheap first pass (also detects bank app + SMS).
-    apiCalls += 1;
-    const first = await this.callVision(request, {
-      mode: "general",
-      detail: "low",
+    const result = this.toResult(request, parsed, attempt.model || VISION_MODEL, {
+      apiCalls: attempts.length,
+      mode,
     });
-    if (first.ok && this.hasUsableSms(first.parsed)) {
-      return this.toResult(request, first.parsed, first.model, {
-        apiCalls,
-        mode: "receipt_detected_bank",
-      });
-    }
-    if (first.ok && this.hasUsableBankApp(first.parsed)) {
-      return this.toResult(request, first.parsed, first.model, {
-        apiCalls,
-        mode: "receipt_detected_bank_app",
-      });
-    }
-    if (first.ok && this.hasUsableReceipt(first.parsed)) {
-      return this.toResult(request, first.parsed, first.model, {
-        apiCalls,
-        mode: "receipt",
-      });
-    }
-
-    const hintText =
-      (first.ok &&
-        typeof first.parsed.fullText === "string" &&
-        first.parsed.fullText) ||
-      "";
-    const shouldBankRetry =
-      !first.ok ||
-      first.parsed.kind === "bangkok_bank_sms" ||
-      looksLikeBankText(hintText);
-    const shouldBankAppRetry =
-      first.ok &&
-      (first.parsed.kind === "bank_app" ||
-        first.parsed.kind === "bank_app_detail" ||
-        first.parsed.kind === "bank_app_list" ||
-        looksLikeBankAppText(hintText));
-
-    if (shouldBankRetry) {
-      apiCalls += 1;
-      const second = await this.callVision(request, {
-        mode: "bank_sms",
-        detail: "high",
-      });
-      if (second.ok && this.hasUsableSms(second.parsed)) {
-        return this.toResult(request, second.parsed, second.model, {
-          apiCalls,
-          mode: "receipt_bank_retry",
-        });
-      }
-      if (first.ok) {
-        return this.toResult(request, first.parsed, first.model, {
-          apiCalls,
-          mode: "receipt_fallback",
-        });
-      }
-      return {
-        provider: "vision_api",
-        candidates: [],
-        rawMetadata: {
-          message: !second.ok ? second.error : "Kunde inte läsa bilden",
-          apiCalls,
-          mode: "receipt_failed",
-        },
-      };
-    }
-
-    if (shouldBankAppRetry) {
-      apiCalls += 1;
-      const second = await this.callVision(request, {
-        mode: "bank_app",
-        detail: "high",
-      });
-      if (second.ok && this.hasUsableBankApp(second.parsed)) {
-        return this.toResult(request, second.parsed, second.model, {
-          apiCalls,
-          mode: "receipt_bank_app_retry",
-        });
-      }
-      if (first.ok) {
-        return this.toResult(request, first.parsed, first.model, {
-          apiCalls,
-          mode: "receipt_fallback",
-        });
-      }
-    }
-
-    return this.toResult(request, first.parsed, first.model, {
-      apiCalls,
-      mode: "receipt",
+    return groundVisionExtraction({
+      ...result,
+      rawMetadata: {
+        ...result.rawMetadata,
+        ...meta,
+      },
     });
   }
 
@@ -329,47 +398,34 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
     return looksLikeBankText(fullText);
   }
 
-  private hasUsableBankApp(parsed: VisionJson): boolean {
-    if (
-      parsed.kind === "bank_app" ||
-      parsed.kind === "bank_app_detail" ||
-      parsed.kind === "bank_app_list"
-    ) {
-      const txs = Array.isArray(parsed.transactions) ? parsed.transactions : [];
-      if (txs.some((t) => t.amountMajor != null || t.originalAmountMajor != null)) {
-        return true;
-      }
-    }
-    const fullText = typeof parsed.fullText === "string" ? parsed.fullText : "";
-    return looksLikeBankAppText(fullText);
-  }
-
-  private hasUsableReceipt(parsed: VisionJson): boolean {
-    if (
-      parsed.kind === "bangkok_bank_sms" ||
-      parsed.kind === "bank_app" ||
-      parsed.kind === "bank_app_detail" ||
-      parsed.kind === "bank_app_list"
-    ) {
-      return false;
-    }
-    const fromVision = visionMajorToMinor(parsed.amountMajor);
-    if (fromVision != null && fromVision > 0) return true;
-    const fullText =
-      typeof parsed.fullText === "string" ? parsed.fullText : null;
-    const fromText = extractPaidTotalFromText(fullText);
-    return fromText != null && fromText.amountMinor > 0;
-  }
-
   private async callVision(
     request: ExtractionRequest,
     options: {
       mode: "bank_sms" | "bank_app" | "general";
-      detail: "high" | "low";
     },
-  ): Promise<VisionCallOk | VisionCallFail> {
-    const model = "gpt-4o";
-    const { mode, detail } = options;
+  ): Promise<VisionAttempt> {
+    const model = VISION_MODEL;
+    const { mode } = options;
+    const started = Date.now();
+    const clip = (value: string | null): string | null => {
+      if (value == null) return null;
+      return value.length > RAW_CONTENT_CAP ? value.slice(0, RAW_CONTENT_CAP) : value;
+    };
+    const fail = (input: {
+      httpStatus: number | null;
+      error: string;
+      rawContent: string | null;
+    }): VisionAttempt => ({
+      ok: false,
+      parsed: null,
+      model,
+      httpStatus: input.httpStatus,
+      error: input.error,
+      rawContent: clip(input.rawContent),
+      latencyMs: Date.now() - started,
+      detail: VISION_DETAIL,
+      temperature: VISION_TEMPERATURE,
+    });
 
     const system =
       mode === "bank_sms"
@@ -384,6 +440,8 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
             "direction=debit for Withdrawal; credit for PromptPay/MoneyPlus to account.",
             "JSON: kind=bangkok_bank_sms, fullText, messages[{rawText,amountMajor,balanceAfterMajor,accountHint,direction,channel,visualOrder,isNewestVisual}], currency=THB, confidence.",
             "Never invent numbers. Ignore UI chrome (idag, Textmeddelande).",
+            "The templates above are format hints only. Do not copy them unless those exact words are visible.",
+            VISIBLE_TEXT_RULE,
             "Digit care: 0 vs O, 1 vs l — prefer digits next to Bt/THB amounts.",
           ].join(" ")
         : mode === "bank_app"
@@ -391,7 +449,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "Expert OCR for European bank-app screenshots (bunq, Revolut).",
               "Handle DETAIL screens (one payment) and LIST screens (Senaste transaktioner).",
               "Swedish UI OK. Comma decimals: 6,60 € → amountMajor 6.60 currency EUR.",
-              "amountMajor/currency = what left the card. currency and originalCurrency are ISO 4217 codes (EUR, SEK, USD, THB), never a symbol. Keep SEK/kr as SEK and USD as USD — never rewrite them as EUR. NEVER put a THB merchant amount there.",
+              "amountMajor/currency = what left the card. currency and originalCurrency are ISO 4217 codes (EUR, SEK, USD, THB), never a symbol. Keep SEK/kr as SEK, THB/฿/บาท as THB, and USD as USD — never rewrite them as EUR. NEVER put a THB merchant amount in the card amount when a separate euro amount is shown. If the row only shows THB, ฿ or บาท, currency is THB.",
               "If FX line like '248.00 THB, 1 THB = 0.02661 EUR' set originalAmountMajor=248, originalCurrency=THB only.",
               "occurredAt is ISO 8601 local time without a timezone suffix, YYYY-MM-DDTHH:mm, for example 2026-07-23T16:46 from '23 juli 2026 16:46'.",
               "direction=debit for payments/onlinebetalning; credit for top-ups/Påfyllning.",
@@ -399,26 +457,28 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               "categoryHint: Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. If the row or image says Resor, Travel, or Transport (airline, AirAsia, flight, train), return that word — Resor or Travel, never null and never Mat. Taxi/Grab/Bolt/fuel → Transport, restaurant/grocery → Mat, retail/webshop → Shopping, rent/utilities → Boende. Never invent a category outside that set.",
               "JSON: kind=bank_app_detail|bank_app_list, institutionHint, fullText, transactions[{merchant,direction,amountMajor,currency,originalAmountMajor,originalCurrency,occurredAt,categoryHint,failed,strikethrough,statusText,rawText}], confidence.",
               "Never invent amounts. Skip UI chrome (Tillbaka, Begär betalning, Dela).",
+              VISIBLE_TEXT_RULE,
             ].join(" ")
           : [
               "Read finance screenshots for NUMA.",
               "Bank SMS (Withdrawal/PromptPay/available balance) → kind=bangkok_bank_sms, every bubble.",
               "Bank app (bunq/Revolut/onlinebetalning/€ + merchant) → kind=bank_app_detail or bank_app_list + transactions[]. Card amount = EUR when shown.",
-              "Else receipt total → kind=receipt.",
+              "Else receipt total → kind=receipt. merchant is the store name and is required when it is visible. currency is the code printed on the receipt (THB, ฿, บาท, EUR, SEK, USD). Never assume EUR.",
               "Receipts and travel screens include categoryHint: Mat, Transport, Shopping, Boende, Övrigt, Resor, or Travel. An airline ticket or the word Resor/Travel/Transport (AirAsia) is Resor or Travel, never Mat and never null.",
-              "JSON: kind, institutionHint, fullText, categoryHint, messages[…], transactions[…], amountMajor, currency, merchant, confidence.",
+              "JSON: kind, institutionHint, fullText, categoryHint, messages[…], transactions[…], amountMajor, currency, merchant, description, confidence.",
+              VISIBLE_TEXT_RULE,
             ].join(" ");
 
     const userText =
       mode === "bank_sms"
-        ? "Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. JSON only."
+        ? `Transcribe every Bangkok Bank SMS bubble top→bottom. Debits and credits. ${VISIBLE_TEXT_RULE} JSON only.`
         : mode === "bank_app"
-          ? "Extract every real bank-app transaction (skip failed/strikethrough). amountMajor = card currency (EUR), original* = merchant THB if shown. JSON only."
-          : "Extract bank SMS bubbles, bank-app transactions, or receipt total. JSON only.";
+          ? `Extract every real bank-app transaction (skip failed/strikethrough). amountMajor uses the currency printed on the row (THB, ฿, บาท, SEK, EUR or USD). Do not default to EUR. original* is the other currency when an FX line is shown. merchant is the store name. ${VISIBLE_TEXT_RULE} JSON only.`
+          : `Extract bank SMS bubbles, bank-app transactions, or the receipt total. merchant is the store name. currency is whatever the image prints. ${VISIBLE_TEXT_RULE} JSON only.`;
 
     const body = {
       model,
-      temperature: 0,
+      temperature: VISION_TEMPERATURE,
       max_tokens: mode === "bank_sms" || mode === "bank_app" ? 1400 : 700,
       response_format: { type: "json_object" },
       messages: [
@@ -431,7 +491,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
               type: "image_url",
               image_url: {
                 url: `data:${request.mimeType};base64,${request.imageBase64}`,
-                detail,
+                detail: VISION_DETAIL,
               },
             },
           ],
@@ -447,14 +507,16 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(VISION_TIMEOUT_MS),
       });
 
       if (!res.ok) {
         const text = await res.text();
-        return {
-          ok: false,
+        return fail({
+          httpStatus: res.status,
           error: `Vision API ${res.status}: ${text.slice(0, 180)}`,
-        };
+          rawContent: text,
+        });
       }
 
       const json = (await res.json()) as {
@@ -462,22 +524,38 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       };
       const content = json.choices?.[0]?.message?.content ?? "{}";
       try {
+        const parsed = JSON.parse(content) as VisionJson;
         return {
           ok: true,
-          parsed: JSON.parse(content) as VisionJson,
+          parsed,
           model,
+          httpStatus: res.status,
+          error: null,
+          rawContent: clip(content),
+          latencyMs: Date.now() - started,
+          detail: VISION_DETAIL,
+          temperature: VISION_TEMPERATURE,
         };
       } catch {
-        return { ok: false, error: "Ogiltigt JSON-svar från vision" };
+        return fail({
+          httpStatus: res.status,
+          error: "Ogiltigt JSON-svar från vision",
+          rawContent: content,
+        });
       }
     } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
+      const timedOut =
+        error instanceof Error &&
+        (error.name === "TimeoutError" || error.name === "AbortError");
+      return fail({
+        httpStatus: null,
+        error: timedOut
+          ? "Vision-anropet tog för lång tid (timeout)"
+          : error instanceof Error
             ? error.message
             : "Nätverksfel mot vision API",
-      };
+        rawContent: null,
+      });
     }
   }
 
@@ -505,8 +583,9 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       .map((m) => (typeof m.rawText === "string" ? m.rawText.trim() : ""))
       .filter(Boolean);
 
+    const modelFullText = typeof parsed.fullText === "string" ? parsed.fullText : "";
     const fullText =
-      (typeof parsed.fullText === "string" && parsed.fullText.trim()) ||
+      modelFullText.trim() ||
       smsTexts.join("\n\n") ||
       txsIn.map((t) => t.rawText).filter(Boolean).join("\n");
 
@@ -525,9 +604,21 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
       kind = txsIn.length > 1 ? "bank_app_list" : "bank_app_detail";
     }
 
-    const currency: CurrencyCode = isCurrencyCode(String(parsed.currency ?? ""))
-      ? (parsed.currency as CurrencyCode)
-      : "THB";
+    // Bankapp mode stays on bank-app even when the model is unsure.
+    if (
+      meta.mode === "bank_app" &&
+      kind !== "bangkok_bank_sms" &&
+      kind !== "bank_app" &&
+      kind !== "bank_app_detail" &&
+      kind !== "bank_app_list"
+    ) {
+      kind = txsIn.length > 1 ? "bank_app_list" : "bank_app_detail";
+    }
+
+    const currency = resolveImageCurrency({
+      explicit: typeof parsed.currency === "string" ? parsed.currency : null,
+      texts: [fullText, parsed.merchant, parsed.description],
+    });
     const confidence =
       typeof parsed.confidence === "number"
         ? Math.min(1, Math.max(0, parsed.confidence))
@@ -567,8 +658,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
                 rawText: t.rawText,
                 screenText: fullText,
               });
-              // Missing currency stays EUR only when the screenshot did not name SEK/USD.
-              const ledgerCurrency = posted ?? "EUR";
+              const ledgerCurrency = posted;
               const ledgerMinor =
                 posted && displayMinor != null
                   ? displayMinor
@@ -628,6 +718,7 @@ export class OpenAiVisionExtractionProvider implements ExtractionProvider {
         detectedKind: kind,
         institutionHint: parsed.institutionHint ?? null,
         fullText,
+        modelFullText,
         smsTexts,
         messages: normalizedMessages,
         transactions: txsIn,

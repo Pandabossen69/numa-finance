@@ -281,7 +281,9 @@ describe("bank app bunq-style", () => {
     const again = selectImportableBankAppEvents(rows, known);
     expect(again.status).toBe("all_known");
     if (again.status !== "all_known") return;
-    expect(again.messageSv).toBe("Den här rörelsen finns redan.");
+    expect(again.messageSv).toBe(
+      "Den här transaktionen finns redan (Grab, 6,60 €, 23 jul).",
+    );
   });
 
   it("counts every known row in the already-saved sentence", () => {

@@ -7,6 +7,16 @@ import {
 
 export { occurredAtOnCalendarDay };
 
+/**
+ * Keep the Datum field on or before today. A later value is clamped so the
+ * browser does not show its English max-date message. Empty stays empty.
+ */
+export function clampCaptureDateInput(value: string, today: string): string {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return trimmed > today ? today : trimmed;
+}
+
 /** YYYY-MM-DD for the review date input. Newest known stamp, else today. */
 export function suggestedCaptureDate(
   stamps: readonly (string | null | undefined)[],

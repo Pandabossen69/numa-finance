@@ -19,6 +19,7 @@ import {
   collectPairedVoidIds,
   requireCompletePairedReplay,
   resolveSmsBatchOccurredAt,
+  DEFAULT_TIMEZONE,
   zonedDayKey,
   type Account,
   type AccountKind,
@@ -37,6 +38,7 @@ import {
   sortNewestFirst,
   type TransactionSource,
 } from "@/domain/finance";
+import { importEventDescription } from "@/domain/imports/bank-app-amounts";
 import { type CurrencyCode } from "@/domain/money";
 import {
   captureAccountCandidates,
@@ -44,7 +46,7 @@ import {
 } from "@/domain/imports/capture-account";
 import { confirmOccurredAt } from "@/domain/imports/capture-review";
 import {
-  alreadyKnownMovementsMessage,
+  knownImportMessage,
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
@@ -54,6 +56,13 @@ import {
   decideCandidatePlacement,
 } from "@/domain/imports/candidate-reuse";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import {
+  UPLOAD_HOURLY_IMAGE_LIMIT,
+  UploadRateLimitError,
+  hourlyUploadsThatCount,
+  uploadLimitFlags,
+  uploadRateLimitRetryAt,
+} from "@/domain/imports/upload-rate-limit";
 import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { getAuthUser } from "@/lib/supabase/auth-user";
@@ -1358,11 +1367,13 @@ export async function listKnownFingerprints(options?: {
       .from("transactions")
       .select("id, fingerprint, status")
       .eq("user_id", userId)
+      .neq("status", "voided")
       .not("fingerprint", "is", null),
     supabase
       .from("extracted_transaction_candidates")
       .select("fingerprint, status, canonical_transaction_id")
       .eq("user_id", userId)
+      .neq("status", "rejected")
       .not("fingerprint", "is", null),
   ]);
 
@@ -2090,17 +2101,49 @@ export async function uploadReceiptAndExtract(input: {
   preferBankApp?: boolean;
 }): Promise<ReceiptUploadResult> {
   const userId = await requireUserId();
-  await ensureProfile();
+  const uploader = await ensureProfile();
   const supabase = await createSupabaseServerClient();
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count, error: rateError } = await supabase
+  const { data: recentObs, error: rateError } = await supabase
     .from("source_observations")
-    .select("id", { count: "exact", head: true })
+    .select("id, created_at")
     .eq("user_id", userId)
     .gte("created_at", hourAgo);
   if (rateError) throw new Error(rateError.message);
-  if ((count ?? 0) >= 20) {
-    throw new Error("För många bilder den här timmen. Försök igen senare.");
+  const recentIds = (recentObs ?? []).map((row) => row.id as string);
+  const runsByObservation = new Map<string, Record<string, unknown> | null>();
+  if (recentIds.length > 0) {
+    const { data: recentRuns, error: runsError } = await supabase
+      .from("extraction_runs")
+      .select("observation_id, raw_metadata")
+      .eq("user_id", userId)
+      .in("observation_id", recentIds);
+    if (runsError) throw new Error(runsError.message);
+    for (const run of recentRuns ?? []) {
+      const meta = run.raw_metadata;
+      runsByObservation.set(
+        run.observation_id as string,
+        meta && typeof meta === "object" && !Array.isArray(meta)
+          ? (meta as Record<string, unknown>)
+          : null,
+      );
+    }
+  }
+  const counting = hourlyUploadsThatCount(
+    (recentObs ?? []).map((row) => ({
+      createdAt: String(row.created_at),
+      rawMetadata: runsByObservation.get(row.id as string) ?? null,
+    })),
+  );
+  if (counting.length >= UPLOAD_HOURLY_IMAGE_LIMIT) {
+    const oldestAt = counting.map((row) => row.createdAt).sort()[0];
+    const retryAt = oldestAt
+      ? uploadRateLimitRetryAt(oldestAt)
+      : new Date(Date.now() + 60 * 60 * 1000);
+    throw new UploadRateLimitError({
+      retryAt,
+      timeZone: uploader.timezone || DEFAULT_TIMEZONE,
+    });
   }
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data: orphans } = await supabase
@@ -2154,9 +2197,14 @@ export async function uploadReceiptAndExtract(input: {
   // Only confirmed ledger fingerprints count as "already imported".
   // Pending needs_review from abandoned scans must not block re-import.
   const known = await listConfirmedFingerprints();
+  const accountsForCurrency = await listAccounts();
+  const accountCurrency =
+    accountsForCurrency.find((account) => account.isDefault)?.currency ??
+    uploader.primaryCurrency;
   const resolved = resolveScreenshotImport(extraction, known, {
     preferBankSms: input.preferBankSms,
     preferBankApp: input.preferBankApp,
+    accountCurrency,
   });
 
   const batch =
@@ -2204,7 +2252,19 @@ export async function uploadReceiptAndExtract(input: {
   if (obsError) throw new Error(obsError.message);
   const observation = mapObservation(obsRow);
 
-  const runStatus = extraction.provider === "none" ? "failed" : "succeeded";
+  const limitFlags = uploadLimitFlags({
+    provider: extraction.provider,
+    amountMinors: extraction.candidates.map((candidate) => candidate.amountMinor),
+    alreadyKnown: resolved.alreadyKnown,
+    detectedKind:
+      typeof extraction.rawMetadata?.detectedKind === "string"
+        ? extraction.rawMetadata.detectedKind
+        : null,
+    groundingRejected: extraction.rawMetadata?.groundingRejected === true,
+  });
+  const runStatus =
+    extraction.provider === "none" || limitFlags.ocrFailed ? "failed" : "succeeded";
+  const recordedAt = new Date().toISOString();
   const { data: runRow, error: runError } = await supabase
     .from("extraction_runs")
     .insert({
@@ -2214,12 +2274,14 @@ export async function uploadReceiptAndExtract(input: {
       status: runStatus,
       raw_metadata: {
         ...extraction.rawMetadata,
+        ...limitFlags,
         resolvedKind: resolved.kind,
         alreadyKnown: resolved.alreadyKnown,
         tipBalanceAfterMinor:
           resolved.kind === "bank_sms" ? resolved.balanceAfterMinor : null,
       },
-      finished_at: new Date().toISOString(),
+      started_at: recordedAt,
+      finished_at: recordedAt,
     })
     .select("*")
     .single();
@@ -2253,7 +2315,10 @@ export async function uploadReceiptAndExtract(input: {
             "occurredAt" in event && typeof event.occurredAt === "string"
               ? event.occurredAt
               : null,
-          description: event.labelSv,
+          description: importEventDescription({
+            labelSv: event.labelSv,
+            merchant: "merchant" in event ? event.merchant : null,
+          }),
           confidence: event.confidence,
           fingerprint: event.fingerprint.fingerprint,
           status: "needs_review",
@@ -2422,10 +2487,11 @@ export async function uploadReceiptAndExtract(input: {
       ? extraction.rawMetadata.message
       : null;
 
-  const knownCountMessage =
-    resolved.alreadyKnown && events.length > 0
-      ? alreadyKnownMovementsMessage(events.length)
-      : null;
+  const knownCountMessage = knownImportMessage({
+    alreadyKnown: resolved.alreadyKnown,
+    eventCount: events.length,
+    serverMessage: resolved.messageSv,
+  });
   const failedOnKnown =
     resolved.kind === "bank_app" && resolved.selection.status === "all_known"
       ? resolved.selection.skippedFailedCount

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { zonedDayKey } from "@/domain/finance/datetime";
 import {
+  clampCaptureDateInput,
   confirmOccurredAt,
   occurredOnForConfirm,
   suggestedCaptureDate,
@@ -10,6 +11,16 @@ const tz = "Asia/Bangkok";
 /** 2026-09-28 02:00 ICT. */
 const now = new Date("2026-09-27T19:00:00.000Z");
 const fallbackIso = "2026-09-27T18:00:00.000Z";
+
+describe("clampCaptureDateInput", () => {
+  it("clamps a date after today and keeps today and earlier days", () => {
+    expect(clampCaptureDateInput("2026-09-28", "2026-09-27")).toBe("2026-09-27");
+    expect(clampCaptureDateInput("2026-09-27", "2026-09-27")).toBe("2026-09-27");
+    expect(clampCaptureDateInput("2026-09-25", "2026-09-27")).toBe("2026-09-25");
+    expect(clampCaptureDateInput("", "2026-09-27")).toBe("");
+    expect(clampCaptureDateInput("idag", "2026-09-27")).toBe("idag");
+  });
+});
 
 describe("suggestedCaptureDate", () => {
   it("uses the newest stamp and falls back to today", () => {

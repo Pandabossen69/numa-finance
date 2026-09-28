@@ -52,6 +52,7 @@ import {
   type CaptureAccountCandidate,
 } from "@/domain/imports/capture-account";
 import {
+  clampCaptureDateInput,
   occurredOnForConfirm,
   suggestedCaptureDate,
 } from "@/domain/imports/capture-review";
@@ -345,17 +346,29 @@ export function ReceiptCaptureFlow({
                   : "receipt";
 
       // Auto-scan imports never fall back to manual typing — retry photo.
-      if (
-        (mode === "bank_sms" || mode === "bank_app") &&
+      const manualPath =
         events.length === 0 &&
-        !data.alreadyKnown
+        !data.alreadyKnown &&
+        (data.message ?? "").includes("Skriv beloppet under Manuellt");
+      if (
+        manualPath ||
+        ((mode === "bank_sms" || mode === "bank_app") &&
+          events.length === 0 &&
+          !data.alreadyKnown)
       ) {
         URL.revokeObjectURL(previewUrl);
-        setError(
+        const bankAppFallback =
+          "Kunde inte läsa en komplett bankapp-transaktion (behöver belopp i THB/SEK + tidpunkt).";
+        const raw =
           data.message ??
-            (mode === "bank_app"
-              ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
-              : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump."),
+          (mode === "bank_app"
+            ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
+            : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump.");
+        setError(
+          mode === "bank_app" &&
+            raw.includes("Kunde inte läsa beloppet säkert")
+            ? bankAppFallback
+            : raw,
         );
         return;
       }
@@ -422,7 +435,10 @@ export function ReceiptCaptureFlow({
         isAutoImport,
         eventCount: preview.events.length,
         suggestedOn,
-        editedOn: dateOn || suggestedOn,
+        editedOn: clampCaptureDateInput(
+          dateOn || suggestedOn,
+          calendarDateInZone(new Date(), profileTimeZone),
+        ),
       });
       const mutationId = newClientMutationId();
       const painted = paintConfirmedCapture({
@@ -669,9 +685,23 @@ export function ReceiptCaptureFlow({
         </p>
 
         {error ? (
-          <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
-            {error}
-          </p>
+          <div className="space-y-3">
+            <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
+              {error}
+            </p>
+            {/kunde inte läsa/i.test(error) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setMode("manual");
+                }}
+                className="numa-press mx-auto flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-semibold text-[var(--numa-ink)]"
+              >
+                Skriv manuellt
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     );
@@ -756,8 +786,8 @@ export function ReceiptCaptureFlow({
     new Date(),
     profileTimeZone,
   );
-  const dateValue = dateOn || suggestedOn;
   const today = calendarDateInZone(new Date(), profileTimeZone);
+  const dateValue = clampCaptureDateInput(dateOn || suggestedOn, today);
   const creditCount = preview.events.filter((e) => e.direction === "credit")
     .length;
   const debitCount = preview.events.filter((e) => e.direction === "debit")
@@ -968,7 +998,12 @@ export function ReceiptCaptureFlow({
             aria-label="Datum"
             value={dateValue}
             max={today}
-            onChange={(e) => setDateOn(e.target.value)}
+            onChange={(e) =>
+              setDateOn(clampCaptureDateInput(e.target.value, today))
+            }
+            onBlur={(e) =>
+              setDateOn(clampCaptureDateInput(e.target.value, today))
+            }
             className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
             required
           />

@@ -20,4 +20,12 @@ describe("vision categoryHint prompt", () => {
     expect(src).toContain("ISO 4217");
     expect(src).not.toContain("occurredAt as ISO minute");
   });
+
+  it("transcribes only visible text and forbids invented placeholders", () => {
+    expect(src).toContain("Transcribe only text that is actually visible in the image.");
+    expect(src).toContain("return kind unknown and an empty fullText");
+    expect(src).toContain(
+      "Never invent merchants, amounts, dates, examples, or placeholders.",
+    );
+  });
 });

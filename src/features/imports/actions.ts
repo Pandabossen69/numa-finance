@@ -29,6 +29,7 @@ import {
   swedishFingerprintConflictError,
 } from "@/domain/finance";
 import { uploadErrorMessageSv } from "@/domain/imports/candidate-reuse";
+import { isUploadRateLimitError } from "@/domain/imports/upload-rate-limit";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { SAVED_REFRESH_PENDING_SV } from "@/features/finance/mutation-refresh";
 
@@ -81,7 +82,8 @@ export async function uploadReceiptAction(
 
     return { ok: true, data: result };
   } catch (error) {
-    if (!isExpectedImageValidationError(error)) {
+    const rateLimited = isUploadRateLimitError(error);
+    if (!rateLimited && !isExpectedImageValidationError(error)) {
       void reportError("ocr.upload", error);
     }
     return {

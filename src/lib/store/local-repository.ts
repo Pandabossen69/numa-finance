@@ -35,6 +35,7 @@ import {
   sortNewestFirst,
   type TransactionSource,
 } from "@/domain/finance";
+import { importEventDescription } from "@/domain/imports/bank-app-amounts";
 import { type CurrencyCode } from "@/domain/money";
 import {
   captureAccountCandidates,
@@ -42,7 +43,7 @@ import {
 } from "@/domain/imports/capture-account";
 import { confirmOccurredAt } from "@/domain/imports/capture-review";
 import {
-  alreadyKnownMovementsMessage,
+  knownImportMessage,
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
@@ -52,6 +53,7 @@ import {
   stageCandidateFingerprintWrite,
 } from "@/domain/imports/candidate-reuse";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import { uploadLimitFlags } from "@/domain/imports/upload-rate-limit";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { observationsDueForPurge } from "@/features/imports/observation-retention";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
@@ -1209,9 +1211,14 @@ export async function uploadReceiptAndExtract(input: {
   });
 
   const known = await listConfirmedFingerprints();
+  const stored = await readStore();
+  const accountCurrency =
+    stored.accounts.find((account) => account.isDefault)?.currency ??
+    stored.profile.primaryCurrency;
   const resolved = resolveScreenshotImport(extraction, known, {
     preferBankSms: input.preferBankSms,
     preferBankApp: input.preferBankApp,
+    accountCurrency,
   });
   const ts = nowIso();
   const createdCandidates: ExtractedTransactionCandidate[] = [];
@@ -1270,14 +1277,26 @@ export async function uploadReceiptAndExtract(input: {
     };
     s.observations.push(observation);
 
+    const limitFlags = uploadLimitFlags({
+      provider: extraction.provider,
+      amountMinors: extraction.candidates.map((candidate) => candidate.amountMinor),
+      alreadyKnown: resolved.alreadyKnown,
+      detectedKind:
+        typeof extraction.rawMetadata?.detectedKind === "string"
+          ? extraction.rawMetadata.detectedKind
+          : null,
+      groundingRejected: extraction.rawMetadata?.groundingRejected === true,
+    });
     const run: ExtractionRun = {
       id: runId,
       observationId,
       userId: LOCAL_DEMO_USER_ID,
       provider: extraction.provider,
-      status: extraction.provider === "none" ? "failed" : "succeeded",
+      status:
+        extraction.provider === "none" || limitFlags.ocrFailed ? "failed" : "succeeded",
       rawMetadata: {
         ...extraction.rawMetadata,
+        ...limitFlags,
         resolvedKind: resolved.kind,
         alreadyKnown: resolved.alreadyKnown,
         tipBalanceAfterMinor:
@@ -1307,7 +1326,10 @@ export async function uploadReceiptAndExtract(input: {
             "occurredAt" in event && typeof event.occurredAt === "string"
               ? event.occurredAt
               : null,
-          description: event.labelSv,
+          description: importEventDescription({
+            labelSv: event.labelSv,
+            merchant: "merchant" in event ? event.merchant : null,
+          }),
           confidence: event.confidence,
           fingerprint: event.fingerprint.fingerprint,
           status: "needs_review",
@@ -1488,10 +1510,11 @@ export async function uploadReceiptAndExtract(input: {
       ? extraction.rawMetadata.message
       : null;
 
-  const knownCountMessage =
-    resolved.alreadyKnown && events.length > 0
-      ? alreadyKnownMovementsMessage(events.length)
-      : null;
+  const knownCountMessage = knownImportMessage({
+    alreadyKnown: resolved.alreadyKnown,
+    eventCount: events.length,
+    serverMessage: resolved.messageSv,
+  });
   const failedOnKnown =
     resolved.kind === "bank_app" && resolved.selection.status === "all_known"
       ? resolved.selection.skippedFailedCount
