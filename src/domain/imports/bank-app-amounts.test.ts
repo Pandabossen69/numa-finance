@@ -402,6 +402,24 @@ describe("Kasikorn screenshots z4c z4h z4e z4g", () => {
     }
   });
 
+  it("stays in bank-app mode when the classifier says unknown", () => {
+    const resolved = resolveScreenshotImport(
+      {
+        provider: "vision_api",
+        candidates: [],
+        rawMetadata: {
+          detectedKind: "unknown",
+          fullText: "oklar skärm",
+          transactions: [],
+        },
+      },
+      [],
+      { preferBankApp: true },
+    );
+    expect(resolved.kind).toBe("bank_app");
+    expect(resolved.messageSv).not.toContain(RECEIPT_FAIL);
+  });
+
   it("keeps an unreadable Bankapp shot off the receipt sentence", () => {
     const resolved = resolveScreenshotImport(
       {

@@ -35,7 +35,7 @@ const LABEL =
   /\b(?:utgift|inkomst|belopp|total|summa|amount|att\s+betala)\b/iu;
 
 const AMOUNT_RE =
-  /([+\u2212−-])?\s*(?:(THB|SEK|EUR|USD|KR|BT|฿|€|\$)\s*)?((?:\d{1,3}(?:[ \u00a0]\d{3})+|\d+)[.,:]\d{2})(?!\d)\s*(THB|SEK|EUR|USD|KR|KRONOR|BT|฿|€|\$)?/giu;
+  /([+\u2212−-])?\s*(?:(THB|SEK|EUR|USD|KR|BT|BAHT|฿|บาท|€|\$)\s*)?((?:\d{1,3}(?:[ \u00a0]\d{3})+|\d+)[.,:]\d{2})(?!\d)\s*(THB|SEK|EUR|USD|KR|KRONOR|BT|BAHT|฿|บาท|€|\$)?/giu;
 
 const TYPE_WORD =
   /(?<![\p{L}\p{N}])(?:utgifter|utgift|inkomster|inkomst|ins[äa]ttningar|ins[äa]ttning|uttag|k[öo]p|betalningar|betalning|[öo]verf[öo]ringar|[öo]verf[öo]ring|expenses|expense|incomes|income|payments|payment|purchases|purchase|transfers|transfer|deposits|deposit|withdrawals|withdrawal)(?![\p{L}\p{N}])/giu;

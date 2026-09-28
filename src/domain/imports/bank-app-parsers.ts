@@ -387,7 +387,7 @@ export type BankAppVisionRow = {
 };
 
 const AMOUNT_CURRENCY_RE =
-  /(\d{1,3}(?:[ \u00a0.]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*(€|eur|sek|kr|kronor|thb|฿|usd)(?![a-z])/gi;
+  /(\d{1,3}(?:[ \u00a0.]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*(€|eur|euro|sek|kr|kronor|thb|bt|baht|฿|บาท|usd)(?![a-z])/giu;
 
 /** Currency written next to an amount in OCR text. €/EUR wins over a THB annotation. */
 export function inferAmountCurrency(
@@ -427,12 +427,17 @@ export function resolveBankAppPostedCurrency(input: {
   const fromRow = inferAmountCurrency(input.rawText);
   const fromScreen = inferAmountCurrency(input.screenText);
   // The amount's own suffix beats a vision EUR default and an account header in €.
-  if (fromRow === "SEK" || fromRow === "USD") return fromRow;
+  // THB/฿/บาท on the row is the printed currency, not a missing-card fallback.
+  if (fromRow === "SEK" || fromRow === "USD" || fromRow === "THB") return fromRow;
   if (explicit === "SEK" || explicit === "USD" || explicit === "THB") {
     return explicit;
   }
   if (explicit === "EUR") {
     if (fromScreen === "SEK" || fromScreen === "USD") return fromScreen;
+    const blob = [input.rawText, input.screenText].filter(Boolean).join("\n");
+    const euroOnImage = /€|\beur\b|\beuro\b/i.test(blob);
+    // THB/฿/บาท with no euro on the image is the printed currency, not an FX note.
+    if (fromScreen === "THB" && !euroOnImage) return "THB";
     return "EUR";
   }
   if (fromRow) return fromRow;
@@ -461,6 +466,8 @@ export function parseBankAppVisionRows(
     /** Upload instant. A clock-only occurredAt uses this day. */
     capturedAt?: Date | string | null;
     timeZone?: string;
+    /** Used only when the image itself names no currency. */
+    fallbackCurrency?: CurrencyCode | null;
   },
 ): ParsedBankAppTransaction[] {
   const institution = detectBankAppInstitution(
@@ -516,6 +523,16 @@ export function parseBankAppVisionRows(
     const originalAmountMinor = majorFieldToMinor(row.originalAmountMajor);
     const originalCurrency = parseCurrencyToken(row.originalCurrency) ??
       (row.originalCurrency ? String(row.originalCurrency).toUpperCase() : null);
+    if (
+      !displayCurrency &&
+      !parseCurrencyToken(
+        typeof originalCurrency === "string" ? originalCurrency : null,
+      ) &&
+      options?.fallbackCurrency &&
+      displayAmountMinor != null
+    ) {
+      displayCurrency = options.fallbackCurrency;
+    }
 
     const occurredAt = parseBankAppOccurredAt(row.occurredAt, {
       now: options?.capturedAt ? new Date(options.capturedAt) : undefined,
@@ -547,7 +564,8 @@ export function parseBankAppVisionRows(
           ledger?.currency ??
           displayCurrency ??
           parseCurrencyToken(row.currency) ??
-          "EUR",
+          options?.fallbackCurrency ??
+          "THB",
         displayAmountMinor,
         displayCurrency:
           typeof displayCurrency === "string" ? displayCurrency : null,
@@ -622,7 +640,7 @@ export function parseBunqDetailFromText(
       : (fromBrand ?? fromLine ?? "Okänd");
 
   const thbMatch = text.match(
-    /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*THB\b/i,
+    /(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})|\d+[.,]\d{2})\s*(?:THB\b|฿|บาท|baht\b)/iu,
   );
   const eurMatch = text.match(
     /(-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{2})|-?\d+,\d{2})\s*€/,

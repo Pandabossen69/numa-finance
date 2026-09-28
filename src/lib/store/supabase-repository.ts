@@ -59,6 +59,8 @@ import { createExtractionProvider, resolveScreenshotImport } from "@/domain/impo
 import {
   UPLOAD_HOURLY_IMAGE_LIMIT,
   UploadRateLimitError,
+  hourlyUploadsThatCount,
+  uploadLimitFlags,
   uploadRateLimitRetryAt,
 } from "@/domain/imports/upload-rate-limit";
 import { observationPurgeCutoffIso } from "@/features/imports/observation-retention";
@@ -2102,25 +2104,41 @@ export async function uploadReceiptAndExtract(input: {
   const uploader = await ensureProfile();
   const supabase = await createSupabaseServerClient();
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { count, error: rateError } = await supabase
+  const { data: recentObs, error: rateError } = await supabase
     .from("source_observations")
-    .select("id", { count: "exact", head: true })
+    .select("id, created_at")
     .eq("user_id", userId)
     .gte("created_at", hourAgo);
   if (rateError) throw new Error(rateError.message);
-  if ((count ?? 0) >= UPLOAD_HOURLY_IMAGE_LIMIT) {
-    const { data: oldest, error: oldestError } = await supabase
-      .from("source_observations")
-      .select("created_at")
+  const recentIds = (recentObs ?? []).map((row) => row.id as string);
+  const runsByObservation = new Map<string, Record<string, unknown> | null>();
+  if (recentIds.length > 0) {
+    const { data: recentRuns, error: runsError } = await supabase
+      .from("extraction_runs")
+      .select("observation_id, raw_metadata")
       .eq("user_id", userId)
-      .gte("created_at", hourAgo)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (oldestError) throw new Error(oldestError.message);
-    const oldestAt = oldest?.created_at;
+      .in("observation_id", recentIds);
+    if (runsError) throw new Error(runsError.message);
+    for (const run of recentRuns ?? []) {
+      const meta = run.raw_metadata;
+      runsByObservation.set(
+        run.observation_id as string,
+        meta && typeof meta === "object" && !Array.isArray(meta)
+          ? (meta as Record<string, unknown>)
+          : null,
+      );
+    }
+  }
+  const counting = hourlyUploadsThatCount(
+    (recentObs ?? []).map((row) => ({
+      createdAt: String(row.created_at),
+      rawMetadata: runsByObservation.get(row.id as string) ?? null,
+    })),
+  );
+  if (counting.length >= UPLOAD_HOURLY_IMAGE_LIMIT) {
+    const oldestAt = counting.map((row) => row.createdAt).sort()[0];
     const retryAt = oldestAt
-      ? uploadRateLimitRetryAt(String(oldestAt))
+      ? uploadRateLimitRetryAt(oldestAt)
       : new Date(Date.now() + 60 * 60 * 1000);
     throw new UploadRateLimitError({
       retryAt,
@@ -2179,9 +2197,14 @@ export async function uploadReceiptAndExtract(input: {
   // Only confirmed ledger fingerprints count as "already imported".
   // Pending needs_review from abandoned scans must not block re-import.
   const known = await listConfirmedFingerprints();
+  const accountsForCurrency = await listAccounts();
+  const accountCurrency =
+    accountsForCurrency.find((account) => account.isDefault)?.currency ??
+    uploader.primaryCurrency;
   const resolved = resolveScreenshotImport(extraction, known, {
     preferBankSms: input.preferBankSms,
     preferBankApp: input.preferBankApp,
+    accountCurrency,
   });
 
   const batch =
@@ -2229,7 +2252,17 @@ export async function uploadReceiptAndExtract(input: {
   if (obsError) throw new Error(obsError.message);
   const observation = mapObservation(obsRow);
 
-  const runStatus = extraction.provider === "none" ? "failed" : "succeeded";
+  const limitFlags = uploadLimitFlags({
+    provider: extraction.provider,
+    amountMinors: extraction.candidates.map((candidate) => candidate.amountMinor),
+    alreadyKnown: resolved.alreadyKnown,
+    detectedKind:
+      typeof extraction.rawMetadata?.detectedKind === "string"
+        ? extraction.rawMetadata.detectedKind
+        : null,
+  });
+  const runStatus =
+    extraction.provider === "none" || limitFlags.ocrFailed ? "failed" : "succeeded";
   const { data: runRow, error: runError } = await supabase
     .from("extraction_runs")
     .insert({
@@ -2239,6 +2272,7 @@ export async function uploadReceiptAndExtract(input: {
       status: runStatus,
       raw_metadata: {
         ...extraction.rawMetadata,
+        ...limitFlags,
         resolvedKind: resolved.kind,
         alreadyKnown: resolved.alreadyKnown,
         tipBalanceAfterMinor:

@@ -53,6 +53,7 @@ import {
   stageCandidateFingerprintWrite,
 } from "@/domain/imports/candidate-reuse";
 import { createExtractionProvider, resolveScreenshotImport } from "@/domain/imports";
+import { uploadLimitFlags } from "@/domain/imports/upload-rate-limit";
 import { rankForOnTrackDays } from "@/domain/gamification";
 import { observationsDueForPurge } from "@/features/imports/observation-retention";
 import { LOCAL_DEMO_USER_ID, type NumaStoreData } from "./types";
@@ -1210,9 +1211,14 @@ export async function uploadReceiptAndExtract(input: {
   });
 
   const known = await listConfirmedFingerprints();
+  const stored = await readStore();
+  const accountCurrency =
+    stored.accounts.find((account) => account.isDefault)?.currency ??
+    stored.profile.primaryCurrency;
   const resolved = resolveScreenshotImport(extraction, known, {
     preferBankSms: input.preferBankSms,
     preferBankApp: input.preferBankApp,
+    accountCurrency,
   });
   const ts = nowIso();
   const createdCandidates: ExtractedTransactionCandidate[] = [];
@@ -1271,14 +1277,25 @@ export async function uploadReceiptAndExtract(input: {
     };
     s.observations.push(observation);
 
+    const limitFlags = uploadLimitFlags({
+      provider: extraction.provider,
+      amountMinors: extraction.candidates.map((candidate) => candidate.amountMinor),
+      alreadyKnown: resolved.alreadyKnown,
+      detectedKind:
+        typeof extraction.rawMetadata?.detectedKind === "string"
+          ? extraction.rawMetadata.detectedKind
+          : null,
+    });
     const run: ExtractionRun = {
       id: runId,
       observationId,
       userId: LOCAL_DEMO_USER_ID,
       provider: extraction.provider,
-      status: extraction.provider === "none" ? "failed" : "succeeded",
+      status:
+        extraction.provider === "none" || limitFlags.ocrFailed ? "failed" : "succeeded",
       rawMetadata: {
         ...extraction.rawMetadata,
+        ...limitFlags,
         resolvedKind: resolved.kind,
         alreadyKnown: resolved.alreadyKnown,
         tipBalanceAfterMinor:

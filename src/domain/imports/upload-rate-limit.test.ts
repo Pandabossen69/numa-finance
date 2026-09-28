@@ -5,6 +5,8 @@ import {
   UPLOAD_HOURLY_IMAGE_LIMIT,
   UPLOAD_RATE_LIMIT_CODE,
   UploadRateLimitError,
+  hourlyUploadsThatCount,
+  uploadLimitFlags,
   uploadRateLimitMessageSv,
   uploadRateLimitRetryAt,
 } from "./upload-rate-limit";
@@ -71,13 +73,81 @@ describe("hourly image cap", () => {
       src.indexOf("const dayAgo"),
     );
     expect(cap).toContain(">= UPLOAD_HOURLY_IMAGE_LIMIT");
-    expect(cap).toContain('order("created_at", { ascending: true })');
+    expect(cap).toContain("hourlyUploadsThatCount");
+    expect(cap).toContain("raw_metadata");
     expect(cap).toContain("uploadRateLimitRetryAt");
     expect(cap).toContain("new UploadRateLimitError");
+    expect(src).toContain("uploadLimitFlags");
     expect(cap).not.toContain("För många bilder");
     expect(cap).not.toContain("Försök igen");
     expect(src).not.toContain(
       'throw new Error("För många bilder den här timmen. Försök igen senare.")',
     );
+  });
+
+  it("does not count model errors, empty reads, unknown results, or timeouts", () => {
+    const rows = [
+      {
+        createdAt: "2026-09-28T00:00:00.000Z",
+        rawMetadata: { countsTowardUploadLimit: false, ocrFailed: true, lastError: "timeout" },
+      },
+      {
+        createdAt: "2026-09-28T00:10:00.000Z",
+        rawMetadata: { countsTowardUploadLimit: false, detectedKind: "unknown" },
+      },
+      {
+        createdAt: "2026-09-28T00:20:00.000Z",
+        rawMetadata: { countsTowardUploadLimit: true, detectedKind: "receipt" },
+      },
+      {
+        createdAt: "2026-09-28T00:30:00.000Z",
+        rawMetadata: null,
+      },
+    ];
+    const counting = hourlyUploadsThatCount(rows);
+    expect(counting.map((row) => row.createdAt)).toEqual([
+      "2026-09-28T00:20:00.000Z",
+      "2026-09-28T00:30:00.000Z",
+    ]);
+    expect(
+      uploadLimitFlags({
+        provider: "vision_api",
+        amountMinors: [],
+        alreadyKnown: false,
+        detectedKind: "unknown",
+      }),
+    ).toEqual({ ocrFailed: true, countsTowardUploadLimit: false });
+    expect(
+      uploadLimitFlags({
+        provider: "vision_api",
+        amountMinors: [6_100],
+        alreadyKnown: false,
+        detectedKind: "unknown",
+      }).countsTowardUploadLimit,
+    ).toBe(false);
+    expect(
+      uploadLimitFlags({
+        provider: "vision_api",
+        amountMinors: [6_100],
+        alreadyKnown: false,
+        detectedKind: "receipt",
+      }),
+    ).toEqual({ ocrFailed: false, countsTowardUploadLimit: true });
+    expect(
+      uploadLimitFlags({
+        provider: "none",
+        amountMinors: [],
+        alreadyKnown: false,
+        detectedKind: null,
+      }).countsTowardUploadLimit,
+    ).toBe(true);
+    expect(
+      uploadLimitFlags({
+        provider: "vision_api",
+        amountMinors: [],
+        alreadyKnown: true,
+        detectedKind: "bank_app_detail",
+      }).countsTowardUploadLimit,
+    ).toBe(true);
   });
 });

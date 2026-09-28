@@ -1,4 +1,5 @@
-import { isCurrencyCode, type CurrencyCode } from "@/domain/money";
+import { type CurrencyCode } from "@/domain/money";
+import { resolveImageCurrency } from "@/domain/imports/image-currency";
 import {
   defaultBankParserRegistry,
   selectImportableBankEvent,
@@ -170,7 +171,7 @@ function resolveBankAppImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
   combinedText: string,
-  options?: { force?: boolean },
+  options?: { force?: boolean; accountCurrency?: CurrencyCode | null },
 ): ResolvedScreenshotImport | null {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
@@ -237,6 +238,7 @@ function resolveBankAppImport(
     institutionHint,
     fullText: combinedText,
     capturedAt,
+    fallbackCurrency: options?.accountCurrency ?? null,
   });
 
   if (parsed.length === 0 && combinedText.trim()) {
@@ -342,7 +344,12 @@ function resolveBankAppImport(
 export function resolveScreenshotImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
-  options?: { preferBankSms?: boolean; preferBankApp?: boolean },
+  options?: {
+    preferBankSms?: boolean;
+    preferBankApp?: boolean;
+    /** Account currency when the image does not name one. */
+    accountCurrency?: CurrencyCode | null;
+  },
 ): ResolvedScreenshotImport {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
@@ -475,20 +482,24 @@ export function resolveScreenshotImport(
       extraction,
       existingFingerprints,
       combinedText,
-      { force: options?.preferBankApp === true },
+      {
+        force: options?.preferBankApp === true,
+        accountCurrency: options?.accountCurrency ?? null,
+      },
     );
     if (bankApp) return bankApp;
   }
 
   const first = extraction.candidates[0];
-  const currency: CurrencyCode =
-    first?.currency && isCurrencyCode(first.currency)
-      ? first.currency
-      : "THB";
   const metaFullText =
     typeof extraction.rawMetadata?.fullText === "string"
       ? extraction.rawMetadata.fullText
       : combinedText;
+  const imageCurrency = resolveImageCurrency({
+    explicit: first?.currency ?? null,
+    texts: [metaFullText, first?.description ?? null],
+  });
+  const currency: CurrencyCode = imageCurrency ?? options?.accountCurrency ?? "THB";
   const suggestedAmountMinor = resolveReceiptPaidAmountMinor({
     visionAmountMinor: first?.amountMinor ?? null,
     fullText: metaFullText,
