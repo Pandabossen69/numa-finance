@@ -10,17 +10,20 @@ import {
 } from "@/lib/media/image-magic";
 import { reportError } from "@/lib/observe/report";
 import { calculateDayPulse } from "@/domain/gamification";
-import { projectLivingBudget, projectPayCycle } from "@/domain/finance";
 import {
   confirmReceiptExpense,
   getProfile,
-  getTodaySnapshot,
   stampOnboardingCompletedAt,
   stampOnboardingSaldoAt,
   uploadReceiptAndExtract,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
+import { refreshAfterDurableWrite } from "@/features/finance/mutation-refresh";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
+import type { AccountsSnapshot } from "@/features/finance/load-accounts";
+import type { HomeSnapshot } from "@/features/finance/load-home";
+import type { MovementsSnapshot } from "@/features/finance/load-movements";
+import type { PlanSnapshot } from "@/features/finance/load-plan";
 import {
   isUniqueViolationMessage,
   swedishFingerprintConflictError,
@@ -30,7 +33,17 @@ import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { SAVED_REFRESH_PENDING_SV } from "@/features/finance/mutation-refresh";
 
 export type ActionResult<T = undefined> =
-  | { ok: true; data: T; refreshPending?: boolean; refreshPendingMessage?: string }
+  | {
+      ok: true;
+      data: T;
+      id?: string;
+      home?: HomeSnapshot;
+      plan?: PlanSnapshot;
+      accounts?: AccountsSnapshot;
+      movements?: MovementsSnapshot;
+      refreshPending?: boolean;
+      refreshPendingMessage?: string;
+    }
   | { ok: false; error: string };
 
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -144,54 +157,23 @@ export async function confirmReceiptExpenseAction(
       occurredOn: input.occurredOn,
     });
 
-    try {
-      if (input.fromOnboarding) {
-        await stampOnboardingSaldoAt();
-        await stampOnboardingCompletedAt();
-      }
-
-      const profile = await getProfile();
-      await reclaimStalePlanSettleLedgers({
-        timeZone: profile.timezone || "Asia/Bangkok",
-      });
-      const snap = await getTodaySnapshot();
-      const timeZone = snap.profile.timezone || "Asia/Bangkok";
-      const now = new Date();
-      const cycle = projectPayCycle(snap.planItems ?? [], now, timeZone);
-      const living = projectLivingBudget({
-        cycle,
-        now,
-        timeZone,
-        bankBalanceMinor: snap.calculatedBalanceMinor,
-        cycleSpendingMinor: snap.cycleSpendingMinor ?? 0,
-        todaySpendingMinor: snap.todaySpendingMinor,
-        fundingConfirmed: snap.fundingConfirmed,
-      });
-      const pulse = calculateDayPulse({
-        safeToSpendToday: money(living.dayBudgetMinor, snap.currency),
-        spentToday: money(snap.todaySpendingMinor, snap.currency),
-      });
-
-      revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-
+    const refreshed = await refreshAfterDurableWrite(
+      bustMenuSnapshot,
+      async () => {
+        if (input.fromOnboarding) {
+          await stampOnboardingSaldoAt();
+          await stampOnboardingCompletedAt();
+        }
+        const profile = await getProfile();
+        await reclaimStalePlanSettleLedgers({
+          timeZone: profile.timezone || "Asia/Bangkok",
+        });
+      },
+    );
+    if (refreshed.refreshPending) {
       return {
         ok: true,
-        data: {
-          pulseStatus: pulse.status,
-          balanceAfterMinor:
-            snap.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
-          direction: tx.direction,
-          amountMinor: tx.amountMinor,
-        },
-      };
-    } catch {
-      try {
-        revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
-      } catch {
-        // The import is already committed; a cache failure must not invite a retry.
-      }
-      return {
-        ok: true,
+        id: tx.id,
         refreshPending: true,
         refreshPendingMessage: SAVED_REFRESH_PENDING_SV,
         data: {
@@ -202,6 +184,23 @@ export async function confirmReceiptExpenseAction(
         },
       };
     }
+    const home = refreshed.snapshots.home;
+    const pulse = calculateDayPulse({
+      safeToSpendToday: money(home.dayBudgetMinor, home.currency),
+      spentToday: money(home.todaySpendingMinor, home.currency),
+    });
+    return {
+      ok: true,
+      id: tx.id,
+      ...refreshed.snapshots,
+      data: {
+        pulseStatus: pulse.status,
+        balanceAfterMinor:
+          home.calculatedBalanceMinor ?? tx.balanceAfterMinor ?? null,
+        direction: tx.direction,
+        amountMinor: tx.amountMinor,
+      },
+    };
   } catch (error) {
     void reportError("ocr.confirm", error);
     const message = error instanceof Error ? error.message : "";
@@ -232,4 +231,9 @@ export async function deleteObservationAction(
       error: error instanceof Error ? error.message : "Kunde inte radera bilden",
     };
   }
+}
+
+/** Same tag bust as Manuellt / #162. Paths stay untouched on purpose. */
+function bustMenuSnapshot() {
+  revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
 }

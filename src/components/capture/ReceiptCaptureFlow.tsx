@@ -21,6 +21,7 @@ import {
 import {
   calendarDateInZone,
   DEFAULT_TIMEZONE,
+  nativeToThbMinor,
   newClientMutationId,
 } from "@/domain/finance";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
@@ -60,6 +61,12 @@ import {
   skippedSavedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import { userFacingSaveError } from "@/lib/net/offline-save";
+import {
+  confirmOptimisticQuickAdd,
+  paintOptimisticQuickAdd,
+  rollbackOptimisticQuickAdd,
+} from "@/features/finance/quick-add-optimistic";
 import {
   lastAccountsSnapshot,
   lastHomeSnapshot,
@@ -71,6 +78,49 @@ const CATEGORIES = CAPTURE_CATEGORIES;
 
 function captureProfileTimeZone(): string {
   return lastHomeSnapshot()?.timeZone || DEFAULT_TIMEZONE;
+}
+
+/** One Hem/Rörelser row for a single Kvitto, before the confirm round-trip. */
+function paintConfirmedCapture(input: {
+  isAutoImport: boolean;
+  accountId: string | null;
+  accounts: ShellAccount[];
+  amount: string;
+  description: string;
+  direction: "debit" | "credit" | null;
+  category: string;
+  mutationId: string;
+}): ReturnType<typeof paintOptimisticQuickAdd> | null {
+  if (input.isAutoImport || !input.accountId) return null;
+  let nativeAmountMinor: number;
+  try {
+    nativeAmountMinor = parseUiAmountToMinor(input.amount || "0");
+  } catch {
+    return null;
+  }
+  if (nativeAmountMinor <= 0) return null;
+  const selected =
+    input.accounts.find((account) => account.id === input.accountId) ?? null;
+  const nativeCurrency = (selected?.currency ?? "THB") as CurrencyCode;
+  const fxRate = selected?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
+  const thbMinor = nativeToThbMinor(
+    nativeAmountMinor,
+    nativeCurrency,
+    fxRate,
+  );
+  if (thbMinor == null) return null;
+  const credit = input.direction === "credit";
+  return paintOptimisticQuickAdd({
+    kind: credit ? "income" : "expense",
+    mutationId: input.mutationId,
+    nativeAmountMinor,
+    thbMinor,
+    description: input.description.trim() || (credit ? "Inkomst" : "Utgift"),
+    category: credit ? null : input.category,
+    nativeCurrency,
+    accountId: input.accountId,
+    fxRate,
+  });
 }
 
 function minorToInput(minor: number): string {
@@ -374,7 +424,20 @@ export function ReceiptCaptureFlow({
         suggestedOn,
         editedOn: dateOn || suggestedOn,
       });
-      const result = await confirmReceiptExpenseAction({
+      const mutationId = newClientMutationId();
+      const painted = paintConfirmedCapture({
+        isAutoImport,
+        accountId: chosenAccountId,
+        accounts,
+        amount: preview.amount,
+        description: preview.description,
+        direction: preview.direction,
+        category,
+        mutationId,
+      });
+      let result: Awaited<ReturnType<typeof confirmReceiptExpenseAction>>;
+      try {
+        result = await confirmReceiptExpenseAction({
         accountId: chosenAccountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
@@ -392,7 +455,7 @@ export function ReceiptCaptureFlow({
                 : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
-        clientMutationId: newClientMutationId(),
+        clientMutationId: mutationId,
         source:
           preview.importKind === "bank_app"
             ? "bank_import"
@@ -403,10 +466,17 @@ export function ReceiptCaptureFlow({
         fromOnboarding,
         occurredOn,
       });
-      if (!result.ok) {
-        setError(result.error);
+      } catch (error) {
+        if (painted) rollbackOptimisticQuickAdd(painted);
+        setError(userFacingSaveError(error, "Kunde inte bekräfta köpet"));
         return;
       }
+      if (!result.ok) {
+        if (painted) rollbackOptimisticQuickAdd(painted);
+        setError(userFacingSaveError(result.error, "Kunde inte bekräfta köpet"));
+        return;
+      }
+      confirmOptimisticQuickAdd(mutationId, result);
       rememberLastCaptureMethod(mode);
       resetToPick();
       if (successHref) {
@@ -467,6 +537,7 @@ export function ReceiptCaptureFlow({
           accounts={accounts}
           onSuccess={() => {
             rememberLastCaptureMethod("manual");
+            resetToPick();
             goHomeInstant(router);
           }}
         />

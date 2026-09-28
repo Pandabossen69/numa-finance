@@ -35,7 +35,9 @@ import {
   type MovementsFilter,
   type MovementsPeriod,
 } from "@/features/home/last-snapshot";
+import { useNavIntent } from "@/components/layout/NavIntent";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
+import { spaTabKey } from "@/lib/nav/spa-tabs";
 import {
   matchesCategory,
   spendCategoryName,
@@ -117,6 +119,8 @@ export function MovementsScreen({
   error?: string | null;
 }) {
   const { prefetch } = usePrefetchOnIntent();
+  const { pathname } = useNavIntent();
+  const pathRef = useRef(pathname);
   const rememberedView = lastMovementsView();
   const stored = useSyncExternalStore(
     subscribeMovementsSnapshot,
@@ -178,6 +182,17 @@ export function MovementsScreen({
   useLayoutEffect(() => {
     rememberMovementsView({ filter, period, category });
   }, [filter, period, category]);
+
+  useLayoutEffect(() => {
+    const prev = pathRef.current;
+    pathRef.current = pathname;
+    if (
+      spaTabKey(prev) === "/transaktioner" &&
+      spaTabKey(pathname) !== "/transaktioner"
+    ) {
+      setCategory(null);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (!data) return;

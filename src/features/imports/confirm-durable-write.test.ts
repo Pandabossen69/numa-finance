@@ -24,6 +24,36 @@ vi.mock("@/features/plan/sync-settle-ledger", () => ({
 }));
 vi.mock("@/features/finance/mutation-refresh", () => ({
   SAVED_REFRESH_PENDING_SV: "Sparat. Uppdaterar siffrorna…",
+  refreshAfterDurableWrite: async (
+    revalidate: () => void,
+    afterWrite?: () => Promise<unknown>,
+  ) => {
+    try {
+      await afterWrite?.();
+      revalidate();
+      return {
+        refreshPending: false as const,
+        snapshots: {
+          home: {
+            dayBudgetMinor: 1_000,
+            todaySpendingMinor: 100,
+            currency: "THB",
+            calculatedBalanceMinor: 50_000,
+          },
+          plan: { marker: "plan" },
+          accounts: { marker: "accounts" },
+          movements: { marker: "movements", items: [] },
+        },
+      };
+    } catch {
+      try {
+        revalidate();
+      } catch {
+        // The import is already committed.
+      }
+      return { refreshPending: true as const };
+    }
+  },
 }));
 vi.mock("@/lib/observe/report", () => ({ reportError: vi.fn() }));
 
@@ -100,6 +130,19 @@ describe("committed screenshot confirmation", () => {
     expect(mocks.confirm.mock.calls[0]?.[0]).toMatchObject({
       clientMutationId: MUTATION_ID,
     });
+  });
+
+  it("returns fresh snapshots and busts the menu tag after a saved confirm", async () => {
+    mocks.profile.mockResolvedValue({ timezone: "Asia/Bangkok" });
+    const result = await confirmReceiptExpenseAction(input);
+    expect(result).toMatchObject({
+      ok: true,
+      id: "tx-import-1",
+      movements: { marker: "movements" },
+      home: { calculatedBalanceMinor: 50_000 },
+    });
+    expect(result).not.toMatchObject({ refreshPending: true });
+    expect(mocks.invalidate).toHaveBeenCalledWith("numa-menu-snapshot", "max");
   });
 
   it("still returns a failure if the actual import fails", async () => {
