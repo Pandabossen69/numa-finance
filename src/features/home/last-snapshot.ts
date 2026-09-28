@@ -1236,6 +1236,11 @@ export function isAccountsDirty(): boolean {
   return accountsDirty;
 }
 
+/** True after a live Konton remember this JS session — not hydrate or quiet-warm. */
+export function accountsSnapshotConfirmedThisSession(): boolean {
+  return accountsSessionConfirmed;
+}
+
 export function rememberAccountsSnapshot(
   snap: AccountsSnapshot,
   opts?: { dirty?: boolean },

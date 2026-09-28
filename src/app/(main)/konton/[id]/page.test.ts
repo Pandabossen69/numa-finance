@@ -10,5 +10,7 @@ describe("/konton/[id]", () => {
     expect(page).toContain("MerBackLink");
     expect(page).toContain('href="/konton"');
     expect(page).toContain("notFound");
+    expect(page).toContain("Inga rörelser");
+    expect(page).toContain("ArchivedAccountMovements");
   });
 });

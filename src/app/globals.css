@@ -2333,7 +2333,10 @@ button.numa-chip:disabled {
 
 .numa-chip-scroll {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;

@@ -1,14 +1,18 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { ReceiptCaptureFlow } from "@/lib/route-islands";
 import { FotaPending } from "@/components/capture/FotaViewLoading";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
+import { manualAccountsFromSources } from "@/features/finance/manual-accounts";
 import {
+  lastAccountsSnapshot,
   lastFotaBoot,
   lastHomeSnapshot,
   rememberFotaBoot,
+  subscribeAccountsSnapshot,
   type FotaBootSnapshot,
 } from "@/features/home/last-snapshot";
 
@@ -31,6 +35,14 @@ export function FotaScreen({
   initialPreview?: CapturePreview | null;
   observationId?: string | null;
 }) {
+  // Same Konton snapshot Hem and kvittogranskning already subscribe to.
+  // The boot stub is only «Konto» until this list arrives — including after
+  // the first paint.
+  const knownAccounts = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
+    () => null,
+  );
   if (data) rememberFotaBoot(data);
   const view = data ?? lastFotaBoot() ?? fotaBootFromHome();
 
@@ -47,13 +59,18 @@ export function FotaScreen({
     return <FotaPending />;
   }
 
+  const accounts = manualAccountsFromSources({
+    shell: view.accounts,
+    known: knownAccounts?.accounts,
+  });
+
   return (
     <ReceiptCaptureFlow
       key={
         observationId ? `obs:${observationId}` : `mode:${initialMode}`
       }
-      accountId={view.accountId}
-      accounts={view.accounts}
+      accountId={view.accountId ?? accounts[0]?.id ?? null}
+      accounts={accounts}
       remainingTodayMinor={view.remainingTodayMinor}
       currency={view.currency}
       bootstrapping={view.bootstrapping}

@@ -817,7 +817,7 @@ export function ReceiptCaptureFlow({
           )}
           {!isSms && preview.amountFromScan ? (
             <p className="mt-1 text-xs text-[var(--numa-faint)]">
-              Inläst från bilden — ändra om något siffror är fel.
+              Inläst från bilden — ändra om några siffror är fel.
             </p>
           ) : null}
         </div>

@@ -7,6 +7,7 @@ import { createStableMutationId } from "@/domain/finance";
 import { createAccountAction } from "@/features/finance/actions";
 import { createAccountOnce } from "@/features/finance/create-account-once";
 import { invalidateAccountsSnapshot } from "@/features/home/last-snapshot";
+import { userFacingSaveError } from "@/lib/net/offline-save";
 import {
   ACCOUNT_KIND_LABEL_SV,
   ACCOUNT_KINDS,
@@ -93,12 +94,14 @@ export function CreateAccountForm({
           createAccountAction,
         );
         if (!result.ok) {
-          setError(result.error);
+          setError(userFacingSaveError(result.error, "Kunde inte spara kontot"));
           return;
         }
         mutation.clear();
         invalidateAccountsSnapshot();
         router.push(useOnIdag ? "/idag" : "/konton");
+      } catch (error) {
+        setError(userFacingSaveError(error, "Kunde inte spara kontot"));
       } finally {
         setSaving(false);
       }

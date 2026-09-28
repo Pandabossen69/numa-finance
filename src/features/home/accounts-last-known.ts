@@ -64,6 +64,34 @@ export function accountsLastKnownCanPaint(
 }
 
 /**
+ * Last-known Konton often stores `archivedAccounts: []` because Hem/Plan
+ * snapshots never loaded the archive. A live Konton fetch this session is
+ * the source of truth, including a real empty archive. Overlap with the
+ * active list means the saved archive is stale.
+ */
+export function archivedAccountsNeedRefresh(
+  snap: AccountsSnapshot | null,
+  opts?: { confirmedThisSession?: boolean },
+): boolean {
+  if (!snap) return true;
+  if (opts?.confirmedThisSession) return false;
+  const archived = snap.archivedAccounts;
+  if (!archived || archived.length === 0) return true;
+  const activeIds = new Set(
+    snap.accounts
+      .filter((row) => row.isActive !== false)
+      .map((row) => row.id),
+  );
+  return archived.some(
+    (row) =>
+      !row.id ||
+      !row.name.trim() ||
+      row.isActive === true ||
+      activeIds.has(row.id),
+  );
+}
+
+/**
  * What to do with last-known when Hem / Plan / quiet-warm presents a candidate.
  * Never keep a stale total or a strict subset of fresher ids. Never replace a
  * valid last-known with a poorer Plan TodaySnapshot (#138).

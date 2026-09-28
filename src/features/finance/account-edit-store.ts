@@ -16,6 +16,7 @@ import {
   rollbackAccountEditSession,
   type AccountEditSession,
 } from "@/features/finance/account-edit-optimistic";
+import { userFacingSaveError } from "@/lib/net/offline-save";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import {
   applyHomeBankBalance,
@@ -92,9 +93,14 @@ function setAccountEditError(message: string | null) {
   for (const listener of errorListeners) listener();
 }
 
+export type AccountDetailsEditResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
 /**
  * Paint the new name (and kind / valuta / förvalt) on Konton immediately,
- * then persist. Returns false when there is no list cache to patch.
+ * then persist. `painted` is false when there is no list cache to patch.
+ * `done` settles with the server result so the screen can stay put until then.
  */
 export function publishAccountDetailsEdit(input: {
   id: string;
@@ -102,9 +108,18 @@ export function publishAccountDetailsEdit(input: {
   kind: AccountKind;
   currency: CurrencyCode;
   makeDefault: boolean;
-}): boolean {
+}): { painted: boolean; done: Promise<AccountDetailsEditResult> } {
+  const failed = (error: string): AccountDetailsEditResult => ({
+    ok: false,
+    error,
+  });
   const live = liveSession();
-  if (!live) return false;
+  if (!live) {
+    return {
+      painted: false,
+      done: Promise.resolve(failed(ACCOUNT_EDIT_FAILED_SV)),
+    };
+  }
   const started = beginDetails(live, {
     accountId: input.id,
     name: input.name,
@@ -113,32 +128,40 @@ export function publishAccountDetailsEdit(input: {
     currency: input.currency,
     makeDefault: input.makeDefault,
   });
-  if (!started) return false;
+  if (!started) {
+    return {
+      painted: false,
+      done: Promise.resolve(failed(ACCOUNT_EDIT_FAILED_SV)),
+    };
+  }
   setAccountEditError(null);
   paint(started.session, false);
   const generation = started.generation;
-  void updateAccountAction({
+  const done = updateAccountAction({
     id: input.id,
     name: input.name,
     kind: input.kind,
     currency: input.currency,
     makeDefault: input.makeDefault,
   })
-    .then((result) => {
+    .then((result): AccountDetailsEditResult => {
       if (!result.ok) {
-        if (rollbackAccountEdit(input.id, generation)) {
-          setAccountEditError(result.error || ACCOUNT_EDIT_FAILED_SV);
-        }
-        return;
+        const error = userFacingSaveError(
+          result.error,
+          ACCOUNT_EDIT_FAILED_SV,
+        );
+        if (rollbackAccountEdit(input.id, generation)) setAccountEditError(error);
+        return failed(error);
       }
       commitAccountEdit(input.id, generation);
+      return { ok: true };
     })
-    .catch(() => {
-      if (rollbackAccountEdit(input.id, generation)) {
-        setAccountEditError(ACCOUNT_EDIT_FAILED_SV);
-      }
+    .catch((error): AccountDetailsEditResult => {
+      const message = userFacingSaveError(error, ACCOUNT_EDIT_FAILED_SV);
+      if (rollbackAccountEdit(input.id, generation)) setAccountEditError(message);
+      return failed(message);
     });
-  return true;
+  return { painted: true, done };
 }
 
 export function beginAccountBalanceEdit(

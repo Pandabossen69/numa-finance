@@ -3,6 +3,7 @@ import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import {
   accountsLastKnownCanPaint,
   accountsSnapshotIsPoorer,
+  archivedAccountsNeedRefresh,
   decideAccountsLastKnown,
 } from "./accounts-last-known";
 
@@ -189,5 +190,31 @@ describe("decideAccountsLastKnown — never let stale last-known win", () => {
         hemBalanceMinor: HEM_PA_KONTONA,
       }),
     ).toBe("keep");
+  });
+});
+
+describe("archivedAccountsNeedRefresh", () => {
+  it("refetches an empty or stale archive, and trusts a live session", () => {
+    expect(archivedAccountsNeedRefresh(null)).toBe(true);
+    expect(archivedAccountsNeedRefresh(snap([["bb", 1]]))).toBe(true);
+    expect(
+      archivedAccountsNeedRefresh(snap([["bb", 1]]), {
+        confirmedThisSession: true,
+      }),
+    ).toBe(false);
+
+    const kept = {
+      ...snap([["bb", 1, "Bangkok Bank"]]),
+      archivedAccounts: [{ ...account("old", 0, "Gammalt"), isActive: false }],
+    };
+    expect(archivedAccountsNeedRefresh(kept)).toBe(false);
+
+    const overlapping = {
+      ...snap([["bb", 1, "Bangkok Bank"]]),
+      archivedAccounts: [
+        { ...account("bb", 0, "Bangkok Bank"), isActive: false },
+      ],
+    };
+    expect(archivedAccountsNeedRefresh(overlapping)).toBe(true);
   });
 });

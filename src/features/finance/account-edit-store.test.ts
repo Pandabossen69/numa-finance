@@ -61,25 +61,44 @@ describe("account edit store", () => {
         }),
     );
 
-    expect(
-      publishAccountDetailsEdit({
-        id: "a",
-        name: "Nytt",
-        kind: "thai_bank",
-        currency: "THB",
-        makeDefault: false,
-      }),
-    ).toBe(true);
+    const edit = publishAccountDetailsEdit({
+      id: "a",
+      name: "Nytt",
+      kind: "thai_bank",
+      currency: "THB",
+      makeDefault: false,
+    });
+    expect(edit.painted).toBe(true);
     expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Nytt");
     expect(lastAccountsSnapshot()?.totalThbMinor).toBe(1_500);
 
     settle({ ok: false, error: "Kunde inte spara kontot" });
-    await vi.waitFor(() => {
-      expect(accountEditError()).toBe("Kunde inte spara kontot");
+    await expect(edit.done).resolves.toEqual({
+      ok: false,
+      error: "Kunde inte spara kontot",
     });
+    expect(accountEditError()).toBe("Kunde inte spara kontot");
     expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Ett");
     expect(lastAccountsSnapshot()?.totalThbMinor).toBe(1_500);
     expect(lastAccountsSnapshot()?.accounts[1]?.name).toBe("Två");
+  });
+
+  it("rolls a fetch failure back to the offline line and does not pretend it saved", async () => {
+    updateAccount.mockRejectedValue(new TypeError("Failed to fetch"));
+    const edit = publishAccountDetailsEdit({
+      id: "a",
+      name: "Nytt",
+      kind: "thai_bank",
+      currency: "THB",
+      makeDefault: false,
+    });
+    expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Nytt");
+    await expect(edit.done).resolves.toEqual({
+      ok: false,
+      error: "Ingen anslutning. Inget sparades.",
+    });
+    expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Ett");
+    expect(accountEditError()).toBe("Ingen anslutning. Inget sparades.");
   });
 
   it("does not let a late saldo response overwrite a newer amount", () => {

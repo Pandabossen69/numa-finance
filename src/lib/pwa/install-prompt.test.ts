@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   beginInstallPromptCapture,
   detectInstallPlatform,
+  homescreenSettingsGuide,
   installGuideSteps,
   installGuideTitle,
   promptInstall,
@@ -85,6 +86,20 @@ describe("installGuideSteps", () => {
     expect(installGuideSteps("other")).not.toContain("iPhone");
     expect(installGuideSteps("other")).not.toContain("Android");
     expect(installGuideSteps("other")).not.toContain("Dela →");
+  });
+
+  it("tells Settings to use Safari on iOS and Chrome everywhere else", () => {
+    expect(homescreenSettingsGuide("ios")).toContain("Safari");
+    expect(homescreenSettingsGuide("ios")).toContain("Dela → Lägg till på hemskärmen");
+    expect(homescreenSettingsGuide("android")).toContain("Chrome");
+    expect(homescreenSettingsGuide("android")).not.toContain("Safari");
+    expect(homescreenSettingsGuide("chromium")).toContain("Chrome");
+    expect(homescreenSettingsGuide("chromium")).not.toContain("Safari");
+    expect(homescreenSettingsGuide("other")).toContain("Chrome");
+    for (const platform of ["ios", "android", "chromium", "other"] as const) {
+      const text = homescreenSettingsGuide(platform);
+      expect(text).not.toMatch(/production|Vercel|Supabase/i);
+    }
   });
 });
 

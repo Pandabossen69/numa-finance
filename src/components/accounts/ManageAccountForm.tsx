@@ -26,6 +26,7 @@ import {
   invalidateAccountsSnapshot,
 } from "@/features/home/last-snapshot";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import { userFacingSaveError } from "@/lib/net/offline-save";
 
 function currencyLabel(code: CurrencyCode): string {
   if (code === "THB") return "THB — baht";
@@ -37,7 +38,9 @@ function currencyLabel(code: CurrencyCode): string {
 export function ManageAccountForm({ account }: { account: AccountDetail }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const guard = useSubmitGuard(pending);
+  const [saving, setSaving] = useState(false);
+  const busy = pending || saving;
+  const guard = useSubmitGuard(busy);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [form, setForm] = useState<{
@@ -72,7 +75,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
 
   function finish(result: { ok: true } | { ok: false; error: string }) {
     if (!result.ok) {
-      setError(result.error);
+      setError(userFacingSaveError(result.error, "Kunde inte spara kontot"));
       setConfirmRemove(false);
       return;
     }
@@ -84,27 +87,49 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     e.preventDefault();
     if (!guard.tryBegin()) return;
     setError(null);
-    const optimistic = publishAccountDetailsEdit({
+    setSaving(true);
+    const edit = publishAccountDetailsEdit({
       id: account.id,
       name: form.name,
       kind: form.kind,
       currency: form.currency,
       makeDefault: form.makeDefault,
     });
-    if (optimistic) {
-      router.push("/konton");
+    if (edit.painted) {
+      void (async () => {
+        try {
+          const result = await edit.done;
+          if (!result.ok) {
+            setError(result.error);
+            return;
+          }
+          router.push("/konton");
+        } finally {
+          setSaving(false);
+        }
+      })();
       return;
     }
     startTransition(async () => {
-      finish(
-        await updateAccountAction({
+      try {
+        const result = await updateAccountAction({
           id: account.id,
           name: form.name,
           kind: form.kind,
           currency: form.currency,
           makeDefault: form.makeDefault,
-        }),
-      );
+        });
+        if (!result.ok) {
+          setError(userFacingSaveError(result.error, "Kunde inte spara kontot"));
+          return;
+        }
+        invalidateAccountsSnapshot();
+        router.push("/konton");
+      } catch (error) {
+        setError(userFacingSaveError(error, "Kunde inte spara kontot"));
+      } finally {
+        setSaving(false);
+      }
     });
   }
 
@@ -112,15 +137,20 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
-      const result = await removeAccountAction(account.id);
-      if (!result.ok) {
-        setError(result.error);
+      try {
+        const result = await removeAccountAction(account.id);
+        if (!result.ok) {
+          setError(userFacingSaveError(result.error, "Kunde inte ta bort kontot"));
+          setConfirmRemove(false);
+          return;
+        }
+        adoptRemovedAccount(result, account.id, removalRow(account));
+        router.push("/konton");
+        router.refresh();
+      } catch (error) {
+        setError(userFacingSaveError(error, "Kunde inte ta bort kontot"));
         setConfirmRemove(false);
-        return;
       }
-      adoptRemovedAccount(result, account.id, removalRow(account));
-      router.push("/konton");
-      router.refresh();
     });
   }
 
@@ -128,7 +158,11 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
     if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
-      finish(await restoreAccountAction(account.id));
+      try {
+        finish(await restoreAccountAction(account.id));
+      } catch (error) {
+        setError(userFacingSaveError(error, "Kunde inte återställa kontot"));
+      }
     });
   }
 
@@ -149,11 +183,11 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         ) : null}
         <button
           type="button"
-          disabled={pending}
+          disabled={busy}
           onClick={onRestore}
           className="numa-btn numa-btn-accent min-h-14 w-full text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
         >
-          {pending ? "Återställer…" : "Återställ konto"}
+          {busy ? "Återställer…" : "Återställ konto"}
         </button>
       </div>
     );
@@ -258,10 +292,10 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
 
       <button
         type="submit"
-        disabled={pending || !form.name.trim()}
+        disabled={busy || !form.name.trim()}
         className="numa-btn numa-btn-accent min-h-14 w-full text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
       >
-        {pending && !confirmRemove ? "Sparar…" : "Spara ändringar"}
+        {busy && !confirmRemove ? "Sparar…" : "Spara ändringar"}
       </button>
 
       <div className="space-y-3 border-t border-[var(--numa-border)] pt-4">
@@ -272,15 +306,15 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
             </p>
             <button
               type="button"
-              disabled={pending}
+              disabled={busy}
               onClick={onRemove}
               className="numa-btn min-h-14 w-full bg-[var(--numa-danger-soft)] text-[var(--numa-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-danger)] focus-visible:ring-offset-2"
             >
-              {pending ? "Tar bort…" : "Ta bort"}
+              {busy ? "Tar bort…" : "Ta bort"}
             </button>
             <button
               type="button"
-              disabled={pending}
+              disabled={busy}
               onClick={() => setConfirmRemove(false)}
               className="numa-btn numa-btn-soft min-h-14 w-full"
             >
@@ -290,7 +324,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
         ) : (
           <button
             type="button"
-            disabled={pending}
+            disabled={busy}
             onClick={() => {
               setError(null);
               setConfirmRemove(true);

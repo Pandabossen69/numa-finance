@@ -4,9 +4,12 @@ import {
   ACCOUNT_KIND_LABEL_SV,
   accountHasLedgerHistory,
   calculateAccountBalance,
+  compareId,
+  compareIsoDesc,
   filterTransactionsAfterCheckpoint,
   type Account,
   type AccountKind,
+  type TransactionDirection,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { loadErrorMessageSv } from "@/lib/async";
@@ -17,6 +20,15 @@ import {
   listAccounts,
   listTransactions,
 } from "@/lib/store/repository";
+
+export type AccountDetailMovement = {
+  id: string;
+  occurredAt: string;
+  description: string;
+  amountMinor: number;
+  direction: TransactionDirection;
+  currency: CurrencyCode;
+};
 
 export type AccountDetail = {
   id: string;
@@ -29,6 +41,7 @@ export type AccountDetail = {
   calculatedMinor: number | null;
   hasLedgerHistory: boolean;
   activeCount: number;
+  movements: AccountDetailMovement[];
 };
 
 export type AccountDetailResult =
@@ -68,6 +81,20 @@ function toDetail(
     calculatedMinor,
     hasLedgerHistory: accountHasLedgerHistory(transactions),
     activeCount,
+    movements: transactions
+      .filter((tx) => tx.status !== "voided")
+      .sort(
+        (a, b) =>
+          compareIsoDesc(a.occurredAt, b.occurredAt) || compareId(a.id, b.id),
+      )
+      .map((tx) => ({
+        id: tx.id,
+        occurredAt: tx.occurredAt,
+        description: tx.description,
+        amountMinor: tx.amountMinor,
+        direction: tx.direction,
+        currency: tx.currency,
+      })),
   };
 }
 

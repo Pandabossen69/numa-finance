@@ -8,7 +8,8 @@ describe("AccountsRouteClient", () => {
     expect(src).toContain("paintableAccountsSnapshot");
     expect(src).toContain("subscribeAccountsSnapshot");
     expect(src).toContain("getAccountsSnapshotAction");
-    expect(src).toContain("if (paintableAccountsSnapshot()) return;");
+    expect(src).toContain("archivedAccountsNeedRefresh");
+    expect(src).toContain("accountsSnapshotConfirmedThisSession");
     expect(src).toContain("if (!isAccountsDirty()) rememberAccountsSnapshot");
     expect(src).toContain("if (!paintableAccountsSnapshot()) setError");
     expect(src).toContain("<AccountsDashboard data={stored} error={error} />");

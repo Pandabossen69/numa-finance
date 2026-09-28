@@ -30,6 +30,7 @@ import {
   visibleMonthKeysForYear,
   planWriteUserError,
 } from "@/domain/finance";
+import { offlineSaveMessage } from "@/lib/net/offline-save";
 import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import {
@@ -450,7 +451,10 @@ export function PlanEditor({
       if (!result.ok) {
         dirtyRef.current = true;
         setLocalItems(opts.revert(base));
-        setError(planWriteUserError(result.error, "Kunde inte spara planposten"));
+        setError(
+          offlineSaveMessage(result.error) ??
+            planWriteUserError(result.error, "Kunde inte spara planposten"),
+        );
         return false;
       }
       dirtyRef.current = true;
@@ -468,7 +472,9 @@ export function PlanEditor({
     } catch (err) {
       dirtyRef.current = true;
       setLocalItems(opts.revert(base));
-      setError(planWriteUserError(err, "Något gick fel"));
+      setError(
+        offlineSaveMessage(err) ?? planWriteUserError(err, "Något gick fel"),
+      );
       return false;
     } finally {
       writeLockRef.current = false;
@@ -909,7 +915,7 @@ export function PlanEditor({
         />
       </section>
 
-      {error ? (
+      {error && !partialId ? (
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
           {error}
         </p>
@@ -1002,6 +1008,7 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={cancelPartial}
             onSavePartial={savePartial}
+            saveError={partialId ? error : null}
             settleAccounts={settleAccounts}
             settleAccountId={settleAccountIdOrDefault}
             onSettleAccountId={setSettleAccountId}
@@ -1129,6 +1136,7 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={cancelPartial}
             onSavePartial={savePartial}
+            saveError={partialId ? error : null}
             settleAccounts={settleAccounts}
             settleAccountId={settleAccountIdOrDefault}
             onSettleAccountId={setSettleAccountId}
@@ -1213,6 +1221,7 @@ export function PlanEditor({
             onStartPartial={startPartial}
             onCancelPartial={cancelPartial}
             onSavePartial={savePartial}
+            saveError={partialId ? error : null}
             settleAccounts={settleAccounts}
             settleAccountId={settleAccountIdOrDefault}
             onSettleAccountId={setSettleAccountId}

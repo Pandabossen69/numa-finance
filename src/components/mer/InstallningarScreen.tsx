@@ -50,9 +50,6 @@ export function InstallningarScreen({
                 <p className="text-[15px] font-medium tracking-tight">
                   Uppdatera appen
                 </p>
-                <p className="mt-1 text-[12px] leading-relaxed text-[var(--numa-faint)]">
-                  Hämtar senaste versionen och rensar gammal cache.
-                </p>
               </div>
               <RepairAppButton />
             </MerListRow>
@@ -80,7 +77,7 @@ export function InstallningarScreen({
                 <MerMetaRow label="Valuta" value={view.primaryCurrency} />
                 <MerMetaRow
                   label="Dataläge"
-                  value={view.supabaseReady ? "Moln (Supabase)" : "Lokal lagring"}
+                  value={view.supabaseReady ? "Moln" : "Lokal lagring"}
                 />
               </dl>
             </MerListGroup>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import { userFacingSaveError } from "@/lib/net/offline-save";
 import { createCheckpointAction } from "@/features/finance/actions";
 import {
   beginAccountBalanceEdit,
@@ -73,14 +74,12 @@ export function VerifyBalanceForm({
           });
         } catch (error) {
           rollbackOptimistic();
-          setError(
-            error instanceof Error ? error.message : "Kunde inte spara saldo",
-          );
+          setError(userFacingSaveError(error, "Kunde inte spara saldo"));
           return;
         }
         if (!legacy.ok) {
           rollbackOptimistic();
-          setError(legacy.error);
+          setError(userFacingSaveError(legacy.error, "Kunde inte spara saldo"));
           return;
         }
         if (legacy.thbMinor != null && currency !== "THB") {
@@ -107,14 +106,14 @@ export function VerifyBalanceForm({
         // Server actions can reject before returning { ok: false } (network).
         // A newer saldo owns the row; this response must not roll it back.
         if (rollbackAccountEdit(accountId, generation)) {
-          setError(
-            error instanceof Error ? error.message : "Kunde inte spara saldo",
-          );
+          setError(userFacingSaveError(error, "Kunde inte spara saldo"));
         }
         return;
       }
       if (!result.ok) {
-        if (rollbackAccountEdit(accountId, generation)) setError(result.error);
+        if (rollbackAccountEdit(accountId, generation)) {
+          setError(userFacingSaveError(result.error, "Kunde inte spara saldo"));
+        }
         return;
       }
       if (result.thbMinor != null && currency !== "THB") {
