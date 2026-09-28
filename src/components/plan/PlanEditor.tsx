@@ -197,6 +197,8 @@ export function PlanEditor({
   const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
   const writeLockRef = useRef(false);
+  /** Publish only after this instance mutated. Hidden copies must not echo mount rows. */
+  const dirtyRef = useRef(false);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
   const [seenFocusAdd, setSeenFocusAdd] = useState(focusAdd);
   if (focusAdd !== seenFocusAdd) {
@@ -274,15 +276,21 @@ export function PlanEditor({
     });
   }
 
-  // Publish after commit. Writing to the plan store inside a setState
-  // updater ran during render and updated PlanScreen mid-render, which React
-  // rejects and which could repaint the list under the user's finger.
+  // Publish after commit, and only after a local mutation in this instance.
+  // A hidden copy's mount rows must not overwrite a fresher server plan when
+  // bankBalanceMinor or spendingByMonthKey change identity.
+  // Writing to the plan store inside a setState updater ran during render
+  // and updated PlanScreen mid-render, which React rejects and which could
+  // repaint the list under the user's finger.
   // Do not depend on ledgerTransactions — Koppla updates that prop and
   // re-publishing adopted rows looped Plan ("Too many re-renders").
+  // Do not depend on bankBalanceMinor — that loop crashed Plan after Delvis settle.
   useEffect(() => {
+    if (!dirtyRef.current) return;
+    dirtyRef.current = false;
     publishItems(localItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
+  }, [localItems]);
 
   const monthPaintInput = useMemo(
     () => ({
@@ -435,14 +443,17 @@ export function PlanEditor({
     const base = viewItems;
     setError(null);
     setBusy(opts.busy);
+    dirtyRef.current = true;
     setLocalItems(opts.apply(base));
     try {
       const result = await opts.action();
       if (!result.ok) {
+        dirtyRef.current = true;
         setLocalItems(opts.revert(base));
         setError(planWriteUserError(result.error, "Kunde inte spara planposten"));
         return false;
       }
+      dirtyRef.current = true;
       setLocalItems((current) => {
         const next = opts.reconcile
           ? opts.reconcile(current, result)
@@ -455,6 +466,7 @@ export function PlanEditor({
       });
       return true;
     } catch (err) {
+      dirtyRef.current = true;
       setLocalItems(opts.revert(base));
       setError(planWriteUserError(err, "Något gick fel"));
       return false;

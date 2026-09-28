@@ -32,7 +32,7 @@ export function TabKeepAlive({
   children: ReactNode;
   homeCookieShell?: HomeSnapshot | null;
 }) {
-  const { pathname } = useNavIntent();
+  const { pathname, routerPathname } = useNavIntent();
   const active = spaTabKey(pathname);
 
   // Stable element trees — lazy useState so a tab switch re-render does not
@@ -62,9 +62,16 @@ export function TabKeepAlive({
           {panelBodies[tab]}
         </SpaPanel>
       ))}
-      <div hidden inert className="numa-view-park" data-numa-rsc-shadow="">
-        {children}
-      </div>
+      {/* The keep-alive panels are the visible tabs. RSC children are the same
+          route clients again. While NavIntent moves and the App Router
+          pathname is still a SPA tab, LastViewOutlet would cache that stale
+          page under every new tab and the hidden trees would grow. Park the
+          shadow only when the router itself has left the SPA tabs. */}
+      {spaTabKey(routerPathname) === null ? (
+        <div hidden inert className="numa-view-park" data-numa-rsc-shadow="">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

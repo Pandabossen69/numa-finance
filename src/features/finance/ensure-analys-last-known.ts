@@ -6,6 +6,7 @@ import {
   isThinAnalysSnapshot,
 } from "@/features/finance/analys-from-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
+import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   lastAnalysSnapshot,
   lastHomeSnapshot,
@@ -16,6 +17,27 @@ import {
 
 function homeForAnalys() {
   return lastSessionHomeSnapshot() ?? lastHomeSnapshot();
+}
+
+/**
+ * Paint-able Analys for this render. Reads only — never writes the store.
+ * `stored` wins when it can already paint; otherwise Hem-thin chrome.
+ */
+export function derivePaintableAnalysSnapshot(
+  stored: AnalysSnapshot | null | undefined,
+  home: HomeSnapshot | null | undefined,
+): AnalysSnapshot | null {
+  if (analysViewCanPaint(stored)) return stored ?? null;
+  if (!home) return null;
+  const derived = analysSnapshotFromHome(home);
+  return analysViewCanPaint(derived) ? derived : null;
+}
+
+/** Same derivation, reading Hem from the module. No store write. */
+export function derivePaintableAnalysNow(
+  stored: AnalysSnapshot | null | undefined,
+): AnalysSnapshot | null {
+  return derivePaintableAnalysSnapshot(stored, homeForAnalys());
 }
 
 /**

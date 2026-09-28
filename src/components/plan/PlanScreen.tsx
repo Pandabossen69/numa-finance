@@ -45,8 +45,15 @@ export function PlanScreen({
 
   useEffect(() => {
     if (initial) {
-      rememberPlanSnapshot(initial);
-      syncHomeLivingFromPlan(initial);
+      // Keep-alive copies receive the store value as `initial`. Publishing
+      // that same instance or revision again re-enters Hem on every emit.
+      const latest = lastPlanSnapshot();
+      const sameRevision =
+        latest != null && latest.financeRevision === initial.financeRevision;
+      if (latest !== initial && !sameRevision) {
+        rememberPlanSnapshot(initial);
+        syncHomeLivingFromPlan(initial);
+      }
     }
     if (initialGettingStarted) rememberGettingStarted(initialGettingStarted);
   }, [initial, initialGettingStarted]);

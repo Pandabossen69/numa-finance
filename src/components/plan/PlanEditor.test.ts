@@ -246,13 +246,19 @@ describe("Plan dates and add-form", () => {
   });
 
   it("publishes the plan store after commit, never from inside an updater", () => {
-    expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
+    expect(editor).toContain("if (!dirtyRef.current) return;");
+    expect(editor).toContain("dirtyRef.current = false;");
+    expect(editor).toContain("publishItems(localItems);");
+    expect(editor).toContain("dirtyRef.current = true;");
+    expect(editor).toContain("}, [localItems]);");
+    expect(editor).toContain("Too many re-renders");
+    expect(editor).toContain("that loop crashed Plan after Delvis settle");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
     expect(editor).toContain("adoptServerPlanItems(localItems, items)");
     expect(editor).toContain("busy ? localItems : adoptServerPlanItems(localItems, items)");
     expect(editor).not.toContain("setItemsStamp");
-    // Live coverage must not re-trigger publish (Delvis settle loop).
-    expect(editor).toContain(
+    // Live coverage and ledger must not re-trigger publish (Delvis settle / Koppla).
+    expect(editor).not.toContain(
       "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]",
     );
     expect(editor).not.toContain(
