@@ -33,6 +33,30 @@ let session: AccountEditSession | null = null;
 let editError: string | null = null;
 let listening = false;
 const errorListeners = new Set<() => void>();
+const savedNames = new Map<string, string>();
+const nameListeners = new Set<() => void>();
+
+function emitSavedNames() {
+  for (const listener of nameListeners) listener();
+}
+
+/** Name confirmed by the server this session. Detail soft-nav reads this. */
+export function rememberSavedAccountName(id: string, name: string) {
+  if (savedNames.get(id) === name) return;
+  savedNames.set(id, name);
+  emitSavedNames();
+}
+
+export function savedAccountName(id: string): string | null {
+  return savedNames.get(id) ?? null;
+}
+
+export function subscribeSavedAccountNames(listener: () => void) {
+  nameListeners.add(listener);
+  return () => {
+    nameListeners.delete(listener);
+  };
+}
 
 function ensureListening() {
   if (listening) return;
@@ -215,6 +239,8 @@ export function commitAccountEdit(
   const committed = commitAccountEditSession(session, accountId, generation);
   if (!committed.committed) return false;
   session = committed.session;
+  const saved = session.snapshot.accounts.find((account) => account.id === accountId);
+  if (saved) rememberSavedAccountName(accountId, saved.name);
   rememberAccountsSnapshot(session.snapshot, {
     dirty: session.inflight.size > 0,
   });
@@ -244,5 +270,7 @@ export function adoptServerAccountsSnapshot(
 
 export function resetAccountEditStateForTests(): void {
   session = null;
+  savedNames.clear();
+  emitSavedNames();
   setAccountEditError(null);
 }

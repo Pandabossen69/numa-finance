@@ -7,6 +7,7 @@ describe("/konton/[id]", () => {
   it("loads one owned account and the manage form", () => {
     expect(page).toContain("loadAccountDetail");
     expect(page).toContain("ManageAccountForm");
+    expect(page).toContain("AccountDetailHeading");
     expect(page).toContain("MerBackLink");
     expect(page).toContain('href="/konton"');
     expect(page).toContain("notFound");

@@ -1,5 +1,8 @@
 import { notFound } from "next/navigation";
-import { ManageAccountForm } from "@/components/accounts/ManageAccountForm";
+import {
+  AccountDetailHeading,
+  ManageAccountForm,
+} from "@/components/accounts/ManageAccountForm";
 import { MerBackLink } from "@/components/mer/MerHub";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
 import { formatMoney, money } from "@/domain/money";
@@ -23,9 +26,10 @@ export default async function KontoDetaljPage({
     <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6 pt-2 text-[var(--numa-ink)]">
       <header className="space-y-2">
         <MerBackLink href="/konton" label="Konton" />
-        <h1 className="text-[1.65rem] font-semibold tracking-[-0.04em]">
-          {result.ok ? result.data.name : "Konto"}
-        </h1>
+        <AccountDetailHeading
+          id={result.ok ? result.data.id : null}
+          name={result.ok ? result.data.name : "Konto"}
+        />
         <p className="text-[15px] leading-relaxed text-[var(--numa-muted)]">
           {result.ok && !result.data.isActive
             ? "Arkiverat konto. Historiken är kvar."

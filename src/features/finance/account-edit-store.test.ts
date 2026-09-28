@@ -18,6 +18,7 @@ import {
   publishAccountDetailsEdit,
   resetAccountEditStateForTests,
   rollbackAccountEdit,
+  savedAccountName,
 } from "@/features/finance/account-edit-store";
 
 const updateAccount = vi.mocked(updateAccountAction);
@@ -99,6 +100,22 @@ describe("account edit store", () => {
     });
     expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("Ett");
     expect(accountEditError()).toBe("Ingen anslutning. Inget sparades.");
+    expect(savedAccountName("a")).toBeNull();
+  });
+
+  it("remembers the saved name only after the server accepts the rename", async () => {
+    updateAccount.mockResolvedValue({ ok: true });
+    const edit = publishAccountDetailsEdit({
+      id: "a",
+      name: "QA-W-empty-z8",
+      kind: "thai_bank",
+      currency: "THB",
+      makeDefault: false,
+    });
+    expect(savedAccountName("a")).toBeNull();
+    await expect(edit.done).resolves.toEqual({ ok: true });
+    expect(savedAccountName("a")).toBe("QA-W-empty-z8");
+    expect(lastAccountsSnapshot()?.accounts[0]?.name).toBe("QA-W-empty-z8");
   });
 
   it("does not let a late saldo response overwrite a newer amount", () => {

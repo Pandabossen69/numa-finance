@@ -1,5 +1,6 @@
 /** @vitest-environment jsdom */
 
+import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { createElement, useEffect, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
@@ -18,6 +19,7 @@ import {
 } from "@/features/home/last-snapshot";
 import { resetAnalysClientFetchForTests } from "@/features/finance/analys-client-fetch";
 import { resetAnalysPlanUpgradeForTests } from "@/features/finance/ensure-analys-last-known";
+import { goHomeInstant } from "@/lib/nav/instant";
 import { resetQuietMenuWarmForTests } from "@/lib/nav/quiet-menu-warm";
 
 const nav = vi.hoisted(() => ({ pathname: "/idag" }));
@@ -90,7 +92,13 @@ vi.mock("@/lib/route-islands", async () => {
     HomeDashboard: stub("home"),
     PlanScreen: stub("plan-screen"),
     AnalysDashboard: stub("analys"),
-    ReceiptCaptureFlow: stub("fota"),
+    ReceiptCaptureFlow: () =>
+      h(
+        "form",
+        { "aria-label": "Manuellt" },
+        h("h2", null, "Manuellt"),
+        h("button", { type: "button" }, "Spara utgift"),
+      ),
     MovementsScreen: stub("movements"),
     OnboardingSaldoChoice: stub("saldo"),
     OnboardingManualSaldo: stub("manual"),
@@ -350,5 +358,51 @@ describe("tab keep-alive does not grow hidden route copies", () => {
     expect(sub?.textContent).toBe("Konton");
     expect(sub?.closest("[hidden]")).toBeNull();
     expect(host.querySelector("[data-numa-spa-tab]")).toBeNull();
+  });
+
+  it("paints Hem and hides the Fota form after a save, not only the URL", async () => {
+    await act(async () => {
+      root.render(shell(createElement(HemRouteClient), navigateRef));
+    });
+
+    const visibleText = () =>
+      [...host.querySelectorAll<HTMLElement>("[data-numa-spa-tab]")]
+        .filter((panel) => !panel.hidden)
+        .map((panel) => panel.textContent ?? "")
+        .join("\n");
+
+    await act(async () => {
+      expect(navigateRef.current?.("/fota")).toBe(true);
+    });
+    expect(visibleText()).toContain("Spara utgift");
+    expect(visibleText()).not.toContain("Kvar idag");
+
+    // App Router can move the URL to /idag while spaPath still owns Fota.
+    nav.pathname = "/idag";
+    await act(async () => {
+      root.render(shell(createElement(HemRouteClient), navigateRef));
+    });
+    expect(visibleText()).toContain("Spara utgift");
+    expect(visibleText()).not.toContain("Kvar idag");
+
+    const push = vi.fn();
+    await act(async () => {
+      goHomeInstant({
+        push,
+        replace: () => {},
+        refresh: () => {},
+        back: () => {},
+        forward: () => {},
+        prefetch: () => {},
+      } as unknown as AppRouterInstance);
+    });
+
+    expect(visibleText()).toContain("Kvar idag");
+    expect(visibleText()).not.toContain("Spara utgift");
+    expect(visibleText()).not.toContain("Manuellt");
+    const form = host.querySelector("form[aria-label='Manuellt']");
+    expect(form?.textContent).toContain("Spara utgift");
+    expect(form?.closest("[hidden]")).not.toBeNull();
+    expect(push).not.toHaveBeenCalled();
   });
 });
