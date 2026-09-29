@@ -59,7 +59,7 @@ describe("Rörelser expense color", () => {
   });
 
   it("makes Per kategori rows tap targets that filter the list", () => {
-    expect(src).toContain("matchesCategory");
+    expect(src).toContain("movementVisibleInRorelser");
     expect(src).toContain("toggleCategory");
     expect(src).toContain("spendCategoryName");
     expect(src).toContain("aria-pressed={selected}");
@@ -70,7 +70,14 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]");
     expect(src).toContain("numa-category-chip");
     expect(src).toContain("selectCategory(spendCategoryName(tx.category))");
-    expect(src).toContain("rememberMovementsView({ filter, period, category })");
+    expect(src).toContain("rememberMovementsView({");
+    expect(src).toContain("cycleStartAt");
+    expect(src).toContain("cycleEndAt");
+    expect(src).toContain("payCycleRangeLabelSv");
+    expect(src).toContain("cycleWindowTotals");
+    expect(src).toContain('label="Perioden"');
+    expect(src).toContain("detail={cycleRange}");
+    expect(src).toContain('onClick={() => setPeriod("cycle")}');
     expect(src).toContain("subscribeMovementsView");
     expect(src).not.toContain("Inga träffar för filtret — prova Alla eller All tid.");
   });

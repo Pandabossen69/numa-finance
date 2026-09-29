@@ -51,12 +51,20 @@ import {
 export type { PlanSnapshot } from "@/features/finance/load-plan";
 
 export type MovementsFilter = "all" | "expense" | "income" | "other";
-export type MovementsPeriod = "month" | "all";
+/** `cycle` is the Analys pay-cycle window (`cycleStartAt` ≤ occurred < `cycleEndAt`). */
+export type MovementsPeriod = "month" | "all" | "cycle";
 export type MovementsView = {
   filter: MovementsFilter;
   period: MovementsPeriod;
   /** Per kategori tap — null means every category. */
   category?: string | null;
+  /**
+   * Pay-cycle bounds for `period: "cycle"`. Half-open, same as Analys
+   * Spenderat. Kept after the user switches to Denna månad / All tid so
+   * Perioden can be selected again.
+   */
+  cycleStartAt?: string | null;
+  cycleEndAt?: string | null;
 };
 
 export type MerSnapshot = {
@@ -1196,6 +1204,10 @@ export function lastMovementsSnapshot(): MovementsSnapshot | null {
   return movements;
 }
 
+function sameCycleBound(current?: string | null, next?: string | null): boolean {
+  return (current ?? null) === (next ?? null);
+}
+
 function sameMovementsView(
   current: MovementsView | null,
   next: MovementsView,
@@ -1204,7 +1216,9 @@ function sameMovementsView(
   return (
     current.filter === next.filter &&
     current.period === next.period &&
-    (current.category ?? null) === (next.category ?? null)
+    (current.category ?? null) === (next.category ?? null) &&
+    sameCycleBound(current.cycleStartAt, next.cycleStartAt) &&
+    sameCycleBound(current.cycleEndAt, next.cycleEndAt)
   );
 }
 
