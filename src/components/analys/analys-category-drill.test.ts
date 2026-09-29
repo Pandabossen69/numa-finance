@@ -61,23 +61,70 @@ describe("movementsViewForCategoryDrill", () => {
     ).toBe("all");
   });
 
-  it("uses All tid for the pay cycle and for any other calendar month", () => {
+  it("opens the pay cycle on Utgifter with the Analys window", () => {
     expect(
       movementsViewForCategoryDrill("Mat", {
         scope: "period",
         activeMonthKey: "2026-09",
         currentMonthKey: "2026-09",
-        existing: { filter: "expense", period: "month" },
+        existing: { filter: "all", period: "month" },
+        cycleStartAt: "2026-09-03T00:00:00.000Z",
+        cycleEndAt: "2026-10-25T00:00:00.000Z",
       }),
-    ).toEqual({ filter: "expense", period: "all", category: "Mat" });
+    ).toEqual({
+      filter: "expense",
+      period: "cycle",
+      category: "Mat",
+      cycleStartAt: "2026-09-03T00:00:00.000Z",
+      cycleEndAt: "2026-10-25T00:00:00.000Z",
+    });
+    expect(
+      movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
+        scope: "period",
+        activeMonthKey: "2026-09",
+        currentMonthKey: "2026-09",
+        existing: { filter: "income", period: "all" },
+        cycleStartAt: "2026-09-03T00:00:00.000Z",
+        cycleEndAt: "2026-10-25T00:00:00.000Z",
+      }).filter,
+    ).toBe("expense");
+  });
+
+  it("uses All tid for any other calendar month and drops the cycle window", () => {
     expect(
       movementsViewForCategoryDrill("Mat", {
         scope: "month",
         activeMonthKey: "2026-08",
         currentMonthKey: "2026-09",
-        existing: null,
+        existing: {
+          filter: "expense",
+          period: "cycle",
+          cycleStartAt: "2026-09-03T00:00:00.000Z",
+          cycleEndAt: "2026-10-25T00:00:00.000Z",
+        },
+        cycleStartAt: "2026-09-03T00:00:00.000Z",
+        cycleEndAt: "2026-10-25T00:00:00.000Z",
       }),
-    ).toEqual({ filter: "all", period: "all", category: "Mat" });
+    ).toEqual({ filter: "expense", period: "all", category: "Mat" });
+  });
+
+  it("keeps Denna månad when the current month is drilled from a cycle chip", () => {
+    expect(
+      movementsViewForCategoryDrill("Mat", {
+        scope: "month",
+        activeMonthKey: "2026-09",
+        currentMonthKey: "2026-09",
+        existing: {
+          filter: "expense",
+          period: "cycle",
+          category: "Övrigt",
+          cycleStartAt: "2026-09-03T00:00:00.000Z",
+          cycleEndAt: "2026-10-25T00:00:00.000Z",
+        },
+        cycleStartAt: "2026-09-03T00:00:00.000Z",
+        cycleEndAt: "2026-10-25T00:00:00.000Z",
+      }),
+    ).toEqual({ filter: "expense", period: "month", category: "Mat" });
   });
 
   it("defaults a fresh Rörelser view to Alla and Denna månad", () => {
@@ -110,6 +157,37 @@ describe("movementsViewForCategoryDrill", () => {
       category: "Övrigt",
     });
     expect(seen).toEqual(["Övrigt"]);
+    stop();
+  });
+
+  it("notifies when the pay-cycle window changes and ignores a repeat", () => {
+    const seen: Array<string | null | undefined> = [];
+    const stop = subscribeMovementsView(() => {
+      const view = lastMovementsView();
+      seen.push(`${view?.period}:${view?.cycleEndAt ?? ""}`);
+    });
+    const view = movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
+      scope: "period",
+      activeMonthKey: "2026-09",
+      currentMonthKey: "2026-09",
+      existing: null,
+      cycleStartAt: "2026-09-03T00:00:00.000Z",
+      cycleEndAt: "2026-10-25T00:00:00.000Z",
+    });
+    rememberMovementsView(view);
+    rememberMovementsView({
+      ...view,
+      cycleStartAt: view.cycleStartAt ?? null,
+      cycleEndAt: view.cycleEndAt ?? null,
+    });
+    rememberMovementsView({
+      ...view,
+      cycleEndAt: "2026-11-01T00:00:00.000Z",
+    });
+    expect(seen).toEqual([
+      "cycle:2026-10-25T00:00:00.000Z",
+      "cycle:2026-11-01T00:00:00.000Z",
+    ]);
     stop();
   });
 });

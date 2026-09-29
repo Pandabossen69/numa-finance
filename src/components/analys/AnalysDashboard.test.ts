@@ -307,6 +307,8 @@ describe("Analys month result color", () => {
 
   it("opens Rörelser on the tapped category and dates Senaste", () => {
     expect(src).toContain("movementsViewForCategoryDrill(");
+    expect(src).toContain("cycleStartAt,");
+    expect(src).toContain("cycleEndAt,");
     expect(src).toContain("rememberMovementsView(");
     expect(src).toContain("lastMovementsView()");
     expect(src).toContain("flushSync");

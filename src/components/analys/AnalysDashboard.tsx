@@ -604,6 +604,8 @@ function SpendByCategory({
             activeMonthKey,
             currentMonthKey,
             existing: lastMovementsView(),
+            cycleStartAt,
+            cycleEndAt,
           }),
         );
       });
@@ -635,7 +637,7 @@ function SpendByCategory({
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("click", onClick, true);
     };
-  }, [scope, activeMonthKey, currentMonthKey]);
+  }, [scope, activeMonthKey, currentMonthKey, cycleStartAt, cycleEndAt]);
 
   return (
     <section className="space-y-3" aria-label={SV.vartGickPengarna}>

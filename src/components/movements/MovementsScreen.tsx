@@ -39,10 +39,14 @@ import { useNavIntent } from "@/components/layout/NavIntent";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
 import {
-  matchesCategory,
   spendCategoryName,
   toggleCategory,
 } from "./movements-category";
+import {
+  cycleWindowTotals,
+  movementVisibleInRorelser,
+  payCycleRangeLabelSv,
+} from "./movements-window";
 
 type Filter = MovementsFilter;
 type Period = MovementsPeriod;
@@ -69,20 +73,6 @@ function typeLabel(type: string): string {
     default:
       return "Övrigt";
   }
-}
-
-function matchesFilter(
-  tx: MovementsSnapshot["items"][number],
-  filter: Filter,
-): boolean {
-  if (filter === "all") return true;
-  if (filter === "expense") return tx.transactionType === "expense";
-  if (filter === "income") return tx.transactionType === "income";
-  return tx.transactionType !== "expense" && tx.transactionType !== "income";
-}
-
-function inMonthKey(iso: string, monthKey: string, timeZone: string): boolean {
-  return monthKeyFromDate(new Date(iso), timeZone) === monthKey;
 }
 
 function minorToUi(amountMinor: number): string {
@@ -136,6 +126,12 @@ export function MovementsScreen({
   const [category, setCategory] = useState<string | null>(
     () => rememberedView?.category ?? null,
   );
+  const [cycleStartAt, setCycleStartAt] = useState<string | null>(
+    () => rememberedView?.cycleStartAt ?? null,
+  );
+  const [cycleEndAt, setCycleEndAt] = useState<string | null>(
+    () => rememberedView?.cycleEndAt ?? null,
+  );
   const listRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
@@ -167,6 +163,8 @@ export function MovementsScreen({
         setFilter("all");
         setPeriod("month");
         setCategory(null);
+        setCycleStartAt(null);
+        setCycleEndAt(null);
         return;
       }
       setFilter((prev) => (prev === next.filter ? prev : next.filter));
@@ -176,12 +174,26 @@ export function MovementsScreen({
           ? prev
           : (next.category ?? null),
       );
+      setCycleStartAt((prev) => {
+        const start = next.cycleStartAt ?? null;
+        return prev === start ? prev : start;
+      });
+      setCycleEndAt((prev) => {
+        const end = next.cycleEndAt ?? null;
+        return prev === end ? prev : end;
+      });
     });
   }, []);
 
   useLayoutEffect(() => {
-    rememberMovementsView({ filter, period, category });
-  }, [filter, period, category]);
+    rememberMovementsView({
+      filter,
+      period,
+      category,
+      cycleStartAt,
+      cycleEndAt,
+    });
+  }, [filter, period, category, cycleStartAt, cycleEndAt]);
 
   useLayoutEffect(() => {
     const prev = pathRef.current;
@@ -216,18 +228,18 @@ export function MovementsScreen({
 
   const filtered = useMemo(() => {
     if (!view) return [];
-    return view.items.filter((tx) => {
-      if (!matchesFilter(tx, filter)) return false;
-      if (!matchesCategory(tx.category, category)) return false;
-      if (
-        period === "month" &&
-        !inMonthKey(tx.occurredAt, view.monthKey, view.timeZone)
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [view, filter, period, category]);
+    return view.items.filter((tx) =>
+      movementVisibleInRorelser(tx, {
+        filter,
+        period,
+        category,
+        monthKey: view.monthKey,
+        timeZone: view.timeZone,
+        cycleStartAt,
+        cycleEndAt,
+      }),
+    );
+  }, [view, filter, period, category, cycleStartAt, cycleEndAt]);
 
   function selectCategory(name: string) {
     const next = toggleCategory(category, name);
@@ -247,11 +259,31 @@ export function MovementsScreen({
     );
   }
 
-  const income =
-    period === "month" ? view.monthIncomeMinor : view.allIncomeMinor;
-  const expense =
-    period === "month" ? view.monthExpenseMinor : view.allExpenseMinor;
-  const net = period === "month" ? view.monthNetMinor : view.allNetMinor;
+  const cycleTotals =
+    period === "cycle"
+      ? cycleWindowTotals(view.items, cycleStartAt, cycleEndAt)
+      : null;
+  const income = cycleTotals
+    ? cycleTotals.incomeMinor
+    : period === "month"
+      ? view.monthIncomeMinor
+      : view.allIncomeMinor;
+  const expense = cycleTotals
+    ? cycleTotals.expenseMinor
+    : period === "month"
+      ? view.monthExpenseMinor
+      : view.allExpenseMinor;
+  const net = cycleTotals
+    ? cycleTotals.netMinor
+    : period === "month"
+      ? view.monthNetMinor
+      : view.allNetMinor;
+  const cycleRange = payCycleRangeLabelSv(
+    cycleStartAt,
+    cycleEndAt,
+    view.timeZone,
+  );
+  const showCycleChip = period === "cycle" || cycleRange != null;
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
@@ -271,6 +303,15 @@ export function MovementsScreen({
           onClick={() => setPeriod("all")}
           label="All tid"
         />
+        {showCycleChip ? (
+          <PeriodChip
+            active={period === "cycle"}
+            onClick={() => setPeriod("cycle")}
+            label="Perioden"
+            detail={cycleRange}
+            className="col-span-2"
+          />
+        ) : null}
       </div>
 
       <section className="numa-panel-strong numa-stat-trio animate-rise-delay-1 p-5">
@@ -720,22 +761,30 @@ function PeriodChip({
   active,
   onClick,
   label,
+  detail,
+  className,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
+  detail?: string | null;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
+      aria-pressed={active}
+      className={`numa-press inline-flex flex-col items-center justify-center min-h-11 rounded-full px-3 text-sm font-semibold ${
         active
           ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
-      }`}
+      }${className ? ` ${className}` : ""}`}
     >
-      {label}
+      <span className="block leading-tight">{label}</span>
+      {detail ? (
+        <span className="block text-xs font-medium leading-tight">{detail}</span>
+      ) : null}
     </button>
   );
 }
