@@ -4,11 +4,14 @@ import { createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { UNCATEGORISED_SPEND_NAME } from "@/domain/finance";
-import { movementsViewForCategoryDrill } from "@/components/analys/analys-category-drill";
 import { NavIntentProvider } from "@/components/layout/NavIntent";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
+import {
+  lastMovementsDrill,
+  rememberMovementsDrillFromHref,
+  resetMovementsDrillForTests,
+} from "@/components/movements/movements-drill";
 import type { MovementRow, MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   clearClientSessionCaches,
@@ -53,12 +56,8 @@ vi.mock("next/link", () => ({
     ),
 }));
 
-const CYCLE_START = "2026-09-03T00:00:00.000Z";
-const CYCLE_END = "2026-10-25T00:00:00.000Z";
-
 function row(
-  partial: Pick<MovementRow, "id" | "occurredAt" | "transactionType" | "category"> &
-    Partial<MovementRow>,
+  partial: Pick<MovementRow, "id" | "occurredAt" | "transactionType" | "category">,
 ): MovementRow {
   return {
     description: partial.id,
@@ -82,7 +81,7 @@ const snapshot: MovementsSnapshot = {
   allIncomeMinor: 500_00,
   allExpenseMinor: 200_00,
   allNetMinor: 300_00,
-  monthCategories: [],
+  monthCategories: [{ name: "Mat", amountMinor: 100_00, count: 1 }],
   timeZone: "Asia/Bangkok",
   monthKey: "2026-09",
   items: [
@@ -107,6 +106,12 @@ const snapshot: MovementsSnapshot = {
   ],
 };
 
+const SAVED = {
+  filter: "expense" as const,
+  period: "month" as const,
+  category: null,
+};
+
 function listHeading(root: ParentNode): string {
   const heading = [...root.querySelectorAll("h2")].find((el) =>
     /rörelse/.test(el.textContent ?? ""),
@@ -115,8 +120,8 @@ function listHeading(root: ParentNode): string {
 }
 
 function chip(root: ParentNode, label: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((button) =>
-    (button.textContent ?? "").includes(label),
+  const found = [...root.querySelectorAll("button")].find(
+    (button) => (button.textContent ?? "").trim() === label,
   );
   if (!(found instanceof HTMLButtonElement)) {
     throw new Error(`missing chip ${label}`);
@@ -158,6 +163,8 @@ describe("Mer → Rörelser menu entry", () => {
 
   beforeEach(() => {
     clearClientSessionCaches();
+    resetMovementsDrillForTests();
+    window.history.replaceState(null, "", "/mer");
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
@@ -172,14 +179,7 @@ describe("Mer → Rörelser menu entry", () => {
       }),
     });
     rememberMovementsSnapshot(snapshot);
-    rememberMovementsView({
-      filter: "expense",
-      period: "cycle",
-      category: "Mat",
-      cycleStartAt: CYCLE_START,
-      cycleEndAt: CYCLE_END,
-      source: "drill",
-    });
+    rememberMovementsView(SAVED);
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
@@ -208,65 +208,39 @@ describe("Mer → Rörelser menu entry", () => {
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
+    window.history.replaceState(null, "", "/");
     clearClientSessionCaches();
+    resetMovementsDrillForTests();
   });
 
-  it("opens the full list from Mer and still accepts a Perioden drill", () => {
-    expect(listHeading(host)).toBe("1 rörelse · Mat");
-    expect(chipOn(chip(host, "Perioden"))).toBe(true);
+  it("overlays a drill on the parked panel and Mer without params restores the saved chips", () => {
+    expect(listHeading(host)).toBe("1 rörelse");
+    expect(chipOn(chip(host, "Denna månad"))).toBe(true);
     expect(chipOn(chip(host, "Utgifter"))).toBe(true);
-
-    const konton = host.querySelector('a[href="/konton"]');
-    const rorelser = host.querySelector("[data-mer-movements]");
-    expect(konton).toBeInstanceOf(HTMLAnchorElement);
-    expect(rorelser).toBeInstanceOf(HTMLAnchorElement);
-    expect(host.querySelectorAll("[data-mer-movements]")).toHaveLength(1);
-
-    tap(konton as Element);
-    expect(lastMovementsView()?.category).toBe("Mat");
-    expect(listHeading(host)).toBe("1 rörelse · Mat");
-
-    tap(rorelser as Element, { metaKey: true });
-    expect(lastMovementsView()?.period).toBe("cycle");
-    expect(listHeading(host)).toBe("1 rörelse · Mat");
-
-    tap(rorelser as Element);
-    expect(lastMovementsView()).toEqual({
-      filter: "all",
-      period: "all",
-      category: null,
-      cycleStartAt: CYCLE_START,
-      cycleEndAt: CYCLE_END,
-      source: "menu",
-    });
-    expect(listHeading(host)).toBe("3 rörelser");
-    expect(chipOn(chip(host, "All tid"))).toBe(true);
-    expect(chipOn(chip(host, "Alla"))).toBe(true);
-    expect(chipOn(chip(host, "Perioden"))).toBe(false);
-    expect(chipOn(chip(host, "Utgifter"))).toBe(false);
 
     act(() => {
-      rememberMovementsView(
-        movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
-          scope: "period",
-          activeMonthKey: "2026-09",
-          currentMonthKey: "2026-09",
-          existing: lastMovementsView(),
-          cycleStartAt: CYCLE_START,
-          cycleEndAt: CYCLE_END,
-        }),
+      rememberMovementsDrillFromHref(
+        "/transaktioner?drill=1&period=month&filter=expense&cat=Mat",
       );
     });
-    expect(lastMovementsView()).toEqual({
-      filter: "expense",
-      period: "cycle",
-      category: UNCATEGORISED_SPEND_NAME,
-      cycleStartAt: CYCLE_START,
-      cycleEndAt: CYCLE_END,
-      source: "drill",
-    });
-    expect(chipOn(chip(host, "Perioden"))).toBe(true);
+    expect(lastMovementsDrill()?.category).toBe("Mat");
+    expect(lastMovementsView()).toMatchObject(SAVED);
+    expect(listHeading(host)).toBe("1 rörelse · Mat");
+
+    const rorelser = [...host.querySelectorAll('a[href="/transaktioner"]')].find(
+      (el) => (el.textContent ?? "").includes("Rörelser"),
+    );
+    expect(rorelser).toBeInstanceOf(HTMLAnchorElement);
+    expect(host.querySelector("[data-mer-movements]")).toBeNull();
+
+    tap(rorelser as Element, { metaKey: true });
+    expect(lastMovementsDrill()?.category).toBe("Mat");
+
+    tap(rorelser as Element);
+    expect(lastMovementsDrill()).toBeNull();
+    expect(lastMovementsView()).toMatchObject(SAVED);
+    expect(chipOn(chip(host, "Denna månad"))).toBe(true);
     expect(chipOn(chip(host, "Utgifter"))).toBe(true);
-    expect(listHeading(host)).toBe(`0 rörelser · ${UNCATEGORISED_SPEND_NAME}`);
+    expect(listHeading(host)).toBe("1 rörelse");
   });
 });

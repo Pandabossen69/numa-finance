@@ -1,63 +1,23 @@
 import { UNCATEGORISED_SPEND_NAME } from "@/domain/finance";
-import type {
-  MovementsFilter,
-  MovementsPeriod,
-  MovementsView,
-} from "@/features/home/last-snapshot";
+import {
+  movementsDrillForCategory,
+  movementsDrillHref,
+  type MovementsDrill,
+} from "@/components/movements/movements-drill";
 
-/**
- * View Rörelser should open on when a Spenderat category is tapped.
- *
- * Perioden uses the same pay-cycle window as Analys Spenderat (`cycle`)
- * and Utgifter, so income cannot inflate the category count. Månad on the
- * current calendar month keeps Denna månad / All tid when the user chose
- * that chip (Spec U). Mer's cleared list is not a user chip: it opens
- * Denna månad + Utgifter so the rows match the month sum. Any other
- * calendar month still uses All tid — Rörelser has no chip for a past month.
- * Intäkter/Övrigt type chips would hide the spend, so those fall back to Alla
- * on the month path.
- */
-export function movementsViewForCategoryDrill(
+export { movementsDrillForCategory, movementsDrillHref };
+export type { MovementsDrill };
+
+/** Href for a Spenderat category row. Drill state stays in the query. */
+export function categoryDrillHref(
   categoryName: string,
   opts: {
     scope: "period" | "month";
-    activeMonthKey: string;
-    currentMonthKey: string;
-    existing: MovementsView | null;
     cycleStartAt?: string | null;
     cycleEndAt?: string | null;
   },
-): MovementsView {
-  if (opts.scope === "period") {
-    return {
-      filter: "expense",
-      period: "cycle",
-      category: categoryName,
-      cycleStartAt: opts.cycleStartAt ?? null,
-      cycleEndAt: opts.cycleEndAt ?? null,
-      source: "drill",
-    };
-  }
-
-  const fromMenu = opts.existing?.source === "menu";
-  const existingFilter = opts.existing?.filter;
-  const filter: MovementsFilter = fromMenu
-    ? "expense"
-    : existingFilter === "all" || existingFilter === "expense"
-      ? existingFilter
-      : "all";
-  const sameCalendarMonth = opts.activeMonthKey === opts.currentMonthKey;
-  const existingPeriod = opts.existing?.period;
-  const period: MovementsPeriod = fromMenu
-    ? sameCalendarMonth
-      ? "month"
-      : "all"
-    : sameCalendarMonth
-      ? existingPeriod === "month" || existingPeriod === "all"
-        ? existingPeriod
-        : "month"
-      : "all";
-  return { filter, period, category: categoryName, source: "drill" };
+): string {
+  return movementsDrillHref(movementsDrillForCategory(categoryName, opts));
 }
 
 /**

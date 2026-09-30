@@ -1,8 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useLayoutEffect } from "react";
-import { flushSync } from "react-dom";
+import { useEffect } from "react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   IconGear,
@@ -26,7 +25,6 @@ import {
   ensurePaintableMerSnapshot,
   lastMerSnapshot,
   rememberMerSnapshot,
-  resetMovementsViewForMenuEntry,
 } from "@/features/home/last-snapshot";
 import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
 import { DestinationWarmup } from "@/lib/nav/prefetch-intent";
@@ -37,8 +35,6 @@ type MerItem = {
   hint?: string;
   icon: ReactNode;
   tone: MerIconTone;
-  /** Only the Rörelser row. Other links to /transaktioner must not set this. */
-  resetsMovements?: boolean;
 };
 
 const sections: Array<{ title: string; items: MerItem[] }> = [
@@ -51,7 +47,6 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
         hint: "Historik",
         icon: <IconRorelser />,
         tone: "spend",
-        resetsMovements: true,
       },
       {
         href: "/konton",
@@ -98,24 +93,6 @@ export const MER_WARM_HREFS = [
   "/konton/ny",
 ] as const;
 
-/** All tid / Alla before NavIntent reveals the parked Rörelser panel. */
-function openRorelserFromMer() {
-  flushSync(() => {
-    resetMovementsViewForMenuEntry();
-  });
-}
-
-function isPlainPrimary(event: Event): boolean {
-  if (!(event instanceof MouseEvent)) return false;
-  return (
-    event.button === 0 &&
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey
-  );
-}
-
 export function MerScreen({
   data,
 }: {
@@ -124,27 +101,6 @@ export function MerScreen({
   useEffect(() => {
     if (data) rememberMerSnapshot(data);
   }, [data]);
-
-  // NavIntent paints Rörelser on document-capture pointerdown, before the
-  // link's own handler. Window capture runs first, but only for the Mer
-  // Rörelser row (data-mer-movements="rorelser"). Analys drills and every
-  // other link to /transaktioner must not land here.
-  useLayoutEffect(() => {
-    function onActivate(event: Event) {
-      if (!isPlainPrimary(event)) return;
-      if (!(event.target instanceof Element)) return;
-      const row = event.target.closest("[data-mer-movements]");
-      if (!(row instanceof HTMLElement)) return;
-      if (row.getAttribute("data-mer-movements") !== "rorelser") return;
-      openRorelserFromMer();
-    }
-    window.addEventListener("pointerdown", onActivate, true);
-    window.addEventListener("click", onActivate, true);
-    return () => {
-      window.removeEventListener("pointerdown", onActivate, true);
-      window.removeEventListener("click", onActivate, true);
-    };
-  }, []);
 
   const view = data ?? lastMerSnapshot() ?? ensurePaintableMerSnapshot();
 
@@ -188,9 +144,6 @@ export function MerScreen({
                     hint={item.hint}
                     icon={item.icon}
                     tone={item.tone}
-                    beforeIntent={
-                      item.resetsMovements ? openRorelserFromMer : undefined
-                    }
                   />
                 ))}
               </MerListGroup>

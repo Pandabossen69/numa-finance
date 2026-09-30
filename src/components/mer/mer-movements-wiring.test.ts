@@ -11,53 +11,43 @@ const movements = readFileSync(
   new URL("../movements/MovementsScreen.tsx", import.meta.url),
   "utf8",
 );
+const nav = readFileSync(
+  new URL("../layout/NavIntent.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("Mer menu wiring", () => {
-  it("resets only the Rörelser row, before markIntent and before panel paint", () => {
-    expect(mer).toContain("resetMovementsViewForMenuEntry");
-    expect(mer).toContain("flushSync");
-    expect(mer).toContain('window.addEventListener("pointerdown", onActivate, true)');
-    expect(mer).toContain('window.addEventListener("click", onActivate, true)');
-    expect(mer).toContain("resetsMovements: true");
-    expect(mer).toContain("item.resetsMovements ? openRorelserFromMer");
-    expect(mer).not.toContain('item.href === "/transaktioner"');
-    expect(mer.match(/beforeIntent=/g)).toHaveLength(1);
-
-    const link = hub.slice(
-      hub.indexOf("export function MerListLink"),
-      hub.indexOf("export function MerListRow"),
-    );
-    const down = link.indexOf("onPointerDown");
-    const click = link.indexOf("onClick");
-    expect(link.indexOf("beforeIntent?.()", down)).toBeGreaterThan(down);
-    expect(link.indexOf("beforeIntent?.()", down)).toBeLessThan(
-      link.indexOf("markIntent(href)", down),
-    );
-    expect(link.indexOf("beforeIntent?.()", click)).toBeGreaterThan(click);
-    expect(link.indexOf("beforeIntent?.()", click)).toBeLessThan(
-      link.indexOf("markIntent(href)", click),
-    );
-    expect(link).toContain(
-      'data-mer-movements={beforeIntent ? "rorelser" : undefined}',
-    );
-    expect(mer).toContain('getAttribute("data-mer-movements") !== "rorelser"');
+  it("keeps Mer → Rörelser a plain link with no reset", () => {
+    expect(mer).not.toContain("resetMovementsViewForMenuEntry");
+    expect(mer).not.toContain("resetsMovements");
+    expect(mer).not.toContain("beforeIntent");
+    expect(mer).not.toContain("data-mer-movements");
+    expect(mer).not.toContain('window.addEventListener("pointerdown"');
+    expect(mer).toContain('href: "/transaktioner"');
+    expect(hub).not.toContain("beforeIntent");
+    expect(hub).not.toContain("data-mer-movements");
+    expect(hub).toContain("markIntent(href)");
   });
 
-  it("leaves the Analys category drill on rememberMovementsView", () => {
-    expect(analys).toContain("movementsViewForCategoryDrill(");
-    expect(analys).toContain("rememberMovementsView(");
-    expect(analys).not.toContain("resetMovementsViewForMenuEntry");
+  it("puts the Analys category drill in the URL, not the remembered view", () => {
+    expect(analys).toContain("categoryDrillHref(");
+    expect(analys).not.toContain("rememberMovementsView(");
+    expect(analys).not.toContain("movementsViewForCategoryDrill(");
+    expect(analys).not.toContain('window.addEventListener("pointerdown"');
+    expect(analys).toContain("data-analys-category={category.name}");
   });
 
-  it("lets a parked Rörelser panel adopt the menu reset before paint", () => {
-    expect(movements).toContain("subscribeMovementsView");
-    expect(movements).toContain("useLayoutEffect");
-    expect(movements).toContain(
-      "setFilter((prev) => (prev === next.filter ? prev : next.filter))",
+  it("lets a parked Rörelser panel read the drill store without saving it", () => {
+    expect(movements).toContain("subscribeMovementsDrill");
+    expect(movements).toContain("lastMovementsDrill");
+    expect(movements).toContain("rememberMovementsView({");
+    expect(movements).not.toContain("setSource");
+    expect(nav).toContain("rememberMovementsDrillFromHref");
+    expect(nav).toContain("commitSpaHref");
+    const reveal = nav.slice(nav.lastIndexOf("spaOwnedRef.current = true"));
+    expect(reveal.indexOf("commitSpaHref(href)")).toBeGreaterThan(-1);
+    expect(reveal.indexOf("commitSpaHref(href)")).toBeLessThan(
+      reveal.indexOf("paintSpaPanelsNow(dest)"),
     );
-    expect(movements).toContain(
-      "setPeriod((prev) => (prev === next.period ? prev : next.period))",
-    );
-    expect(movements).toContain("next.category");
   });
 });

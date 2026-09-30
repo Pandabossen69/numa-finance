@@ -8,6 +8,10 @@ import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 import { NavIntentProvider } from "@/components/layout/NavIntent";
 import { MerScreen } from "@/components/mer/MerScreen";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
+import {
+  lastMovementsDrill,
+  resetMovementsDrillForTests,
+} from "@/components/movements/movements-drill";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { MovementRow, MovementsSnapshot } from "@/features/finance/load-movements";
 import {
@@ -16,6 +20,7 @@ import {
   lastMovementsView,
   rememberAnalysScope,
   rememberMovementsSnapshot,
+  rememberMovementsView,
 } from "@/features/home/last-snapshot";
 
 vi.mock("next/navigation", () => ({
@@ -40,7 +45,7 @@ vi.mock("next/link", () => ({
     href?: string;
     children?: ReactNode;
     onClick?: (event: { preventDefault(): void }) => void;
-    onPointerDown?: (event: PointerEvent) => void;
+    onPointerDown?: (event: { button: number }) => void;
   }) =>
     createElement(
       "a",
@@ -85,7 +90,7 @@ const movements: MovementsSnapshot = {
   allIncomeMinor: 30_000_00,
   allExpenseMinor: 100_00,
   allNetMinor: 0,
-  monthCategories: [],
+  monthCategories: [{ name: "Mat", amountMinor: 100_00, count: 1 }],
   timeZone: "Asia/Bangkok",
   monthKey: "2026-09",
   items: [
@@ -179,6 +184,12 @@ const analys = {
   truthStatus: "verified",
 } as unknown as AnalysSnapshot;
 
+const SAVED_ALL = {
+  filter: "all" as const,
+  period: "all" as const,
+  category: null,
+};
+
 function tap(el: Element) {
   act(() => {
     el.dispatchEvent(
@@ -208,6 +219,20 @@ function buttonNamed(root: ParentNode, label: string): HTMLButtonElement {
   return found;
 }
 
+function listHeading(root: ParentNode): string {
+  const heading = [...root.querySelectorAll("h2")].find((el) =>
+    /rörelse/.test(el.textContent ?? ""),
+  );
+  return (heading?.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
+function chipOn(button: HTMLButtonElement): boolean {
+  return (
+    button.getAttribute("aria-pressed") === "true" ||
+    button.className.includes("bg-[var(--numa-ink)]")
+  );
+}
+
 describe("Analys drill vs Mer → Rörelser", () => {
   let host: HTMLDivElement;
   let root: Root;
@@ -215,11 +240,15 @@ describe("Analys drill vs Mer → Rörelser", () => {
   afterEach(() => {
     act(() => root.unmount());
     host.remove();
+    window.history.replaceState(null, "", "/");
     clearClientSessionCaches();
+    resetMovementsDrillForTests();
   });
 
   function mount(scope: "period" | "month") {
     clearClientSessionCaches();
+    resetMovementsDrillForTests();
+    window.history.replaceState(null, "", "/analys");
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
@@ -235,6 +264,7 @@ describe("Analys drill vs Mer → Rörelser", () => {
     });
     rememberAnalysScope(scope);
     rememberMovementsSnapshot(movements);
+    rememberMovementsView(SAVED_ALL);
     host = document.createElement("div");
     document.body.appendChild(host);
     root = createRoot(host);
@@ -257,72 +287,72 @@ describe("Analys drill vs Mer → Rörelser", () => {
     });
   }
 
-  it("keeps Perioden and Månad drills off the Mer row, then clears only a drill", () => {
+  function rorelserLink(): HTMLAnchorElement {
+    const found = [...host.querySelectorAll('a[href="/transaktioner"]')].find(
+      (el) => (el.textContent ?? "").includes("Rörelser"),
+    );
+    if (!(found instanceof HTMLAnchorElement)) {
+      throw new Error("missing Mer → Rörelser");
+    }
+    return found;
+  }
+
+  it("shows the month drill without writing the saved All tid view", () => {
+    mount("month");
+    const category = host.querySelector("[data-analys-category='Mat']");
+    expect(category).toBeInstanceOf(HTMLAnchorElement);
+    expect((category as HTMLAnchorElement).getAttribute("href")).toContain(
+      "period=month",
+    );
+    expect((category as HTMLAnchorElement).getAttribute("href")).toContain(
+      "filter=expense",
+    );
+    tap(category as Element);
+    expect(lastMovementsDrill()).toMatchObject({
+      period: "month",
+      filter: "expense",
+      category: "Mat",
+    });
+    expect(lastMovementsView()).toMatchObject(SAVED_ALL);
+    expect(chipOn(buttonNamed(host, "Denna månad"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "All tid"))).toBe(false);
+    expect(listHeading(host)).toBe("1 rörelse · Mat");
+  });
+
+  it("drops the drill on Mer → Rörelser and keeps a Utgifter chip the user chose", () => {
     mount("period");
     const category = host.querySelector("[data-analys-category='Mat']");
     expect(category).toBeInstanceOf(HTMLAnchorElement);
-    tap(category as Element);
-    expect(lastMovementsView()).toEqual({
-      filter: "expense",
-      period: "cycle",
-      category: "Mat",
-      cycleStartAt: CYCLE_START,
-      cycleEndAt: CYCLE_END,
-      source: "drill",
-    });
-
-    const alla = [...host.querySelectorAll('a[href="/transaktioner"]')].find(
-      (el) => (el.textContent ?? "").includes("Alla"),
+    expect((category as HTMLAnchorElement).getAttribute("href")).toContain(
+      "period=cycle",
     );
-    expect(alla).toBeInstanceOf(HTMLAnchorElement);
-    expect(alla?.hasAttribute("data-mer-movements")).toBe(false);
-    tap(alla as Element);
-    expect(lastMovementsView()?.source).toBe("drill");
-    expect(lastMovementsView()?.period).toBe("cycle");
+    tap(category as Element);
+    expect(chipOn(buttonNamed(host, "Perioden"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
+    expect(listHeading(host)).toBe("1 rörelse · Mat");
+    expect(lastMovementsView()).toMatchObject(SAVED_ALL);
 
-    const rorelser = host.querySelector('[data-mer-movements="rorelser"]');
-    expect(rorelser).toBeInstanceOf(HTMLAnchorElement);
-    expect(host.querySelectorAll("[data-mer-movements]")).toHaveLength(1);
-    tap(rorelser as Element);
-    expect(lastMovementsView()).toEqual({
-      filter: "all",
-      period: "all",
-      category: null,
-      cycleStartAt: CYCLE_START,
-      cycleEndAt: CYCLE_END,
-      source: "menu",
-    });
+    tap(rorelserLink());
+    expect(lastMovementsDrill()).toBeNull();
+    expect(lastMovementsView()).toMatchObject(SAVED_ALL);
+    expect(chipOn(buttonNamed(host, "All tid"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "Alla"))).toBe(true);
+    expect(listHeading(host)).toBe("2 rörelser");
 
-    const monthTab = host.querySelector('[role="tablist"][aria-label="Analysvy"]');
-    expect(monthTab).toBeInstanceOf(HTMLElement);
-    tap(buttonNamed(monthTab as HTMLElement, "Månad"));
-    const monthCategory = host.querySelector("[data-analys-category='Mat']");
-    expect(monthCategory).toBeInstanceOf(HTMLAnchorElement);
-    tap(monthCategory as Element);
-    expect(lastMovementsView()).toEqual({
-      filter: "expense",
-      period: "month",
-      category: "Mat",
-      source: "drill",
-    });
-    expect(lastAnalysScope()).toBe("month");
-  });
-
-  it("keeps a Utgifter chip the user chose when Mer → Rörelser is tapped", () => {
-    mount("month");
     tap(buttonNamed(host, "Utgifter"));
     expect(lastMovementsView()).toMatchObject({
       filter: "expense",
-      period: "month",
+      period: "all",
       category: null,
-      source: "user",
     });
-    tap(host.querySelector('[data-mer-movements="rorelser"]') as Element);
+    tap(rorelserLink());
     expect(lastMovementsView()).toMatchObject({
       filter: "expense",
-      period: "month",
+      period: "all",
       category: null,
-      source: "user",
     });
+    expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
+    expect(lastAnalysScope()).toBe("period");
   });
 });

@@ -4,244 +4,86 @@ import {
   clearClientSessionCaches,
   lastMovementsView,
   rememberMovementsView,
-  subscribeMovementsView,
 } from "@/features/home/last-snapshot";
 import {
-  movementsViewForCategoryDrill,
+  categoryDrillHref,
+  movementsDrillForCategory,
   ovrigtDominatesSpend,
 } from "./analys-category-drill";
+import {
+  lastMovementsDrill,
+  movementsDrillFromHref,
+  rememberMovementsDrillFromHref,
+  resetMovementsDrillForTests,
+} from "@/components/movements/movements-drill";
 
-describe("movementsViewForCategoryDrill", () => {
+const CYCLE_START = "2026-09-03T00:00:00.000Z";
+const CYCLE_END = "2026-10-25T00:00:00.000Z";
+
+describe("movementsDrillForCategory", () => {
   beforeEach(() => {
     clearClientSessionCaches();
+    resetMovementsDrillForTests();
   });
 
-  it("keeps Alla and Denna månad when the browsed month is current", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: { filter: "all", period: "month", category: null },
-      }),
-    ).toEqual({ filter: "all", period: "month", category: "Mat", source: "drill" });
-  });
-
-  it("keeps an Utgifter chip and All tid on the current month", () => {
-    expect(
-      movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: { filter: "expense", period: "all", category: "Mat" },
-      }),
-    ).toEqual({
-      filter: "expense",
+  it("maps Månad to Denna månad + Utgifter even when the saved view is All tid / Alla", () => {
+    // Prod 7dd0576 and both XA previews: September → Övrigt opened All tid
+    // because the old mapper copied existing.period when it was "all".
+    rememberMovementsView({
+      filter: "all",
       period: "all",
-      category: UNCATEGORISED_SPEND_NAME,
-      source: "drill",
+      category: null,
     });
-  });
-
-  it("falls back to Alla when the type chip would hide spend", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: { filter: "income", period: "month" },
-      }).filter,
-    ).toBe("all");
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: { filter: "other", period: "month" },
-      }).filter,
-    ).toBe("all");
-  });
-
-  it("opens the pay cycle on Utgifter with the Analys window", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "period",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: { filter: "all", period: "month" },
-        cycleStartAt: "2026-09-03T00:00:00.000Z",
-        cycleEndAt: "2026-10-25T00:00:00.000Z",
-      }),
-    ).toEqual({
-      filter: "expense",
-      period: "cycle",
-      category: "Mat",
-      cycleStartAt: "2026-09-03T00:00:00.000Z",
-      cycleEndAt: "2026-10-25T00:00:00.000Z",
-      source: "drill",
-    });
-    expect(
-      movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
-        scope: "period",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: { filter: "income", period: "all" },
-        cycleStartAt: "2026-09-03T00:00:00.000Z",
-        cycleEndAt: "2026-10-25T00:00:00.000Z",
-      }).filter,
-    ).toBe("expense");
-  });
-
-  it("uses All tid for any other calendar month and drops the cycle window", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "month",
-        activeMonthKey: "2026-08",
-        currentMonthKey: "2026-09",
-        existing: {
-          filter: "expense",
-          period: "cycle",
-          cycleStartAt: "2026-09-03T00:00:00.000Z",
-          cycleEndAt: "2026-10-25T00:00:00.000Z",
-        },
-        cycleStartAt: "2026-09-03T00:00:00.000Z",
-        cycleEndAt: "2026-10-25T00:00:00.000Z",
-      }),
-    ).toEqual({ filter: "expense", period: "all", category: "Mat", source: "drill" });
-  });
-
-  it("keeps Denna månad when the current month is drilled from a cycle chip", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: {
-          filter: "expense",
-          period: "cycle",
-          category: "Övrigt",
-          cycleStartAt: "2026-09-03T00:00:00.000Z",
-          cycleEndAt: "2026-10-25T00:00:00.000Z",
-        },
-        cycleStartAt: "2026-09-03T00:00:00.000Z",
-        cycleEndAt: "2026-10-25T00:00:00.000Z",
-      }),
-    ).toEqual({ filter: "expense", period: "month", category: "Mat", source: "drill" });
-  });
-
-  it("opens Denna månad and Utgifter after Mer cleared a drill", () => {
-    expect(
-      movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: {
-          filter: "all",
-          period: "all",
-          category: null,
-          source: "menu",
-          cycleStartAt: "2026-09-03T00:00:00.000Z",
-          cycleEndAt: "2026-10-25T00:00:00.000Z",
-        },
-        cycleStartAt: "2026-09-03T00:00:00.000Z",
-        cycleEndAt: "2026-10-25T00:00:00.000Z",
-      }),
-    ).toEqual({
-      filter: "expense",
-      period: "month",
-      category: UNCATEGORISED_SPEND_NAME,
-      source: "drill",
-    });
-  });
-
-  it("keeps Perioden and Utgifter when the drill scope is the pay cycle", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "period",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: {
-          filter: "all",
-          period: "all",
-          category: null,
-          source: "menu",
-        },
-        cycleStartAt: "2026-09-03T00:00:00.000Z",
-        cycleEndAt: "2026-10-25T00:00:00.000Z",
-      }),
-    ).toEqual({
-      filter: "expense",
-      period: "cycle",
-      category: "Mat",
-      cycleStartAt: "2026-09-03T00:00:00.000Z",
-      cycleEndAt: "2026-10-25T00:00:00.000Z",
-      source: "drill",
-    });
-  });
-
-  it("defaults a fresh Rörelser view to Alla and Denna månad", () => {
-    expect(
-      movementsViewForCategoryDrill("Mat", {
-        scope: "month",
-        activeMonthKey: "2026-09",
-        currentMonthKey: "2026-09",
-        existing: null,
-      }),
-    ).toEqual({ filter: "all", period: "month", category: "Mat", source: "drill" });
-  });
-
-  it("notifies a mounted subscriber once, then ignores the same drill", () => {
-    const seen: Array<string | null | undefined> = [];
-    const stop = subscribeMovementsView(() => {
-      seen.push(lastMovementsView()?.category);
-    });
-    const view = movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
+    const drill = movementsDrillForCategory(UNCATEGORISED_SPEND_NAME, {
       scope: "month",
-      activeMonthKey: "2026-09",
-      currentMonthKey: "2026-09",
-      existing: lastMovementsView(),
     });
-    rememberMovementsView(view);
-    rememberMovementsView({ ...view });
+    expect(drill).toEqual({
+      period: "month",
+      filter: "expense",
+      category: UNCATEGORISED_SPEND_NAME,
+      from: null,
+      to: null,
+    });
     expect(lastMovementsView()).toEqual({
       filter: "all",
-      period: "month",
-      category: "Övrigt",
-      source: "drill",
+      period: "all",
+      category: null,
     });
-    expect(seen).toEqual(["Övrigt"]);
-    stop();
+    const href = categoryDrillHref(UNCATEGORISED_SPEND_NAME, { scope: "month" });
+    expect(href).toContain("drill=1");
+    expect(href).toContain("period=month");
+    expect(href).toContain("filter=expense");
+    expect(movementsDrillFromHref(href)).toEqual(drill);
   });
 
-  it("notifies when the pay-cycle window changes and ignores a repeat", () => {
-    const seen: Array<string | null | undefined> = [];
-    const stop = subscribeMovementsView(() => {
-      const view = lastMovementsView();
-      seen.push(`${view?.period}:${view?.cycleEndAt ?? ""}`);
-    });
-    const view = movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
+  it("maps Perioden to the pay-cycle window + Utgifter + category", () => {
+    const drill = movementsDrillForCategory("Mat", {
       scope: "period",
-      activeMonthKey: "2026-09",
-      currentMonthKey: "2026-09",
-      existing: null,
-      cycleStartAt: "2026-09-03T00:00:00.000Z",
-      cycleEndAt: "2026-10-25T00:00:00.000Z",
+      cycleStartAt: CYCLE_START,
+      cycleEndAt: CYCLE_END,
     });
-    rememberMovementsView(view);
-    rememberMovementsView({
-      ...view,
-      cycleStartAt: view.cycleStartAt ?? null,
-      cycleEndAt: view.cycleEndAt ?? null,
+    expect(drill).toEqual({
+      period: "cycle",
+      filter: "expense",
+      category: "Mat",
+      from: CYCLE_START,
+      to: CYCLE_END,
     });
-    rememberMovementsView({
-      ...view,
-      cycleEndAt: "2026-11-01T00:00:00.000Z",
-    });
-    expect(seen).toEqual([
-      "cycle:2026-10-25T00:00:00.000Z",
-      "cycle:2026-11-01T00:00:00.000Z",
-    ]);
-    stop();
+    expect(movementsDrillFromHref(categoryDrillHref("Mat", {
+      scope: "period",
+      cycleStartAt: CYCLE_START,
+      cycleEndAt: CYCLE_END,
+    }))).toEqual(drill);
+  });
+
+  it("keeps a drill in the session store and drops it when the href has no params", () => {
+    const href = categoryDrillHref(UNCATEGORISED_SPEND_NAME, { scope: "month" });
+    rememberMovementsDrillFromHref(href);
+    expect(lastMovementsDrill()?.period).toBe("month");
+    expect(lastMovementsDrill()?.category).toBe(UNCATEGORISED_SPEND_NAME);
+    rememberMovementsDrillFromHref("/transaktioner");
+    expect(lastMovementsDrill()).toBeNull();
+    expect(lastMovementsView()).toBeNull();
   });
 });
 
