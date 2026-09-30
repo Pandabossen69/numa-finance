@@ -37,6 +37,8 @@ type MerItem = {
   hint?: string;
   icon: ReactNode;
   tone: MerIconTone;
+  /** Only the Rörelser row. Other links to /transaktioner must not set this. */
+  resetsMovements?: boolean;
 };
 
 const sections: Array<{ title: string; items: MerItem[] }> = [
@@ -49,6 +51,7 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
         hint: "Historik",
         icon: <IconRorelser />,
         tone: "spend",
+        resetsMovements: true,
       },
       {
         href: "/konton",
@@ -123,13 +126,16 @@ export function MerScreen({
   }, [data]);
 
   // NavIntent paints Rörelser on document-capture pointerdown, before the
-  // link's own handler. Window capture commits All tid / Alla first so a
-  // parked panel does not keep an Analys category drill.
+  // link's own handler. Window capture runs first, but only for the Mer
+  // Rörelser row (data-mer-movements="rorelser"). Analys drills and every
+  // other link to /transaktioner must not land here.
   useLayoutEffect(() => {
     function onActivate(event: Event) {
       if (!isPlainPrimary(event)) return;
       if (!(event.target instanceof Element)) return;
-      if (event.target.closest("[data-mer-movements]") == null) return;
+      const row = event.target.closest("[data-mer-movements]");
+      if (!(row instanceof HTMLElement)) return;
+      if (row.getAttribute("data-mer-movements") !== "rorelser") return;
       openRorelserFromMer();
     }
     window.addEventListener("pointerdown", onActivate, true);
@@ -183,9 +189,7 @@ export function MerScreen({
                     icon={item.icon}
                     tone={item.tone}
                     beforeIntent={
-                      item.href === "/transaktioner"
-                        ? openRorelserFromMer
-                        : undefined
+                      item.resetsMovements ? openRorelserFromMer : undefined
                     }
                   />
                 ))}

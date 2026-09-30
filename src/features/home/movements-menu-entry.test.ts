@@ -33,6 +33,7 @@ describe("movementsViewForMenuEntry", () => {
       category: null,
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "menu",
     });
   });
 
@@ -43,6 +44,7 @@ describe("movementsViewForMenuEntry", () => {
       category: null,
       cycleStartAt: null,
       cycleEndAt: null,
+      source: "menu",
     });
     expect(
       movementsViewForMenuEntry({
@@ -56,6 +58,7 @@ describe("movementsViewForMenuEntry", () => {
       category: null,
       cycleStartAt: null,
       cycleEndAt: null,
+      source: "menu",
     });
   });
 
@@ -73,6 +76,7 @@ describe("movementsViewForMenuEntry", () => {
       category: UNCATEGORISED_SPEND_NAME,
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "drill",
     });
     const next = resetMovementsViewForMenuEntry();
     resetMovementsViewForMenuEntry();
@@ -82,6 +86,7 @@ describe("movementsViewForMenuEntry", () => {
       category: null,
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "menu",
     });
     expect(lastMovementsView()).toEqual(next);
     expect(seen).toEqual([
@@ -118,6 +123,32 @@ describe("movementsViewForMenuEntry", () => {
       category: UNCATEGORISED_SPEND_NAME,
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "drill",
     });
+  });
+
+  it("keeps Utgifter when nothing was drilled", () => {
+    const chosen = {
+      filter: "expense" as const,
+      period: "all" as const,
+      category: null,
+    };
+    rememberMovementsView(chosen);
+    expect(resetMovementsViewForMenuEntry()).toEqual(chosen);
+    expect(lastMovementsView()).toEqual(chosen);
+  });
+
+  it("keeps a Utgifter filter the user chose", () => {
+    const chosen = {
+      filter: "expense" as const,
+      period: "month" as const,
+      category: null,
+      cycleStartAt: CYCLE_START,
+      cycleEndAt: CYCLE_END,
+      source: "user" as const,
+    };
+    rememberMovementsView(chosen);
+    expect(resetMovementsViewForMenuEntry()).toEqual(chosen);
+    expect(lastMovementsView()).toEqual(chosen);
   });
 });

@@ -77,7 +77,8 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("cycleWindowTotals");
     expect(src).toContain('label="Perioden"');
     expect(src).toContain("detail={cycleRange}");
-    expect(src).toContain('onClick={() => setPeriod("cycle")}');
+    expect(src).toContain('onClick={() => choosePeriod("cycle")}');
+    expect(src).toContain('setSource("user")');
     expect(src).toContain("subscribeMovementsView");
     expect(src).not.toContain("Inga träffar för filtret — prova Alla eller All tid.");
   });

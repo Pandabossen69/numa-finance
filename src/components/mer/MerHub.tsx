@@ -187,7 +187,7 @@ export function MerListLink({
     <Link
       href={href}
       prefetch={false}
-      data-mer-movements={beforeIntent ? "" : undefined}
+      data-mer-movements={beforeIntent ? "rorelser" : undefined}
       onPointerDown={(event) => {
         if (isPlainPrimary(event)) beforeIntent?.();
         prefetchHref(href);

@@ -10,7 +10,9 @@ import type {
  *
  * Perioden uses the same pay-cycle window as Analys Spenderat (`cycle`)
  * and Utgifter, so income cannot inflate the category count. Månad on the
- * current calendar month keeps Denna månad / All tid (Spec U). Any other
+ * current calendar month keeps Denna månad / All tid when the user chose
+ * that chip (Spec U). Mer's cleared list is not a user chip: it opens
+ * Denna månad + Utgifter so the rows match the month sum. Any other
  * calendar month still uses All tid — Rörelser has no chip for a past month.
  * Intäkter/Övrigt type chips would hide the spend, so those fall back to Alla
  * on the month path.
@@ -33,21 +35,29 @@ export function movementsViewForCategoryDrill(
       category: categoryName,
       cycleStartAt: opts.cycleStartAt ?? null,
       cycleEndAt: opts.cycleEndAt ?? null,
+      source: "drill",
     };
   }
 
+  const fromMenu = opts.existing?.source === "menu";
   const existingFilter = opts.existing?.filter;
-  const filter: MovementsFilter =
-    existingFilter === "all" || existingFilter === "expense" ? existingFilter : "all";
-  const sameCalendarMonth =
-    opts.activeMonthKey === opts.currentMonthKey;
+  const filter: MovementsFilter = fromMenu
+    ? "expense"
+    : existingFilter === "all" || existingFilter === "expense"
+      ? existingFilter
+      : "all";
+  const sameCalendarMonth = opts.activeMonthKey === opts.currentMonthKey;
   const existingPeriod = opts.existing?.period;
-  const period: MovementsPeriod = sameCalendarMonth
-    ? existingPeriod === "month" || existingPeriod === "all"
-      ? existingPeriod
-      : "month"
-    : "all";
-  return { filter, period, category: categoryName };
+  const period: MovementsPeriod = fromMenu
+    ? sameCalendarMonth
+      ? "month"
+      : "all"
+    : sameCalendarMonth
+      ? existingPeriod === "month" || existingPeriod === "all"
+        ? existingPeriod
+        : "month"
+      : "all";
+  return { filter, period, category: categoryName, source: "drill" };
 }
 
 /**

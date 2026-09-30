@@ -24,7 +24,7 @@ describe("movementsViewForCategoryDrill", () => {
         currentMonthKey: "2026-09",
         existing: { filter: "all", period: "month", category: null },
       }),
-    ).toEqual({ filter: "all", period: "month", category: "Mat" });
+    ).toEqual({ filter: "all", period: "month", category: "Mat", source: "drill" });
   });
 
   it("keeps an Utgifter chip and All tid on the current month", () => {
@@ -39,6 +39,7 @@ describe("movementsViewForCategoryDrill", () => {
       filter: "expense",
       period: "all",
       category: UNCATEGORISED_SPEND_NAME,
+      source: "drill",
     });
   });
 
@@ -77,6 +78,7 @@ describe("movementsViewForCategoryDrill", () => {
       category: "Mat",
       cycleStartAt: "2026-09-03T00:00:00.000Z",
       cycleEndAt: "2026-10-25T00:00:00.000Z",
+      source: "drill",
     });
     expect(
       movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
@@ -105,7 +107,7 @@ describe("movementsViewForCategoryDrill", () => {
         cycleStartAt: "2026-09-03T00:00:00.000Z",
         cycleEndAt: "2026-10-25T00:00:00.000Z",
       }),
-    ).toEqual({ filter: "expense", period: "all", category: "Mat" });
+    ).toEqual({ filter: "expense", period: "all", category: "Mat", source: "drill" });
   });
 
   it("keeps Denna månad when the current month is drilled from a cycle chip", () => {
@@ -124,7 +126,57 @@ describe("movementsViewForCategoryDrill", () => {
         cycleStartAt: "2026-09-03T00:00:00.000Z",
         cycleEndAt: "2026-10-25T00:00:00.000Z",
       }),
-    ).toEqual({ filter: "expense", period: "month", category: "Mat" });
+    ).toEqual({ filter: "expense", period: "month", category: "Mat", source: "drill" });
+  });
+
+  it("opens Denna månad and Utgifter after Mer cleared a drill", () => {
+    expect(
+      movementsViewForCategoryDrill(UNCATEGORISED_SPEND_NAME, {
+        scope: "month",
+        activeMonthKey: "2026-09",
+        currentMonthKey: "2026-09",
+        existing: {
+          filter: "all",
+          period: "all",
+          category: null,
+          source: "menu",
+          cycleStartAt: "2026-09-03T00:00:00.000Z",
+          cycleEndAt: "2026-10-25T00:00:00.000Z",
+        },
+        cycleStartAt: "2026-09-03T00:00:00.000Z",
+        cycleEndAt: "2026-10-25T00:00:00.000Z",
+      }),
+    ).toEqual({
+      filter: "expense",
+      period: "month",
+      category: UNCATEGORISED_SPEND_NAME,
+      source: "drill",
+    });
+  });
+
+  it("keeps Perioden and Utgifter when the drill scope is the pay cycle", () => {
+    expect(
+      movementsViewForCategoryDrill("Mat", {
+        scope: "period",
+        activeMonthKey: "2026-09",
+        currentMonthKey: "2026-09",
+        existing: {
+          filter: "all",
+          period: "all",
+          category: null,
+          source: "menu",
+        },
+        cycleStartAt: "2026-09-03T00:00:00.000Z",
+        cycleEndAt: "2026-10-25T00:00:00.000Z",
+      }),
+    ).toEqual({
+      filter: "expense",
+      period: "cycle",
+      category: "Mat",
+      cycleStartAt: "2026-09-03T00:00:00.000Z",
+      cycleEndAt: "2026-10-25T00:00:00.000Z",
+      source: "drill",
+    });
   });
 
   it("defaults a fresh Rörelser view to Alla and Denna månad", () => {
@@ -135,7 +187,7 @@ describe("movementsViewForCategoryDrill", () => {
         currentMonthKey: "2026-09",
         existing: null,
       }),
-    ).toEqual({ filter: "all", period: "month", category: "Mat" });
+    ).toEqual({ filter: "all", period: "month", category: "Mat", source: "drill" });
   });
 
   it("notifies a mounted subscriber once, then ignores the same drill", () => {
@@ -155,6 +207,7 @@ describe("movementsViewForCategoryDrill", () => {
       filter: "all",
       period: "month",
       category: "Övrigt",
+      source: "drill",
     });
     expect(seen).toEqual(["Övrigt"]);
     stop();

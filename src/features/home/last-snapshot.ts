@@ -53,6 +53,12 @@ export type { PlanSnapshot } from "@/features/finance/load-plan";
 export type MovementsFilter = "all" | "expense" | "income" | "other";
 /** `cycle` is the Analys pay-cycle window (`cycleStartAt` ≤ occurred < `cycleEndAt`). */
 export type MovementsPeriod = "month" | "all" | "cycle";
+/**
+ * Who last wrote the Rörelser chips.
+ * Mer → Rörelser clears only `drill`. A chip the user tapped is `user`.
+ * The cleared list is `menu` so a later Månad-drill does not keep that All tid.
+ */
+export type MovementsViewSource = "drill" | "user" | "menu";
 export type MovementsView = {
   filter: MovementsFilter;
   period: MovementsPeriod;
@@ -65,6 +71,7 @@ export type MovementsView = {
    */
   cycleStartAt?: string | null;
   cycleEndAt?: string | null;
+  source?: MovementsViewSource;
 };
 
 export type MerSnapshot = {
@@ -1218,7 +1225,8 @@ function sameMovementsView(
     current.period === next.period &&
     (current.category ?? null) === (next.category ?? null) &&
     sameCycleBound(current.cycleStartAt, next.cycleStartAt) &&
-    sameCycleBound(current.cycleEndAt, next.cycleEndAt)
+    sameCycleBound(current.cycleEndAt, next.cycleEndAt) &&
+    current.source === next.source
   );
 }
 
@@ -1248,11 +1256,18 @@ export function movementsViewForMenuEntry(
     category: null,
     cycleStartAt: existing?.cycleStartAt ?? null,
     cycleEndAt: existing?.cycleEndAt ?? null,
+    source: "menu",
   };
 }
 
-/** Commit the Mer menu default. Notifies a parked Rörelser panel. */
+/**
+ * Commit the Mer menu default only when Analys drilled the current view.
+ * A filter the user chose (no drill flag) stays. Notifies a parked panel.
+ */
 export function resetMovementsViewForMenuEntry(): MovementsView {
+  if (movementsView != null && movementsView.source !== "drill") {
+    return movementsView;
+  }
   const next = movementsViewForMenuEntry(movementsView);
   rememberMovementsView(next);
   return next;

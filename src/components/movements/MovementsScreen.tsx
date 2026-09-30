@@ -34,6 +34,7 @@ import {
   subscribeMovementsView,
   type MovementsFilter,
   type MovementsPeriod,
+  type MovementsViewSource,
 } from "@/features/home/last-snapshot";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
@@ -132,6 +133,9 @@ export function MovementsScreen({
   const [cycleEndAt, setCycleEndAt] = useState<string | null>(
     () => rememberedView?.cycleEndAt ?? null,
   );
+  const [source, setSource] = useState<MovementsViewSource | undefined>(
+    () => rememberedView?.source,
+  );
   const listRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
@@ -165,6 +169,7 @@ export function MovementsScreen({
         setCategory(null);
         setCycleStartAt(null);
         setCycleEndAt(null);
+        setSource(undefined);
         return;
       }
       setFilter((prev) => (prev === next.filter ? prev : next.filter));
@@ -182,6 +187,7 @@ export function MovementsScreen({
         const end = next.cycleEndAt ?? null;
         return prev === end ? prev : end;
       });
+      setSource((prev) => (prev === next.source ? prev : next.source));
     });
   }, []);
 
@@ -192,8 +198,9 @@ export function MovementsScreen({
       category,
       cycleStartAt,
       cycleEndAt,
+      source,
     });
-  }, [filter, period, category, cycleStartAt, cycleEndAt]);
+  }, [filter, period, category, cycleStartAt, cycleEndAt, source]);
 
   useLayoutEffect(() => {
     const prev = pathRef.current;
@@ -241,9 +248,20 @@ export function MovementsScreen({
     );
   }, [view, filter, period, category, cycleStartAt, cycleEndAt]);
 
+  function choosePeriod(next: Period) {
+    setPeriod(next);
+    setSource("user");
+  }
+
+  function chooseFilter(next: Filter) {
+    setFilter(next);
+    setSource("user");
+  }
+
   function selectCategory(name: string) {
     const next = toggleCategory(category, name);
     setCategory(next);
+    setSource("user");
     if (next) {
       listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -295,18 +313,18 @@ export function MovementsScreen({
       <div className="numa-equal-chips animate-rise-delay-1">
         <PeriodChip
           active={period === "month"}
-          onClick={() => setPeriod("month")}
+          onClick={() => choosePeriod("month")}
           label="Denna månad"
         />
         <PeriodChip
           active={period === "all"}
-          onClick={() => setPeriod("all")}
+          onClick={() => choosePeriod("all")}
           label="All tid"
         />
         {showCycleChip ? (
           <PeriodChip
             active={period === "cycle"}
-            onClick={() => setPeriod("cycle")}
+            onClick={() => choosePeriod("cycle")}
             label="Perioden"
             detail={cycleRange}
             className="col-span-2"
@@ -416,7 +434,7 @@ export function MovementsScreen({
           <button
             key={f.id}
             type="button"
-            onClick={() => setFilter(f.id)}
+            onClick={() => chooseFilter(f.id)}
             className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
               filter === f.id
                 ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
@@ -443,7 +461,10 @@ export function MovementsScreen({
             {category ? (
               <button
                 type="button"
-                onClick={() => setCategory(null)}
+                onClick={() => {
+                  setCategory(null);
+                  setSource("user");
+                }}
                 className="numa-press numa-category-chip is-active max-w-[12ch] truncate min-h-11 rounded-full bg-[var(--numa-ink)] px-3 text-xs font-semibold text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                 aria-label="Visa alla kategorier"
               >

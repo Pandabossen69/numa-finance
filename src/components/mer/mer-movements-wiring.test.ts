@@ -18,8 +18,9 @@ describe("Mer menu wiring", () => {
     expect(mer).toContain("flushSync");
     expect(mer).toContain('window.addEventListener("pointerdown", onActivate, true)');
     expect(mer).toContain('window.addEventListener("click", onActivate, true)');
-    expect(mer).toContain('item.href === "/transaktioner"');
-    expect(mer).toContain("? openRorelserFromMer");
+    expect(mer).toContain("resetsMovements: true");
+    expect(mer).toContain("item.resetsMovements ? openRorelserFromMer");
+    expect(mer).not.toContain('item.href === "/transaktioner"');
     expect(mer.match(/beforeIntent=/g)).toHaveLength(1);
 
     const link = hub.slice(
@@ -36,7 +37,10 @@ describe("Mer menu wiring", () => {
     expect(link.indexOf("beforeIntent?.()", click)).toBeLessThan(
       link.indexOf("markIntent(href)", click),
     );
-    expect(link).toContain('data-mer-movements={beforeIntent ? "" : undefined}');
+    expect(link).toContain(
+      'data-mer-movements={beforeIntent ? "rorelser" : undefined}',
+    );
+    expect(mer).toContain('getAttribute("data-mer-movements") !== "rorelser"');
   });
 
   it("leaves the Analys category drill on rememberMovementsView", () => {

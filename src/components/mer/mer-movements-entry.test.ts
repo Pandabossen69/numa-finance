@@ -178,6 +178,7 @@ describe("Mer → Rörelser menu entry", () => {
       category: "Mat",
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "drill",
     });
     host = document.createElement("div");
     document.body.appendChild(host);
@@ -236,6 +237,7 @@ describe("Mer → Rörelser menu entry", () => {
       category: null,
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "menu",
     });
     expect(listHeading(host)).toBe("3 rörelser");
     expect(chipOn(chip(host, "All tid"))).toBe(true);
@@ -261,6 +263,7 @@ describe("Mer → Rörelser menu entry", () => {
       category: UNCATEGORISED_SPEND_NAME,
       cycleStartAt: CYCLE_START,
       cycleEndAt: CYCLE_END,
+      source: "drill",
     });
     expect(chipOn(chip(host, "Perioden"))).toBe(true);
     expect(chipOn(chip(host, "Utgifter"))).toBe(true);
