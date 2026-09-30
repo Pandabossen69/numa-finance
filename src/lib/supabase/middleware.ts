@@ -124,9 +124,7 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
-    // `next dev` without Supabase uses the local JSON store. Production
-    // and Vercel still fail closed (`next start` is NODE_ENV=production).
-    if (process.env.NODE_ENV === "development") return supabaseResponse;
+    // Fail closed on protected routes when auth cannot be verified.
     if (!isPublic) return redirectToLogin(request);
     return supabaseResponse;
   }
