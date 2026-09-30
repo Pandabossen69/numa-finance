@@ -33,6 +33,12 @@ describe("main first-load chrome", () => {
     expect(homeCookieServer).not.toContain("getVerifiedAuthUser");
     expect(homeCookieServer).not.toContain("getProfile");
     expect(homeCookieServer).not.toContain("auth.getUser()");
+    expect(layout).not.toMatch(/await\s+loadHomeSnapshot\s*\(/);
+    expect(layout).not.toContain("resolveHomeShell");
+    expect(layout).not.toContain("@/features/finance/load-home");
+    expect(homeCookieServer).not.toMatch(/await\s+loadHomeSnapshot\s*\(/);
+    expect(homeCookieServer).not.toMatch(/import\s+\{[^}]*loadHomeSnapshot/);
+    expect(homeCookieServer).not.toContain("resolveHomeShell");
   });
 
   it("keeps loading.tsx as content-only so the shell is not nested", () => {

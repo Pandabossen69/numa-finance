@@ -74,6 +74,7 @@ describe("login → Hem first mount", () => {
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).toContain("lastHomeSnapshot");
+    expect(hemClient).toContain("lastKnownHomeShell");
     expect(keepAlive).toContain("HemRouteClient");
     expect(keepAlive).toContain('"/idag": <HemRouteClient cookieShell={homeCookieShell} />');
     expect(keepAlive).toContain("data-numa-spa-tab");
