@@ -35,6 +35,12 @@ import {
   type MovementsFilter,
   type MovementsPeriod,
 } from "@/features/home/last-snapshot";
+import {
+  clearMovementsDrill,
+  lastMovementsDrill,
+  rememberMovementsDrillFromHref,
+  subscribeMovementsDrill,
+} from "./movements-drill";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
@@ -132,6 +138,11 @@ export function MovementsScreen({
   const [cycleEndAt, setCycleEndAt] = useState<string | null>(
     () => rememberedView?.cycleEndAt ?? null,
   );
+  const drill = useSyncExternalStore(
+    subscribeMovementsDrill,
+    lastMovementsDrill,
+    () => null,
+  );
   const listRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
@@ -153,9 +164,8 @@ export function MovementsScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmId]);
 
-  // Keep-alive: Analys selects a category while this screen is hidden.
-  // Adopt it before paint so the chip and matchesCategory filter are
-  // already committed when the panel is revealed.
+  // Keep-alive: another writer can change the saved chips while this
+  // screen is hidden. The Analys drill does not come through here.
   useLayoutEffect(() => {
     return subscribeMovementsView(() => {
       const next = lastMovementsView();
@@ -183,6 +193,14 @@ export function MovementsScreen({
         return prev === end ? prev : end;
       });
     });
+  }, []);
+
+  // Hard load of a drill URL. SPA taps commit the same store in NavIntent
+  // before the parked panel is revealed. A href without drill params clears it.
+  useLayoutEffect(() => {
+    rememberMovementsDrillFromHref(
+      `${window.location.pathname}${window.location.search}`,
+    );
   }, []);
 
   useLayoutEffect(() => {
@@ -226,22 +244,53 @@ export function MovementsScreen({
   const view =
     stored ?? data ?? lastMovementsSnapshot() ?? (error ? null : pendingMovementsShell());
 
+  // Drill is an overlay. The chips above stay the user's saved view and
+  // are the only thing rememberMovementsView persists.
+  const viewPeriod = drill?.period ?? period;
+  const viewFilter = drill?.filter ?? filter;
+  const viewCategory = drill?.category ?? category;
+  const viewCycleStart = drill ? drill.from : cycleStartAt;
+  const viewCycleEnd = drill ? drill.to : cycleEndAt;
+
   const filtered = useMemo(() => {
     if (!view) return [];
     return view.items.filter((tx) =>
       movementVisibleInRorelser(tx, {
-        filter,
-        period,
-        category,
+        filter: viewFilter,
+        period: viewPeriod,
+        category: viewCategory,
         monthKey: view.monthKey,
         timeZone: view.timeZone,
-        cycleStartAt,
-        cycleEndAt,
+        cycleStartAt: viewCycleStart,
+        cycleEndAt: viewCycleEnd,
       }),
     );
-  }, [view, filter, period, category, cycleStartAt, cycleEndAt]);
+  }, [view, viewFilter, viewPeriod, viewCategory, viewCycleStart, viewCycleEnd]);
+
+  function dropDrillOverlay() {
+    if (!lastMovementsDrill()) return;
+    clearMovementsDrill();
+    if (typeof window === "undefined" || !window.location.search) return;
+    const path = window.location.pathname;
+    try {
+      window.history.replaceState({ numaSpa: true, href: path }, "", path);
+    } catch {
+      // ignore
+    }
+  }
+
+  function choosePeriod(next: Period) {
+    dropDrillOverlay();
+    setPeriod(next);
+  }
+
+  function chooseFilter(next: Filter) {
+    dropDrillOverlay();
+    setFilter(next);
+  }
 
   function selectCategory(name: string) {
+    dropDrillOverlay();
     const next = toggleCategory(category, name);
     setCategory(next);
     if (next) {
@@ -260,30 +309,30 @@ export function MovementsScreen({
   }
 
   const cycleTotals =
-    period === "cycle"
-      ? cycleWindowTotals(view.items, cycleStartAt, cycleEndAt)
+    viewPeriod === "cycle"
+      ? cycleWindowTotals(view.items, viewCycleStart, viewCycleEnd)
       : null;
   const income = cycleTotals
     ? cycleTotals.incomeMinor
-    : period === "month"
+    : viewPeriod === "month"
       ? view.monthIncomeMinor
       : view.allIncomeMinor;
   const expense = cycleTotals
     ? cycleTotals.expenseMinor
-    : period === "month"
+    : viewPeriod === "month"
       ? view.monthExpenseMinor
       : view.allExpenseMinor;
   const net = cycleTotals
     ? cycleTotals.netMinor
-    : period === "month"
+    : viewPeriod === "month"
       ? view.monthNetMinor
       : view.allNetMinor;
   const cycleRange = payCycleRangeLabelSv(
-    cycleStartAt,
-    cycleEndAt,
+    viewCycleStart,
+    viewCycleEnd,
     view.timeZone,
   );
-  const showCycleChip = period === "cycle" || cycleRange != null;
+  const showCycleChip = viewPeriod === "cycle" || cycleRange != null;
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
@@ -294,19 +343,19 @@ export function MovementsScreen({
 
       <div className="numa-equal-chips animate-rise-delay-1">
         <PeriodChip
-          active={period === "month"}
-          onClick={() => setPeriod("month")}
+          active={viewPeriod === "month"}
+          onClick={() => choosePeriod("month")}
           label="Denna månad"
         />
         <PeriodChip
-          active={period === "all"}
-          onClick={() => setPeriod("all")}
+          active={viewPeriod === "all"}
+          onClick={() => choosePeriod("all")}
           label="All tid"
         />
         {showCycleChip ? (
           <PeriodChip
-            active={period === "cycle"}
-            onClick={() => setPeriod("cycle")}
+            active={viewPeriod === "cycle"}
+            onClick={() => choosePeriod("cycle")}
             label="Perioden"
             detail={cycleRange}
             className="col-span-2"
@@ -346,17 +395,17 @@ export function MovementsScreen({
         </section>
       ) : null}
 
-      {period === "month" && view.monthCategories.length > 0 ? (
+      {viewPeriod === "month" && view.monthCategories.length > 0 ? (
         <section className="numa-panel animate-rise-delay-2 p-5">
           <h2 className="numa-section-title">Per kategori</h2>
           <p className="mt-1 text-xs leading-snug text-[var(--numa-faint)]">
-            {category
-              ? `Visar ${category}. Tryck igen för att visa alla.`
+            {viewCategory
+              ? `Visar ${viewCategory}. Tryck igen för att visa alla.`
               : "Tryck på en kategori för att filtrera listan."}
           </p>
           <ul className="mt-4 space-y-2">
             {view.monthCategories.map((cat) => {
-              const selected = category === cat.name;
+              const selected = viewCategory === cat.name;
               return (
                 <li key={cat.name}>
                   <button
@@ -416,9 +465,9 @@ export function MovementsScreen({
           <button
             key={f.id}
             type="button"
-            onClick={() => setFilter(f.id)}
+            onClick={() => chooseFilter(f.id)}
             className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
-              filter === f.id
+              viewFilter === f.id
                 ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                 : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
             }`}
@@ -432,22 +481,25 @@ export function MovementsScreen({
         <div className="flex items-center justify-between gap-3">
           <h2 className="min-w-0 text-sm font-semibold">
             {filtered.length} {filtered.length === 1 ? "rörelse" : "rörelser"}
-            {category ? (
+            {viewCategory ? (
               <span className="font-medium text-[var(--numa-muted)]">
                 {" "}
-                · {category}
+                · {viewCategory}
               </span>
             ) : null}
           </h2>
           <div className="flex shrink-0 items-center gap-2">
-            {category ? (
+            {viewCategory ? (
               <button
                 type="button"
-                onClick={() => setCategory(null)}
+                onClick={() => {
+                  dropDrillOverlay();
+                  setCategory(null);
+                }}
                 className="numa-press numa-category-chip is-active max-w-[12ch] truncate min-h-11 rounded-full bg-[var(--numa-ink)] px-3 text-xs font-semibold text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                 aria-label="Visa alla kategorier"
               >
-                {category}
+                {viewCategory}
               </button>
             ) : null}
             <Link
@@ -626,17 +678,17 @@ export function MovementsScreen({
                       {sanitizeMoneyDescription(tx.description)}
                     </p>
                     <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-[var(--numa-faint)]">
-                      {filter === "all" ? (
+                      {viewFilter === "all" ? (
                         <span>{typeLabel(tx.transactionType)}</span>
                       ) : null}
-                      {filter === "all" || filter === "expense" ? (
+                      {viewFilter === "all" || viewFilter === "expense" ? (
                         <button
                           type="button"
                           aria-pressed={
-                            category === spendCategoryName(tx.category)
+                            viewCategory === spendCategoryName(tx.category)
                           }
                           aria-label={
-                            category === spendCategoryName(tx.category)
+                            viewCategory === spendCategoryName(tx.category)
                               ? `Visa alla kategorier`
                               : `Visa ${spendCategoryName(tx.category)}`
                           }
@@ -644,7 +696,7 @@ export function MovementsScreen({
                             selectCategory(spendCategoryName(tx.category))
                           }
                           className={`numa-press numa-category-chip -my-1 inline-flex min-h-8 items-center rounded-full px-2 ${
-                            category === spendCategoryName(tx.category)
+                            viewCategory === spendCategoryName(tx.category)
                               ? "is-active bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                               : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
                           }`}

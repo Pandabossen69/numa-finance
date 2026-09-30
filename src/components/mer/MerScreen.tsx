@@ -101,6 +101,7 @@ export function MerScreen({
   useEffect(() => {
     if (data) rememberMerSnapshot(data);
   }, [data]);
+
   const view = data ?? lastMerSnapshot() ?? ensurePaintableMerSnapshot();
 
   if (!view) return <MerViewLoading />;

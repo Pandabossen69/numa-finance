@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -34,9 +26,7 @@ import {
 import {
   lastAnalysScope,
   lastAnalysSnapshot,
-  lastMovementsView,
   lastPlanView,
-  rememberMovementsView,
   rememberPlanView,
   subscribeAnalysSnapshot,
   subscribePlanView,
@@ -44,7 +34,7 @@ import {
   rememberAnalysSnapshot,
 } from "@/features/home/last-snapshot";
 import {
-  movementsViewForCategoryDrill,
+  categoryDrillHref,
   ovrigtDominatesSpend,
 } from "@/components/analys/analys-category-drill";
 import { senasteRowCategoryLabel } from "@/components/analys/senaste-row";
@@ -335,7 +325,6 @@ export function AnalysDashboard({
                 empty={categoryEmpty}
                 scope={scope}
                 activeMonthKey={activeMonthKey}
-                currentMonthKey={view.currentMonthKey}
                 cycleStartAt={cycle.startAt}
                 cycleEndAt={cycle.endAt}
                 timeZone={view.timeZone}
@@ -386,7 +375,6 @@ export function AnalysDashboard({
             empty={categoryEmpty}
             scope={scope}
             activeMonthKey={activeMonthKey}
-            currentMonthKey={view.currentMonthKey}
             cycleStartAt={cycle.startAt}
             cycleEndAt={cycle.endAt}
             timeZone={view.timeZone}
@@ -559,7 +547,6 @@ function SpendByCategory({
   empty,
   scope,
   activeMonthKey,
-  currentMonthKey,
   cycleStartAt,
   cycleEndAt,
   timeZone,
@@ -570,7 +557,6 @@ function SpendByCategory({
   empty: string;
   scope: AnalysScope;
   activeMonthKey: string;
-  currentMonthKey: string;
   cycleStartAt: string | null;
   cycleEndAt: string | null;
   timeZone: string;
@@ -590,55 +576,6 @@ function SpendByCategory({
         timeZone,
       })
     : [];
-  const openCategoryRef = useRef<(name: string) => void>(() => {});
-
-  // NavIntent paints Rörelser on document capture pointerdown, which runs
-  // before this link's own handler. Window capture runs first, so the
-  // category is committed before the panel is revealed.
-  useLayoutEffect(() => {
-    function openCategory(name: string) {
-      flushSync(() => {
-        rememberMovementsView(
-          movementsViewForCategoryDrill(name, {
-            scope,
-            activeMonthKey,
-            currentMonthKey,
-            existing: lastMovementsView(),
-            cycleStartAt,
-            cycleEndAt,
-          }),
-        );
-      });
-    }
-    openCategoryRef.current = openCategory;
-    function categoryFromEvent(event: Event): string | null {
-      if (!(event.target instanceof Element)) return null;
-      const link = event.target.closest("[data-analys-category]");
-      if (!(link instanceof HTMLElement)) return null;
-      return link.getAttribute("data-analys-category");
-    }
-    function onPointerDown(event: PointerEvent) {
-      if (event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const name = categoryFromEvent(event);
-      if (!name) return;
-      openCategory(name);
-    }
-    function onClick(event: MouseEvent) {
-      if (event.button !== 0) return;
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const name = categoryFromEvent(event);
-      if (!name) return;
-      openCategory(name);
-    }
-    window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("click", onClick, true);
-    return () => {
-      window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("click", onClick, true);
-    };
-  }, [scope, activeMonthKey, currentMonthKey, cycleStartAt, cycleEndAt]);
-
   return (
     <section className="space-y-3" aria-label={SV.vartGickPengarna}>
       <div className="px-0.5">
@@ -656,24 +593,26 @@ function SpendByCategory({
         <p className="px-0.5 text-sm leading-snug text-[var(--numa-muted)]">{empty}</p>
       ) : (
         <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
-          {categories.map((category) => (
+          {categories.map((category) => {
+            const href = categoryDrillHref(category.name, {
+              scope,
+              cycleStartAt,
+              cycleEndAt,
+            });
+            return (
             <li key={category.name}>
               <Link
-                href="/transaktioner"
+                href={href}
                 prefetch={false}
                 data-analys-category={category.name}
                 aria-label={`Visa ${category.name}`}
                 onPointerDown={() => {
-                  openCategoryRef.current(category.name);
-                  prefetch("/transaktioner");
-                  markIntent("/transaktioner");
+                  prefetch(href);
+                  markIntent(href);
                 }}
-                onMouseEnter={() => prefetch("/transaktioner")}
-                onFocus={() => prefetch("/transaktioner")}
-                onClick={() => {
-                  openCategoryRef.current(category.name);
-                  markIntent("/transaktioner");
-                }}
+                onMouseEnter={() => prefetch(href)}
+                onFocus={() => prefetch(href)}
+                onClick={() => markIntent(href)}
                 className="numa-press block min-h-11 w-full px-4 py-3 text-left"
               >
                 <div className="numa-money-line mb-1.5 text-sm">
@@ -735,7 +674,8 @@ function SpendByCategory({
                 </ul>
               ) : null}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

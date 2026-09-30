@@ -306,24 +306,22 @@ describe("Analys month result color", () => {
   });
 
   it("opens Rörelser on the tapped category and dates Senaste", () => {
-    expect(src).toContain("movementsViewForCategoryDrill(");
+    expect(src).toContain("categoryDrillHref(");
     expect(src).toContain("cycleStartAt,");
     expect(src).toContain("cycleEndAt,");
-    expect(src).toContain("rememberMovementsView(");
-    expect(src).toContain("lastMovementsView()");
-    expect(src).toContain("flushSync");
+    expect(src).not.toContain("rememberMovementsView(");
+    expect(src).not.toContain("movementsViewForCategoryDrill(");
     expect(src).toContain("data-analys-category={category.name}");
     expect(src).toContain('href="/transaktioner"');
     expect(src).toContain("prefetch={false}");
     expect(src).toContain('markIntent("/transaktioner")');
+    expect(src).toContain("markIntent(href)");
     expect(src).toContain("onPointerDown");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
-    // Window capture beats NavIntent's document-capture panel paint.
-    expect(src).toContain(
+    expect(src).not.toContain(
       'window.addEventListener("pointerdown", onPointerDown, true)',
     );
-    expect(src).toContain('window.addEventListener("click", onClick, true)');
     expect(src).toContain("min-h-11 w-full");
     expect(src).toContain("formatListDateSv(tx.occurredAt, view.timeZone");
     expect(src).toContain("withTime: true");
