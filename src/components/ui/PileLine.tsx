@@ -1,4 +1,5 @@
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { usesAlarmColor } from "@/components/ui/amount-tone";
 import type { CurrencyCode } from "@/domain/money";
 
 /**
@@ -29,11 +30,13 @@ export function PileLine({
             : "";
   const valueTone = missing
     ? "text-[var(--numa-faint)]"
-    : tone === "out"
-      ? "numa-amt-out"
-      : tone === "in"
-        ? "numa-amt-in"
-        : "";
+    : tone === "in"
+      ? "numa-amt-in"
+      : "";
+  const moneyTone =
+    tone === "over" || tone === "short" || usesAlarmColor(amountMinor)
+      ? "signed"
+      : "neutral";
 
   return (
     <p className={`numa-pile-line${rowTone}`}>
@@ -49,7 +52,7 @@ export function PileLine({
             compact
             align="end"
             wrap={false}
-            tone={tone === "over" || tone === "short" ? "signed" : "neutral"}
+            tone={moneyTone}
           />
         )}
       </span>

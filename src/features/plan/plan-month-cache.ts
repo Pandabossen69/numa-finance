@@ -316,13 +316,20 @@ export function schedulePrefetchAdjacentPlanMonths(
   window.setTimeout(run, 1);
 }
 
-export function resetPlanMonthCacheForTests() {
+/** Drop month paints and suggestions so the next Plan open rebuilds from live items. */
+export function clearPlanMonthCache() {
   paints.clear();
   suggestions.clear();
-  suggestionEpoch = 0;
-  paintEpoch = 0;
-  paintWriteSeq = 0;
   lastPaint = null;
   lastPaintByMonth.clear();
   prewarmedMonthStamps.clear();
+  emitSuggestions();
+  emitPaints();
+}
+
+export function resetPlanMonthCacheForTests() {
+  clearPlanMonthCache();
+  suggestionEpoch = 0;
+  paintEpoch = 0;
+  paintWriteSeq = 0;
 }

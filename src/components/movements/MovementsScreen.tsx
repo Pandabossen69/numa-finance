@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import { PlanDateField } from "@/components/plan/PlanDateField";
+import { usesAlarmColor } from "@/components/ui/amount-tone";
 import {
   updateTransactionAction,
   voidTransactionAction,
 } from "@/features/finance/actions";
-import { formatListDateSv, monthKeyFromDate } from "@/domain/finance";
+import { formatListDateSv, isoToDateInput, monthKeyFromDate, occurredAtForBookedDay } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
@@ -28,10 +30,13 @@ import {
   lastHomeSnapshot,
   lastMovementsSnapshot,
   lastMovementsView,
+  lastPlanSnapshot,
   rememberMovementsSnapshot,
   rememberMovementsView,
+  subscribeAnalysSnapshot,
   subscribeMovementsSnapshot,
   subscribeMovementsView,
+  subscribePlanSnapshot,
   type MovementsFilter,
   type MovementsPeriod,
 } from "@/features/home/last-snapshot";
@@ -52,6 +57,7 @@ import {
   cycleWindowTotals,
   movementVisibleInRorelser,
   payCycleRangeLabelSv,
+  resolveMovementsPayCycle,
 } from "./movements-window";
 
 type Filter = MovementsFilter;
@@ -138,6 +144,16 @@ export function MovementsScreen({
   const [cycleEndAt, setCycleEndAt] = useState<string | null>(
     () => rememberedView?.cycleEndAt ?? null,
   );
+  const planSnap = useSyncExternalStore(
+    subscribePlanSnapshot,
+    lastPlanSnapshot,
+    () => null,
+  );
+  const analysLive = useSyncExternalStore(
+    subscribeAnalysSnapshot,
+    lastAnalysSnapshot,
+    () => null,
+  );
   const drill = useSyncExternalStore(
     subscribeMovementsDrill,
     lastMovementsDrill,
@@ -148,6 +164,7 @@ export function MovementsScreen({
   const [editAmount, setEditAmount] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(
@@ -249,23 +266,43 @@ export function MovementsScreen({
   const viewPeriod = drill?.period ?? period;
   const viewFilter = drill?.filter ?? filter;
   const viewCategory = drill?.category ?? category;
-  const viewCycleStart = drill ? drill.from : cycleStartAt;
-  const viewCycleEnd = drill ? drill.to : cycleEndAt;
-
-  const filtered = useMemo(() => {
-    if (!view) return [];
-    return view.items.filter((tx) =>
-      movementVisibleInRorelser(tx, {
-        filter: viewFilter,
-        period: viewPeriod,
-        category: viewCategory,
-        monthKey: view.monthKey,
+  const liveCycle = view
+    ? resolveMovementsPayCycle({
+        planItems: planSnap?.items,
         timeZone: view.timeZone,
-        cycleStartAt: viewCycleStart,
-        cycleEndAt: viewCycleEnd,
-      }),
-    );
-  }, [view, viewFilter, viewPeriod, viewCategory, viewCycleStart, viewCycleEnd]);
+        now: new Date(),
+        analysStartAt: analysLive?.cycle.startAt,
+        analysEndAt: analysLive?.cycle.endAt,
+        snapshotStartAt: view.payCycleStartAt,
+        snapshotEndAt: view.payCycleEndAt,
+      })
+    : null;
+  // Drill still filters via the URL. The Perioden chip uses the live pay
+  // cycle and is not written back into the saved view.
+  const viewCycleStart = drill
+    ? drill.from
+    : viewPeriod === "cycle"
+      ? (liveCycle?.startAt ?? cycleStartAt)
+      : cycleStartAt;
+  const viewCycleEnd = drill
+    ? drill.to
+    : viewPeriod === "cycle"
+      ? (liveCycle?.endAt ?? cycleEndAt)
+      : cycleEndAt;
+
+  const filtered = view
+    ? view.items.filter((tx) =>
+        movementVisibleInRorelser(tx, {
+          filter: viewFilter,
+          period: viewPeriod,
+          category: viewCategory,
+          monthKey: view.monthKey,
+          timeZone: view.timeZone,
+          cycleStartAt: viewCycleStart,
+          cycleEndAt: viewCycleEnd,
+        }),
+      )
+    : [];
 
   function dropDrillOverlay() {
     if (!lastMovementsDrill()) return;
@@ -328,11 +365,11 @@ export function MovementsScreen({
       ? view.monthNetMinor
       : view.allNetMinor;
   const cycleRange = payCycleRangeLabelSv(
-    viewCycleStart,
-    viewCycleEnd,
+    liveCycle?.startAt,
+    liveCycle?.endAt,
     view.timeZone,
   );
-  const showCycleChip = viewPeriod === "cycle" || cycleRange != null;
+  const showCycleChip = cycleRange != null || viewPeriod === "cycle";
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
@@ -374,7 +411,7 @@ export function MovementsScreen({
           label="Utgifter"
           amountMinor={expense}
           currency={view.currency}
-          tone="alarm"
+          tone="neutral"
         />
         <SummaryStat
           label="Netto"
@@ -391,6 +428,7 @@ export function MovementsScreen({
             label="På kontona"
             amountMinor={view.balanceMinor}
             currency={view.currency}
+            tone={usesAlarmColor(view.balanceMinor) ? "alarm" : undefined}
           />
         </section>
       ) : null}
@@ -586,6 +624,12 @@ export function MovementsScreen({
                         className="min-h-11 w-full rounded-xl border border-[var(--numa-border)] bg-transparent px-3 text-sm"
                       />
                     ) : null}
+                    <PlanDateField
+                      ariaLabel="Datum"
+                      value={editDate}
+                      max={isoToDateInput(new Date().toISOString(), view.timeZone) || editDate}
+                      onChange={setEditDate}
+                    />
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -613,11 +657,17 @@ export function MovementsScreen({
                             thbMinor: tx.amountMinor,
                             description: tx.description,
                             category: tx.category,
+                            occurredAt: tx.occurredAt,
                           };
                           const nextCategory =
                             tx.transactionType === "expense"
                               ? editCategory || null
                               : undefined;
+                          const occurredAt = occurredAtForBookedDay({
+                            ymd: editDate,
+                            timeZone: view.timeZone,
+                            keepTimeFrom: tx.occurredAt,
+                          });
                           actionLock.current = true;
                           setPendingAction("save");
                           setActionError(null);
@@ -627,6 +677,7 @@ export function MovementsScreen({
                             nativeAmountMinor: amountMinor,
                             description,
                             category: nextCategory,
+                            occurredAt,
                           });
                           void (async () => {
                             try {
@@ -635,6 +686,8 @@ export function MovementsScreen({
                                 amount: editAmount,
                                 description: editDescription,
                                 category: nextCategory,
+                                date: editDate,
+                                keepTimeFrom: tx.occurredAt,
                               });
                               if (!result.ok) {
                                 applyMovementsEdit(tx.id, previous);
@@ -774,6 +827,9 @@ export function MovementsScreen({
                               setEditAmount(minorToUi(prefill.amountMinor));
                               setEditDescription(tx.description);
                               setEditCategory(tx.category ?? "");
+                              setEditDate(
+                                isoToDateInput(tx.occurredAt, view.timeZone),
+                              );
                               setActionError(null);
                             }}
                           >
@@ -795,7 +851,7 @@ export function MovementsScreen({
                       amountMinor={signed}
                       currency={tx.currency}
                       size="sm"
-                      tone="signed"
+                      tone="neutral"
                       wrap={false}
                     />
                   </span>

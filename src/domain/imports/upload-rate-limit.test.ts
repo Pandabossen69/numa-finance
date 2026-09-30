@@ -78,9 +78,18 @@ describe("hourly image cap", () => {
     expect(cap).toContain("uploadRateLimitRetryAt");
     expect(cap).toContain("new UploadRateLimitError");
     expect(src).toContain("uploadLimitFlags");
-    expect(src).toContain("const recordedAt = new Date().toISOString()");
-    expect(src).toContain("started_at: recordedAt");
-    expect(src).toContain("finished_at: recordedAt");
+    expect(src).toContain("const startedAt = new Date().toISOString()");
+    expect(src).toContain("const finishedAt = new Date().toISOString()");
+    expect(src.indexOf("const startedAt = new Date().toISOString()")).toBeLessThan(
+      src.indexOf("await provider.extract"),
+    );
+    expect(src.indexOf("await provider.extract")).toBeLessThan(
+      src.indexOf("const finishedAt = new Date().toISOString()"),
+    );
+    expect(src).toContain("started_at: startedAt");
+    expect(src).toContain("finished_at: finishedAt");
+    expect(src).not.toContain("started_at: recordedAt");
+    expect(src).not.toContain("finished_at: recordedAt");
     expect(cap).not.toContain("För många bilder");
     expect(cap).not.toContain("Försök igen");
     expect(src).not.toContain(

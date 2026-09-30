@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
+import { usesAlarmColor } from "@/components/ui/amount-tone";
 import type { CurrencyCode } from "@/domain/money";
 
 type Tone = "positive" | "danger" | "alarm";
@@ -52,6 +53,7 @@ export function MetricRow({
             size="md"
             compact
             align="end"
+            tone={usesAlarmColor(amountMinor) ? "signed" : "neutral"}
             wrap={false}
           />
         ) : (

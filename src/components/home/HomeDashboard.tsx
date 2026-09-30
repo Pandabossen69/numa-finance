@@ -268,7 +268,7 @@ export function HomeDashboard({
                   <div className="flex flex-col items-center gap-1.5">
                     <DayDial usedRatio={dayUsedRatio} over={overToday}>
                       {overToday ? (
-                        <p className="numa-chip numa-chip-alarm mb-2">Över</p>
+                        <p className="numa-chip numa-chip-ink mb-2">Över</p>
                       ) : (
                         <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[var(--numa-accent)] uppercase">
                           Kvar
@@ -288,9 +288,7 @@ export function HomeDashboard({
                           currency={currency}
                           size="display"
                           compact
-                          tone={
-                            overToday || remainingTodayMinor < 0 ? "signed" : "neutral"
-                          }
+                          tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
                           wrap={false}
                         />
                       </div>
@@ -366,13 +364,7 @@ export function HomeDashboard({
                     </div>
                     <div className="is-spent">
                       <p className="numa-metric-label">{SV.spenderatIdag}</p>
-                      <div
-                        className={`numa-metric-value ${
-                          overToday
-                            ? "text-[var(--numa-alarm)]"
-                            : "text-[var(--numa-ink)]"
-                        }`}
-                      >
+                      <div className="numa-metric-value text-[var(--numa-ink)]">
                         <MoneyDisplay
                           amountMinor={todaySpendingMinor}
                           currency={currency}

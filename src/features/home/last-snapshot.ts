@@ -38,6 +38,7 @@ import {
   readLastHomeCookieFromDocument,
   writeLastHomeCookie,
 } from "@/features/home/last-home-cookie";
+import { expenseHomeDeltas } from "@/features/home/expense-date-delta";
 import {
   accountsLastKnownCanPaint,
   decideAccountsLastKnown,
@@ -1487,6 +1488,21 @@ function applyHomeForExpenseDelta(item: MovementRow, amountDelta: number) {
   applyOptimisticHomeIncome(-amountDelta);
 }
 
+function applyHomeForExpenseEdit(previous: MovementRow, next: MovementRow) {
+  const timeZone = home?.timeZone ?? movements?.timeZone ?? "Asia/Bangkok";
+  const now = new Date();
+  const split = expenseHomeDeltas({
+    prevMinor: previous.amountMinor,
+    nextMinor: next.amountMinor,
+    prevToday: isSameZonedDay(previous.occurredAt, now, timeZone),
+    nextToday: isSameZonedDay(next.occurredAt, now, timeZone),
+  });
+  if (split.todayDelta !== 0) applyOptimisticHomeSpend(split.todayDelta);
+  if (split.balanceIncomeDelta !== 0) {
+    applyOptimisticHomeIncome(split.balanceIncomeDelta);
+  }
+}
+
 /** Mottagen / Betald: move saldo and drop the matching pile so Över stays still. */
 export function applyOptimisticPlanSettle(input: {
   saldoDeltaMinor: number;
@@ -2013,6 +2029,7 @@ export function applyMovementsEdit(
     category?: string | null;
     nativeAmountMinor?: number;
     thbMinor?: number;
+    occurredAt?: string;
   },
 ): MovementsSnapshot | null {
   if (!movements) return null;
@@ -2031,6 +2048,7 @@ export function applyMovementsEdit(
     nativeAmountMinor: nextNative,
     description: patch.description,
     category: patch.category === undefined ? item.category : patch.category,
+    occurredAt: patch.occurredAt ?? item.occurredAt,
   };
   const balanceDelta =
     movementBalanceDelta(nextItem) - movementBalanceDelta(item);
@@ -2047,7 +2065,7 @@ export function applyMovementsEdit(
     signedNativeDelta(item, item.nativeAmountMinor ?? item.amountMinor);
   applyAccountDelta(nativeDelta, item.accountId);
   if (item.transactionType === "expense") {
-    applyHomeForExpenseDelta(item, nextItem.amountMinor - item.amountMinor);
+    applyHomeForExpenseEdit(item, nextItem);
   } else if (item.transactionType === "income") {
     applyOptimisticHomeIncome(nextItem.amountMinor - item.amountMinor);
   }

@@ -13,6 +13,7 @@ import {
   QuickAddForms,
   type ShellAccount,
 } from "@/components/add/QuickAddForms";
+import { PlanDateField } from "@/components/plan/PlanDateField";
 import {
   confirmReceiptExpenseAction,
   deleteObservationAction,
@@ -993,19 +994,11 @@ export function ReceiptCaptureFlow({
           <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
             Datum
           </span>
-          <input
-            type="date"
-            aria-label="Datum"
+          <PlanDateField
+            ariaLabel="Datum"
             value={dateValue}
             max={today}
-            onChange={(e) =>
-              setDateOn(clampCaptureDateInput(e.target.value, today))
-            }
-            onBlur={(e) =>
-              setDateOn(clampCaptureDateInput(e.target.value, today))
-            }
-            className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
-            required
+            onChange={(next) => setDateOn(clampCaptureDateInput(next, today))}
           />
         </label>
       </div>

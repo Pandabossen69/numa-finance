@@ -2,6 +2,8 @@ import {
   formatListDateSv,
   isInPayCycleWindow,
   monthKeyFromDate,
+  projectPayCycle,
+  type PlanItem,
 } from "@/domain/finance";
 import type { MovementRow } from "@/features/finance/load-movements";
 import type {
@@ -97,4 +99,38 @@ export function payCycleRangeLabelSv(
   const start = formatListDateSv(startAt, timeZone);
   if (!endAt || !Number.isFinite(Date.parse(endAt))) return start;
   return `${start} – ${formatListDateSv(endAt, timeZone)}`;
+}
+
+/**
+ * Current pay cycle for the Perioden chip.
+ *
+ * A loaded plan wins, including an empty plan (no chip). Analys and the
+ * movements snapshot are only fallbacks when plan items are not in memory yet.
+ * The result is not written into the saved Rörelser view.
+ */
+export function resolveMovementsPayCycle(input: {
+  planItems?: readonly PlanItem[] | null;
+  timeZone: string;
+  now?: Date;
+  analysStartAt?: string | null;
+  analysEndAt?: string | null;
+  snapshotStartAt?: string | null;
+  snapshotEndAt?: string | null;
+}): { startAt: string; endAt: string | null } | null {
+  if (input.planItems) {
+    const cycle = projectPayCycle(
+      [...input.planItems],
+      input.now ?? new Date(),
+      input.timeZone,
+    );
+    if (!cycle.startAt) return null;
+    return { startAt: cycle.startAt, endAt: cycle.endAt };
+  }
+  const startAt = input.analysStartAt ?? input.snapshotStartAt ?? null;
+  if (!startAt || !Number.isFinite(Date.parse(startAt))) return null;
+  const endAt = input.analysEndAt ?? input.snapshotEndAt ?? null;
+  return {
+    startAt,
+    endAt: endAt && Number.isFinite(Date.parse(endAt)) ? endAt : null,
+  };
 }

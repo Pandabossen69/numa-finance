@@ -12,7 +12,9 @@ describe("Hem PWA hint and HIGH copy", () => {
 
   it("keeps the signed Över chip on the dial", () => {
     expect(src).toContain("Över");
-    expect(src).toContain("numa-chip-alarm");
+    expect(src).toContain("numa-chip-ink");
+    expect(src).toContain('remainingTodayMinor < 0');
+    expect(src).not.toContain("numa-chip-alarm");
   });
 
   it("shows the Hem-shaped skeleton while snapshot is empty", () => {

@@ -4,8 +4,10 @@ import {
   cycleWindowTotals,
   movementVisibleInRorelser,
   payCycleRangeLabelSv,
+  resolveMovementsPayCycle,
   type MovementsWindow,
 } from "./movements-window";
+import type { PlanItem } from "@/domain/finance";
 
 const CYCLE_START = "2026-09-03T00:00:00.000Z";
 const CYCLE_END = "2026-10-25T00:00:00.000Z";
@@ -149,5 +151,56 @@ describe("payCycleRangeLabelSv", () => {
     expect(label?.toLowerCase()).toContain("okt");
     expect(label).toContain("–");
     expect(payCycleRangeLabelSv(null, CYCLE_END, "Asia/Bangkok")).toBeNull();
+  });
+});
+
+function income(nextDueAt: string): PlanItem {
+  return {
+    id: "inc",
+    userId: "u1",
+    name: "Lön",
+    kind: "expected",
+    amountMinor: 30_000_00,
+    currency: "THB",
+    cadence: "income",
+    nextDueAt,
+    isActive: true,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+describe("resolveMovementsPayCycle", () => {
+  it("shows the current pay cycle from plan items without an Analys drill", () => {
+    const cycle = resolveMovementsPayCycle({
+      planItems: [income("2026-09-01T05:00:00.000Z")],
+      timeZone: "Asia/Bangkok",
+      now: new Date("2026-09-15T05:00:00.000Z"),
+      analysStartAt: null,
+      analysEndAt: null,
+    });
+    expect(cycle?.startAt).toBeTruthy();
+    expect(cycle?.startAt).not.toBe("2099-01-01T00:00:00.000Z");
+  });
+
+  it("does not fall back to a stale analys window when the plan has no income", () => {
+    expect(
+      resolveMovementsPayCycle({
+        planItems: [],
+        timeZone: "Asia/Bangkok",
+        analysStartAt: CYCLE_START,
+        analysEndAt: CYCLE_END,
+      }),
+    ).toBeNull();
+  });
+
+  it("uses the movements snapshot when plan items are not loaded yet", () => {
+    expect(
+      resolveMovementsPayCycle({
+        timeZone: "Asia/Bangkok",
+        snapshotStartAt: CYCLE_START,
+        snapshotEndAt: CYCLE_END,
+      }),
+    ).toEqual({ startAt: CYCLE_START, endAt: CYCLE_END });
   });
 });

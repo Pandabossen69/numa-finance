@@ -234,6 +234,40 @@ export function occurredAtOnCalendarDay(input: {
   return clampOccurredAt(iso, now);
 }
 
+/** Latest calendar day a movement may use: today in `timeZone`, never tomorrow. */
+export function maxBookableCalendarDate(
+  now: Date = new Date(),
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return calendarDateInZone(now, timeZone);
+}
+
+/**
+ * `occurred_at` for a date the user picked.
+ *
+ * The civil day is the calendar day in `timeZone` (profile default
+ * Asia/Bangkok), not the UTC date of the host. A future day is clamped to
+ * today so the stored instant cannot land on tomorrow.
+ */
+export function occurredAtForBookedDay(input: {
+  ymd: string;
+  timeZone?: string;
+  now?: Date;
+  keepTimeFrom?: string | null;
+}): string {
+  const timeZone = input.timeZone || DEFAULT_TIMEZONE;
+  const now = input.now ?? new Date();
+  const today = maxBookableCalendarDate(now, timeZone);
+  const raw = input.ymd.trim();
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? (raw > today ? today : raw) : today;
+  return occurredAtOnCalendarDay({
+    ymd,
+    timeZone,
+    now,
+    keepTimeFrom: input.keepTimeFrom,
+  });
+}
+
 /**
  * Interpret a naive wall-clock `YYYY-MM-DDTHH:mm[:ss]` as local time in
  * `timeZone` and return an absolute ISO string. Prevents evening Bangkok

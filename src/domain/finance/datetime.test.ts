@@ -8,7 +8,9 @@ import {
   formatListDateSv,
   isCalendarDate,
   isoToDateInput,
+  maxBookableCalendarDate,
   nextCommittedCalendarDate,
+  occurredAtForBookedDay,
   formatRelativeVerificationSv,
   isSameZonedDay,
   snapshotLedgerWindow,
@@ -272,5 +274,37 @@ describe("isoToDateInput (Asia/Bangkok)", () => {
     expect(nextCommittedCalendarDate("2026-08-25", "2026-08-25")).toBe(null);
     expect(nextCommittedCalendarDate("", "2026-08-25")).toBe(null);
     expect(nextCommittedCalendarDate("2026-08", "2026-08-25")).toBe(null);
+  });
+});
+
+describe("booked calendar day", () => {
+  it("refuses a future day and keeps today in Asia/Bangkok", () => {
+    const now = new Date("2026-09-24T18:00:00.000Z");
+    expect(maxBookableCalendarDate(now, tz)).toBe("2026-09-25");
+    expect(
+      occurredAtForBookedDay({
+        ymd: "2026-09-26",
+        timeZone: tz,
+        now,
+      }).slice(0, 10),
+    ).not.toBe("2026-09-26");
+    const booked = occurredAtForBookedDay({
+      ymd: "2026-09-26",
+      timeZone: tz,
+      now,
+    });
+    expect(isoToDateInput(booked, tz)).toBe("2026-09-25");
+  });
+
+  it("stores a past Bangkok day at local noon, not the previous UTC date", () => {
+    const now = new Date("2026-09-24T18:00:00.000Z");
+    const booked = occurredAtForBookedDay({
+      ymd: "2026-09-24",
+      timeZone: tz,
+      now,
+    });
+    expect(isoToDateInput(booked, tz)).toBe("2026-09-24");
+    expect(Date.parse(booked)).toBe(Date.parse("2026-09-24T05:00:00.000Z"));
+    expect(booked.startsWith("2026-09-24")).toBe(true);
   });
 });

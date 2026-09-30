@@ -329,7 +329,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("senasteRowCategoryLabel(tx)");
     expect(src).toContain('<span className="truncate">{categoryLabel}</span>');
     expect(src).not.toContain("categoryLabel ? (");
-    expect(src).toContain('tone="signed"');
+    expect(src).toContain('tone="neutral"');
     expect(src).not.toContain("{tx.category ? (");
     expect(src).toContain("ovrigtDominatesSpend(categories)");
     expect(src).toContain("SV.analysCategoryDrillHint");

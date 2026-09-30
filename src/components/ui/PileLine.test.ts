@@ -14,11 +14,11 @@ describe("PileLine cash rows", () => {
     expect(src).not.toContain('size="lg"');
   });
 
-  it("colors Över as over/short without changing type size", () => {
+  it("colors Över as over/short and amounts under 0, without a spend color on ut", () => {
     expect(src).toContain('tone === "over"');
     expect(src).toContain('tone === "short"');
-    expect(src).toContain(
-      'tone={tone === "over" || tone === "short" ? "signed" : "neutral"}',
-    );
+    expect(src).toContain("usesAlarmColor(amountMinor)");
+    expect(src).toContain('? "signed"');
+    expect(src).not.toContain("numa-amt-out");
   });
 });

@@ -1202,6 +1202,7 @@ export async function uploadReceiptAndExtract(input: {
     : input.preferBankApp
       ? "bank_app"
       : null;
+  const startedAt = nowIso();
   const extraction = await provider.extract({
     observationId,
     storagePath,
@@ -1209,6 +1210,7 @@ export async function uploadReceiptAndExtract(input: {
     mimeType: input.mimeType,
     institutionHint,
   });
+  const finishedAt = nowIso();
 
   const known = await listConfirmedFingerprints();
   const stored = await readStore();
@@ -1302,8 +1304,8 @@ export async function uploadReceiptAndExtract(input: {
         tipBalanceAfterMinor:
           resolved.kind === "bank_sms" ? resolved.balanceAfterMinor : null,
       },
-      startedAt: ts,
-      finishedAt: ts,
+      startedAt,
+      finishedAt,
     };
     s.extractionRuns.push(run);
 
