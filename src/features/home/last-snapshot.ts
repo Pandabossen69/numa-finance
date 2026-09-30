@@ -1235,6 +1235,29 @@ export function rememberMovementsView(view: MovementsView) {
   emit(movementsViewListeners);
 }
 
+/**
+ * Mer → Rörelser opens the full list (All tid, Alla, no category).
+ * Pay-cycle bounds stay so the Perioden chip can be chosen again.
+ */
+export function movementsViewForMenuEntry(
+  existing: MovementsView | null,
+): MovementsView {
+  return {
+    filter: "all",
+    period: "all",
+    category: null,
+    cycleStartAt: existing?.cycleStartAt ?? null,
+    cycleEndAt: existing?.cycleEndAt ?? null,
+  };
+}
+
+/** Commit the Mer menu default. Notifies a parked Rörelser panel. */
+export function resetMovementsViewForMenuEntry(): MovementsView {
+  const next = movementsViewForMenuEntry(movementsView);
+  rememberMovementsView(next);
+  return next;
+}
+
 export function subscribeMovementsView(listener: () => void) {
   movementsViewListeners.add(listener);
   return () => {

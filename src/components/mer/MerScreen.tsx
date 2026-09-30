@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { flushSync } from "react-dom";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
   IconGear,
@@ -25,6 +26,7 @@ import {
   ensurePaintableMerSnapshot,
   lastMerSnapshot,
   rememberMerSnapshot,
+  resetMovementsViewForMenuEntry,
 } from "@/features/home/last-snapshot";
 import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
 import { DestinationWarmup } from "@/lib/nav/prefetch-intent";
@@ -93,6 +95,24 @@ export const MER_WARM_HREFS = [
   "/konton/ny",
 ] as const;
 
+/** All tid / Alla before NavIntent reveals the parked Rörelser panel. */
+function openRorelserFromMer() {
+  flushSync(() => {
+    resetMovementsViewForMenuEntry();
+  });
+}
+
+function isPlainPrimary(event: Event): boolean {
+  if (!(event instanceof MouseEvent)) return false;
+  return (
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
+}
+
 export function MerScreen({
   data,
 }: {
@@ -101,6 +121,25 @@ export function MerScreen({
   useEffect(() => {
     if (data) rememberMerSnapshot(data);
   }, [data]);
+
+  // NavIntent paints Rörelser on document-capture pointerdown, before the
+  // link's own handler. Window capture commits All tid / Alla first so a
+  // parked panel does not keep an Analys category drill.
+  useLayoutEffect(() => {
+    function onActivate(event: Event) {
+      if (!isPlainPrimary(event)) return;
+      if (!(event.target instanceof Element)) return;
+      if (event.target.closest("[data-mer-movements]") == null) return;
+      openRorelserFromMer();
+    }
+    window.addEventListener("pointerdown", onActivate, true);
+    window.addEventListener("click", onActivate, true);
+    return () => {
+      window.removeEventListener("pointerdown", onActivate, true);
+      window.removeEventListener("click", onActivate, true);
+    };
+  }, []);
+
   const view = data ?? lastMerSnapshot() ?? ensurePaintableMerSnapshot();
 
   if (!view) return <MerViewLoading />;
@@ -143,6 +182,11 @@ export function MerScreen({
                     hint={item.hint}
                     icon={item.icon}
                     tone={item.tone}
+                    beforeIntent={
+                      item.href === "/transaktioner"
+                        ? openRorelserFromMer
+                        : undefined
+                    }
                   />
                 ))}
               </MerListGroup>

@@ -144,6 +144,22 @@ export function MerAvatar({
   );
 }
 
+function isPlainPrimary(event: {
+  button: number;
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+}): boolean {
+  return (
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
+  );
+}
+
 export function MerListLink({
   href,
   label,
@@ -151,6 +167,7 @@ export function MerListLink({
   trailing,
   icon,
   tone = "neutral",
+  beforeIntent,
 }: {
   href: string;
   label: string;
@@ -158,6 +175,11 @@ export function MerListLink({
   trailing?: ReactNode;
   icon?: ReactNode;
   tone?: MerIconTone;
+  /**
+   * Runs before prefetch and markIntent on a plain primary tap.
+   * Only Mer → Rörelser passes this — other rows must not.
+   */
+  beforeIntent?: () => void;
 }) {
   const { prefetch: prefetchHref } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
@@ -165,13 +187,16 @@ export function MerListLink({
     <Link
       href={href}
       prefetch={false}
-      onPointerDown={() => {
+      data-mer-movements={beforeIntent ? "" : undefined}
+      onPointerDown={(event) => {
+        if (isPlainPrimary(event)) beforeIntent?.();
         prefetchHref(href);
         if (isHoldRoot(href)) markIntent(href);
       }}
       onMouseEnter={() => prefetchHref(href)}
       onFocus={() => prefetchHref(href)}
-      onClick={() => {
+      onClick={(event) => {
+        if (isPlainPrimary(event)) beforeIntent?.();
         if (isHoldRoot(href)) markIntent(href);
       }}
       className="group flex min-h-[3.25rem] items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3.5 last:border-b-0 numa-press hover:bg-[var(--numa-card)] active:bg-[var(--numa-accent-soft)]"
