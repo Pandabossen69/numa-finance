@@ -1,14 +1,25 @@
----
-description: After NUMA changes — preview deploy, test plan, next step
-alwaysApply: true
----
-
 # NUMA delivery workflow
+
+Hugo does not run SQL, Vercel, GitHub, or git himself. The agent does.
 
 After finishing a set of product changes:
 
-1. **Preview** — Ask once: "Ska jag pusha till preview?" If the user already said to push/deploy, commit and push the current branch so Vercel builds a preview. Do not deploy to production unless explicitly asked.
-2. **Test plan** — Before suggesting the next step, list concrete things Hugo should verify (screens, flows, edge cases).
-3. **Next step** — Briefly explain what the next recommended step is and why.
+1. **Apply setup yourself**
+   - NUMA SQL/migrations: apply via Supabase MCP to project `hadrtlancgopyyshwhyd` (schema `numa`). Do not ask Hugo to paste SQL unless MCP failed.
+   - Vercel env/domains: use Vercel MCP. Do not ask Hugo to click around unless a secret only he has is missing.
+2. **Always push** the current feature branch so Vercel builds a preview. Do not wait for Hugo to say “pusha”.
+3. **GitHub is the agent’s job**
+   - Create/update the PR. Do not ask Hugo to open GitHub, click Approve, Squash and merge, or Merge.
+   - Cursor’s GitHub App cannot submit `APPROVE` reviews (403). That is fine unless branch protection *requires* a human review. Only then put it in “Du behöver göra detta”.
+   - Merge to `main` yourself after he picks **produktion** (`git fetch` + merge + `git push origin main`). Never tell him to squash-merge in the GitHub UI.
+   - After **preview**, leave the branch unmerged.
+4. **Ask once: Preview eller produktion?**
+   - **Preview** = leave the work on the feature branch / preview URL. Do **not** merge to `main`.
+   - **Produktion** = merge to `main` so `https://numa-finance.vercel.app` updates. Only merge after he explicitly picks production.
+   - Always ask. Never assume. Never merge to production without that answer.
+5. **Test plan** — Before suggesting the next step, list concrete things Hugo should verify (screens, flows, edge cases).
+6. **Next step** — Briefly explain what the next recommended step is and why.
 
 Never skip the test plan + next step when wrapping up UI/product work.
+Never skip the preview-vs-produktion question.
+Never ask Hugo to approve or squash-merge a PR on GitHub.
