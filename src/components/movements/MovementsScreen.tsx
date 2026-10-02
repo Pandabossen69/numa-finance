@@ -837,7 +837,7 @@ export function MovementsScreen({
                           </button>
                           <button
                             type="button"
-                            className="numa-press numa-tap px-1 text-xs text-[var(--numa-muted)]"
+                            className="numa-press numa-tap px-1 text-xs text-[var(--numa-danger)]"
                             onClick={() => setConfirmId(tx.id)}
                           >
                             Ta bort

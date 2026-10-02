@@ -266,7 +266,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("SV.analysEmptyPeriod");
   });
 
-  it("explains Överskott mot planen inline without a tap", () => {
+  it("explains Plus mot planen inline without a tap", () => {
     expect(src).toContain("SV.overskottMotPlanenHint");
     expect(src).toContain("LeftoverVsPlanHint");
     expect(src).toContain("text-[12px] leading-snug text-[var(--numa-faint)]");

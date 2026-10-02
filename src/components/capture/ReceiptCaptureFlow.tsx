@@ -1069,7 +1069,7 @@ export function ReceiptCaptureFlow({
         </button>
         <button
           type="button"
-          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
+          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-danger)]"
           aria-label="Radera uppladdad bild"
           onClick={() => {
             const observationId = preview.observationId;
