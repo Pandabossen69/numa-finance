@@ -1658,7 +1658,7 @@ describe("last view memory", () => {
           transactionType: "expense",
           direction: "debit",
           status: "confirmed",
-          occurredAt: "2026-09-18T04:00:00.000Z",
+          occurredAt: "2026-10-01T05:00:00.000Z",
           description: "Lunch",
         },
       ] as PlanSnapshot["ledgerTransactions"],

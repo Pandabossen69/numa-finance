@@ -240,7 +240,7 @@ describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
           transactionType: "expense",
           direction: "debit",
           status: "confirmed",
-          occurredAt: "2026-09-18T04:00:00.000Z",
+          occurredAt: "2026-10-01T05:00:00.000Z",
           description: "Lunch",
         },
       ] as PlanSnapshot["ledgerTransactions"],
@@ -255,7 +255,7 @@ describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
     expect(analysSnapshotHasDatapaint(upgraded)).toBe(true);
     expect(isThinAnalysSnapshot(upgraded)).toBe(false);
     expect(upgraded?.ledgerTransactions.map((tx) => tx.id)).toEqual(["tx-bar"]);
-    expect(upgraded?.categoriesByMonthKey["2026-09"]?.[0]?.amountMinor).toBe(
+    expect(upgraded?.categoriesByMonthKey["2026-10"]?.[0]?.amountMinor).toBe(
       175_00,
     );
     expect(lastAnalysSnapshot()).toBe(upgraded);
@@ -290,7 +290,7 @@ describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
       transactionType: "expense" as const,
       direction: "debit" as const,
       status: "confirmed" as const,
-      occurredAt: "2026-09-18T04:00:00.000Z",
+      occurredAt: "2026-10-01T05:00:00.000Z",
       description: "Now",
     };
     const fatPlan: PlanSnapshot = {
