@@ -21,6 +21,7 @@ describe("ManageAccountForm", () => {
   it("offers Ta bort konto on every active account, confirmed before the write", () => {
     expect(src).toContain("removeAccountAction");
     expect(src).toContain("Ta bort konto");
+    expect(src).toContain("!text-[var(--numa-danger)]");
     expect(src).toContain('{busy ? "Tar bort…" : "Ta bort"}');
     expect(src).toContain("Avbryt");
     expect(src).toContain("adoptRemovedAccount");
