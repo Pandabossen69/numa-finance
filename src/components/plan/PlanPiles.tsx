@@ -105,7 +105,7 @@ export function PlanPiles({
               </p>
             </div>
             <span
-              className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
+              className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-ink"}`}
             >
               {overChip}
             </span>

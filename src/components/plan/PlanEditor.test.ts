@@ -174,7 +174,7 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("is-partial");
     // The chip's words and colour live in one module that Analys shares.
     expect(chip).toContain("numa-chip numa-chip-mint");
-    expect(chip).toContain("numa-chip numa-chip-spend");
+    expect(chip).toContain("numa-chip numa-chip-ink");
     expect(rows).toContain("planChipClass(status)");
     expect(rows).toContain("planChipLabel(status, settleKind)");
     expect(rows).toContain("<button");

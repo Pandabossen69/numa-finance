@@ -266,7 +266,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("SV.analysEmptyPeriod");
   });
 
-  it("explains Överskott mot planen inline without a tap", () => {
+  it("explains Plus mot planen inline without a tap", () => {
     expect(src).toContain("SV.overskottMotPlanenHint");
     expect(src).toContain("LeftoverVsPlanHint");
     expect(src).toContain("text-[12px] leading-snug text-[var(--numa-faint)]");
@@ -329,7 +329,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("senasteRowCategoryLabel(tx)");
     expect(src).toContain('<span className="truncate">{categoryLabel}</span>');
     expect(src).not.toContain("categoryLabel ? (");
-    expect(src).toContain('tone="signed"');
+    expect(src).toContain('tone="neutral"');
     expect(src).not.toContain("{tx.category ? (");
     expect(src).toContain("ovrigtDominatesSpend(categories)");
     expect(src).toContain("SV.analysCategoryDrillHint");

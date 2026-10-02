@@ -2186,6 +2186,7 @@ export async function uploadReceiptAndExtract(input: {
 
   const provider = createExtractionProvider();
   const imageBase64 = Buffer.from(input.bytes).toString("base64");
+  const startedAt = new Date().toISOString();
   const extraction = await provider.extract({
     observationId: "pending",
     storagePath,
@@ -2193,6 +2194,7 @@ export async function uploadReceiptAndExtract(input: {
     mimeType: input.mimeType,
     institutionHint,
   });
+  const finishedAt = new Date().toISOString();
 
   // Only confirmed ledger fingerprints count as "already imported".
   // Pending needs_review from abandoned scans must not block re-import.
@@ -2264,7 +2266,6 @@ export async function uploadReceiptAndExtract(input: {
   });
   const runStatus =
     extraction.provider === "none" || limitFlags.ocrFailed ? "failed" : "succeeded";
-  const recordedAt = new Date().toISOString();
   const { data: runRow, error: runError } = await supabase
     .from("extraction_runs")
     .insert({
@@ -2280,8 +2281,8 @@ export async function uploadReceiptAndExtract(input: {
         tipBalanceAfterMinor:
           resolved.kind === "bank_sms" ? resolved.balanceAfterMinor : null,
       },
-      started_at: recordedAt,
-      finished_at: recordedAt,
+      started_at: startedAt,
+      finished_at: finishedAt,
     })
     .select("*")
     .single();

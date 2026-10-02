@@ -366,7 +366,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
               setError(null);
               setConfirmRemove(true);
             }}
-            className="numa-btn numa-btn-soft min-h-14 w-full text-[var(--numa-danger)]"
+            className="numa-btn numa-btn-soft min-h-14 w-full !text-[var(--numa-danger)]"
           >
             Ta bort konto
           </button>

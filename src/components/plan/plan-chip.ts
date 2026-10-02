@@ -20,5 +20,5 @@ export function planChipLabel(
 export function planChipClass(status: PlanListStatus): string {
   return status === "settled"
     ? "numa-chip numa-chip-mint"
-    : "numa-chip numa-chip-spend";
+    : "numa-chip numa-chip-ink";
 }

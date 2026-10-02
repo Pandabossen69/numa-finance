@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./MovementsScreen.tsx", import.meta.url), "utf8");
 
 describe("Rörelser expense color", () => {
-  it("paints Utgifter and negative Netto in clay alarm", () => {
+  it("paints Utgifter neutral and negative Netto in clay alarm", () => {
     expect(src).toContain('label="Utgifter"');
-    expect(src).toContain('tone="alarm"');
+    expect(src).toContain('tone="neutral"');
     expect(src).toContain('tone={net >= 0 ? "positive" : "alarm"}');
+    expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,120}tone="alarm"/);
     expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,80}tone="danger"/);
   });
 
@@ -17,6 +18,17 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("disabled={pendingAction != null}");
     expect(src).toContain('{pendingAction === "save" ? "Sparar…" : "Spara"}');
     expect(src).toContain('{pendingAction === "void" ? "Tar bort…" : "Ta bort"}');
+  });
+
+  it("paints row Ta bort and the confirm with the danger token", () => {
+    const at = src.indexOf("setConfirmId(tx.id)");
+    const row = src.slice(at - 180, at + 160);
+    expect(row).toContain("text-[var(--numa-danger)]");
+    expect(row).toMatch(/>\s*Ta bort\s*</);
+    expect(row).not.toContain("text-[var(--numa-muted)]");
+    expect(src).toContain(
+      'className="numa-press numa-tap px-1 text-xs font-semibold text-[var(--numa-danger)]"',
+    );
   });
 
   it("asks for an in-DOM confirm before Ta bort", () => {

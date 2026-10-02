@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
@@ -16,6 +16,10 @@ import {
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
+import {
+  settledHomeEpoch,
+  subscribeSettledHomeEpoch,
+} from "@/features/home/invalidate-settled-home";
 
 /**
  * Client-first Hem — same NextStep pattern as Plan/Analys.
@@ -40,13 +44,28 @@ export function HemRouteClient({
     lastGettingStarted,
   );
   const [error, setError] = useState<string | null>(null);
+  const settleEpoch = useSyncExternalStore(
+    subscribeSettledHomeEpoch,
+    settledHomeEpoch,
+    () => 0,
+  );
+  const seenSettleEpoch = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
+    const epochAtStart = settleEpoch;
+    const force =
+      epochAtStart > 0 && epochAtStart !== seenSettleEpoch.current;
     void getHomeSnapshotAction().then((result) => {
-      if (cancelled) return;
+      if (cancelled || settledHomeEpoch() !== epochAtStart) return;
       if (result.ok) {
-        if (!isHomeDirty()) rememberHomeSnapshot(result.data);
+        if (force || !isHomeDirty()) {
+          rememberHomeSnapshot(
+            result.data,
+            force ? { force: true } : undefined,
+          );
+        }
+        seenSettleEpoch.current = epochAtStart;
         setError(null);
         scheduleQuietMenuWarm();
         clearLoginBoot();
@@ -58,7 +77,7 @@ export function HemRouteClient({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [settleEpoch]);
 
   useEffect(() => {
     if (stored) {

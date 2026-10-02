@@ -445,7 +445,7 @@ export function AnalysDashboard({
                       amountMinor={signed}
                       currency={tx.currency}
                       size="sm"
-                      tone="signed"
+                      tone="neutral"
                       wrap={false}
                     />
                   </span>

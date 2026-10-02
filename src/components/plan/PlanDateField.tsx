@@ -3,38 +3,57 @@
 import { formatIsoDateOnlySv } from "@/domain/finance";
 import { commitCalendarDate } from "@/components/plan/plan-format";
 
+function clampBookableYmd(raw: string, max?: string): string {
+  if (!max || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  return raw > max ? max : raw;
+}
+
 export function PlanDateField({
   value,
   onChange,
   ariaLabel,
+  max,
 }: {
   value: string;
   onChange: (value: string) => void;
   ariaLabel: string;
+  /** Inclusive latest day, `YYYY-MM-DD` in the user's timezone. */
+  max?: string;
 }) {
+  const shown = max && value > max ? max : value;
   return (
     <div className="relative min-h-11 min-w-[9.5rem]">
       <div
         aria-hidden
         className="pointer-events-none flex min-h-11 w-full items-center rounded-xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-left text-sm"
+        lang="sv-SE"
       >
-        <span className={value ? "font-medium" : "text-[var(--numa-faint)]"}>
-          {value ? formatIsoDateOnlySv(value) : "ÅÅÅÅ-MM-DD"}
+        <span className={shown ? "font-medium" : "text-[var(--numa-faint)]"}>
+          {shown ? formatIsoDateOnlySv(shown) : "ÅÅÅÅ-MM-DD"}
         </span>
       </div>
       {/*
         Native input is the hit target so iOS and desktop both commit the
         tapped day. Do not stretch ::-webkit-calendar-picker-indicator or
         call preventDefault — those stop Chromium from writing input.value.
+        lang=sv-SE keeps the picker and the overlay on a Swedish day, never
+        a US 09/25/2026 string.
       */}
       <input
         type="date"
         lang="sv-SE"
-        value={value}
+        value={shown}
+        max={max}
         aria-label={ariaLabel}
-        onChange={(e) => commitCalendarDate(e.target.value, value, onChange)}
+        onChange={(e) =>
+          commitCalendarDate(clampBookableYmd(e.target.value, max), shown, onChange)
+        }
         onInput={(e) =>
-          commitCalendarDate((e.target as HTMLInputElement).value, value, onChange)
+          commitCalendarDate(
+            clampBookableYmd((e.target as HTMLInputElement).value, max),
+            shown,
+            onChange,
+          )
         }
         className="numa-date-input"
       />

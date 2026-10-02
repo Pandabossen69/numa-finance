@@ -49,6 +49,7 @@ import {
 } from "@/features/home/last-snapshot";
 import { newClientMutationId, thbToNativeMinor } from "@/domain/finance";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
+import { invalidateSettledHomeSurfaces } from "@/features/home/invalidate-settled-home";
 import {
   ensurePlanMonthPaint,
   ensurePlanMonthSuggestions,
@@ -639,6 +640,7 @@ export function PlanEditor({
           clientMutationId: newClientMutationId(),
         }),
       reconcile: (rows, result) => {
+        invalidateSettledHomeSurfaces();
         adoptMutationFinance(result);
         return result.item ? mergeReturnedItem(rows, result.item) : rows;
       },
@@ -751,8 +753,13 @@ export function PlanEditor({
           amount: amountRaw,
           date: pickedDate,
         }),
-      reconcile: (rows, result) =>
-        result.item ? mergeReturnedItem(rows, result.item) : rows,
+      reconcile: (rows, result) => {
+        if (result.home || result.plan || result.refreshPending) {
+          invalidateSettledHomeSurfaces();
+          adoptMutationFinance(result);
+        }
+        return result.item ? mergeReturnedItem(rows, result.item) : rows;
+      },
     }).then((ok) => {
       if (ok) setEditingId(null);
     });

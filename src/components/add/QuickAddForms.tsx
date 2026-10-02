@@ -11,10 +11,14 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import {
+  calendarDateInZone,
   createStableMutationId,
+  DEFAULT_TIMEZONE,
   nativeToThbMinor,
   newClientMutationId,
+  occurredAtForBookedDay,
 } from "@/domain/finance";
+import { clampCaptureDateInput } from "@/domain/imports/capture-review";
 import {
   confirmOptimisticQuickAdd,
   paintOptimisticQuickAdd,
@@ -24,8 +28,11 @@ import {
   adoptMutationFinance,
   applyLocalTransfer,
   confirmOptimisticFinance,
+  lastHomeSnapshot,
+  subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { ChipStrip } from "@/components/ui/ChipStrip";
+import { PlanDateField } from "@/components/plan/PlanDateField";
 import { userFacingSaveError } from "@/lib/net/offline-save";
 import {
   isCashAccount,
@@ -59,6 +66,48 @@ function subscribeLastExpenseCategory(onStoreChange: () => void) {
   };
   window.addEventListener("storage", onStorage);
   return () => window.removeEventListener("storage", onStorage);
+}
+
+function useBookableDate() {
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    () => null,
+  );
+  const timeZone = home?.timeZone || DEFAULT_TIMEZONE;
+  const today = calendarDateInZone(new Date(), timeZone);
+  const [date, setDate] = useState(today);
+  const value = date > today ? today : date;
+  return {
+    date: value,
+    today,
+    timeZone,
+    setDate: (next: string) => setDate(clampCaptureDateInput(next, today)),
+  };
+}
+
+function ManualDateField({
+  value,
+  today,
+  onChange,
+}: {
+  value: string;
+  today: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
+        Datum
+      </span>
+      <PlanDateField
+        ariaLabel="Datum"
+        value={value}
+        max={today}
+        onChange={onChange}
+      />
+    </label>
+  );
 }
 
 type Mode = "expense" | "income" | "transfer" | "cash";
@@ -162,6 +211,7 @@ function ExpenseForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
 
   return (
     <form
@@ -209,6 +259,11 @@ function ExpenseForm({
             nativeCurrency,
             accountId: resolvedAccountId,
             fxRate,
+            occurredAt: occurredAtForBookedDay({
+              ymd: booked.date,
+              timeZone: booked.timeZone,
+            }),
+            affectsTodaySpend: booked.date === booked.today,
           });
           try {
             const result = await createExpenseAction({
@@ -217,6 +272,7 @@ function ExpenseForm({
               category,
               description: description || undefined,
               clientMutationId: mutationId,
+              date: booked.date,
             });
             if (!result.ok) {
               const message = userFacingSaveError(
@@ -280,6 +336,11 @@ function ExpenseForm({
         onChange={setDescription}
         placeholder="Valfri beskrivning"
       />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
+      />
       <ErrorText error={error} />
       <Submit pending={pending} disabled={!amount.trim()} label="Spara utgift" />
     </form>
@@ -302,6 +363,7 @@ function IncomeForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
 
   return (
     <form
@@ -343,6 +405,10 @@ function IncomeForm({
             nativeCurrency,
             accountId: resolvedTargetId,
             fxRate,
+            occurredAt: occurredAtForBookedDay({
+              ymd: booked.date,
+              timeZone: booked.timeZone,
+            }),
           });
           try {
             const result = await createIncomeAction({
@@ -350,6 +416,7 @@ function IncomeForm({
               amount,
               description: description || undefined,
               clientMutationId: mutationId,
+              date: booked.date,
             });
             if (!result.ok) {
               const message = userFacingSaveError(
@@ -396,6 +463,11 @@ function IncomeForm({
         onChange={setDescription}
         placeholder="t.ex. Lön"
       />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
+      />
       <ErrorText error={error} />
       <Submit pending={pending} disabled={!amount.trim()} label="Spara inkomst" />
     </form>
@@ -419,6 +491,7 @@ function TransferForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
   const [mutation] = useState(createStableMutationId);
   const [appliedMutations] = useState(() => new Set<string>());
 
@@ -485,6 +558,7 @@ function TransferForm({
               amount,
               description: description || undefined,
               clientMutationId: mutationId,
+              date: booked.date,
             });
           } catch (error) {
             setError(userFacingSaveError(error, "Kunde inte flytta"));
@@ -549,6 +623,11 @@ function TransferForm({
         onChange={setDescription}
         placeholder="Valfri notis"
       />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
+      />
       <ErrorText error={error} />
       <Submit
         pending={pending}
@@ -586,6 +665,7 @@ function CashForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
   const [mutation] = useState(createStableMutationId);
   const [appliedMutations] = useState(() => new Set<string>());
   const fromCurrency =
@@ -632,6 +712,7 @@ function CashForm({
               amount,
               description: description || undefined,
               clientMutationId: mutationId,
+              date: booked.date,
             });
           } catch (error) {
             setError(userFacingSaveError(error, "Kunde inte spara uttag"));
@@ -690,6 +771,11 @@ function CashForm({
         value={description}
         onChange={setDescription}
         placeholder="t.ex. ATM"
+      />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
       />
       <ErrorText error={error} />
       <Submit

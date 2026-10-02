@@ -11,6 +11,7 @@ import {
   filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
   projectLedgerToCanonicalThb,
+  projectPayCycle,
   sortNewestFirst,
   totalSaldoThbMinor,
   type Account,
@@ -27,6 +28,7 @@ import {
   getLatestCheckpoint,
   getProfile,
   listAccounts,
+  listPlanItems,
   listTransactions,
 } from "@/lib/store/repository";
 
@@ -79,6 +81,9 @@ export type MovementsSnapshot = {
   items: MovementRow[];
   timeZone: string;
   monthKey: string;
+  /** Current pay cycle, so Rörelser can show Perioden without an Analys drill. */
+  payCycleStartAt?: string | null;
+  payCycleEndAt?: string | null;
   /** Ledger content token. Optimistic paints append `:local`. */
   financeRevision?: string;
   verifiedAt?: string;
@@ -252,9 +257,10 @@ export function movementsLedgerRevision(
 export const loadMovementsSnapshot = cache(
   async (): Promise<MovementsSnapshotResult> => {
     try {
-      const [profile, accounts] = await Promise.all([
+      const [profile, accounts, planItems] = await Promise.all([
         getProfile(),
         listAccounts(),
+        listPlanItems(),
       ]);
       const [transactions, checkpoints] = await Promise.all([
         listTransactions(undefined, {
@@ -264,16 +270,20 @@ export const loadMovementsSnapshot = cache(
         Promise.all(accounts.map((account) => getLatestCheckpoint(account.id))),
       ]);
 
+      const timeZone = profile.timezone || "Asia/Bangkok";
       const data = buildMovementsSnapshot({
         accounts,
         transactions,
         checkpoints,
-        timeZone: profile.timezone || "Asia/Bangkok",
+        timeZone,
       });
+      const cycle = projectPayCycle(planItems, new Date(), timeZone);
       return {
         ok: true,
         data: {
           ...data,
+          payCycleStartAt: cycle.startAt,
+          payCycleEndAt: cycle.endAt,
           ...movementsLedgerRevision(transactions, data.balanceMinor),
         },
       };

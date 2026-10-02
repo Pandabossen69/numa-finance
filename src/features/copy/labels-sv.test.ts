@@ -29,6 +29,8 @@ describe("Swedish money labels", () => {
 
   it("keeps Mot planen as the Analys leftover label, not the Plan/Hem cash hero", () => {
     expect(SV.motPlanen).toBe("Mot planen");
+    expect(SV.overskottHittills).toBe("Plus mot planen");
+    expect(SV.overskottHittills).not.toMatch(/överskott/i);
     expect(SV.minusMotPlanen).toBe("Minus mot planen");
     expect(SV.overskottMotPlanenHint).toBe(
       "Planerat kvar minus spenderat — inte pengar på kontona.",

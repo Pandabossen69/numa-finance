@@ -59,6 +59,13 @@ export type OptimisticQuickAddInput = {
   nativeCurrency: CurrencyCode;
   accountId: string;
   fxRate?: number | null;
+  /** Booked instant. Defaults to now when the form did not pick a day. */
+  occurredAt?: string;
+  /**
+   * False when the expense is on an earlier calendar day. Then only the
+   * balance moves — Kvar idag stays put until the server snapshot lands.
+   */
+  affectsTodaySpend?: boolean;
 };
 
 /**
@@ -70,8 +77,10 @@ export function paintOptimisticQuickAdd(
 ): OptimisticBalancePaint {
   publishQuickAddError(null);
   const paint = captureOptimisticBalance();
-  if (input.kind === "expense") applyOptimisticHomeSpend(input.thbMinor);
-  else applyOptimisticHomeIncome(input.thbMinor);
+  if (input.kind === "expense") {
+    if (input.affectsTodaySpend === false) applyOptimisticHomeIncome(-input.thbMinor);
+    else applyOptimisticHomeSpend(input.thbMinor);
+  } else applyOptimisticHomeIncome(input.thbMinor);
   applyAccountDelta(
     input.kind === "expense" ? -input.nativeAmountMinor : input.nativeAmountMinor,
     input.accountId,
@@ -88,7 +97,7 @@ export function paintOptimisticQuickAdd(
     nativeCurrency: input.nativeCurrency,
     accountId: input.accountId,
     fxRate: input.fxRate ?? (input.nativeCurrency === "THB" ? 1 : null),
-    occurredAt: new Date().toISOString(),
+    occurredAt: input.occurredAt ?? new Date().toISOString(),
     source: "manual",
     clientMutationId: input.mutationId,
     listKey: input.mutationId,
