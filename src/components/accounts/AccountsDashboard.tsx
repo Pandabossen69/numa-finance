@@ -27,6 +27,7 @@ import {
 } from "@/features/home/last-snapshot";
 import { SV } from "@/features/copy/labels-sv";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 export function AccountsDashboard({
   data,
@@ -40,7 +41,7 @@ export function AccountsDashboard({
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
     paintableAccountsSnapshot,
-    paintableAccountsSnapshot,
+    serverNull,
   );
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function AccountsDashboard({
     accountEditError,
     () => null,
   );
-  const view = stored ?? paintableAccountsSnapshot();
+  const view = stored ?? data;
 
   if (!view) {
     if (!error) return <AccountsViewLoading />;

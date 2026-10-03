@@ -1,0 +1,691 @@
+{
+  "tz": "Asia/Bangkok",
+  "base": "http://localhost:3000",
+  "soft": [
+    {
+      "round": 1,
+      "route": "Hem",
+      "path": "/idag",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 1,
+      "route": "Plan",
+      "path": "/plan",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 1,
+      "route": "Fota",
+      "path": "/fota",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 1,
+      "route": "Analys",
+      "path": "/analys",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 1,
+      "route": "Mer",
+      "path": "/mer",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 1,
+      "route": "Rorelser",
+      "path": "/transaktioner",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 1,
+      "route": "Konton",
+      "path": "/konton",
+      "hits": [],
+      "consoleCount": 3,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Hem",
+      "path": "/konton",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Plan",
+      "path": "/plan",
+      "hits": [],
+      "consoleCount": 2,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Fota",
+      "path": "/fota",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Analys",
+      "path": "/analys",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Mer",
+      "path": "/mer",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Rorelser",
+      "path": "/transaktioner",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    },
+    {
+      "round": 2,
+      "route": "Konton",
+      "path": "/konton",
+      "hits": [],
+      "consoleCount": 0,
+      "error": null
+    }
+  ],
+  "hard": [
+    {
+      "route": "Hem",
+      "path": "/idag",
+      "hits": [
+        {
+          "t": 1791017234653,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/idag\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "route": "Plan",
+      "path": "/plan",
+      "hits": [
+        {
+          "t": 1791017237429,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/plan\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "route": "Fota",
+      "path": "/fota",
+      "hits": [
+        {
+          "t": 1791017240686,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/fota\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "route": "Analys",
+      "path": "/analys",
+      "hits": [
+        {
+          "t": 1791017243669,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/analys\">\n                        <div hidden={false} inert={undefined} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"1\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "route": "Mer",
+      "path": "/mer",
+      "hits": [
+        {
+          "t": 1791017246585,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/mer\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "route": "Rorelser",
+      "path": "/transaktioner",
+      "hits": [
+        {
+          "t": 1791017249413,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/transakti...\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "route": "Konton",
+      "path": "/konton",
+      "hits": [
+        {
+          "t": 1791017252083,
+          "kind": "pageerror",
+          "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <InnerScrollHandlerNew focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>\n      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n        <LoadingBoundary name=\"konton/\" loading={[...]}>\n          <Suspense name=\"konton/\" fallback={<Fragment>}>\n            <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <InnerLayoutRouter url=\"/konton\" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} ...>\n                    <SegmentViewNode type=\"page\" pagePath=\"(main)/kon...\">\n                      <SegmentTrieNode>\n                      <KontonPage>\n                        <AccountsRouteClient>\n                          <AccountsDashboard data={{accounts:[...], ...}} error={null}>\n                            <div\n+                             className=\"numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7\"\n-                             className=\"numa-page numa-page-wide space-y-7\"\n-                             data-numa-view-loading=\"true\"\n-                             aria-busy=\"true\"\n-                             aria-label=\"Laddar Saldo\"\n                            >\n                              <MerPageHeader back={true} title=\"Konton\" action={<LinkComponent>}>\n+                               <header className=\"animate-rise space-y-3\">\n-                               <div className=\"space-y-3\">\n                              ...\n                    ...\n                  ...\n      ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+          "extra": null
+        }
+      ],
+      "error": null
+    }
+  ],
+  "hydrationHits": [
+    {
+      "t": 1791017234653,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/idag\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017237429,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/plan\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017240686,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/fota\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017243669,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/analys\">\n                        <div hidden={false} inert={undefined} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"1\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017246585,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/mer\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017249413,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/transakti...\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017252083,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <InnerScrollHandlerNew focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>\n      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n        <LoadingBoundary name=\"konton/\" loading={[...]}>\n          <Suspense name=\"konton/\" fallback={<Fragment>}>\n            <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <InnerLayoutRouter url=\"/konton\" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} ...>\n                    <SegmentViewNode type=\"page\" pagePath=\"(main)/kon...\">\n                      <SegmentTrieNode>\n                      <KontonPage>\n                        <AccountsRouteClient>\n                          <AccountsDashboard data={{accounts:[...], ...}} error={null}>\n                            <div\n+                             className=\"numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7\"\n-                             className=\"numa-page numa-page-wide space-y-7\"\n-                             data-numa-view-loading=\"true\"\n-                             aria-busy=\"true\"\n-                             aria-label=\"Laddar Saldo\"\n                            >\n                              <MerPageHeader back={true} title=\"Konton\" action={<LinkComponent>}>\n+                               <header className=\"animate-rise space-y-3\">\n-                               <div className=\"space-y-3\">\n                              ...\n                    ...\n                  ...\n      ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    }
+  ],
+  "allLogs": [
+    {
+      "t": 1791017209147,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017209229,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017209432,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017210615,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017211565,
+      "kind": "console",
+      "text": "[Fast Refresh] done in 1049ms",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017211565,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017211761,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017212049,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017223374,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017223831,
+      "kind": "console",
+      "text": "[Fast Refresh] done in 555ms",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017223850,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017225887,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017226072,
+      "kind": "console",
+      "text": "[Fast Refresh] done in 285ms",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017234535,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017234558,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017234565,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017234653,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/idag\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017234653,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017234747,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017237347,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017237370,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017237371,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017237429,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/plan\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017237491,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017240415,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017240608,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017240621,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017240627,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017240686,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/fota\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017240744,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017243415,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017243578,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017243589,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017243597,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017243669,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/analys\">\n                        <div hidden={false} inert={undefined} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"1\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017243694,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017243786,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017246286,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017246427,
+      "kind": "console",
+      "text": "[Fast Refresh] done in 240ms",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017246489,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017246500,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017246506,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017246585,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/mer\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017246659,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017249108,
+      "kind": "console",
+      "text": "[Fast Refresh] rebuilding",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017249314,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017249325,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017249332,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017249413,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <script>\n    <MainLayout>\n      <AppShell homeCookieShell={{userId:\"80...\", ...}} displayName={<Suspense>}>\n        <NavIntentProvider>\n          <div className=\"mx-auto mi...\">\n            <NavWarmup>\n            <div className=\"flex gap-8...\">\n              <SideNav>\n              <div className=\"min-w-0 fl...\">\n                <header>\n                <main className=\"mx-auto w-...\">\n                  <TabKeepAlive homeCookieShell={{userId:\"80...\", ...}}>\n                    <div className=\"numa-tab-k...\">\n                      <SpaPanel>\n                      <SpaPanel>\n                      <SpaPanel tab=\"/analys\" active=\"/transakti...\">\n                        <div hidden={true} inert={true} data-numa-spa-tab=\"/analys\" data-numa-spa-visible=\"0\">\n                          <AnalysRouteClient>\n                            <AnalysDashboard data={null} error={null} retrying={false}>\n                              <div\n+                               className=\"numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10\"\n-                               className=\"numa-page numa-page-wide space-y-3 pt-1\"\n-                               data-numa-view-loading=\"true\"\n-                               aria-busy=\"true\"\n-                               aria-label=\"Hämtar analysen\"\n                              >\n                                <DestinationWarmup>\n+                               <header\n+                                 className=\"animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1\"\n+                               >\n-                               <h1 className=\"numa-page-title\">\n                                ...\n                      ...\n            ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    },
+    {
+      "t": 1791017249439,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017249474,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017252013,
+      "kind": "console",
+      "text": "%cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017252030,
+      "kind": "console",
+      "text": "[HMR] connected",
+      "extra": {
+        "type": "log"
+      }
+    },
+    {
+      "t": 1791017252035,
+      "kind": "console",
+      "text": "%c%s%c Using the user object as returned from supabase.auth.getSession() or from some supabase.auth.onAuthStateChange() events could be insecure! This value comes directly from the storage medium (usually cookies on the server) and may not be authentic. Use supabase.auth.getUser() instead which authenticates the data by contacting the Supabase Auth server. background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server  ",
+      "extra": {
+        "type": "warn"
+      }
+    },
+    {
+      "t": 1791017252079,
+      "kind": "console",
+      "text": "Banner not shown: beforeinstallpromptevent.preventDefault() called. The page must call beforeinstallpromptevent.prompt() to show the banner.",
+      "extra": {
+        "type": "info"
+      }
+    },
+    {
+      "t": 1791017252083,
+      "kind": "pageerror",
+      "text": "Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:\n\n- A server/client branch `if (typeof window !== 'undefined')`.\n- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.\n- Date formatting in a user's locale which doesn't match the server.\n- External changing data without sending a snapshot of it along with the HTML.\n- Invalid HTML tag nesting.\n\nIt can also happen if the client has a browser extension installed which messes with the HTML before React loaded.\n\nhttps://react.dev/link/hydration-mismatch\n\n  ...\n    <InnerScrollHandlerNew focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>\n      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>\n        <LoadingBoundary name=\"konton/\" loading={[...]}>\n          <Suspense name=\"konton/\" fallback={<Fragment>}>\n            <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>\n              <RedirectBoundary>\n                <RedirectErrorBoundary router={{...}}>\n                  <InnerLayoutRouter url=\"/konton\" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} ...>\n                    <SegmentViewNode type=\"page\" pagePath=\"(main)/kon...\">\n                      <SegmentTrieNode>\n                      <KontonPage>\n                        <AccountsRouteClient>\n                          <AccountsDashboard data={{accounts:[...], ...}} error={null}>\n                            <div\n+                             className=\"numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7\"\n-                             className=\"numa-page numa-page-wide space-y-7\"\n-                             data-numa-view-loading=\"true\"\n-                             aria-busy=\"true\"\n-                             aria-label=\"Laddar Saldo\"\n                            >\n                              <MerPageHeader back={true} title=\"Konton\" action={<LinkComponent>}>\n+                               <header className=\"animate-rise space-y-3\">\n-                               <div className=\"space-y-3\">\n                              ...\n                    ...\n                  ...\n      ...\n\n    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:3120:56)\n    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6585:918)\n    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:761:74)\n    at performUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9385:97)\n    at workLoopConcurrentByScheduler (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9381:58)\n    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9364:71)\n    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:8891:150)\n    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10085:9)\n    at performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64)",
+      "extra": null
+    }
+  ]
+}

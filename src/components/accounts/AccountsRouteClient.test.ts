@@ -6,6 +6,8 @@ const src = readFileSync(new URL("./AccountsRouteClient.tsx", import.meta.url), 
 describe("AccountsRouteClient", () => {
   it("paints last-known and skips cold fetch when quiet-warm already filled", () => {
     expect(src).toContain("paintableAccountsSnapshot");
+    expect(src).toContain("serverNull");
+    expect(src).not.toContain("paintableAccountsSnapshot,\n    paintableAccountsSnapshot");
     expect(src).toContain("subscribeAccountsSnapshot");
     expect(src).toContain("getAccountsSnapshotAction");
     expect(src).toContain("archivedAccountsNeedRefresh");

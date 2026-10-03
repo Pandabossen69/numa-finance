@@ -1,0 +1,46 @@
+Diffande noder på 2fffcd0 (next dev, hård laddning, 390px, sv-SE, Asia/Bangkok).
+React visar bara första mismatchen per hydrering. Soft-nav: 0.
+
+V1 — alla rutter utom /konton (dold panel, alltid monterad)
+Komponent: AnalysDashboard i AnalysRouteClient
+Fil: src/components/analys/AnalysDashboard.tsx
+Träd: MainLayout → AppShell → TabKeepAlive → SpaPanel tab="/analys" (hidden + inert)
+Server: laddläge
+  className "numa-page numa-page-wide space-y-3 pt-1"
+  data-numa-view-loading
+  aria-label «Hämtar analysen»
+  h1
+Klient: hela dashboarden
+  className "numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10"
+  header.animate-rise
+Orsak: derivePaintableAnalysNow läste lastHomeSnapshot() i render. Modulcachen
+var fylld av hydrateLastKnownFromPersist() vid import, medan servern hade null.
+
+V2 — /konton
+Komponent: AccountsDashboard i AccountsRouteClient
+Fil: src/components/accounts/AccountsDashboard.tsx
+  och src/components/accounts/AccountsRouteClient.tsx
+Server: «Laddar Saldo» (data-numa-view-loading)
+Klient: cachade konton (header.animate-rise)
+Orsak: getServerSnapshot var samma getter som klienten, och render läste
+paintableAccountsSnapshot() direkt.
+
+Övriga server-snapshots som redan var konstanta: HemRouteClient cookieShell,
+QuickAddForms kategori (DEFAULT_CATEGORY), ReceiptCaptureFlow tidszon
+(DEFAULT_TIMEZONE). Plan, Fota och Rörelser läste också modulcachen i render
+och går nu via useSyncExternalStore + serverNull.
+
+Antal #418, prod-build, soft-nav 7 menyer + hård laddning av varje route:
+  före: hård 7 (1 per route), soft 0
+  efter: hård 0, soft 0
+Dev efter fix: hård 0, soft 0.
+
+Kall paint, prod-build, navigation start → data-numa-view-loading borta:
+  /analys före 154,6 ms (8 frames), efter 158,3 ms (7 frames)
+  /konton före 51,2 ms (2 frames), efter 106,7 ms (3 frames)
+Hem SSR innehåller 12 500,50 från första sample (52,5 ms) och i varje frame därefter.
+
+Sparande, lokal DB, tre varv Sätt av + Nollställ, oktober 2026:
+  före: 3 inaktiva rader (30100, 30200, 30300)
+  efter: 1 inaktiv rad (30300)
+

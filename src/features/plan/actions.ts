@@ -9,11 +9,11 @@ import {
   dueDateInMonth,
   importableFixedExpenses,
   findMonthSavings,
+  nextMonthSavingsMutation,
   isPlanIncome,
   isPlanPartiallySettled,
   isPlanSavings,
   isPlanSettled,
-  listMonthSavings,
   listStaleMonthSavings,
   monthAnchorIso,
   monthKeyFromDate,
@@ -35,6 +35,7 @@ import {
   deletePlanItem,
   getProfile,
   linkTransactionToPlanItem,
+  listInactivePlanItems,
   listPlanItems,
   refreshTodaySnapshot,
   setNextIncomeDate,
@@ -276,33 +277,47 @@ export async function setMonthSavingsAction(
       input.monthKey,
       ctx.timeZone,
     );
+    const inactive =
+      amountMinor > 0 && !existing ? await listInactivePlanItems() : [];
+    const decision = nextMonthSavingsMutation({
+      items: [...ctx.planItems, ...inactive],
+      monthKey: input.monthKey,
+      timeZone: ctx.timeZone,
+      amountMinor,
+    });
     const leftovers =
-      amountMinor === 0
-        ? listMonthSavings(ctx.planItems, input.monthKey, ctx.timeZone)
-        : listStaleMonthSavings(
+      decision.kind === "update" && !decision.reactivate
+        ? listStaleMonthSavings(
             ctx.planItems,
             input.monthKey,
             ctx.timeZone,
-            existing?.id,
-          );
+            decision.id,
+          )
+        : [];
 
     let item: PlanItem | undefined;
-    if (amountMinor === 0) {
-      await Promise.all(leftovers.map((row) => deletePlanItem(row.id)));
-    } else {
-      item = existing
-        ? await updatePlanItem({ id: existing.id, amountMinor })
-        : await createPlanItem({
-            name: "Spara denna månad",
-            kind: "goal",
-            amountMinor,
-            currency: ctx.currency,
-            cadence: "savings",
-            nextDueAt: monthAnchorIso(input.monthKey),
-          });
+    if (decision.kind === "clear") {
+      await Promise.all(decision.ids.map((id) => deletePlanItem(id)));
+    } else if (decision.kind === "update") {
+      item = await updatePlanItem({
+        id: decision.id,
+        amountMinor,
+        ...(decision.reactivate
+          ? { isActive: true, nextDueAt: monthAnchorIso(input.monthKey) }
+          : {}),
+      });
       if (leftovers.length > 0) {
         await Promise.all(leftovers.map((row) => deletePlanItem(row.id)));
       }
+    } else {
+      item = await createPlanItem({
+        name: "Spara denna månad",
+        kind: "goal",
+        amountMinor,
+        currency: ctx.currency,
+        cadence: "savings",
+        nextDueAt: monthAnchorIso(input.monthKey),
+      });
     }
 
     const refreshed = await refreshAfterDurableWrite(revalidatePlanPaths);

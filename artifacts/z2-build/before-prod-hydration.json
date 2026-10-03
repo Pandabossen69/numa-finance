@@ -1,0 +1,343 @@
+{
+  "base": "http://localhost:3100",
+  "locale": "sv-SE",
+  "timezone": "Asia/Bangkok",
+  "viewport": "390x844",
+  "warmed": {
+    "cookie": "%7B%22userId%22%3A%228015fa7b-23ce-408c-8cd2-de1f1db093be%22%2C%22displayName%22%3A%22Z2%20Lokal%22%2C%22timeZone%22%3A%22Asia%2FBangkok%22%2C%22primaryAccountId%22%3A%22c68c46a2-a232-4a2a-8cca-681724d8d660%22%2C%22currency%22%3A%22THB%22%2C%22monthKey%22%3A%222026-10%22%2C%22monthLabelSv%22%3A%22oktober%202026%22%2C%22hasBankTruth%22%3Atrue%2C%22calculatedBalanceMinor%22%3A1250050%2C%22verificationLabel%22%3Anull%2C%22todaySpendingMinor%22%3A0%2C%22todayPlannedPaidMinor%22%3A0%2C%22monthSpendingMinor%22%3A0%2C%22cycleSpendingMinor%22%3A0%2C%22safeToSpendTodayMinor%22%3A0%2C%22cycleStartLabelSv%22%3Anull%2C%22cycleEndLabelSv%22%3Anull%2C%22cycleEndInferred%22%3Afalse%2C%22cycleIsActive%22%3Afalse%2C%22livingMode%22%3A%22empty%22%2C%22needsAvailableInput%22%3Afalse%2C%22usesBankBalance%22%3Afalse%2C%22planIncomeMinor%22%3A0%2C%22planExpenseMinor%22%3A0%2C%22planSavingsMinor%22%3A0%2C%22freeToSpendMinor%22%3A0%2C%22remainingFreeMinor%22%3A0%2C%22spendDaysLeft%22%3A0%2C%22dayBudgetMinor%22%3A0%2C%22remainingTodayMinor%22%3A0%2C%22livingPoolMinor%22%3A0%2C%22reservedUntilIncomeMinor%22%3A0%2C%22daysUntilIncome%22%3A0%2C%22nextIncomeLabelSv%22%3Anull%2C%22extraSaldoMinor%22%3A0%2C%22extraSaldoDrawnMinor%22%3A0%2C%22extraSaldoHint%22%3Anull%2C%22extraCarriedInMinor%22%3A0%2C%22savingsTotalMinor%22%3A0%2C%22wealthTotalMinor%22%3A1250050%2C%22monthResultMinor%22%3A0%2C%22incomingMinor%22%3A0%2C%22unpaidMinor%22%3A0%2C%22overMinor%22%3A1250050%2C%22financeRevision%22%3A%220%3A%3A1250050%3A%3A0%3A%3A0%3A%3A0%3A%3A0%22%2C%22verifiedAt%22%3A%222026-10-03T09%3A14%3A14.310Z%22%2C%22truthStatus%22%3A%22verified%22%7D",
+    "path": "/konton"
+  },
+  "softError": null,
+  "hardPasses": [
+    [
+      {
+        "path": "/idag",
+        "hits": 1
+      },
+      {
+        "path": "/plan",
+        "hits": 1
+      },
+      {
+        "path": "/analys",
+        "hits": 1
+      },
+      {
+        "path": "/mer",
+        "hits": 1
+      },
+      {
+        "path": "/fota",
+        "hits": 1
+      },
+      {
+        "path": "/transaktioner",
+        "hits": 1
+      },
+      {
+        "path": "/konton",
+        "hits": 1
+      }
+    ]
+  ],
+  "hardHitCount": 7,
+  "softHitCount": 0,
+  "hard": [
+    {
+      "path": "/idag",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 8,
+        "sawLoading": true,
+        "firstLoadingAt": 25.9,
+        "clearedAt": 159.2,
+        "samples": [
+          {
+            "now": 25.9,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 42.5,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0"
+            ]
+          },
+          {
+            "now": 59.2,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 75.9,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 92.5,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 109.2,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 125.9,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 142.5,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "0,00THB"
+            ]
+          },
+          {
+            "now": 159.2,
+            "money": [
+              "12500,50",
+              "0",
+              "0",
+              "12500,50",
+              "0",
+              "12500,50"
+            ]
+          }
+        ],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": true,
+      "ssrHasZero": true
+    },
+    {
+      "path": "/plan",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 8,
+        "sawLoading": true,
+        "firstLoadingAt": 19.8,
+        "clearedAt": 153.1,
+        "samples": [],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": true,
+      "ssrHasZero": true
+    },
+    {
+      "path": "/analys",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 8,
+        "sawLoading": true,
+        "firstLoadingAt": 21.2,
+        "clearedAt": 154.6,
+        "samples": [],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": true,
+      "ssrHasZero": true
+    },
+    {
+      "path": "/mer",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 8,
+        "sawLoading": true,
+        "firstLoadingAt": 17.6,
+        "clearedAt": 150.9,
+        "samples": [],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": true,
+      "ssrHasZero": true
+    },
+    {
+      "path": "/fota",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 8,
+        "sawLoading": true,
+        "firstLoadingAt": 20.9,
+        "clearedAt": 154.1,
+        "samples": [],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": true,
+      "ssrHasZero": true
+    },
+    {
+      "path": "/transaktioner",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 9,
+        "sawLoading": true,
+        "firstLoadingAt": 24.5,
+        "clearedAt": 174.4,
+        "samples": [],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": true,
+      "ssrHasZero": true
+    },
+    {
+      "path": "/konton",
+      "status": 200,
+      "hits": [
+        {
+          "kind": "pageerror",
+          "type": "pageerror",
+          "text": "Error: Minified React error #418; visit https://react.dev/errors/418?args[]=HTML&args[]= for the full message or use the non-minified dev environment for full errors and additional helpful warnings.\n    at rZ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:37009)\n    at id (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:88257)\n    at sh (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:129086)\n    at http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:123965\n    at sr (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:124066)\n    at sq (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:150647)\n    at MessagePort._ (http://localhost:3100/_next/static/chunks/34wvn5zw0a69w.js:1:202605)"
+        }
+      ],
+      "paint": {
+        "framesWithLoading": 2,
+        "sawLoading": true,
+        "firstLoadingAt": 17.9,
+        "clearedAt": 51.2,
+        "samples": [],
+        "loadingNow": false
+      },
+      "ssrHasLoading": true,
+      "ssrHas12500": false,
+      "ssrHasZero": false
+    }
+  ],
+  "soft": [
+    {
+      "path": "/idag",
+      "actual": "/idag",
+      "hits": []
+    },
+    {
+      "path": "/plan",
+      "actual": "/plan",
+      "hits": []
+    },
+    {
+      "path": "/analys",
+      "actual": "/analys",
+      "hits": []
+    },
+    {
+      "path": "/mer",
+      "actual": "/mer",
+      "hits": []
+    },
+    {
+      "path": "/fota",
+      "actual": "/fota",
+      "hits": []
+    },
+    {
+      "path": "/transaktioner",
+      "actual": "/transaktioner",
+      "hits": []
+    },
+    {
+      "path": "/konton",
+      "actual": "/konton",
+      "hits": []
+    },
+    {
+      "path": "/idag",
+      "actual": "/idag",
+      "hits": []
+    }
+  ]
+}

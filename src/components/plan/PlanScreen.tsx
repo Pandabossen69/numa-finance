@@ -13,6 +13,7 @@ import {
   rememberGettingStarted,
   rememberPlanSnapshot,
   subscribeGettingStarted,
+  subscribeHomeSnapshot,
   subscribePlanSnapshot,
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
@@ -61,7 +62,11 @@ export function PlanScreen({
 
   const payload = stored ?? initial;
   const gettingStarted = storedGettingStarted ?? initialGettingStarted;
-  const home = lastHomeSnapshot();
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    serverNull,
+  );
   const currency = payload?.currency ?? home?.currency ?? "THB";
   const timeZone = payload?.timeZone ?? home?.timeZone ?? "Asia/Bangkok";
 

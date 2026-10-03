@@ -1,0 +1,7 @@
+                  id                  | amount_minor | is_active | cadence |    due     
+--------------------------------------+--------------+-----------+---------+------------
+ d567bc73-0ee1-4b39-860b-1e40930c7bdd |        30100 | f         | savings | 2026-10-15
+ efcfb597-2b31-4f29-b02b-c60fad49dfdb |        30200 | f         | savings | 2026-10-15
+ f2d6b6ef-b45c-4eed-902e-2dee46ce657e |        30300 | f         | savings | 2026-10-15
+(3 rows)
+

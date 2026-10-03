@@ -30,6 +30,7 @@ import {
   rememberPlanView,
   subscribeAnalysScope,
   subscribeAnalysSnapshot,
+  subscribeHomeSnapshot,
   subscribePlanView,
   rememberAnalysScope,
   rememberAnalysSnapshot,
@@ -51,9 +52,11 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { isThinAnalysSnapshot } from "@/features/finance/analys-from-known";
 import {
-  derivePaintableAnalysNow,
+  derivePaintableAnalysSnapshot,
   ensurePaintableAnalysSnapshot,
+  homeForAnalysPaint,
 } from "@/features/finance/ensure-analys-last-known";
+import { serverNull } from "@/lib/react/server-snapshot";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 
 type AnalysScope = "period" | "month";
@@ -80,11 +83,17 @@ export function AnalysDashboard({
   const storedAnalys = useSyncExternalStore(
     subscribeAnalysSnapshot,
     lastAnalysSnapshot,
-    () => null,
+    serverNull,
+  );
+  // Hem cache only through this server snapshot, not a module read in render.
+  const homeForPaint = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    homeForAnalysPaint,
+    serverNull,
   );
   const view = useMemo(
-    () => data ?? derivePaintableAnalysNow(storedAnalys),
-    [data, storedAnalys],
+    () => data ?? derivePaintableAnalysSnapshot(storedAnalys, homeForPaint),
+    [data, homeForPaint, storedAnalys],
   );
 
   useEffect(() => {
