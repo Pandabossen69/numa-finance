@@ -1,50 +1,71 @@
 "use client";
 
-import type { CashCoverageView } from "@/domain/finance";
+import { memo, useMemo } from "react";
+import type { CanonicalTransaction, CashCoverageView, PlanItem } from "@/domain/finance";
 import { cashCoverageHintSv, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PileLine } from "@/components/ui/PileLine";
+import { parsePlanAmount } from "@/components/plan/plan-format";
 import { SV } from "@/features/copy/labels-sv";
+import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
+  previewMonthSavings,
   savingsPreviewLineSv,
-  type MonthSavingsPreview,
 } from "@/features/plan/savings-preview";
 
 export function PlanPiles({
   coverage,
   monthName,
   priorMonthName,
+  timeZone,
   currency,
   savingsTotalMinor,
   savingsThisMonthMinor,
   savingsPriorMinor,
   savingsByMonth,
   monthKeys,
-  savingsAmount,
-  onSavingsAmount,
+  savingsSeed,
+  savingsResetKey,
+  monthKey,
+  planItems,
+  savingsCurrentMinor,
+  ledgerTransactions,
+  saldoMinor,
+  cycleSpendingMinor,
+  todaySpendingMinor,
+  fundingConfirmed = false,
+  canPreview = true,
   onSaveSavings,
   onClearSavings,
   savingsBusy = false,
   clearBusy = false,
-  livePreview = null,
 }: {
   coverage: CashCoverageView;
   monthName: string;
   priorMonthName?: string;
+  timeZone: string;
   currency: CurrencyCode;
   savingsTotalMinor: number;
   savingsThisMonthMinor: number;
   savingsPriorMinor: number;
   savingsByMonth: Record<string, number>;
   monthKeys: string[];
-  savingsAmount: string;
-  onSavingsAmount: (value: string) => void;
-  onSaveSavings: () => void;
-  onClearSavings: () => void;
+  savingsSeed: string;
+  savingsResetKey: string;
+  monthKey: string;
+  planItems: PlanItem[];
+  savingsCurrentMinor: number;
+  ledgerTransactions: CanonicalTransaction[];
+  saldoMinor: number | null;
+  cycleSpendingMinor: number;
+  todaySpendingMinor: number;
+  fundingConfirmed?: boolean;
+  canPreview?: boolean;
+  onSaveSavings: (amount: string) => void;
+  onClearSavings: () => Promise<boolean>;
   savingsBusy?: boolean;
   clearBusy?: boolean;
-  livePreview?: MonthSavingsPreview | null;
 }) {
   const overOk = coverage.overMinor >= 0;
   const totalMinor = planWealthTotalMinor(coverage.overMinor, savingsTotalMinor);
@@ -84,7 +105,7 @@ export function PlanPiles({
               </p>
             </div>
             <span
-              className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-alarm"}`}
+              className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-ink"}`}
             >
               {overChip}
             </span>
@@ -213,47 +234,150 @@ export function PlanPiles({
             <p className="numa-section-title">
               {hasThisMonth ? `Ändra ${monthName}` : `Sätt av i ${monthName}`}
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={savingsAmount}
-                onChange={(e) => onSavingsAmount(e.target.value)}
-                placeholder="t.ex. 2 000"
-                aria-label={`Sätt av från Över i ${monthName}`}
-                className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
-              />
-              <button
-                type="button"
-                disabled={savingsBusy}
-                onClick={onSaveSavings}
-                className="numa-btn numa-btn-primary min-h-11 px-4"
-              >
-                {savingsBusy
-                  ? "Sparar…"
-                  : hasThisMonth
-                    ? "Uppdatera"
-                    : SV.sattAvFranOver}
-              </button>
-              {hasThisMonth ? (
-                <button
-                  type="button"
-                  disabled={clearBusy || savingsBusy}
-                  onClick={onClearSavings}
-                  className="numa-press text-sm font-semibold text-[var(--numa-muted)] disabled:opacity-45"
-                >
-                  {clearBusy ? "Sparar…" : "Nollställ"}
-                </button>
-              ) : null}
-            </div>
-            {livePreview ? (
-              <p className="text-[12px] leading-snug text-[var(--numa-muted)]">
-                {savingsPreviewLineSv(livePreview)}
-              </p>
-            ) : null}
+            <PlanSavingsDraft
+              monthName={monthName}
+              hasThisMonth={hasThisMonth}
+              seed={savingsSeed}
+              resetKey={savingsResetKey}
+              monthKey={monthKey}
+              planItems={planItems}
+              savingsCurrentMinor={savingsCurrentMinor}
+              currency={currency}
+              ledgerTransactions={ledgerTransactions}
+              saldoMinor={saldoMinor}
+              cycleSpendingMinor={cycleSpendingMinor}
+              todaySpendingMinor={todaySpendingMinor}
+              fundingConfirmed={fundingConfirmed}
+              canPreview={canPreview}
+              timeZone={timeZone}
+              savingsBusy={savingsBusy}
+              clearBusy={clearBusy}
+              onSave={onSaveSavings}
+              onClear={onClearSavings}
+            />
           </div>
         </section>
       </div>
     </div>
   );
 }
+
+const PlanSavingsDraft = memo(function PlanSavingsDraft({
+  monthName,
+  hasThisMonth,
+  seed,
+  resetKey,
+  monthKey,
+  planItems,
+  savingsCurrentMinor,
+  currency,
+  timeZone,
+  ledgerTransactions,
+  saldoMinor,
+  cycleSpendingMinor,
+  todaySpendingMinor,
+  fundingConfirmed,
+  canPreview,
+  savingsBusy,
+  clearBusy,
+  onSave,
+  onClear,
+}: {
+  monthName: string;
+  hasThisMonth: boolean;
+  seed: string;
+  resetKey: string;
+  monthKey: string;
+  planItems: PlanItem[];
+  savingsCurrentMinor: number;
+  currency: CurrencyCode;
+  timeZone: string;
+  ledgerTransactions: CanonicalTransaction[];
+  saldoMinor: number | null;
+  cycleSpendingMinor: number;
+  todaySpendingMinor: number;
+  fundingConfirmed: boolean;
+  canPreview: boolean;
+  savingsBusy: boolean;
+  clearBusy: boolean;
+  onSave: (amount: string) => void;
+  onClear: () => Promise<boolean>;
+}) {
+  const [savingsAmount, setSavingsAmount] = useValueForKey(seed, resetKey);
+  const draftSavingsMinor = useMemo(() => {
+    const parsed = parsePlanAmount(savingsAmount.trim() === "" ? "0" : savingsAmount);
+    return typeof parsed === "number" ? parsed : null;
+  }, [savingsAmount]);
+  const livePreview = useMemo(() => {
+    if (!canPreview || draftSavingsMinor == null) return null;
+    return previewMonthSavings({
+      items: planItems,
+      monthKey,
+      draftMinor: draftSavingsMinor,
+      currentMinor: savingsCurrentMinor,
+      currency,
+      timeZone,
+      ledgerTransactions,
+      saldoMinor,
+      cycleSpendingMinor,
+      todaySpendingMinor,
+      fundingConfirmed,
+    });
+  }, [
+    canPreview,
+    currency,
+    cycleSpendingMinor,
+    draftSavingsMinor,
+    fundingConfirmed,
+    ledgerTransactions,
+    monthKey,
+    planItems,
+    saldoMinor,
+    savingsCurrentMinor,
+    timeZone,
+    todaySpendingMinor,
+  ]);
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={savingsAmount}
+          onChange={(e) => setSavingsAmount(e.target.value)}
+          placeholder="t.ex. 2 000"
+          aria-label={`Sätt av från Över i ${monthName}`}
+          className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+        />
+        <button
+          type="button"
+          disabled={savingsBusy}
+          onClick={() => onSave(savingsAmount)}
+          className="numa-btn numa-btn-primary min-h-11 px-4"
+        >
+          {savingsBusy ? "Sparar…" : hasThisMonth ? "Uppdatera" : SV.sattAvFranOver}
+        </button>
+        {hasThisMonth ? (
+          <button
+            type="button"
+            disabled={clearBusy || savingsBusy}
+            onClick={() => {
+              void onClear().then((ok) => {
+                if (ok) setSavingsAmount("");
+              });
+            }}
+            className="numa-press text-sm font-semibold text-[var(--numa-muted)] disabled:opacity-45"
+          >
+            {clearBusy ? "Sparar…" : "Nollställ"}
+          </button>
+        ) : null}
+      </div>
+      {livePreview ? (
+        <p className="text-[12px] leading-snug text-[var(--numa-muted)]">
+          {savingsPreviewLineSv(livePreview)}
+        </p>
+      ) : null}
+    </>
+  );
+});

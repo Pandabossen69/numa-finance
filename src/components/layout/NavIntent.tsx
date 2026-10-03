@@ -10,10 +10,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { usePathname } from "next/navigation";
 import { isNavActive, optimisticNavPath } from "@/components/layout/nav";
+import { rememberMovementsDrillFromHref } from "@/components/movements/movements-drill";
 import { rememberFotaIntentFromHref } from "@/features/imports/fota-intent";
 import { rememberPlanFocusFromHref } from "@/features/plan/plan-focus";
+import { bindSpaNavigate } from "@/lib/nav/instant";
 import { isSpaTabHref, spaTabKey } from "@/lib/nav/spa-tabs";
 
 type Pending = { href: string; fromPath: string };
@@ -34,6 +37,19 @@ const NavIntentContext = createContext<NavIntentValue | null>(null);
 
 function pathOnly(href: string): string {
   return (href.split("?")[0] ?? href).split("#")[0] ?? href;
+}
+
+/**
+ * Drill, plan focus and fota intent live in module stores. useSearchParams
+ * does not follow history.pushState (spaPath is path-only), so the parked
+ * panel must read the href here — flushed before the panel is revealed.
+ */
+function commitSpaHref(href: string) {
+  flushSync(() => {
+    rememberPlanFocusFromHref(href);
+    rememberFotaIntentFromHref(href);
+    rememberMovementsDrillFromHref(href);
+  });
 }
 
 /**
@@ -111,7 +127,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       const next = pathOnly(window.location.pathname);
       if (spaTabKey(next)) {
         spaOwnedRef.current = true;
-        rememberFotaIntentFromHref(`${next}${window.location.search}`);
+        commitSpaHref(`${next}${window.location.search}`);
         paintSpaPanelsNow(next);
         setSpaPath(next);
         setPending(null);
@@ -199,8 +215,7 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
         `[data-numa-spa-tab="${destKey}"][data-numa-spa-visible="1"]`,
       );
       if (painted && pathOnly(pathname) === dest) {
-        rememberPlanFocusFromHref(href);
-        rememberFotaIntentFromHref(href);
+        commitSpaHref(href);
         try {
           window.history.pushState({ numaSpa: true, href }, "", href);
         } catch {
@@ -212,12 +227,11 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
       }
 
       spaOwnedRef.current = true;
+      commitSpaHref(href);
       paintSpaPanelsNow(dest);
       setSpaPath(dest);
       setPending(null);
       setIntent(null);
-      rememberPlanFocusFromHref(href);
-      rememberFotaIntentFromHref(href);
       try {
         window.history.pushState({ numaSpa: true, href }, "", href);
       } catch {
@@ -230,6 +244,10 @@ export function NavIntentProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     navigateRef.current = navigateSpaTab;
+    bindSpaNavigate(navigateSpaTab);
+    return () => {
+      bindSpaNavigate(null);
+    };
   }, [navigateSpaTab]);
 
   const value = useMemo(

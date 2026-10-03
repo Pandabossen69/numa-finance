@@ -58,7 +58,16 @@ export function parseCurrencyToken(
   if (!value) return null;
   const t = value.trim().toUpperCase().replace(/\s+/g, "");
   if (t === "EUR" || t === "€" || t === "EURO") return "EUR";
-  if (t === "THB" || t === "BT" || t === "฿" || t === "TH") return "THB";
+  if (
+    t === "THB" ||
+    t === "BT" ||
+    t === "฿" ||
+    t === "TH" ||
+    t === "BAHT" ||
+    t === "บาท"
+  ) {
+    return "THB";
+  }
   if (t === "SEK" || t === "KR" || t === "KRONOR") return "SEK";
   // Bare "$" is too common on Thai receipts to treat as USD.
   if (t === "USD" || t === "US$" || t === "DOLLAR" || t === "DOLLARS") {

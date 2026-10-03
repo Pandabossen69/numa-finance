@@ -1,0 +1,71 @@
+import {
+  calendarDateInZone,
+  clampOccurredAt,
+  DEFAULT_TIMEZONE,
+  occurredAtOnCalendarDay,
+} from "@/domain/finance/datetime";
+
+export { occurredAtOnCalendarDay };
+
+/**
+ * Keep the Datum field on or before today. A later value is clamped so the
+ * browser does not show its English max-date message. Empty stays empty.
+ */
+export function clampCaptureDateInput(value: string, today: string): string {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  return trimmed > today ? today : trimmed;
+}
+
+/** YYYY-MM-DD for the review date input. Newest known stamp, else today. */
+export function suggestedCaptureDate(
+  stamps: readonly (string | null | undefined)[],
+  now: Date = new Date(),
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  let best: string | null = null;
+  for (const stamp of stamps) {
+    if (!stamp) continue;
+    const ymd = calendarDateInZone(stamp, timeZone);
+    if (!ymd) continue;
+    if (!best || ymd > best) best = ymd;
+  }
+  return best ?? calendarDateInZone(now, timeZone);
+}
+
+/**
+ * Send a calendar day when it is the only movement, a receipt, or the user
+ * changed the date. A multi-row import keeps each row's own timestamp until
+ * the date field is edited.
+ */
+export function occurredOnForConfirm(input: {
+  isAutoImport: boolean;
+  eventCount: number;
+  suggestedOn: string;
+  editedOn: string;
+}): string | null {
+  const edited = input.editedOn !== input.suggestedOn;
+  if (!input.isAutoImport || input.eventCount <= 1 || edited) {
+    return input.editedOn;
+  }
+  return null;
+}
+
+/** Calendar day from the review, otherwise the row's own timestamp. */
+export function confirmOccurredAt(input: {
+  occurredOn?: string | null;
+  candidateOccurredAt?: string | null;
+  fallbackIso: string;
+  timeZone?: string | null;
+  now?: Date;
+}): string {
+  const now = input.now ?? new Date();
+  const ymd = input.occurredOn?.trim();
+  if (!ymd) return clampOccurredAt(input.fallbackIso, now);
+  return occurredAtOnCalendarDay({
+    ymd,
+    keepTimeFrom: input.candidateOccurredAt,
+    timeZone: input.timeZone || DEFAULT_TIMEZONE,
+    now,
+  });
+}

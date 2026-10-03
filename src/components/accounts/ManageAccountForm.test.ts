@@ -21,7 +21,8 @@ describe("ManageAccountForm", () => {
   it("offers Ta bort konto on every active account, confirmed before the write", () => {
     expect(src).toContain("removeAccountAction");
     expect(src).toContain("Ta bort konto");
-    expect(src).toContain('{pending ? "Tar bort…" : "Ta bort"}');
+    expect(src).toContain("!text-[var(--numa-danger)]");
+    expect(src).toContain('{busy ? "Tar bort…" : "Ta bort"}');
     expect(src).toContain("Avbryt");
     expect(src).toContain("adoptRemovedAccount");
     expect(src).toContain("confirmRemove");
@@ -44,6 +45,28 @@ describe("ManageAccountForm", () => {
     expect(src).toContain("restoreAccountAction");
     expect(src).toContain("Återställ konto");
     expect(src).toContain("är arkiverat");
+  });
+
+  it("paints the Konton list before the rename round-trip", () => {
+    const save = src.slice(
+      src.indexOf("function onSave"),
+      src.indexOf("function onRemove"),
+    );
+    expect(save).toContain("publishAccountDetailsEdit");
+    expect(save).toContain("await edit.done");
+    expect(save.indexOf("publishAccountDetailsEdit")).toBeLessThan(
+      save.indexOf("await edit.done"),
+    );
+    expect(save.indexOf("await edit.done")).toBeLessThan(
+      save.indexOf('router.push("/konton")'),
+    );
+    expect(save).not.toContain("router.refresh()");
+    const finish = src.slice(
+      src.indexOf("function finish"),
+      src.indexOf("function onSave"),
+    );
+    expect(finish).toContain("invalidateAccountsSnapshot()");
+    expect(finish).not.toContain("router.refresh()");
   });
 
   it("reuses the default-account copy", () => {

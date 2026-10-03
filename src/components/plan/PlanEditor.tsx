@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -23,13 +24,13 @@ import {
   resolveAdditionalSettlement,
   projectExtraSaldoSeries,
   savingsByMonthKeys,
-  remainingDueIso,
   settledAmountMinor,
   sumCountsTowardCashMinor,
   yearFromMonthKey,
   visibleMonthKeysForYear,
   planWriteUserError,
 } from "@/domain/finance";
+import { offlineSaveMessage } from "@/lib/net/offline-save";
 import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import {
@@ -48,6 +49,7 @@ import {
 } from "@/features/home/last-snapshot";
 import { newClientMutationId, thbToNativeMinor } from "@/domain/finance";
 import { rememberLivePlan } from "@/components/plan/plan-cache";
+import { invalidateSettledHomeSurfaces } from "@/features/home/invalidate-settled-home";
 import {
   ensurePlanMonthPaint,
   ensurePlanMonthSuggestions,
@@ -63,10 +65,11 @@ import {
   subscribePlanMonthPaints,
   subscribePlanMonthSuggestions,
 } from "@/features/plan/plan-month-cache";
-import { useValueForKey } from "@/lib/hooks/use-value-for-key";
 import {
   adoptServerPlanItems,
   applyMonthSavings,
+  clearDeletedPlanItemTombstone,
+  insertItemAt,
   isTempPlanId,
   stampPlanItems,
   mergeReturnedItem,
@@ -76,8 +79,9 @@ import {
   replaceItemById,
   revertMonthSavings,
   settlePlanItem,
+  tombstoneDeletedPlanItem,
 } from "@/features/plan/optimistic";
-import { previewMonthSavings } from "@/features/plan/savings-preview";
+import type { PlanEditDraft, PlanPartialDraft } from "@/components/plan/PlanRowForms";
 import type { ActionResult } from "@/features/plan/actions";
 import {
   createPlanExtraAction,
@@ -174,7 +178,6 @@ export function PlanEditor({
     [monthKey],
   );
   const [localItems, setLocalItems] = useState(items);
-
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
   const [expenseName, setExpenseName] = useState("");
@@ -185,19 +188,19 @@ export function PlanEditor({
   const [incomeAmount, setIncomeAmount] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editAmount, setEditAmount] = useState("");
-  const [editDate, setEditDate] = useState("");
   const [partialId, setPartialId] = useState<string | null>(null);
-  const [partialAmount, setPartialAmount] = useState("");
-  const [partialDate, setPartialDate] = useState("");
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
-  const viewItems = busy ? localItems : adoptServerPlanItems(localItems, items);
+  const viewItems = useMemo(
+    () => (busy ? localItems : adoptServerPlanItems(localItems, items)),
+    [busy, localItems, items],
+  );
   const ownerId = viewItems[0]?.userId ?? items[0]?.userId ?? "";
   /** Sync lock: React busy state alone cannot stop a double-tap before re-render. */
   const writeLockRef = useRef(false);
+  /** Publish only after this instance mutated. Hidden copies must not echo mount rows. */
+  const dirtyRef = useRef(false);
   const [addKind, setAddKind] = useState<null | "income" | "fixed" | "extra">(focusAdd);
   const [seenFocusAdd, setSeenFocusAdd] = useState(focusAdd);
   if (focusAdd !== seenFocusAdd) {
@@ -213,11 +216,15 @@ export function PlanEditor({
     if (accounts) adoptAccountsLastKnown(accounts);
   }, [accounts]);
   const accountsView = storedAccounts ?? accounts;
-  const settleAccounts = (accountsView?.accounts ?? []).map((account) => ({
-    id: account.id,
-    name: account.name,
-    currency: account.currency,
-  }));
+  const settleAccounts = useMemo(
+    () =>
+      (accountsView?.accounts ?? []).map((account) => ({
+        id: account.id,
+        name: account.name,
+        currency: account.currency,
+      })),
+    [accountsView],
+  );
   const defaultSettleAccountId =
     accountsView?.accounts.find((account) => account.isDefault)?.id ??
     accountsView?.accounts[0]?.id ??
@@ -271,34 +278,56 @@ export function PlanEditor({
     });
   }
 
-  // Publish after commit. Writing to the plan store inside a setState
-  // updater ran during render and updated PlanScreen mid-render, which React
-  // rejects and which could repaint the list under the user's finger.
+  // Publish after commit, and only after a local mutation in this instance.
+  // A hidden copy's mount rows must not overwrite a fresher server plan when
+  // bankBalanceMinor or spendingByMonthKey change identity.
+  // Writing to the plan store inside a setState updater ran during render
+  // and updated PlanScreen mid-render, which React rejects and which could
+  // repaint the list under the user's finger.
   // Do not depend on ledgerTransactions — Koppla updates that prop and
   // re-publishing adopted rows looped Plan ("Too many re-renders").
+  // Do not depend on bankBalanceMinor — that loop crashed Plan after Delvis settle.
   useEffect(() => {
+    if (!dirtyRef.current) return;
+    dirtyRef.current = false;
     publishItems(localItems);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]);
+  }, [localItems]);
 
-  const monthPaintInput = {
-    items: viewItems,
-    ledgerTransactions,
-    monthKey,
-    timeZone,
-    saldoMinor: coverageSaldoMinor,
-  };
-  const monthPaintStamp = planMonthPaintStamp(monthPaintInput);
+  const monthPaintInput = useMemo(
+    () => ({
+      items: viewItems,
+      ledgerTransactions,
+      monthKey,
+      timeZone,
+      saldoMinor: coverageSaldoMinor,
+    }),
+    [viewItems, ledgerTransactions, monthKey, timeZone, coverageSaldoMinor],
+  );
+  const monthPaintStamp = useMemo(
+    () => planMonthPaintStamp(monthPaintInput),
+    [monthPaintInput],
+  );
   const paintEpoch = useSyncExternalStore(
     subscribePlanMonthPaints,
     planMonthPaintEpoch,
     planMonthPaintEpoch,
   );
   void paintEpoch;
-  const { paint: monthPaint, ready: monthReady } = resolvePlanMonthPaint(
+  // Same-month edits (add/settle/delete) build now so totals match the row.
+  // A month switch keeps cached chrome. Catch up only once that paint is
+  // ready — doing it sooner would sync-build the destination month.
+  const [paintedMonth, setPaintedMonth] = useState(monthKey);
+  const switchingMonth = paintedMonth !== monthKey;
+  const monthPaintResolved = resolvePlanMonthPaint(
     monthPaintInput,
     monthPaintStamp,
+    switchingMonth ? { allowBuild: false } : { allowBuild: true },
   );
+  if (switchingMonth && monthPaintResolved.ready) {
+    setPaintedMonth(monthKey);
+  }
+  const { paint: monthPaint, ready: monthReady } = monthPaintResolved;
   const { projection, coverage, importableFixed, linkedPlanIds } = monthPaint;
   const suggestionEpoch = useSyncExternalStore(
     subscribePlanMonthSuggestions,
@@ -363,34 +392,8 @@ export function PlanEditor({
       return `${home.remainingFreeMinor}:${home.dayBudgetMinor}:${home.cycleSpendingMinor}:${home.todaySpendingMinor}:${home.cycleIsActive}`;
     },
   );
-  const [savingsAmount, setSavingsAmount] = useValueForKey(
-    projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : "",
-    `${displayMonthKey}:${projection.savingsMinor}`,
-  );
-  const draftSavingsMinor = useMemo(() => {
-    const parsed = parsePlanAmount(
-      savingsAmount.trim() === "" ? "0" : savingsAmount,
-    );
-    return typeof parsed === "number" ? parsed : null;
-  }, [savingsAmount]);
   void homeLivingStamp;
   const home = lastHomeSnapshot();
-  const savingsPreview =
-    !monthReady || draftSavingsMinor == null
-      ? null
-      : previewMonthSavings({
-          items: viewItems,
-          monthKey,
-          draftMinor: draftSavingsMinor,
-          currentMinor: projection.savingsMinor,
-          currency,
-          timeZone,
-          ledgerTransactions,
-          saldoMinor: coverageSaldoMinor,
-          cycleSpendingMinor: home?.cycleSpendingMinor ?? 0,
-          todaySpendingMinor: home?.todaySpendingMinor ?? 0,
-          fundingConfirmed: home?.cycleIsActive,
-        });
   const [incomeDate, setIncomeDate] = useState(`${monthKey}-25`);
   const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
   const [expenseDate, setExpenseDate] = useState(`${monthKey}-01`);
@@ -427,7 +430,7 @@ export function PlanEditor({
     ensurePlanMonthSuggestions(next, monthPaintStamp, paint.projection);
   }
 
-  async function runMutation(opts: {
+  const runMutation = useCallback(async (opts: {
     busy: BusyKey;
     apply: (items: PlanItem[]) => PlanItem[];
     revert: (items: PlanItem[]) => PlanItem[];
@@ -436,20 +439,26 @@ export function PlanEditor({
       items: PlanItem[],
       result: Extract<ActionResult, { ok: true }>,
     ) => PlanItem[];
-  }): Promise<boolean> {
+  }): Promise<boolean> => {
     if (writeLockRef.current) return false;
     writeLockRef.current = true;
     const base = viewItems;
     setError(null);
     setBusy(opts.busy);
+    dirtyRef.current = true;
     setLocalItems(opts.apply(base));
     try {
       const result = await opts.action();
       if (!result.ok) {
+        dirtyRef.current = true;
         setLocalItems(opts.revert(base));
-        setError(planWriteUserError(result.error, "Kunde inte spara planposten"));
+        setError(
+          offlineSaveMessage(result.error) ??
+            planWriteUserError(result.error, "Kunde inte spara planposten"),
+        );
         return false;
       }
+      dirtyRef.current = true;
       setLocalItems((current) => {
         const next = opts.reconcile
           ? opts.reconcile(current, result)
@@ -462,14 +471,17 @@ export function PlanEditor({
       });
       return true;
     } catch (err) {
+      dirtyRef.current = true;
       setLocalItems(opts.revert(base));
-      setError(planWriteUserError(err, "Något gick fel"));
+      setError(
+        offlineSaveMessage(err) ?? planWriteUserError(err, "Något gick fel"),
+      );
       return false;
     } finally {
       writeLockRef.current = false;
       setBusy((current) => (current === opts.busy ? null : current));
     }
-  }
+  }, [viewItems]);
 
   function commitAdd(opts: {
     busy: Extract<BusyKey, "add-income" | "add-fixed" | "add-extra">;
@@ -520,13 +532,13 @@ export function PlanEditor({
     });
   }
 
-  function settleRow(
+  const settleRow = useCallback((
     id: string,
     settled: boolean,
     /** Cumulative settled total (absolute minor target as UI string), not "amount now". */
     targetSettledAmount?: string,
     remainingDate?: string,
-  ) {
+  ) => {
     if (isTempPlanId(id)) return;
     let settledMinor: number | null | undefined;
     let remainingDueAt: string | null | undefined;
@@ -628,19 +640,27 @@ export function PlanEditor({
           clientMutationId: newClientMutationId(),
         }),
       reconcile: (rows, result) => {
+        invalidateSettledHomeSurfaces();
         adoptMutationFinance(result);
         return result.item ? mergeReturnedItem(rows, result.item) : rows;
       },
     }).then((ok) => {
-      if (ok) {
-        setPartialId(null);
-        setPartialAmount("");
-        setPartialDate("");
-      }
+      if (ok) setPartialId(null);
     });
-  }
+  }, [
+    accountsView,
+    ledgerTransactions,
+    runMutation,
+    settleAccountIdOrDefault,
+    timeZone,
+    viewItems,
+  ]);
 
-  function savePartialRow(id: string) {
+  const savePartialRow = useCallback((
+    id: string,
+    partialAmount: string,
+    partialDate: string,
+  ) => {
     const item = viewItems.find((row) => row.id === id);
     if (!item) return;
     const parsed = parsePlanAmount(partialAmount);
@@ -667,59 +687,51 @@ export function PlanEditor({
       minorToUi(resolved.targetSettledMinor),
       resolved.fullySettled ? undefined : partialDate,
     );
-  }
+  }, [settleRow, viewItems]);
 
-  function markRemainder(id: string) {
+  const markRemainder = useCallback((id: string) => {
     const item = viewItems.find((row) => row.id === id);
     if (!item) return;
     // Full Klar — omit target so the action settles the planned amount.
     settleRow(id, true);
-  }
+  }, [settleRow, viewItems]);
 
-  function startPartial(item: PlanItem) {
+  const startPartial = useCallback((item: PlanItem) => {
     if (isTempPlanId(item.id)) return;
     setAddKind(null);
     setEditingId(null);
     setPartialId(item.id);
-    // Additional amount for this step — not the cumulative settled total.
-    setPartialAmount("");
-    const rest = remainingDueIso(item);
-    setPartialDate(isoToDateInput(rest, timeZone) || `${monthKey}-01`);
-  }
+  }, []);
 
-  function rowBusy(): {
-    pendingId: string | null;
-    pendingAction: "save" | "delete" | "settle" | null;
-  } {
+  const rowPending = useMemo(() => {
     if (!busy || !busy.includes(":")) {
-      return { pendingId: null, pendingAction: null };
+      return { pendingId: null, pendingAction: null } as const;
     }
     const id = busy.slice(busy.indexOf(":") + 1);
-    if (busy.startsWith("edit:")) return { pendingId: id, pendingAction: "save" };
-    if (busy.startsWith("delete:")) return { pendingId: id, pendingAction: "delete" };
-    if (busy.startsWith("settle:")) return { pendingId: id, pendingAction: "settle" };
-    return { pendingId: null, pendingAction: null };
-  }
+    if (busy.startsWith("edit:")) {
+      return { pendingId: id, pendingAction: "save" as const };
+    }
+    if (busy.startsWith("delete:")) {
+      return { pendingId: id, pendingAction: "delete" as const };
+    }
+    if (busy.startsWith("settle:")) {
+      return { pendingId: id, pendingAction: "settle" as const };
+    }
+    return { pendingId: null, pendingAction: null } as const;
+  }, [busy]);
 
-  function startEditIncome(item: PlanItem) {
+  const startEdit = useCallback((item: PlanItem) => {
     if (isTempPlanId(item.id)) return;
     setAddKind(null);
     setPartialId(null);
     setEditingId(item.id);
-    setEditName(item.name);
-    setEditAmount(minorToUi(item.amountMinor));
-    setEditDate(isoToDateInput(remainingDueIso(item), timeZone));
-  }
+  }, []);
 
-  function startEditExpense(item: PlanItem) {
-    startEditIncome(item);
-  }
-
-  function startEditExtra(item: PlanItem) {
-    startEditIncome(item);
-  }
-
-  function saveEditedItem(id: string, patch: Partial<PlanItem>) {
+  const saveEditedItem = useCallback((
+    id: string,
+    patch: Partial<PlanItem>,
+    amountRaw: string,
+  ) => {
     const previous = viewItems.find((row) => row.id === id);
     if (!previous) return;
     const next = applyPlanItemEdits(previous, {
@@ -738,15 +750,127 @@ export function PlanEditor({
         updatePlanItemAction({
           id,
           name: next.name,
-          amount: editAmount,
+          amount: amountRaw,
           date: pickedDate,
         }),
-      reconcile: (rows, result) =>
-        result.item ? mergeReturnedItem(rows, result.item) : rows,
+      reconcile: (rows, result) => {
+        if (result.home || result.plan || result.refreshPending) {
+          invalidateSettledHomeSurfaces();
+          adoptMutationFinance(result);
+        }
+        return result.item ? mergeReturnedItem(rows, result.item) : rows;
+      },
     }).then((ok) => {
       if (ok) setEditingId(null);
     });
-  }
+  }, [runMutation, timeZone, viewItems]);
+
+  const deleteRow = useCallback((id: string) => {
+    const index = viewItems.findIndex((row) => row.id === id);
+    const previous = index >= 0 ? viewItems[index] : undefined;
+    if (!previous || index < 0) return;
+    tombstoneDeletedPlanItem(id);
+    void runMutation({
+      busy: `delete:${id}`,
+      apply: (rows) => removeItemById(rows, id),
+      revert: (rows) => {
+        clearDeletedPlanItemTombstone(id);
+        return insertItemAt(rows, index, previous);
+      },
+      action: () => deletePlanItemAction(id),
+    });
+  }, [runMutation, viewItems]);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setPartialId(null);
+  }, []);
+  const cancelPartial = useCallback(() => setPartialId(null), []);
+  const saveEdit = useCallback((id: string, draft: PlanEditDraft) => {
+    const parsed = parsePlanAmount(draft.amount);
+    if (typeof parsed !== "number") {
+      setError(parsed.error);
+      return;
+    }
+    const current = viewItems.find((row) => row.id === id);
+    if (current) {
+      const below = planAmountBelowSettledError(current, parsed);
+      if (below) {
+        setError(below);
+        return;
+      }
+    }
+    saveEditedItem(id, {
+      name: draft.name.trim(),
+      amountMinor: parsed,
+      nextDueAt: draft.date ? `${draft.date}T12:00:00.000Z` : null,
+    }, draft.amount);
+  }, [saveEditedItem, viewItems]);
+  const savePartial = useCallback((id: string, draft: PlanPartialDraft) => {
+    savePartialRow(id, draft.amount, draft.date);
+  }, [savePartialRow]);
+  const incomeSubtitle = useCallback(
+    (item: PlanItem) => labelIncomeDateSv(item.nextDueAt, timeZone),
+    [timeZone],
+  );
+  const fixedSubtitle = useCallback(
+    (item: PlanItem) =>
+      item.nextDueAt ? formatListDateSv(item.nextDueAt, timeZone) : "Datum saknas",
+    [timeZone],
+  );
+  const saveSavings = useCallback((amount: string) => {
+    const parsed = parsePlanAmount(amount.trim() === "" ? "0" : amount);
+    if (typeof parsed !== "number") {
+      setError(parsed.error);
+      return;
+    }
+    let tempId: string | undefined;
+    let previous: PlanItem | null = null;
+    void runMutation({
+      busy: "savings",
+      apply: (rows) => {
+        const applied = applyMonthSavings(rows, monthKey, parsed, currency, timeZone);
+        tempId = applied.tempId;
+        previous = applied.previous;
+        return applied.items;
+      },
+      revert: (rows) =>
+        revertMonthSavings(rows, monthKey, previous, tempId, timeZone),
+      action: () =>
+        setMonthSavingsAction({
+          monthKey,
+          amount: amount.trim() === "" ? "0" : amount,
+        }),
+      reconcile: (rows, result) => {
+        adoptMutationFinance(result);
+        if (result.plan) return result.plan.items;
+        return result.item ? mergeReturnedItem(rows, result.item, tempId) : rows;
+      },
+    });
+  }, [currency, monthKey, runMutation, timeZone]);
+  const clearSavings = useCallback(() => {
+    let previous: PlanItem | null = null;
+    return runMutation({
+      busy: "savings-clear",
+      apply: (rows) => {
+        const applied = applyMonthSavings(rows, monthKey, 0, currency, timeZone);
+        previous = applied.previous;
+        return applied.items;
+      },
+      revert: (rows) =>
+        revertMonthSavings(rows, monthKey, previous, undefined, timeZone),
+      action: () =>
+        setMonthSavingsAction({
+          monthKey,
+          amount: "0",
+        }),
+      reconcile: (rows, result) => {
+        adoptMutationFinance(result);
+        if (result.plan) return result.plan.items;
+        return rows;
+      },
+    });
+  }, [currency, monthKey, runMutation, timeZone]);
 
   return (
     <div
@@ -771,84 +895,34 @@ export function PlanEditor({
           coverage={coverage}
           monthName={monthName}
           priorMonthName={priorMonthName}
+          timeZone={timeZone}
           currency={currency}
           savingsTotalMinor={savingsTotalMinor}
           savingsThisMonthMinor={coverage.savingsThisMonthMinor}
           savingsPriorMinor={coverage.savingsPriorMinor}
           savingsByMonth={savingsByMonth}
           monthKeys={monthKeys}
-          savingsAmount={savingsAmount}
-          onSavingsAmount={setSavingsAmount}
+          savingsSeed={
+            projection.savingsMinor > 0 ? minorToUi(projection.savingsMinor) : ""
+          }
+          savingsResetKey={`${displayMonthKey}:${projection.savingsMinor}`}
+          monthKey={monthKey}
+          planItems={viewItems}
+          savingsCurrentMinor={projection.savingsMinor}
+          ledgerTransactions={ledgerTransactions}
+          saldoMinor={coverageSaldoMinor}
+          cycleSpendingMinor={home?.cycleSpendingMinor ?? 0}
+          todaySpendingMinor={home?.todaySpendingMinor ?? 0}
+          fundingConfirmed={home?.cycleIsActive}
+          canPreview={monthReady}
           savingsBusy={busy === "savings"}
           clearBusy={busy === "savings-clear"}
-          livePreview={savingsPreview}
-          onSaveSavings={() => {
-            const parsed = parsePlanAmount(
-              savingsAmount.trim() === "" ? "0" : savingsAmount,
-            );
-            if (typeof parsed !== "number") {
-              setError(parsed.error);
-              return;
-            }
-            let tempId: string | undefined;
-            let previous: PlanItem | null = null;
-            void runMutation({
-              busy: "savings",
-              apply: (rows) => {
-                const applied = applyMonthSavings(
-                  rows,
-                  monthKey,
-                  parsed,
-                  currency,
-                  timeZone,
-                );
-                tempId = applied.tempId;
-                previous = applied.previous;
-                return applied.items;
-              },
-              revert: (rows) =>
-                revertMonthSavings(rows, monthKey, previous, tempId, timeZone),
-              action: () =>
-                setMonthSavingsAction({
-                  monthKey,
-                  amount: savingsAmount.trim() === "" ? "0" : savingsAmount,
-                }),
-              reconcile: (rows, result) => {
-                adoptMutationFinance(result);
-                if (result.plan) return result.plan.items;
-                return result.item ? mergeReturnedItem(rows, result.item, tempId) : rows;
-              },
-            });
-          }}
-          onClearSavings={() => {
-            let previous: PlanItem | null = null;
-            void runMutation({
-              busy: "savings-clear",
-              apply: (rows) => {
-                const applied = applyMonthSavings(rows, monthKey, 0, currency, timeZone);
-                previous = applied.previous;
-                return applied.items;
-              },
-              revert: (rows) =>
-                revertMonthSavings(rows, monthKey, previous, undefined, timeZone),
-              action: () =>
-                setMonthSavingsAction({
-                  monthKey,
-                  amount: "0",
-                }),
-              reconcile: (rows, result) => {
-                adoptMutationFinance(result);
-                if (result.plan) return result.plan.items;
-                return rows;
-              },
-            }).then((ok) => {
-              if (ok) setSavingsAmount("");
-            });
-          }}
+          onSaveSavings={saveSavings}
+          onClearSavings={clearSavings}
         />
       </section>
 
-      {error ? (
+      {error && !partialId ? (
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
           {error}
         </p>
@@ -926,68 +1000,29 @@ export function PlanEditor({
             items={projection.incomes}
             settleKind="income"
             currency={currency}
-            editingId={editingId}
-            editName={editName}
-            editAmount={editAmount}
-            editExtra={editDate}
             timeZone={timeZone}
+            monthKey={monthKey}
+            editingId={editingId}
             emptyHint="Lägg in lön eller CSN."
-            subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
-            pendingId={rowBusy().pendingId}
-            pendingAction={rowBusy().pendingAction}
+            subtitle={incomeSubtitle}
+            pendingId={rowPending.pendingId}
+            pendingAction={rowPending.pendingAction}
             onSettle={settleRow}
             onMarkRemainder={markRemainder}
             partialId={partialId}
-            partialAmount={partialAmount}
-            partialDate={partialDate}
             partialPrompt="Hur mycket fick du nu?"
             remainingDatePrompt="När kommer resten?"
-            onPartialAmount={setPartialAmount}
-            onPartialDate={setPartialDate}
             onStartPartial={startPartial}
-            onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) => savePartialRow(id)}
+            onCancelPartial={cancelPartial}
+            onSavePartial={savePartial}
+            saveError={partialId ? error : null}
             settleAccounts={settleAccounts}
             settleAccountId={settleAccountIdOrDefault}
             onSettleAccountId={setSettleAccountId}
-            onEditName={setEditName}
-            onEditAmount={setEditAmount}
-            onEditExtra={setEditDate}
-            onStartEdit={startEditIncome}
-            onCancelEdit={() => {
-              setEditingId(null);
-              setPartialId(null);
-            }}
-            onSaveEdit={(id) => {
-              const parsed = parsePlanAmount(editAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              const current = viewItems.find((row) => row.id === id);
-              if (current) {
-                const below = planAmountBelowSettledError(current, parsed);
-                if (below) {
-                  setError(below);
-                  return;
-                }
-              }
-              saveEditedItem(id, {
-                name: editName.trim(),
-                amountMinor: parsed,
-                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
-              });
-            }}
-            onDelete={(id) => {
-              const previous = viewItems.find((row) => row.id === id);
-              if (!previous) return;
-              void runMutation({
-                busy: `delete:${id}`,
-                apply: (rows) => removeItemById(rows, id),
-                revert: (rows) => [...rows, previous],
-                action: () => deletePlanItemAction(id),
-              });
-            }}
+            onStartEdit={startEdit}
+            onCancelEdit={cancelEdit}
+            onSaveEdit={saveEdit}
+            onDelete={deleteRow}
           />
 
           <InlineAdd
@@ -1089,74 +1124,33 @@ export function PlanEditor({
             items={projection.fixedItems}
             settleKind="expense"
             currency={currency}
-            editingId={editingId}
-            editName={editName}
-            editAmount={editAmount}
-            editExtra={editDate}
             timeZone={timeZone}
+            monthKey={monthKey}
+            editingId={editingId}
             emptyHint={
               canImportFixed
                 ? `Läs in från ${labelMonthNameSv(previousMonthKey)}, eller lägg till nya.`
                 : "Hyra och räkningar du måste betala."
             }
-            subtitle={(item) =>
-              item.nextDueAt ? formatListDateSv(item.nextDueAt, timeZone) : "Datum saknas"
-            }
-            pendingId={rowBusy().pendingId}
-            pendingAction={rowBusy().pendingAction}
+            subtitle={fixedSubtitle}
+            pendingId={rowPending.pendingId}
+            pendingAction={rowPending.pendingAction}
             onSettle={settleRow}
             onMarkRemainder={markRemainder}
             partialId={partialId}
-            partialAmount={partialAmount}
-            partialDate={partialDate}
             partialPrompt="Hur mycket betalade du nu?"
             remainingDatePrompt="När ska resten betalas?"
-            onPartialAmount={setPartialAmount}
-            onPartialDate={setPartialDate}
             onStartPartial={startPartial}
-            onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) => savePartialRow(id)}
+            onCancelPartial={cancelPartial}
+            onSavePartial={savePartial}
+            saveError={partialId ? error : null}
             settleAccounts={settleAccounts}
             settleAccountId={settleAccountIdOrDefault}
             onSettleAccountId={setSettleAccountId}
-            onEditName={setEditName}
-            onEditAmount={setEditAmount}
-            onEditExtra={setEditDate}
-            onStartEdit={startEditExpense}
-            onCancelEdit={() => {
-              setEditingId(null);
-              setPartialId(null);
-            }}
-            onSaveEdit={(id) => {
-              const parsed = parsePlanAmount(editAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              const current = viewItems.find((row) => row.id === id);
-              if (current) {
-                const below = planAmountBelowSettledError(current, parsed);
-                if (below) {
-                  setError(below);
-                  return;
-                }
-              }
-              saveEditedItem(id, {
-                name: editName.trim(),
-                amountMinor: parsed,
-                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
-              });
-            }}
-            onDelete={(id) => {
-              const previous = viewItems.find((row) => row.id === id);
-              if (!previous) return;
-              void runMutation({
-                busy: `delete:${id}`,
-                apply: (rows) => removeItemById(rows, id),
-                revert: (rows) => [...rows, previous],
-                action: () => deletePlanItemAction(id),
-              });
-            }}
+            onStartEdit={startEdit}
+            onCancelEdit={cancelEdit}
+            onSaveEdit={saveEdit}
+            onDelete={deleteRow}
           />
 
           <InlineAdd
@@ -1219,68 +1213,29 @@ export function PlanEditor({
             items={projection.extraItems}
             settleKind="expense"
             currency={currency}
-            editingId={editingId}
-            editName={editName}
-            editAmount={editAmount}
-            editExtra={editDate}
             timeZone={timeZone}
+            monthKey={monthKey}
+            editingId={editingId}
             emptyHint="En räkning som bara kommer en gång."
-            subtitle={(item) => labelIncomeDateSv(item.nextDueAt, timeZone)}
-            pendingId={rowBusy().pendingId}
-            pendingAction={rowBusy().pendingAction}
+            subtitle={incomeSubtitle}
+            pendingId={rowPending.pendingId}
+            pendingAction={rowPending.pendingAction}
             onSettle={settleRow}
             onMarkRemainder={markRemainder}
             partialId={partialId}
-            partialAmount={partialAmount}
-            partialDate={partialDate}
             partialPrompt="Hur mycket betalade du nu?"
             remainingDatePrompt="När ska resten betalas?"
-            onPartialAmount={setPartialAmount}
-            onPartialDate={setPartialDate}
             onStartPartial={startPartial}
-            onCancelPartial={() => setPartialId(null)}
-            onSavePartial={(id) => savePartialRow(id)}
+            onCancelPartial={cancelPartial}
+            onSavePartial={savePartial}
+            saveError={partialId ? error : null}
             settleAccounts={settleAccounts}
             settleAccountId={settleAccountIdOrDefault}
             onSettleAccountId={setSettleAccountId}
-            onEditName={setEditName}
-            onEditAmount={setEditAmount}
-            onEditExtra={setEditDate}
-            onStartEdit={startEditExtra}
-            onCancelEdit={() => {
-              setEditingId(null);
-              setPartialId(null);
-            }}
-            onSaveEdit={(id) => {
-              const parsed = parsePlanAmount(editAmount);
-              if (typeof parsed !== "number") {
-                setError(parsed.error);
-                return;
-              }
-              const current = viewItems.find((row) => row.id === id);
-              if (current) {
-                const below = planAmountBelowSettledError(current, parsed);
-                if (below) {
-                  setError(below);
-                  return;
-                }
-              }
-              saveEditedItem(id, {
-                name: editName.trim(),
-                amountMinor: parsed,
-                nextDueAt: editDate ? `${editDate}T12:00:00.000Z` : null,
-              });
-            }}
-            onDelete={(id) => {
-              const previous = viewItems.find((row) => row.id === id);
-              if (!previous) return;
-              void runMutation({
-                busy: `delete:${id}`,
-                apply: (rows) => removeItemById(rows, id),
-                revert: (rows) => [...rows, previous],
-                action: () => deletePlanItemAction(id),
-              });
-            }}
+            onStartEdit={startEdit}
+            onCancelEdit={cancelEdit}
+            onSaveEdit={saveEdit}
+            onDelete={deleteRow}
           />
 
           <InlineAdd

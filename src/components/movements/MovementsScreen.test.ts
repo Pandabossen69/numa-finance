@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./MovementsScreen.tsx", import.meta.url), "utf8");
 
 describe("Rörelser expense color", () => {
-  it("paints Utgifter and negative Netto in clay alarm", () => {
+  it("paints Utgifter neutral and negative Netto in clay alarm", () => {
     expect(src).toContain('label="Utgifter"');
-    expect(src).toContain('tone="alarm"');
+    expect(src).toContain('tone="neutral"');
     expect(src).toContain('tone={net >= 0 ? "positive" : "alarm"}');
+    expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,120}tone="alarm"/);
     expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,80}tone="danger"/);
   });
 
@@ -17,6 +18,17 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("disabled={pendingAction != null}");
     expect(src).toContain('{pendingAction === "save" ? "Sparar…" : "Spara"}');
     expect(src).toContain('{pendingAction === "void" ? "Tar bort…" : "Ta bort"}');
+  });
+
+  it("paints row Ta bort and the confirm with the danger token", () => {
+    const at = src.indexOf("setConfirmId(tx.id)");
+    const row = src.slice(at - 180, at + 160);
+    expect(row).toContain("text-[var(--numa-danger)]");
+    expect(row).toMatch(/>\s*Ta bort\s*</);
+    expect(row).not.toContain("text-[var(--numa-muted)]");
+    expect(src).toContain(
+      'className="numa-press numa-tap px-1 text-xs font-semibold text-[var(--numa-danger)]"',
+    );
   });
 
   it("asks for an in-DOM confirm before Ta bort", () => {
@@ -35,6 +47,7 @@ describe("Rörelser expense color", () => {
   it("prefills native amount even when the dirty snapshot copied THB", () => {
     expect(src).toContain("movementEditPrefill");
     expect(src).toContain("mergeMovementNativeFromServer");
+    expect(src).toContain("if (data === lastMovementsSnapshot()) return;");
     expect(src).toContain("@/features/finance/movement-native");
     expect(src).toContain("lastAccountsSnapshot");
     expect(src).toMatch(
@@ -58,7 +71,7 @@ describe("Rörelser expense color", () => {
   });
 
   it("makes Per kategori rows tap targets that filter the list", () => {
-    expect(src).toContain("matchesCategory");
+    expect(src).toContain("movementVisibleInRorelser");
     expect(src).toContain("toggleCategory");
     expect(src).toContain("spendCategoryName");
     expect(src).toContain("aria-pressed={selected}");
@@ -69,7 +82,17 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]");
     expect(src).toContain("numa-category-chip");
     expect(src).toContain("selectCategory(spendCategoryName(tx.category))");
-    expect(src).toContain("rememberMovementsView({ filter, period, category })");
+    expect(src).toContain("rememberMovementsView({");
+    expect(src).toContain("cycleStartAt");
+    expect(src).toContain("cycleEndAt");
+    expect(src).toContain("payCycleRangeLabelSv");
+    expect(src).toContain("cycleWindowTotals");
+    expect(src).toContain('label="Perioden"');
+    expect(src).toContain("detail={cycleRange}");
+    expect(src).toContain('onClick={() => choosePeriod("cycle")}');
+    expect(src).toContain("subscribeMovementsDrill");
+    expect(src).toContain("clearMovementsDrill");
+    expect(src).not.toContain("setSource");
     expect(src).toContain("subscribeMovementsView");
     expect(src).not.toContain("Inga träffar för filtret — prova Alla eller All tid.");
   });
@@ -95,5 +118,11 @@ describe("Rörelser expense color", () => {
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
+  });
+
+  it("clears the category chip when leaving Rörelser", () => {
+    expect(src).toContain('spaTabKey(prev) === "/transaktioner"');
+    expect(src).toContain("spaTabKey(pathname) !== \"/transaktioner\"");
+    expect(src).toContain("setCategory(null)");
   });
 });

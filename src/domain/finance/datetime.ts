@@ -72,6 +72,89 @@ export function isSameZonedDay(
   return zonedDayKey(a, timezone) === zonedDayKey(b, timezone);
 }
 
+const zonedDayKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+const zonedHmFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function zonedDayKeyFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = zonedDayKeyFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  zonedDayKeyFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+function zonedHmFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = zonedHmFormatters.get(timeZone);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  zonedHmFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/** Absolute instant, or null when the stamp is missing or unparseable. */
+function candidateInstant(stamp: string | null | undefined): Date | null {
+  const trimmed = stamp?.trim();
+  if (!trimmed) return null;
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms);
+}
+
+/**
+ * Wall clock of an instant in `timeZone`, from `Intl` parts.
+ * Never slice `HH:mm` out of an offset string (`+00:00` / `Z` / `+07:00`).
+ */
+function wallClockHms(
+  instant: Date,
+  timeZone: string,
+): { hh: string; mm: string; ss: string } | null {
+  let hh = "";
+  let mm = "";
+  let ss = "";
+  for (const part of zonedHmFormatter(timeZone).formatToParts(instant)) {
+    if (part.type === "hour") hh = part.value;
+    else if (part.type === "minute") mm = part.value;
+    else if (part.type === "second") ss = part.value;
+  }
+  if (!/^\d{1,2}$/.test(hh) || !/^\d{1,2}$/.test(mm) || !/^\d{1,2}$/.test(ss)) {
+    return null;
+  }
+  return {
+    hh: String(Number(hh) % 24).padStart(2, "0"),
+    mm: String(Number(mm)).padStart(2, "0"),
+    ss: String(Number(ss)).padStart(2, "0"),
+  };
+}
+
+/** `HH:mm` in `timeZone` (24h, zero-padded). Never slices an offset string. */
+export function formatZonedHm(
+  instant: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  const date = instant instanceof Date ? instant : new Date(instant);
+  const clock = wallClockHms(date, timeZone);
+  if (!clock) return "";
+  return `${clock.hh}:${clock.mm}`;
+}
+
+/** Keep `iso` when it is at or before `now`; otherwise now − 2s. */
+export function clampOccurredAt(iso: string, now: Date): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms) || ms <= now.getTime()) return iso;
+  return new Date(now.getTime() - 2_000).toISOString();
+}
+
 /**
  * Calendar day key (`YYYY-MM-DD`) in the given IANA timezone.
  * Never derive this from `Date#toISOString().slice(0, 10)` — for Asia/Bangkok
@@ -82,12 +165,7 @@ export function zonedDayKey(
   timeZone: string = DEFAULT_TIMEZONE,
 ): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
+  return zonedDayKeyFormatter(timeZone).format(d);
 }
 
 /**
@@ -99,6 +177,95 @@ export function zonedDayAnchorMs(
   timeZone: string = DEFAULT_TIMEZONE,
 ): number {
   return Date.parse(`${zonedDayKey(date, timeZone)}T12:00:00.000Z`);
+}
+
+/** Calendar day (`YYYY-MM-DD`) of an instant in `timeZone`. */
+export function calendarDateInZone(
+  instant: Date | string,
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return zonedDayKey(instant, timeZone);
+}
+
+/**
+ * Absolute instant for a review calendar day in `timeZone`.
+ *
+ * A candidate stamp is one instant. Its local day and clock come from
+ * `Intl` in `timeZone`, never from the `HH:mm` digits of a `+00:00` / `Z`
+ * string. Reading those digits as Bangkok time stored "25 sep. 2026 11:02"
+ * (`2026-09-25T04:02:00+00:00`) as `2026-09-24T21:02Z`, seven hours early.
+ *
+ * The same local day keeps that instant. A different chosen day keeps the
+ * local clock on the chosen day. No time: today and any future day are
+ * `now − 2s`; an earlier day stays at 12:00 local. Nothing is after `now`.
+ */
+export function occurredAtOnCalendarDay(input: {
+  ymd: string;
+  keepTimeFrom?: string | null;
+  timeZone?: string;
+  now?: Date;
+}): string {
+  const timeZone = input.timeZone ?? DEFAULT_TIMEZONE;
+  const now = input.now ?? new Date();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.ymd)) {
+    throw new Error("Ogiltigt datum");
+  }
+  const instant = candidateInstant(input.keepTimeFrom);
+  const today = zonedDayKey(now, timeZone);
+  let iso: string;
+  if (instant) {
+    const localDay = zonedDayKey(instant, timeZone);
+    if (input.ymd === localDay) {
+      iso = instant.toISOString();
+    } else {
+      const clock = wallClockHms(instant, timeZone);
+      iso = clock
+        ? zonedWallTimeToUtcIso(
+            `${input.ymd}T${clock.hh}:${clock.mm}:${clock.ss}`,
+            timeZone,
+          )
+        : instant.toISOString();
+    }
+  } else if (input.ymd === today || input.ymd > today) {
+    iso = new Date(now.getTime() - 2_000).toISOString();
+  } else {
+    iso = zonedWallTimeToUtcIso(`${input.ymd}T12:00`, timeZone);
+  }
+  return clampOccurredAt(iso, now);
+}
+
+/** Latest calendar day a movement may use: today in `timeZone`, never tomorrow. */
+export function maxBookableCalendarDate(
+  now: Date = new Date(),
+  timeZone: string = DEFAULT_TIMEZONE,
+): string {
+  return calendarDateInZone(now, timeZone);
+}
+
+/**
+ * `occurred_at` for a date the user picked.
+ *
+ * The civil day is the calendar day in `timeZone` (profile default
+ * Asia/Bangkok), not the UTC date of the host. A future day is clamped to
+ * today so the stored instant cannot land on tomorrow.
+ */
+export function occurredAtForBookedDay(input: {
+  ymd: string;
+  timeZone?: string;
+  now?: Date;
+  keepTimeFrom?: string | null;
+}): string {
+  const timeZone = input.timeZone || DEFAULT_TIMEZONE;
+  const now = input.now ?? new Date();
+  const today = maxBookableCalendarDate(now, timeZone);
+  const raw = input.ymd.trim();
+  const ymd = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? (raw > today ? today : raw) : today;
+  return occurredAtOnCalendarDay({
+    ymd,
+    timeZone,
+    now,
+    keepTimeFrom: input.keepTimeFrom,
+  });
 }
 
 /**
@@ -238,20 +405,34 @@ export function snapshotLedgerWindow(params: {
   };
 }
 
+const listDateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function listDateFormatter(
+  timeZone: string,
+  withTime: boolean,
+): Intl.DateTimeFormat {
+  const key = `${withTime ? "t" : "d"}\0${timeZone}`;
+  const cached = listDateFormatters.get(key);
+  if (cached) return cached;
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone,
+    day: "numeric",
+    month: "short",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  });
+  listDateFormatters.set(key, formatter);
+  return formatter;
+}
+
 /** List dates in Swedish locale — never US `M/D/YYYY`. */
 export function formatListDateSv(
   iso: string,
   timeZone: string,
   opts?: { withTime?: boolean },
 ): string {
-  return new Date(iso).toLocaleString("sv-SE", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-    ...(opts?.withTime
-      ? { hour: "2-digit", minute: "2-digit" }
-      : {}),
-  });
+  return listDateFormatter(timeZone, opts?.withTime === true).format(
+    new Date(iso),
+  );
 }
 
 const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

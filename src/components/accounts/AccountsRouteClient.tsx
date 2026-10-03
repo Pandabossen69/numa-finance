@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
+import { adoptServerAccountsSnapshot } from "@/features/finance/account-edit-store";
 import { getAccountsSnapshotAction } from "@/features/finance/accounts-snapshot";
+import { archivedAccountsNeedRefresh } from "@/features/home/accounts-last-known";
 import {
+  accountsSnapshotConfirmedThisSession,
   isAccountsDirty,
   paintableAccountsSnapshot,
   rememberAccountsSnapshot,
@@ -26,10 +29,24 @@ export function AccountsRouteClient() {
 
   useEffect(() => {
     let cancelled = false;
-    if (paintableAccountsSnapshot()) return;
+    const known = paintableAccountsSnapshot();
+    // Hem/Plan last-known writes archivedAccounts: []. Refetch so Arkiverade
+    // does not disappear, including when that saved list is stale.
+    if (
+      known &&
+      !archivedAccountsNeedRefresh(known, {
+        confirmedThisSession: accountsSnapshotConfirmedThisSession(),
+      })
+    ) {
+      return;
+    }
     void getAccountsSnapshotAction().then((result) => {
       if (cancelled) return;
       if (result.ok) {
+        if (adoptServerAccountsSnapshot(result.data)) {
+          setError(null);
+          return;
+        }
         if (!isAccountsDirty()) rememberAccountsSnapshot(result.data);
         setError(null);
         return;

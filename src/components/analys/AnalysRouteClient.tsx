@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { AnalysDashboard } from "@/components/analys/AnalysDashboard";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/features/finance/analys-client-fetch";
 import { getAnalysSnapshotAction } from "@/features/finance/analys-snapshot";
 import {
+  derivePaintableAnalysSnapshot,
   ensurePaintableAnalysSnapshot,
   scheduleUpgradeAnalysFromPlan,
 } from "@/features/finance/ensure-analys-last-known";
@@ -23,6 +24,7 @@ import {
   lastAnalysSnapshot,
   lastHomeSnapshot,
   lastPlanSnapshot,
+  lastSessionHomeSnapshot,
   rememberAnalysSnapshot,
   subscribeAnalysSnapshot,
   subscribeHomeSnapshot,
@@ -64,9 +66,19 @@ export function AnalysRouteClient() {
   // Paint last-known / Hem-derived chrome in this render. planStored /
   // homeStored subscriptions re-render when Hem confirm or quiet-warm
   // writes — do not gate first paint on those snapshots being non-null.
-  const view =
-    (analysViewCanPaint(stored) ? stored : null) ??
-    ensurePaintableAnalysSnapshot();
+  // Derivation only: remembering here updated other Analys trees mid-render.
+  const view = useMemo(
+    () =>
+      derivePaintableAnalysSnapshot(
+        stored,
+        lastSessionHomeSnapshot() ?? homeStored,
+      ),
+    [homeStored, stored],
+  );
+
+  useEffect(() => {
+    if (view && view !== stored) rememberAnalysSnapshot(view);
+  }, [stored, view]);
 
   useEffect(() => {
     return registerAnalysClientRetry(() => {

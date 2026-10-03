@@ -3,6 +3,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { isStandaloneDisplay } from "@/lib/pwa/display";
 import {
+  homescreenSettingsGuide,
+  readInstallPlatform,
+} from "@/lib/pwa/install-prompt";
+import {
   isProductionAppHost,
   PRODUCTION_HOST,
   PRODUCTION_ORIGIN,
@@ -52,6 +56,12 @@ export function HomescreenInstallHint({
     () => isProductionAppHost(window.location.hostname),
     () => false,
   );
+  const platform = useSyncExternalStore(
+    subscribeHomescreenHint,
+    readInstallPlatform,
+    () => "other" as const,
+  );
+  const homescreenSteps = homescreenSettingsGuide(platform);
   const [dismissedHere, setDismissedHere] = useState(false);
   const [barReady, setBarReady] = useState(variant !== "bar");
   const visible = storedVisible && !dismissedHere && barReady;
@@ -76,14 +86,7 @@ export function HomescreenInstallHint({
   if (variant === "compact") {
     return (
       <p className="text-[12px] leading-relaxed text-[var(--numa-faint)]">
-        Alla konton: lägg till NUMA från{" "}
-        <a
-          href={PRODUCTION_ORIGIN}
-          className="font-semibold text-[var(--numa-accent)]"
-        >
-          {PRODUCTION_HOST}
-        </a>{" "}
-        (Dela → Lägg till på hemskärmen).
+        Alla konton: {homescreenSteps}
       </p>
     );
   }
@@ -129,23 +132,10 @@ export function HomescreenInstallHint({
           Lägg NUMA på hemskärmen
         </p>
         <p className="text-[13px] leading-relaxed text-[var(--numa-muted)]">
-          Gäller alla konton. Öppna Safari på{" "}
-          <span className="font-semibold text-[var(--numa-ink)]">
-            {PRODUCTION_HOST}
-          </span>
-          , tryck Dela → Lägg till på hemskärmen. Då får ni alltid senaste
-          production — ingen Vercel-länk behövs.
+          Gäller alla konton. {homescreenSteps}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        {alreadyOnProduction ? null : (
-          <a
-            href={PRODUCTION_ORIGIN}
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--numa-ink)] px-4 text-sm font-semibold text-[var(--numa-card)]"
-          >
-            Öppna rätt länk
-          </a>
-        )}
         {dismissible ? (
           <button
             type="button"

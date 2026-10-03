@@ -14,6 +14,10 @@ import {
 } from "@/components/mer/MerHub";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
+import {
+  accountEditError,
+  subscribeAccountEditError,
+} from "@/features/finance/account-edit-store";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import {
   isAccountsDirty,
@@ -46,6 +50,11 @@ export function AccountsDashboard({
     rememberAccountsSnapshot(data);
   }, [data]);
 
+  const editError = useSyncExternalStore(
+    subscribeAccountEditError,
+    accountEditError,
+    () => null,
+  );
   const view = stored ?? paintableAccountsSnapshot();
 
   if (!view) {
@@ -76,6 +85,15 @@ export function AccountsDashboard({
           </Link>
         }
       />
+
+      {editError ? (
+        <p
+          className="rounded-2xl bg-[color-mix(in_srgb,var(--numa-danger)_14%,transparent)] px-3 py-2.5 text-sm text-[var(--numa-danger)]"
+          role="alert"
+        >
+          {editError}
+        </p>
+      ) : null}
 
       {view.accounts.length === 0 &&
       (view.archivedAccounts ?? []).length === 0 ? (

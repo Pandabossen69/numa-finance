@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   MONTHLY_SAVE_NAME,
   matchPlanItemsToLedger,
@@ -11,10 +11,14 @@ import {
   ensureMonthSavings,
   isTempPlanId,
   adoptServerPlanItems,
+  clearDeletedPlanItemTombstone,
+  insertItemAt,
   mergeReturnedItem,
   mergeReturnedItems,
   optimisticPlanItem,
   removeItemById,
+  resetDeletedPlanItemTombstonesForTests,
+  tombstoneDeletedPlanItem,
   revertMonthSavings,
   settlePlanItem,
   stampPlanItems,
@@ -358,6 +362,47 @@ describe("plan optimistic helpers", () => {
     const a = item({ id: "a", kind: "mandatory", amountMinor: 1 });
     const b = item({ id: "b", kind: "mandatory", amountMinor: 2 });
     expect(removeItemById([a, b], "a")).toEqual([b]);
+  });
+
+  it("restores a failed delete in its original place, not at the end", () => {
+    const a = item({ id: "a", kind: "mandatory", amountMinor: 1 });
+    const b = item({ id: "b", kind: "mandatory", amountMinor: 2 });
+    const c = item({ id: "c", kind: "mandatory", amountMinor: 3 });
+    const without = removeItemById([a, b, c], "b");
+    expect(insertItemAt(without, 1, b).map((row) => row.id)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    expect(insertItemAt([a, b, c], 1, b)).toEqual([a, b, c]);
+  });
+});
+
+describe("deleted plan rows stay deleted", () => {
+  afterEach(() => {
+    resetDeletedPlanItemTombstonesForTests();
+  });
+
+  it("drops a just-deleted id from a stale snapshot and clears the tombstone once the server omits it", () => {
+    const kept = item({ id: "keep", kind: "mandatory", amountMinor: 800_00 });
+    const doomed = item({
+      id: "doomed",
+      kind: "mandatory",
+      amountMinor: 15_000_00,
+      name: "Hyra",
+    });
+    const local = [kept];
+    tombstoneDeletedPlanItem(doomed.id);
+
+    const stale = adoptServerPlanItems(local, [kept, doomed]);
+    expect(stale.map((row) => row.id)).toEqual(["keep"]);
+
+    const fresh = adoptServerPlanItems(local, [kept]);
+    expect(fresh.map((row) => row.id)).toEqual(["keep"]);
+
+    const echoed = adoptServerPlanItems(local, [kept, doomed]);
+    expect(echoed.map((row) => row.id)).toEqual(["keep", "doomed"]);
+    clearDeletedPlanItemTombstone(doomed.id);
   });
 });
 

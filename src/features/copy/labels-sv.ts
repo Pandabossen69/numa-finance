@@ -44,7 +44,7 @@ export const SV = {
   alltINuma: "Plan + sparande",
   sparandeTotalt: "Sparat från tidigare",
   sparat: "Sparat",
-  overskottHittills: "Överskott mot planen",
+  overskottHittills: "Plus mot planen",
   minusMotPlanen: "Minus mot planen",
   /** Always-visible Analys leftover one-liner (Perioden + Månad, first paint). */
   overskottMotPlanenHint:

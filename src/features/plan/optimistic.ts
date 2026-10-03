@@ -68,6 +68,50 @@ export function removeItemById(items: PlanItem[], id: string): PlanItem[] {
   return items.filter((item) => item.id !== id);
 }
 
+/** Put a row back where it was. A no-op when the id is already in the list. */
+export function insertItemAt(
+  items: PlanItem[],
+  index: number,
+  item: PlanItem,
+): PlanItem[] {
+  if (items.some((row) => row.id === item.id)) return items;
+  const at = Math.max(0, Math.min(index, items.length));
+  return [...items.slice(0, at), item, ...items.slice(at)];
+}
+
+/**
+ * Ids removed locally whose server echo must not resurrect them.
+ * Cleared once a non-empty snapshot arrives without the id.
+ */
+const deletedPlanItemIds = new Set<string>();
+
+export function tombstoneDeletedPlanItem(id: string) {
+  if (!id) return;
+  deletedPlanItemIds.add(id);
+}
+
+export function clearDeletedPlanItemTombstone(id: string) {
+  deletedPlanItemIds.delete(id);
+}
+
+export function resetDeletedPlanItemTombstonesForTests() {
+  deletedPlanItemIds.clear();
+}
+
+function releaseTombstonesMissingFrom(incoming: readonly PlanItem[]) {
+  const reals = incoming.filter((row) => !isTempPlanId(row.id));
+  // An empty payload is a brief replay, not proof the server dropped the row.
+  if (reals.length === 0 || deletedPlanItemIds.size === 0) return;
+  for (const id of deletedPlanItemIds) {
+    if (!reals.some((row) => row.id === id)) deletedPlanItemIds.delete(id);
+  }
+}
+
+function withoutTombstones(items: PlanItem[]): PlanItem[] {
+  if (deletedPlanItemIds.size === 0) return items;
+  return items.filter((row) => !deletedPlanItemIds.has(row.id));
+}
+
 export function mergeReturnedItem(
   items: PlanItem[],
   returned: PlanItem,
@@ -114,14 +158,21 @@ export function adoptServerPlanItems(
   local: PlanItem[],
   incoming: PlanItem[],
 ): PlanItem[] {
-  const incomingReals = incoming.filter((row) => !isTempPlanId(row.id));
-  if (incomingReals.length === 0) return local.length > 0 ? local : incomingReals;
+  releaseTombstonesMissingFrom(incoming);
+  const incomingReals = incoming.filter(
+    (row) => !isTempPlanId(row.id) && !deletedPlanItemIds.has(row.id),
+  );
+  if (incomingReals.length === 0) {
+    return withoutTombstones(local.length > 0 ? local : incomingReals);
+  }
   const temps = [
     ...new Map(
       local.filter((row) => isTempPlanId(row.id)).map((row) => [row.id, row]),
     ).values(),
   ];
-  const localReals = local.filter((row) => !isTempPlanId(row.id));
+  const localReals = local.filter(
+    (row) => !isTempPlanId(row.id) && !deletedPlanItemIds.has(row.id),
+  );
   const localById = new Map(localReals.map((row) => [row.id, row]));
   const mergedReals = incomingReals.map((row) => {
     const localRow = localById.get(row.id);
@@ -131,10 +182,11 @@ export function adoptServerPlanItems(
   const incomingById = new Map(incomingReals.map((row) => [row.id, row]));
   const extraLocal = localReals.filter((row) => !incomingById.has(row.id));
   const incomingHasNew = incomingReals.some((row) => !localById.has(row.id));
-  if (extraLocal.length > 0 && !incomingHasNew) {
-    return [...mergedReals, ...extraLocal, ...temps];
-  }
-  return [...mergedReals, ...temps];
+  const merged =
+    extraLocal.length > 0 && !incomingHasNew
+      ? [...mergedReals, ...extraLocal, ...temps]
+      : [...mergedReals, ...temps];
+  return withoutTombstones(merged);
 }
 
 export function findMonthSavings(

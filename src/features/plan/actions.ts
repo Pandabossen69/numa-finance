@@ -10,7 +10,9 @@ import {
   importableFixedExpenses,
   findMonthSavings,
   isPlanIncome,
+  isPlanPartiallySettled,
   isPlanSavings,
+  isPlanSettled,
   listMonthSavings,
   listStaleMonthSavings,
   monthAnchorIso,
@@ -625,8 +627,37 @@ export async function updatePlanItemAction(
       settledMinor: edited?.settledMinor,
       remainingDueAt: edited?.remainingDueAt,
     });
-    revalidatePlanPaths();
-    return { ok: true, item };
+    const touchesSettled =
+      (existing != null &&
+        (isPlanSettled(existing) || isPlanPartiallySettled(existing))) ||
+      (edited != null &&
+        (isPlanSettled(edited) || isPlanPartiallySettled(edited))) ||
+      isPlanSettled(item) ||
+      isPlanPartiallySettled(item);
+    if (!touchesSettled) {
+      revalidatePlanPaths();
+      return { ok: true, item };
+    }
+    try {
+      const snap = await refreshTodaySnapshot();
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item,
+        home: homeSnapshotFromToday(snap),
+        plan: planSnapshotFromToday(snap),
+        accounts: accountsSnapshotFromToday(snap),
+        movements: movementsSnapshotFromToday(snap),
+      };
+    } catch {
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item,
+        refreshPending: true,
+        refreshPendingMessage: "Sparat. Uppdaterar siffrorna…",
+      };
+    }
   } catch (error) {
     return planWriteFailure(error, PLAN_UPDATE_FAILED_SV, "update");
   }

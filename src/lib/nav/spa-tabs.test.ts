@@ -85,7 +85,8 @@ describe("SPA keep-alive primary tabs", () => {
     expect(movements).toContain("if (lastMovementsSnapshot()) return;");
     expect(mer).toContain("if (lastMerSnapshot()) return;");
     const accounts = read("../../components/accounts/AccountsRouteClient.tsx");
-    expect(accounts).toContain("if (paintableAccountsSnapshot()) return;");
+    expect(accounts).toContain("archivedAccountsNeedRefresh");
+    expect(accounts).toContain("paintableAccountsSnapshot");
   });
 
   it("wraps the shell outlet in TabKeepAlive with the route clients", () => {

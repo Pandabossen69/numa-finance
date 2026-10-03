@@ -329,8 +329,43 @@ describe("mergeMovementNativeFromServer", () => {
       now,
     });
     const merged = mergeMovementNativeFromServer(stale, fresh);
+    expect(merged).not.toBe(stale);
     expect(merged.items[0]?.nativeAmountMinor).toBe(20_00);
     expect(merged.items[0]?.nativeCurrency).toBe("SEK");
     expect(merged.items[0]?.amountMinor).toBe(70_00);
+  });
+
+  it("returns the same snapshot when server native fields already match", () => {
+    const fresh = buildMovementsSnapshot({
+      accounts: [sek],
+      transactions: [
+        tx({
+          id: "sek-exp",
+          accountId: "nordea",
+          amountMinor: 20_00,
+          currency: "SEK",
+          thbMinor: 70_00,
+          fxRate: 3.5,
+          occurredAt: "2026-09-04T05:00:00.000Z",
+          description: "SEK kaffe",
+        }),
+      ],
+      checkpoints: [
+        checkpoint("nordea", 1_000_00, {
+          currency: "SEK",
+          fxRate: 3.5,
+          thbMinor: 3_500_00,
+        }),
+      ],
+      timeZone: tz,
+      now,
+    });
+    expect(mergeMovementNativeFromServer(fresh, fresh)).toBe(fresh);
+    const copy = {
+      ...fresh,
+      balanceMinor: (fresh.balanceMinor ?? 0) + 1,
+      items: fresh.items.map((item) => ({ ...item })),
+    };
+    expect(mergeMovementNativeFromServer(copy, fresh)).toBe(copy);
   });
 });

@@ -8,7 +8,9 @@ import {
   formatListDateSv,
   isCalendarDate,
   isoToDateInput,
+  maxBookableCalendarDate,
   nextCommittedCalendarDate,
+  occurredAtForBookedDay,
   formatRelativeVerificationSv,
   isSameZonedDay,
   snapshotLedgerWindow,
@@ -171,6 +173,66 @@ describe("snapshot ledger window", () => {
   });
 });
 
+describe("cached Intl formatters stay byte-identical", () => {
+  function legacyZonedDayKey(date: Date | string, timeZone: string): string {
+    const d = typeof date === "string" ? new Date(date) : date;
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  }
+
+  function legacyFormatListDateSv(
+    iso: string,
+    timeZone: string,
+    opts?: { withTime?: boolean },
+  ): string {
+    return new Date(iso).toLocaleString("sv-SE", {
+      timeZone,
+      day: "numeric",
+      month: "short",
+      ...(opts?.withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+    });
+  }
+
+  const zones = ["Asia/Bangkok", "Europe/Stockholm", "UTC"] as const;
+  const instants = [
+    "2026-08-11T03:00:00.000Z",
+    "2026-08-10T17:30:00.000Z",
+    "2026-03-29T00:30:00.000Z",
+    "2026-03-29T01:30:00.000Z",
+    "2026-10-25T00:30:00.000Z",
+    "2026-10-25T01:30:00.000Z",
+  ];
+
+  it("matches a fresh formatter across zones, including Stockholm DST edges", () => {
+    for (const timeZone of zones) {
+      for (const iso of instants) {
+        expect(zonedDayKey(iso, timeZone)).toBe(legacyZonedDayKey(iso, timeZone));
+        expect(zonedDayKey(new Date(iso), timeZone)).toBe(
+          legacyZonedDayKey(new Date(iso), timeZone),
+        );
+        expect(formatListDateSv(iso, timeZone)).toBe(
+          legacyFormatListDateSv(iso, timeZone),
+        );
+        expect(formatListDateSv(iso, timeZone, { withTime: true })).toBe(
+          legacyFormatListDateSv(iso, timeZone, { withTime: true }),
+        );
+      }
+    }
+    for (const timeZone of zones) {
+      for (const iso of instants) {
+        expect(zonedDayKey(iso, timeZone)).toBe(legacyZonedDayKey(iso, timeZone));
+        expect(formatListDateSv(iso, timeZone, { withTime: true })).toBe(
+          legacyFormatListDateSv(iso, timeZone, { withTime: true }),
+        );
+      }
+    }
+  });
+});
+
 describe("formatListDateSv", () => {
   it("uses Swedish month names, not US M/D/YYYY", () => {
     const label = formatListDateSv("2026-08-23T15:00:00.000Z", "Asia/Bangkok");
@@ -212,5 +274,37 @@ describe("isoToDateInput (Asia/Bangkok)", () => {
     expect(nextCommittedCalendarDate("2026-08-25", "2026-08-25")).toBe(null);
     expect(nextCommittedCalendarDate("", "2026-08-25")).toBe(null);
     expect(nextCommittedCalendarDate("2026-08", "2026-08-25")).toBe(null);
+  });
+});
+
+describe("booked calendar day", () => {
+  it("refuses a future day and keeps today in Asia/Bangkok", () => {
+    const now = new Date("2026-09-24T18:00:00.000Z");
+    expect(maxBookableCalendarDate(now, tz)).toBe("2026-09-25");
+    expect(
+      occurredAtForBookedDay({
+        ymd: "2026-09-26",
+        timeZone: tz,
+        now,
+      }).slice(0, 10),
+    ).not.toBe("2026-09-26");
+    const booked = occurredAtForBookedDay({
+      ymd: "2026-09-26",
+      timeZone: tz,
+      now,
+    });
+    expect(isoToDateInput(booked, tz)).toBe("2026-09-25");
+  });
+
+  it("stores a past Bangkok day at local noon, not the previous UTC date", () => {
+    const now = new Date("2026-09-24T18:00:00.000Z");
+    const booked = occurredAtForBookedDay({
+      ymd: "2026-09-24",
+      timeZone: tz,
+      now,
+    });
+    expect(isoToDateInput(booked, tz)).toBe("2026-09-24");
+    expect(Date.parse(booked)).toBe(Date.parse("2026-09-24T05:00:00.000Z"));
+    expect(booked.startsWith("2026-09-24")).toBe(true);
   });
 });

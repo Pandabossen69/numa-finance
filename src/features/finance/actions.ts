@@ -30,6 +30,7 @@ import { CURRENCIES, parseUiAmountToMinor, parseManualRate, type CurrencyCode } 
 import {
   ACCOUNT_KINDS,
   assertCurrencyAllowedForKind,
+  occurredAtForBookedDay,
   type AccountKind,
 } from "@/domain/finance";
 import {
@@ -56,7 +57,17 @@ const accountSchema = z.object({
   /** Manual THB-per-1-unit rate when currency ≠ THB. Optional if Frankfurter works. */
   fxRate: z.string().trim().optional().nullable(),
   makeDefault: z.boolean().optional(),
+  /**
+   * Client dedupe key. numa.accounts has no client_mutation_id column yet,
+   * so the id is not written. Retries still send the same value.
+   */
+  clientMutationId: z.string().uuid().optional(),
 });
+
+const bookedDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .optional();
 
 const expenseSchema = z.object({
   accountId: z.string().uuid(),
@@ -64,7 +75,21 @@ const expenseSchema = z.object({
   description: z.string().trim().max(120).optional(),
   category: z.string().trim().max(40).optional().nullable(),
   clientMutationId: z.string().uuid().optional(),
+  date: bookedDateSchema,
 });
+
+async function occurredAtFromBookedDate(
+  ymd: string | undefined,
+  keepTimeFrom?: string | null,
+): Promise<string | undefined> {
+  if (!ymd) return undefined;
+  const profile = await getProfile();
+  return occurredAtForBookedDay({
+    ymd,
+    timeZone: profile.timezone || "Asia/Bangkok",
+    keepTimeFrom,
+  });
+}
 
 export type ActionResult =
   | {
@@ -101,6 +126,9 @@ export async function createAccountAction(
     if (input.currency !== "THB" && input.fxRate && manualRate == null) {
       return { ok: false, error: "Ogiltig växelkurs" };
     }
+
+    // Kept on the payload so a later unique index can upsert this id.
+    void input.clientMutationId;
 
     const account = await createAccount({
       name: input.name,
@@ -232,12 +260,14 @@ export async function createExpenseAction(
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
 
+    const occurredAt = await occurredAtFromBookedDate(input.date);
     const tx = await createManualExpense({
       accountId: input.accountId,
       amountMinor,
       description: input.description,
       category: input.category,
       clientMutationId: input.clientMutationId,
+      occurredAt,
     });
 
     const refreshed = await refreshAfterDurableWrite(
@@ -277,6 +307,7 @@ const incomeSchema = z.object({
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
   clientMutationId: z.string().uuid().optional(),
+  date: bookedDateSchema,
 });
 
 const transferSchema = z.object({
@@ -285,6 +316,7 @@ const transferSchema = z.object({
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
   clientMutationId: z.string().uuid().optional(),
+  date: bookedDateSchema,
 });
 
 const cashSchema = z.object({
@@ -293,6 +325,7 @@ const cashSchema = z.object({
   amount: z.string().trim().min(1),
   description: z.string().trim().max(120).optional(),
   clientMutationId: z.string().uuid().optional(),
+  date: bookedDateSchema,
 });
 
 /**
@@ -313,18 +346,23 @@ export async function updateTransactionAction(raw: {
   description?: string;
   category?: string | null;
   clientMutationId?: string;
+  date?: string;
+  keepTimeFrom?: string | null;
 }): Promise<ActionResult> {
   try {
     const id = z.string().uuid().parse(raw.id);
     const amountMinor = parseUiAmountToMinor(raw.amount);
+    const date = bookedDateSchema.parse(raw.date);
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
+    const occurredAt = await occurredAtFromBookedDate(date, raw.keepTimeFrom);
     await updateTransaction({
       id,
       amountMinor,
       description: raw.description,
       category: raw.category,
+      occurredAt,
     });
     const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {
@@ -376,11 +414,13 @@ export async function createIncomeAction(
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
+    const occurredAt = await occurredAtFromBookedDate(input.date);
     const tx = await createManualIncome({
       accountId: input.accountId,
       amountMinor,
       description: input.description,
       clientMutationId: input.clientMutationId,
+      occurredAt,
     });
     const refreshed = await refreshAfterDurableWrite(
       revalidateMoneyPaths,
@@ -417,12 +457,14 @@ export async function createTransferAction(
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
+    const occurredAt = await occurredAtFromBookedDate(input.date);
     const pair = await createTransfer({
       fromAccountId: input.fromAccountId,
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
       clientMutationId: input.clientMutationId,
+      occurredAt,
     });
     const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {
@@ -452,12 +494,14 @@ export async function createCashWithdrawalAction(
     if (amountMinor <= 0) {
       return { ok: false, error: "Ange ett belopp större än noll" };
     }
+    const occurredAt = await occurredAtFromBookedDate(input.date);
     const pair = await createCashWithdrawal({
       fromAccountId: input.fromAccountId,
       toAccountId: input.toAccountId,
       amountMinor,
       description: input.description,
       clientMutationId: input.clientMutationId,
+      occurredAt,
     });
     const refreshed = await refreshAfterDurableWrite(revalidateMoneyPaths);
     if (refreshed.refreshPending) {

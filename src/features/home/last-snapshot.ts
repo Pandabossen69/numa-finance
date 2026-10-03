@@ -38,6 +38,7 @@ import {
   readLastHomeCookieFromDocument,
   writeLastHomeCookie,
 } from "@/features/home/last-home-cookie";
+import { expenseHomeDeltas } from "@/features/home/expense-date-delta";
 import {
   accountsLastKnownCanPaint,
   decideAccountsLastKnown,
@@ -51,12 +52,20 @@ import {
 export type { PlanSnapshot } from "@/features/finance/load-plan";
 
 export type MovementsFilter = "all" | "expense" | "income" | "other";
-export type MovementsPeriod = "month" | "all";
+/** `cycle` is the Analys pay-cycle window (`cycleStartAt` ≤ occurred < `cycleEndAt`). */
+export type MovementsPeriod = "month" | "all" | "cycle";
 export type MovementsView = {
   filter: MovementsFilter;
   period: MovementsPeriod;
   /** Per kategori tap — null means every category. */
   category?: string | null;
+  /**
+   * Pay-cycle bounds for `period: "cycle"`. Half-open, same as Analys
+   * Spenderat. Kept after the user switches to Denna månad / All tid so
+   * Perioden can be selected again.
+   */
+  cycleStartAt?: string | null;
+  cycleEndAt?: string | null;
 };
 
 export type MerSnapshot = {
@@ -448,6 +457,10 @@ function financeRevisionOf(
   return snap?.financeRevision ?? "";
 }
 
+function financeRevisionBase(rev: string): string {
+  return rev.endsWith(":local") ? rev.slice(0, -":local".length) : rev;
+}
+
 /** Adopt server money snapshots only when revision is newer or equal and not dirty. */
 function shouldAdoptFinanceSnapshot(
   current: { financeRevision?: string; verifiedAt?: string } | null,
@@ -464,6 +477,18 @@ function shouldAdoptFinanceSnapshot(
     // Optimistic in flight: ignore same-revision RSC echoes; accept newer truth.
     if (!nextRev || nextRev === curRev) return false;
     if (curAt && nextAt && nextAt < curAt) return false;
+    return true;
+  }
+
+  // :local optimistic snapshots stamp verifiedAt with the client clock.
+  // When that clock is ahead of the server, timestamp order would refuse a
+  // newer server revision. Server truth wins over :local when the base
+  // revision differs (#158). The same revision once `:local` is stripped is
+  // the pre-mutation echo — adopting it brings a deleted Plan row back.
+  if (curRev.endsWith(":local") && nextRev && !nextRev.endsWith(":local")) {
+    if (financeRevisionBase(curRev) === financeRevisionBase(nextRev)) {
+      return false;
+    }
     return true;
   }
 
@@ -1047,19 +1072,141 @@ export function isMovementsDirty(): boolean {
   return movementsDirty;
 }
 
+function stampLocalMovements(snap: MovementsSnapshot): MovementsSnapshot {
+  const base = (snap.financeRevision ?? "").replace(/:local$/, "");
+  return {
+    ...snap,
+    financeRevision: `${base}:local`,
+    verifiedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Same idea as Plan's adopt + the Z2 revision guard: an older Rörelser
+ * payload must not rewind an optimistic amount or drop a temp row.
+ * Unversioned echoes are not confirmation of a `:local` paint.
+ */
+function shouldAdoptMovementsSnapshot(
+  current: MovementsSnapshot,
+  incoming: MovementsSnapshot,
+): boolean {
+  if (!shouldAdoptFinanceSnapshot(current, incoming, false)) return false;
+  const curRev = financeRevisionOf(current);
+  const nextRev = financeRevisionOf(incoming);
+  if (curRev.endsWith(":local") && !nextRev) return false;
+  return true;
+}
+
+export function isStaleMovementsSnapshot(incoming: MovementsSnapshot): boolean {
+  if (!movements || movements === incoming) return false;
+  return !shouldAdoptMovementsSnapshot(movements, incoming);
+}
+
+function stitchOptimisticMovements(
+  local: MovementsSnapshot,
+  incoming: MovementsSnapshot,
+): MovementsSnapshot {
+  const optimistic = local.items.filter(
+    (row) => row.listKey != null && row.listKey === row.id,
+  );
+  if (optimistic.length === 0) return incoming;
+  const byMutation = new Map<string, MovementRow>();
+  for (const row of optimistic) {
+    byMutation.set(row.clientMutationId ?? row.id, row);
+  }
+  const consumed = new Set<string>();
+  let changed = false;
+  const items = incoming.items.map((row) => {
+    const key = row.clientMutationId;
+    if (!key) return row;
+    const temp = byMutation.get(key);
+    if (!temp) return row;
+    consumed.add(temp.id);
+    const listKey = temp.listKey ?? temp.id;
+    if (row.listKey === listKey) return row;
+    changed = true;
+    return { ...row, listKey };
+  });
+  const pending = optimistic.filter(
+    (row) =>
+      !consumed.has(row.id) && !incoming.items.some((item) => item.id === row.id),
+  );
+  if (!changed && pending.length === 0) return incoming;
+  return {
+    ...incoming,
+    items:
+      pending.length > 0 ? sortNewestFirst([...items, ...pending]) : items,
+  };
+}
+
 export function rememberMovementsSnapshot(
   snap: MovementsSnapshot,
-  opts?: { dirty?: boolean },
+  opts?: { dirty?: boolean; force?: boolean },
 ) {
   const nextDirty = opts?.dirty ?? false;
-  if (movements === snap && movementsDirty === nextDirty) return;
-  movements = snap;
+  // Z1: same object, including the dirty-clear when native fields already match.
+  if (movements === snap) {
+    if (movementsDirty === nextDirty) return;
+    movementsDirty = nextDirty;
+    emit(movementsListeners);
+    return;
+  }
+
+  let next = snap;
+  if (!opts?.force && !opts?.dirty && movements) {
+    if (!shouldAdoptMovementsSnapshot(movements, next)) return;
+    next = stitchOptimisticMovements(movements, next);
+    if (movements === next && movementsDirty === nextDirty) return;
+  }
+  if (opts?.dirty && !opts?.force) next = stampLocalMovements(next);
+  if (movements === next && movementsDirty === nextDirty) return;
+  movements = next;
   movementsDirty = nextDirty;
   emit(movementsListeners);
 }
 
+/** Keep Hem's optimistic revision so a same-base echo cannot rewind it. */
+export function pinLocalHomeRevision(): void {
+  if (!home) return;
+  const rev = home.financeRevision ?? "";
+  if (rev.endsWith(":local")) return;
+  home = { ...home, financeRevision: `${rev}:local` };
+  writeLastHomeCookie(home);
+  emit(homeListeners);
+}
+
+/**
+ * Swap a quick-add temp id for the server id. `listKey` stays so the row
+ * does not remount.
+ */
+export function replaceOptimisticMovementId(
+  tempId: string,
+  serverId: string | undefined,
+): void {
+  if (!movements || !serverId || serverId === tempId) return;
+  const temp = movements.items.find((row) => row.id === tempId);
+  if (!temp) return;
+  const listKey = temp.listKey ?? tempId;
+  const hasServer = movements.items.some((row) => row.id === serverId);
+  const items = hasServer
+    ? movements.items
+        .filter((row) => row.id !== tempId)
+        .map((row) => (row.id === serverId ? { ...row, listKey } : row))
+    : movements.items.map((row) =>
+        row.id === tempId ? { ...row, id: serverId, listKey } : row,
+      );
+  rememberMovementsSnapshot(
+    { ...movements, items },
+    { force: true, dirty: movementsDirty },
+  );
+}
+
 export function lastMovementsSnapshot(): MovementsSnapshot | null {
   return movements;
+}
+
+function sameCycleBound(current?: string | null, next?: string | null): boolean {
+  return (current ?? null) === (next ?? null);
 }
 
 function sameMovementsView(
@@ -1070,7 +1217,9 @@ function sameMovementsView(
   return (
     current.filter === next.filter &&
     current.period === next.period &&
-    (current.category ?? null) === (next.category ?? null)
+    (current.category ?? null) === (next.category ?? null) &&
+    sameCycleBound(current.cycleStartAt, next.cycleStartAt) &&
+    sameCycleBound(current.cycleEndAt, next.cycleEndAt)
   );
 }
 
@@ -1100,6 +1249,11 @@ export function lastMovementsView(): MovementsView | null {
 
 export function isAccountsDirty(): boolean {
   return accountsDirty;
+}
+
+/** True after a live Konton remember this JS session — not hydrate or quiet-warm. */
+export function accountsSnapshotConfirmedThisSession(): boolean {
+  return accountsSessionConfirmed;
 }
 
 export function rememberAccountsSnapshot(
@@ -1332,6 +1486,21 @@ function applyHomeForExpenseDelta(item: MovementRow, amountDelta: number) {
     return;
   }
   applyOptimisticHomeIncome(-amountDelta);
+}
+
+function applyHomeForExpenseEdit(previous: MovementRow, next: MovementRow) {
+  const timeZone = home?.timeZone ?? movements?.timeZone ?? "Asia/Bangkok";
+  const now = new Date();
+  const split = expenseHomeDeltas({
+    prevMinor: previous.amountMinor,
+    nextMinor: next.amountMinor,
+    prevToday: isSameZonedDay(previous.occurredAt, now, timeZone),
+    nextToday: isSameZonedDay(next.occurredAt, now, timeZone),
+  });
+  if (split.todayDelta !== 0) applyOptimisticHomeSpend(split.todayDelta);
+  if (split.balanceIncomeDelta !== 0) {
+    applyOptimisticHomeIncome(split.balanceIncomeDelta);
+  }
 }
 
 /** Mottagen / Betald: move saldo and drop the matching pile so Över stays still. */
@@ -1715,6 +1884,7 @@ export function undoOptimisticBalance(paint: OptimisticBalancePaint): void {
   if (paint.movements) {
     rememberMovementsSnapshot(paint.movements, {
       dirty: paint.movementsDirty,
+      force: true,
     });
   }
   if (paint.accounts) {
@@ -1859,6 +2029,7 @@ export function applyMovementsEdit(
     category?: string | null;
     nativeAmountMinor?: number;
     thbMinor?: number;
+    occurredAt?: string;
   },
 ): MovementsSnapshot | null {
   if (!movements) return null;
@@ -1877,6 +2048,7 @@ export function applyMovementsEdit(
     nativeAmountMinor: nextNative,
     description: patch.description,
     category: patch.category === undefined ? item.category : patch.category,
+    occurredAt: patch.occurredAt ?? item.occurredAt,
   };
   const balanceDelta =
     movementBalanceDelta(nextItem) - movementBalanceDelta(item);
@@ -1893,7 +2065,7 @@ export function applyMovementsEdit(
     signedNativeDelta(item, item.nativeAmountMinor ?? item.amountMinor);
   applyAccountDelta(nativeDelta, item.accountId);
   if (item.transactionType === "expense") {
-    applyHomeForExpenseDelta(item, nextItem.amountMinor - item.amountMinor);
+    applyHomeForExpenseEdit(item, nextItem);
   } else if (item.transactionType === "income") {
     applyOptimisticHomeIncome(nextItem.amountMinor - item.amountMinor);
   }

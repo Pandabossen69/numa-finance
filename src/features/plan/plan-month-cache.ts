@@ -8,7 +8,7 @@ import {
   type PlanMonthPaintInput,
 } from "@/features/plan/plan-month-paint";
 
-type PaintEntry = { stamp: string; paint: PlanMonthPaint };
+type PaintEntry = { stamp: string; paint: PlanMonthPaint; writtenAt: number };
 type SuggestionEntry = { stamp: string; suggestions: PlanLinkSuggestion[] };
 
 const paints = new Map<string, PaintEntry>();
@@ -17,7 +17,12 @@ const suggestionListeners = new Set<() => void>();
 const paintListeners = new Set<() => void>();
 let suggestionEpoch = 0;
 let paintEpoch = 0;
+let paintWriteSeq = 0;
 let lastPaint: PlanMonthPaint | null = null;
+/** `${monthKey}:${stamp}` — one idle build per neighbour stamp. */
+const prewarmedMonthStamps = new Set<string>();
+/** Latest built paint per month. Prefetch must not replace another month. */
+const lastPaintByMonth = new Map<string, PlanMonthPaint>();
 
 function emitSuggestions() {
   suggestionEpoch += 1;
@@ -91,8 +96,16 @@ export function rememberPlanMonthPaint(
   stamp: string,
   paint: PlanMonthPaint,
 ) {
-  paints.set(monthKey, { stamp, paint });
+  const writtenAt = ++paintWriteSeq;
+  paints.set(monthKey, { stamp, paint, writtenAt });
+  // Keyed by monthKey so prefetch of an adjacent month cannot overwrite the
+  // paint the displayed month falls back to on a stamp miss.
+  lastPaintByMonth.set(monthKey, paint);
   lastPaint = paint;
+}
+
+export function planMonthPaintWriteSeq(): number {
+  return paintWriteSeq;
 }
 
 export function readPlanMonthSuggestions(
@@ -117,8 +130,9 @@ export function ensurePlanMonthPaint(
 }
 
 /**
- * Chrome tick: dest cache, else last-known keep-shell, else a cheap stub.
- * Never project dest coverage on this path — that is datapaint.
+ * Chrome tick: exact cache, else the latest paint for this same monthKey,
+ * else a stub that follows the header month. A stamp miss never shows
+ * another month. Dest project stays off the allowBuild:false path.
  */
 export function resolvePlanMonthPaint(
   input: PlanMonthPaintInput,
@@ -128,17 +142,13 @@ export function resolvePlanMonthPaint(
   const hit = readPlanMonthPaint(input.monthKey, stamp);
   if (hit) return { paint: hit, ready: true, fromCache: true };
 
-  const last = lastPlanMonthPaint();
-  if (last && last.monthKey !== input.monthKey) {
-    return { paint: last, ready: false, fromCache: false };
-  }
-
   if (opts?.allowBuild === false) {
-    return {
-      paint: last ?? buildPlanMonthChrome(input.monthKey, input.saldoMinor),
-      ready: false,
-      fromCache: false,
-    };
+    const fallback =
+      lastPaintByMonth.get(input.monthKey) ??
+      buildPlanMonthChrome(input.monthKey, input.saldoMinor);
+    // Month-switch chrome only. Scheduling here runs during React render.
+    // softSwitchPlanMonth and Plan's effect own the deferred build.
+    return { paint: fallback, ready: false, fromCache: false };
   }
 
   return {
@@ -173,8 +183,11 @@ export function scheduleEnsurePlanMonthPaint(
 ) {
   if (readPlanMonthPaint(input.monthKey, stamp)) return;
   scheduleAfterChrome(() => {
-    if (readPlanMonthPaint(input.monthKey, stamp)) return;
-    ensurePlanMonthPaint(input, stamp);
+    if (!readPlanMonthPaint(input.monthKey, stamp)) {
+      ensurePlanMonthPaint(input, stamp);
+    }
+    // Always bump, even if another caller filled the cache without emitting.
+    // Otherwise Plan can stay on the fallback with ready:false.
     emitPaints();
   });
 }
@@ -209,8 +222,8 @@ export function prefetchAdjacentPlanMonths(
 }
 
 /**
- * Soft month switch chrome: dest cache or last-known shell, no dest project.
- * Adjacent warm months stay a cache hit. Cold dest datapaint is scheduled.
+ * Soft month switch chrome: dest cache, else same-month last paint, else a
+ * header stub. Never another month. Cold dest datapaint is scheduled.
  */
 export function softSwitchPlanMonth(
   input: PlanMonthPaintInput,
@@ -252,17 +265,50 @@ export function scheduleEnsurePlanMonthSuggestions(
   window.setTimeout(run, 1);
 }
 
+/**
+ * Build the previous and next Plan months once per stamp while idle.
+ * A paint written after this was scheduled wins — the late callback skips it.
+ */
+export function prewarmNeighbourPlanMonths(
+  input: PlanMonthPaintInput,
+  stamp = planMonthPaintStamp(input),
+  scheduledAt = paintWriteSeq,
+): string[] {
+  const keys = [
+    addMonthsKey(input.monthKey, -1),
+    addMonthsKey(input.monthKey, 1),
+  ];
+  for (const monthKey of keys) {
+    const once = `${monthKey}:${stamp}`;
+    if (prewarmedMonthStamps.has(once)) continue;
+    const existing = paints.get(monthKey);
+    if (existing && existing.writtenAt > scheduledAt) {
+      prewarmedMonthStamps.add(once);
+      continue;
+    }
+    prewarmedMonthStamps.add(once);
+    if (readPlanMonthPaint(monthKey, stamp)) continue;
+    const latest = paints.get(monthKey);
+    if (latest && latest.writtenAt > scheduledAt) continue;
+    const next = { ...input, monthKey };
+    const paint = ensurePlanMonthPaint(next, stamp);
+    ensurePlanMonthSuggestions(next, stamp, paint.projection);
+  }
+  return keys;
+}
+
 export function schedulePrefetchAdjacentPlanMonths(
   input: PlanMonthPaintInput,
   stamp = planMonthPaintStamp(input),
 ) {
+  const scheduledAt = paintWriteSeq;
+  const run = () => {
+    prewarmNeighbourPlanMonths(input, stamp, scheduledAt);
+  };
   if (typeof window === "undefined") {
-    prefetchAdjacentPlanMonths(input, stamp);
+    run();
     return;
   }
-  const run = () => {
-    prefetchAdjacentPlanMonths(input, stamp);
-  };
   if (typeof requestIdleCallback === "function") {
     requestIdleCallback(run, { timeout: 300 });
     return;
@@ -270,10 +316,20 @@ export function schedulePrefetchAdjacentPlanMonths(
   window.setTimeout(run, 1);
 }
 
-export function resetPlanMonthCacheForTests() {
+/** Drop month paints and suggestions so the next Plan open rebuilds from live items. */
+export function clearPlanMonthCache() {
   paints.clear();
   suggestions.clear();
+  lastPaint = null;
+  lastPaintByMonth.clear();
+  prewarmedMonthStamps.clear();
+  emitSuggestions();
+  emitPaints();
+}
+
+export function resetPlanMonthCacheForTests() {
+  clearPlanMonthCache();
   suggestionEpoch = 0;
   paintEpoch = 0;
-  lastPaint = null;
+  paintWriteSeq = 0;
 }

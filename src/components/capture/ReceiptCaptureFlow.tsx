@@ -13,12 +13,18 @@ import {
   QuickAddForms,
   type ShellAccount,
 } from "@/components/add/QuickAddForms";
+import { PlanDateField } from "@/components/plan/PlanDateField";
 import {
   confirmReceiptExpenseAction,
   deleteObservationAction,
   uploadReceiptAction,
 } from "@/features/imports/actions";
-import { newClientMutationId } from "@/domain/finance";
+import {
+  calendarDateInZone,
+  DEFAULT_TIMEZONE,
+  nativeToThbMinor,
+  newClientMutationId,
+} from "@/domain/finance";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import { compressImageForUpload } from "@/lib/media/compress-image";
@@ -38,10 +44,86 @@ import { ONBOARDING_SV } from "@/features/onboarding/copy";
 import { SV } from "@/features/copy/labels-sv";
 import {
   CAPTURE_CATEGORIES,
-  categoryFromEvents,
+  categoryForCapturePreview,
 } from "@/features/imports/category-hint";
+import {
+  CREATE_CAPTURE_ACCOUNT,
+  chooseCaptureAccount,
+  mergeCaptureAccountSources,
+  type CaptureAccountCandidate,
+} from "@/domain/imports/capture-account";
+import {
+  clampCaptureDateInput,
+  occurredOnForConfirm,
+  suggestedCaptureDate,
+} from "@/domain/imports/capture-review";
+import {
+  messageMentionsAlreadyKnownCount,
+  presentAlreadyKnownMessage,
+  skippedSavedMovementsMessage,
+} from "@/domain/imports/movement-count-copy";
+import { useSubmitGuard } from "@/lib/forms/submit-guard";
+import { userFacingSaveError } from "@/lib/net/offline-save";
+import {
+  confirmOptimisticQuickAdd,
+  paintOptimisticQuickAdd,
+  rollbackOptimisticQuickAdd,
+} from "@/features/finance/quick-add-optimistic";
+import {
+  lastAccountsSnapshot,
+  lastHomeSnapshot,
+  subscribeAccountsSnapshot,
+  subscribeHomeSnapshot,
+} from "@/features/home/last-snapshot";
 
 const CATEGORIES = CAPTURE_CATEGORIES;
+
+function captureProfileTimeZone(): string {
+  return lastHomeSnapshot()?.timeZone || DEFAULT_TIMEZONE;
+}
+
+/** One Hem/Rörelser row for a single Kvitto, before the confirm round-trip. */
+function paintConfirmedCapture(input: {
+  isAutoImport: boolean;
+  accountId: string | null;
+  accounts: ShellAccount[];
+  amount: string;
+  description: string;
+  direction: "debit" | "credit" | null;
+  category: string;
+  mutationId: string;
+}): ReturnType<typeof paintOptimisticQuickAdd> | null {
+  if (input.isAutoImport || !input.accountId) return null;
+  let nativeAmountMinor: number;
+  try {
+    nativeAmountMinor = parseUiAmountToMinor(input.amount || "0");
+  } catch {
+    return null;
+  }
+  if (nativeAmountMinor <= 0) return null;
+  const selected =
+    input.accounts.find((account) => account.id === input.accountId) ?? null;
+  const nativeCurrency = (selected?.currency ?? "THB") as CurrencyCode;
+  const fxRate = selected?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
+  const thbMinor = nativeToThbMinor(
+    nativeAmountMinor,
+    nativeCurrency,
+    fxRate,
+  );
+  if (thbMinor == null) return null;
+  const credit = input.direction === "credit";
+  return paintOptimisticQuickAdd({
+    kind: credit ? "income" : "expense",
+    mutationId: input.mutationId,
+    nativeAmountMinor,
+    thbMinor,
+    description: input.description.trim() || (credit ? "Inkomst" : "Utgift"),
+    category: credit ? null : input.category,
+    nativeCurrency,
+    accountId: input.accountId,
+    fxRate,
+  });
+}
 
 function minorToInput(minor: number): string {
   return (minor / 100).toFixed(2).replace(".", ",");
@@ -80,8 +162,13 @@ export function ReceiptCaptureFlow({
     initialPreview,
   );
   const [category, setCategory] = useState<string>(() =>
-    categoryFromEvents(initialPreview?.events),
+    categoryForCapturePreview({
+      events: initialPreview?.events,
+      categoryHint: initialPreview?.categoryHint,
+    }),
   );
+  const [pickedAccountId, setPickedAccountId] = useState<string | null>(null);
+  const [dateOn, setDateOn] = useState("");
   const [amountEditable, setAmountEditable] = useState(
     Boolean(
       initialPreview &&
@@ -93,6 +180,7 @@ export function ReceiptCaptureFlow({
   const [scanning, setScanning] = useState(false);
   const [scanPreviewUrl, setScanPreviewUrl] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const guard = useSubmitGuard(pending);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -100,6 +188,16 @@ export function ReceiptCaptureFlow({
     subscribeLastCaptureMethod,
     readLastCaptureMethod,
     () => null,
+  );
+  const knownAccounts = useSyncExternalStore(
+    subscribeAccountsSnapshot,
+    lastAccountsSnapshot,
+    () => null,
+  );
+  const profileTimeZone = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    captureProfileTimeZone,
+    () => DEFAULT_TIMEZONE,
   );
   const resumeKey = initialPreview?.observationId ?? `mode:${initialMode}`;
   const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
@@ -116,7 +214,14 @@ export function ReceiptCaptureFlow({
         initialPreview.importKind !== "bank_sms" &&
           initialPreview.importKind !== "bank_app",
       );
-      setCategory(categoryFromEvents(initialPreview.events));
+      setCategory(
+        categoryForCapturePreview({
+          events: initialPreview.events,
+          categoryHint: initialPreview.categoryHint,
+        }),
+      );
+      setPickedAccountId(null);
+      setDateOn("");
       setError(null);
       setScanning(false);
     } else {
@@ -124,7 +229,19 @@ export function ReceiptCaptureFlow({
       setMode(initialMode);
       setAmountEditable(false);
       setCategory("Mat");
+      setPickedAccountId(null);
+      setDateOn("");
     }
+  }
+
+  function accountsFor(
+    uploaded: readonly CaptureAccountCandidate[] | undefined,
+  ) {
+    return mergeCaptureAccountSources({
+      shell: accounts,
+      known: knownAccounts?.accounts,
+      uploaded,
+    });
   }
 
   const roomBefore = Math.max(0, remainingTodayMinor);
@@ -196,12 +313,20 @@ export function ReceiptCaptureFlow({
         amountMinor: e.amountMinor,
         labelSv: e.labelSv,
         categoryHint: e.categoryHint,
+        occurredAt: e.occurredAt ?? null,
       }));
       // Default the category chip to the AI's read when it matches a known
       // hint (Resor/Travel → Transport). No hint stays on Mat. An unknown
       // hint becomes Övrigt, including a later scan, so a previous hint
       // does not stick and does not fall through to Mat.
-      setCategory(categoryFromEvents(events));
+      setCategory(
+        categoryForCapturePreview({
+          events,
+          categoryHint: data.categoryHint,
+        }),
+      );
+      setPickedAccountId(null);
+      setDateOn("");
       const hasAmount =
         data.suggestedAmountMinor != null || events.length > 0;
       const major =
@@ -222,17 +347,29 @@ export function ReceiptCaptureFlow({
                   : "receipt";
 
       // Auto-scan imports never fall back to manual typing — retry photo.
-      if (
-        (mode === "bank_sms" || mode === "bank_app") &&
+      const manualPath =
         events.length === 0 &&
-        !data.alreadyKnown
+        !data.alreadyKnown &&
+        (data.message ?? "").includes("Skriv beloppet under Manuellt");
+      if (
+        manualPath ||
+        ((mode === "bank_sms" || mode === "bank_app") &&
+          events.length === 0 &&
+          !data.alreadyKnown)
       ) {
         URL.revokeObjectURL(previewUrl);
-        setError(
+        const bankAppFallback =
+          "Kunde inte läsa en komplett bankapp-transaktion (behöver belopp i THB/SEK + tidpunkt).";
+        const raw =
           data.message ??
-            (mode === "bank_app"
-              ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
-              : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump."),
+          (mode === "bank_app"
+            ? "Kunde inte läsa bankappen (behöver belopp + tidpunkt). Ta detaljvy eller tydligare lista."
+            : "Kunde inte läsa bank-SMS (behöver belopp + saldo). Ta en tydligare skärmdump.");
+        setError(
+          mode === "bank_app" &&
+            raw.includes("Kunde inte läsa beloppet säkert")
+            ? bankAppFallback
+            : raw,
         );
         return;
       }
@@ -259,6 +396,9 @@ export function ReceiptCaptureFlow({
         amountFromScan: hasAmount,
         direction: data.direction ?? events[0]?.direction ?? null,
         events,
+        categoryHint: data.categoryHint ?? null,
+        accounts: data.accounts,
+        newAccountName: data.newAccountName ?? null,
       });
     });
   }
@@ -274,16 +414,48 @@ export function ReceiptCaptureFlow({
       setError("Bilden måste läsas automatiskt — ta en tydligare bild.");
       return;
     }
+    if (!guard.tryBegin()) return;
     setError(null);
     startTransition(async () => {
       const isAutoImport =
         preview.importKind === "bank_sms" ||
         preview.importKind === "bank_app";
-      const result = await confirmReceiptExpenseAction({
-        // Pass the preselected account. The server still refuses a currency
-        // mismatch (SEK must not land on a THB account) and only then opens
-        // a matching-currency account — it must not ignore this id up front.
-        accountId,
+      const choice = chooseCaptureAccount({
+        movementCurrency: preview.currency,
+        preselectedAccountId: pickedAccountId ?? accountId,
+        accounts: accountsFor(preview.accounts),
+        newAccountName: preview.newAccountName,
+      });
+      const chosenAccountId = choice.action === "use" ? choice.accountId : null;
+      const suggestedOn = suggestedCaptureDate(
+        preview.events.map((event) => event.occurredAt),
+        new Date(),
+        profileTimeZone,
+      );
+      const occurredOn = occurredOnForConfirm({
+        isAutoImport,
+        eventCount: preview.events.length,
+        suggestedOn,
+        editedOn: clampCaptureDateInput(
+          dateOn || suggestedOn,
+          calendarDateInZone(new Date(), profileTimeZone),
+        ),
+      });
+      const mutationId = newClientMutationId();
+      const painted = paintConfirmedCapture({
+        isAutoImport,
+        accountId: chosenAccountId,
+        accounts,
+        amount: preview.amount,
+        description: preview.description,
+        direction: preview.direction,
+        category,
+        mutationId,
+      });
+      let result: Awaited<ReturnType<typeof confirmReceiptExpenseAction>>;
+      try {
+        result = await confirmReceiptExpenseAction({
+        accountId: chosenAccountId,
         observationId: preview.observationId,
         candidateId: preview.candidateId,
         confirmAllPending: isAutoImport,
@@ -300,7 +472,7 @@ export function ReceiptCaptureFlow({
                 : category,
         fingerprint: preview.fingerprint,
         balanceAfterMinor: preview.balanceAfterMinor,
-        clientMutationId: newClientMutationId(),
+        clientMutationId: mutationId,
         source:
           preview.importKind === "bank_app"
             ? "bank_import"
@@ -309,13 +481,21 @@ export function ReceiptCaptureFlow({
               : "receipt_camera",
         direction: preview.direction,
         fromOnboarding,
+        occurredOn,
       });
-      if (!result.ok) {
-        setError(result.error);
+      } catch (error) {
+        if (painted) rollbackOptimisticQuickAdd(painted);
+        setError(userFacingSaveError(error, "Kunde inte bekräfta köpet"));
         return;
       }
+      if (!result.ok) {
+        if (painted) rollbackOptimisticQuickAdd(painted);
+        setError(userFacingSaveError(result.error, "Kunde inte bekräfta köpet"));
+        return;
+      }
+      confirmOptimisticQuickAdd(mutationId, result);
       rememberLastCaptureMethod(mode);
-      URL.revokeObjectURL(preview.previewUrl);
+      resetToPick();
       if (successHref) {
         router.push(successHref);
         router.refresh();
@@ -374,6 +554,7 @@ export function ReceiptCaptureFlow({
           accounts={accounts}
           onSuccess={() => {
             rememberLastCaptureMethod("manual");
+            resetToPick();
             goHomeInstant(router);
           }}
         />
@@ -505,25 +686,59 @@ export function ReceiptCaptureFlow({
         </p>
 
         {error ? (
-          <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
-            {error}
-          </p>
+          <div className="space-y-3">
+            <p className="text-center text-sm text-[var(--numa-danger)]" role="alert">
+              {error}
+            </p>
+            {/kunde inte läsa/i.test(error) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setMode("manual");
+                }}
+                className="numa-press mx-auto flex min-h-11 items-center justify-center rounded-full px-4 text-sm font-semibold text-[var(--numa-ink)]"
+              >
+                Skriv manuellt
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     );
   }
 
   if (preview.alreadyKnown || preview.ocrStatus === "all_known") {
+    const knownMessage = presentAlreadyKnownMessage({
+      listedCount: preview.events.length,
+      serverMessage: preview.message,
+    });
     return (
       <div className="animate-rise space-y-8">
         <PreviewThumb src={preview.previewUrl} />
         <div className="space-y-2 text-center">
           <p className="text-xl font-semibold tracking-tight">Inget nytt</p>
           <p className="mx-auto max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-            {preview.message ??
-              "Det här finns redan sparat i NUMA. Vänta på nästa notis eller ny utgift."}
+            {knownMessage}
           </p>
         </div>
+        {preview.events.length > 0 ? (
+          <ul className="divide-y divide-[var(--numa-border)] border-y border-[var(--numa-border)]">
+            {preview.events.map((event) => (
+              <li key={event.candidateId} className="numa-money-line py-3.5">
+                <span className="numa-money-line-label text-sm font-semibold text-[var(--numa-ink)]">
+                  {event.labelSv?.includes("·")
+                    ? event.labelSv.split("·").slice(1).join("·").trim()
+                    : event.labelSv || "Rörelse"}
+                </span>
+                <span className="numa-money-line-amt money text-lg font-semibold text-[var(--numa-ink)]">
+                  {event.direction === "credit" ? "+" : "−"}
+                  {formatMoney(money(event.amountMinor, preview.currency))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <button
           type="button"
           className="numa-tap mx-auto block text-sm font-semibold text-[var(--numa-accent)]"
@@ -555,6 +770,25 @@ export function ReceiptCaptureFlow({
       ? "text-[var(--numa-alarm)]"
       : "text-[var(--numa-positive)]";
   const eventCount = preview.events.length;
+  const captureAccounts = accountsFor(preview.accounts);
+  const accountChoice = chooseCaptureAccount({
+    movementCurrency: preview.currency,
+    preselectedAccountId: pickedAccountId ?? accountId,
+    accounts: captureAccounts,
+    newAccountName: preview.newAccountName,
+  });
+  const sameCurrencyAccounts = captureAccounts.filter(
+    (row) =>
+      row.isActive &&
+      row.currency.trim().toUpperCase() === preview.currency.trim().toUpperCase(),
+  );
+  const suggestedOn = suggestedCaptureDate(
+    preview.events.map((event) => event.occurredAt),
+    new Date(),
+    profileTimeZone,
+  );
+  const today = calendarDateInZone(new Date(), profileTimeZone);
+  const dateValue = clampCaptureDateInput(dateOn || suggestedOn, today);
   const creditCount = preview.events.filter((e) => e.direction === "credit")
     .length;
   const debitCount = preview.events.filter((e) => e.direction === "debit")
@@ -591,7 +825,12 @@ export function ReceiptCaptureFlow({
           </p>
           {preview.message ? (
             <p className="mx-auto max-w-[34ch] pt-1 text-sm text-[var(--numa-muted)]">
-              {preview.message}
+              {messageMentionsAlreadyKnownCount(preview.message)
+                ? presentAlreadyKnownMessage({
+                    listedCount: eventCount,
+                    serverMessage: preview.message,
+                  })
+                : preview.message}
             </p>
           ) : null}
         </div>
@@ -680,7 +919,7 @@ export function ReceiptCaptureFlow({
           )}
           {!isSms && preview.amountFromScan ? (
             <p className="mt-1 text-xs text-[var(--numa-faint)]">
-              Inläst från bilden — ändra om något siffror är fel.
+              Inläst från bilden — ändra om några siffror är fel.
             </p>
           ) : null}
         </div>
@@ -688,7 +927,7 @@ export function ReceiptCaptureFlow({
 
       {isAutoImport && preview.skippedOlderCount > 0 ? (
         <p className="text-xs text-[var(--numa-faint)]">
-          {preview.skippedOlderCount} redan sparade hoppades över.
+          {skippedSavedMovementsMessage(preview.skippedOlderCount)}
         </p>
       ) : null}
 
@@ -713,6 +952,56 @@ export function ReceiptCaptureFlow({
           className="min-h-11 w-full border-0 border-b border-[var(--numa-border)] bg-transparent py-2 text-sm outline-none focus:border-[var(--numa-accent)]"
         />
       ) : null}
+
+      <div className="space-y-4">
+        <label className="block">
+          <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
+            Konto
+          </span>
+          <select
+            aria-label="Konto"
+            value={
+              accountChoice.action === "use"
+                ? accountChoice.accountId
+                : CREATE_CAPTURE_ACCOUNT
+            }
+            onChange={(e) => {
+              const next = e.target.value;
+              setPickedAccountId(
+                next === CREATE_CAPTURE_ACCOUNT ? null : next,
+              );
+            }}
+            className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none"
+          >
+            {sameCurrencyAccounts.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name} · {row.currency}
+              </option>
+            ))}
+            {accountChoice.action === "create" ? (
+              <option value={CREATE_CAPTURE_ACCOUNT}>
+                {accountChoice.noticeSv}
+              </option>
+            ) : null}
+          </select>
+        </label>
+        {accountChoice.action === "create" ? (
+          <p className="text-sm text-[var(--numa-ink)]" role="status">
+            {accountChoice.noticeSv}
+          </p>
+        ) : null}
+        <label className="block">
+          <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
+            Datum
+          </span>
+          <PlanDateField
+            ariaLabel="Datum"
+            value={dateValue}
+            max={today}
+            onChange={(next) => setDateOn(clampCaptureDateInput(next, today))}
+          />
+        </label>
+      </div>
 
       {(!isAutoImport && !isCredit) || (isAutoImport && debitCount > 0) ? (
         <div className="space-y-2">
@@ -780,7 +1069,7 @@ export function ReceiptCaptureFlow({
         </button>
         <button
           type="button"
-          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-muted)]"
+          className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-medium text-[var(--numa-danger)]"
           aria-label="Radera uppladdad bild"
           onClick={() => {
             const observationId = preview.observationId;

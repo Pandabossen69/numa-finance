@@ -1,4 +1,5 @@
-import { isCurrencyCode, type CurrencyCode } from "@/domain/money";
+import { type CurrencyCode } from "@/domain/money";
+import { resolveImageCurrency } from "@/domain/imports/image-currency";
 import {
   defaultBankParserRegistry,
   selectImportableBankEvent,
@@ -7,17 +8,17 @@ import {
   type SelectImportableResult,
 } from "./bank-parsers";
 import {
-  fotaVisionNoneSummary,
   looksLikeBankAppScreenshot,
   parseBankAppVisionRows,
   parseBunqDetailFromText,
   selectImportableBankAppEvents,
-  warnFotaVisionNone,
   type BankAppEventCandidate,
   type SelectBankAppImportResult,
 } from "./bank-app-parsers";
 import type { ExtractionProviderResult } from "./extraction";
 import { resolveReceiptPaidAmountMinor } from "./receipt-total";
+import { warnFotaVisionDrop } from "./fota-vision-log";
+import { COULD_NOT_READ_SV } from "./vision-grounding";
 
 export type ResolvedScreenshotImport =
   | {
@@ -67,6 +68,62 @@ export type ResolvedScreenshotImport =
       messageSv: string;
       alreadyKnown: boolean;
     };
+
+function unreadableScreenshot(
+  messageSv: string,
+  options?: { preferBankSms?: boolean; preferBankApp?: boolean },
+): ResolvedScreenshotImport {
+  if (options?.preferBankSms) {
+    return {
+      kind: "bank_sms",
+      selection: { status: "none", all: [], messageSv },
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency: "THB",
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv,
+      alreadyKnown: false,
+    };
+  }
+  if (options?.preferBankApp) {
+    return {
+      kind: "bank_app",
+      selection: { status: "none", all: [], skippedFailedCount: 0, messageSv },
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency: "THB",
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv,
+      alreadyKnown: false,
+    };
+  }
+  return {
+    kind: "receipt_or_other",
+    selectedBatch: [],
+    suggestedAmountMinor: null,
+    suggestedDescription: null,
+    balanceAfterMinor: null,
+    fingerprint: null,
+    direction: null,
+    currency: "THB",
+    observationKind: "receipt",
+    source: "receipt_camera",
+    messageSv,
+    alreadyKnown: false,
+  };
+}
 
 function looksLikeBankSmsText(text: string, detectedKind: string | null): boolean {
   const t = text.toLowerCase();
@@ -171,12 +228,14 @@ function resolveBankAppImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
   combinedText: string,
+  options?: { force?: boolean; accountCurrency?: CurrencyCode | null },
 ): ResolvedScreenshotImport | null {
   const meta = extraction.rawMetadata ?? {};
   const detectedKind =
     typeof meta.detectedKind === "string" ? meta.detectedKind : null;
 
   if (
+    !options?.force &&
     !looksLikeBankAppScreenshot(combinedText, detectedKind) &&
     detectedKind !== "bank_app" &&
     detectedKind !== "bank_app_detail" &&
@@ -236,10 +295,11 @@ function resolveBankAppImport(
     institutionHint,
     fullText: combinedText,
     capturedAt,
+    fallbackCurrency: options?.accountCurrency ?? null,
   });
 
   if (parsed.length === 0 && combinedText.trim()) {
-    parsed = parseBunqDetailFromText(combinedText, { now: capturedAt });
+    parsed = parseBunqDetailFromText(combinedText, { capturedAt });
   }
 
   const selection = selectImportableBankAppEvents(
@@ -248,15 +308,16 @@ function resolveBankAppImport(
   );
 
   if (selection.status === "none") {
-    warnFotaVisionNone(
-      fotaVisionNoneSummary({
-        model: typeof meta.model === "string" ? meta.model : null,
-        mode: typeof meta.mode === "string" ? meta.mode : null,
-        detectedKind,
-        rows: visionRows,
-        now: capturedAt,
-      }),
-    );
+    warnFotaVisionDrop({
+      model: meta.model,
+      mode: meta.mode,
+      detectedKind,
+      rows: visionRows.map((row) => ({
+        amountMajor: row.amountMajor,
+        currency: row.currency,
+        occurredAt: row.occurredAt,
+      })),
+    });
   }
 
   if (selection.status === "ready") {
@@ -267,7 +328,7 @@ function resolveBankAppImport(
       selected: s,
       selectedBatch: selection.selectedBatch,
       suggestedAmountMinor: s.amountMinor,
-      suggestedDescription: s.labelSv,
+      suggestedDescription: s.merchant,
       balanceAfterMinor: null,
       fingerprint: s.fingerprint.fingerprint,
       direction: s.direction,
@@ -298,8 +359,11 @@ function resolveBankAppImport(
     };
   }
 
-  // Fall through to receipt only when we are not sure this is a bank app.
+  // Bankapp mode must not fall through to the receipt sentence. Kasikorn
+  // is not classified as bunq/Revolut, and an empty read was showing
+  // «Kunde inte läsa beloppet säkert» on the Bankapp screen.
   if (
+    options?.force ||
     detectedKind === "bank_app" ||
     detectedKind === "bank_app_detail" ||
     detectedKind === "bank_app_list" ||
@@ -337,9 +401,21 @@ function resolveBankAppImport(
 export function resolveScreenshotImport(
   extraction: ExtractionProviderResult,
   existingFingerprints: Iterable<string>,
-  options?: { preferBankSms?: boolean; preferBankApp?: boolean },
+  options?: {
+    preferBankSms?: boolean;
+    preferBankApp?: boolean;
+    /** Account currency when the image does not name one. */
+    accountCurrency?: CurrencyCode | null;
+  },
 ): ResolvedScreenshotImport {
   const meta = extraction.rawMetadata ?? {};
+  if (meta.groundingRejected === true) {
+    const messageSv =
+      typeof meta.message === "string" && meta.message.trim()
+        ? meta.message
+        : COULD_NOT_READ_SV;
+    return unreadableScreenshot(messageSv, options);
+  }
   const detectedKind =
     typeof meta.detectedKind === "string" ? meta.detectedKind : null;
 
@@ -470,19 +546,24 @@ export function resolveScreenshotImport(
       extraction,
       existingFingerprints,
       combinedText,
+      {
+        force: options?.preferBankApp === true,
+        accountCurrency: options?.accountCurrency ?? null,
+      },
     );
     if (bankApp) return bankApp;
   }
 
   const first = extraction.candidates[0];
-  const currency: CurrencyCode =
-    first?.currency && isCurrencyCode(first.currency)
-      ? first.currency
-      : "THB";
   const metaFullText =
     typeof extraction.rawMetadata?.fullText === "string"
       ? extraction.rawMetadata.fullText
       : combinedText;
+  const imageCurrency = resolveImageCurrency({
+    explicit: first?.currency ?? null,
+    texts: [metaFullText, first?.description ?? null],
+  });
+  const currency: CurrencyCode = imageCurrency ?? options?.accountCurrency ?? "THB";
   const suggestedAmountMinor = resolveReceiptPaidAmountMinor({
     visionAmountMinor: first?.amountMinor ?? null,
     fullText: metaFullText,
@@ -499,6 +580,34 @@ export function resolveScreenshotImport(
       : confidence != null && confidence < 0.75
         ? "Osäker läsning — dubbelkolla beloppet noga innan du sparar."
         : "Vi läste totalsumman (det du faktiskt betalade) — dubbelkolla innan du sparar.";
+
+  // Bankapp mode never uses the receipt sentence, even when the shot is not
+  // classified as bunq/Revolut and the bank-app parser returned nothing.
+  if (options?.preferBankApp) {
+    const messageSv =
+      "Kunde inte läsa en komplett bankapp-transaktion (behöver belopp i THB/SEK + tidpunkt).";
+    return {
+      kind: "bank_app",
+      selection: {
+        status: "none",
+        all: [],
+        skippedFailedCount: 0,
+        messageSv,
+      },
+      selected: null,
+      selectedBatch: [],
+      suggestedAmountMinor: null,
+      suggestedDescription: null,
+      balanceAfterMinor: null,
+      fingerprint: null,
+      direction: null,
+      currency,
+      observationKind: "screenshot",
+      source: "screenshot",
+      messageSv,
+      alreadyKnown: false,
+    };
+  }
 
   return {
     kind: "receipt_or_other",

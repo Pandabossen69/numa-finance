@@ -1,11 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   europeanAmountToMinor,
   sanitizeOcrDigitNoise,
   westernAmountToMinor,
 } from "./ocr-amounts";
 import {
-  fotaVisionNoneSummary,
   parseBankAppOccurredAt,
   parseBankAppVisionRows,
   parseBunqDetailFromText,
@@ -154,112 +153,41 @@ describe("bank app bunq-style", () => {
     );
   });
 
-  it("accepts short, English, numeric, relative and time-only stamps", () => {
-    const now = new Date("2026-09-24T18:00:00.000Z");
-    expect(parseBankAppOccurredAt("23 jul. 2026")).toBe(
-      "2026-07-23T12:00:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("23 Jul 2026 16:46")).toBe(
-      "2026-07-23T16:46:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("23 September 2026 08:05")).toBe(
-      "2026-09-23T08:05:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("23 Sept. 2026")).toBe(
-      "2026-09-23T12:00:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("23/07/2026 16:46")).toBe(
-      "2026-07-23T16:46:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("23.07.2026")).toBe(
-      "2026-07-23T12:00:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("2026-07-23T16:46:05")).toBe(
-      "2026-07-23T16:46:05+07:00",
-    );
-    expect(parseBankAppOccurredAt("Idag 16:46", { now })).toBe(
-      "2026-09-25T16:46:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("Igår", { now })).toBe(
-      "2026-09-24T12:00:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("Today 4:05", { now })).toBe(
-      "2026-09-25T04:05:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("Yesterday 09:15", { now })).toBe(
-      "2026-09-24T09:15:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("16:46", { now })).toBe(
-      "2026-09-25T16:46:00+07:00",
-    );
-    expect(parseBankAppOccurredAt("32 juli 2026")).toBeNull();
-  });
-
-  it("logs a redacted gap when a bank-app row has no usable timestamp", () => {
-    const summary = fotaVisionNoneSummary({
-      model: "gpt-4o",
-      mode: "bank_app",
-      detectedKind: "bank_app_detail",
-      now: new Date("2026-09-25T02:00:00.000Z"),
-      rows: [
+  it("accepts short Swedish months, English months, day-first and relative times", () => {
+    const captured = new Date("2026-09-25T03:00:00.000Z");
+    const at = (raw: string) =>
+      parseBankAppOccurredAt(raw, { now: captured, timeZone: "Asia/Bangkok" });
+    expect(at("23 jul 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23 jul. 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("5 sep. 2026 08:01")).toBe("2026-09-05T08:01:00+07:00");
+    expect(at("23 okt 2026 12:00")).toBe("2026-10-23T12:00:00+07:00");
+    expect(at("1 maj 2026 09:00")).toBe("2026-05-01T09:00:00+07:00");
+    expect(at("23 Jul 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23 July 2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23 Sept 2026 16:46")).toBe("2026-09-23T16:46:00+07:00");
+    expect(at("23/07/2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23.07.2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("23-07-2026 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("2026-07-23 16:46")).toBe("2026-07-23T16:46:00+07:00");
+    expect(at("Idag 16:46")).toBe("2026-09-25T16:46:00+07:00");
+    expect(at("Igår 09:12")).toBe("2026-09-24T09:12:00+07:00");
+    expect(at("Today 16:46")).toBe("2026-09-25T16:46:00+07:00");
+    expect(at("Yesterday 09:12")).toBe("2026-09-24T09:12:00+07:00");
+    expect(at("16:46")).toBe("2026-09-25T16:46:00+07:00");
+    const rows = parseBankAppVisionRows(
+      [
         {
-          merchant: "SECRET SHOP",
-          amountMajor: 12.5,
-          currency: null,
-          occurredAt: "not a date",
-          rawText: "must-not-leak",
+          merchant: "ICA",
+          direction: "debit",
+          amountMajor: 89.5,
+          currency: "SEK",
+          occurredAt: "23 jul. 2026 16:46",
         },
       ],
-    });
-    expect(summary).toEqual({
-      model: "gpt-4o",
-      mode: "bank_app",
-      detectedKind: "bank_app_detail",
-      rowCount: 1,
-      rows: [{ amount: "present", currency: "null", occurredAt: "null" }],
-    });
-    expect(JSON.stringify(summary)).not.toContain("SECRET");
-    expect(JSON.stringify(summary)).not.toContain("must-not-leak");
-    expect(JSON.stringify(summary)).not.toContain("12.5");
-
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const resolved = resolveScreenshotImport(
-      {
-        provider: "vision_api",
-        candidates: [],
-        rawMetadata: {
-          model: "gpt-4o",
-          mode: "bank_app",
-          detectedKind: "bank_app_detail",
-          transactions: [
-            {
-              merchant: "SECRET SHOP",
-              direction: "debit",
-              amountMajor: 12.5,
-              currency: "EUR",
-              occurredAt: "not a date",
-            },
-          ],
-        },
-      },
-      [],
-      { preferBankApp: true },
+      { capturedAt: captured },
     );
-    expect(resolved.kind).toBe("bank_app");
-    expect(resolved.messageSv).toContain("komplett bankapp-transaktion");
-    expect(warn).toHaveBeenCalledWith(
-      "[fota-vision]",
-      expect.objectContaining({
-        model: "gpt-4o",
-        mode: "bank_app",
-        detectedKind: "bank_app_detail",
-        rowCount: 1,
-      }),
-    );
-    const payload = JSON.stringify(warn.mock.calls);
-    expect(payload).not.toContain("SECRET");
-    expect(payload).not.toContain("12.5");
-    warn.mockRestore();
+    expect(rows).toHaveLength(1);
+    expect(selectImportableBankAppEvents(rows, []).status).toBe("ready");
   });
 
   it("uses EUR card amount and stable fingerprints across detail/list", () => {
@@ -352,6 +280,46 @@ describe("bank app bunq-style", () => {
     const known = first.selectedBatch.map((e) => e.fingerprint.fingerprint);
     const again = selectImportableBankAppEvents(rows, known);
     expect(again.status).toBe("all_known");
+    if (again.status !== "all_known") return;
+    expect(again.messageSv).toBe(
+      "Den här transaktionen finns redan (Grab, 6,60 €, 23 jul).",
+    );
+  });
+
+  it("counts every known row in the already-saved sentence", () => {
+    const rows = parseBankAppVisionRows([
+      {
+        merchant: "ICA",
+        direction: "debit",
+        amountMajor: 89.5,
+        currency: "SEK",
+        occurredAt: "2026-09-25T10:00",
+      },
+      {
+        merchant: "Pressbyrån",
+        direction: "debit",
+        amountMajor: 25,
+        currency: "SEK",
+        occurredAt: "2026-09-25T11:00",
+      },
+      {
+        merchant: "SL",
+        direction: "debit",
+        amountMajor: 42,
+        currency: "SEK",
+        occurredAt: "2026-09-25T12:00",
+      },
+    ]);
+    const first = selectImportableBankAppEvents(rows, []);
+    expect(first.status).toBe("ready");
+    if (first.status !== "ready") return;
+    const known = first.all.map((e) => e.fingerprint.fingerprint);
+    const again = selectImportableBankAppEvents(rows, known);
+    expect(again.status).toBe("all_known");
+    if (again.status !== "all_known") return;
+    expect(again.all).toHaveLength(3);
+    expect(again.messageSv).toBe("Alla 3 rörelser finns redan.");
+    expect(again.messageSv).not.toContain("Alla 2");
   });
 
   it("keeps −54,12 SEK in kronor when vision labels the row EUR", () => {

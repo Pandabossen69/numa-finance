@@ -11,6 +11,7 @@ import {
   filterTransactionsAfterCheckpoint,
   monthKeyFromDate,
   projectLedgerToCanonicalThb,
+  projectPayCycle,
   sortNewestFirst,
   totalSaldoThbMinor,
   type Account,
@@ -27,6 +28,7 @@ import {
   getLatestCheckpoint,
   getProfile,
   listAccounts,
+  listPlanItems,
   listTransactions,
 } from "@/lib/store/repository";
 
@@ -52,6 +54,10 @@ export type MovementRow = {
   fxRate?: number | null;
   occurredAt: string;
   source: string;
+  /** Idempotency key for a quick-add. Matches the temp row until the server id lands. */
+  clientMutationId?: string | null;
+  /** Stable list key so swapping a temp id for the server id does not remount the row. */
+  listKey?: string;
 };
 
 export type CategoryTotal = {
@@ -75,6 +81,12 @@ export type MovementsSnapshot = {
   items: MovementRow[];
   timeZone: string;
   monthKey: string;
+  /** Current pay cycle, so Rörelser can show Perioden without an Analys drill. */
+  payCycleStartAt?: string | null;
+  payCycleEndAt?: string | null;
+  /** Ledger content token. Optimistic paints append `:local`. */
+  financeRevision?: string;
+  verifiedAt?: string;
 };
 
 export type MovementsSnapshotResult =
@@ -181,6 +193,7 @@ export function buildMovementsSnapshot(input: {
         fxRate: tx.fxRate ?? checkpointByAccountId.get(tx.accountId)?.fxRate ?? null,
         occurredAt: tx.occurredAt,
         source: tx.source,
+        clientMutationId: tx.clientMutationId ?? null,
       };
     });
 
@@ -209,14 +222,45 @@ export function buildMovementsSnapshot(input: {
 }
 
 /**
+ * Content token shared by the Rörelser page and mutation snapshots.
+ * Same ledger ⇒ same revision, so an optimistic `:local` paint can refuse
+ * the pre-write echo and accept the post-write one.
+ */
+export function movementsLedgerRevision(
+  transactions: readonly {
+    id: string;
+    amountMinor: number;
+    updatedAt?: string | null;
+  }[],
+  balanceMinor: number | null,
+): { financeRevision: string; verifiedAt: string } {
+  const rows = [...transactions].sort((a, b) =>
+    a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+  );
+  let newest = "";
+  let body = `${rows.length}:${balanceMinor ?? "null"}`;
+  for (const tx of rows) {
+    const updated = tx.updatedAt ?? "";
+    if (updated > newest) newest = updated;
+    body += `|${tx.id}:${tx.amountMinor}:${updated}`;
+  }
+  const verifiedAt = newest || "1970-01-01T00:00:00.000Z";
+  return {
+    financeRevision: `${newest || "0"}::mov:${body}`,
+    verifiedAt,
+  };
+}
+
+/**
  * Rörelser: profile + bounded ledger (plan history window), Σ THB saldo like Hem/Konton.
  */
 export const loadMovementsSnapshot = cache(
   async (): Promise<MovementsSnapshotResult> => {
     try {
-      const [profile, accounts] = await Promise.all([
+      const [profile, accounts, planItems] = await Promise.all([
         getProfile(),
         listAccounts(),
+        listPlanItems(),
       ]);
       const [transactions, checkpoints] = await Promise.all([
         listTransactions(undefined, {
@@ -226,14 +270,22 @@ export const loadMovementsSnapshot = cache(
         Promise.all(accounts.map((account) => getLatestCheckpoint(account.id))),
       ]);
 
+      const timeZone = profile.timezone || "Asia/Bangkok";
+      const data = buildMovementsSnapshot({
+        accounts,
+        transactions,
+        checkpoints,
+        timeZone,
+      });
+      const cycle = projectPayCycle(planItems, new Date(), timeZone);
       return {
         ok: true,
-        data: buildMovementsSnapshot({
-          accounts,
-          transactions,
-          checkpoints,
-          timeZone: profile.timezone || "Asia/Bangkok",
-        }),
+        data: {
+          ...data,
+          payCycleStartAt: cycle.startAt,
+          payCycleEndAt: cycle.endAt,
+          ...movementsLedgerRevision(transactions, data.balanceMinor),
+        },
       };
     } catch (error) {
       unstable_rethrow(error);

@@ -12,6 +12,17 @@ describe("import confirm", () => {
     expect(confirm).toContain("swedishFingerprintConflictError");
     expect(confirm).toContain('void reportError("ocr.confirm"');
   });
+
+  it("returns snapshots through the same menu-tag bust as Manuellt", () => {
+    const confirm = src.slice(
+      src.indexOf("export async function confirmReceiptExpenseAction"),
+      src.indexOf("export async function deleteObservationAction"),
+    );
+    expect(confirm).toContain("refreshAfterDurableWrite");
+    expect(confirm).toContain("bustMenuSnapshot");
+    expect(confirm).not.toContain("getTodaySnapshot");
+    expect(confirm).not.toMatch(/revalidatePath\s*\(/);
+  });
 });
 
 describe("import upload error classification", () => {
@@ -21,7 +32,11 @@ describe("import upload error classification", () => {
       src.indexOf("export async function confirmReceiptExpenseAction"),
     );
     expect(upload).toContain("isExpectedImageValidationError");
+    expect(upload).toContain("isUploadRateLimitError");
     expect(upload).toContain('void reportError("ocr.upload"');
-    expect(upload).toContain("if (!isExpectedImageValidationError(error))");
+    expect(upload).toContain(
+      "if (!rateLimited && !isExpectedImageValidationError(error))",
+    );
+    expect(upload).not.toContain("revalidatePath");
   });
 });

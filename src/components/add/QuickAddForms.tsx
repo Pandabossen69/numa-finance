@@ -11,28 +11,36 @@ import {
 import { SV } from "@/features/copy/labels-sv";
 import { parseUiAmountToMinor, type CurrencyCode } from "@/domain/money";
 import {
+  calendarDateInZone,
   createStableMutationId,
+  DEFAULT_TIMEZONE,
   nativeToThbMinor,
   newClientMutationId,
+  occurredAtForBookedDay,
 } from "@/domain/finance";
+import { clampCaptureDateInput } from "@/domain/imports/capture-review";
+import {
+  confirmOptimisticQuickAdd,
+  paintOptimisticQuickAdd,
+  rollbackOptimisticQuickAdd,
+} from "@/features/finance/quick-add-optimistic";
 import {
   adoptMutationFinance,
-  applyAccountDelta,
   applyLocalTransfer,
-  applyMovementsAdd,
-  applyOptimisticHomeIncome,
-  applyOptimisticHomeSpend,
   confirmOptimisticFinance,
+  lastHomeSnapshot,
+  subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { ChipStrip } from "@/components/ui/ChipStrip";
+import { PlanDateField } from "@/components/plan/PlanDateField";
+import { userFacingSaveError } from "@/lib/net/offline-save";
+import {
+  isCashAccount,
+  resolveListedAccountId,
+  type ShellAccount,
+} from "@/features/finance/manual-accounts";
 
-export type ShellAccount = {
-  id: string;
-  name: string;
-  accountType: string;
-  currency?: string;
-  fxRate?: number | null;
-};
+export type { ShellAccount };
 
 const CATEGORIES = ["Mat", "Transport", "Shopping", "Boende", "Övrigt"] as const;
 const LAST_CATEGORY_KEY = "numa.lastExpenseCategory";
@@ -58,6 +66,48 @@ function subscribeLastExpenseCategory(onStoreChange: () => void) {
   };
   window.addEventListener("storage", onStorage);
   return () => window.removeEventListener("storage", onStorage);
+}
+
+function useBookableDate() {
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    () => null,
+  );
+  const timeZone = home?.timeZone || DEFAULT_TIMEZONE;
+  const today = calendarDateInZone(new Date(), timeZone);
+  const [date, setDate] = useState(today);
+  const value = date > today ? today : date;
+  return {
+    date: value,
+    today,
+    timeZone,
+    setDate: (next: string) => setDate(clampCaptureDateInput(next, today)),
+  };
+}
+
+function ManualDateField({
+  value,
+  today,
+  onChange,
+}: {
+  value: string;
+  today: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
+        Datum
+      </span>
+      <PlanDateField
+        ariaLabel="Datum"
+        value={value}
+        max={today}
+        onChange={onChange}
+      />
+    </label>
+  );
 }
 
 type Mode = "expense" | "income" | "transfer" | "cash";
@@ -144,6 +194,11 @@ function ExpenseForm({
   onSuccess?: () => void;
 }) {
   const [chosenAccountId, setChosenAccountId] = useState(accountId);
+  const resolvedAccountId = resolveListedAccountId(
+    chosenAccountId,
+    accounts,
+    accountId,
+  );
   const [amount, setAmount] = useState("");
   const storedCategory = useSyncExternalStore(
     subscribeLastExpenseCategory,
@@ -156,6 +211,7 @@ function ExpenseForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
 
   return (
     <form
@@ -178,7 +234,7 @@ function ExpenseForm({
           }
           const descriptionText = description.trim() || "Utgift";
           const selected =
-            accounts.find((account) => account.id === chosenAccountId) ?? null;
+            accounts.find((account) => account.id === resolvedAccountId) ?? null;
           const nativeCurrency = (selected?.currency ?? "THB") as CurrencyCode;
           const fxRate =
             selected?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
@@ -187,53 +243,62 @@ function ExpenseForm({
             setError("Konto saknar växelkurs");
             return;
           }
-          applyOptimisticHomeSpend(thbMinor);
-          applyAccountDelta(-amountMinor, chosenAccountId);
           try {
             localStorage.setItem(LAST_CATEGORY_KEY, category);
           } catch {
             // ignore
           }
           const mutationId = newClientMutationId();
-          const result = await createExpenseAction({
-            accountId: chosenAccountId,
-            amount,
-            category,
-            description: description || undefined,
-            clientMutationId: mutationId,
-          });
-          if (!result.ok) {
-            applyOptimisticHomeSpend(-thbMinor);
-            applyAccountDelta(amountMinor, chosenAccountId);
-            setError(result.error);
-            return;
-          }
-          adoptMutationFinance(result);
-          applyMovementsAdd({
-            id: result.id ?? crypto.randomUUID(),
+          const optimistic = paintOptimisticQuickAdd({
+            kind: "expense",
+            mutationId,
+            nativeAmountMinor: amountMinor,
+            thbMinor,
             description: descriptionText,
             category,
-            transactionType: "expense",
-            direction: "debit",
-            amountMinor: thbMinor,
-            currency: "THB",
-            nativeAmountMinor: amountMinor,
             nativeCurrency,
-            accountId: chosenAccountId,
+            accountId: resolvedAccountId,
             fxRate,
-            occurredAt: new Date().toISOString(),
-            source: "manual",
+            occurredAt: occurredAtForBookedDay({
+              ymd: booked.date,
+              timeZone: booked.timeZone,
+            }),
+            affectsTodaySpend: booked.date === booked.today,
           });
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
+          try {
+            const result = await createExpenseAction({
+              accountId: resolvedAccountId,
+              amount,
+              category,
+              description: description || undefined,
+              clientMutationId: mutationId,
+              date: booked.date,
+            });
+            if (!result.ok) {
+              const message = userFacingSaveError(
+                result.error,
+                "Kunde inte spara utgift",
+              );
+              rollbackOptimisticQuickAdd(optimistic, message);
+              setError(message);
+              return;
+            }
+            confirmOptimisticQuickAdd(mutationId, result);
+            setAmount("");
+            setDescription("");
+            onSuccess?.();
+          } catch (error) {
+            const message = userFacingSaveError(error, "Kunde inte spara utgift");
+            rollbackOptimisticQuickAdd(optimistic, message);
+            setError(message);
+          }
         });
       }}
     >
       {accounts.length > 0 ? (
         <AccountSelect
           label="Konto"
-          value={chosenAccountId}
+          value={resolvedAccountId}
           onChange={setChosenAccountId}
           accounts={accounts}
         />
@@ -242,7 +307,7 @@ function ExpenseForm({
         value={amount}
         onChange={setAmount}
         currency={
-          (accounts.find((account) => account.id === chosenAccountId)
+          (accounts.find((account) => account.id === resolvedAccountId)
             ?.currency ?? "THB") as CurrencyCode
         }
       />
@@ -271,6 +336,11 @@ function ExpenseForm({
         onChange={setDescription}
         placeholder="Valfri beskrivning"
       />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
+      />
       <ErrorText error={error} />
       <Submit pending={pending} disabled={!amount.trim()} label="Spara utgift" />
     </form>
@@ -287,11 +357,13 @@ function IncomeForm({
   onSuccess?: () => void;
 }) {
   const [targetId, setTargetId] = useState(accountId);
+  const resolvedTargetId = resolveListedAccountId(targetId, accounts, accountId);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
 
   return (
     <form
@@ -314,7 +386,7 @@ function IncomeForm({
           }
           const descriptionText = description.trim() || "Inkomst";
           const selected =
-            accounts.find((account) => account.id === targetId) ?? null;
+            accounts.find((account) => account.id === resolvedTargetId) ?? null;
           const nativeCurrency = (selected?.currency ?? "THB") as CurrencyCode;
           const fxRate =
             selected?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
@@ -323,49 +395,57 @@ function IncomeForm({
             setError("Konto saknar växelkurs");
             return;
           }
-          applyOptimisticHomeIncome(thbMinor);
-          applyAccountDelta(amountMinor, targetId);
-          const result = await createIncomeAction({
-            accountId: targetId,
-            amount,
-            description: description || undefined,
-            clientMutationId: newClientMutationId(),
-          });
-          if (!result.ok) {
-            applyOptimisticHomeIncome(-thbMinor);
-            applyAccountDelta(-amountMinor, targetId);
-            setError(result.error);
-            return;
-          }
-          adoptMutationFinance(result);
-          applyMovementsAdd({
-            id: result.id ?? crypto.randomUUID(),
-            description: descriptionText,
-            category: null,
-            transactionType: "income",
-            direction: "credit",
-            amountMinor: thbMinor,
-            currency: "THB",
+          const mutationId = newClientMutationId();
+          const optimistic = paintOptimisticQuickAdd({
+            kind: "income",
+            mutationId,
             nativeAmountMinor: amountMinor,
+            thbMinor,
+            description: descriptionText,
             nativeCurrency,
-            accountId: targetId,
+            accountId: resolvedTargetId,
             fxRate,
-            occurredAt: new Date().toISOString(),
-            source: "manual",
+            occurredAt: occurredAtForBookedDay({
+              ymd: booked.date,
+              timeZone: booked.timeZone,
+            }),
           });
-          setAmount("");
-          setDescription("");
-          onSuccess?.();
+          try {
+            const result = await createIncomeAction({
+              accountId: resolvedTargetId,
+              amount,
+              description: description || undefined,
+              clientMutationId: mutationId,
+              date: booked.date,
+            });
+            if (!result.ok) {
+              const message = userFacingSaveError(
+                result.error,
+                "Kunde inte spara inkomst",
+              );
+              rollbackOptimisticQuickAdd(optimistic, message);
+              setError(message);
+              return;
+            }
+            confirmOptimisticQuickAdd(mutationId, result);
+            setAmount("");
+            setDescription("");
+            onSuccess?.();
+          } catch (error) {
+            const message = userFacingSaveError(error, "Kunde inte spara inkomst");
+            rollbackOptimisticQuickAdd(optimistic, message);
+            setError(message);
+          }
         });
       }}
     >
       <p className="text-sm text-[var(--numa-muted)]">
         Lön, återbetalning eller annat som ökar saldot.
       </p>
-      {accounts.length > 1 ? (
+      {accounts.length > 0 ? (
         <AccountSelect
           label="Till konto"
-          value={targetId}
+          value={resolvedTargetId}
           onChange={setTargetId}
           accounts={accounts}
         />
@@ -374,7 +454,7 @@ function IncomeForm({
         value={amount}
         onChange={setAmount}
         currency={
-          (accounts.find((account) => account.id === targetId)?.currency ??
+          (accounts.find((account) => account.id === resolvedTargetId)?.currency ??
             "THB") as CurrencyCode
         }
       />
@@ -382,6 +462,11 @@ function IncomeForm({
         value={description}
         onChange={setDescription}
         placeholder="t.ex. Lön"
+      />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
       />
       <ErrorText error={error} />
       <Submit pending={pending} disabled={!amount.trim()} label="Spara inkomst" />
@@ -398,26 +483,28 @@ function TransferForm({
   accounts: ShellAccount[];
   onSuccess?: () => void;
 }) {
-  const others = accounts.filter((a) => a.id !== primaryAccountId);
   const [fromId, setFromId] = useState(primaryAccountId);
-  const [toId, setToId] = useState(others[0]?.id ?? "");
+  const [toId, setToId] = useState("");
+  const resolvedFromId = resolveListedAccountId(fromId, accounts, primaryAccountId);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
   const [mutation] = useState(createStableMutationId);
   const [appliedMutations] = useState(() => new Set<string>());
 
-  const fromAccount = accounts.find((a) => a.id === fromId);
+  const fromAccount = accounts.find((a) => a.id === resolvedFromId);
   const fromCurrency = fromAccount?.currency ?? "THB";
   const compatibleDestinations = useMemo(
     () =>
       accounts.filter(
-        (a) => a.id !== fromId && (a.currency ?? "THB") === fromCurrency,
+        (a) => a.id !== resolvedFromId && (a.currency ?? "THB") === fromCurrency,
       ),
-    [accounts, fromId, fromCurrency],
+    [accounts, resolvedFromId, fromCurrency],
   );
+  const destinationId = resolveListedAccountId(toId, compatibleDestinations);
 
   if (accounts.length < 2) {
     return (
@@ -447,11 +534,11 @@ function TransferForm({
             setError("Beloppet måste vara större än 0");
             return;
           }
-          if (!toId) {
+          if (!destinationId) {
             setError("Välj ett målkonto");
             return;
           }
-          const toAccount = accounts.find((a) => a.id === toId);
+          const toAccount = accounts.find((a) => a.id === destinationId);
           if (!toAccount) {
             setError("Kontot hittades inte");
             return;
@@ -463,15 +550,22 @@ function TransferForm({
             return;
           }
           const mutationId = mutation.take();
-          const result = await createTransferAction({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amount,
-            description: description || undefined,
-            clientMutationId: mutationId,
-          });
+          let result: Awaited<ReturnType<typeof createTransferAction>>;
+          try {
+            result = await createTransferAction({
+              fromAccountId: resolvedFromId,
+              toAccountId: destinationId,
+              amount,
+              description: description || undefined,
+              clientMutationId: mutationId,
+              date: booked.date,
+            });
+          } catch (error) {
+            setError(userFacingSaveError(error, "Kunde inte flytta"));
+            return;
+          }
           if (!result.ok) {
-            setError(result.error);
+            setError(userFacingSaveError(result.error, "Kunde inte flytta"));
             return;
           }
           if (result.home || result.accounts) {
@@ -479,8 +573,8 @@ function TransferForm({
           } else if (!appliedMutations.has(mutationId)) {
             appliedMutations.add(mutationId);
             applyLocalTransfer({
-              fromAccountId: fromId,
-              toAccountId: toId,
+              fromAccountId: resolvedFromId,
+              toAccountId: destinationId,
               amountMinor,
             });
             confirmOptimisticFinance();
@@ -496,7 +590,7 @@ function TransferForm({
     >
       <AccountSelect
         label="Från"
-        value={fromId}
+        value={resolvedFromId}
         onChange={(id) => {
           setFromId(id);
           const nextFrom = accounts.find((a) => a.id === id);
@@ -513,7 +607,7 @@ function TransferForm({
       />
       <AccountSelect
         label="Till"
-        value={toId}
+        value={destinationId}
         onChange={setToId}
         accounts={compatibleDestinations}
       />
@@ -529,10 +623,17 @@ function TransferForm({
         onChange={setDescription}
         placeholder="Valfri notis"
       />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
+      />
       <ErrorText error={error} />
       <Submit
         pending={pending}
-        disabled={!amount.trim() || !toId || compatibleDestinations.length === 0}
+        disabled={
+          !amount.trim() || !destinationId || compatibleDestinations.length === 0
+        }
         label="Flytta"
       />
     </form>
@@ -549,20 +650,26 @@ function CashForm({
   onSuccess?: () => void;
 }) {
   const cashAccounts = useMemo(
-    () => accounts.filter((a) => a.accountType === "cash"),
+    () => accounts.filter((account) => isCashAccount(account)),
     [accounts],
   );
   const [fromId, setFromId] = useState(primaryAccountId);
-  const [toId, setToId] = useState(cashAccounts[0]?.id ?? "");
+  const [toId, setToId] = useState("");
+  const resolvedFromId = resolveListedAccountId(fromId, accounts, primaryAccountId);
+  const cashTargetId = resolveListedAccountId(
+    toId,
+    cashAccounts.filter((account) => account.id !== resolvedFromId),
+  );
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const guard = useSubmitGuard(pending);
+  const booked = useBookableDate();
   const [mutation] = useState(createStableMutationId);
   const [appliedMutations] = useState(() => new Set<string>());
   const fromCurrency =
-    accounts.find((account) => account.id === fromId)?.currency ?? "THB";
+    accounts.find((account) => account.id === resolvedFromId)?.currency ?? "THB";
 
   if (cashAccounts.length === 0) {
     return (
@@ -581,7 +688,7 @@ function CashForm({
         if (!guard.tryBegin()) return;
         setError(null);
         startTransition(async () => {
-          if (!toId) {
+          if (!cashTargetId) {
             setError("Välj ett kontantkonto");
             return;
           }
@@ -597,15 +704,22 @@ function CashForm({
             return;
           }
           const mutationId = mutation.take();
-          const result = await createCashWithdrawalAction({
-            fromAccountId: fromId,
-            toAccountId: toId,
-            amount,
-            description: description || undefined,
-            clientMutationId: mutationId,
-          });
+          let result: Awaited<ReturnType<typeof createCashWithdrawalAction>>;
+          try {
+            result = await createCashWithdrawalAction({
+              fromAccountId: resolvedFromId,
+              toAccountId: cashTargetId,
+              amount,
+              description: description || undefined,
+              clientMutationId: mutationId,
+              date: booked.date,
+            });
+          } catch (error) {
+            setError(userFacingSaveError(error, "Kunde inte spara uttag"));
+            return;
+          }
           if (!result.ok) {
-            setError(result.error);
+            setError(userFacingSaveError(result.error, "Kunde inte spara uttag"));
             return;
           }
           if (result.home || result.accounts) {
@@ -613,8 +727,8 @@ function CashForm({
           } else if (!appliedMutations.has(mutationId)) {
             appliedMutations.add(mutationId);
             applyLocalTransfer({
-              fromAccountId: fromId,
-              toAccountId: toId,
+              fromAccountId: resolvedFromId,
+              toAccountId: cashTargetId,
               amountMinor,
             });
             confirmOptimisticFinance();
@@ -634,21 +748,23 @@ function CashForm({
       </p>
       <AccountSelect
         label="Från"
-        value={fromId}
+        value={resolvedFromId}
         onChange={(id) => {
           setFromId(id);
-          if (id === toId) {
+          if (id === cashTargetId) {
             const next = cashAccounts.find((a) => a.id !== id);
             if (next) setToId(next.id);
           }
         }}
-        accounts={accounts.filter((a) => a.accountType !== "cash" || a.id !== toId)}
+        accounts={accounts.filter(
+          (account) => !isCashAccount(account) || account.id !== cashTargetId,
+        )}
       />
       <AccountSelect
         label="Till kontanter"
-        value={toId}
+        value={cashTargetId}
         onChange={setToId}
-        accounts={cashAccounts.filter((a) => a.id !== fromId)}
+        accounts={cashAccounts.filter((account) => account.id !== resolvedFromId)}
       />
       <AmountField value={amount} onChange={setAmount} currency={fromCurrency} />
       <TextField
@@ -656,10 +772,15 @@ function CashForm({
         onChange={setDescription}
         placeholder="t.ex. ATM"
       />
+      <ManualDateField
+        value={booked.date}
+        today={booked.today}
+        onChange={booked.setDate}
+      />
       <ErrorText error={error} />
       <Submit
         pending={pending}
-        disabled={!amount.trim() || !toId}
+        disabled={!amount.trim() || !cashTargetId}
         label="Spara uttag"
       />
     </form>

@@ -46,7 +46,7 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
         label: "Rörelser",
         hint: "Historik",
         icon: <IconRorelser />,
-        tone: "spend",
+        tone: "neutral",
       },
       {
         href: "/konton",
@@ -78,7 +78,7 @@ const sections: Array<{ title: string; items: MerItem[] }> = [
         label: "Uppdatera appen",
         hint: "Hämta senaste versionen",
         icon: <IconWrench />,
-        tone: "alarm",
+        tone: "neutral",
       },
     ],
   },
@@ -101,6 +101,7 @@ export function MerScreen({
   useEffect(() => {
     if (data) rememberMerSnapshot(data);
   }, [data]);
+
   const view = data ?? lastMerSnapshot() ?? ensurePaintableMerSnapshot();
 
   if (!view) return <MerViewLoading />;

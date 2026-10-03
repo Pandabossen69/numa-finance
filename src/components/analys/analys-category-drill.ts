@@ -1,36 +1,23 @@
 import { UNCATEGORISED_SPEND_NAME } from "@/domain/finance";
-import type {
-  MovementsFilter,
-  MovementsPeriod,
-  MovementsView,
-} from "@/features/home/last-snapshot";
+import {
+  movementsDrillForCategory,
+  movementsDrillHref,
+  type MovementsDrill,
+} from "@/components/movements/movements-drill";
 
-/**
- * View Rörelser should open on when a Spenderat category is tapped.
- *
- * Keeps the current Utgifter/Alla chip and Denna månad when that still
- * shows the rows. Pay-cycle scope and any other calendar month use All tid,
- * because Rörelser' month chip is only the current month. Intäkter/Övrigt
- * type chips would hide the spend, so those fall back to Alla.
- */
-export function movementsViewForCategoryDrill(
+export { movementsDrillForCategory, movementsDrillHref };
+export type { MovementsDrill };
+
+/** Href for a Spenderat category row. Drill state stays in the query. */
+export function categoryDrillHref(
   categoryName: string,
   opts: {
     scope: "period" | "month";
-    activeMonthKey: string;
-    currentMonthKey: string;
-    existing: MovementsView | null;
+    cycleStartAt?: string | null;
+    cycleEndAt?: string | null;
   },
-): MovementsView {
-  const existingFilter = opts.existing?.filter;
-  const filter: MovementsFilter =
-    existingFilter === "all" || existingFilter === "expense" ? existingFilter : "all";
-  const sameCalendarMonth =
-    opts.scope === "month" && opts.activeMonthKey === opts.currentMonthKey;
-  const period: MovementsPeriod = sameCalendarMonth
-    ? (opts.existing?.period ?? "month")
-    : "all";
-  return { filter, period, category: categoryName };
+): string {
+  return movementsDrillHref(movementsDrillForCategory(categoryName, opts));
 }
 
 /**

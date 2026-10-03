@@ -7,6 +7,7 @@ function read(name: string): string {
 
 const editor = read("./PlanEditor.tsx");
 const rows = read("./PlanRows.tsx");
+const forms = read("./PlanRowForms.tsx");
 const dateField = read("./PlanDateField.tsx");
 const inlineAdd = read("./InlineAdd.tsx");
 const monthStrip = read("./MonthChipStrip.tsx");
@@ -25,6 +26,7 @@ const css = read("../../app/globals.css");
 const plan = [
   editor,
   rows,
+  forms,
   dateField,
   inlineAdd,
   monthStrip,
@@ -172,7 +174,7 @@ describe("Plan dates and add-form", () => {
     expect(rows).toContain("is-partial");
     // The chip's words and colour live in one module that Analys shares.
     expect(chip).toContain("numa-chip numa-chip-mint");
-    expect(chip).toContain("numa-chip numa-chip-spend");
+    expect(chip).toContain("numa-chip numa-chip-ink");
     expect(rows).toContain("planChipClass(status)");
     expect(rows).toContain("planChipLabel(status, settleKind)");
     expect(rows).toContain("<button");
@@ -244,13 +246,19 @@ describe("Plan dates and add-form", () => {
   });
 
   it("publishes the plan store after commit, never from inside an updater", () => {
-    expect(editor).toContain("useEffect(() => {\n    publishItems(localItems);");
+    expect(editor).toContain("if (!dirtyRef.current) return;");
+    expect(editor).toContain("dirtyRef.current = false;");
+    expect(editor).toContain("publishItems(localItems);");
+    expect(editor).toContain("dirtyRef.current = true;");
+    expect(editor).toContain("}, [localItems]);");
+    expect(editor).toContain("Too many re-renders");
+    expect(editor).toContain("that loop crashed Plan after Delvis settle");
     expect(editor).not.toMatch(/setLocalItems\(\(current\) => \{[^}]*publishItems/);
     expect(editor).toContain("adoptServerPlanItems(localItems, items)");
-    expect(editor).toContain("const viewItems = busy");
+    expect(editor).toContain("busy ? localItems : adoptServerPlanItems(localItems, items)");
     expect(editor).not.toContain("setItemsStamp");
-    // Live coverage must not re-trigger publish (Delvis settle loop).
-    expect(editor).toContain(
+    // Live coverage and ledger must not re-trigger publish (Delvis settle / Koppla).
+    expect(editor).not.toContain(
       "[localItems, currency, timeZone, bankBalanceMinor, spendingByMonthKey]",
     );
     expect(editor).not.toContain(
@@ -264,7 +272,7 @@ describe("Plan dates and add-form", () => {
   it("shows 51 000 − 22 000 = 29 000 and labels remaining cash as Kvar att få/betala", () => {
     expect(rows).toContain("planRowHeroMinor");
     expect(rows).toContain("planPartialBreakdown");
-    expect(rows).toContain("previewAdditionalPartialRemaining");
+    expect(forms).toContain("previewAdditionalPartialRemaining");
     expect(rows).toContain("PlanEquation");
     expect(equation).toContain("formatPlanFigure");
     expect(editor).toContain("coverage={coverage}");
@@ -314,6 +322,7 @@ describe("Plan dates and add-form", () => {
     );
     expect(select).not.toContain("buildPlanMonthPaint");
     expect(editor).toContain("resolvePlanMonthPaint");
+    expect(editor).toContain("{ allowBuild: false }");
     expect(editor).toContain("scheduleEnsurePlanMonthPaint");
     expect(editor).toContain('data-plan-month-ready={monthReady ? "1" : "0"}');
     expect(editor).not.toContain("startMonthTransition");
@@ -327,12 +336,12 @@ describe("Plan dates and add-form", () => {
 
   it("adopts savings mutation snapshots so Hem/Plan remount keep the edit", () => {
     const save = editor.slice(
-      editor.indexOf("onSaveSavings={() => {"),
-      editor.indexOf("onClearSavings={() => {"),
+      editor.indexOf("const saveSavings = useCallback"),
+      editor.indexOf("const clearSavings = useCallback"),
     );
     const clear = editor.slice(
-      editor.indexOf("onClearSavings={() => {"),
-      editor.indexOf("{error ? ("),
+      editor.indexOf("const clearSavings = useCallback"),
+      editor.indexOf("\n  return ("),
     );
     for (const block of [save, clear]) {
       expect(block).toContain("adoptMutationFinance(result)");

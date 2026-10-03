@@ -1452,7 +1452,7 @@ body {
 }
 
 .numa-pile-line.is-short .numa-pile-line-label {
-  color: var(--numa-alarm);
+  color: var(--numa-ink);
   font-weight: 680;
 }
 
@@ -1461,7 +1461,7 @@ body {
 }
 
 .numa-pile-line.is-out .numa-pile-line-value {
-  color: color-mix(in srgb, var(--numa-spend) 82%, var(--numa-ink));
+  color: var(--numa-ink);
 }
 
 .numa-pile-line.is-over,
@@ -1699,8 +1699,8 @@ button.numa-chip:disabled {
 }
 
 .numa-plan-row.is-partial {
-  background: var(--numa-spend-soft);
-  box-shadow: inset 2px 0 0 var(--numa-spend);
+  background: color-mix(in srgb, var(--numa-ink) 6%, transparent);
+  box-shadow: inset 2px 0 0 var(--numa-border-strong);
 }
 
 .numa-settle-eq {
@@ -2333,7 +2333,10 @@ button.numa-chip:disabled {
 
 .numa-chip-scroll {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
