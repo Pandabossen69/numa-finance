@@ -284,6 +284,7 @@ export function hydrateLastKnownFromPersist() {
   const data = readPersistedLastKnown();
   persistPaused = true;
   homeSessionConfirmed = false;
+  try {
   const cookieHome = readLastHomeCookieFromDocument();
   if (data) {
     sessionOwnerId = data.userId;
@@ -318,7 +319,6 @@ export function hydrateLastKnownFromPersist() {
       analys = analysSnapshotFromHome(home);
     }
     if (!mer && home) mer = merSnapshotFromHome(home);
-    persistPaused = false;
     return;
   }
   if (cookieHome) {
@@ -330,10 +330,14 @@ export function hydrateLastKnownFromPersist() {
     }
     if (!mer) mer = merSnapshotFromHome(cookieHome);
   }
-  persistPaused = false;
+} finally {
+    // Notify after the module vars are filled, still before paint when this
+    // runs from AppShell's useLayoutEffect. No persist — the bytes are
+    // already in localStorage / the cookie.
+    publishHydratedSnapshots();
+    persistPaused = false;
+  }
 }
-
-hydrateLastKnownFromPersist();
 
 export function subscribeHomeSnapshot(listener: () => void) {
   homeListeners.add(listener);
@@ -1049,6 +1053,24 @@ export function subscribeAnalysScope(listener: () => void): () => void {
   return () => {
     analysScopeListeners.delete(listener);
   };
+}
+
+function notifySnapshot(listeners: Set<() => void>) {
+  for (const listener of listeners) listener();
+}
+
+/** Wake useSyncExternalStore subscribers after persist/cookie hydrate. */
+function publishHydratedSnapshots() {
+  notifySnapshot(homeListeners);
+  notifySnapshot(planListeners);
+  notifySnapshot(analysListeners);
+  notifySnapshot(gettingStartedListeners);
+  notifySnapshot(movementsListeners);
+  notifySnapshot(accountsListeners);
+  notifySnapshot(merListeners);
+  notifySnapshot(planViewListeners);
+  notifySnapshot(movementsViewListeners);
+  notifySnapshot(analysScopeListeners);
 }
 
 export function rememberAnalysScope(scope: "period" | "month") {

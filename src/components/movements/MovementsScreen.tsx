@@ -36,6 +36,7 @@ import {
   rememberMovementsSnapshot,
   rememberMovementsView,
   subscribeAnalysSnapshot,
+  subscribeHomeSnapshot,
   subscribeMovementsSnapshot,
   subscribeMovementsView,
   subscribePlanSnapshot,
@@ -95,9 +96,10 @@ function minorToUi(amountMinor: number): string {
 }
 
 /** Page-shaped dest shell when RSC has not arrived and no last-known list. */
-function pendingMovementsShell(): MovementsSnapshot {
-  const home = lastHomeSnapshot();
-  const analys = lastAnalysSnapshot();
+function pendingMovementsShell(
+  home: ReturnType<typeof lastHomeSnapshot>,
+  analys: ReturnType<typeof lastAnalysSnapshot>,
+): MovementsSnapshot {
   const timeZone = home?.timeZone ?? analys?.timeZone ?? "Asia/Bangkok";
   return {
     currency: home?.currency ?? analys?.currency ?? "THB",
@@ -149,7 +151,12 @@ export function MovementsScreen({
   const analysLive = useSyncExternalStore(
     subscribeAnalysSnapshot,
     lastAnalysSnapshot,
-    () => null,
+    serverNull,
+  );
+  const homeLive = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    serverNull,
   );
   const drill = useSyncExternalStore(
     subscribeMovementsDrill,
@@ -233,7 +240,9 @@ export function MovementsScreen({
   }, [data]);
 
   const view =
-    stored ?? data ?? lastMovementsSnapshot() ?? (error ? null : pendingMovementsShell());
+    stored ??
+    data ??
+    (error ? null : pendingMovementsShell(homeLive, analysLive));
 
   // Drill is an overlay. The chips above stay the user's saved view and
   // are the only thing rememberMovementsView persists.

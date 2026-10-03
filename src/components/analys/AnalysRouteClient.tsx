@@ -24,7 +24,6 @@ import {
   lastAnalysSnapshot,
   lastHomeSnapshot,
   lastPlanSnapshot,
-  lastSessionHomeSnapshot,
   rememberAnalysSnapshot,
   subscribeAnalysSnapshot,
   subscribeHomeSnapshot,
@@ -69,11 +68,7 @@ export function AnalysRouteClient() {
   // writes — do not gate first paint on those snapshots being non-null.
   // Derivation only: remembering here updated other Analys trees mid-render.
   const view = useMemo(
-    () =>
-      derivePaintableAnalysSnapshot(
-        stored,
-        lastSessionHomeSnapshot() ?? homeStored,
-      ),
+    () => derivePaintableAnalysSnapshot(stored, homeStored),
     [homeStored, stored],
   );
 

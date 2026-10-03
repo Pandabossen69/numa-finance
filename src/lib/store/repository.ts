@@ -285,6 +285,10 @@ export async function listPlanItems() {
   return api().listPlanItems();
 }
 
+export async function listInactivePlanItems() {
+  return api().listInactivePlanItems();
+}
+
 export async function createPlanItem(
   input: Parameters<typeof local.createPlanItem>[0],
 ) {

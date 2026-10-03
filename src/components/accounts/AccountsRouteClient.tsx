@@ -5,6 +5,7 @@ import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
 import { adoptServerAccountsSnapshot } from "@/features/finance/account-edit-store";
 import { getAccountsSnapshotAction } from "@/features/finance/accounts-snapshot";
 import { archivedAccountsNeedRefresh } from "@/features/home/accounts-last-known";
+import { serverNull } from "@/lib/react/server-snapshot";
 import {
   accountsSnapshotConfirmedThisSession,
   isAccountsDirty,
@@ -23,7 +24,7 @@ export function AccountsRouteClient() {
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
     paintableAccountsSnapshot,
-    paintableAccountsSnapshot,
+    serverNull,
   );
   const [error, setError] = useState<string | null>(null);
 

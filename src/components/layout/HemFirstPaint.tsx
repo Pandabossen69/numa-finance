@@ -60,10 +60,7 @@ export function AnalysFirstPaint() {
   const view = useMemo(() => {
     if (analysViewCanPaint(analys)) return analys;
     if (!(plan || home)) return null;
-    return derivePaintableAnalysSnapshot(
-      null,
-      lastSessionHomeSnapshot() ?? home,
-    );
+    return derivePaintableAnalysSnapshot(null, home);
   }, [analys, home, plan]);
 
   useEffect(() => {

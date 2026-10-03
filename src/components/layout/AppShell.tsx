@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect } from "react";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { BrandLockup } from "@/components/layout/BrandLockup";
 import { LastViewOutlet } from "@/components/layout/LastViewOutlet";
@@ -7,6 +8,7 @@ import { NavIntentProvider } from "@/components/layout/NavIntent";
 import { NavWarmup } from "@/components/layout/NavWarmup";
 import { SideNav } from "@/components/layout/SideNav";
 import { TabKeepAlive } from "@/components/layout/TabKeepAlive";
+import { hydrateLastKnownFromPersist } from "@/features/home/last-snapshot";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 
 /**
@@ -22,6 +24,12 @@ export function AppShell({
   /** Last-known Hem from numa.lastHome.v1 — SSR into keep-alive /idag. */
   homeCookieShell?: HomeSnapshot | null;
 }) {
+  // Module-scope hydrate read the cookie and localStorage before the
+  // client's first render, so Analys/Konton disagreed with SSR.
+  useLayoutEffect(() => {
+    hydrateLastKnownFromPersist();
+  }, []);
+
   return (
     <NavIntentProvider>
       <div className="mx-auto min-h-dvh w-full max-w-[var(--numa-shell-max)] overflow-x-clip pl-[max(1rem,var(--numa-safe-left))] pr-[max(1rem,var(--numa-safe-right))] md:px-8">

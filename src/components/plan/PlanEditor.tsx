@@ -382,7 +382,11 @@ export function PlanEditor({
     serverBlank,
   );
   void homeLivingStamp;
-  const home = lastHomeSnapshot();
+  const home = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    serverNull,
+  );
   const [incomeDate, setIncomeDate] = useState(`${monthKey}-25`);
   const [extraDate, setExtraDate] = useState(`${monthKey}-15`);
   const [expenseDate, setExpenseDate] = useState(`${monthKey}-01`);
