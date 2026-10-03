@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { assertAccountAcceptsWrites, isUniqueViolationMessage } from "@/domain/finance";
 import { bankMailConfirmBlockedMessage } from "@/features/imports/bank-mail-notices";
 import { fxFieldsForWrite } from "@/lib/store/transaction-fx";
@@ -13,35 +14,77 @@ import { BANK_MAIL_OBSERVATION_KIND } from "@/features/imports/bank-mail-label";
 export async function confirmBankMailCandidate(input: {
   observationId: string;
   clientMutationId?: string | null;
+  /**
+   * Konto from the card already on screen. Lets ägarskap and ingående saldo
+   * share the same round as mejlet. The candidate payload still wins if they differ.
+   */
+  accountId?: string | null;
 }) {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Du behöver vara inloggad");
+  const hintedAccountId =
+    typeof input.accountId === "string" && input.accountId.trim()
+      ? input.accountId.trim()
+      : null;
 
-  const { data: obs, error: obsError } = await supabase
+  // Cookie session is local. getUser(jwt) verifies with Auth without holding
+  // the client lock, so the reads below share that one network round.
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+  if (!accessToken) throw new Error("Du behöver vara inloggad");
+
+  const userPromise = supabase.auth.getUser(accessToken);
+  const obsPromise = supabase
     .from("source_observations")
-    .select("id, kind, status")
-    .eq("user_id", user.id)
+    .select("id, user_id, kind, status")
     .eq("id", input.observationId)
     .maybeSingle();
-  if (obsError) throw new Error(obsError.message);
-  if (!obs || obs.kind !== BANK_MAIL_OBSERVATION_KIND) {
-    throw new Error("Importen hittades inte");
-  }
-
-  const { data: cand, error: candError } = await supabase
+  const candPromise = supabase
     .from("extracted_transaction_candidates")
     .select("*")
-    .eq("user_id", user.id)
     .eq("observation_id", input.observationId)
     .in("status", ["needs_review", "confirmed"])
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (candError) throw new Error(candError.message);
-  if (!cand) throw new Error("Inget att bekräfta");
+  const hintedAccountPromise = hintedAccountId
+    ? supabase
+        .from("accounts")
+        .select("id, user_id, currency, is_active")
+        .eq("id", hintedAccountId)
+        .maybeSingle()
+    : Promise.resolve({ data: null, error: null });
+  const hintedOpeningPromise = hintedAccountId
+    ? openingBalanceVerifiedAt(hintedAccountId)
+    : Promise.resolve(null);
+
+  const [
+    {
+      data: { user },
+    },
+    obsResult,
+    candResult,
+    hintedAccountResult,
+    hintedOpening,
+  ] = await Promise.all([
+    userPromise,
+    obsPromise,
+    candPromise,
+    hintedAccountPromise,
+    hintedOpeningPromise,
+  ]);
+  if (!user) throw new Error("Du behöver vara inloggad");
+
+  const obs = obsResult.data;
+  if (obsResult.error) throw new Error(obsResult.error.message);
+  if (!obs || obs.user_id !== user.id || obs.kind !== BANK_MAIL_OBSERVATION_KIND) {
+    throw new Error("Importen hittades inte");
+  }
+
+  const cand = candResult.data;
+  if (candResult.error) throw new Error(candResult.error.message);
+  if (!cand || cand.user_id !== user.id) throw new Error("Inget att bekräfta");
 
   if (cand.status === "confirmed" && cand.canonical_transaction_id) {
     const { data: existing, error: existingError } = await supabase
@@ -58,18 +101,28 @@ export async function confirmBankMailCandidate(input: {
   const accountId = typeof payload.accountId === "string" ? payload.accountId : null;
   if (!accountId) throw new Error("Kontot saknas på mejlet");
 
-  const { data: account, error: accountError } = await supabase
-    .from("accounts")
-    .select("id, currency, is_active")
-    .eq("user_id", user.id)
-    .eq("id", accountId)
-    .maybeSingle();
-  if (accountError) throw new Error(accountError.message);
+  let account = hintedAccountResult.data;
+  let openingBalanceAt = hintedOpening;
+  if (hintedAccountResult.error) throw new Error(hintedAccountResult.error.message);
+  if (!account || account.id !== accountId || account.user_id !== user.id) {
+    const [accountResult, opening] = await Promise.all([
+      supabase
+        .from("accounts")
+        .select("id, user_id, currency, is_active")
+        .eq("user_id", user.id)
+        .eq("id", accountId)
+        .maybeSingle(),
+      openingBalanceVerifiedAt(accountId),
+    ]);
+    if (accountResult.error) throw new Error(accountResult.error.message);
+    account = accountResult.data;
+    openingBalanceAt = opening;
+  }
   const gate = assertAccountAcceptsWrites(
     account ? { isActive: account.is_active !== false } : null,
   );
   if (!gate.ok) throw new Error(gate.error);
-  if (!account || account.currency !== "THB") {
+  if (!account || account.user_id !== user.id || account.currency !== "THB") {
     throw new Error("Bangkok Bank-mejl bokförs på THB-kontot mejlet hör till");
   }
 
@@ -86,7 +139,6 @@ export async function confirmBankMailCandidate(input: {
     typeof cand.occurred_at === "string" && cand.occurred_at
       ? cand.occurred_at
       : new Date().toISOString();
-  const openingBalanceAt = await openingBalanceVerifiedAt(account.id);
   const blocked = bankMailConfirmBlockedMessage({ occurredAt, openingBalanceAt });
   if (blocked) throw new Error(blocked);
   const nowIso = new Date().toISOString();
@@ -145,28 +197,42 @@ export async function confirmBankMailCandidate(input: {
   }
   if (!transaction) throw new Error("Kunde inte spara betalningen");
 
-  const savedAt = new Date().toISOString();
-  const { error: candUpdateError } = await supabase
-    .from("extracted_transaction_candidates")
-    .update({
-      status: "confirmed",
-      canonical_transaction_id: transaction.id,
-      updated_at: savedAt,
-    })
-    .eq("user_id", user.id)
-    .eq("id", cand.id);
-  if (candUpdateError) throw new Error(candUpdateError.message);
-
-  const { error: obsUpdateError } = await supabase
-    .from("source_observations")
-    .update({
-      status: "processed",
-      notes: "Bekräftad och sparad",
-      updated_at: savedAt,
-    })
-    .eq("user_id", user.id)
-    .eq("id", input.observationId);
-  if (obsUpdateError) throw new Error(obsUpdateError.message);
+  const savedUserId = user.id;
+  const savedCandidateId = cand.id as string;
+  const savedObservationId = input.observationId;
+  const savedTransactionId = transaction.id as string;
+  // Queue notes are not the ack. They run after the action response so the
+  // toast is one read round plus the insert. A dropped callback leaves the
+  // ledger row; the next Importera load still shows the mail.
+  after(async () => {
+    try {
+      const savedAt = new Date().toISOString();
+      const [candUpdate, obsUpdate] = await Promise.all([
+        supabase
+          .from("extracted_transaction_candidates")
+          .update({
+            status: "confirmed",
+            canonical_transaction_id: savedTransactionId,
+            updated_at: savedAt,
+          })
+          .eq("user_id", savedUserId)
+          .eq("id", savedCandidateId),
+        supabase
+          .from("source_observations")
+          .update({
+            status: "processed",
+            notes: "Bekräftad och sparad",
+            updated_at: savedAt,
+          })
+          .eq("user_id", savedUserId)
+          .eq("id", savedObservationId),
+      ]);
+      if (candUpdate.error) throw new Error(candUpdate.error.message);
+      if (obsUpdate.error) throw new Error(obsUpdate.error.message);
+    } catch (error) {
+      console.error("[numa] bank-mail.confirm-ack", error);
+    }
+  });
 
   return mapTransaction(transaction);
 }

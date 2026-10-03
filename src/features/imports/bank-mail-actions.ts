@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import {
   confirmBankMailCandidate,
@@ -16,6 +16,7 @@ import { refreshAfterDurableWrite } from "@/features/finance/mutation-refresh";
 const schema = z.object({
   observationId: z.string().uuid(),
   clientMutationId: z.string().uuid().optional(),
+  accountId: z.string().uuid().optional(),
 });
 
 const rejectSchema = z.object({
@@ -28,6 +29,9 @@ const rejectSchema = z.object({
  * adoptMutationFinance so keep-alive tabs do not keep the pre-confirm list.
  */
 export async function refreshBankMailSurfacesAction() {
+  // Tag only. revalidatePath on this action sets x-action-revalidated to
+  // static+dynamic, wipes the prefetch cache, and the next SPA pushState
+  // falls back to a full document load.
   const refreshed = await refreshAfterDurableWrite(() => {
     revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
   });
@@ -50,11 +54,6 @@ export async function confirmBankMailAction(
   try {
     const input = schema.parse(raw);
     const tx = await confirmBankMailCandidate(input);
-    revalidatePath("/idag");
-    revalidatePath("/transaktioner");
-    revalidatePath("/importera");
-    revalidatePath("/fota");
-    revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
     return { ok: true, data: { transactionId: tx.id } };
   } catch (error) {
     void reportError("bank-mail.confirm", error);
@@ -71,11 +70,6 @@ export async function rejectBankMailAction(
   try {
     const input = rejectSchema.parse(raw);
     await rejectBankMailCandidate(input);
-    revalidatePath("/idag");
-    revalidatePath("/transaktioner");
-    revalidatePath("/importera");
-    revalidatePath("/fota");
-    revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
     return { ok: true, data: { observationId: input.observationId } };
   } catch (error) {
     void reportError("bank-mail.reject", error);

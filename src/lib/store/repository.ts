@@ -197,6 +197,10 @@ export async function listObservations() {
   );
 }
 
+export async function listObservationMovementLinks(observationIds: string[]) {
+  return api().listObservationMovementLinks(observationIds);
+}
+
 export async function getObservation(observationId: string) {
   return api().getObservation(observationId);
 }

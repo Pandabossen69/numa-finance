@@ -9,6 +9,7 @@ import type { CurrencyCode } from "@/domain/money";
 import { BANK_MAIL_SOURCE_LABEL } from "@/features/imports/bank-mail-label";
 import {
   modeForObservation,
+  payloadImportKind,
   type CaptureImportKind,
 } from "./capture-resume";
 
@@ -212,7 +213,8 @@ export function buildCapturePreview(input: {
   }
   if (!input.previewUrl) return null;
 
-  const importKind = modeForObservation(input.observation);
+  const importKind =
+    payloadImportKind(input.candidates) ?? modeForObservation(input.observation);
   const pending = input.candidates
     .filter((c) => c.status === "needs_review" && usableRow(c))
     .sort((a, b) => batchIndex(a) - batchIndex(b));

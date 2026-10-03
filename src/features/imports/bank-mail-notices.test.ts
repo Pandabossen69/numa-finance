@@ -78,7 +78,23 @@ describe("bank mail date notices", () => {
         openingBalanceAt: OPENING,
       }),
     ).toBe(
-      `Kan inte bekräfta. ${BANK_MAIL_BEFORE_OPENING_NOTICE}. ${BANK_MAIL_BEFORE_PLAN_NOTICE}.`,
+      "Mejlet är för gammalt för att bekräftas – det påverkar inte saldot och syns inte i Rörelser.",
+    );
+    expect(
+      bankMailConfirmBlockedMessage({
+        occurredAt: "2026-01-03T04:08:05.000Z",
+        openingBalanceAt: null,
+      }),
+    ).toBe(
+      "Mejlet är för gammalt för att bekräftas – det syns inte i Rörelser.",
+    );
+    expect(
+      bankMailConfirmBlockedMessage({
+        occurredAt: "2026-10-03T04:00:00.000Z",
+        openingBalanceAt: "2026-10-04T00:00:00.000Z",
+      }),
+    ).toBe(
+      "Mejlet är för gammalt för att bekräftas – det påverkar inte saldot.",
     );
     expect(
       bankMailConfirmBlockedMessage({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DEFAULT_TIMEZONE, formatListDateSv, newClientMutationId } from "@/domain/finance";
@@ -14,13 +15,14 @@ import {
   BANK_MAIL_SOURCE_LABEL,
   bankMailAccountLabel,
 } from "@/features/imports/bank-mail-label";
-import { bankMailDateNotices } from "@/features/imports/bank-mail-notices";
+import { bankMailConfirmBlockedMessage } from "@/features/imports/bank-mail-notices";
 import { refreshAfterBankMailQueueChange } from "@/features/imports/bank-mail-queue-refresh";
+import { applyOptimisticHomeSpend } from "@/features/home/last-snapshot";
 import {
   bankMailSavedToast,
   publishBankMailSavedToast,
 } from "@/features/imports/bank-mail-toast";
-import { goHomeInstant } from "@/lib/nav/instant";
+import { goHomeInstant, goImporteraInstant } from "@/lib/nav/instant";
 
 export function BankMailConfirm({
   preview,
@@ -31,7 +33,7 @@ export function BankMailConfirm({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"confirm" | "reject" | null>(null);
+  const [mode, setMode] = useState<"confirm" | "reject" | "left" | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (!preview || preview.importKind !== "bank_mail") {
@@ -52,11 +54,11 @@ export function BankMailConfirm({
   const when = preview.occurredAt
     ? formatListDateSv(preview.occurredAt, DEFAULT_TIMEZONE, { withTime: true })
     : null;
-  const notices = bankMailDateNotices({
+  const blockedMessage = bankMailConfirmBlockedMessage({
     occurredAt: preview.occurredAt,
     openingBalanceAt: preview.openingBalanceAt,
   });
-  const blocked = notices.length > 0;
+  const blocked = blockedMessage != null;
   const amountLabel =
     amountMinor != null
       ? `−${formatMoney(money(amountMinor, preview.currency))}`
@@ -70,26 +72,35 @@ export function BankMailConfirm({
       const result = await confirmBankMailAction({
         observationId: preview.observationId,
         clientMutationId: newClientMutationId(),
+        accountId: preview.preselectedAccountId ?? undefined,
       });
       if (!result.ok) {
         setError(result.error);
         setMode(null);
         return;
       }
-      await refreshAfterBankMailQueueChange(
-        preview.observationId,
-        "Bekräftad och sparad",
-      );
-      if (amountLabel) {
-        publishBankMailSavedToast(
-          bankMailSavedToast({
-            merchant: preview.description || "Betalning",
-            amountLabel,
-            accountName,
-          }),
+      // Paint the toast before Hem. Navigation in this transition waits
+      // for Hem's RSC and holds the ack on a slow database.
+      flushSync(() => {
+        if (amountMinor != null) applyOptimisticHomeSpend(amountMinor);
+        if (amountLabel) {
+          publishBankMailSavedToast(
+            bankMailSavedToast({
+              merchant: preview.description || "Betalning",
+              amountLabel,
+              accountName,
+            }),
+          );
+        }
+      });
+      const observationId = preview.observationId;
+      setTimeout(() => {
+        goHomeInstant(router);
+        void refreshAfterBankMailQueueChange(
+          observationId,
+          "Bekräftad och sparad",
         );
-      }
-      goHomeInstant(router);
+      }, 0);
     });
   }
 
@@ -106,8 +117,17 @@ export function BankMailConfirm({
         setMode(null);
         return;
       }
-      await refreshAfterBankMailQueueChange(preview.observationId, "Avvisad");
-      router.push("/importera");
+      const observationId = preview.observationId;
+      // Paint the end of «Avvisar…» before the hop. The keep-alive panel
+      // shows the client queue in the same turn; router.push would wait
+      // for /importera’s RSC and leave this card up.
+      flushSync(() => {
+        setMode("left");
+      });
+      setTimeout(() => {
+        goImporteraInstant(router);
+        void refreshAfterBankMailQueueChange(observationId, "Avvisad");
+      }, 0);
     });
   }
 
@@ -130,16 +150,16 @@ export function BankMailConfirm({
         ) : null}
         {when ? <p className="text-sm text-[var(--numa-muted)]">{when}</p> : null}
         <p className="text-sm text-[var(--numa-muted)]">{accountName}</p>
-        {notices.map((notice) => (
-          <p key={notice} className="text-sm text-[var(--numa-muted)]">
-            {notice}
+        {blockedMessage ? (
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {blockedMessage}
           </p>
-        ))}
+        ) : null}
       </div>
 
       {preview.alreadyKnown ? (
         <p className="text-sm text-[var(--numa-muted)]">Den här betalningen är redan sparad.</p>
-      ) : (
+      ) : mode === "left" ? null : (
         <div className="space-y-3">
           {blocked ? null : (
             <button
@@ -153,11 +173,11 @@ export function BankMailConfirm({
           )}
           <button
             type="button"
-            disabled={pending}
+            disabled={mode === "reject"}
             onClick={onReject}
             className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--numa-danger)]"
           >
-            {pending && mode === "reject" ? "Avvisar…" : "Avvisa"}
+            {mode === "reject" ? "Avvisar…" : "Avvisa"}
           </button>
         </div>
       )}

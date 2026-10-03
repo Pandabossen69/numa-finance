@@ -813,7 +813,9 @@ export function ReceiptCaptureFlow({
             </>
           ) : (
             <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
-              {isBankApp ? "Bankapp" : "Bank-SMS"}
+              {isBankApp
+                ? CAPTURE_UI_COPY.bank_app.eyebrow
+                : CAPTURE_UI_COPY.bank_sms.eyebrow}
             </p>
           )}
           <p className="text-sm text-[var(--numa-muted)]">

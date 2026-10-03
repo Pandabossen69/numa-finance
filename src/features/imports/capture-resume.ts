@@ -31,19 +31,36 @@ export function parseFotaMode(modeParam?: string | null): CaptureMode {
   return "pick";
 }
 
+const PAYLOAD_IMPORT_KINDS = new Set(["bank_sms", "bank_app", "receipt"]);
+
+/** Stored candidate tag (`raw_payload.importKind`) beats the institution name. */
+export function payloadImportKind(
+  candidates: Array<{ rawPayload?: Record<string, unknown> | null }>,
+): "bank_sms" | "bank_app" | "receipt" | null {
+  for (const candidate of candidates) {
+    const kind = candidate.rawPayload?.importKind;
+    if (typeof kind === "string" && PAYLOAD_IMPORT_KINDS.has(kind)) {
+      return kind as "bank_sms" | "bank_app" | "receipt";
+    }
+  }
+  return null;
+}
+
+function isBankAppHint(hint: string): boolean {
+  if (!hint) return false;
+  if (hint.includes("bank_app") || hint.includes("bunq") || hint.includes("revolut")) {
+    return true;
+  }
+  return hint.replace(/[\s_-]+/g, "") === "bankapp";
+}
+
 export function modeForObservation(input: {
   kind: string;
   institutionHint?: string | null;
 }): CaptureImportKind {
   if (input.kind === "bank_mail") return "bank_mail";
   const hint = (input.institutionHint ?? "").trim().toLowerCase();
-  if (
-    hint === "bank_app" ||
-    hint.includes("bunq") ||
-    hint.includes("revolut")
-  ) {
-    return "bank_app";
-  }
+  if (isBankAppHint(hint)) return "bank_app";
   if (input.kind === "receipt" || input.kind === "price") {
     return "receipt";
   }

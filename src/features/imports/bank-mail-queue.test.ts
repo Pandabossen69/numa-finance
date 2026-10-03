@@ -9,6 +9,7 @@ import {
   lastImporteraRows,
   patchImporteraRow,
   rememberImporteraRows,
+  resetImporteraHandledForTests,
   subscribeImporteraRows,
 } from "@/features/home/last-snapshot";
 
@@ -50,6 +51,11 @@ describe("importera mail section", () => {
     expect(hem).toContain("count <= 0");
     expect(screen).toContain("Avvisa");
     expect(screen).toContain("text-[var(--numa-danger)]");
+    const fota = readFileSync(
+      new URL("../../components/capture/FotaScreen.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(fota).toContain('key={observationId ?? "bank-mail"}');
     const confirm = readFileSync(
       new URL("../../components/capture/BankMailConfirm.tsx", import.meta.url),
       "utf8",
@@ -57,6 +63,18 @@ describe("importera mail section", () => {
     expect(confirm).toContain("Avvisa");
     expect(confirm).toContain("text-[var(--numa-danger)]");
     expect(confirm).toContain("refreshAfterBankMailQueueChange");
+    expect(confirm).toContain("bankMailConfirmBlockedMessage");
+    expect(confirm).not.toContain("await refreshAfterBankMailQueueChange");
+    const ack = confirm.indexOf("publishBankMailSavedToast");
+    const homeJump = confirm.indexOf("goHomeInstant(router)");
+    const background = confirm.indexOf("void refreshAfterBankMailQueueChange");
+    expect(ack).toBeGreaterThan(0);
+    expect(ack).toBeLessThan(homeJump);
+    expect(homeJump).toBeLessThan(background);
+    const rejectHop = confirm.indexOf("goImporteraInstant(router)");
+    const rejectAck = confirm.lastIndexOf("flushSync", rejectHop);
+    expect(rejectAck).toBeGreaterThan(ack);
+    expect(rejectAck).toBeLessThan(rejectHop);
     expect(confirm).toContain("blocked ? null");
     const refresh = readFileSync(
       new URL("./bank-mail-queue-refresh.ts", import.meta.url),
@@ -65,6 +83,17 @@ describe("importera mail section", () => {
     expect(refresh).toContain("invalidateSettledHomeSurfaces");
     expect(refresh).toContain("adoptMutationFinance");
     expect(refresh).toContain("refreshBankMailSurfacesAction");
+    const actions = readFileSync(
+      new URL("./bank-mail-actions.ts", import.meta.url),
+      "utf8",
+    );
+    expect(actions).not.toMatch(/revalidatePath\s*\(/);
+    expect(actions).toContain('revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max")');
+    expect(screen).toContain("deleteObservationAction");
+    expect(screen).toContain('aria-label="Radera bilden"');
+    expect(screen).toContain('o.status === "uploaded"');
+    expect(refresh).toContain("console.error");
+    expect(refresh).toContain("retryBankMailSurfacesIfStale");
     const shell = readFileSync(
       new URL("../../components/layout/AppShell.tsx", import.meta.url),
       "utf8",
@@ -77,11 +106,47 @@ describe("importera mail section", () => {
     expect(toast).toContain("createPortal");
     expect(toast).toContain("z-[100]");
     expect(toast).toContain("useSyncExternalStore");
+    expect(toast).toContain("retryBankMailSurfacesIfStale");
     expect(hem).not.toContain("createPortal");
     expect(hem).not.toContain("bankMailToastSnapshot");
   });
 
+  it("does not let an older cached list revive a handled mail", () => {
+    resetImporteraHandledForTests();
+    const row = (
+      id: string,
+      status: "needs_review" | "processed",
+      notes: string | null,
+    ) => ({
+      id,
+      kind: "bank_mail",
+      status,
+      createdAt: "2026-10-03T00:00:00.000Z",
+      notes,
+    });
+    rememberImporteraRows([
+      row("mail-1", "needs_review", "Nav"),
+      row("mail-2", "needs_review", "Kvar"),
+    ]);
+    patchImporteraRow("mail-1", { status: "processed", notes: "Avvisad" });
+    rememberImporteraRows([
+      row("mail-1", "needs_review", "Nav"),
+      row("mail-2", "needs_review", "Kvar"),
+    ]);
+    const rows = lastImporteraRows();
+    expect(rows?.find((item) => item.id === "mail-1")).toMatchObject({
+      status: "processed",
+      notes: "Avvisad",
+    });
+    expect(splitImporteraRows(rows ?? []).pendingMail.map((item) => item.id)).toEqual([
+      "mail-2",
+    ]);
+    expect(bankMailConfirmHeading(1)).toBe("Att bekräfta (1)");
+    resetImporteraHandledForTests();
+  });
+
   it("updates a mounted queue row without a new server payload", () => {
+    resetImporteraHandledForTests();
     rememberImporteraRows([
       {
         id: "mail-1",

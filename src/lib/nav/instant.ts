@@ -21,3 +21,12 @@ export function goHomeInstant(router: AppRouterInstance) {
   if (spaNavigate?.("/idag")) return;
   router.push("/idag");
 }
+
+/**
+ * Same-tick Tidigare bilder. router.push waits for the /importera RSC;
+ * the keep-alive panel already has the client queue.
+ */
+export function goImporteraInstant(router: AppRouterInstance) {
+  if (spaNavigate?.("/importera")) return;
+  router.push("/importera");
+}

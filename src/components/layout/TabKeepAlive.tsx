@@ -5,6 +5,7 @@ import { AnalysRouteClient } from "@/components/analys/AnalysRouteClient";
 import { FotaRouteClient } from "@/components/capture/FotaRouteClient";
 import { HemRouteClient } from "@/components/home/HemRouteClient";
 import { useNavIntent } from "@/components/layout/NavIntent";
+import { ImporteraRouteClient } from "@/components/mer/ImporteraRouteClient";
 import { MerRouteClient } from "@/components/mer/MerRouteClient";
 import { MovementsRouteClient } from "@/components/movements/MovementsRouteClient";
 import { PlanRouteClient } from "@/components/plan/PlanRouteClient";
@@ -44,6 +45,7 @@ export function TabKeepAlive({
     "/mer": <MerRouteClient />,
     "/transaktioner": <MovementsRouteClient />,
     "/fota": <FotaRouteClient />,
+    "/importera": <ImporteraRouteClient />,
   }));
 
   useLayoutEffect(() => {

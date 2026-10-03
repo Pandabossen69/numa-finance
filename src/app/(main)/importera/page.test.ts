@@ -30,10 +30,12 @@ describe("/importera Fortsätt", () => {
     expect(src).toContain("overflow-x-hidden");
   });
 
-  it("streams last-known pictures while observations load", () => {
-    expect(page).toContain("Suspense");
-    expect(page).toContain("ImporteraScreen");
+  it("paints the client queue instead of a cached observation RSC", () => {
+    expect(page).toContain("ImporteraRouteClient");
+    expect(page).not.toContain("listObservations");
+    expect(page).not.toContain("Suspense");
     expect(src).toContain("lastImporteraRows");
+    expect(src).toContain("applyImporteraHandled");
     expect(src).toContain("fotaHrefForObservation(o)");
   });
 });

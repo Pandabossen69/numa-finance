@@ -93,6 +93,9 @@ export type ImporteraRow = {
   status: string;
   createdAt: string;
   notes: string | null;
+  institutionHint?: string | null;
+  /** Read-time only. Linked ledger row is voided; notes in the DB stay as written. */
+  movementRemoved?: boolean;
 };
 
 export type SettingsSnapshot = {
@@ -238,6 +241,12 @@ let mer: MerSnapshot | null = null;
 let fota: FotaBootSnapshot | null = null;
 let importera: ImporteraRow[] | null = null;
 const importeraListeners = new Set<() => void>();
+/**
+ * Mails confirmed or rejected in this tab. The /importera RSC can stay in
+ * Next's segment cache for at least 30s (`getStaleTimeMs`), so a soft-nav
+ * payload may still say needs_review. These ids win over that older list.
+ */
+const importeraHandled = new Map<string, { status: "processed"; notes: string }>();
 let settings: SettingsSnapshot | null = null;
 
 const homeListeners = new Set<() => void>();
@@ -394,6 +403,7 @@ function wipeSessionCaches() {
   mer = null;
   fota = null;
   importera = null;
+  importeraHandled.clear();
   settings = null;
   emit(homeListeners);
   emit(planListeners);
@@ -1429,9 +1439,31 @@ export function lastFotaBoot(): FotaBootSnapshot | null {
   return fota;
 }
 
+/** Local confirm/reject beats a cached needs_review row for the same id. */
+export function applyImporteraHandled<T extends ImporteraRow>(rows: T[]): T[] {
+  if (importeraHandled.size === 0) return rows;
+  let changed = false;
+  const next = rows.map((row) => {
+    const mark = importeraHandled.get(row.id);
+    if (!mark || row.status !== "needs_review") return row;
+    changed = true;
+    return { ...row, status: mark.status, notes: mark.notes };
+  });
+  return changed ? next : rows;
+}
+
+export function noteImporteraHandled(id: string, notes: string) {
+  importeraHandled.set(id, { status: "processed", notes });
+}
+
+export function resetImporteraHandledForTests() {
+  importeraHandled.clear();
+}
+
 export function rememberImporteraRows(rows: ImporteraRow[]) {
-  if (importera === rows) return;
-  importera = rows;
+  const next = applyImporteraHandled(rows);
+  if (importera === next) return;
+  importera = next;
   for (const listener of importeraListeners) listener();
 }
 
@@ -1446,11 +1478,23 @@ export function subscribeImporteraRows(listener: () => void) {
   };
 }
 
+/** Remove one queue row after Radera, without waiting for the Importera RSC. */
+export function removeImporteraRow(id: string) {
+  if (!importera) return;
+  const next = importera.filter((row) => row.id !== id);
+  if (next.length === importera.length) return;
+  importera = next;
+  for (const listener of importeraListeners) listener();
+}
+
 /** Drop or relabel one queue row without waiting for the Importera RSC payload. */
 export function patchImporteraRow(
   id: string,
   patch: Partial<Pick<ImporteraRow, "status" | "notes">>,
 ) {
+  if (patch.status === "processed" && patch.notes) {
+    noteImporteraHandled(id, patch.notes);
+  }
   if (!importera) return;
   let changed = false;
   const next = importera.map((row) => {

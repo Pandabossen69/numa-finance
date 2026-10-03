@@ -1510,6 +1510,26 @@ export async function listObservations(): Promise<SourceObservation[]> {
   return (data ?? []).map(mapObservation);
 }
 
+/** Read-only: status of ledger rows linked to these observations. */
+export async function listObservationMovementLinks(
+  observationIds: string[],
+): Promise<Array<{ observationId: string; status: string }>> {
+  if (observationIds.length === 0) return [];
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("source_observation_id, status")
+    .eq("user_id", userId)
+    .in("source_observation_id", observationIds);
+  if (error) throw new Error(error.message);
+  return (data ?? []).flatMap((row) => {
+    const observationId = row.source_observation_id as string | null;
+    const status = row.status as string | null;
+    return observationId && status ? [{ observationId, status }] : [];
+  });
+}
+
 const MEDIA_BUCKET = "numa-source-media";
 
 export async function deleteObservation(observationId: string): Promise<void> {

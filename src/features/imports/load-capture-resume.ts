@@ -43,14 +43,19 @@ export async function loadCaptureResume(observationId: string): Promise<{
     }
   }
 
+  const preview = buildCapturePreview({
+    observation,
+    candidates,
+    previewUrl,
+    fallbackCurrency: profile.primaryCurrency,
+    openingBalanceAt,
+  });
+
   return {
-    mode: modeForObservation(observation),
-    preview: buildCapturePreview({
-      observation,
-      candidates,
-      previewUrl,
-      fallbackCurrency: profile.primaryCurrency,
-      openingBalanceAt,
-    }),
+    mode:
+      preview && preview.importKind !== "unknown"
+        ? preview.importKind
+        : modeForObservation(observation),
+    preview,
   };
 }
