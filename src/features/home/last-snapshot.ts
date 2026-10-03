@@ -237,6 +237,7 @@ let accountsSessionConfirmed = false;
 let mer: MerSnapshot | null = null;
 let fota: FotaBootSnapshot | null = null;
 let importera: ImporteraRow[] | null = null;
+const importeraListeners = new Set<() => void>();
 let settings: SettingsSnapshot | null = null;
 
 const homeListeners = new Set<() => void>();
@@ -1429,11 +1430,37 @@ export function lastFotaBoot(): FotaBootSnapshot | null {
 }
 
 export function rememberImporteraRows(rows: ImporteraRow[]) {
+  if (importera === rows) return;
   importera = rows;
+  for (const listener of importeraListeners) listener();
 }
 
 export function lastImporteraRows(): ImporteraRow[] | null {
   return importera;
+}
+
+export function subscribeImporteraRows(listener: () => void) {
+  importeraListeners.add(listener);
+  return () => {
+    importeraListeners.delete(listener);
+  };
+}
+
+/** Drop or relabel one queue row without waiting for the Importera RSC payload. */
+export function patchImporteraRow(
+  id: string,
+  patch: Partial<Pick<ImporteraRow, "status" | "notes">>,
+) {
+  if (!importera) return;
+  let changed = false;
+  const next = importera.map((row) => {
+    if (row.id !== id) return row;
+    changed = true;
+    return { ...row, ...patch };
+  });
+  if (!changed) return;
+  importera = next;
+  for (const listener of importeraListeners) listener();
 }
 
 export function rememberSettingsSnapshot(snap: SettingsSnapshot) {

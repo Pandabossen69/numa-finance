@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   MerListGroup,
@@ -10,17 +11,22 @@ import {
 } from "@/components/mer/MerHub";
 import { ImporteraViewLoading } from "@/components/mer/MerViewLoading";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
+import { rejectBankMailAction } from "@/features/imports/bank-mail-actions";
 import { fotaHrefForObservation } from "@/features/imports/capture-resume";
 import {
   bankMailConfirmHeading,
+  isPendingBankMail,
   splitImporteraRows,
 } from "@/features/imports/bank-mail-queue";
+import { refreshAfterBankMailQueueChange } from "@/features/imports/bank-mail-queue-refresh";
 import {
   lastImporteraRows,
   rememberImporteraRows,
+  subscribeImporteraRows,
   type ImporteraRow,
 } from "@/features/home/last-snapshot";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 export function ImporteraScreen({
   data,
@@ -28,8 +34,24 @@ export function ImporteraScreen({
   data: ImporteraRow[] | null;
 }) {
   const { prefetch } = usePrefetchOnIntent();
-  if (data) rememberImporteraRows(data);
-  const observations = data ?? lastImporteraRows();
+  const stored = useSyncExternalStore(
+    subscribeImporteraRows,
+    lastImporteraRows,
+    serverNull,
+  );
+  const serverStamp =
+    data?.map((row) => `${row.id}:${row.status}:${row.notes ?? ""}`).join("|") ??
+    null;
+  const appliedServer = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!data || serverStamp === null) return;
+    if (appliedServer.current === serverStamp) return;
+    appliedServer.current = serverStamp;
+    rememberImporteraRows(data);
+  }, [data, serverStamp]);
+
+  const observations = stored ?? data;
 
   if (!observations) return <ImporteraViewLoading />;
 
@@ -49,7 +71,7 @@ export function ImporteraScreen({
         {pendingMail.length > 0 ? (
           <MerSection title={bankMailConfirmHeading(pendingMail.length)}>
             <div id="att-bekrafta">
-              <ObservationList rows={pendingMail} prefetch={prefetch} />
+              <ObservationList rows={pendingMail} prefetch={prefetch} mailQueue />
             </div>
           </MerSection>
         ) : null}
@@ -75,15 +97,34 @@ export function ImporteraScreen({
 function ObservationList({
   rows,
   prefetch,
+  mailQueue = false,
 }: {
   rows: ImporteraRow[];
   prefetch: (href: string) => void;
+  mailQueue?: boolean;
 }) {
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onReject(id: string) {
+    setRejectingId(id);
+    setError(null);
+    const result = await rejectBankMailAction({ observationId: id });
+    if (!result.ok) {
+      setRejectingId(null);
+      setError(result.error);
+      return;
+    }
+    await refreshAfterBankMailQueueChange(id, "Avvisad");
+    setRejectingId(null);
+  }
+
   return (
     <MerListGroup>
       {rows.map((o) => {
         const status = statusMeta(o.status);
         const resumeHref = fotaHrefForObservation(o);
+        const canReject = mailQueue && isPendingBankMail(o);
         return (
           <MerListRow key={o.id} className="space-y-1.5 py-3.5">
             <div className="numa-money-line items-start">
@@ -107,7 +148,7 @@ function ObservationList({
               </p>
             ) : null}
             {o.status === "needs_review" || o.status === "failed" ? (
-              <p className="pt-1">
+              <p className="flex flex-wrap items-center gap-x-4 pt-1">
                 <Link
                   href={resumeHref}
                   prefetch
@@ -117,11 +158,28 @@ function ObservationList({
                 >
                   {o.status === "failed" ? "Fota igen →" : "Fortsätt i + →"}
                 </Link>
+                {canReject ? (
+                  <button
+                    type="button"
+                    disabled={rejectingId === o.id}
+                    onClick={() => void onReject(o.id)}
+                    className="numa-press numa-tap text-sm font-semibold text-[var(--numa-danger)]"
+                  >
+                    {rejectingId === o.id ? "Avvisar…" : "Avvisa"}
+                  </button>
+                ) : null}
               </p>
             ) : null}
           </MerListRow>
         );
       })}
+      {error ? (
+        <MerListRow>
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {error}
+          </p>
+        </MerListRow>
+      ) : null}
     </MerListGroup>
   );
 }

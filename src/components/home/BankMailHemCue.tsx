@@ -1,14 +1,26 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { pendingBankMailCountAction } from "@/features/imports/bank-mail-actions";
 import { bankMailConfirmHeading } from "@/features/imports/bank-mail-queue";
+import {
+  bankMailPendingCountSnapshot,
+  bankMailPendingCountVersion,
+  publishBankMailPendingCount,
+  subscribeBankMailPendingCount,
+} from "@/features/imports/bank-mail-queue-refresh";
 import {
   bankMailToastSnapshot,
   dismissBankMailSavedToast,
   subscribeBankMailToast,
 } from "@/features/imports/bank-mail-toast";
+import {
+  settledHomeEpoch,
+  subscribeSettledHomeEpoch,
+} from "@/features/home/invalidate-settled-home";
+import { serverNull, serverZero } from "@/lib/react/server-snapshot";
 
 const HREF = "/importera#att-bekrafta";
 
@@ -17,25 +29,52 @@ export function BankMailHemCue() {
   const toast = useSyncExternalStore(
     subscribeBankMailToast,
     bankMailToastSnapshot,
-    () => null,
+    serverNull,
   );
-  const [count, setCount] = useState(0);
+  const publishedCount = useSyncExternalStore(
+    subscribeBankMailPendingCount,
+    bankMailPendingCountSnapshot,
+    serverNull,
+  );
+  const epoch = useSyncExternalStore(
+    subscribeSettledHomeEpoch,
+    settledHomeEpoch,
+    serverZero,
+  );
 
   useEffect(() => {
     let cancelled = false;
+    const seen = bankMailPendingCountVersion();
     void pendingBankMailCountAction().then((next) => {
-      if (!cancelled) setCount(next);
+      if (cancelled || bankMailPendingCountVersion() !== seen) return;
+      publishBankMailPendingCount(next);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [epoch]);
 
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(dismissBankMailSavedToast, 4200);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  const count = publishedCount ?? 0;
+  const toastNode =
+    toast && typeof document !== "undefined"
+      ? createPortal(
+          <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
+            <p
+              role="status"
+              className="max-w-sm rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-2.5 text-center text-sm font-medium text-[var(--numa-ink)] shadow-[var(--numa-toast-shadow)]"
+            >
+              {toast.text}
+            </p>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <>
@@ -49,16 +88,7 @@ export function BankMailHemCue() {
           </Link>
         </p>
       ) : null}
-      {toast ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 flex justify-center px-4">
-          <p
-            role="status"
-            className="max-w-sm rounded-full border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-2.5 text-center text-sm font-medium text-[var(--numa-ink)] shadow-[var(--numa-toast-shadow)]"
-          >
-            {toast}
-          </p>
-        </div>
-      ) : null}
+      {toastNode}
     </>
   );
 }

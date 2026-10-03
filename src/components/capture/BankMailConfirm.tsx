@@ -6,12 +6,16 @@ import { useRouter } from "next/navigation";
 import { DEFAULT_TIMEZONE, formatListDateSv, newClientMutationId } from "@/domain/finance";
 import { formatMoney, money } from "@/domain/money";
 import type { CapturePreview } from "@/features/imports/capture-preview";
-import { confirmBankMailAction } from "@/features/imports/bank-mail-actions";
+import {
+  confirmBankMailAction,
+  rejectBankMailAction,
+} from "@/features/imports/bank-mail-actions";
 import {
   BANK_MAIL_SOURCE_LABEL,
   bankMailAccountLabel,
 } from "@/features/imports/bank-mail-label";
 import { bankMailDateNotices } from "@/features/imports/bank-mail-notices";
+import { refreshAfterBankMailQueueChange } from "@/features/imports/bank-mail-queue-refresh";
 import {
   bankMailSavedToast,
   publishBankMailSavedToast,
@@ -27,6 +31,7 @@ export function BankMailConfirm({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"confirm" | "reject" | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (!preview || preview.importKind !== "bank_mail") {
@@ -51,14 +56,16 @@ export function BankMailConfirm({
     occurredAt: preview.occurredAt,
     openingBalanceAt: preview.openingBalanceAt,
   });
+  const blocked = notices.length > 0;
   const amountLabel =
     amountMinor != null
       ? `−${formatMoney(money(amountMinor, preview.currency))}`
       : null;
 
   function onConfirm() {
-    if (!preview || preview.alreadyKnown) return;
+    if (!preview || preview.alreadyKnown || blocked) return;
     setError(null);
+    setMode("confirm");
     startTransition(async () => {
       const result = await confirmBankMailAction({
         observationId: preview.observationId,
@@ -66,8 +73,13 @@ export function BankMailConfirm({
       });
       if (!result.ok) {
         setError(result.error);
+        setMode(null);
         return;
       }
+      await refreshAfterBankMailQueueChange(
+        preview.observationId,
+        "Bekräftad och sparad",
+      );
       if (amountLabel) {
         publishBankMailSavedToast(
           bankMailSavedToast({
@@ -78,6 +90,24 @@ export function BankMailConfirm({
         );
       }
       goHomeInstant(router);
+    });
+  }
+
+  function onReject() {
+    if (!preview || preview.alreadyKnown) return;
+    setError(null);
+    setMode("reject");
+    startTransition(async () => {
+      const result = await rejectBankMailAction({
+        observationId: preview.observationId,
+      });
+      if (!result.ok) {
+        setError(result.error);
+        setMode(null);
+        return;
+      }
+      await refreshAfterBankMailQueueChange(preview.observationId, "Avvisad");
+      router.push("/importera");
     });
   }
 
@@ -110,14 +140,26 @@ export function BankMailConfirm({
       {preview.alreadyKnown ? (
         <p className="text-sm text-[var(--numa-muted)]">Den här betalningen är redan sparad.</p>
       ) : (
-        <button
-          type="button"
-          disabled={pending || amountMinor == null}
-          onClick={onConfirm}
-          className="numa-btn numa-btn-primary w-full rounded-full"
-        >
-          {pending ? "Sparar…" : "Bekräfta"}
-        </button>
+        <div className="space-y-3">
+          {blocked ? null : (
+            <button
+              type="button"
+              disabled={pending || amountMinor == null}
+              onClick={onConfirm}
+              className="numa-btn numa-btn-primary w-full rounded-full"
+            >
+              {pending && mode === "confirm" ? "Sparar…" : "Bekräfta"}
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onReject}
+            className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--numa-danger)]"
+          >
+            {pending && mode === "reject" ? "Avvisar…" : "Avvisa"}
+          </button>
+        </div>
       )}
 
       {error ? (
