@@ -47,6 +47,7 @@ describe("proxy and Vercel Cron", () => {
       "/idag",
       "/api/numa-media",
       "/api/import/other",
+      "/api/import/bank-mailer",
       "/api/cron",
       "/api/cron-x",
       "/api/cronjobs",

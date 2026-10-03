@@ -48,6 +48,10 @@ import {
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
 import {
+  bankMailDedupeFingerprints,
+  transactionStatusBlocksBankMail,
+} from "@/features/imports/bank-mail-dedupe";
+import {
   LIVE_MOVEMENT_ALREADY_SAVED_SV,
   candidateIdsToRejectAfterVoid,
   stageCandidateFingerprintWrite,
@@ -2081,6 +2085,67 @@ export function latestCheckpointForAccount(
     .filter((c) => c.accountId === accountId)
     .sort((a, b) => Date.parse(b.verifiedAt) - Date.parse(a.verifiedAt));
   return list[0] ?? null;
+}
+
+const BLOCKING_CANDIDATE_STATUSES = new Set([
+  "pending",
+  "needs_review",
+  "confirmed",
+  "duplicate",
+]);
+
+/**
+ * Same dedupe as the service-role mail store: message id, bank reference,
+ * candidate fingerprint, then a live ledger fingerprint. A voided transaction
+ * does not block a new confirmation card.
+ */
+export async function findByDedupeKey(
+  userId: string,
+  keys: {
+    messageId: string | null;
+    bankReference: string | null;
+    fingerprint: string;
+  },
+): Promise<{ observationId: string } | null> {
+  const store = await readStore();
+  if (keys.messageId) {
+    const hit = store.candidates.find(
+      (row) =>
+        row.userId === userId &&
+        row.rawPayload?.messageId === keys.messageId &&
+        BLOCKING_CANDIDATE_STATUSES.has(row.status),
+    );
+    if (hit) return { observationId: hit.observationId };
+  }
+  if (keys.bankReference) {
+    const hit = store.candidates.find((row) => {
+      const reference = row.rawPayload?.referenceNo ?? row.rawPayload?.bankReference;
+      return (
+        row.userId === userId &&
+        reference === keys.bankReference &&
+        BLOCKING_CANDIDATE_STATUSES.has(row.status)
+      );
+    });
+    if (hit) return { observationId: hit.observationId };
+  }
+  const candidate = store.candidates.find(
+    (row) =>
+      row.userId === userId &&
+      row.fingerprint === keys.fingerprint &&
+      BLOCKING_CANDIDATE_STATUSES.has(row.status),
+  );
+  if (candidate) return { observationId: candidate.observationId };
+
+  const fingerprints = new Set(bankMailDedupeFingerprints(keys));
+  const booked = store.transactions.find(
+    (row) =>
+      row.userId === userId &&
+      row.fingerprint != null &&
+      fingerprints.has(row.fingerprint) &&
+      transactionStatusBlocksBankMail(row.status),
+  );
+  if (!booked) return null;
+  return { observationId: booked.sourceObservationId ?? booked.id };
 }
 
 export async function openingBalanceVerifiedAt(

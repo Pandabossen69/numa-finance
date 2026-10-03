@@ -4,6 +4,9 @@ import {
   BANK_MAIL_OBSERVATION_KIND,
   BANK_MAIL_SOURCE_LABEL,
 } from "@/features/imports/bank-mail-label";
+import {
+  bankMailDedupeFingerprints,
+} from "@/features/imports/bank-mail-dedupe";
 import type {
   BankMailAccountGate,
   BankMailPendingInsert,
@@ -64,7 +67,23 @@ export function createBankMailStore(supabase: NumaServiceClient): BankMailStore 
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (data?.observation_id) return { observationId: data.observation_id as string };
-    return null;
+
+    const fingerprints = bankMailDedupeFingerprints(keys);
+    if (fingerprints.length === 0) return null;
+    const { data: booked, error: bookedError } = await supabase
+      .from("transactions")
+      .select("id, source_observation_id")
+      .eq("user_id", userId)
+      .in("fingerprint", fingerprints)
+      .neq("status", "voided")
+      .limit(1);
+    if (bookedError) throw new Error(bookedError.message);
+    const live = booked?.[0];
+    if (!live?.id) return null;
+    return {
+      observationId:
+        (live.source_observation_id as string | null) ?? (live.id as string),
+    };
   }
 
   return {

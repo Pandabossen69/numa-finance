@@ -224,11 +224,19 @@ describe("POST /api/import/bank-mail auth", () => {
       token: undefined,
     });
 
+    const blank = await handleBankMailPost(request(payload, "Bearer secret"), {
+      ...deps,
+      token: "   ",
+    });
+
     expect(missing.status).toBe(401);
     expect(wrong.status).toBe(401);
     expect(unset.status).toBe(401);
+    expect(blank.status).toBe(401);
     expect(await wrong.json()).toEqual({ ok: false, error: "unauthorized" });
     expect(opened).toBe(0);
+    expect(bankMailTokenMatches("Bearer secret", "")).toBe(false);
+    expect(bankMailTokenMatches("Bearer secret", "   ")).toBe(false);
   });
 
   it("rejects a user who is not on the allowlist with 403", async () => {
