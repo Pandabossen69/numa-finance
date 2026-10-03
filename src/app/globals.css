@@ -2407,6 +2407,11 @@ button.numa-chip:disabled {
   align-items: baseline;
 }
 
+.numa-money-stack .numa-row > :last-child {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
 .numa-hero-money {
   overflow-wrap: normal;
   word-break: keep-all;

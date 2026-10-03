@@ -60,6 +60,11 @@ export function rememberFotaIntentFromHref(href: string) {
   rememberFotaIntent(fotaIntentFromHref(href));
 }
 
+/** SSR snapshot — empty pick, never an intent committed on the client. */
+export function serverFotaIntent(): FotaIntent {
+  return EMPTY_INTENT;
+}
+
 export function lastFotaIntent(): FotaIntent {
   return intent;
 }

@@ -341,6 +341,28 @@ describe("tab keep-alive does not grow hidden route copies", () => {
     expect(homeCount()).toBe(homeAtStart);
     expect(planCount()).toBe(planAtStart);
     expect(shadowContent()).toBe(shadowAtStart);
+
+    const parkedNodes = () =>
+      host.querySelectorAll("[data-numa-spa-tab] *").length;
+    const round = [
+      "/idag",
+      "/plan",
+      "/analys",
+      "/transaktioner",
+      "/mer",
+    ];
+    await act(async () => {
+      expect(navigateRef.current?.("/idag")).toBe(true);
+    });
+    const nodesAtRoundOne = parkedNodes();
+    for (let pass = 0; pass < 10; pass += 1) {
+      for (const href of round) {
+        await act(async () => {
+          expect(navigateRef.current?.(href)).toBe(true);
+        });
+      }
+    }
+    expect(parkedNodes()).toBe(nodesAtRoundOne);
     expect(scrollTo).toHaveBeenCalled();
     expect(depthErrors.join("\n")).not.toContain("Maximum update depth");
 

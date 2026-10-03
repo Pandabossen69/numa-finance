@@ -58,8 +58,8 @@ const accountSchema = z.object({
   fxRate: z.string().trim().optional().nullable(),
   makeDefault: z.boolean().optional(),
   /**
-   * Client dedupe key. numa.accounts has no client_mutation_id column yet,
-   * so the id is not written. Retries still send the same value.
+   * One id per form open. Written to numa.accounts.client_mutation_id.
+   * 23505 means the account is already saved.
    */
   clientMutationId: z.string().uuid().optional(),
 });
@@ -127,9 +127,6 @@ export async function createAccountAction(
       return { ok: false, error: "Ogiltig växelkurs" };
     }
 
-    // Kept on the payload so a later unique index can upsert this id.
-    void input.clientMutationId;
-
     const account = await createAccount({
       name: input.name,
       institution: input.institution,
@@ -138,19 +135,22 @@ export async function createAccountAction(
       currency: input.currency,
       maskedIdentifier: input.maskedIdentifier,
       makeDefault: input.makeDefault ?? false,
+      clientMutationId: input.clientMutationId ?? null,
     });
 
-    await createCheckpoint({
-      accountId: account.id,
-      balanceMinor: openingMinor,
-      source: "manual_opening_balance",
-      note: "Ingående / verifierat saldo",
-      fxRate: manualRate,
-      fxSource: manualRate != null ? "manual" : null,
-    });
+    if (!account.replayed) {
+      await createCheckpoint({
+        accountId: account.id,
+        balanceMinor: openingMinor,
+        source: "manual_opening_balance",
+        note: "Ingående / verifierat saldo",
+        fxRate: manualRate,
+        fxSource: manualRate != null ? "manual" : null,
+      });
+    }
 
     revalidateMoneyPaths();
-    return { ok: true };
+    return { ok: true, id: account.id };
   } catch (error) {
     return {
       ok: false,

@@ -1,3 +1,4 @@
+import { stableSvText } from "@/domain/intl-sv";
 import { CURRENCY_META, type CurrencyCode } from "./currency";
 import { toMajorUnits, type Money } from "./money";
 
@@ -22,11 +23,13 @@ export function formatMoney(
   const meta = CURRENCY_META[value.currency];
   const major = toMajorUnits(value);
 
-  const formatted = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: showFraction ? 2 : 0,
-    maximumFractionDigits: showFraction ? 2 : 0,
-    useGrouping: true,
-  }).format(major);
+  const formatted = stableSvText(
+    new Intl.NumberFormat(locale, {
+      minimumFractionDigits: showFraction ? 2 : 0,
+      maximumFractionDigits: showFraction ? 2 : 0,
+      useGrouping: true,
+    }).format(major),
+  );
 
   return `${formatted} ${meta.symbol}`;
 }

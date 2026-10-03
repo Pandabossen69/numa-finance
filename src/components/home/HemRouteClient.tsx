@@ -16,6 +16,7 @@ import {
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
+import { serverNull, serverZero } from "@/lib/react/server-snapshot";
 import {
   settledHomeEpoch,
   subscribeSettledHomeEpoch,
@@ -41,13 +42,13 @@ export function HemRouteClient({
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
     lastGettingStarted,
-    lastGettingStarted,
+    serverNull,
   );
   const [error, setError] = useState<string | null>(null);
   const settleEpoch = useSyncExternalStore(
     subscribeSettledHomeEpoch,
     settledHomeEpoch,
-    () => 0,
+    serverZero,
   );
   const seenSettleEpoch = useRef(0);
 

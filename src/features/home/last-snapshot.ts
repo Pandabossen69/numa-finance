@@ -398,6 +398,7 @@ function wipeSessionCaches() {
   emit(merListeners);
   emit(planViewListeners);
   emit(movementsViewListeners);
+  emit(analysScopeListeners);
 }
 
 export function bindSessionOwner(userId: string) {
@@ -1041,8 +1042,19 @@ export function lastPlanView(): { monthKey: string; viewYear: number } | null {
   return planView;
 }
 
+const analysScopeListeners = new Set<() => void>();
+
+export function subscribeAnalysScope(listener: () => void): () => void {
+  analysScopeListeners.add(listener);
+  return () => {
+    analysScopeListeners.delete(listener);
+  };
+}
+
 export function rememberAnalysScope(scope: "period" | "month") {
+  if (analysScope === scope) return;
   analysScope = scope;
+  for (const listener of analysScopeListeners) listener();
   schedulePersist();
 }
 

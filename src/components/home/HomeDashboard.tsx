@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
 import { userFacingSaveError } from "@/lib/net/offline-save";
+import { serverNull } from "@/lib/react/server-snapshot";
 import Link from "next/link";
 import { DayDial } from "@/components/home/DayDial";
 import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
@@ -93,17 +94,17 @@ export function HomeDashboard({
   const accountsView = useSyncExternalStore(
     subscribeAccountsSnapshot,
     paintableAccountsSnapshot,
-    paintableAccountsSnapshot,
+    serverNull,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
     lastGettingStarted,
-    lastGettingStarted,
+    serverNull,
   );
   const quickAddError = useSyncExternalStore(
     subscribeQuickAddError,
     lastQuickAddError,
-    () => null,
+    serverNull,
   );
   const sameOwner = !stored || !snap || stored.userId === snap.userId;
   // Prefer session-confirmed, then prop snap (incl. cookie SSR shell).
@@ -911,7 +912,6 @@ function QuickExpense({
                         "Kunde inte spara utgift",
                       );
                       rollbackOptimisticQuickAdd(optimistic, message);
-                      setError(message);
                       return;
                     }
                     confirmOptimisticQuickAdd(mutationId, result);
@@ -926,7 +926,6 @@ function QuickExpense({
                       "Kunde inte spara utgift",
                     );
                     rollbackOptimisticQuickAdd(optimistic, message);
-                    setError(message);
                   } finally {
                     guard.end();
                   }
