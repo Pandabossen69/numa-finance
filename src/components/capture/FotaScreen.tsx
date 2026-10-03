@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { BankMailConfirm } from "@/components/capture/BankMailConfirm";
 import { ReceiptCaptureFlow } from "@/lib/route-islands";
 import { FotaPending } from "@/components/capture/FotaViewLoading";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
@@ -70,6 +71,15 @@ export function FotaScreen({
     shell: view.accounts,
     known: knownAccounts?.accounts,
   });
+
+  if (initialMode === "bank_mail") {
+    return (
+      <BankMailConfirm
+        preview={initialPreview?.importKind === "bank_mail" ? initialPreview : null}
+        accounts={accounts}
+      />
+    );
+  }
 
   return (
     <ReceiptCaptureFlow

@@ -3,9 +3,10 @@ export type CaptureMode =
   | "bank_sms"
   | "bank_app"
   | "receipt"
-  | "manual";
+  | "manual"
+  | "bank_mail";
 
-export type CaptureImportKind = "bank_sms" | "bank_app" | "receipt";
+export type CaptureImportKind = "bank_sms" | "bank_app" | "receipt" | "bank_mail";
 
 const OBSERVATION_ID = /^[0-9a-f-]{36}$/i;
 
@@ -16,6 +17,7 @@ export function isObservationId(
 }
 
 export function parseFotaMode(modeParam?: string | null): CaptureMode {
+  if (modeParam === "bank_mail") return "bank_mail";
   if (modeParam === "sms" || modeParam === "bank_sms") return "bank_sms";
   if (
     modeParam === "bank_app" ||
@@ -33,6 +35,7 @@ export function modeForObservation(input: {
   kind: string;
   institutionHint?: string | null;
 }): CaptureImportKind {
+  if (input.kind === "bank_mail") return "bank_mail";
   const hint = (input.institutionHint ?? "").trim().toLowerCase();
   if (
     hint === "bank_app" ||

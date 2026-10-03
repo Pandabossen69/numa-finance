@@ -1,0 +1,16 @@
+Automatic e-mail: Payment confirmation
+
+To:
+ 	Service code / Payee ID	  TMNINAPP
+ 	Service name / Payee name	  TRUE MONEY CO., LTD.
+From:
+ 	Account no. / credit card no.	  111-2-xxx345
+ 	Reference no. 1	  0811112233
+ 	Reference no. 2	  26010109000000000001
+ 	Amount (Baht)	  350.00
+ 	Fee (Baht)	  0.00
+ 	Note
+ 	Reference no.	  100001
+ 	Date	  15 March 2026 at 09:15:42 (Thailand time)
+
+This is an automatically generated message to confirm that a payment has been made from your account.

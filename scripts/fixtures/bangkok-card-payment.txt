@@ -1,0 +1,16 @@
+Automatic e-mail: Payment confirmation
+
+To:
+ 	Service code / Payee ID	  010753600031501
+ 	Service name / Payee name	  MCD-00179HUA-HIN MARKET V
+From:
+ 	Account no. / credit card no.	  111-2-xxx345
+ 	Reference no. 1	  400000111222001
+ 	Reference no. 2	  EDC17900000000000001
+ 	Amount (Baht)	  312.50
+ 	Fee (Baht)	  0.00
+ 	Note
+ 	Reference no.	  200002
+ 	Date	  3 January 2026 at 11:08:05 (Thailand time)
+
+This is an automatically generated message to confirm that a payment has been made from your account.

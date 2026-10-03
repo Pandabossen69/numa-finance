@@ -261,6 +261,10 @@ export async function getLatestCheckpoint(accountId: string) {
   return local.latestCheckpointForAccount(store, accountId);
 }
 
+export async function openingBalanceVerifiedAt(accountId: string) {
+  return api().openingBalanceVerifiedAt(accountId);
+}
+
 export async function uploadReceiptAndExtract(
   input: Parameters<typeof local.uploadReceiptAndExtract>[0],
 ) {

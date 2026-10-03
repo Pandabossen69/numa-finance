@@ -27,6 +27,8 @@ const PUBLIC_PATHS = [
   "/auth",
   "/laga",
   "/api/cron/purge-observations",
+  // Bank-mail ingest authenticates with BANK_MAIL_INGEST_TOKEN, not a session.
+  "/api/import/bank-mail",
 ];
 
 const AUTH_TIMEOUT_MS = 2_500;

@@ -51,6 +51,7 @@ import {
   skippedFailedMovementsMessage,
 } from "@/domain/imports/movement-count-copy";
 import { liveImportFingerprints } from "@/domain/imports/live-import-fingerprints";
+import { bankMailDedupeFingerprints } from "@/features/imports/bank-mail-dedupe";
 import {
   LIVE_MOVEMENT_ALREADY_SAVED_SV,
   UPLOAD_SAVE_FAILED_SV,
@@ -1622,6 +1623,97 @@ export async function latestCheckpointForAccount(
 
   if (error) throw new Error(error.message);
   return data ? mapCheckpoint(data) : null;
+}
+
+const BLOCKING_CANDIDATE_STATUSES = ["pending", "needs_review", "confirmed", "duplicate"];
+
+/**
+ * Session-client twin of the mail ingest dedupe. A booked, non-voided
+ * `transactions.fingerprint` counts even when the queue row is gone.
+ */
+export async function findByDedupeKey(
+  userId: string,
+  keys: {
+    messageId: string | null;
+    bankReference: string | null;
+    fingerprint: string;
+  },
+): Promise<{ observationId: string } | null> {
+  const sessionUserId = await requireUserId();
+  if (sessionUserId !== userId) return null;
+  const supabase = await createSupabaseServerClient();
+
+  if (keys.messageId) {
+    const { data, error } = await supabase
+      .from("source_observations")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("external_message_id", keys.messageId)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data?.id) return { observationId: data.id as string };
+  }
+  if (keys.bankReference) {
+    const { data, error } = await supabase
+      .from("source_observations")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("bank_reference", keys.bankReference)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data?.id) return { observationId: data.id as string };
+  }
+  const { data: candidate, error: candidateError } = await supabase
+    .from("extracted_transaction_candidates")
+    .select("observation_id")
+    .eq("user_id", userId)
+    .eq("fingerprint", keys.fingerprint)
+    .in("status", BLOCKING_CANDIDATE_STATUSES)
+    .limit(1)
+    .maybeSingle();
+  if (candidateError) throw new Error(candidateError.message);
+  if (candidate?.observation_id) {
+    return { observationId: candidate.observation_id as string };
+  }
+
+  const fingerprints = bankMailDedupeFingerprints(keys);
+  if (fingerprints.length === 0) return null;
+  const { data: booked, error: bookedError } = await supabase
+    .from("transactions")
+    .select("id, source_observation_id")
+    .eq("user_id", userId)
+    .in("fingerprint", fingerprints)
+    .neq("status", "voided")
+    .limit(1);
+  if (bookedError) throw new Error(bookedError.message);
+  const live = booked?.[0];
+  if (!live?.id) return null;
+  return {
+    observationId:
+      (live.source_observation_id as string | null) ?? (live.id as string),
+  };
+}
+
+/** Earliest ingående saldo for the account. Later SMS tips are not opening dates. */
+export async function openingBalanceVerifiedAt(
+  accountId: string,
+): Promise<string | null> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("balance_checkpoints")
+    .select("verified_at")
+    .eq("user_id", userId)
+    .eq("account_id", accountId)
+    .eq("source", "manual_opening_balance")
+    .order("verified_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return typeof data?.verified_at === "string" ? data.verified_at : null;
 }
 
 async function listPlanItemsUncached(): Promise<PlanItem[]> {

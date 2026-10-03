@@ -199,7 +199,7 @@ export type CanonicalTransaction = {
 export type SourceObservation = {
   id: string;
   userId: string;
-  kind: "screenshot" | "receipt" | "price" | "sms" | "other";
+  kind: "screenshot" | "receipt" | "price" | "sms" | "other" | "bank_mail";
   storagePath: string | null;
   institutionHint: string | null;
   accountHint: string | null;
