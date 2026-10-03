@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DEFAULT_TIMEZONE, formatListDateSv, newClientMutationId } from "@/domain/finance";
@@ -71,27 +72,35 @@ export function BankMailConfirm({
       const result = await confirmBankMailAction({
         observationId: preview.observationId,
         clientMutationId: newClientMutationId(),
+        accountId: preview.preselectedAccountId ?? undefined,
       });
       if (!result.ok) {
         setError(result.error);
         setMode(null);
         return;
       }
-      if (amountMinor != null) applyOptimisticHomeSpend(amountMinor);
-      if (amountLabel) {
-        publishBankMailSavedToast(
-          bankMailSavedToast({
-            merchant: preview.description || "Betalning",
-            amountLabel,
-            accountName,
-          }),
+      // Paint the toast before Hem. Navigation in this transition waits
+      // for Hem's RSC and holds the ack on a slow database.
+      flushSync(() => {
+        if (amountMinor != null) applyOptimisticHomeSpend(amountMinor);
+        if (amountLabel) {
+          publishBankMailSavedToast(
+            bankMailSavedToast({
+              merchant: preview.description || "Betalning",
+              amountLabel,
+              accountName,
+            }),
+          );
+        }
+      });
+      const observationId = preview.observationId;
+      setTimeout(() => {
+        goHomeInstant(router);
+        void refreshAfterBankMailQueueChange(
+          observationId,
+          "Bekräftad och sparad",
         );
-      }
-      goHomeInstant(router);
-      void refreshAfterBankMailQueueChange(
-        preview.observationId,
-        "Bekräftad och sparad",
-      );
+      }, 0);
     });
   }
 

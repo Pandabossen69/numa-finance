@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const USER = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ACCOUNT = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -11,6 +12,13 @@ const state = vi.hoisted(() => ({
   occurredAt: "2026-01-03T04:08:05.000Z",
   inserts: [] as Row[],
   updates: [] as Array<{ table: string; patch: Row }>,
+  ack: null as Promise<unknown> | null,
+}));
+
+vi.mock("next/server", () => ({
+  after(task: () => unknown) {
+    state.ack = Promise.resolve().then(task);
+  },
 }));
 
 vi.mock("@/lib/store/repository", () => ({
@@ -120,7 +128,10 @@ function query(table: string) {
 vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServerClient: async () => ({
     auth: {
-      getUser: async () => ({ data: { user: { id: USER } } }),
+      getSession: async () => ({
+        data: { session: { access_token: "test-token" } },
+      }),
+      getUser: async () => ({ data: { user: { id: USER } }, error: null }),
     },
     from(table: string) {
       return query(table);
@@ -137,6 +148,11 @@ beforeEach(() => {
   state.occurredAt = "2026-01-03T04:08:05.000Z";
   state.inserts = [];
   state.updates = [];
+  state.ack = null;
+});
+
+afterEach(async () => {
+  await state.ack;
 });
 
 describe("confirmBankMailCandidate date gate", () => {
@@ -166,6 +182,41 @@ describe("confirmBankMailCandidate date gate", () => {
     expect(tx.id).toBe("tx-new");
     expect(state.inserts).toHaveLength(1);
     expect(state.inserts[0]?.status).toBe("confirmed");
+  });
+
+  it("bokar med kontot från kortet i samma läsvåg", async () => {
+    state.occurredAt = "2026-10-03T04:00:00.000Z";
+    state.opening = "2026-09-01T00:00:00.000Z";
+    const tx = await confirmBankMailCandidate({
+      observationId: OBS,
+      accountId: ACCOUNT,
+    });
+    expect(tx.id).toBe("tx-new");
+    expect(state.inserts).toHaveLength(1);
+    expect(state.updates).toHaveLength(0);
+    await state.ack;
+    expect(state.updates.map((row) => row.table).sort()).toEqual([
+      "extracted_transaction_candidates",
+      "source_observations",
+    ]);
+    expect(state.updates.find((row) => row.table === "source_observations")?.patch.notes).toBe(
+      "Bekräftad och sparad",
+    );
+  });
+});
+
+describe("confirm ack path", () => {
+  it("kör gammalt mejl, ägarskap och dubblett före insert, och kön efter svaret", () => {
+    const src = readFileSync(new URL("./bank-mail-confirm.ts", import.meta.url), "utf8");
+    const gate = src.indexOf("bankMailConfirmBlockedMessage({");
+    const insert = src.indexOf(".insert(");
+    const later = src.indexOf("after(async () => {");
+    expect(src).toContain("getUser(accessToken)");
+    expect(src).toContain("obs.user_id !== user.id");
+    expect(src).toContain('neq("status", "voided")');
+    expect(gate).toBeGreaterThan(0);
+    expect(gate).toBeLessThan(insert);
+    expect(insert).toBeLessThan(later);
   });
 });
 
