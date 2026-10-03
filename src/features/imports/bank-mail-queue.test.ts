@@ -63,6 +63,8 @@ describe("importera mail section", () => {
       "utf8",
     );
     expect(refresh).toContain("invalidateSettledHomeSurfaces");
+    expect(refresh).toContain("adoptMutationFinance");
+    expect(refresh).toContain("refreshBankMailSurfacesAction");
     const shell = readFileSync(
       new URL("../../components/layout/AppShell.tsx", import.meta.url),
       "utf8",

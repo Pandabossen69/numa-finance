@@ -1,13 +1,15 @@
 "use client";
 
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
 import { invalidateSettledHomeSurfaces } from "@/features/home/invalidate-settled-home";
 import {
+  adoptMutationFinance,
   lastImporteraRows,
   patchImporteraRow,
-  rememberHomeSnapshot,
 } from "@/features/home/last-snapshot";
-import { pendingBankMailCountAction } from "@/features/imports/bank-mail-actions";
+import {
+  pendingBankMailCountAction,
+  refreshBankMailSurfacesAction,
+} from "@/features/imports/bank-mail-actions";
 import { isPendingBankMail } from "@/features/imports/bank-mail-queue";
 
 let pendingCount: number | null = null;
@@ -36,9 +38,10 @@ export function publishBankMailPendingCount(count: number) {
 }
 
 /**
- * After Bekräfta or Avvisa: drop the queue row, invalidate Plan + Hem the
- * same way a Rörelser void does, then refill the snapshot and the counter
- * before the keep-alive Hem panel is shown again.
+ * After Bekräfta or Avvisa: drop the queue row, then invalidate and refill
+ * the same keep-alive caches a Rörelser void does (Hem, Plan, Konton,
+ * Rörelser) via adoptMutationFinance. Analys is gap-filled from that Hem
+ * and Plan inside the adopt. Happens before the shell shows Hem again.
  */
 export async function refreshAfterBankMailQueueChange(
   observationId: string,
@@ -52,10 +55,17 @@ export async function refreshAfterBankMailQueueChange(
     );
   }
   invalidateSettledHomeSurfaces();
-  const [snap, count] = await Promise.all([
-    getHomeSnapshotAction(),
+  const [surfaces, count] = await Promise.all([
+    refreshBankMailSurfacesAction(),
     pendingBankMailCountAction(),
   ]);
-  if (snap.ok) rememberHomeSnapshot(snap.data, { force: true });
+  if (surfaces.ok) {
+    adoptMutationFinance({
+      home: surfaces.home,
+      plan: surfaces.plan,
+      accounts: surfaces.accounts,
+      movements: surfaces.movements,
+    });
+  }
   publishBankMailPendingCount(count);
 }

@@ -11,6 +11,7 @@ import type { ActionResult } from "@/features/imports/actions";
 import { listObservations } from "@/lib/store/repository";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { reportError } from "@/lib/observe/report";
+import { refreshAfterDurableWrite } from "@/features/finance/mutation-refresh";
 
 const schema = z.object({
   observationId: z.string().uuid(),
@@ -20,6 +21,19 @@ const schema = z.object({
 const rejectSchema = z.object({
   observationId: z.string().uuid(),
 });
+
+/**
+ * Same post-write bundle a Rörelser void returns: Hem, Plan, Konton and
+ * Rörelser from one TodaySnapshot. The client adopts it with
+ * adoptMutationFinance so keep-alive tabs do not keep the pre-confirm list.
+ */
+export async function refreshBankMailSurfacesAction() {
+  const refreshed = await refreshAfterDurableWrite(() => {
+    revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max");
+  });
+  if (refreshed.refreshPending) return { ok: false as const };
+  return { ok: true as const, ...refreshed.snapshots };
+}
 
 export async function pendingBankMailCountAction(): Promise<number> {
   try {
