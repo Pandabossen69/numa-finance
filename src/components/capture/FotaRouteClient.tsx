@@ -7,6 +7,7 @@ import type { CaptureImportKind } from "@/features/imports/capture-resume";
 import {
   lastFotaIntent,
   rememberFotaIntentFromHref,
+  serverFotaIntent,
   subscribeFotaIntent,
 } from "@/features/imports/fota-intent";
 import { getCaptureResumeAction } from "@/features/imports/capture-resume-action";
@@ -14,6 +15,7 @@ import {
   lastHomeSnapshot,
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 /**
  * Client-first Fota (Rörelser / Konton quiet-load pattern).
@@ -24,12 +26,12 @@ export function FotaRouteClient() {
   const intent = useSyncExternalStore(
     subscribeFotaIntent,
     lastFotaIntent,
-    lastFotaIntent,
+    serverFotaIntent,
   );
   useSyncExternalStore(
     subscribeHomeSnapshot,
     lastHomeSnapshot,
-    lastHomeSnapshot,
+    serverNull,
   );
   const [resume, setResume] = useState<{
     observationId: string;

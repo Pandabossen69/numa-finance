@@ -32,6 +32,7 @@ import {
 } from "@/features/home/last-snapshot";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 /**
  * Client-first Analys — paint last-known in the same tick as the tap.
@@ -48,17 +49,17 @@ export function AnalysRouteClient() {
   const stored = useSyncExternalStore(
     subscribeAnalysSnapshot,
     lastAnalysSnapshot,
-    lastAnalysSnapshot,
+    serverNull,
   );
   const planStored = useSyncExternalStore(
     subscribePlanSnapshot,
     lastPlanSnapshot,
-    lastPlanSnapshot,
+    serverNull,
   );
   const homeStored = useSyncExternalStore(
     subscribeHomeSnapshot,
     lastHomeSnapshot,
-    lastHomeSnapshot,
+    serverNull,
   );
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);

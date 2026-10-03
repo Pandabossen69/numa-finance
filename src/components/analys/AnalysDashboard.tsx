@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -28,6 +28,7 @@ import {
   lastAnalysSnapshot,
   lastPlanView,
   rememberPlanView,
+  subscribeAnalysScope,
   subscribeAnalysSnapshot,
   subscribePlanView,
   rememberAnalysScope,
@@ -68,7 +69,11 @@ export function AnalysDashboard({
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
-  const [scope, setScope] = useState<AnalysScope>(() => lastAnalysScope() ?? "period");
+  const scope = useSyncExternalStore(
+    subscribeAnalysScope,
+    () => lastAnalysScope() ?? "period",
+    () => "period" as const,
+  );
   // Share the month with Plan. Subscribed, not read once at mount, because
   // tabs stay mounted between visits.
   const sharedMonth = useSyncExternalStore(subscribePlanView, lastPlanView, () => null);
@@ -222,7 +227,7 @@ export function AnalysDashboard({
   return (
     <div className="numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10">
       <DestinationWarmup hrefs={["/transaktioner", "/plan"]} />
-      <header className="animate-rise flex flex-wrap items-start justify-between gap-3">
+      <header className="animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1">
         <div className="min-w-0">
           <h1 className="numa-page-title">Analys</h1>
           <p className="mt-1 max-w-[36ch] text-sm leading-snug text-[var(--numa-muted)]">
@@ -239,12 +244,12 @@ export function AnalysDashboard({
       >
         <ScopeChip
           active={scope === "period"}
-          onClick={() => setScope("period")}
+          onClick={() => rememberAnalysScope("period")}
           label={SV.perioden}
         />
         <ScopeChip
           active={scope === "month"}
-          onClick={() => setScope("month")}
+          onClick={() => rememberAnalysScope("month")}
           label={SV.manad}
         />
       </div>

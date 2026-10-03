@@ -36,7 +36,9 @@ describe("Money", () => {
   });
 
   it("formats THB and SEK for Swedish UI", () => {
-    expect(normalizeSpaces(formatMoney(money(1005804, "THB")))).toBe(
+    const thb = formatMoney(money(1005804, "THB"));
+    expect(thb).not.toMatch(/[\u00A0\u202F\u2007\u2009]/);
+    expect(normalizeSpaces(thb)).toBe(
       "10 058,04 THB",
     );
     expect(normalizeSpaces(formatMoney(money(1245000, "SEK")))).toBe(

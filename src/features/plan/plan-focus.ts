@@ -52,6 +52,11 @@ export function lastPlanFocus(): PlanFocus {
   return focus;
 }
 
+/** SSR snapshot — the empty constant, never a focus committed on the client. */
+export function serverPlanFocus(): PlanFocus {
+  return EMPTY_FOCUS;
+}
+
 export function subscribePlanFocus(listener: () => void) {
   listeners.add(listener);
   return () => {

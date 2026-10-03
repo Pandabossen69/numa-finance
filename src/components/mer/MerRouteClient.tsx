@@ -8,6 +8,7 @@ import {
   rememberMerSnapshot,
   subscribeMerSnapshot,
 } from "@/features/home/last-snapshot";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 /**
  * Client-first Mer — last-known (quiet-warm / Hem seed) paints immediately.
@@ -18,7 +19,7 @@ export function MerRouteClient() {
   const stored = useSyncExternalStore(
     subscribeMerSnapshot,
     lastMerSnapshot,
-    lastMerSnapshot,
+    serverNull,
   );
 
   useEffect(() => {

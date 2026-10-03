@@ -31,6 +31,7 @@ import {
   planWriteUserError,
 } from "@/domain/finance";
 import { offlineSaveMessage } from "@/lib/net/offline-save";
+import { serverBlank, serverNull, serverZero } from "@/lib/react/server-snapshot";
 import type { CurrencyCode } from "@/domain/money";
 import { PlanPiles } from "@/components/plan/PlanPiles";
 import {
@@ -150,33 +151,25 @@ export function PlanEditor({
   const liveSaldoMinor = useSyncExternalStore(
     subscribeHomeSnapshot,
     () => lastHomeSnapshot()?.calculatedBalanceMinor ?? null,
-    () => lastHomeSnapshot()?.calculatedBalanceMinor ?? null,
+    serverNull,
   );
   const coverageSaldoMinor = liveSaldoMinor ?? bankBalanceMinor;
-  const [viewYear, setViewYear] = useState(() => {
-    const remembered = lastPlanView();
-    return remembered?.viewYear ?? yearFromMonthKey(currentMonthKey);
-  });
-  const [monthKey, setMonthKey] = useState(
-    () => lastPlanView()?.monthKey ?? currentMonthKey,
+  const sharedMonth = useSyncExternalStore(
+    subscribePlanView,
+    lastPlanView,
+    serverNull,
   );
-  // Published after commit: this store has subscribers now, and writing to it
+  const monthKey = sharedMonth?.monthKey ?? currentMonthKey;
+  const viewYear = sharedMonth?.viewYear ?? yearFromMonthKey(currentMonthKey);
+  // Publish the civil month once when nothing is remembered yet. Writing
   // during render would update Analys while Plan is still rendering.
   useEffect(() => {
-    rememberPlanView({ monthKey, viewYear });
-  }, [monthKey, viewYear]);
-
-  // Analys can move the shared month while Plan sits mounted in the tab cache.
-  useEffect(
-    () =>
-      subscribePlanView(() => {
-        const shared = lastPlanView();
-        if (!shared || shared.monthKey === monthKey) return;
-        setMonthKey(shared.monthKey);
-        setViewYear(shared.viewYear);
-      }),
-    [monthKey],
-  );
+    if (lastPlanView()) return;
+    rememberPlanView({
+      monthKey: currentMonthKey,
+      viewYear: yearFromMonthKey(currentMonthKey),
+    });
+  }, [currentMonthKey]);
   const [localItems, setLocalItems] = useState(items);
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
@@ -210,7 +203,7 @@ export function PlanEditor({
   const storedAccounts = useSyncExternalStore(
     subscribeAccountsSnapshot,
     paintableAccountsSnapshot,
-    paintableAccountsSnapshot,
+    serverNull,
   );
   useEffect(() => {
     if (accounts) adoptAccountsLastKnown(accounts);
@@ -311,7 +304,7 @@ export function PlanEditor({
   const paintEpoch = useSyncExternalStore(
     subscribePlanMonthPaints,
     planMonthPaintEpoch,
-    planMonthPaintEpoch,
+    serverZero,
   );
   void paintEpoch;
   // Same-month edits (add/settle/delete) build now so totals match the row.
@@ -332,7 +325,7 @@ export function PlanEditor({
   const suggestionEpoch = useSyncExternalStore(
     subscribePlanMonthSuggestions,
     planMonthSuggestionEpoch,
-    planMonthSuggestionEpoch,
+    serverZero,
   );
   void suggestionEpoch;
   const linkSuggestions = monthReady
@@ -386,11 +379,7 @@ export function PlanEditor({
       if (!home) return "";
       return `${home.remainingFreeMinor}:${home.dayBudgetMinor}:${home.cycleSpendingMinor}:${home.todaySpendingMinor}:${home.cycleIsActive}`;
     },
-    () => {
-      const home = lastHomeSnapshot();
-      if (!home) return "";
-      return `${home.remainingFreeMinor}:${home.dayBudgetMinor}:${home.cycleSpendingMinor}:${home.todaySpendingMinor}:${home.cycleIsActive}`;
-    },
+    serverBlank,
   );
   void homeLivingStamp;
   const home = lastHomeSnapshot();
@@ -413,8 +402,7 @@ export function PlanEditor({
     // cache hits still paint totals in this tick (Spec P).
     const nextInput = { ...monthPaintInput, monthKey: key };
     flushSync(() => {
-      setMonthKey(key);
-      setViewYear(yearFromMonthKey(key));
+      rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
       setEditingId(null);
       setPartialId(null);
       setAddKind(null);

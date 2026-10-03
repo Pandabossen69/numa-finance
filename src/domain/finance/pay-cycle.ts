@@ -1,3 +1,4 @@
+import { stableSvText } from "@/domain/intl-sv";
 import type { PlanItem } from "./types";
 import { calendarDaysBetween, zonedDayAnchorMs } from "./datetime";
 import { NEXT_INCOME_NAME } from "./plan-totals";
@@ -8,6 +9,7 @@ import {
   isPlanSavings,
   monthKeyFromDate,
   perDayBudgetMinor,
+  planItemMonthKey,
   projectPlanForMonth,
   remainingOpenMinor,
 } from "./plan-months";
@@ -105,11 +107,13 @@ export type PayCycleProjection = {
 type DatedIncome = { item: PlanItem; at: number; iso: string; monthKey: string };
 
 function labelDateSv(iso: string, timeZone: string): string {
-  return new Date(iso).toLocaleDateString("sv-SE", {
-    timeZone,
-    day: "numeric",
-    month: "short",
-  });
+  return stableSvText(
+    new Date(iso).toLocaleDateString("sv-SE", {
+      timeZone,
+      day: "numeric",
+      month: "short",
+    }),
+  );
 }
 
 function isRealIncome(item: PlanItem): boolean {
@@ -397,17 +401,31 @@ export function projectPayCycle(
   const nextPaycheck = dated.find((row) => row.at > todayMs) ?? null;
   const savingsHorizonIso = nextPaycheck?.iso ?? endIso;
   const savingsHorizonMs = Date.parse(savingsHorizonIso);
+  // Latest row per month only. A replaced sparpost plus the new avsättning
+  // used to both land here, so Hem reserved the month twice.
+  const latestSavings = new Map<string, PlanItem>();
   for (const row of items) {
     if (!row.isActive || !isPlanSavings(row) || !row.nextDueAt) continue;
     const due = Date.parse(row.nextDueAt);
     if (!Number.isFinite(due) || due >= savingsHorizonMs) continue;
-    const openMinor = remainingOpenMinor(row);
-    if (openMinor <= 0) continue;
-    remainingSavingsRows.push({ amountMinor: openMinor, dueAt: row.nextDueAt });
-    remainingSavingsMinor += openMinor;
+    if (remainingOpenMinor(row) <= 0) continue;
+    const key = planItemMonthKey(row, timeZone);
+    if (!key) continue;
+    const prev = latestSavings.get(key);
+    if (!prev || row.updatedAt >= prev.updatedAt) latestSavings.set(key, row);
+  }
+  for (const row of latestSavings.values()) {
+    remainingSavingsRows.push({
+      amountMinor: remainingOpenMinor(row),
+      dueAt: row.nextDueAt!,
+    });
   }
   remainingSavingsRows.sort(
     (a, b) => Date.parse(a.dueAt) - Date.parse(b.dueAt),
+  );
+  remainingSavingsMinor = remainingSavingsRows.reduce(
+    (sum, row) => sum + row.amountMinor,
+    0,
   );
 
   return {

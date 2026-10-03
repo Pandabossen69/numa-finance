@@ -16,8 +16,10 @@ import {
 import {
   lastPlanFocus,
   planFocusFromSteg,
+  serverPlanFocus,
   subscribePlanFocus,
 } from "@/features/plan/plan-focus";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 type PlanRouteProps = {
   focusAdd?: null | "income" | "fixed";
@@ -31,12 +33,12 @@ function PlanRouteBody({
   const stored = useSyncExternalStore(
     subscribePlanSnapshot,
     lastPlanSnapshot,
-    lastPlanSnapshot,
+    serverNull,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
     lastGettingStarted,
-    lastGettingStarted,
+    serverNull,
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -77,7 +79,7 @@ function PlanRouteWithSteg(props: PlanRouteProps) {
   const storedFocus = useSyncExternalStore(
     subscribePlanFocus,
     lastPlanFocus,
-    lastPlanFocus,
+    serverPlanFocus,
   );
   const fromQuery = planFocusFromSteg(searchParams.get("steg"));
   return (

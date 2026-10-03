@@ -10,8 +10,8 @@ type AccountWriteResult =
  * promise and therefore one create. The id stays the caller's job so a failed
  * attempt can retry with the same id after this promise settles.
  *
- * numa.accounts has no client_mutation_id column, so this cannot be an
- * upsert yet. See the PR note for the migration NUMA Data would apply.
+ * The server writes client_mutation_id. A 23505 replay returns the row
+ * that already won. This map only collapses requests that are still in flight.
  */
 const inFlight = new Map<string, Promise<AccountWriteResult>>();
 
