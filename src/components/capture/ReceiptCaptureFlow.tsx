@@ -27,7 +27,11 @@ import {
 } from "@/domain/finance";
 import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
-import { compressImageForUpload } from "@/lib/media/compress-image";
+import {
+  ImagePrepareError,
+  compressImageForUpload,
+} from "@/lib/media/compress-image";
+import { IMAGE_TOO_BIG_SV } from "@/lib/media/upload-limits";
 import { goHomeInstant } from "@/lib/nav/instant";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import type { CaptureMode } from "@/features/imports/capture-resume";
@@ -290,8 +294,9 @@ export function ReceiptCaptureFlow({
     setScanPreviewUrl(previewUrl);
 
     startTransition(async () => {
+      try {
       const uploadFile = await compressImageForUpload(file, {
-        preserveText: true,
+        preserveText: mode === "bank_sms" || mode === "bank_app",
       });
       const fd = new FormData();
       fd.set("file", uploadFile);
@@ -400,6 +405,14 @@ export function ReceiptCaptureFlow({
         accounts: data.accounts,
         newAccountName: data.newAccountName ?? null,
       });
+      } catch (error) {
+        setScanning(false);
+        setScanPreviewUrl(null);
+        URL.revokeObjectURL(previewUrl);
+        setError(
+          error instanceof ImagePrepareError ? error.message : IMAGE_TOO_BIG_SV,
+        );
+      }
     });
   }
 

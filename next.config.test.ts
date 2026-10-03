@@ -15,6 +15,7 @@ describe("payload and cache config", () => {
     expect(src).toContain('source: "/sw.js"');
     expect(src).toContain("no-store");
     expect(src).toContain('source: "/icons/:path*"');
-    expect(src).toContain("stale-while-revalidate");
+    expect(src).toContain("must-revalidate");
+    expect(src).toContain('bodySizeLimit: "12mb"');
   });
 });

@@ -69,6 +69,16 @@ describe("ManageAccountForm", () => {
     expect(finish).not.toContain("router.refresh()");
   });
 
+  it("leaves the deleted account as soon as the server confirms, without refresh", () => {
+    const remove = src.slice(src.indexOf("function onRemove"), src.indexOf("function onRestore"));
+    expect(remove).toContain('router.push("/konton")');
+    expect(remove).not.toContain("router.refresh()");
+    expect(remove).not.toContain("revalidatePath");
+    expect(remove.indexOf("adoptRemovedAccount")).toBeLessThan(
+      remove.indexOf('router.push("/konton")'),
+    );
+  });
+
   it("reuses the default-account copy", () => {
     expect(src).toContain("DEFAULT_ACCOUNT_COPY_SV");
     expect(src).toContain("DEFAULT_ACCOUNT_HELP_SV");

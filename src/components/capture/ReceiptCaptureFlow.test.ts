@@ -4,6 +4,18 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./ReceiptCaptureFlow.tsx", import.meta.url), "utf8");
 
 describe("ReceiptCaptureFlow copy wiring", () => {
+  it("catches an oversized upload in the form instead of the error page", () => {
+    const onFile = src.slice(src.indexOf("function onFile"), src.indexOf("function onConfirm"));
+    expect(onFile).toContain("compressImageForUpload");
+    expect(onFile).toContain("ImagePrepareError");
+    expect(onFile).toContain("IMAGE_TOO_BIG_SV");
+    expect(onFile).toContain("await uploadReceiptAction(fd)");
+    expect(onFile.indexOf("try {")).toBeLessThan(onFile.indexOf("await uploadReceiptAction(fd)"));
+    expect(onFile.indexOf("await uploadReceiptAction(fd)")).toBeLessThan(
+      onFile.indexOf("} catch (error)"),
+    );
+  });
+
   it("uses shared CAPTURE_UI_COPY so Kvitto stays receipt-specific", () => {
     expect(src).toContain("CAPTURE_UI_COPY");
     expect(src).toContain("copy.camera");
