@@ -1,4 +1,7 @@
-let message: string | null = null;
+export type BankMailToast = { id: number; text: string };
+
+let toast: BankMailToast | null = null;
+let toastSeq = 0;
 const listeners = new Set<() => void>();
 
 export function bankMailSavedToast(input: {
@@ -11,8 +14,8 @@ export function bankMailSavedToast(input: {
   return `Sparat · ${merchant} · ${input.amountLabel} · ${account}`;
 }
 
-export function bankMailToastSnapshot(): string | null {
-  return message;
+export function bankMailToastSnapshot(): BankMailToast | null {
+  return toast;
 }
 
 export function subscribeBankMailToast(listener: () => void): () => void {
@@ -21,12 +24,13 @@ export function subscribeBankMailToast(listener: () => void): () => void {
 }
 
 export function publishBankMailSavedToast(text: string) {
-  message = text;
+  toastSeq += 1;
+  toast = { id: toastSeq, text };
   for (const listener of listeners) listener();
 }
 
 export function dismissBankMailSavedToast() {
-  if (!message) return;
-  message = null;
+  if (!toast) return;
+  toast = null;
   for (const listener of listeners) listener();
 }

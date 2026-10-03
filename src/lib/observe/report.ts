@@ -21,6 +21,7 @@ export async function reportError(
     | "ocr.upload"
     | "ocr.confirm"
     | "bank-mail.confirm"
+    | "bank-mail.reject"
     | "reconcile",
   error: unknown,
   extra?: Record<string, unknown>,

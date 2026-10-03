@@ -42,6 +42,17 @@ describe("bank mail stays out of the screenshot writer", () => {
     expect(confirm).not.toContain("balance_checkpoints");
     expect(confirm).not.toContain("createCheckpoint");
     expect(confirm).toContain('kind !== BANK_MAIL_OBSERVATION_KIND');
+    expect(confirm.indexOf("bankMailConfirmBlockedMessage")).toBeGreaterThan(0);
+    expect(confirm.indexOf("bankMailConfirmBlockedMessage")).toBeLessThan(
+      confirm.indexOf('.from("transactions")'),
+    );
+    const reject = confirm.slice(
+      confirm.indexOf("export async function rejectBankMailCandidate"),
+    );
+    expect(reject).toContain('status: "rejected"');
+    expect(reject).toContain('status: "processed"');
+    expect(reject).not.toContain(".insert(");
+    expect(reject).not.toContain('from("transactions")');
   });
 
   it("does not change the Fota screenshot component", () => {

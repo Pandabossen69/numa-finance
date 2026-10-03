@@ -41,3 +41,15 @@ export function bankMailDateNotices(input: {
   }
   return notices;
 }
+
+/** Same notices as the confirm screen. Null means Bekräfta may book. */
+export function bankMailConfirmBlockedMessage(input: {
+  occurredAt?: string | null;
+  openingBalanceAt?: string | null;
+  timeZone?: string;
+  planStartMonth?: string;
+}): string | null {
+  const notices = bankMailDateNotices(input);
+  if (notices.length === 0) return null;
+  return `Kan inte bekräfta. ${notices.join(". ")}.`;
+}

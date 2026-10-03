@@ -1,6 +1,8 @@
 import { assertAccountAcceptsWrites, isUniqueViolationMessage } from "@/domain/finance";
+import { bankMailConfirmBlockedMessage } from "@/features/imports/bank-mail-notices";
 import { fxFieldsForWrite } from "@/lib/store/transaction-fx";
 import { mapTransaction } from "@/lib/store/mappers";
+import { openingBalanceVerifiedAt } from "@/lib/store/repository";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BANK_MAIL_OBSERVATION_KIND } from "@/features/imports/bank-mail-label";
 
@@ -84,6 +86,9 @@ export async function confirmBankMailCandidate(input: {
     typeof cand.occurred_at === "string" && cand.occurred_at
       ? cand.occurred_at
       : new Date().toISOString();
+  const openingBalanceAt = await openingBalanceVerifiedAt(account.id);
+  const blocked = bankMailConfirmBlockedMessage({ occurredAt, openingBalanceAt });
+  if (blocked) throw new Error(blocked);
   const nowIso = new Date().toISOString();
   const fx = fxFieldsForWrite({
     nativeMinor: amountMinor,
@@ -164,4 +169,64 @@ export async function confirmBankMailCandidate(input: {
   if (obsUpdateError) throw new Error(obsUpdateError.message);
 
   return mapTransaction(transaction);
+}
+
+/**
+ * Leave the queue without booking. Candidate becomes rejected; the observation
+ * becomes processed. Both statuses already exist — no new schema.
+ */
+export async function rejectBankMailCandidate(input: { observationId: string }) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Du behöver vara inloggad");
+
+  const { data: obs, error: obsError } = await supabase
+    .from("source_observations")
+    .select("id, kind, status")
+    .eq("user_id", user.id)
+    .eq("id", input.observationId)
+    .maybeSingle();
+  if (obsError) throw new Error(obsError.message);
+  if (!obs || obs.kind !== BANK_MAIL_OBSERVATION_KIND) {
+    throw new Error("Importen hittades inte");
+  }
+
+  const { data: cand, error: candError } = await supabase
+    .from("extracted_transaction_candidates")
+    .select("id, status")
+    .eq("user_id", user.id)
+    .eq("observation_id", input.observationId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (candError) throw new Error(candError.message);
+  if (!cand) throw new Error("Inget att avvisa");
+  if (cand.status === "confirmed") {
+    throw new Error("Den här betalningen är redan sparad");
+  }
+
+  const savedAt = new Date().toISOString();
+  if (cand.status !== "rejected") {
+    const { error: candUpdateError } = await supabase
+      .from("extracted_transaction_candidates")
+      .update({ status: "rejected", updated_at: savedAt })
+      .eq("user_id", user.id)
+      .eq("id", cand.id);
+    if (candUpdateError) throw new Error(candUpdateError.message);
+  }
+
+  if (obs.status !== "processed") {
+    const { error: obsUpdateError } = await supabase
+      .from("source_observations")
+      .update({
+        status: "processed",
+        notes: "Avvisad",
+        updated_at: savedAt,
+      })
+      .eq("user_id", user.id)
+      .eq("id", input.observationId);
+    if (obsUpdateError) throw new Error(obsUpdateError.message);
+  }
 }

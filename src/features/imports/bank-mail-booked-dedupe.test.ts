@@ -203,4 +203,78 @@ describe.each([
     expect(result.result).toBe("created");
     expect(cards).toBe(1);
   });
+
+  it("samma Message-ID eller ref blockerar alltid, voidad fingerprint från annan källa gör det inte", async () => {
+    async function post(messageId: string) {
+      const store = cardStore(lookup());
+      const result = await ingestBankMail(
+        {
+          userId: USER,
+          accountId: ACCOUNT,
+          subject: "Payment confirmation",
+          from: "Bangkok Bank <notify@bank.example>",
+          date: "Sat, 3 Jan 2026 11:08:05 +0700",
+          body: cardBody,
+          messageId,
+        },
+        store,
+      );
+      return { result, cards: store.rows.length };
+    }
+
+    function reset(seed: "message" | "ref" | "voided-only") {
+      storeState.data = createEmptyStore();
+      remote.tables = {};
+      storeState.data.transactions = [ledger("voided")];
+      remote.tables.transactions = [remoteRow("voided")];
+      if (seed === "voided-only") return;
+      const messageId =
+        seed === "message" ? "same-message@bank.example" : "other-message@bank.example";
+      const bankReference = seed === "ref" ? "200002" : null;
+      storeState.data.candidates = [
+        {
+          id: "cand-old",
+          extractionRunId: "run-old",
+          observationId: "obs-old",
+          userId: USER,
+          direction: "debit",
+          amountMinor: 31250,
+          currency: "THB",
+          balanceAfterMinor: null,
+          occurredAt: "2026-01-03T04:08:05.000Z",
+          description: "MCD",
+          confidence: 1,
+          fingerprint: seed === "message" ? "bbl-mail:msg:same-message@bank.example" : "other-fp",
+          status: "confirmed",
+          canonicalTransactionId: "tx-booked",
+          rawPayload: { messageId, referenceNo: bankReference },
+          createdAt: "2026-01-03T04:08:05.000Z",
+          updatedAt: "2026-01-03T04:08:05.000Z",
+        },
+      ];
+      remote.tables.source_observations = [
+        {
+          id: "obs-old",
+          user_id: USER,
+          external_message_id: messageId,
+          bank_reference: bankReference,
+        },
+      ];
+    }
+
+    reset("message");
+    const sameMessage = await post("same-message@bank.example");
+    expect(sameMessage.result).toMatchObject({ result: "duplicate" });
+    expect(sameMessage.cards).toBe(0);
+
+    reset("ref");
+    const sameRef = await post("fresh-ref@bank.example");
+    expect(sameRef.result).toMatchObject({ result: "duplicate" });
+    expect(sameRef.cards).toBe(0);
+
+    reset("voided-only");
+    const voidedFingerprint = await post("fresh-voided@bank.example");
+    expect(voidedFingerprint.result.result).toBe("created");
+    expect(voidedFingerprint.cards).toBe(1);
+  });
 });
