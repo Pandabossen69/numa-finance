@@ -1449,6 +1449,15 @@ export function subscribeImporteraRows(listener: () => void) {
   };
 }
 
+/** Remove one queue row after Radera, without waiting for the Importera RSC. */
+export function removeImporteraRow(id: string) {
+  if (!importera) return;
+  const next = importera.filter((row) => row.id !== id);
+  if (next.length === importera.length) return;
+  importera = next;
+  for (const listener of importeraListeners) listener();
+}
+
 /** Drop or relabel one queue row without waiting for the Importera RSC payload. */
 export function patchImporteraRow(
   id: string,

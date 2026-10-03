@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { statusMeta } from "@/components/mer/ImporteraScreen";
 import {
   MOVEMENT_REMOVED_LABEL,
   observationIdsWithRemovedMovement,
@@ -19,6 +20,11 @@ describe("voided bank-mail status is derived at read time", () => {
     expect(removed.has("mail-mixed")).toBe(false);
     expect(observationIdsWithRemovedMovement([])).toEqual(new Set());
     expect(MOVEMENT_REMOVED_LABEL).toBe("Rörelsen borttagen");
+    expect(statusMeta("processed", false, "Avvisad").label).toBe("Avvisad");
+    expect(statusMeta("processed", false, "Bekräftad och sparad").label).toBe(
+      "Sparad",
+    );
+    expect(statusMeta("uploaded", false, null).label).toBe("Mottagen");
   });
 
   it("shows the removed label in Importera without rewriting saved notes or dedupe", () => {

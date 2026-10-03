@@ -11,6 +11,7 @@ import {
 } from "@/components/mer/MerHub";
 import { ImporteraViewLoading } from "@/components/mer/MerViewLoading";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
+import { deleteObservationAction } from "@/features/imports/actions";
 import { rejectBankMailAction } from "@/features/imports/bank-mail-actions";
 import { fotaHrefForObservation } from "@/features/imports/capture-resume";
 import {
@@ -23,6 +24,7 @@ import { MOVEMENT_REMOVED_LABEL } from "@/features/imports/importera-removed";
 import {
   lastImporteraRows,
   rememberImporteraRows,
+  removeImporteraRow,
   subscribeImporteraRows,
   type ImporteraRow,
 } from "@/features/home/last-snapshot";
@@ -109,6 +111,7 @@ function ObservationList({
   mailQueue?: boolean;
 }) {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onReject(id: string) {
@@ -124,11 +127,23 @@ function ObservationList({
     setRejectingId(null);
   }
 
+  async function onDelete(id: string) {
+    setDeletingId(id);
+    setError(null);
+    const result = await deleteObservationAction(id);
+    setDeletingId(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    removeImporteraRow(id);
+  }
+
   return (
     <MerListGroup>
       {rows.map((o) => {
         const removed = o.movementRemoved === true;
-        const status = statusMeta(o.status, removed);
+        const status = statusMeta(o.status, removed, o.notes);
         const detail = removed ? MOVEMENT_REMOVED_LABEL : o.notes;
         const resumeHref = fotaHrefForObservation(o);
         const canReject = mailQueue && isPendingBankMail(o);
@@ -152,6 +167,19 @@ function ObservationList({
             {detail ? (
               <p className="text-sm leading-snug text-[var(--numa-muted)]">
                 {detail}
+              </p>
+            ) : null}
+            {o.status === "uploaded" ? (
+              <p className="flex flex-wrap items-center gap-x-4 pt-1">
+                <button
+                  type="button"
+                  disabled={deletingId === o.id}
+                  onClick={() => void onDelete(o.id)}
+                  className="numa-press numa-tap text-sm font-semibold text-[var(--numa-danger)]"
+                  aria-label="Radera bilden"
+                >
+                  {deletingId === o.id ? "Raderar…" : "Radera"}
+                </button>
               </p>
             ) : null}
             {o.status === "needs_review" || o.status === "failed" ? (
@@ -206,14 +234,21 @@ function kindLabel(kind: string): string {
   }
 }
 
-function statusMeta(
+export function statusMeta(
   status: string,
   movementRemoved: boolean,
+  notes: string | null = null,
 ): { label: string; className: string } {
   if (movementRemoved) {
     return {
       label: "Borttagen",
       className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
+    };
+  }
+  if (status === "processed" && notes === "Avvisad") {
+    return {
+      label: "Avvisad",
+      className: "bg-[var(--numa-danger-soft)] text-[var(--numa-danger)]",
     };
   }
   switch (status) {

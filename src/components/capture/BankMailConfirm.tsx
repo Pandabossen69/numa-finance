@@ -33,7 +33,7 @@ export function BankMailConfirm({
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"confirm" | "reject" | null>(null);
+  const [mode, setMode] = useState<"confirm" | "reject" | "left" | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (!preview || preview.importKind !== "bank_mail") {
@@ -117,8 +117,17 @@ export function BankMailConfirm({
         setMode(null);
         return;
       }
-      void refreshAfterBankMailQueueChange(preview.observationId, "Avvisad");
-      router.push("/importera");
+      const observationId = preview.observationId;
+      // Paint the end of «Avvisar…» before the hop. router.push stays
+      // inside this transition until /importera’s RSC arrives, so the
+      // label cannot key off `pending` or it outlives the save.
+      flushSync(() => {
+        setMode("left");
+      });
+      setTimeout(() => {
+        router.push("/importera");
+        void refreshAfterBankMailQueueChange(observationId, "Avvisad");
+      }, 0);
     });
   }
 
@@ -150,7 +159,7 @@ export function BankMailConfirm({
 
       {preview.alreadyKnown ? (
         <p className="text-sm text-[var(--numa-muted)]">Den här betalningen är redan sparad.</p>
-      ) : (
+      ) : mode === "left" ? null : (
         <div className="space-y-3">
           {blocked ? null : (
             <button
@@ -164,11 +173,11 @@ export function BankMailConfirm({
           )}
           <button
             type="button"
-            disabled={pending}
+            disabled={mode === "reject"}
             onClick={onReject}
             className="numa-press flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[var(--numa-danger)]"
           >
-            {pending && mode === "reject" ? "Avvisar…" : "Avvisa"}
+            {mode === "reject" ? "Avvisar…" : "Avvisa"}
           </button>
         </div>
       )}

@@ -65,6 +65,10 @@ describe("importera mail section", () => {
     expect(ack).toBeGreaterThan(0);
     expect(ack).toBeLessThan(homeJump);
     expect(homeJump).toBeLessThan(background);
+    const rejectHop = confirm.indexOf('router.push("/importera")');
+    const rejectAck = confirm.lastIndexOf("flushSync", rejectHop);
+    expect(rejectAck).toBeGreaterThan(ack);
+    expect(rejectAck).toBeLessThan(rejectHop);
     expect(confirm).toContain("blocked ? null");
     const refresh = readFileSync(
       new URL("./bank-mail-queue-refresh.ts", import.meta.url),
@@ -73,6 +77,15 @@ describe("importera mail section", () => {
     expect(refresh).toContain("invalidateSettledHomeSurfaces");
     expect(refresh).toContain("adoptMutationFinance");
     expect(refresh).toContain("refreshBankMailSurfacesAction");
+    const actions = readFileSync(
+      new URL("./bank-mail-actions.ts", import.meta.url),
+      "utf8",
+    );
+    expect(actions).not.toMatch(/revalidatePath\s*\(/);
+    expect(actions).toContain('revalidateTag(NUMA_MENU_SNAPSHOT_TAG, "max")');
+    expect(screen).toContain("deleteObservationAction");
+    expect(screen).toContain('aria-label="Radera bilden"');
+    expect(screen).toContain('o.status === "uploaded"');
     expect(refresh).toContain("console.error");
     expect(refresh).toContain("retryBankMailSurfacesIfStale");
     const shell = readFileSync(
