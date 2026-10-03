@@ -33,7 +33,7 @@ describe("voided bank-mail status is derived at read time", () => {
       "utf8",
     );
     const page = readFileSync(
-      new URL("./importera-rows-action.ts", import.meta.url),
+      new URL("./load-importera-rows.ts", import.meta.url),
       "utf8",
     );
     const confirm = readFileSync(new URL("./bank-mail-confirm.ts", import.meta.url), "utf8");

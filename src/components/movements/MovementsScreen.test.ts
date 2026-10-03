@@ -107,11 +107,13 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("overflow-x-hidden");
   });
 
-  it("shows last-known Rörelser instead of blocking on a cold fetch", () => {
+  it("shows last-known Rörelser, and a skeleton while the list is unknown", () => {
     expect(src).toContain("lastMovementsSnapshot");
     expect(src).toContain("rememberMovementsSnapshot");
-    expect(src).toContain("pendingMovementsShell");
-    expect(src).not.toContain("MovementsViewLoading");
+    expect(src).toContain("const view = stored ?? data ?? null");
+    expect(src).toContain("MovementsViewLoading");
+    expect(src).not.toContain("pendingMovementsShell");
+    expect(src).toContain("Inga rörelser här ännu.");
     expect(src).toContain("lastMovementsView");
     expect(src).toContain("applyMovementsEdit");
     expect(src).toContain("applyMovementsVoid");

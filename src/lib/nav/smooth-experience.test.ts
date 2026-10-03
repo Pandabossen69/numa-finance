@@ -64,7 +64,7 @@ describe("smooth nav and saves", () => {
     expect(idag).not.toContain("readLastHomeCookie");
     expect(idag).not.toContain("<Suspense");
     expect(hemClient).toContain("HemFirstPaint");
-    expect(hemClient).toContain("getHomeSnapshotAction");
+    expect(hemClient).toContain("readHomeSnapshot");
     expect(plan).toContain("PlanRouteClient");
     expect(plan).not.toContain("<Suspense fallback={<ViewLoading />}>");
     expect(analys).toContain("AnalysRouteClient");
@@ -72,7 +72,7 @@ describe("smooth nav and saves", () => {
     expect(analys).not.toContain("AnalysViewLoading");
     expect(mer).toContain("MerRouteClient");
     expect(mer).not.toContain("<Suspense fallback={<MerViewLoading />}>");
-    expect(merClient).toContain("getMerSnapshotAction");
+    expect(merClient).toContain("readMerSnapshot");
     expect(merClient).toContain("lastMerSnapshot");
   });
 

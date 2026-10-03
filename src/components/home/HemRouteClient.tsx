@@ -4,7 +4,11 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
+import {
+  bankMailPendingCountVersion,
+  publishBankMailPendingCount,
+} from "@/features/imports/bank-mail-queue-refresh";
+import { readHomeSnapshot } from "@/lib/numa/read-client";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   isHomeDirty,
@@ -57,24 +61,34 @@ export function HemRouteClient({
     const epochAtStart = settleEpoch;
     const force =
       epochAtStart > 0 && epochAtStart !== seenSettleEpoch.current;
-    void getHomeSnapshotAction().then((result) => {
-      if (cancelled || settledHomeEpoch() !== epochAtStart) return;
-      if (result.ok) {
-        if (force || !isHomeDirty()) {
-          rememberHomeSnapshot(
-            result.data,
-            force ? { force: true } : undefined,
-          );
+    const seenCount = bankMailPendingCountVersion();
+    void readHomeSnapshot()
+      .then((result) => {
+        if (cancelled || settledHomeEpoch() !== epochAtStart) return;
+        if (result.ok) {
+          if (force || !isHomeDirty()) {
+            rememberHomeSnapshot(
+              result.data,
+              force ? { force: true } : undefined,
+            );
+          }
+          if (bankMailPendingCountVersion() === seenCount) {
+            publishBankMailPendingCount(result.pendingBankMailCount);
+          }
+          seenSettleEpoch.current = epochAtStart;
+          setError(null);
+          scheduleQuietMenuWarm();
+          clearLoginBoot();
+          return;
         }
-        seenSettleEpoch.current = epochAtStart;
-        setError(null);
-        scheduleQuietMenuWarm();
+        if (!lastHomeSnapshot()) setError(result.error);
         clearLoginBoot();
-        return;
-      }
-      if (!lastHomeSnapshot()) setError(result.error);
-      clearLoginBoot();
-    });
+      })
+      .catch(() => {
+        if (cancelled || lastHomeSnapshot()) return;
+        setError("Kunde inte hämta din ekonomi");
+        clearLoginBoot();
+      });
     return () => {
       cancelled = true;
     };

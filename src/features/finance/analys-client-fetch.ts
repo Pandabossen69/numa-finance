@@ -18,6 +18,9 @@ let lastResult: AnalysSnapshotResult | null = null;
 let pendingStartedAt = 0;
 let retryHandler: (() => void) | null = null;
 let autoRetryUsed = false;
+/** True after Analys itself has answered, including a real empty ledger. */
+let ledgerKnown = false;
+const ledgerListeners = new Set<() => void>();
 
 /** Last-known must have the fields the dashboard needs to leave pending. */
 export function analysViewCanPaint(
@@ -67,10 +70,36 @@ export function registerAnalysClientRetry(handler: () => void): () => void {
 }
 
 /** Drop a prior fail-soft so the next mount/tap can fetch again. */
+export function analysLedgerKnown(): boolean {
+  return ledgerKnown;
+}
+
+export function subscribeAnalysLedgerKnown(listener: () => void) {
+  ledgerListeners.add(listener);
+  return () => {
+    ledgerListeners.delete(listener);
+  };
+}
+
+/** Server snapshot for useSyncExternalStore — always unknown on the server. */
+export function serverAnalysLedgerUnknown(): false {
+  return false;
+}
+
+export function markAnalysLedgerKnown() {
+  if (ledgerKnown) return;
+  ledgerKnown = true;
+  for (const listener of ledgerListeners) listener();
+}
+
 export function resetAnalysClientFetch(): void {
   lastResult = null;
   inflight = null;
   pendingStartedAt = 0;
+  if (ledgerKnown) {
+    ledgerKnown = false;
+    for (const listener of ledgerListeners) listener();
+  }
 }
 
 export function requestAnalysClientRetry(): void {

@@ -45,36 +45,20 @@ vi.mock("next/link", () => ({
   }) => createElement("a", { href }, children),
 }));
 
-vi.mock("@/features/finance/home-snapshot", () => ({
-  getHomeSnapshotAction: () => Promise.resolve({ ok: false, error: "test" }),
-}));
-
-vi.mock("@/features/finance/movements-snapshot", () => ({
-  getMovementsSnapshotAction: () => Promise.resolve({ ok: false, error: "test" }),
-}));
-
-vi.mock("@/features/finance/mer-snapshot", () => ({
-  getMerSnapshotAction: () => Promise.resolve({ ok: false, error: "test" }),
-}));
-
-vi.mock("@/features/finance/analys-snapshot", () => ({
-  getAnalysSnapshotAction: () => Promise.resolve({ ok: false, error: "test" }),
-}));
-
-vi.mock("@/features/finance/quiet-menu-bundle", () => ({
-  getQuietMenuBundleAction: () => Promise.resolve({ ok: false, error: "test" }),
+vi.mock("@/lib/numa/read-client", () => ({
+  readHomeSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
+  readMovementsSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
+  readMerSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
+  readAnalysSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
+  readQuietMenuBundle: () => Promise.resolve({ ok: false, error: "test" }),
+  readImporteraRows: () => Promise.resolve({ ok: false, error: "test" }),
+  readPlanPageData: () => Promise.resolve({ ok: false, error: "test" }),
+  readAccountsSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
+  readPendingBankMailCount: () => Promise.resolve({ ok: true, count: 0 }),
 }));
 
 vi.mock("@/features/imports/capture-resume-action", () => ({
   getCaptureResumeAction: () => Promise.resolve(null),
-}));
-
-vi.mock("@/features/imports/importera-rows-action", () => ({
-  loadImporteraRowsAction: () => Promise.resolve([]),
-}));
-
-vi.mock("@/components/plan/load-plan", () => ({
-  getPlanPageDataAction: () => Promise.resolve({ ok: false, error: "test" }),
 }));
 
 vi.mock("@/lib/nav/quiet-menu-warm", () => ({

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
-import { getMovementsSnapshotAction } from "@/features/finance/movements-snapshot";
+import { readMovementsSnapshot } from "@/lib/numa/read-client";
 import {
   isMovementsDirty,
   lastMovementsSnapshot,
@@ -28,7 +28,7 @@ export function MovementsRouteClient() {
     let cancelled = false;
     // Quiet menu warm owns background refresh when cache is warm.
     if (lastMovementsSnapshot()) return;
-    void getMovementsSnapshotAction().then((result) => {
+    void readMovementsSnapshot().then((result) => {
       if (cancelled) return;
       if (result.ok) {
         if (!isMovementsDirty()) rememberMovementsSnapshot(result.data);
@@ -37,6 +37,10 @@ export function MovementsRouteClient() {
       }
       // Quiet failure: only surface an error when there is nothing to show.
       if (!lastMovementsSnapshot()) setError(result.error);
+    }).catch(() => {
+      if (!cancelled && !lastMovementsSnapshot()) {
+        setError("Kunde inte hämta rörelser");
+      }
     });
     return () => {
       cancelled = true;

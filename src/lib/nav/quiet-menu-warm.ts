@@ -1,14 +1,20 @@
 "use client";
 
-import { getAnalysSnapshotAction } from "@/features/finance/analys-snapshot";
-import { analysClientFetchInflight } from "@/features/finance/analys-client-fetch";
+import type { QuietMenuBundleResult } from "@/features/finance/quiet-menu-bundle";
+import {
+  readAnalysSnapshot,
+  readMerSnapshot,
+  readQuietMenuBundle,
+} from "@/lib/numa/read-client";
+import {
+  analysClientFetchInflight,
+  markAnalysLedgerKnown,
+} from "@/features/finance/analys-client-fetch";
 import { analysSnapshotHasDatapaint } from "@/features/finance/analys-from-known";
 import {
   ensurePaintableAnalysSnapshot,
   scheduleUpgradeAnalysFromPlan,
 } from "@/features/finance/ensure-analys-last-known";
-import { getMerSnapshotAction } from "@/features/finance/mer-snapshot";
-import { getQuietMenuBundleAction } from "@/features/finance/quiet-menu-bundle";
 import {
   adoptAccountsLastKnown,
   ensurePaintableMerSnapshot,
@@ -49,7 +55,7 @@ function settleWarmWaiters() {
 
 function applyQuietBundle(
   generation: number,
-  data: Awaited<ReturnType<typeof getQuietMenuBundleAction>>,
+  data: QuietMenuBundleResult,
 ) {
   if (generation !== warmGeneration) return;
   if (!data.ok) return;
@@ -101,9 +107,12 @@ function scheduleQuietAnalysRefresh() {
       return;
     }
     if (analysSnapshotHasDatapaint(lastAnalysSnapshot())) return;
-    void getAnalysSnapshotAction()
+    void readAnalysSnapshot()
       .then((result) => {
-        if (result.ok) rememberAnalysSnapshot(result.data);
+        if (result.ok) {
+          markAnalysLedgerKnown();
+          rememberAnalysSnapshot(result.data);
+        }
       })
       .catch(() => {
         quietAnalysStarted = false;
@@ -123,7 +132,7 @@ function scheduleQuietMerRefresh() {
   quietMerStarted = true;
 
   const start = () => {
-    void getMerSnapshotAction()
+    void readMerSnapshot()
       .then((result) => {
         if (result.ok) rememberMerSnapshot(result.data);
       })
@@ -141,7 +150,7 @@ function scheduleQuietMerRefresh() {
 
 async function runQuietWarm(generation: number) {
   try {
-    const result = await getQuietMenuBundleAction();
+    const result = await readQuietMenuBundle();
     applyQuietBundle(generation, result);
     if (generation === warmGeneration) {
       scheduleQuietAnalysRefresh();
@@ -224,8 +233,6 @@ export function resetQuietMenuWarmForTests() {
 }
 
 /** Test helper — apply a bundle as idle warm would. */
-export function applyQuietMenuBundleForTests(
-  data: Awaited<ReturnType<typeof getQuietMenuBundleAction>>,
-) {
+export function applyQuietMenuBundleForTests(data: QuietMenuBundleResult) {
   applyQuietBundle(warmGeneration, data);
 }

@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { ImporteraScreen } from "@/components/mer/ImporteraScreen";
-import { loadImporteraRowsAction } from "@/features/imports/importera-rows-action";
 import { rememberImporteraRows } from "@/features/home/last-snapshot";
+import { readImporteraRows } from "@/lib/numa/read-client";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
 
 /**
@@ -19,9 +19,9 @@ export function ImporteraRouteClient() {
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
-    void loadImporteraRowsAction()
-      .then((rows) => {
-        if (!cancelled) rememberImporteraRows(rows);
+    void readImporteraRows()
+      .then((result) => {
+        if (!cancelled && result.ok) rememberImporteraRows(result.data);
       })
       .catch(() => {});
     return () => {

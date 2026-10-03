@@ -7,10 +7,8 @@ import {
   lastImporteraRows,
   patchImporteraRow,
 } from "@/features/home/last-snapshot";
-import {
-  pendingBankMailCountAction,
-  refreshBankMailSurfacesAction,
-} from "@/features/imports/bank-mail-actions";
+import { refreshBankMailSurfacesAction } from "@/features/imports/bank-mail-actions";
+import { readPendingBankMailCount } from "@/lib/numa/read-client";
 import { isPendingBankMail } from "@/features/imports/bank-mail-queue";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
@@ -77,7 +75,7 @@ export async function refreshAfterBankMailQueueChange(
   try {
     const [surfaces, count] = await Promise.all([
       refreshBankMailSurfacesAction(),
-      pendingBankMailCountAction(),
+      readPendingBankMailCount().catch(() => null),
     ]);
     if (!surfaces.ok) {
       markBankMailSurfacesStale("Bakgrundsrefresh misslyckades");
@@ -89,7 +87,7 @@ export async function refreshAfterBankMailQueueChange(
       accounts: surfaces.accounts,
       movements: surfaces.movements,
     });
-    publishBankMailPendingCount(count);
+    if (count?.ok) publishBankMailPendingCount(count.count);
     surfacesStale = false;
     return { ok: true };
   } catch (error) {

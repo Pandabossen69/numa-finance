@@ -60,7 +60,7 @@ describe("Mer HIGH regress", () => {
 
   it("gates Ny användare on the admin email check", () => {
     expect(merPage).toContain("MerRouteClient");
-    expect(merClient).toContain("getMerSnapshotAction");
+    expect(merClient).toContain("readMerSnapshot");
     expect(merSnapshot).toContain("currentUserIsNumaAdmin");
     expect(mer).toContain("Ny användare");
     expect(mer).toContain("view.isAdmin");
@@ -79,7 +79,7 @@ describe("Mer HIGH regress", () => {
     expect(merPage).not.toContain("<Suspense fallback={<MerScreen data={null} />}>");
     expect(merClient).toContain("lastMerSnapshot");
     expect(merClient).toContain("if (lastMerSnapshot()) return;");
-    expect(merClient).toContain("getMerSnapshotAction");
+    expect(merClient).toContain("readMerSnapshot");
     expect(merSnapshot).toContain("MER_TIMEOUT_MS");
     expect(merSnapshot).toContain("withTimeout");
   });
