@@ -34,7 +34,11 @@ export async function compressImageForUpload(
   const maxEdge = options?.maxEdge ?? (preserveText ? TEXT_MAX_EDGE : PHOTO_MAX_EDGE);
   const quality = options?.quality ?? UPLOAD_JPEG_QUALITY;
 
-  if (!file.type.startsWith("image/") || isHeic(file.type)) {
+  if (isHeic(file.type)) {
+    throw new ImagePrepareError(IMAGE_UNREADABLE_SV);
+  }
+
+  if (!file.type.startsWith("image/")) {
     if (file.size > CLIENT_UPLOAD_BUDGET_BYTES) {
       throw new ImagePrepareError(IMAGE_TOO_BIG_SV);
     }
@@ -45,9 +49,7 @@ export async function compressImageForUpload(
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new ImagePrepareError(
-      file.size > CLIENT_UPLOAD_BUDGET_BYTES ? IMAGE_TOO_BIG_SV : IMAGE_UNREADABLE_SV,
-    );
+    throw new ImagePrepareError(IMAGE_UNREADABLE_SV);
   }
 
   try {

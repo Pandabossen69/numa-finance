@@ -18,7 +18,7 @@ export const IMAGE_TOO_BIG_SV =
   "Bilden är för stor. Prova en skärmdump eller en mindre bild.";
 
 export const IMAGE_UNREADABLE_SV =
-  "Bilden kunde inte läsas. Prova en skärmdump eller en mindre bild.";
+  "Bilden kunde inte läsas. Prova en skärmdump eller JPEG.";
 
 /** Never upscale. Longest side above maxEdge is scaled down to fit. */
 export function downscaleFactor(longest: number, maxEdge: number): number {

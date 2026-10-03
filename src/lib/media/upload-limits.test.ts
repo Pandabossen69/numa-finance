@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   CLIENT_UPLOAD_BUDGET_BYTES,
   IMAGE_TOO_BIG_SV,
+  IMAGE_UNREADABLE_SV,
   TEXT_MAX_EDGE,
   downscaleFactor,
 } from "./upload-limits";
@@ -18,6 +19,9 @@ describe("upload limits", () => {
     expect(CLIENT_UPLOAD_BUDGET_BYTES).toBeLessThan(4_500_000);
     expect(IMAGE_TOO_BIG_SV).toBe(
       "Bilden är för stor. Prova en skärmdump eller en mindre bild.",
+    );
+    expect(IMAGE_UNREADABLE_SV).toBe(
+      "Bilden kunde inte läsas. Prova en skärmdump eller JPEG.",
     );
   });
 

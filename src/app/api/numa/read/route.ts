@@ -28,11 +28,22 @@ function isPart(value: string | null): value is NumaReadPart {
   return value != null && PARTS.has(value as NumaReadPart);
 }
 
+const READ_FAILED_SV = "Kunde inte hämta just nu.";
+
 function json(body: unknown, status = 200) {
   return Response.json(body, {
     status,
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+function isFailedRead(body: unknown): body is { ok: false; error?: unknown } {
+  return (
+    body != null &&
+    typeof body === "object" &&
+    "ok" in body &&
+    (body as { ok: unknown }).ok === false
+  );
 }
 
 /**
@@ -52,16 +63,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    return json(await loadPart(part));
+    const body = await loadPart(part);
+    if (isFailedRead(body)) {
+      console.error("[numa] read", part, body.error);
+      return json({ ok: false, error: READ_FAILED_SV });
+    }
+    return json(body);
   } catch (error) {
     console.error("[numa] read", part, error);
-    return json(
-      {
-        ok: false,
-        error: error instanceof Error ? error.message : "Kunde inte hämta",
-      },
-      500,
-    );
+    return json({ ok: false, error: READ_FAILED_SV }, 500);
   }
 }
 
