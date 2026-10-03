@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
@@ -13,7 +14,7 @@ import {
 } from "@/features/finance/actions";
 import { invalidateAfterPlanLinkedVoid } from "@/features/finance/movement-void-plan";
 import { serverNull } from "@/lib/react/server-snapshot";
-import { formatListDateSv, isoToDateInput, monthKeyFromDate, occurredAtForBookedDay } from "@/domain/finance";
+import { formatListDateSv, isoToDateInput, occurredAtForBookedDay } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
@@ -29,14 +30,12 @@ import {
   isStaleMovementsSnapshot,
   lastAccountsSnapshot,
   lastAnalysSnapshot,
-  lastHomeSnapshot,
   lastMovementsSnapshot,
   lastMovementsView,
   lastPlanSnapshot,
   rememberMovementsSnapshot,
   rememberMovementsView,
   subscribeAnalysSnapshot,
-  subscribeHomeSnapshot,
   subscribeMovementsSnapshot,
   subscribeMovementsView,
   subscribePlanSnapshot,
@@ -95,29 +94,6 @@ function minorToUi(amountMinor: number): string {
   return minorToUiAmount(amountMinor);
 }
 
-/** Page-shaped dest shell when RSC has not arrived and no last-known list. */
-function pendingMovementsShell(
-  home: ReturnType<typeof lastHomeSnapshot>,
-  analys: ReturnType<typeof lastAnalysSnapshot>,
-): MovementsSnapshot {
-  const timeZone = home?.timeZone ?? analys?.timeZone ?? "Asia/Bangkok";
-  return {
-    currency: home?.currency ?? analys?.currency ?? "THB",
-    hasBankTruth: false,
-    balanceMinor: null,
-    monthIncomeMinor: 0,
-    monthExpenseMinor: 0,
-    monthNetMinor: 0,
-    allIncomeMinor: 0,
-    allExpenseMinor: 0,
-    allNetMinor: 0,
-    monthCategories: [],
-    items: [],
-    timeZone,
-    monthKey: home?.monthKey ?? analys?.currentMonthKey ?? monthKeyFromDate(new Date(), timeZone),
-  };
-}
-
 export function MovementsScreen({
   data,
   error,
@@ -151,11 +127,6 @@ export function MovementsScreen({
   const analysLive = useSyncExternalStore(
     subscribeAnalysSnapshot,
     lastAnalysSnapshot,
-    serverNull,
-  );
-  const homeLive = useSyncExternalStore(
-    subscribeHomeSnapshot,
-    lastHomeSnapshot,
     serverNull,
   );
   const drill = useSyncExternalStore(
@@ -239,10 +210,8 @@ export function MovementsScreen({
     rememberMovementsSnapshot(mergeMovementNativeFromServer(current, data));
   }, [data]);
 
-  const view =
-    stored ??
-    data ??
-    (error ? null : pendingMovementsShell(homeLive, analysLive));
+  // null = unknown (skeleton). A snapshot with items: [] is a real empty list.
+  const view = stored ?? data ?? null;
 
   // Drill is an overlay. The chips above stay the user's saved view and
   // are the only thing rememberMovementsView persists.
@@ -319,10 +288,11 @@ export function MovementsScreen({
   }
 
   if (!view) {
+    if (!error) return <MovementsViewLoading />;
     return (
       <div className="space-y-2">
         <p className="font-semibold">Kunde inte ladda</p>
-        <p className="text-sm text-[var(--numa-muted)]">{error ?? "Okänt fel"}</p>
+        <p className="text-sm text-[var(--numa-muted)]">{error}</p>
         <RetryLoadButton />
       </div>
     );

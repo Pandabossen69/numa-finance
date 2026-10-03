@@ -6,14 +6,10 @@ const mocks = vi.hoisted(() => ({
   mer: vi.fn(),
 }));
 
-vi.mock("@/features/finance/quiet-menu-bundle", () => ({
-  getQuietMenuBundleAction: mocks.bundle,
-}));
-vi.mock("@/features/finance/analys-snapshot", () => ({
-  getAnalysSnapshotAction: mocks.analys,
-}));
-vi.mock("@/features/finance/mer-snapshot", () => ({
-  getMerSnapshotAction: mocks.mer,
+vi.mock("@/lib/numa/read-client", () => ({
+  readQuietMenuBundle: mocks.bundle,
+  readAnalysSnapshot: mocks.analys,
+  readMerSnapshot: mocks.mer,
 }));
 
 import { resetQuietMenuWarmForTests, scheduleQuietMenuWarm } from "./quiet-menu-warm";

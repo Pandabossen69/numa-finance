@@ -40,7 +40,11 @@ import {
   rollbackOptimisticQuickAdd,
   subscribeQuickAddError,
 } from "@/features/finance/quick-add-optimistic";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
+import {
+  bankMailPendingCountVersion,
+  publishBankMailPendingCount,
+} from "@/features/imports/bank-mail-queue-refresh";
+import { readHomeSnapshot } from "@/lib/numa/read-client";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
   financeTruthMessageSv,
@@ -630,8 +634,13 @@ function AvailableNowCard({
               } catch {
                 // Snapshot below fills in the living numbers.
               }
-              void getHomeSnapshotAction().then((next) => {
-                if (next.ok) rememberHomeSnapshot(next.data);
+              const seenCount = bankMailPendingCountVersion();
+              void readHomeSnapshot().then((next) => {
+                if (!next.ok) return;
+                rememberHomeSnapshot(next.data);
+                if (bankMailPendingCountVersion() === seenCount) {
+                  publishBankMailPendingCount(next.pendingBankMailCount);
+                }
               });
               void warmupPlanPageData();
             })();
@@ -717,8 +726,13 @@ function UpdateBalanceLink({
               } catch {
                 // Snapshot below fills in the living numbers.
               }
-              void getHomeSnapshotAction().then((next) => {
-                if (next.ok) rememberHomeSnapshot(next.data);
+              const seenCount = bankMailPendingCountVersion();
+              void readHomeSnapshot().then((next) => {
+                if (!next.ok) return;
+                rememberHomeSnapshot(next.data);
+                if (bankMailPendingCountVersion() === seenCount) {
+                  publishBankMailPendingCount(next.pendingBankMailCount);
+                }
               });
               void warmupPlanPageData();
             })();

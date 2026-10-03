@@ -72,14 +72,14 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
   it("schedules idle warm from Hem without racing adopt on warmupPlanPageData", () => {
     const warm = read("./quiet-menu-warm.ts");
     const home = read("../../components/home/HomeDashboard.tsx");
-    expect(warm).toContain("getQuietMenuBundleAction");
+    expect(warm).toContain("readQuietMenuBundle");
     expect(warm).toContain("requestIdleCallback");
     expect(warm).toContain("rememberPlanSnapshot");
     expect(warm).toContain("rememberAnalysSnapshot");
     expect(warm).toContain("ensurePaintableAnalysSnapshot");
     expect(warm).toContain("scheduleUpgradeAnalysFromPlan");
     expect(warm).toContain("analysSnapshotHasDatapaint");
-    expect(warm).toContain("getAnalysSnapshotAction");
+    expect(warm).toContain("readAnalysSnapshot");
     expect(warm).toContain("lastAnalysSnapshot() == null");
     expect(warm).toContain("waitForQuietMenuWarm");
     expect(warm).toContain("rememberMovementsSnapshot");
@@ -89,7 +89,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(warm).toContain("adoptAccountsLastKnown(accounts)");
     expect(warm).toContain("rememberMerSnapshot");
     expect(warm).toContain("ensurePaintableMerSnapshot");
-    expect(warm).toContain("getMerSnapshotAction");
+    expect(warm).toContain("readMerSnapshot");
     expect(warm).toContain("scheduleQuietMerRefresh");
     expect(warm).toContain("opts?.restart");
     expect(home).toContain("scheduleQuietMenuWarm");
@@ -111,7 +111,7 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("MovementsScreen");
     expect(loading).not.toContain("MovementsViewLoading");
-    expect(client).toContain("getMovementsSnapshotAction");
+    expect(client).toContain("readMovementsSnapshot");
     expect(client).toContain("lastMovementsSnapshot");
     expect(client).toContain("if (lastMovementsSnapshot()) return;");
     expect(client).toContain("if (!lastMovementsSnapshot()) setError");

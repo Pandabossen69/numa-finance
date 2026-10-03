@@ -13,7 +13,10 @@ import {
   registerAnalysClientRetry,
   resetAnalysClientFetch,
 } from "@/features/finance/analys-client-fetch";
-import { getAnalysSnapshotAction } from "@/features/finance/analys-snapshot";
+import {
+  markAnalysLedgerKnown,
+} from "@/features/finance/analys-client-fetch";
+import { readAnalysSnapshot } from "@/lib/numa/read-client";
 import {
   derivePaintableAnalysSnapshot,
   ensurePaintableAnalysSnapshot,
@@ -88,6 +91,7 @@ export function AnalysRouteClient() {
   useEffect(() => {
     const apply = (result: AnalysSnapshotResult) => {
       if (result.ok) {
+        markAnalysLedgerKnown();
         rememberAnalysSnapshot(result.data);
         setError(null);
         setRetrying(false);
@@ -126,7 +130,7 @@ export function AnalysRouteClient() {
     let cancelled = false;
     const launch = () => {
       if (cancelled || ensurePaintableAnalysSnapshot()) return;
-      void fetchAnalysSnapshotClient(getAnalysSnapshotAction).then((result) => {
+      void fetchAnalysSnapshotClient(readAnalysSnapshot).then((result) => {
         if (cancelled) return;
         apply(result);
         if (

@@ -7,7 +7,10 @@ const count = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/imports/bank-mail-actions", () => ({
   refreshBankMailSurfacesAction: surfaces,
-  pendingBankMailCountAction: count,
+}));
+
+vi.mock("@/lib/numa/read-client", () => ({
+  readPendingBankMailCount: count,
 }));
 
 const { refreshAfterBankMailQueueChange, retryBankMailSurfacesIfStale } =
@@ -16,7 +19,7 @@ const { refreshAfterBankMailQueueChange, retryBankMailSurfacesIfStale } =
 beforeEach(() => {
   surfaces.mockReset();
   count.mockReset();
-  count.mockResolvedValue(1);
+  count.mockResolvedValue({ ok: true, count: 1 });
   rememberImporteraRows([
     {
       id: "mail-1",

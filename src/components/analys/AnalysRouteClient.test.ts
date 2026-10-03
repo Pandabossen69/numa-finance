@@ -14,7 +14,7 @@ describe("AnalysRouteClient", () => {
     expect(src).toContain("if (!analysActive) return");
     expect(src).toContain("fetchAnalysSnapshotClient");
     expect(src).toContain("lastAnalysFetchResult");
-    expect(src).toContain("getAnalysSnapshotAction");
+    expect(src).toContain("readAnalysSnapshot");
     expect(src).toContain("canAnalysAutoRetry");
     expect(src).not.toContain("if (lastAnalysSnapshot()) return");
     expect(src).not.toContain("if (!lastAnalysSnapshot()) setError");

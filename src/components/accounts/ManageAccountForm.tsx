@@ -182,8 +182,11 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
           return;
         }
         adoptRemovedAccount(result, account.id, removalRow(account));
-        router.push("/konton");
-        router.refresh();
+        // Leave as soon as the delete is confirmed. router.refresh sets
+        // x-action-revalidated and the next Mer soft-nav becomes a document load.
+        window.setTimeout(() => {
+          router.push("/konton");
+        }, 0);
       } catch (error) {
         setError(userFacingSaveError(error, "Kunde inte ta bort kontot"));
         setConfirmRemove(false);

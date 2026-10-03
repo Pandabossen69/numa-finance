@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { MerScreen } from "@/components/mer/MerScreen";
-import { getMerSnapshotAction } from "@/features/finance/mer-snapshot";
+import { readMerSnapshot } from "@/lib/numa/read-client";
 import {
   lastMerSnapshot,
   rememberMerSnapshot,
@@ -26,12 +26,12 @@ export function MerRouteClient() {
     let cancelled = false;
     // Quiet-warm seeds lastMerSnapshot from Hem and refreshes isAdmin.
     if (lastMerSnapshot()) return;
-    void getMerSnapshotAction().then((result) => {
+    void readMerSnapshot().then((result) => {
       if (cancelled) return;
       if (result.ok) {
         rememberMerSnapshot(result.data);
       }
-    });
+    }).catch(() => {});
     return () => {
       cancelled = true;
     };

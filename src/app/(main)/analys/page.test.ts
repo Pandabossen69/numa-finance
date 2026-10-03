@@ -15,7 +15,7 @@ describe("/analys loading shell", () => {
     expect(page).not.toContain("route-islands");
     expect(page).not.toContain("AnalysViewLoading");
     expect(routeClient).toContain("lastAnalysSnapshot");
-    expect(routeClient).toContain("getAnalysSnapshotAction");
+    expect(routeClient).toContain("readAnalysSnapshot");
     expect(routeClient).toContain("fetchAnalysSnapshotClient");
     expect(routeClient).toContain("scheduleQuietMenuWarm");
     expect(routeClient).toContain("analysViewCanPaint");

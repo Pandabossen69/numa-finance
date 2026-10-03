@@ -1,4 +1,5 @@
-import { getPlanPageDataAction, type PlanPageDataResult } from "@/components/plan/load-plan";
+import type { PlanPageDataResult } from "@/components/plan/load-plan";
+import { readPlanPageData } from "@/lib/numa/read-client";
 import {
   lastPlanSnapshot,
   rememberGettingStarted,
@@ -42,7 +43,7 @@ export function rememberLivePlan(snapshot: PlanSnapshot) {
 
 export function warmupPlanPageData(): Promise<PlanPageDataResult> {
   if (!inflight) {
-    inflight = getPlanPageDataAction()
+    inflight = readPlanPageData()
       .then((result) => {
         if (result.ok) {
           const snapshot = takeSnapshot(result.data);

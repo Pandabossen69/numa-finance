@@ -44,7 +44,7 @@ describe("AuthExperience — login boot", () => {
     expect(src).toContain("flushSync");
     expect(src).toContain("kickPostLoginWarm");
     expect(src).toContain("scheduleQuietMenuWarm");
-    expect(src).toContain("getHomeSnapshotAction");
+    expect(src).toContain("readHomeSnapshot");
     expect(src).toContain("rememberHomeSnapshot");
     expect(src).toContain("LOGIN_BOOT_TIMEOUT_MS");
     expect(src).toContain("aria-busy={booting || pending || undefined}");

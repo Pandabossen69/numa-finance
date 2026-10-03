@@ -3,7 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AccountsDashboard } from "@/components/accounts/AccountsDashboard";
 import { adoptServerAccountsSnapshot } from "@/features/finance/account-edit-store";
-import { getAccountsSnapshotAction } from "@/features/finance/accounts-snapshot";
+import { readAccountsSnapshot } from "@/lib/numa/read-client";
 import { archivedAccountsNeedRefresh } from "@/features/home/accounts-last-known";
 import { serverNull } from "@/lib/react/server-snapshot";
 import {
@@ -41,7 +41,7 @@ export function AccountsRouteClient() {
     ) {
       return;
     }
-    void getAccountsSnapshotAction().then((result) => {
+    void readAccountsSnapshot().then((result) => {
       if (cancelled) return;
       if (result.ok) {
         if (adoptServerAccountsSnapshot(result.data)) {
@@ -53,6 +53,10 @@ export function AccountsRouteClient() {
         return;
       }
       if (!paintableAccountsSnapshot()) setError(result.error);
+    }).catch(() => {
+      if (!cancelled && !paintableAccountsSnapshot()) {
+        setError("Kunde inte hämta konton");
+      }
     });
     return () => {
       cancelled = true;

@@ -37,12 +37,10 @@ vi.mock("next/link", () => ({
   }) => createElement("a", { href }, children),
 }));
 
-vi.mock("@/features/finance/analys-snapshot", () => ({
-  getAnalysSnapshotAction: () => Promise.resolve({ ok: false, error: "test" }),
-}));
-
-vi.mock("@/features/finance/quiet-menu-bundle", () => ({
-  getQuietMenuBundleAction: () => Promise.resolve({ ok: false, error: "test" }),
+vi.mock("@/lib/numa/read-client", () => ({
+  readAnalysSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
+  readQuietMenuBundle: () => Promise.resolve({ ok: false, error: "test" }),
+  readHomeSnapshot: () => Promise.resolve({ ok: false, error: "test" }),
 }));
 
 vi.mock("@/lib/nav/quiet-menu-warm", () => ({

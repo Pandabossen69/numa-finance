@@ -10,7 +10,10 @@ import {
   paintLoginBoot,
 } from "@/components/auth/LoginBoot";
 import { signInAction } from "@/features/auth/actions";
-import { getHomeSnapshotAction } from "@/features/finance/home-snapshot";
+import {
+  publishBankMailPendingCount,
+} from "@/features/imports/bank-mail-queue-refresh";
+import { readHomeSnapshot } from "@/lib/numa/read-client";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
 import {
@@ -23,8 +26,11 @@ import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
 function kickPostLoginWarm() {
   scheduleQuietMenuWarm({ restart: true });
-  void getHomeSnapshotAction().then((result) => {
-    if (result.ok) rememberHomeSnapshot(result.data);
+  void readHomeSnapshot().then((result) => {
+    if (result.ok) {
+      rememberHomeSnapshot(result.data);
+      publishBankMailPendingCount(result.pendingBankMailCount);
+    }
   });
 }
 

@@ -50,7 +50,15 @@ import {
   type CurrencyCode,
 } from "@/domain/money";
 import { SV } from "@/features/copy/labels-sv";
-import { isThinAnalysSnapshot } from "@/features/finance/analys-from-known";
+import {
+  analysSnapshotHasDatapaint,
+  isThinAnalysSnapshot,
+} from "@/features/finance/analys-from-known";
+import {
+  analysLedgerKnown,
+  serverAnalysLedgerUnknown,
+  subscribeAnalysLedgerKnown,
+} from "@/features/finance/analys-client-fetch";
 import {
   derivePaintableAnalysSnapshot,
   ensurePaintableAnalysSnapshot,
@@ -91,10 +99,19 @@ export function AnalysDashboard({
     homeForAnalysPaint,
     serverNull,
   );
+  const ledgerKnown = useSyncExternalStore(
+    subscribeAnalysLedgerKnown,
+    analysLedgerKnown,
+    serverAnalysLedgerUnknown,
+  );
   const view = useMemo(
     () => data ?? derivePaintableAnalysSnapshot(storedAnalys, homeForPaint),
     [data, homeForPaint, storedAnalys],
   );
+  // Hem-thin chrome may paint before Analys answers. An empty ledger there
+  // is unknown, not «inga rörelser». A settled fetch may truly be empty.
+  const ledgerSettled =
+    ledgerKnown || analysSnapshotHasDatapaint(view);
 
   useEffect(() => {
     if (data) rememberAnalysSnapshot(data);
@@ -274,6 +291,7 @@ export function AnalysDashboard({
             spentMinor={isEmpty ? 0 : spentMinor}
             currency={currency}
             meta={isEmpty ? SV.analysEmptyPeriod : daysLeftLabel}
+            amountKnown={ledgerSettled || (!isEmpty && spentMinor !== 0)}
           />
 
           {isEmpty ? (
@@ -321,6 +339,11 @@ export function AnalysDashboard({
                       currency={currency}
                       tone={periodKvarMinor >= 0 ? "positive" : "alarm"}
                       hint={periodGoingHint}
+                      value={
+                        !ledgerSettled && periodKvarMinor === 0
+                          ? unknownMoney()
+                          : undefined
+                      }
                     />
                   ) : (
                     <MetricRow
@@ -337,6 +360,7 @@ export function AnalysDashboard({
                 ledgerTransactions={view.ledgerTransactions}
                 currency={currency}
                 empty={categoryEmpty}
+                known={ledgerSettled}
                 scope={scope}
                 activeMonthKey={activeMonthKey}
                 cycleStartAt={cycle.startAt}
@@ -362,6 +386,7 @@ export function AnalysDashboard({
             spentMinor={spentMinor}
             currency={currency}
             meta={spentMeta}
+            amountKnown={ledgerSettled || spentMinor !== 0}
           />
 
           <section className="space-y-2" aria-labelledby="analys-hur-manad">
@@ -378,6 +403,11 @@ export function AnalysDashboard({
                 currency={currency}
                 tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
                 hint={month.monthLeftoverHint ?? undefined}
+                value={
+                  !ledgerSettled && month.monthResultMinor === 0
+                    ? unknownMoney()
+                    : undefined
+                }
               />
             </div>
           </section>
@@ -387,6 +417,7 @@ export function AnalysDashboard({
             ledgerTransactions={view.ledgerTransactions}
             currency={currency}
             empty={categoryEmpty}
+            known={ledgerSettled}
             scope={scope}
             activeMonthKey={activeMonthKey}
             cycleStartAt={cycle.startAt}
@@ -430,7 +461,11 @@ export function AnalysDashboard({
           </Link>
         </div>
         {recent.length === 0 ? (
-          <p className="text-sm text-[var(--numa-faint)]">{recentEmptyLabel}</p>
+          ledgerSettled ? (
+            <p className="text-sm text-[var(--numa-faint)]">{recentEmptyLabel}</p>
+          ) : (
+            <div className="numa-skel h-4 w-48" aria-hidden />
+          )
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {recent.map((tx) => {
@@ -508,6 +543,10 @@ function ScopeChip({
   );
 }
 
+function unknownMoney() {
+  return <span className="numa-skel inline-block h-5 w-16 align-middle" aria-hidden />;
+}
+
 function SpendHero({
   eyebrow,
   title,
@@ -515,6 +554,7 @@ function SpendHero({
   spentMinor,
   currency,
   meta,
+  amountKnown = true,
 }: {
   eyebrow: string;
   title: string;
@@ -522,6 +562,7 @@ function SpendHero({
   spentMinor: number;
   currency: CurrencyCode;
   meta?: string | null;
+  amountKnown?: boolean;
 }) {
   return (
     <section
@@ -537,12 +578,16 @@ function SpendHero({
       </h2>
       <p className="text-xs font-medium text-[var(--numa-faint)]">{spentLabel}</p>
       <div className="numa-hero-money text-[var(--numa-ink)]">
-        <MoneyDisplay
-          amountMinor={spentMinor}
-          currency={currency}
-          size="xl"
-          wrap={false}
-        />
+        {amountKnown ? (
+          <MoneyDisplay
+            amountMinor={spentMinor}
+            currency={currency}
+            size="xl"
+            wrap={false}
+          />
+        ) : (
+          <div className="numa-skel h-10 w-36" aria-hidden />
+        )}
       </div>
       {meta ? <p className="text-sm text-[var(--numa-muted)]">{meta}</p> : null}
     </section>
@@ -559,6 +604,7 @@ function SpendByCategory({
   ledgerTransactions,
   currency,
   empty,
+  known = true,
   scope,
   activeMonthKey,
   cycleStartAt,
@@ -569,6 +615,8 @@ function SpendByCategory({
   ledgerTransactions: readonly OvrigtTitleTx[];
   currency: CurrencyCode;
   empty: string;
+  /** False while the ledger is still unknown — do not render the empty copy. */
+  known?: boolean;
   scope: AnalysScope;
   activeMonthKey: string;
   cycleStartAt: string | null;
@@ -604,7 +652,11 @@ function SpendByCategory({
         ) : null}
       </div>
       {categories.length === 0 ? (
-        <p className="px-0.5 text-sm leading-snug text-[var(--numa-muted)]">{empty}</p>
+        known ? (
+          <p className="px-0.5 text-sm leading-snug text-[var(--numa-muted)]">{empty}</p>
+        ) : (
+          <div className="numa-skel h-4 w-40" aria-hidden />
+        )
       ) : (
         <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
           {categories.map((category) => {

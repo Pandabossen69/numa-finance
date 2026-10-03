@@ -17,6 +17,8 @@ import {
   subscribePlanSnapshot,
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
+import { knownList } from "@/features/numa/known-list";
+import { PlanViewLoading } from "@/components/plan/PlanViewLoading";
 import { PlanEditor } from "@/lib/route-islands";
 import { serverNull } from "@/lib/react/server-snapshot";
 
@@ -67,6 +69,21 @@ export function PlanScreen({
     lastHomeSnapshot,
     serverNull,
   );
+
+  if (!payload && !error) {
+    return (
+      <div className="numa-page numa-page-wide space-y-6">
+        <header className="animate-rise min-w-0">
+          <h1 className="numa-page-title">Plan</h1>
+          <p className="mt-1 max-w-[42ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+            Vad som kommer in och vad som måste ut.
+          </p>
+        </header>
+        <PlanViewLoading />
+      </div>
+    );
+  }
+
   const currency = payload?.currency ?? home?.currency ?? "THB";
   const timeZone = payload?.timeZone ?? home?.timeZone ?? "Asia/Bangkok";
 
@@ -85,7 +102,21 @@ export function PlanScreen({
       ) : gettingStarted?.visible ? (
         <GettingStartedCard view={gettingStarted} />
       ) : null}
-      {error && !payload ? (
+      {payload ? (
+        <section>
+          <PlanEditor
+            items={knownList(payload.items) ?? payload.items}
+            currency={currency}
+            timeZone={timeZone}
+            bankBalanceMinor={payload.bankBalanceMinor ?? home?.calculatedBalanceMinor ?? null}
+            spendingByMonthKey={payload.spendingByMonthKey}
+            ledgerTransactions={knownList(payload.ledgerTransactions) ?? payload.ledgerTransactions}
+            accounts={payload.accounts ?? null}
+            focusAdd={focusAdd}
+            stepHint={stepHint}
+          />
+        </section>
+      ) : (
         <div className="numa-panel-strong space-y-3 p-5">
           <p className="text-sm font-semibold">
             {financeTruthMessageSv({ truthStatus: "unavailable" }).title}
@@ -93,20 +124,6 @@ export function PlanScreen({
           <p className="text-sm text-[var(--numa-muted)]">{error}</p>
           <RetryLoadButton />
         </div>
-      ) : (
-        <section>
-          <PlanEditor
-            items={payload?.items ?? []}
-            currency={currency}
-            timeZone={timeZone}
-            bankBalanceMinor={payload?.bankBalanceMinor ?? home?.calculatedBalanceMinor ?? null}
-            spendingByMonthKey={payload?.spendingByMonthKey ?? {}}
-            ledgerTransactions={payload?.ledgerTransactions ?? []}
-            accounts={payload?.accounts ?? null}
-            focusAdd={focusAdd}
-            stepHint={stepHint}
-          />
-        </section>
       )}
     </div>
   );

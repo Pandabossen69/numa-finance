@@ -6,9 +6,8 @@ import {
   confirmBankMailCandidate,
   rejectBankMailCandidate,
 } from "@/features/imports/bank-mail-confirm";
-import { isPendingBankMail } from "@/features/imports/bank-mail-queue";
 import type { ActionResult } from "@/features/imports/actions";
-import { listObservations } from "@/lib/store/repository";
+import { countPendingBankMail } from "@/features/imports/pending-bank-mail-count";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
 import { reportError } from "@/lib/observe/report";
 import { refreshAfterDurableWrite } from "@/features/finance/mutation-refresh";
@@ -40,12 +39,7 @@ export async function refreshBankMailSurfacesAction() {
 }
 
 export async function pendingBankMailCountAction(): Promise<number> {
-  try {
-    const rows = await listObservations();
-    return rows.filter((row) => isPendingBankMail(row)).length;
-  } catch {
-    return 0;
-  }
+  return countPendingBankMail();
 }
 
 export async function confirmBankMailAction(

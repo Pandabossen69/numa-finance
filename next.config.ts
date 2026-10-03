@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
   // Money tabs must not keep a 5‑minute stale RSC payload after a mutation.
   // Correctness > tab-cache convenience for Hem / Plan / Analys.
   experimental: {
+    // Default is 1 MB, which rejects a normal phone screenshot before the
+    // action runs. 12 MB is a parser safety net. The client still compresses
+    // under Vercel's 4.5 MB request cap.
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
     staleTimes: {
       dynamic: 0,
       static: 600,

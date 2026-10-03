@@ -17,7 +17,7 @@ describe("/konton instant shell", () => {
     expect(loading).toContain("LoadingSlot");
     expect(loading).toContain("AccountsDashboard");
     expect(loading).not.toContain("AccountsViewLoading");
-    expect(client).toContain("getAccountsSnapshotAction");
+    expect(client).toContain("readAccountsSnapshot");
     expect(client).toContain("paintableAccountsSnapshot");
     expect(client).toContain("archivedAccountsNeedRefresh");
     expect(client).toContain("if (!paintableAccountsSnapshot()) setError");

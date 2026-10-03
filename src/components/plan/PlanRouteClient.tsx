@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { getPlanPageDataAction } from "@/components/plan/load-plan";
+import { readPlanPageData } from "@/lib/numa/read-client";
 import { PlanScreen } from "@/components/plan/PlanScreen";
 import {
   lastGettingStarted,
@@ -46,7 +46,7 @@ function PlanRouteBody({
     let cancelled = false;
     // Quiet menu warm owns background refresh when cache is warm.
     if (lastPlanSnapshot()) return;
-    void getPlanPageDataAction().then((result) => {
+    void readPlanPageData().then((result) => {
       if (cancelled) return;
       if (result.ok) {
         const { gettingStarted, ...plan } = result.data;
@@ -57,6 +57,10 @@ function PlanRouteBody({
         return;
       }
       if (!lastPlanSnapshot()) setError(result.error);
+    }).catch(() => {
+      if (!cancelled && !lastPlanSnapshot()) {
+        setError("Kunde inte hämta planen");
+      }
     });
     return () => {
       cancelled = true;

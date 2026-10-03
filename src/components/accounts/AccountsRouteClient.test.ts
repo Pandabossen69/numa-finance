@@ -9,7 +9,7 @@ describe("AccountsRouteClient", () => {
     expect(src).toContain("serverNull");
     expect(src).not.toContain("paintableAccountsSnapshot,\n    paintableAccountsSnapshot");
     expect(src).toContain("subscribeAccountsSnapshot");
-    expect(src).toContain("getAccountsSnapshotAction");
+    expect(src).toContain("readAccountsSnapshot");
     expect(src).toContain("archivedAccountsNeedRefresh");
     expect(src).toContain("accountsSnapshotConfirmedThisSession");
     expect(src).toContain("if (!isAccountsDirty()) rememberAccountsSnapshot");

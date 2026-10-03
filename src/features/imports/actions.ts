@@ -18,7 +18,10 @@ import {
   uploadReceiptAndExtract,
   type ReceiptUploadResult,
 } from "@/lib/store/repository";
-import { refreshAfterDurableWrite } from "@/features/finance/mutation-refresh";
+import {
+  refreshAfterDurableWrite,
+  SAVED_REFRESH_PENDING_SV,
+} from "@/features/finance/mutation-refresh";
 import { reclaimStalePlanSettleLedgers } from "@/features/plan/sync-settle-ledger";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -29,9 +32,12 @@ import {
   swedishFingerprintConflictError,
 } from "@/domain/finance";
 import { uploadErrorMessageSv } from "@/domain/imports/candidate-reuse";
+import {
+  IMAGE_TOO_BIG_SV,
+  SERVER_UPLOAD_MAX_BYTES,
+} from "@/lib/media/upload-limits";
 import { isUploadRateLimitError } from "@/domain/imports/upload-rate-limit";
 import { NUMA_MENU_SNAPSHOT_TAG } from "@/lib/supabase/cache-tags";
-import { SAVED_REFRESH_PENDING_SV } from "@/features/finance/mutation-refresh";
 
 export type ActionResult<T = undefined> =
   | {
@@ -47,18 +53,16 @@ export type ActionResult<T = undefined> =
     }
   | { ok: false; error: string };
 
-const MAX_BYTES = 8 * 1024 * 1024;
-
 export async function uploadReceiptAction(
   formData: FormData,
 ): Promise<ActionResult<ReceiptUploadResult>> {
   try {
     const file = formData.get("file");
-    if (!(file instanceof File)) {
+    if (!(file instanceof File) || file.size <= 0) {
       return { ok: false, error: "Välj en bild först" };
     }
-    if (file.size <= 0 || file.size > MAX_BYTES) {
-      return { ok: false, error: "Bilden måste vara mellan 1 byte och 8 MB" };
+    if (file.size > SERVER_UPLOAD_MAX_BYTES) {
+      return { ok: false, error: IMAGE_TOO_BIG_SV };
     }
     const claimed = file.type || "image/jpeg";
     if (!ALLOWED_IMAGE_MIME.has(claimed) && !claimed.startsWith("image/")) {
