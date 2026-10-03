@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect } from "react";
+import { BankMailSavedToast } from "@/components/home/BankMailSavedToast";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { BrandLockup } from "@/components/layout/BrandLockup";
 import { LastViewOutlet } from "@/components/layout/LastViewOutlet";
@@ -57,6 +58,7 @@ export function AppShell({
           </div>
         </div>
         <BottomNav />
+        <BankMailSavedToast />
       </div>
     </NavIntentProvider>
   );

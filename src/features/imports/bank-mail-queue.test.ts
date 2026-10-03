@@ -47,7 +47,7 @@ describe("importera mail section", () => {
     expect(screen).toContain("bankMailConfirmHeading(pendingMail.length)");
     expect(screen).toContain('id="att-bekrafta"');
     expect(hem).toContain('"/importera#att-bekrafta"');
-    expect(hem).toContain("count > 0");
+    expect(hem).toContain("count <= 0");
     expect(screen).toContain("Avvisa");
     expect(screen).toContain("text-[var(--numa-danger)]");
     const confirm = readFileSync(
@@ -63,7 +63,20 @@ describe("importera mail section", () => {
       "utf8",
     );
     expect(refresh).toContain("invalidateSettledHomeSurfaces");
-    expect(refresh).toContain("rememberHomeSnapshot");
+    const shell = readFileSync(
+      new URL("../../components/layout/AppShell.tsx", import.meta.url),
+      "utf8",
+    );
+    const toast = readFileSync(
+      new URL("../../components/home/BankMailSavedToast.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(shell).toContain("<BankMailSavedToast />");
+    expect(toast).toContain("createPortal");
+    expect(toast).toContain("z-[100]");
+    expect(toast).toContain("useSyncExternalStore");
+    expect(hem).not.toContain("createPortal");
+    expect(hem).not.toContain("bankMailToastSnapshot");
   });
 
   it("updates a mounted queue row without a new server payload", () => {
