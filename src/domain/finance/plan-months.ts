@@ -394,6 +394,58 @@ export function listStaleMonthSavings(
   return listMonthSavings(items, monthKey, timeZone).filter((item) => item.id !== keep);
 }
 
+/** Inactive savings rows for one calendar month, latest `updatedAt` first. */
+export function listInactiveMonthSavings(
+  items: readonly PlanItem[],
+  monthKey: string,
+  timeZone: string,
+): PlanItem[] {
+  return items
+    .filter((item) => {
+      if (item.isActive || !isPlanSavings(item) || !item.nextDueAt) return false;
+      return planItemMonthKey(item, timeZone) === monthKey;
+    })
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
+}
+
+/**
+ * How to persist one Sätt av / Nollställ without inserting a new row when
+ * this month already has an inactive «Spara denna månad».
+ * `delete_plan_item` only sets `is_active = false`, so a fresh insert on
+ * every Sätt av leaves one inactive row per round.
+ */
+export function nextMonthSavingsMutation(input: {
+  items: readonly PlanItem[];
+  monthKey: string;
+  timeZone: string;
+  amountMinor: number;
+}):
+  | { kind: "clear"; ids: string[] }
+  | { kind: "update"; id: string; reactivate: boolean }
+  | { kind: "create" } {
+  const active = findMonthSavings(
+    input.items as PlanItem[],
+    input.monthKey,
+    input.timeZone,
+  );
+  if (input.amountMinor === 0) {
+    return {
+      kind: "clear",
+      ids: listMonthSavings(input.items, input.monthKey, input.timeZone).map(
+        (item) => item.id,
+      ),
+    };
+  }
+  if (active) return { kind: "update", id: active.id, reactivate: false };
+  const reusable = listInactiveMonthSavings(
+    input.items,
+    input.monthKey,
+    input.timeZone,
+  )[0];
+  if (reusable) return { kind: "update", id: reusable.id, reactivate: true };
+  return { kind: "create" };
+}
+
 /** Mid-month anchor used to attach one-off income/savings to a calendar month. */
 export function monthAnchorIso(monthKey: string): string {
   return `${monthKey}-15T12:00:00.000Z`;

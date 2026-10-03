@@ -102,7 +102,16 @@ describe("plan save actions hide Postgres text", () => {
     expect(savings).toContain("planWriteFailure");
     expect(savings).toContain("findMonthSavings");
     expect(savings).toContain("listStaleMonthSavings");
-    expect(savings).toContain("listMonthSavings");
+    expect(savings).toContain("nextMonthSavingsMutation");
+    const months = readFileSync(
+      new URL("../../domain/finance/plan-months.ts", import.meta.url),
+      "utf8",
+    );
+    const mutation = months.slice(
+      months.indexOf("export function nextMonthSavingsMutation"),
+      months.indexOf("export function monthAnchorIso"),
+    );
+    expect(mutation).toContain("listMonthSavings");
     expect(savings).toContain("refreshAfterDurableWrite");
     expect(savings).toContain("ensureMonthSavings");
     expect(savings).toContain("applyHomeLeftoverSparDelta");

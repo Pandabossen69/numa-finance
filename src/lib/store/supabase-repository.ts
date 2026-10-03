@@ -1734,6 +1734,19 @@ export const listPlanItems = cache(listPlanItemsUncached);
 
 export { listPlanItemsUncached };
 
+/** Inactive rows are hidden from listPlanItems. Savings reuse reads them. */
+export async function listInactivePlanItems(): Promise<PlanItem[]> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("plan_items")
+    .select(numaSelect(PLAN_ITEM_SELECT))
+    .eq("user_id", userId)
+    .eq("is_active", false);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapPlanItem);
+}
+
 function itemFromSaveRpc(data: unknown): PlanItem {
   const payload = data as { item?: Parameters<typeof mapPlanItem>[0] } | null;
   if (!payload?.item) throw new Error("Kunde inte spara planposten");

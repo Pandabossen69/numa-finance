@@ -117,6 +117,9 @@ describe("Analys month result color", () => {
     expect(src).toContain("lastAnalysSnapshot");
     expect(src).toContain("rememberAnalysSnapshot");
     expect(src).toContain("AnalysPending");
+    expect(src).toContain("derivePaintableAnalysSnapshot");
+    expect(src).toContain("serverNull");
+    expect(src).not.toContain("derivePaintableAnalysNow");
     expect(src).not.toContain("lastHomeSnapshot");
     expect(src).not.toContain("AnalysViewLoading");
     expect(src).toContain("onMouseEnter");

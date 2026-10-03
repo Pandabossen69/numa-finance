@@ -12,6 +12,8 @@ describe("AccountsDashboard", () => {
     expect(src).toContain("paintableAccountsSnapshot");
     expect(src).toContain("rememberAccountsSnapshot");
     expect(src).toContain("subscribeAccountsSnapshot");
+    expect(src).toContain("serverNull");
+    expect(src).not.toContain("stored ?? paintableAccountsSnapshot()");
     expect(src).toContain("AccountsViewLoading");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");

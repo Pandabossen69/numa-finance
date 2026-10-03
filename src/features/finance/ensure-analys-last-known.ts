@@ -19,6 +19,11 @@ function homeForAnalys() {
   return lastSessionHomeSnapshot() ?? lastHomeSnapshot();
 }
 
+/** Client snapshot for Analys paint. Server passes serverNull instead. */
+export function homeForAnalysPaint(): HomeSnapshot | null {
+  return homeForAnalys();
+}
+
 /**
  * Paint-able Analys for this render. Reads only — never writes the store.
  * `stored` wins when it can already paint; otherwise Hem-thin chrome.

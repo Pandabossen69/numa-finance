@@ -14,8 +14,10 @@ import {
   lastHomeSnapshot,
   rememberFotaBoot,
   subscribeAccountsSnapshot,
+  subscribeHomeSnapshot,
   type FotaBootSnapshot,
 } from "@/features/home/last-snapshot";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 /**
  * Mer→Fota calm pending without setState-in-effect:
@@ -42,10 +44,15 @@ export function FotaScreen({
   const knownAccounts = useSyncExternalStore(
     subscribeAccountsSnapshot,
     lastAccountsSnapshot,
-    () => null,
+    serverNull,
+  );
+  const homeSnap = useSyncExternalStore(
+    subscribeHomeSnapshot,
+    lastHomeSnapshot,
+    serverNull,
   );
   if (data) rememberFotaBoot(data);
-  const view = data ?? lastFotaBoot() ?? fotaBootFromHome();
+  const view = data ?? lastFotaBoot() ?? fotaBootFromHome(homeSnap);
 
   if (!view) {
     if (error) {
@@ -90,8 +97,9 @@ export function FotaScreen({
   );
 }
 
-function fotaBootFromHome(): FotaBootSnapshot | null {
-  const home = lastHomeSnapshot();
+function fotaBootFromHome(
+  home: ReturnType<typeof lastHomeSnapshot>,
+): FotaBootSnapshot | null {
   if (!home) return null;
   return {
     accountId: home.primaryAccountId,

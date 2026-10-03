@@ -25,5 +25,15 @@ describe("AppShell chrome", () => {
     expect(src).toContain("BrandLockup");
     expect(src).toContain('href="/idag"');
   });
+
+  it("hydrates last-known only after the shell mounts, not at module scope", () => {
+    const last = readFileSync(
+      new URL("../../features/home/last-snapshot.ts", import.meta.url),
+      "utf8",
+    );
+    expect(src).toContain("hydrateLastKnownFromPersist()");
+    expect(src).toContain("useLayoutEffect");
+    expect(last).not.toMatch(/^hydrateLastKnownFromPersist\(\);/m);
+  });
 });
 

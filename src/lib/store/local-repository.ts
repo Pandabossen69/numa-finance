@@ -2183,6 +2183,11 @@ export async function listPlanItems(): Promise<PlanItem[]> {
     .sort((a, b) => a.name.localeCompare(b.name, "sv"));
 }
 
+export async function listInactivePlanItems(): Promise<PlanItem[]> {
+  const store = await readStore();
+  return [...(store.planItems ?? [])].filter((p) => !p.isActive);
+}
+
 export async function createPlanItem(input: {
   name: string;
   kind: PlanCategoryKind;
