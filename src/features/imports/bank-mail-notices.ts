@@ -42,7 +42,12 @@ export function bankMailDateNotices(input: {
   return notices;
 }
 
-/** Same notices as the confirm screen. Null means Bekräfta may book. */
+const BANK_MAIL_TOO_OLD_LEAD = "Mejlet är för gammalt för att bekräftas";
+
+/**
+ * Same sentence on the confirm card and from confirmBankMailAction.
+ * Null means Bekräfta may book.
+ */
 export function bankMailConfirmBlockedMessage(input: {
   occurredAt?: string | null;
   openingBalanceAt?: string | null;
@@ -51,5 +56,16 @@ export function bankMailConfirmBlockedMessage(input: {
 }): string | null {
   const notices = bankMailDateNotices(input);
   if (notices.length === 0) return null;
-  return `Kan inte bekräfta. ${notices.join(". ")}.`;
+  const saldo = notices.includes(BANK_MAIL_BEFORE_OPENING_NOTICE);
+  const rorelser = notices.includes(BANK_MAIL_BEFORE_PLAN_NOTICE);
+  if (saldo && rorelser) {
+    return `${BANK_MAIL_TOO_OLD_LEAD} – det påverkar inte saldot och syns inte i Rörelser.`;
+  }
+  if (saldo) {
+    return `${BANK_MAIL_TOO_OLD_LEAD} – det påverkar inte saldot.`;
+  }
+  if (rorelser) {
+    return `${BANK_MAIL_TOO_OLD_LEAD} – det syns inte i Rörelser.`;
+  }
+  return `${BANK_MAIL_TOO_OLD_LEAD}.`;
 }

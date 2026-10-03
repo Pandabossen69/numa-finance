@@ -115,7 +115,7 @@ function ObservationList({
       setError(result.error);
       return;
     }
-    await refreshAfterBankMailQueueChange(id, "Avvisad");
+    void refreshAfterBankMailQueueChange(id, "Avvisad");
     setRejectingId(null);
   }
 

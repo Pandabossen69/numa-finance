@@ -14,8 +14,9 @@ import {
   BANK_MAIL_SOURCE_LABEL,
   bankMailAccountLabel,
 } from "@/features/imports/bank-mail-label";
-import { bankMailDateNotices } from "@/features/imports/bank-mail-notices";
+import { bankMailConfirmBlockedMessage } from "@/features/imports/bank-mail-notices";
 import { refreshAfterBankMailQueueChange } from "@/features/imports/bank-mail-queue-refresh";
+import { applyOptimisticHomeSpend } from "@/features/home/last-snapshot";
 import {
   bankMailSavedToast,
   publishBankMailSavedToast,
@@ -52,11 +53,11 @@ export function BankMailConfirm({
   const when = preview.occurredAt
     ? formatListDateSv(preview.occurredAt, DEFAULT_TIMEZONE, { withTime: true })
     : null;
-  const notices = bankMailDateNotices({
+  const blockedMessage = bankMailConfirmBlockedMessage({
     occurredAt: preview.occurredAt,
     openingBalanceAt: preview.openingBalanceAt,
   });
-  const blocked = notices.length > 0;
+  const blocked = blockedMessage != null;
   const amountLabel =
     amountMinor != null
       ? `−${formatMoney(money(amountMinor, preview.currency))}`
@@ -76,10 +77,7 @@ export function BankMailConfirm({
         setMode(null);
         return;
       }
-      await refreshAfterBankMailQueueChange(
-        preview.observationId,
-        "Bekräftad och sparad",
-      );
+      if (amountMinor != null) applyOptimisticHomeSpend(amountMinor);
       if (amountLabel) {
         publishBankMailSavedToast(
           bankMailSavedToast({
@@ -90,6 +88,10 @@ export function BankMailConfirm({
         );
       }
       goHomeInstant(router);
+      void refreshAfterBankMailQueueChange(
+        preview.observationId,
+        "Bekräftad och sparad",
+      );
     });
   }
 
@@ -106,7 +108,7 @@ export function BankMailConfirm({
         setMode(null);
         return;
       }
-      await refreshAfterBankMailQueueChange(preview.observationId, "Avvisad");
+      void refreshAfterBankMailQueueChange(preview.observationId, "Avvisad");
       router.push("/importera");
     });
   }
@@ -130,11 +132,11 @@ export function BankMailConfirm({
         ) : null}
         {when ? <p className="text-sm text-[var(--numa-muted)]">{when}</p> : null}
         <p className="text-sm text-[var(--numa-muted)]">{accountName}</p>
-        {notices.map((notice) => (
-          <p key={notice} className="text-sm text-[var(--numa-muted)]">
-            {notice}
+        {blockedMessage ? (
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {blockedMessage}
           </p>
-        ))}
+        ) : null}
       </div>
 
       {preview.alreadyKnown ? (

@@ -57,6 +57,14 @@ describe("importera mail section", () => {
     expect(confirm).toContain("Avvisa");
     expect(confirm).toContain("text-[var(--numa-danger)]");
     expect(confirm).toContain("refreshAfterBankMailQueueChange");
+    expect(confirm).toContain("bankMailConfirmBlockedMessage");
+    expect(confirm).not.toContain("await refreshAfterBankMailQueueChange");
+    const ack = confirm.indexOf("publishBankMailSavedToast");
+    const homeJump = confirm.indexOf("goHomeInstant(router)");
+    const background = confirm.indexOf("void refreshAfterBankMailQueueChange");
+    expect(ack).toBeGreaterThan(0);
+    expect(ack).toBeLessThan(homeJump);
+    expect(homeJump).toBeLessThan(background);
     expect(confirm).toContain("blocked ? null");
     const refresh = readFileSync(
       new URL("./bank-mail-queue-refresh.ts", import.meta.url),
@@ -65,6 +73,8 @@ describe("importera mail section", () => {
     expect(refresh).toContain("invalidateSettledHomeSurfaces");
     expect(refresh).toContain("adoptMutationFinance");
     expect(refresh).toContain("refreshBankMailSurfacesAction");
+    expect(refresh).toContain("console.error");
+    expect(refresh).toContain("retryBankMailSurfacesIfStale");
     const shell = readFileSync(
       new URL("../../components/layout/AppShell.tsx", import.meta.url),
       "utf8",
@@ -77,6 +87,7 @@ describe("importera mail section", () => {
     expect(toast).toContain("createPortal");
     expect(toast).toContain("z-[100]");
     expect(toast).toContain("useSyncExternalStore");
+    expect(toast).toContain("retryBankMailSurfacesIfStale");
     expect(hem).not.toContain("createPortal");
     expect(hem).not.toContain("bankMailToastSnapshot");
   });

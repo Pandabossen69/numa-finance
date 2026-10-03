@@ -2,11 +2,13 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { useNavIntent } from "@/components/layout/NavIntent";
 import {
   bankMailToastSnapshot,
   dismissBankMailSavedToast,
   subscribeBankMailToast,
 } from "@/features/imports/bank-mail-toast";
+import { retryBankMailSurfacesIfStale } from "@/features/imports/bank-mail-queue-refresh";
 import { serverNull } from "@/lib/react/server-snapshot";
 
 const VISIBLE_MS = 4_000;
@@ -18,11 +20,16 @@ const VISIBLE_MS = 4_000;
  * update banner (z-80) and the bottom nav (z-50).
  */
 export function BankMailSavedToast() {
+  const { pathname } = useNavIntent();
   const toast = useSyncExternalStore(
     subscribeBankMailToast,
     bankMailToastSnapshot,
     serverNull,
   );
+
+  useEffect(() => {
+    retryBankMailSurfacesIfStale();
+  }, [pathname]);
 
   useEffect(() => {
     if (!toast) return;

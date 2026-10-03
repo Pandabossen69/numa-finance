@@ -143,7 +143,7 @@ describe("confirmBankMailCandidate date gate", () => {
   it("bokar inget när mejlet ligger före Rörelser-golvet", async () => {
     await expect(
       confirmBankMailCandidate({ observationId: OBS }),
-    ).rejects.toThrow(/Kan inte bekräfta/);
+    ).rejects.toThrow(/för gammalt för att bekräftas/);
     await expect(
       confirmBankMailCandidate({ observationId: OBS }),
     ).rejects.toThrow(/syns inte i Rörelser/);
