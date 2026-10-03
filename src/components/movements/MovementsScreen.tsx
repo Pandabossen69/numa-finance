@@ -11,6 +11,8 @@ import {
   updateTransactionAction,
   voidTransactionAction,
 } from "@/features/finance/actions";
+import { invalidateAfterPlanLinkedVoid } from "@/features/finance/movement-void-plan";
+import { serverNull } from "@/lib/react/server-snapshot";
 import { formatListDateSv, isoToDateInput, monthKeyFromDate, occurredAtForBookedDay } from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
@@ -39,6 +41,7 @@ import {
   subscribePlanSnapshot,
   type MovementsFilter,
   type MovementsPeriod,
+  type MovementsView,
 } from "@/features/home/last-snapshot";
 import {
   clearMovementsDrill,
@@ -123,27 +126,21 @@ export function MovementsScreen({
   const { prefetch } = usePrefetchOnIntent();
   const { pathname } = useNavIntent();
   const pathRef = useRef(pathname);
-  const rememberedView = lastMovementsView();
   const stored = useSyncExternalStore(
     subscribeMovementsSnapshot,
     lastMovementsSnapshot,
-    lastMovementsSnapshot,
+    serverNull,
   );
-  const [filter, setFilter] = useState<Filter>(
-    () => rememberedView?.filter ?? "all",
+  const savedView = useSyncExternalStore(
+    subscribeMovementsView,
+    lastMovementsView,
+    serverNull,
   );
-  const [period, setPeriod] = useState<Period>(
-    () => rememberedView?.period ?? "month",
-  );
-  const [category, setCategory] = useState<string | null>(
-    () => rememberedView?.category ?? null,
-  );
-  const [cycleStartAt, setCycleStartAt] = useState<string | null>(
-    () => rememberedView?.cycleStartAt ?? null,
-  );
-  const [cycleEndAt, setCycleEndAt] = useState<string | null>(
-    () => rememberedView?.cycleEndAt ?? null,
-  );
+  const filter = savedView?.filter ?? "all";
+  const period = savedView?.period ?? "month";
+  const category = savedView?.category ?? null;
+  const cycleStartAt = savedView?.cycleStartAt ?? null;
+  const cycleEndAt = savedView?.cycleEndAt ?? null;
   const planSnap = useSyncExternalStore(
     subscribePlanSnapshot,
     lastPlanSnapshot,
@@ -181,36 +178,16 @@ export function MovementsScreen({
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmId]);
 
-  // Keep-alive: another writer can change the saved chips while this
-  // screen is hidden. The Analys drill does not come through here.
-  useLayoutEffect(() => {
-    return subscribeMovementsView(() => {
-      const next = lastMovementsView();
-      if (!next) {
-        setFilter("all");
-        setPeriod("month");
-        setCategory(null);
-        setCycleStartAt(null);
-        setCycleEndAt(null);
-        return;
-      }
-      setFilter((prev) => (prev === next.filter ? prev : next.filter));
-      setPeriod((prev) => (prev === next.period ? prev : next.period));
-      setCategory((prev) =>
-        (prev ?? null) === (next.category ?? null)
-          ? prev
-          : (next.category ?? null),
-      );
-      setCycleStartAt((prev) => {
-        const start = next.cycleStartAt ?? null;
-        return prev === start ? prev : start;
-      });
-      setCycleEndAt((prev) => {
-        const end = next.cycleEndAt ?? null;
-        return prev === end ? prev : end;
-      });
+  function publishView(partial: Partial<MovementsView>) {
+    rememberMovementsView({
+      filter,
+      period,
+      category,
+      cycleStartAt,
+      cycleEndAt,
+      ...partial,
     });
-  }, []);
+  }
 
   // Hard load of a drill URL. SPA taps commit the same store in NavIntent
   // before the parked panel is revealed. A href without drill params clears it.
@@ -221,23 +198,20 @@ export function MovementsScreen({
   }, []);
 
   useLayoutEffect(() => {
-    rememberMovementsView({
-      filter,
-      period,
-      category,
-      cycleStartAt,
-      cycleEndAt,
-    });
-  }, [filter, period, category, cycleStartAt, cycleEndAt]);
-
-  useLayoutEffect(() => {
     const prev = pathRef.current;
     pathRef.current = pathname;
     if (
       spaTabKey(prev) === "/transaktioner" &&
-      spaTabKey(pathname) !== "/transaktioner"
+      spaTabKey(pathname) !== "/transaktioner" &&
+      lastMovementsView()?.category
     ) {
-      setCategory(null);
+      rememberMovementsView({
+        filter: lastMovementsView()?.filter ?? "all",
+        period: lastMovementsView()?.period ?? "month",
+        category: null,
+        cycleStartAt: lastMovementsView()?.cycleStartAt ?? null,
+        cycleEndAt: lastMovementsView()?.cycleEndAt ?? null,
+      });
     }
   }, [pathname]);
 
@@ -318,18 +292,18 @@ export function MovementsScreen({
 
   function choosePeriod(next: Period) {
     dropDrillOverlay();
-    setPeriod(next);
+    publishView({ period: next });
   }
 
   function chooseFilter(next: Filter) {
     dropDrillOverlay();
-    setFilter(next);
+    publishView({ filter: next });
   }
 
   function selectCategory(name: string) {
     dropDrillOverlay();
     const next = toggleCategory(category, name);
-    setCategory(next);
+    publishView({ category: next });
     if (next) {
       listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -532,7 +506,7 @@ export function MovementsScreen({
                 type="button"
                 onClick={() => {
                   dropDrillOverlay();
-                  setCategory(null);
+                  publishView({ category: null });
                 }}
                 className="numa-press numa-category-chip is-active max-w-[12ch] truncate min-h-11 rounded-full bg-[var(--numa-ink)] px-3 text-xs font-semibold text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                 aria-label="Visa alla kategorier"
@@ -786,6 +760,7 @@ export function MovementsScreen({
                                   }
                                   setConfirmId(null);
                                   applyMovementsVoid(tx.id);
+                                  invalidateAfterPlanLinkedVoid(tx);
                                   adoptMutationFinance(result);
                                 } finally {
                                   actionLock.current = false;

@@ -1,3 +1,4 @@
+import { stableSvText } from "@/domain/intl-sv";
 import { zonedDayKey } from "./datetime";
 import { compareId, compareIsoAsc } from "./list-sort";
 import type { PlanItem } from "./types";
@@ -110,9 +111,11 @@ export type AdditionalSettlementResult =
   | { ok: false; error: string };
 
 function formatMinorPlainSv(minor: number): string {
-  return new Intl.NumberFormat("sv-SE", {
-    maximumFractionDigits: 0,
-  }).format(Math.round(minor / 100));
+  return stableSvText(
+    new Intl.NumberFormat("sv-SE", {
+      maximumFractionDigits: 0,
+    }).format(Math.round(minor / 100)),
+  );
 }
 
 /**
@@ -497,11 +500,13 @@ export function addMonthsKey(monthKey: string, delta: number): string {
 export function labelMonthSv(monthKey: string): string {
   const [y, m] = monthKey.split("-").map(Number);
   const d = new Date(Date.UTC(y!, (m ?? 1) - 1, 1));
-  return d.toLocaleDateString("sv-SE", {
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return stableSvText(
+    d.toLocaleDateString("sv-SE", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+  );
 }
 
 export type MonthPlanProjection = {
@@ -732,10 +737,12 @@ export function visibleMonthKeysForYear(year: number): string[] {
 export function labelMonthNameSv(monthKey: string): string {
   const [y, m] = monthKey.split("-").map(Number);
   const d = new Date(Date.UTC(y!, (m ?? 1) - 1, 1));
-  return d.toLocaleDateString("sv-SE", {
-    month: "long",
-    timeZone: "UTC",
-  });
+  return stableSvText(
+    d.toLocaleDateString("sv-SE", {
+      month: "long",
+      timeZone: "UTC",
+    }),
+  );
 }
 
 /** `september`, `september och oktober` — Hem/Plan reserved-savings months. */

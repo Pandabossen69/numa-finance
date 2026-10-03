@@ -38,6 +38,7 @@ import {
   sortNewestFirst,
   type TransactionSource,
 } from "@/domain/finance";
+import { accountInsertFailure } from "@/features/finance/account-insert";
 import { importEventDescription } from "@/domain/imports/bank-app-amounts";
 import { type CurrencyCode } from "@/domain/money";
 import {
@@ -598,7 +599,9 @@ export async function createAccount(input: {
   currency: CurrencyCode;
   maskedIdentifier?: string | null;
   makeDefault?: boolean;
-}): Promise<Account> {
+  /** Always sent. Unique with user_id when the column exists. */
+  clientMutationId?: string | null;
+}): Promise<Account & { replayed?: boolean }> {
   const userId = await requireUserId();
   await ensureProfile();
   const supabase = await createSupabaseServerClient();
@@ -612,6 +615,11 @@ export async function createAccount(input: {
   });
   assertCurrencyAllowedForKind(kind, input.currency);
 
+  if (input.clientMutationId) {
+    const replay = await findAccountByMutationId(input.clientMutationId);
+    if (replay) return Object.assign(replay, { replayed: true });
+  }
+
   const existing = await listAccounts();
   const makeDefault = input.makeDefault ?? existing.length === 0;
 
@@ -624,24 +632,64 @@ export async function createAccount(input: {
     if (clearError) throw new Error(clearError.message);
   }
 
-  const { data, error } = await supabase
+  const row = {
+    user_id: userId,
+    name: input.name.trim(),
+    institution: input.institution?.trim() || null,
+    account_type: input.accountType,
+    kind,
+    currency: input.currency,
+    masked_identifier: input.maskedIdentifier?.trim() || null,
+    is_active: true,
+    is_default: makeDefault,
+  };
+  const withMutation = input.clientMutationId
+    ? { ...row, client_mutation_id: input.clientMutationId }
+    : row;
+
+  let inserted = await supabase
     .from("accounts")
-    .insert({
-      user_id: userId,
-      name: input.name.trim(),
-      institution: input.institution?.trim() || null,
-      account_type: input.accountType,
-      kind,
-      currency: input.currency,
-      masked_identifier: input.maskedIdentifier?.trim() || null,
-      is_active: true,
-      is_default: makeDefault,
-    })
+    .insert(withMutation)
     .select("*")
     .single();
 
-  if (error) throw new Error(error.message);
-  return mapAccount(data);
+  if (
+    inserted.error &&
+    input.clientMutationId &&
+    accountInsertFailure(inserted.error) === "omit-column"
+  ) {
+    inserted = await supabase.from("accounts").insert(row).select("*").single();
+  }
+
+  if (
+    inserted.error &&
+    input.clientMutationId &&
+    accountInsertFailure(inserted.error) === "replay"
+  ) {
+    const replay = await findAccountByMutationId(input.clientMutationId);
+    if (replay) return Object.assign(replay, { replayed: true });
+  }
+
+  if (inserted.error) throw new Error(inserted.error.message);
+  return mapAccount(inserted.data);
+}
+
+async function findAccountByMutationId(
+  clientMutationId: string,
+): Promise<Account | null> {
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("client_mutation_id", clientMutationId)
+    .maybeSingle();
+  if (error) {
+    if (accountInsertFailure(error) === "omit-column") return null;
+    throw new Error(error.message);
+  }
+  return data ? mapAccount(data) : null;
 }
 
 export async function createCheckpoint(input: {

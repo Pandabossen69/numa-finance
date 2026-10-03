@@ -246,6 +246,8 @@ export async function ensureAccountForCurrency(input: {
   });
 }
 
+const localAccountMutations = new Map<string, string>();
+
 export async function createAccount(input: {
   name: string;
   institution?: string | null;
@@ -254,7 +256,8 @@ export async function createAccount(input: {
   currency: CurrencyCode;
   maskedIdentifier?: string | null;
   makeDefault?: boolean;
-}): Promise<Account> {
+  clientMutationId?: string | null;
+}): Promise<Account & { replayed?: boolean }> {
   const kind = inferAccountKind({
     kind: input.kind,
     accountType: input.accountType,
@@ -263,6 +266,15 @@ export async function createAccount(input: {
     institution: input.institution,
   });
   assertCurrencyAllowedForKind(kind, input.currency);
+
+  if (input.clientMutationId) {
+    const existingId = localAccountMutations.get(input.clientMutationId);
+    if (existingId) {
+      const store = await readStore();
+      const existing = store.accounts.find((row) => row.id === existingId);
+      if (existing) return Object.assign(existing, { replayed: true });
+    }
+  }
 
   const created = await updateStore((store) => {
     const ts = nowIso();
@@ -284,6 +296,9 @@ export async function createAccount(input: {
       updatedAt: ts,
     };
     store.accounts.push(account);
+    if (input.clientMutationId) {
+      localAccountMutations.set(input.clientMutationId, account.id);
+    }
   });
   return created.accounts[created.accounts.length - 1]!;
 }

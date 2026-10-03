@@ -58,6 +58,10 @@ export type MovementRow = {
   clientMutationId?: string | null;
   /** Stable list key so swapping a temp id for the server id does not remount the row. */
   listKey?: string;
+  /** Set when the row settles a plan post. Void reopens that post. */
+  planItemId?: string | null;
+  linkedPlanItemId?: string | null;
+  ledgerOrigin?: string | null;
 };
 
 export type CategoryTotal = {
@@ -194,6 +198,9 @@ export function buildMovementsSnapshot(input: {
         occurredAt: tx.occurredAt,
         source: tx.source,
         clientMutationId: tx.clientMutationId ?? null,
+        planItemId: tx.planItemId ?? null,
+        linkedPlanItemId: tx.linkedPlanItemId ?? null,
+        ledgerOrigin: tx.ledgerOrigin ?? null,
       };
     });
 

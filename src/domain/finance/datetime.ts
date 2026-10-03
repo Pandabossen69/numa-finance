@@ -1,3 +1,4 @@
+import { stableSvText } from "@/domain/intl-sv";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import {
   endOfDay,
@@ -430,8 +431,8 @@ export function formatListDateSv(
   timeZone: string,
   opts?: { withTime?: boolean },
 ): string {
-  return listDateFormatter(timeZone, opts?.withTime === true).format(
-    new Date(iso),
+  return stableSvText(
+    listDateFormatter(timeZone, opts?.withTime === true).format(new Date(iso)),
   );
 }
 
@@ -479,9 +480,11 @@ export function formatIsoDateOnlySv(isoDate: string): string {
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleString("sv-SE", {
-    timeZone: "UTC",
-    day: "numeric",
-    month: "short",
-  });
+  return stableSvText(
+    new Date(Date.UTC(year, month - 1, day)).toLocaleString("sv-SE", {
+      timeZone: "UTC",
+      day: "numeric",
+      month: "short",
+    }),
+  );
 }

@@ -9,6 +9,7 @@ import {
   rememberMovementsSnapshot,
   subscribeMovementsSnapshot,
 } from "@/features/home/last-snapshot";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 /**
  * Client-first Rörelser (NextStep quiet-load pattern).
@@ -19,7 +20,7 @@ export function MovementsRouteClient() {
   const stored = useSyncExternalStore(
     subscribeMovementsSnapshot,
     lastMovementsSnapshot,
-    lastMovementsSnapshot,
+    serverNull,
   );
   const [error, setError] = useState<string | null>(null);
 

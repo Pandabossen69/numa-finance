@@ -1,3 +1,4 @@
+import { stableSvText } from "@/domain/intl-sv";
 import { money, type Money } from "@/domain/money";
 import type { ReconciliationState } from "./types";
 
@@ -72,9 +73,11 @@ export function hoursSince(isoTimestamp: string, now = new Date()): number {
 }
 
 function formatAbs(value: Money): string {
-  const major = (value.amountMinor / 100).toLocaleString("sv-SE", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const major = stableSvText(
+    (value.amountMinor / 100).toLocaleString("sv-SE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
   return value.currency === "THB" ? `${major} THB` : `${major} kr`;
 }

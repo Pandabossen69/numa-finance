@@ -17,6 +17,7 @@ import {
   syncHomeLivingFromPlan,
 } from "@/features/home/last-snapshot";
 import { PlanEditor } from "@/lib/route-islands";
+import { serverNull } from "@/lib/react/server-snapshot";
 
 export function PlanScreen({
   focusAdd = null,
@@ -34,12 +35,12 @@ export function PlanScreen({
   const stored = useSyncExternalStore(
     subscribePlanSnapshot,
     lastPlanSnapshot,
-    lastPlanSnapshot,
+    serverNull,
   );
   const storedGettingStarted = useSyncExternalStore(
     subscribeGettingStarted,
     lastGettingStarted,
-    lastGettingStarted,
+    serverNull,
   );
   const error = initialError;
 

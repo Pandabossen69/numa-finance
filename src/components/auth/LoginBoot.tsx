@@ -87,10 +87,21 @@ export function paintLoginBoot() {
 export function clearLoginBoot() {
   if (typeof window !== "undefined") window.clearTimeout(timeoutId);
   timeoutId = 0;
-  if (root) {
-    root.unmount();
-    root = null;
-  }
-  host?.remove();
+  const currentRoot = root;
+  const currentHost = host;
+  root = null;
   host = null;
+  if (!currentRoot && !currentHost) return;
+  // Hem's effect runs while React is still committing. Unmounting this
+  // extra root in that turn logs "synchronously unmount a root while
+  // React was already rendering" and lights the dev overlay.
+  const drop = () => {
+    currentRoot?.unmount();
+    currentHost?.remove();
+  };
+  if (typeof window === "undefined") {
+    drop();
+    return;
+  }
+  window.setTimeout(drop, 0);
 }

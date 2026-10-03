@@ -123,6 +123,6 @@ describe("Rörelser expense color", () => {
   it("clears the category chip when leaving Rörelser", () => {
     expect(src).toContain('spaTabKey(prev) === "/transaktioner"');
     expect(src).toContain("spaTabKey(pathname) !== \"/transaktioner\"");
-    expect(src).toContain("setCategory(null)");
+    expect(src).toContain("category: null");
   });
 });
