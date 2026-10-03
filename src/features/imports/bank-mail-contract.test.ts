@@ -22,7 +22,11 @@ describe("bank mail stays out of the screenshot writer", () => {
       new URL("../../app/api/import/bank-mail/route.ts", import.meta.url),
       "utf8",
     );
-    expect(store).not.toMatch(/from\(["']transactions["']\)/);
+    const queued = store.slice(store.indexOf("async insertPending"));
+    expect(queued).not.toMatch(/from\(["']transactions["']\)/);
+    expect(store).toContain('.from("transactions")');
+    expect(store).toContain('.neq("status", "voided")');
+    expect(store).not.toMatch(/from\(["']transactions["']\)[\s\S]{0,240}\.insert\(/);
     expect(ingest).not.toMatch(/from\(["']transactions["']\)/);
     expect(route).toContain("createSupabaseServiceRoleClient");
     expect(route).toContain("handleBankMailPost");

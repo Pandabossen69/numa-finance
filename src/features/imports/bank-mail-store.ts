@@ -4,9 +4,7 @@ import {
   BANK_MAIL_OBSERVATION_KIND,
   BANK_MAIL_SOURCE_LABEL,
 } from "@/features/imports/bank-mail-label";
-import {
-  bankMailDedupeFingerprints,
-} from "@/features/imports/bank-mail-dedupe";
+import { bankMailDedupeFingerprints } from "@/features/imports/bank-mail-dedupe";
 import type {
   BankMailAccountGate,
   BankMailPendingInsert,
