@@ -1127,6 +1127,19 @@ export async function listObservations(): Promise<SourceObservation[]> {
   );
 }
 
+export async function listObservationMovementLinks(
+  observationIds: string[],
+): Promise<Array<{ observationId: string; status: string }>> {
+  if (observationIds.length === 0) return [];
+  const wanted = new Set(observationIds);
+  const store = await readStore();
+  return store.transactions.flatMap((tx) =>
+    tx.sourceObservationId && wanted.has(tx.sourceObservationId)
+      ? [{ observationId: tx.sourceObservationId, status: tx.status }]
+      : [],
+  );
+}
+
 export async function deleteObservation(observationId: string): Promise<void> {
   await updateStore((s) => {
     s.observations = s.observations.filter((o) => o.id !== observationId);

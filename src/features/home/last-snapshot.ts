@@ -93,6 +93,9 @@ export type ImporteraRow = {
   status: string;
   createdAt: string;
   notes: string | null;
+  institutionHint?: string | null;
+  /** Read-time only. Linked ledger row is voided; notes in the DB stay as written. */
+  movementRemoved?: boolean;
 };
 
 export type SettingsSnapshot = {

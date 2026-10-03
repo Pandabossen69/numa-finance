@@ -19,6 +19,7 @@ import {
   splitImporteraRows,
 } from "@/features/imports/bank-mail-queue";
 import { refreshAfterBankMailQueueChange } from "@/features/imports/bank-mail-queue-refresh";
+import { MOVEMENT_REMOVED_LABEL } from "@/features/imports/importera-removed";
 import {
   lastImporteraRows,
   rememberImporteraRows,
@@ -40,8 +41,12 @@ export function ImporteraScreen({
     serverNull,
   );
   const serverStamp =
-    data?.map((row) => `${row.id}:${row.status}:${row.notes ?? ""}`).join("|") ??
-    null;
+    data
+      ?.map(
+        (row) =>
+          `${row.id}:${row.status}:${row.movementRemoved ? 1 : 0}:${row.institutionHint ?? ""}:${row.notes ?? ""}`,
+      )
+      .join("|") ?? null;
   const appliedServer = useRef<string | null>(null);
 
   useEffect(() => {
@@ -122,7 +127,9 @@ function ObservationList({
   return (
     <MerListGroup>
       {rows.map((o) => {
-        const status = statusMeta(o.status);
+        const removed = o.movementRemoved === true;
+        const status = statusMeta(o.status, removed);
+        const detail = removed ? MOVEMENT_REMOVED_LABEL : o.notes;
         const resumeHref = fotaHrefForObservation(o);
         const canReject = mailQueue && isPendingBankMail(o);
         return (
@@ -142,9 +149,9 @@ function ObservationList({
                 withTime: true,
               })}
             </p>
-            {o.notes ? (
+            {detail ? (
               <p className="text-sm leading-snug text-[var(--numa-muted)]">
-                {o.notes}
+                {detail}
               </p>
             ) : null}
             {o.status === "needs_review" || o.status === "failed" ? (
@@ -199,7 +206,16 @@ function kindLabel(kind: string): string {
   }
 }
 
-function statusMeta(status: string): { label: string; className: string } {
+function statusMeta(
+  status: string,
+  movementRemoved: boolean,
+): { label: string; className: string } {
+  if (movementRemoved) {
+    return {
+      label: "Borttagen",
+      className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
+    };
+  }
   switch (status) {
     case "uploaded":
       return {

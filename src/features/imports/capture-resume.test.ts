@@ -51,6 +51,34 @@ describe("fota resume routing", () => {
     expect(
       modeForObservation({ kind: "screenshot", institutionHint: "bank_app" }),
     ).toBe("bank_app");
+    expect(
+      modeForObservation({
+        kind: "screenshot",
+        institutionHint: "unknown_bank_app",
+      }),
+    ).toBe("bank_app");
+    expect(
+      modeForObservation({ kind: "screenshot", institutionHint: "Bankapp" }),
+    ).toBe("bank_app");
+    expect(
+      modeForObservation({
+        kind: "screenshot",
+        institutionHint: "Bangkok Bank",
+      }),
+    ).toBe("bank_sms");
+  });
+
+  it("Fortsätt on a generic bank-app shot uses the bankapp heading source", () => {
+    expect(
+      fotaHrefForObservation({
+        id: BUNQ_ID,
+        kind: "screenshot",
+        status: "needs_review",
+        institutionHint: "unknown_bank_app",
+      }),
+    ).toBe(`/fota?mode=bank_app&observation=${BUNQ_ID}`);
+    expect(CAPTURE_UI_COPY.bank_app.eyebrow).toBe("Bankapp");
+    expect(CAPTURE_UI_COPY.bank_sms.eyebrow).toBe("Bank-SMS");
   });
 
   it("Fortsätt keeps observation id; Fota igen only keeps mode", () => {
@@ -151,6 +179,57 @@ describe("buildCapturePreview", () => {
     expect(preview?.alreadyKnown).toBe(false);
     expect(preview?.balanceAfterMinor).toBe(80000);
     expect(preview?.ocrStatus).toBe("ok");
+  });
+
+  it("uses the stored bank_app source even when the institution looks like SMS", () => {
+    const preview = buildCapturePreview({
+      observation: {
+        id: SMS_ID,
+        kind: "screenshot",
+        institutionHint: "Bangkok Bank",
+        status: "needs_review",
+        notes: "1 rörelse läst",
+      },
+      candidates: [
+        candidate({
+          id: "cand-app",
+          rawPayload: {
+            importKind: "bank_app",
+            labelSv: "Utgift · Grab",
+            batchIndex: 0,
+          },
+          balanceAfterMinor: null,
+        }),
+      ],
+      previewUrl: "https://example.test/app.jpg",
+      fallbackCurrency: "THB",
+    });
+
+    expect(preview?.importKind).toBe("bank_app");
+    expect(CAPTURE_UI_COPY.bank_app.eyebrow).toBe("Bankapp");
+  });
+
+  it("keeps a real Bank-SMS on the SMS heading when the payload says bank_sms", () => {
+    const preview = buildCapturePreview({
+      observation: {
+        id: SMS_ID,
+        kind: "screenshot",
+        institutionHint: "unknown_bank_app",
+        status: "needs_review",
+        notes: "1 rörelse läst",
+      },
+      candidates: [
+        candidate({
+          id: "cand-sms",
+          rawPayload: { importKind: "bank_sms", labelSv: "Utgift · 7-Eleven" },
+        }),
+      ],
+      previewUrl: "https://example.test/sms.jpg",
+      fallbackCurrency: "THB",
+    });
+
+    expect(preview?.importKind).toBe("bank_sms");
+    expect(CAPTURE_UI_COPY.bank_sms.eyebrow).toBe("Bank-SMS");
   });
 
   it("restores a receipt amount without SMS chrome", () => {
