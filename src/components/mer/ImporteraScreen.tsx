@@ -22,6 +22,7 @@ import {
 import { refreshAfterBankMailQueueChange } from "@/features/imports/bank-mail-queue-refresh";
 import { MOVEMENT_REMOVED_LABEL } from "@/features/imports/importera-removed";
 import {
+  applyImporteraHandled,
   lastImporteraRows,
   rememberImporteraRows,
   removeImporteraRow,
@@ -58,7 +59,8 @@ export function ImporteraScreen({
     rememberImporteraRows(data);
   }, [data, serverStamp]);
 
-  const observations = stored ?? data;
+  const base = stored ?? data;
+  const observations = base ? applyImporteraHandled(base) : null;
 
   if (!observations) return <ImporteraViewLoading />;
 

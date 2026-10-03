@@ -15,6 +15,7 @@ describe("SPA keep-alive primary tabs", () => {
       "/mer",
       "/transaktioner",
       "/fota",
+      "/importera",
     ]);
     expect(spaTabKey("/")).toBe("/idag");
     expect(spaTabKey("/idag")).toBe("/idag");
@@ -28,6 +29,9 @@ describe("SPA keep-alive primary tabs", () => {
     expect(spaTabKey("/transaktioner")).toBe("/transaktioner");
     expect(spaTabKey("/transaktioner/1")).toBe("/transaktioner");
     expect(spaTabKey("/konton")).toBeNull();
+    expect(spaTabKey("/importera")).toBe("/importera");
+    expect(spaTabKey("/importera/extra")).toBeNull();
+    expect(isSpaTabHref("/importera")).toBe(true);
     expect(spaTabKey("/fota")).toBe("/fota");
     expect(spaTabKey("/fota?mode=bank_sms")).toBe("/fota");
     expect(spaTabKey("/fota/")).toBe("/fota");
@@ -103,6 +107,7 @@ describe("SPA keep-alive primary tabs", () => {
     expect(keepAlive).toContain("MerRouteClient");
     expect(keepAlive).toContain("MovementsRouteClient");
     expect(keepAlive).toContain("FotaRouteClient");
+    expect(keepAlive).toContain("ImporteraRouteClient");
     expect(keepAlive).toContain("data-numa-spa-tab");
     expect(keepAlive).toContain("spaTabKey");
   });

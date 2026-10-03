@@ -33,7 +33,7 @@ describe("voided bank-mail status is derived at read time", () => {
       "utf8",
     );
     const page = readFileSync(
-      new URL("../../app/(main)/importera/page.tsx", import.meta.url),
+      new URL("./importera-rows-action.ts", import.meta.url),
       "utf8",
     );
     const confirm = readFileSync(new URL("./bank-mail-confirm.ts", import.meta.url), "utf8");
@@ -42,7 +42,7 @@ describe("voided bank-mail status is derived at read time", () => {
     expect(screen).toContain("MOVEMENT_REMOVED_LABEL");
     expect(screen).toContain("movementRemoved");
     expect(page).toContain("listObservationMovementLinks");
-    expect(page).toContain("institutionHint: o.institutionHint");
+    expect(page).toContain("institutionHint: observation.institutionHint");
     expect(page).not.toContain(".update(");
     expect(confirm).toContain('notes: "Bekräftad och sparad"');
     expect(store).toContain('.neq("status", "voided")');

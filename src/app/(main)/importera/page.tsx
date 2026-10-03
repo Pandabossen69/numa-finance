@@ -1,38 +1,13 @@
-import { Suspense } from "react";
-import { ImporteraScreen } from "@/components/mer/ImporteraScreen";
-import { observationIdsWithRemovedMovement } from "@/features/imports/importera-removed";
-import {
-  listObservationMovementLinks,
-  listObservations,
-} from "@/lib/store/repository";
+import { ImporteraRouteClient } from "@/components/mer/ImporteraRouteClient";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Thin route. The observation list used to be awaited here and shipped in
+ * the RSC flight. Next keeps that flight for at least 30s, so soft-nav
+ * showed mails that were already confirmed or rejected. The list now lives
+ * in the client store (see ImporteraRouteClient).
+ */
 export default function ImporteraPage() {
-  return (
-    <Suspense fallback={<ImporteraScreen data={null} />}>
-      <ImporteraBody />
-    </Suspense>
-  );
-}
-
-async function ImporteraBody() {
-  const observations = await listObservations();
-  const links = await listObservationMovementLinks(
-    observations.map((observation) => observation.id),
-  );
-  const removed = observationIdsWithRemovedMovement(links);
-  return (
-    <ImporteraScreen
-      data={observations.map((o) => ({
-        id: o.id,
-        kind: o.kind,
-        status: o.status,
-        createdAt: o.createdAt,
-        notes: o.notes,
-        institutionHint: o.institutionHint,
-        movementRemoved: removed.has(o.id),
-      }))}
-    />
-  );
+  return <ImporteraRouteClient />;
 }

@@ -73,8 +73,11 @@ export function FotaScreen({
   });
 
   if (initialMode === "bank_mail") {
+    // Fota stays mounted. A new observation must not inherit «left» from
+    // the previous Avvisa, or Bekräfta/Avvisa never come back.
     return (
       <BankMailConfirm
+        key={observationId ?? "bank-mail"}
         preview={initialPreview?.importKind === "bank_mail" ? initialPreview : null}
         accounts={accounts}
       />

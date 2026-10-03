@@ -22,7 +22,7 @@ import {
   bankMailSavedToast,
   publishBankMailSavedToast,
 } from "@/features/imports/bank-mail-toast";
-import { goHomeInstant } from "@/lib/nav/instant";
+import { goHomeInstant, goImporteraInstant } from "@/lib/nav/instant";
 
 export function BankMailConfirm({
   preview,
@@ -118,14 +118,14 @@ export function BankMailConfirm({
         return;
       }
       const observationId = preview.observationId;
-      // Paint the end of «Avvisar…» before the hop. router.push stays
-      // inside this transition until /importera’s RSC arrives, so the
-      // label cannot key off `pending` or it outlives the save.
+      // Paint the end of «Avvisar…» before the hop. The keep-alive panel
+      // shows the client queue in the same turn; router.push would wait
+      // for /importera’s RSC and leave this card up.
       flushSync(() => {
         setMode("left");
       });
       setTimeout(() => {
-        router.push("/importera");
+        goImporteraInstant(router);
         void refreshAfterBankMailQueueChange(observationId, "Avvisad");
       }, 0);
     });

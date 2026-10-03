@@ -69,6 +69,10 @@ vi.mock("@/features/imports/capture-resume-action", () => ({
   getCaptureResumeAction: () => Promise.resolve(null),
 }));
 
+vi.mock("@/features/imports/importera-rows-action", () => ({
+  loadImporteraRowsAction: () => Promise.resolve([]),
+}));
+
 vi.mock("@/components/plan/load-plan", () => ({
   getPlanPageDataAction: () => Promise.resolve({ ok: false, error: "test" }),
 }));

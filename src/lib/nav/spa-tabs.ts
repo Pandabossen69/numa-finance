@@ -12,6 +12,7 @@ export const SPA_TAB_HREFS = [
   "/mer",
   "/transaktioner",
   "/fota",
+  "/importera",
 ] as const;
 
 export type SpaTabHref = (typeof SPA_TAB_HREFS)[number];
@@ -28,6 +29,7 @@ export function spaTabKey(pathname: string): SpaTabHref | null {
     return "/transaktioner";
   }
   if (path === "/fota" || path.startsWith("/fota/")) return "/fota";
+  if (path === "/importera") return "/importera";
   return null;
 }
 
