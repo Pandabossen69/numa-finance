@@ -39,9 +39,13 @@ describe("unknown is not rendered as empty", () => {
 
   it("Hem cue stays hidden while the pending count is unknown", () => {
     const src = read("../../components/home/BankMailHemCue.tsx");
-    expect(src).toContain("publishedCount == null");
+    expect(src).toContain("publishedCount ?? knownCount");
+    expect(src).toContain("count == null || count <= 0");
     expect(src).not.toContain("pendingBankMailCountAction");
     expect(src).not.toContain("publishedCount ?? 0");
+    const hem = read("../../components/home/HemRouteClient.tsx");
+    expect(hem).toContain("pendingBankMailCountFromShell(cookieShell)");
+    expect(hem).toContain("publishBankMailPendingCountIfCurrent");
   });
 
   it("Analys does not call an empty ledger settled before the fetch", () => {

@@ -1,4 +1,5 @@
 import { writeLastHomeCookie } from "@/features/home/last-home-cookie";
+import { clearBankMailPendingCount } from "@/features/imports/bank-mail-pending-store";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -28,7 +29,28 @@ export type PersistedLastKnown = {
   planView: { monthKey: string; viewYear: number } | null;
   analysScope: "period" | "month" | null;
   movementsView: MovementsView | null;
+  /** Last «Att bekräfta» count. Omitted on older payloads means unknown. */
+  pendingBankMailCount?: number | null;
 };
+
+let pendingBankMailCount: number | null = null;
+
+export function rememberedPendingBankMailCount(): number | null {
+  return pendingBankMailCount;
+}
+
+export function rememberPendingBankMailCount(count: number | null) {
+  if (count == null) {
+    pendingBankMailCount = null;
+    return;
+  }
+  if (!Number.isInteger(count) || count < 0) return;
+  pendingBankMailCount = count;
+}
+
+export function resetRememberedPendingBankMailCountForTests() {
+  pendingBankMailCount = null;
+}
 
 function persistStorage(): Storage | null {
   try {
@@ -85,15 +107,22 @@ export function readPersistedLastKnown(): PersistedLastKnown | null {
 }
 
 export function writePersistedLastKnown(data: PersistedLastKnown): void {
+  if (typeof data.pendingBankMailCount === "number") {
+    rememberPendingBankMailCount(data.pendingBankMailCount);
+  }
   const payload: PersistedLastKnown = {
     ...data,
     v: 1,
     movements: slimMovements(data.movements),
     analys: slimAnalys(data.analys),
+    pendingBankMailCount:
+      typeof data.pendingBankMailCount === "number"
+        ? data.pendingBankMailCount
+        : rememberedPendingBankMailCount(),
   };
   // Cookie must land even when localStorage is unavailable — layout SSR
-  // reads numa.lastHome.v1 for first Kvar/Över (SPEC 6b).
-  writeLastHomeCookie(payload.home);
+  // reads numa.lastHome.v1 for first Kvar/Över and the mail cue (SPEC 6b).
+  writeLastHomeCookie(payload.home, payload.pendingBankMailCount);
   const storage = persistStorage();
   if (!storage) return;
   try {
@@ -115,6 +144,7 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
           planView: payload.planView,
           analysScope: payload.analysScope,
           movementsView: payload.movementsView,
+          pendingBankMailCount: payload.pendingBankMailCount ?? null,
         } satisfies PersistedLastKnown),
       );
     } catch {
@@ -124,6 +154,8 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
 }
 
 export function clearPersistedLastKnown(): void {
+  rememberPendingBankMailCount(null);
+  clearBankMailPendingCount();
   writeLastHomeCookie(null);
   const storage = persistStorage();
   if (!storage) return;

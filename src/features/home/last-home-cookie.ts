@@ -109,10 +109,68 @@ export function lastHomeCookieForSession(
   return snap;
 }
 
-export function serializeLastHomeCookie(home: HomeSnapshot): string | null {
+function parseCookieRecord(
+  raw: string | undefined | null,
+): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const decoded = raw.includes("%") ? decodeURIComponent(raw) : raw;
+    const parsed: unknown = JSON.parse(decoded);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Count painted with the Hem shell. Missing or invalid means unknown. */
+export function pendingBankMailCountFromShell(
+  shell: object | null | undefined,
+): number | null {
+  if (!shell) return null;
+  const count = (shell as { pendingBankMailCount?: unknown }).pendingBankMailCount;
+  if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
+    return null;
+  }
+  return count;
+}
+
+/** Non-negative integer carried beside the Hem shell. Missing means unknown. */
+export function pendingBankMailCountInCookie(
+  raw: string | undefined | null,
+): number | null {
+  const count = parseCookieRecord(raw)?.pendingBankMailCount;
+  if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
+    return null;
+  }
+  return count;
+}
+
+export function readPendingBankMailCountFromDocument(): number | null {
+  if (typeof document === "undefined") return null;
+  const parts = document.cookie.split("; ");
+  const prefix = `${LAST_HOME_COOKIE}=`;
+  const hit = parts.find((part) => part.startsWith(prefix));
+  const raw = hit ? hit.slice(prefix.length) : null;
+  if (!parseLastHomeCookie(raw)) return null;
+  return pendingBankMailCountInCookie(raw);
+}
+
+export function serializeLastHomeCookie(
+  home: HomeSnapshot,
+  pendingBankMailCount?: number | null,
+): string | null {
   try {
     const shell = toLastHomeCookieShell(home);
-    const encoded = encodeURIComponent(JSON.stringify(shell));
+    const body =
+      typeof pendingBankMailCount === "number" &&
+      Number.isInteger(pendingBankMailCount) &&
+      pendingBankMailCount >= 0
+        ? { ...shell, pendingBankMailCount }
+        : shell;
+    const encoded = encodeURIComponent(JSON.stringify(body));
     if (encoded.length > MAX_COOKIE_CHARS) return null;
     return encoded;
   } catch {
@@ -137,13 +195,16 @@ export function readLastHomeCookieFromDocument(): HomeSnapshot | null {
   return parseLastHomeCookie(hit ? hit.slice(prefix.length) : null);
 }
 
-export function writeLastHomeCookie(home: HomeSnapshot | null): void {
+export function writeLastHomeCookie(
+  home: HomeSnapshot | null,
+  pendingBankMailCount?: number | null,
+): void {
   if (typeof document === "undefined") return;
   if (!home) {
     document.cookie = `${LAST_HOME_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
     return;
   }
-  const encoded = serializeLastHomeCookie(home);
+  const encoded = serializeLastHomeCookie(home, pendingBankMailCount);
   if (!encoded) return;
   document.cookie = `${LAST_HOME_COOKIE}=${encoded}; Path=/; Max-Age=2592000; SameSite=Lax`;
 }

@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { clearLoginBoot } from "@/components/auth/LoginBoot";
 import { HomeDashboard } from "@/components/home/HomeDashboard";
 import { HemFirstPaint } from "@/components/layout/HemFirstPaint";
+import { pendingBankMailCountFromShell } from "@/features/home/last-home-cookie";
 import {
   bankMailPendingCountVersion,
-  publishBankMailPendingCount,
+  publishBankMailPendingCountIfCurrent,
 } from "@/features/imports/bank-mail-queue-refresh";
 import { readHomeSnapshot } from "@/lib/numa/read-client";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -72,9 +73,10 @@ export function HemRouteClient({
               force ? { force: true } : undefined,
             );
           }
-          if (bankMailPendingCountVersion() === seenCount) {
-            publishBankMailPendingCount(result.pendingBankMailCount);
-          }
+          publishBankMailPendingCountIfCurrent(
+            seenCount,
+            result.pendingBankMailCount,
+          );
           seenSettleEpoch.current = epochAtStart;
           setError(null);
           scheduleQuietMenuWarm();
@@ -116,6 +118,7 @@ export function HemRouteClient({
       error={error}
       gettingStarted={storedGettingStarted}
       adoptSnap={live}
+      knownPendingBankMailCount={pendingBankMailCountFromShell(cookieShell)}
     />
   );
 }

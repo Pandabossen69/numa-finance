@@ -42,7 +42,7 @@ import {
 } from "@/features/finance/quick-add-optimistic";
 import {
   bankMailPendingCountVersion,
-  publishBankMailPendingCount,
+  publishBankMailPendingCountIfCurrent,
 } from "@/features/imports/bank-mail-queue-refresh";
 import { readHomeSnapshot } from "@/lib/numa/read-client";
 import type { HomeSnapshot } from "@/features/finance/load-home";
@@ -83,6 +83,7 @@ export function HomeDashboard({
   accounts = null,
   gettingStarted = null,
   adoptSnap = true,
+  knownPendingBankMailCount = null,
 }: {
   snap: HomeSnapshot | null;
   error?: string | null;
@@ -90,6 +91,8 @@ export function HomeDashboard({
   gettingStarted?: GettingStartedView | null;
   /** When false, display snap without elevating it to session-confirmed (issue 107). */
   adoptSnap?: boolean;
+  /** Last-known mail count from the same cookie shell as the saldo. */
+  knownPendingBankMailCount?: number | null;
 }) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
@@ -242,7 +245,7 @@ export function HomeDashboard({
           </>
         ) : null}
       </header>
-      <BankMailHemCue />
+      <BankMailHemCue knownCount={knownPendingBankMailCount} />
       {isEmpty && checklist?.visible ? <GettingStartedCard view={checklist} /> : null}
       {view.needsAvailableInput ? (
         <AvailableNowCard
@@ -638,9 +641,10 @@ function AvailableNowCard({
               void readHomeSnapshot().then((next) => {
                 if (!next.ok) return;
                 rememberHomeSnapshot(next.data);
-                if (bankMailPendingCountVersion() === seenCount) {
-                  publishBankMailPendingCount(next.pendingBankMailCount);
-                }
+                publishBankMailPendingCountIfCurrent(
+                  seenCount,
+                  next.pendingBankMailCount,
+                );
               });
               void warmupPlanPageData();
             })();
@@ -730,9 +734,10 @@ function UpdateBalanceLink({
               void readHomeSnapshot().then((next) => {
                 if (!next.ok) return;
                 rememberHomeSnapshot(next.data);
-                if (bankMailPendingCountVersion() === seenCount) {
-                  publishBankMailPendingCount(next.pendingBankMailCount);
-                }
+                publishBankMailPendingCountIfCurrent(
+                  seenCount,
+                  next.pendingBankMailCount,
+                );
               });
               void warmupPlanPageData();
             })();
