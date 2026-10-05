@@ -728,7 +728,7 @@ describe("projectLivingBudget", () => {
       }),
     ];
     const cycle = projectPayCycle(payday, now, tz);
-    expect(remainingReservedUntilHorizon(cycle, cycle.nextPaycheckAt)).toBe(
+    expect(remainingReservedUntilHorizon(cycle, cycle.nextPaycheckAt, tz, now)).toBe(
       1_200_00 + 571_00,
     );
     const living = projectLivingBudget({
@@ -809,6 +809,193 @@ describe("projectLivingBudget", () => {
     );
     expect(living.dayBudgetMinor).not.toBe(Math.floor(119_432_00 / 36));
     expect(living.dayBudgetMinor).not.toBe(1_298_28);
+  });
+});
+
+describe("overdue unpaid bills do not reserve the living saldo", () => {
+  const tz = "Asia/Bangkok";
+
+  function fundedCycle(
+    now: Date,
+    bills: Array<{ name: string; amountMinor: number; nextDueAt: string }>,
+    incomes: Array<{ name: string; nextDueAt: string; amountMinor?: number }> = [
+      {
+        name: "Lön sep",
+        nextDueAt: "2026-09-25T12:00:00.000Z",
+      },
+      {
+        name: "Lön okt",
+        nextDueAt: "2026-10-25T12:00:00.000Z",
+      },
+    ],
+  ) {
+    return projectPayCycle(
+      [
+        ...incomes.map((income) =>
+          item({
+            name: income.name,
+            kind: "expected",
+            amountMinor: income.amountMinor ?? 40_000_00,
+            cadence: "income",
+            nextDueAt: income.nextDueAt,
+          }),
+        ),
+        ...bills.map((bill) =>
+          item({
+            name: bill.name,
+            kind: "mandatory",
+            amountMinor: bill.amountMinor,
+            nextDueAt: bill.nextDueAt,
+          }),
+        ),
+      ],
+      now,
+      tz,
+    );
+  }
+
+  it("an overdue unpaid bill before next income reserves 0", () => {
+    const now = new Date("2026-10-05T03:00:00.000Z");
+    const cycle = fundedCycle(now, [
+      {
+        name: "Hyra sep",
+        amountMinor: 30_000_00,
+        nextDueAt: "2026-09-30T12:00:00.000Z",
+      },
+      {
+        name: "El",
+        amountMinor: 15_500_00,
+        nextDueAt: "2026-10-01T12:00:00.000Z",
+      },
+    ]);
+    expect(cycle.nextPaycheckAt).toBe("2026-10-25T12:00:00.000Z");
+    expect(cycle.expenses.map((row) => row.dueAt)).toEqual([
+      "2026-09-30T12:00:00.000Z",
+      "2026-10-01T12:00:00.000Z",
+    ]);
+    expect(remainingReservedUntilHorizon(cycle, cycle.nextPaycheckAt, tz, now)).toBe(
+      0,
+    );
+
+    const saldoMinor = 1_977_200;
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: saldoMinor,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    const bridge = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: saldoMinor,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: false,
+    });
+    expect(living.mode).toBe("cycle");
+    expect(bridge.mode).toBe("bridge");
+    for (const projected of [living, bridge]) {
+      expect(projected.reservedExpensesMinor).toBe(0);
+      expect(projected.reservedUntilIncomeMinor).toBe(0);
+      expect(projected.daysLeft).toBe(20);
+      expect(projected.daysUntilHorizon).toBe(20);
+      expect(projected.livingPoolMinor).toBe(saldoMinor);
+      expect(projected.dayBudgetMinor).toBe(98_860);
+    }
+    expect(
+      hintPlain(
+        livingBudgetHintSv({
+          dayBudgetMinor: living.dayBudgetMinor,
+          poolMinor: living.livingPoolMinor,
+          reservedMinor: living.reservedUntilIncomeMinor,
+          reservedExpensesMinor: living.reservedExpensesMinor,
+          saldoMinor,
+          daysUntilHorizon: living.daysUntilHorizon,
+          nextIncomeLabelSv: living.nextIncomeLabelSv,
+        }),
+      ),
+    ).toEqual([
+      "Du kan leva på 988,60 THB / dag",
+      "Saldo 19 772 THB · 20 dagar till 25 okt.",
+    ]);
+  });
+
+  it("an upcoming bill before next income reserves", () => {
+    const now = new Date("2026-10-05T03:00:00.000Z");
+    const dueAt = "2026-10-10T12:00:00.000Z";
+    const cycle = fundedCycle(now, [
+      { name: "Internet", amountMinor: 1_250_00, nextDueAt: dueAt },
+    ]);
+    expect(cycle.expenses.map((row) => row.dueAt)).toContain(dueAt);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 1_977_200,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(remainingReservedUntilHorizon(cycle, cycle.nextPaycheckAt, tz, now)).toBe(
+      1_250_00,
+    );
+    expect(living.reservedExpensesMinor).toBe(1_250_00);
+    expect(living.reservedUntilIncomeMinor).toBe(1_250_00);
+    expect(living.livingPoolMinor).toBe(1_977_200 - 1_250_00);
+  });
+
+  it("a bill due on the income date reserves 0", () => {
+    const now = new Date("2026-09-19T03:00:00.000Z");
+    const incomeAt = "2026-10-03T12:00:00.000Z";
+    const cycle = fundedCycle(
+      now,
+      [{ name: "Hyra", amountMinor: 12_000_00, nextDueAt: incomeAt }],
+      [
+        { name: "Lön sep", nextDueAt: "2026-09-03T12:00:00.000Z" },
+        { name: "Lön okt", nextDueAt: incomeAt },
+        { name: "Lön okt sen", nextDueAt: "2026-10-25T12:00:00.000Z" },
+      ],
+    );
+    expect(cycle.nextPaycheckAt).toBe(incomeAt);
+    expect(cycle.expenses.map((row) => row.dueAt)).toContain(incomeAt);
+    expect(remainingReservedUntilHorizon(cycle, cycle.nextPaycheckAt, tz, now)).toBe(
+      0,
+    );
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 5_000_00,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.reservedExpensesMinor).toBe(0);
+    expect(living.reservedUntilIncomeMinor).toBe(0);
+    expect(living.livingPoolMinor).toBe(5_000_00);
+  });
+
+  it("a bill due today reserves", () => {
+    const now = new Date("2026-10-05T08:00:00.000Z");
+    const dueAt = "2026-10-05T01:00:00.000Z";
+    const cycle = fundedCycle(now, [
+      { name: "Mobil", amountMinor: 499_00, nextDueAt: dueAt },
+    ]);
+    expect(cycle.expenses.map((row) => row.dueAt)).toContain(dueAt);
+    expect(remainingReservedUntilHorizon(cycle, cycle.nextPaycheckAt, tz, now)).toBe(
+      499_00,
+    );
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 1_977_200,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+    expect(living.reservedExpensesMinor).toBe(499_00);
+    expect(living.daysUntilHorizon).toBe(20);
+    expect(living.livingPoolMinor).toBe(1_977_200 - 499_00);
   });
 });
 
