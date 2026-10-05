@@ -120,7 +120,7 @@ describe("readLastHomeCookie session bind", () => {
     await expect(readLastHomeCookie()).resolves.toBeNull();
   });
 
-  it("clears the Hem cookie on logout", async () => {
+  it("can still delete the Hem cookie when asked", async () => {
     const { clearLastHomeCookie } = await import("./last-home-cookie.server");
     await clearLastHomeCookie();
     expect(cookieDelete).toHaveBeenCalledWith(LAST_HOME_COOKIE);

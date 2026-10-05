@@ -92,8 +92,9 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
     analys: slimAnalys(data.analys),
   };
   // Cookie must land even when localStorage is unavailable — layout SSR
-  // reads numa.lastHome.v1 for first Kvar/Över (SPEC 6b).
-  writeLastHomeCookie(payload.home);
+  // reads numa.lastHome.v1 for first Kvar/Över (SPEC 6b). home:null persist
+  // must not erase the slim shell (logout keep-cookie / SPEC B).
+  if (payload.home) writeLastHomeCookie(payload.home);
   const storage = persistStorage();
   if (!storage) return;
   try {
@@ -123,8 +124,12 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
   }
 }
 
-export function clearPersistedLastKnown(): void {
-  writeLastHomeCookie(null);
+export function clearPersistedLastKnown(opts?: {
+  keepHomeCookie?: boolean;
+}): void {
+  if (!opts?.keepHomeCookie) {
+    writeLastHomeCookie(null);
+  }
   const storage = persistStorage();
   if (!storage) return;
   try {
