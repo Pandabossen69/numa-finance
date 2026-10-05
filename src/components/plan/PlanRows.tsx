@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   formatListDateSv,
+  plannedPayChipLabel,
   planPartialBreakdown,
   planRowHeroMinor,
   planRowView,
@@ -18,6 +19,7 @@ import { isTempPlanId } from "@/features/plan/optimistic";
 import { PlanEquation } from "@/components/plan/PlanEquation";
 import { planChipClass, planChipLabel } from "@/components/plan/plan-chip";
 import {
+  PlanPayLaterFields,
   PlanRowEditFields,
   PlanRowPartialFields,
   type PlanEditDraft,
@@ -39,6 +41,8 @@ const PlanListRow = memo(function PlanListRow({
   onStartPartial,
   onStartEdit,
   onDelete,
+  onStartPayLater,
+  onClearPayLater,
 }: {
   item: PlanItem;
   settleKind: "income" | "expense";
@@ -54,6 +58,8 @@ const PlanListRow = memo(function PlanListRow({
   onStartPartial: (item: PlanItem) => void;
   onStartEdit: (item: PlanItem) => void;
   onDelete: (id: string) => void;
+  onStartPayLater?: (item: PlanItem) => void;
+  onClearPayLater?: (id: string) => void;
 }) {
   const rowCurrency = (item.currency || currency) as CurrencyCode;
   const dateLabel = subtitle(item);
@@ -90,6 +96,15 @@ const PlanListRow = memo(function PlanListRow({
         onStartEdit(item);
       },
     });
+    if (settleKind === "expense" && onStartPayLater) {
+      menuItems.push({
+        label: "Betala senare",
+        onSelect: () => {
+          onConfirmId(null);
+          onStartPayLater(item);
+        },
+      });
+    }
   } else if (status === "partial") {
     menuItems.push({
       label: addPartialLabel,
@@ -110,6 +125,15 @@ const PlanListRow = memo(function PlanListRow({
         onStartEdit(item);
       },
     });
+    if (settleKind === "expense" && onStartPayLater) {
+      menuItems.push({
+        label: "Betala senare",
+        onSelect: () => {
+          onConfirmId(null);
+          onStartPayLater(item);
+        },
+      });
+    }
     menuItems.push({
       label: SV.angraKlar,
       disabled: pendingId === item.id && pendingAction === "settle",
@@ -129,12 +153,31 @@ const PlanListRow = memo(function PlanListRow({
       },
     });
   }
+  if (
+    status !== "settled" &&
+    item.plannedPayAt &&
+    onClearPayLater
+  ) {
+    menuItems.push({
+      label: "Ta bort datum",
+      disabled: pendingId === item.id && pendingAction === "save",
+      onSelect: () => {
+        onConfirmId(null);
+        onClearPayLater(item.id);
+      },
+    });
+  }
   menuItems.push({
     label: "Ta bort",
     tone: "danger",
     disabled: pendingId === item.id && pendingAction === "delete",
     onSelect: () => onConfirmId(item.id),
   });
+
+  const payLaterChip =
+    settleKind === "expense" && status !== "settled"
+      ? plannedPayChipLabel(item, new Date(), timeZone)
+      : null;
 
   const rowState = [
     settled ? "is-settled" : partial ? "is-partial" : "",
@@ -154,6 +197,11 @@ const PlanListRow = memo(function PlanListRow({
         ) : (
           <p className="numa-plan-meta">{dateLabel}</p>
         )}
+        {payLaterChip ? (
+          <p className="mt-1">
+            <span className="numa-chip numa-chip-ink">{payLaterChip}</span>
+          </p>
+        ) : null}
       </div>
       {isTempPlanId(item.id) ? (
         <div className="numa-plan-figures">
@@ -246,6 +294,11 @@ export function PlanRows({
   onCancelEdit,
   onSaveEdit,
   onDelete,
+  payLaterId = null,
+  onStartPayLater,
+  onCancelPayLater,
+  onSavePayLater,
+  onClearPayLater,
 }: {
   items: PlanItem[];
   settleKind: "income" | "expense";
@@ -273,6 +326,11 @@ export function PlanRows({
   onCancelEdit: () => void;
   onSaveEdit: (id: string, draft: PlanEditDraft) => void;
   onDelete: (id: string) => void;
+  payLaterId?: string | null;
+  onStartPayLater?: (item: PlanItem) => void;
+  onCancelPayLater?: () => void;
+  onSavePayLater?: (id: string, ymd: string) => void;
+  onClearPayLater?: (id: string) => void;
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -295,6 +353,19 @@ export function PlanRows({
               pendingAction={pendingAction}
               onSave={onSaveEdit}
               onCancel={onCancelEdit}
+            />
+          );
+        }
+        if (payLaterId === item.id && onSavePayLater && onClearPayLater && onCancelPayLater) {
+          return (
+            <PlanPayLaterFields
+              key={item.id}
+              item={item}
+              timeZone={timeZone}
+              pending={pendingId === item.id && pendingAction === "save"}
+              onSave={onSavePayLater}
+              onClear={onClearPayLater}
+              onCancel={onCancelPayLater}
             />
           );
         }
@@ -337,6 +408,8 @@ export function PlanRows({
             onStartPartial={onStartPartial}
             onStartEdit={onStartEdit}
             onDelete={onDelete}
+            onStartPayLater={onStartPayLater}
+            onClearPayLater={onClearPayLater}
           />
         );
       })}

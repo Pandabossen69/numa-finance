@@ -2225,6 +2225,7 @@ export async function createPlanItem(input: {
       settledAt: null,
       settledMinor: null,
       remainingDueAt: null,
+      plannedPayAt: null,
       createdAt: ts,
       updatedAt: ts,
     };
@@ -2244,6 +2245,7 @@ export async function updatePlanItem(input: {
   settledAt?: string | null;
   settledMinor?: number | null;
   remainingDueAt?: string | null;
+  plannedPayAt?: string | null;
 }): Promise<PlanItem> {
   let found: PlanItem | null = null;
   await updateStore((s) => {
@@ -2260,6 +2262,7 @@ export async function updatePlanItem(input: {
     if (input.settledAt !== undefined) item.settledAt = input.settledAt;
     if (input.settledMinor !== undefined) item.settledMinor = input.settledMinor;
     if (input.remainingDueAt !== undefined) item.remainingDueAt = input.remainingDueAt;
+    if (input.plannedPayAt !== undefined) item.plannedPayAt = input.plannedPayAt;
     item.updatedAt = nowIso();
     const shouldReconcile =
       (item.settledMinor ?? 0) > 0 ||
@@ -2300,6 +2303,41 @@ export async function updatePlanItem(input: {
     found = item;
   });
   return found!;
+}
+
+export async function setPlanItemPlannedPay(input: {
+  id: string;
+  plannedPayAt: string | null;
+  clientMutationId: string;
+}): Promise<PlanItem> {
+  let found: PlanItem | null = null;
+  await updateStore((s) => {
+    const cached = (s.mutationKeys ?? []).find(
+      (row) => row.mutationId === input.clientMutationId,
+    );
+    if (cached) {
+      const saved = (cached.result as { item?: PlanItem }).item;
+      if (saved) {
+        found = saved;
+        return;
+      }
+    }
+    const item = (s.planItems ?? []).find((p) => p.id === input.id);
+    if (!item) throw new Error("Planposten hittades inte");
+    item.plannedPayAt = input.plannedPayAt;
+    item.updatedAt = nowIso();
+    found = { ...item };
+    s.mutationKeys = s.mutationKeys ?? [];
+    s.mutationKeys.push({
+      userId: LOCAL_DEMO_USER_ID,
+      mutationId: input.clientMutationId,
+      kind: "plan_pay_later",
+      result: { item: found },
+      createdAt: nowIso(),
+    });
+  });
+  if (!found) throw new Error("Planposten hittades inte");
+  return found;
 }
 
 export async function settlePlanItemAtomic(input: {

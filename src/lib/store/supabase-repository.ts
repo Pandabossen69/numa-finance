@@ -30,8 +30,10 @@ import {
   type PlanItem,
   parsePlanCategoryKind,
   planWriteUserError,
+  PLAN_PAY_LATER_UNAVAILABLE_SV,
   PLAN_SAVE_FAILED_SV,
   PLAN_UPDATE_FAILED_SV,
+  isMissingPlannedPayColumn,
   type Profile,
   type SourceObservation,
   sortAccountsForList,
@@ -78,6 +80,7 @@ import {
 } from "@/lib/supabase/selects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { accountLifecycleFacts } from "./account-lifecycle-store";
+import { readPlanItemsSelectingPlannedPay } from "./plan-item-read";
 import { inferAccountKind } from "./account-kind-infer";
 import { resolveCheckpointFx } from "./checkpoint-fx";
 import { fetchMenuSnapshotBundle } from "./menu-snapshot-fetch";
@@ -1736,17 +1739,32 @@ export async function openingBalanceVerifiedAt(
   return typeof data?.verified_at === "string" ? data.verified_at : null;
 }
 
-async function listPlanItemsUncached(): Promise<PlanItem[]> {
+/**
+ * False only after a read proves `planned_pay_at` is missing. Unknown and
+ * true both use the full select, so a warm process keeps returning the date.
+ */
+let planItemsIncludePlannedPay: boolean | null = null;
+
+async function queryPlanItems(active: boolean): Promise<PlanItem[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("plan_items")
-    .select(numaSelect(PLAN_ITEM_SELECT))
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .order("name", { ascending: true });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapPlanItem);
+  const read = await readPlanItemsSelectingPlannedPay({
+    flag: planItemsIncludePlannedPay,
+    run: (columns) => {
+      const query = supabase
+        .from("plan_items")
+        .select(numaSelect(columns))
+        .eq("user_id", userId)
+        .eq("is_active", active);
+      return active ? query.order("name", { ascending: true }) : query;
+    },
+  });
+  planItemsIncludePlannedPay = read.flag;
+  return read.rows.map((row) => mapPlanItem(row));
+}
+
+async function listPlanItemsUncached(): Promise<PlanItem[]> {
+  return queryPlanItems(true);
 }
 
 /** Request-scoped list — must not be used after a plan write in the same action. */
@@ -1756,15 +1774,7 @@ export { listPlanItemsUncached };
 
 /** Inactive rows are hidden from listPlanItems. Savings reuse reads them. */
 export async function listInactivePlanItems(): Promise<PlanItem[]> {
-  const userId = await requireUserId();
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("plan_items")
-    .select(numaSelect(PLAN_ITEM_SELECT))
-    .eq("user_id", userId)
-    .eq("is_active", false);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(mapPlanItem);
+  return queryPlanItems(false);
 }
 
 function itemFromSaveRpc(data: unknown): PlanItem {
@@ -1835,6 +1845,68 @@ export async function updatePlanItem(input: {
   });
   if (error) throw new Error(planWriteUserError(error, PLAN_UPDATE_FAILED_SV));
   return itemFromSaveRpc(data);
+}
+
+export async function setPlanItemPlannedPay(input: {
+  id: string;
+  plannedPayAt: string | null;
+  clientMutationId: string;
+}): Promise<PlanItem> {
+  const replay = await readPayLaterMutation(input.clientMutationId);
+  if (replay) return replay;
+
+  const userId = await requireUserId();
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("plan_items")
+    .update({
+      planned_pay_at: input.plannedPayAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.id)
+    .eq("user_id", userId)
+    .select(numaSelect(PLAN_ITEM_SELECT))
+    .maybeSingle();
+  if (error) {
+    if (isMissingPlannedPayColumn(error)) {
+      throw new Error(PLAN_PAY_LATER_UNAVAILABLE_SV);
+    }
+    throw new Error(planWriteUserError(error, PLAN_UPDATE_FAILED_SV));
+  }
+  if (!data) throw new Error("Planposten hittades inte");
+  const item = mapPlanItem(data);
+  await rememberPayLaterMutation(userId, input.clientMutationId, item);
+  return item;
+}
+
+async function readPayLaterMutation(mutationId: string): Promise<PlanItem | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("mutation_keys")
+    .select("result")
+    .eq("mutation_id", mutationId)
+    .maybeSingle();
+  if (error || !data?.result) return null;
+  const result = data.result as { item?: PlanItem };
+  return result.item?.id ? result.item : null;
+}
+
+async function rememberPayLaterMutation(
+  userId: string,
+  mutationId: string,
+  item: PlanItem,
+): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("mutation_keys").insert({
+    user_id: userId,
+    mutation_id: mutationId,
+    kind: "plan_pay_later",
+    result: { item },
+  });
+  if (error && error.code !== "23505") {
+    // The date is already saved. A lost idempotency row must not fail the tap.
+    return;
+  }
 }
 
 export async function settlePlanItemAtomic(input: {

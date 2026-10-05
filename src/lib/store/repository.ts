@@ -309,6 +309,12 @@ export async function updatePlanItem(
   return api().updatePlanItem(input);
 }
 
+export async function setPlanItemPlannedPay(
+  input: Parameters<typeof local.setPlanItemPlannedPay>[0],
+) {
+  return api().setPlanItemPlannedPay(input);
+}
+
 export async function settlePlanItemAtomic(
   input: Parameters<typeof local.settlePlanItemAtomic>[0],
 ) {

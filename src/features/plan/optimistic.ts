@@ -22,7 +22,7 @@ export function stampPlanItems(items: PlanItem[]): string {
   return items
     .map(
       (item) =>
-        `${item.id}:${item.updatedAt}:${item.amountMinor}:${item.name}:${item.nextDueAt ?? ""}:${item.isActive}:${item.settledAt ?? ""}:${item.settledMinor ?? ""}:${item.remainingDueAt ?? ""}`,
+        `${item.id}:${item.updatedAt}:${item.amountMinor}:${item.name}:${item.nextDueAt ?? ""}:${item.isActive}:${item.settledAt ?? ""}:${item.settledMinor ?? ""}:${item.remainingDueAt ?? ""}:${item.plannedPayAt ?? ""}`,
     )
     .sort()
     .join("|");
@@ -51,6 +51,7 @@ export function optimisticPlanItem(input: {
     settledAt: null,
     settledMinor: null,
     remainingDueAt: null,
+    plannedPayAt: null,
     createdAt: ts,
     updatedAt: ts,
   };

@@ -77,6 +77,11 @@ export type PlanItem = {
    * Null = keep using `nextDueAt`. Does not move the row to another month.
    */
   remainingDueAt?: string | null;
+  /**
+   * When the owner plans to pay this occurrence («Betala senare»).
+   * Null/absent = use `nextDueAt`. Does not move the plan month.
+   */
+  plannedPayAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

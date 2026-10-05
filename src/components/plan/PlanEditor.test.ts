@@ -367,4 +367,33 @@ describe("Plan dates and add-form", () => {
     );
     expect(commit).not.toContain("} else {\n                  setAddKind(null);");
   });
+
+  it("saves Betala senare optimistically on the plan edit path", () => {
+    expect(rows).toContain("Betala senare");
+    expect(rows).toContain("Ta bort datum");
+    expect(rows).toContain("plannedPayChipLabel");
+    expect(editor).toContain("setPlanItemPlannedPayAction");
+    const save = editor.slice(
+      editor.indexOf("const savePlannedPay = useCallback"),
+      editor.indexOf("const cancelPartial = useCallback"),
+    );
+    expect(save).toContain("clientMutationId: newClientMutationId()");
+    expect(save).toContain("replaceItemById(rows, id, next)");
+    expect(save).toContain("replaceItemById(rows, id, previous)");
+    expect(save.indexOf("setPayLaterId(null)")).toBeLessThan(
+      save.indexOf("void runMutation"),
+    );
+  });
+
+  it("opens Betala senare on a future saved day and blocks a date outside the range", () => {
+    expect(forms).toContain(
+      "existing && existing >= bounds.min ? existing : bounds.defaultYmd",
+    );
+    expect(forms).toContain("payLaterRangeMessageSv");
+    expect(forms).toContain("clamp={false}");
+    expect(dateField).toContain("function clampBookableYmd");
+    expect(dateField).toContain("clamp = true");
+    expect(dateField).toContain("min={min}");
+    expect(dateField).toContain("max={max}");
+  });
 });

@@ -86,6 +86,12 @@ export type PayCycleProjection = {
   endInferred: boolean;
   incomes: PlanItem[];
   expenses: CycleExpense[];
+  /**
+   * Unpaid bills with «Betala senare» whose original due date sits outside
+   * the expense window. They do not change plan-month totals. Living saldo
+   * may still reserve them from `plannedPayAt`.
+   */
+  payLaterOutsideWindow?: CycleExpense[];
   incomeMinor: number;
   expenseMinor: number;
   reservedMinor: number;
@@ -225,6 +231,32 @@ export function expensesInWindow(
       Date.parse(a.dueAt) - Date.parse(b.dueAt) || a.item.id.localeCompare(b.item.id),
   );
   return result;
+}
+
+/**
+ * Unpaid bills the owner moved with «Betala senare» whose original due
+ * date is outside the cycle expense window. Kept out of expense totals.
+ */
+function payLaterBillsOutsideWindow(
+  items: PlanItem[],
+  expenses: CycleExpense[],
+): CycleExpense[] {
+  const seen = new Set(expenses.map((row) => row.item.id));
+  const extra: CycleExpense[] = [];
+  for (const item of items) {
+    if (!item.isActive || seen.has(item.id)) continue;
+    if (!item.plannedPayAt) continue;
+    if (item.name === NEXT_INCOME_NAME) continue;
+    if (isPlanIncome(item) || isPlanSavings(item)) continue;
+    if (remainingOpenMinor(item) <= 0) continue;
+    const dueAt = item.nextDueAt ?? item.plannedPayAt;
+    extra.push({ item, dueAt });
+  }
+  extra.sort(
+    (a, b) =>
+      Date.parse(a.dueAt) - Date.parse(b.dueAt) || a.item.id.localeCompare(b.item.id),
+  );
+  return extra;
 }
 
 function emptyCycle(): PayCycleProjection {
@@ -391,6 +423,7 @@ export function projectPayCycle(
     expenseStartIso,
     expenseEndIso,
   );
+  const payLaterOutsideWindow = payLaterBillsOutsideWindow(items, expenses);
   const { reservedMinor, bufferMinor, flexibleMinor, expenseMinor } =
     sumExpenseParts(expenses);
   const freeToSpendMinor = incomeMinor - expenseMinor - savingsMinor;
@@ -443,6 +476,7 @@ export function projectPayCycle(
     endInferred: phase === "partial" ? false : endInferred,
     incomes: incomeUnique,
     expenses,
+    payLaterOutsideWindow,
     incomeMinor,
     expenseMinor,
     reservedMinor,

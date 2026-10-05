@@ -1,4 +1,5 @@
 import { calendarDaysBetween, formatCountSv, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
+import { reservePayInstant } from "./planned-pay";
 import type { PayCycleProjection } from "./pay-cycle";
 import {
   labelSavingsMonthsSv,
@@ -22,10 +23,15 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
  * Day envelope (dagsbudget):
  * Morning sticky allowance is floor(poolWithoutTodaySpend / daysLeft).
  * The pool is cash to live on until the next paycheck: bank balance
- * minus remaining planned expenses/savings due before that horizon
- * (already-settled amounts stay in the ledger/saldo and are not
- * subtracted again). Cycle mode must not silently use plan
- * `freeToSpend` when a saldo exists — that hides reserved money.
+ * minus unpaid bills and savings whose effective pay day is still ahead
+ * (today through the day before that horizon). A bill uses
+ * `plannedPayAt` when set, otherwise its due date. Overdue unpaid
+ * bills without a planned date stay in Plan and do not reserve.
+ * A planned date that has already passed still reserves (counted as
+ * today). Already-settled amounts stay in
+ * the ledger/saldo and are not subtracted again. Cycle mode must not
+ * silently use plan `freeToSpend` when a saldo exists — that hides
+ * reserved money.
  * `daysLeft` is calendar days until the next real planned paycheck
  * (`nextPaycheckAt`), never the later cycle-end last income.
  * Spending today depletes *today's remaining only* — it does not
@@ -124,19 +130,31 @@ export type ReservedUntilHorizon = {
 
 /**
  * Remaining planned bills + savings that still sit in saldo until the next
- * paycheck. Items due on/after the horizon are paid from that income.
+ * paycheck.
+ *
+ * Unpaid bills reserve only when their effective pay day in `timeZone`
+ * is in [today, next income). Effective day is `plannedPayAt` when set,
+ * otherwise the due date. Overdue bills without a planned date stay
+ * visible in Plan and do not reserve. A planned date before today still
+ * reserves, counted as today («Sen»). Bills timestamped on or after the
+ * horizon are paid from that income and stay excluded.
  */
 export function remainingReservedBreakdownUntilHorizon(
   cycle: PayCycleProjection,
   horizonIso: string | null,
-  timeZone = "Asia/Bangkok",
+  timeZone: string,
+  now: Date,
 ): ReservedUntilHorizon {
   const horizonMs = horizonIso ? Date.parse(horizonIso) : Number.POSITIVE_INFINITY;
   let expensesMinor = 0;
-  for (const { item, dueAt } of cycle.expenses) {
-    const due = Date.parse(dueAt);
-    if (!Number.isFinite(due)) continue;
-    if (Number.isFinite(horizonMs) && due >= horizonMs) continue;
+  const expenseRows = [
+    ...cycle.expenses,
+    ...(cycle.payLaterOutsideWindow ?? []),
+  ];
+  for (const { item, dueAt } of expenseRows) {
+    const reserveAt = reservePayInstant(dueAt, item.plannedPayAt, now, timeZone);
+    if (reserveAt == null) continue;
+    if (Number.isFinite(horizonMs) && reserveAt >= horizonMs) continue;
     expensesMinor += remainingOpenMinor(item);
   }
 
@@ -173,10 +191,15 @@ export function remainingReservedBreakdownUntilHorizon(
 export function remainingReservedUntilHorizon(
   cycle: PayCycleProjection,
   horizonIso: string | null,
-  timeZone = "Asia/Bangkok",
+  timeZone: string,
+  now: Date,
 ): number {
-  return remainingReservedBreakdownUntilHorizon(cycle, horizonIso, timeZone)
-    .totalMinor;
+  return remainingReservedBreakdownUntilHorizon(
+    cycle,
+    horizonIso,
+    timeZone,
+    now,
+  ).totalMinor;
 }
 
 function reservedFields(breakdown: ReservedUntilHorizon): Pick<
@@ -418,6 +441,7 @@ function projectBridge(input: {
     cycle,
     input.nextIncomeAt,
     timeZone,
+    now,
   );
   const liveOn = hasBalance
     ? bankBalanceMinor - reserved.totalMinor
@@ -595,6 +619,7 @@ export function projectLivingBudget(input: {
     cycle,
     horizon,
     timeZone,
+    now,
   );
   // Spec L leftover is income − bills − funding-month savings already in
   // freeToSpend. Remaining month avsätt is reserved (Över) but must not be

@@ -338,6 +338,7 @@ type DbPlanItem = {
   settled_at?: string | null;
   settled_minor?: number | null;
   remaining_due_at?: string | null;
+  planned_pay_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -357,6 +358,7 @@ export function mapPlanItem(row: DbPlanItem): PlanItem {
     settledMinor:
       row.settled_minor == null ? null : Number(row.settled_minor),
     remainingDueAt: row.remaining_due_at ?? null,
+    plannedPayAt: row.planned_pay_at ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

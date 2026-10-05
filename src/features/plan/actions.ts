@@ -20,6 +20,8 @@ import {
   NEXT_INCOME_NAME,
   planSettleTargetMinor,
   planAmountBelowSettledError,
+  payLaterDateBounds,
+  payLaterRangeMessageSv,
   type PlanItem,
   PLAN_KIND_INVALID_SV,
   PLAN_SAVE_FAILED_SV,
@@ -40,6 +42,7 @@ import {
   refreshTodaySnapshot,
   setNextIncomeDate,
   settlePlanItemAtomic,
+  setPlanItemPlannedPay,
   updatePlanItem,
 } from "@/lib/store/repository";
 import {
@@ -139,7 +142,8 @@ function planWriteFailure(
     | "update"
     | "update_amount"
     | "import_fixed"
-    | "set_savings",
+    | "set_savings"
+    | "pay_later",
 ): { ok: false; error: string } {
   if (error instanceof z.ZodError) {
     if (error.issues.some((issue) => issue.path.includes("kind"))) {
@@ -726,5 +730,67 @@ export async function importFixedExpensesFromPreviousMonthAction(
       "Kunde inte läsa in fasta utgifter",
       "import_fixed",
     );
+  }
+}
+
+const plannedPaySchema = z.object({
+  id: z.string().uuid(),
+  /** `YYYY-MM-DD` in the profile timezone, or null to clear. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  clientMutationId: z.string().uuid(),
+});
+
+/** «Betala senare» — same plan-item write path, idempotent on clientMutationId. */
+export async function setPlanItemPlannedPayAction(
+  raw: z.infer<typeof plannedPaySchema>,
+): Promise<ActionResult> {
+  try {
+    const input = plannedPaySchema.parse(raw);
+    const ctx = await planWriteContext();
+    const existing = ctx.planItems.find((row) => row.id === input.id);
+    if (!existing) return { ok: false, error: "Planposten hittades inte" };
+    if (isPlanIncome(existing) || isPlanSavings(existing)) {
+      return { ok: false, error: "Den här posten kan inte betalas senare." };
+    }
+    if (isPlanSettled(existing)) {
+      return { ok: false, error: "Räkningen är redan betald." };
+    }
+
+    let plannedPayAt: string | null = null;
+    if (input.date) {
+      const bounds = payLaterDateBounds(new Date(), ctx.timeZone);
+      if (input.date < bounds.min || input.date > bounds.max) {
+        return { ok: false, error: payLaterRangeMessageSv(bounds.max) };
+      }
+      plannedPayAt = `${input.date}T12:00:00.000Z`;
+    }
+
+    const item = await setPlanItemPlannedPay({
+      id: input.id,
+      plannedPayAt,
+      clientMutationId: input.clientMutationId,
+    });
+    try {
+      const snap = await refreshTodaySnapshot();
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item,
+        home: homeSnapshotFromToday(snap),
+        plan: planSnapshotFromToday(snap),
+        accounts: accountsSnapshotFromToday(snap),
+        movements: movementsSnapshotFromToday(snap),
+      };
+    } catch {
+      revalidateSettleCaches();
+      return {
+        ok: true,
+        item,
+        refreshPending: true,
+        refreshPendingMessage: "Sparat. Uppdaterar siffrorna…",
+      };
+    }
+  } catch (error) {
+    return planWriteFailure(error, PLAN_UPDATE_FAILED_SV, "pay_later");
   }
 }

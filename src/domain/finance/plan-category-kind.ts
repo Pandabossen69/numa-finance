@@ -1,4 +1,8 @@
 import {
+  PLAN_PAY_LATER_RANGE_SV,
+  PLAN_PAY_LATER_UNAVAILABLE_SV,
+} from "./planned-pay";
+import {
   PLAN_CATEGORY_KINDS,
   type PlanCategoryKind,
   type PlanItem,
@@ -25,6 +29,10 @@ const KNOWN_SV_ERRORS = new Set([
   PLAN_KIND_INVALID_SV,
   PLAN_SAVE_FAILED_SV,
   PLAN_UPDATE_FAILED_SV,
+  PLAN_PAY_LATER_UNAVAILABLE_SV,
+  PLAN_PAY_LATER_RANGE_SV,
+  "Räkningen är redan betald.",
+  "Den här posten kan inte betalas senare.",
   "Planposten hittades inte",
   "Du måste logga in",
   "Belopp måste vara större än 0",

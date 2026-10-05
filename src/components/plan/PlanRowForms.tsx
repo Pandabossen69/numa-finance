@@ -4,6 +4,8 @@ import { memo, useMemo, useState } from "react";
 import type { PlanItem } from "@/domain/finance";
 import {
   isoToDateInput,
+  payLaterDateBounds,
+  payLaterRangeMessageSv,
   previewAdditionalPartialRemaining,
   remainingDueIso,
   settledAmountMinor,
@@ -224,6 +226,92 @@ export const PlanRowPartialFields = memo(function PlanRowPartialFields({
           {saveError}
         </p>
       ) : null}
+    </li>
+  );
+});
+
+export const PlanPayLaterFields = memo(function PlanPayLaterFields({
+  item,
+  timeZone,
+  pending,
+  onSave,
+  onClear,
+  onCancel,
+}: {
+  item: PlanItem;
+  timeZone: string;
+  pending: boolean;
+  onSave: (id: string, ymd: string) => void;
+  onClear: (id: string) => void;
+  onCancel: () => void;
+}) {
+  const bounds = useMemo(
+    () => payLaterDateBounds(new Date(), timeZone),
+    [timeZone],
+  );
+  const existing = isoToDateInput(item.plannedPayAt, timeZone);
+  const initial =
+    existing && existing >= bounds.min ? existing : bounds.defaultYmd;
+  const [date, setDate] = useState(initial);
+  const outOfRange = Boolean(date) && (date < bounds.min || date > bounds.max);
+  const rangeMessage = outOfRange ? payLaterRangeMessageSv(bounds.max) : null;
+
+  return (
+    <li className="numa-plan-row">
+      <div className="min-w-0 space-y-2">
+        <p className="numa-plan-name" title={item.name}>
+          {item.name}
+        </p>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-medium text-[var(--numa-muted)]">
+            Betalas
+          </span>
+          <PlanDateField
+            value={date}
+            onChange={setDate}
+            ariaLabel="Datum för Betala senare"
+            min={bounds.min}
+            max={bounds.max}
+            clamp={false}
+          />
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={pending || !date || outOfRange}
+            className="numa-btn numa-btn-accent min-h-10 flex-1"
+            onClick={() => {
+              if (outOfRange) return;
+              onSave(item.id, date);
+            }}
+          >
+            {pending ? "Sparar…" : "Spara"}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+            onClick={onCancel}
+          >
+            Avbryt
+          </button>
+          {item.plannedPayAt ? (
+            <button
+              type="button"
+              disabled={pending}
+              className="numa-press min-h-10 rounded-xl px-3 text-sm text-[var(--numa-muted)] disabled:opacity-45"
+              onClick={() => onClear(item.id)}
+            >
+              Ta bort datum
+            </button>
+          ) : null}
+        </div>
+        {rangeMessage ? (
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {rangeMessage}
+          </p>
+        ) : null}
+      </div>
     </li>
   );
 });
