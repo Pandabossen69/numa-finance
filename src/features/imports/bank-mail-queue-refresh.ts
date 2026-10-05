@@ -6,35 +6,37 @@ import {
   invalidateAnalysSnapshot,
   lastImporteraRows,
   patchImporteraRow,
+  persistPendingBankMailCount,
 } from "@/features/home/last-snapshot";
 import { refreshBankMailSurfacesAction } from "@/features/imports/bank-mail-actions";
+import {
+  bankMailPendingCountVersion,
+  publishBankMailPendingCount as publishCount,
+} from "@/features/imports/bank-mail-pending-store";
 import { readPendingBankMailCount } from "@/lib/numa/read-client";
 import { isPendingBankMail } from "@/features/imports/bank-mail-queue";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
 
-let pendingCount: number | null = null;
-let pendingCountVersion = 0;
-const countListeners = new Set<() => void>();
-
-export function bankMailPendingCountSnapshot(): number | null {
-  return pendingCount;
-}
-
-export function subscribeBankMailPendingCount(listener: () => void) {
-  countListeners.add(listener);
-  return () => {
-    countListeners.delete(listener);
-  };
-}
-
-export function bankMailPendingCountVersion(): number {
-  return pendingCountVersion;
-}
+export {
+  bankMailPendingCountSnapshot,
+  bankMailPendingCountVersion,
+  seedBankMailPendingCount,
+  subscribeBankMailPendingCount,
+} from "@/features/imports/bank-mail-pending-store";
 
 export function publishBankMailPendingCount(count: number) {
-  pendingCountVersion += 1;
-  pendingCount = count;
-  for (const listener of countListeners) listener();
+  publishCount(count);
+  persistPendingBankMailCount(count);
+}
+
+/** Stale Hem read must not overwrite a confirm or reject that already published. */
+export function publishBankMailPendingCountIfCurrent(
+  seenVersion: number,
+  count: number,
+): boolean {
+  if (bankMailPendingCountVersion() !== seenVersion) return false;
+  publishBankMailPendingCount(count);
+  return true;
 }
 
 let surfacesStale = false;

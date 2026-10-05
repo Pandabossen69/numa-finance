@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { settledHomeEpoch } from "@/features/home/invalidate-settled-home";
 import { rememberImporteraRows } from "@/features/home/last-snapshot";
+import { resetRememberedPendingBankMailCountForTests } from "@/features/home/last-snapshot-persist";
 
 const surfaces = vi.hoisted(() => vi.fn());
 const count = vi.hoisted(() => vi.fn());
@@ -13,10 +14,22 @@ vi.mock("@/lib/numa/read-client", () => ({
   readPendingBankMailCount: count,
 }));
 
-const { refreshAfterBankMailQueueChange, retryBankMailSurfacesIfStale } =
-  await import("@/features/imports/bank-mail-queue-refresh");
+const {
+  bankMailPendingCountSnapshot,
+  bankMailPendingCountVersion,
+  publishBankMailPendingCount,
+  publishBankMailPendingCountIfCurrent,
+  refreshAfterBankMailQueueChange,
+  retryBankMailSurfacesIfStale,
+  seedBankMailPendingCount,
+} = await import("@/features/imports/bank-mail-queue-refresh");
+const { resetBankMailPendingCountForTests } = await import(
+  "@/features/imports/bank-mail-pending-store"
+);
 
 beforeEach(() => {
+  resetBankMailPendingCountForTests();
+  resetRememberedPendingBankMailCountForTests();
   surfaces.mockReset();
   count.mockReset();
   count.mockResolvedValue({ ok: true, count: 1 });
@@ -68,5 +81,44 @@ describe("refreshAfterBankMailQueueChange", () => {
     ).resolves.toEqual({ ok: true });
     expect(error).not.toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe("bank mail pending count seed and version guard", () => {
+  it("paints a last-known count without counting as a newer publish", () => {
+    seedBankMailPendingCount(2);
+    expect(bankMailPendingCountSnapshot()).toBe(2);
+    expect(bankMailPendingCountVersion()).toBe(0);
+
+    const seen = bankMailPendingCountVersion();
+    expect(publishBankMailPendingCountIfCurrent(seen, 4)).toBe(true);
+    expect(bankMailPendingCountSnapshot()).toBe(4);
+    expect(bankMailPendingCountVersion()).toBe(1);
+  });
+
+  it("keeps a confirm that landed while the Hem read was in flight", () => {
+    seedBankMailPendingCount(2);
+    const seenAtReadStart = bankMailPendingCountVersion();
+
+    publishBankMailPendingCount(1);
+    expect(publishBankMailPendingCountIfCurrent(seenAtReadStart, 2)).toBe(
+      false,
+    );
+    expect(bankMailPendingCountSnapshot()).toBe(1);
+    expect(bankMailPendingCountVersion()).toBe(1);
+  });
+
+  it("does not let a late seed overwrite a count that is already known", () => {
+    publishBankMailPendingCount(0);
+    seedBankMailPendingCount(3);
+    expect(bankMailPendingCountSnapshot()).toBe(0);
+  });
+
+  it("treats zero as known so a later shell cannot flash the cue", () => {
+    seedBankMailPendingCount(0);
+    expect(bankMailPendingCountSnapshot()).toBe(0);
+    expect(bankMailPendingCountVersion()).toBe(0);
+    expect(publishBankMailPendingCountIfCurrent(0, 0)).toBe(true);
+    expect(bankMailPendingCountSnapshot()).toBe(0);
   });
 });

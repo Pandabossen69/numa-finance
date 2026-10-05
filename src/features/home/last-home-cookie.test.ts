@@ -5,6 +5,8 @@ import {
   fullHomeSnapshotExceedsCookieCap,
   lastHomeCookieForSession,
   parseLastHomeCookie,
+  pendingBankMailCountFromShell,
+  pendingBankMailCountInCookie,
   serializeLastHomeCookie,
   toLastHomeCookieShell,
   writeLastHomeCookie,
@@ -223,6 +225,24 @@ describe("last-home cookie", () => {
     expect(lastHomeCookieForSession(encoded, null)).toBeNull();
     expect(lastHomeCookieForSession(encoded, undefined)).toBeNull();
     expect(lastHomeCookieForSession(encoded, "")).toBeNull();
+  });
+
+  it("keeps the last-known mail count on the same Hem shell", () => {
+    const encoded = serializeLastHomeCookie(home(), 2);
+    expect(pendingBankMailCountInCookie(encoded)).toBe(2);
+    expect(pendingBankMailCountFromShell(parseLastHomeCookie(encoded))).toBe(2);
+    expect(pendingBankMailCountFromShell(parseLastHomeCookie(serializeLastHomeCookie(home(), 0)))).toBe(0);
+    expect(pendingBankMailCountInCookie(serializeLastHomeCookie(home()))).toBeNull();
+    expect(pendingBankMailCountFromShell(null)).toBeNull();
+
+    const otherUser = lastHomeCookieForSession(encoded, "u2");
+    expect(otherUser).toBeNull();
+    expect(pendingBankMailCountFromShell(otherUser)).toBeNull();
+
+    const encodedFat = serializeLastHomeCookie(fatHome(), 3);
+    expect(encodedFat).toBeTruthy();
+    expect(encodedFat!.length).toBeLessThanOrEqual(3_500);
+    expect(pendingBankMailCountInCookie(encodedFat)).toBe(3);
   });
 
   it("toLastHomeCookieShell keeps Kvar/Över paint fields", () => {

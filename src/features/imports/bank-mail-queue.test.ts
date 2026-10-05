@@ -48,7 +48,8 @@ describe("importera mail section", () => {
     expect(screen).toContain("bankMailConfirmHeading(pendingMail.length)");
     expect(screen).toContain('id="att-bekrafta"');
     expect(hem).toContain('"/importera#att-bekrafta"');
-    expect(hem).toContain("publishedCount == null || publishedCount <= 0");
+    expect(hem).toContain("count == null || count <= 0");
+    expect(hem).toContain("publishedCount ?? knownCount");
     expect(screen).toContain("Avvisa");
     expect(screen).toContain("text-[var(--numa-danger)]");
     const fota = readFileSync(

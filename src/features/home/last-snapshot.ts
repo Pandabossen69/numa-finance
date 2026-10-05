@@ -36,6 +36,7 @@ import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
 import {
   readLastHomeCookieFromDocument,
+  readPendingBankMailCountFromDocument,
   writeLastHomeCookie,
 } from "@/features/home/last-home-cookie";
 import { expenseHomeDeltas } from "@/features/home/expense-date-delta";
@@ -43,9 +44,12 @@ import {
   accountsLastKnownCanPaint,
   decideAccountsLastKnown,
 } from "@/features/home/accounts-last-known";
+import { seedBankMailPendingCount } from "@/features/imports/bank-mail-pending-store";
 import {
   clearPersistedLastKnown,
   readPersistedLastKnown,
+  rememberPendingBankMailCount,
+  rememberedPendingBankMailCount,
   writePersistedLastKnown,
 } from "@/features/home/last-snapshot-persist";
 
@@ -286,6 +290,7 @@ function schedulePersist() {
       planView,
       analysScope,
       movementsView,
+      pendingBankMailCount: rememberedPendingBankMailCount(),
     });
   });
 }
@@ -324,6 +329,10 @@ export function hydrateLastKnownFromPersist() {
     analysScope = data.analysScope;
     movementsView = data.movementsView;
     if (home) maybeRememberLeftoverLivingBaseline(home, { fromPersist: true });
+    rememberHydratedPendingCount(
+      data.pendingBankMailCount,
+      cookieMatchesOwner,
+    );
     if (!analysLastKnownCanPaint(analys) && home) {
       // Hem-thin only — Plan ledger FX+windows must not run on hydrate.
       analys = analysSnapshotFromHome(home);
@@ -335,6 +344,7 @@ export function hydrateLastKnownFromPersist() {
     sessionOwnerId = cookieHome.userId;
     home = cookieHome;
     maybeRememberLeftoverLivingBaseline(cookieHome, { fromPersist: true });
+    rememberHydratedPendingCount(null, true);
     if (!analysLastKnownCanPaint(analys)) {
       analys = analysSnapshotFromHome(cookieHome);
     }
@@ -382,6 +392,42 @@ export function subscribeAccountsSnapshot(listener: () => void) {
   return () => {
     accountsListeners.delete(listener);
   };
+}
+
+function knownPendingCount(
+  stored: number | null | undefined,
+  cookieMatchesOwner: boolean,
+): number | null {
+  const fromCookie = cookieMatchesOwner
+    ? readPendingBankMailCountFromDocument()
+    : null;
+  if (fromCookie != null) return fromCookie;
+  if (typeof stored === "number" && Number.isInteger(stored) && stored >= 0) {
+    return stored;
+  }
+  return null;
+}
+
+/** Cookie wins so the first paint matches the SSR shell. */
+function rememberHydratedPendingCount(
+  stored: number | null | undefined,
+  cookieMatchesOwner: boolean,
+) {
+  const count = knownPendingCount(stored, cookieMatchesOwner);
+  if (count == null) return;
+  rememberPendingBankMailCount(count);
+  seedBankMailPendingCount(count);
+}
+
+function writeHomeCookie(snap: HomeSnapshot) {
+  writeLastHomeCookie(snap, rememberedPendingBankMailCount());
+}
+
+/** Keep the mail cue in the same cookie Hem already SSR-paints. */
+export function persistPendingBankMailCount(count: number) {
+  rememberPendingBankMailCount(count);
+  if (home) writeHomeCookie(home);
+  schedulePersist();
 }
 
 function wipeSessionCaches() {
@@ -626,7 +672,7 @@ export function rememberHomeSnapshot(
   maybeRememberLeftoverLivingBaseline(home);
   // Sync cookie write — do not wait on persist microtask. Warm hard-refresh
   // SSR needs numa.lastHome.v1 present after authenticated Hem has totals.
-  writeLastHomeCookie(home);
+  writeHomeCookie(home);
   // Spec R / S2: write paint-able Analys last-known in this tick — before
   // subscribers or Spec S Konton adopt. Time-to-first-paint is last-known,
   // not fetch-done. Konton invalidate must not clear or delay this write.
@@ -1216,7 +1262,7 @@ export function pinLocalHomeRevision(): void {
   const rev = home.financeRevision ?? "";
   if (rev.endsWith(":local")) return;
   home = { ...home, financeRevision: `${rev}:local` };
-  writeLastHomeCookie(home);
+  writeHomeCookie(home);
   emit(homeListeners);
 }
 
