@@ -81,6 +81,8 @@ describe("instant tap — phone-width dest paint", () => {
     const idag = read("../../app/(main)/idag/page.tsx");
     const hemClient = read("../../components/home/HemRouteClient.tsx");
     expect(persist).toContain("numa.lastKnown.v1");
+    expect(persist).toContain("writeLastHomeCookie(payload.home)");
+    expect(persist).not.toContain("if (payload.home) writeLastHomeCookie");
     expect(last).toContain("hydrateLastKnownFromPersist");
     expect(last).toContain("writePersistedLastKnown");
     expect(last).toContain("clearPersistedLastKnown");
@@ -91,6 +93,7 @@ describe("instant tap — phone-width dest paint", () => {
     expect(hemClient).toContain("HemFirstPaint");
     expect(hemClient).toContain("lastSessionHomeSnapshot");
     expect(hemClient).not.toContain("readLastHomeCookie");
+    expect(hemClient).not.toContain("lastKnownHomeShell");
   });
 
   it("does not sleep JWT iat on the menu fetch path", () => {

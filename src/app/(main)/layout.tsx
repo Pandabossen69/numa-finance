@@ -11,10 +11,11 @@ import { getProfile } from "@/lib/store/repository";
 export const dynamic = "force-dynamic";
 
 /**
- * Await last-home cookie before mounting AppShell/TabKeepAlive so the visible
- * /idag panel can SSR Kvar/Över for the same session user (SPEC 6b). The
- * reader fail-closes when cookie.userId is not the current session. Profile
- * and onboarding stay in Suspense.
+ * Await last-home cookie only — never a live money snapshot in this layout.
+ * Cookie hit SSRs Kvar/Över (SPEC 6b warm). Cookie miss paints HemPending
+ * in the keep-alive panel without blocking TTFB (SPEC H). Fail-closes when
+ * cookie.userId is not the current session. Profile and onboarding stay in
+ * Suspense.
  */
 export default async function MainLayout({
   children,

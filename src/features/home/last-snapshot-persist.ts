@@ -123,8 +123,12 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
   }
 }
 
-export function clearPersistedLastKnown(): void {
-  writeLastHomeCookie(null);
+export function clearPersistedLastKnown(opts?: {
+  keepHomeCookie?: boolean;
+}): void {
+  if (!opts?.keepHomeCookie) {
+    writeLastHomeCookie(null);
+  }
   const storage = persistStorage();
   if (!storage) return;
   try {
