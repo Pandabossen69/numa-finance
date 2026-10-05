@@ -24,6 +24,7 @@ function item(
     currency: "THB",
     cadence: partial.cadence ?? "monthly",
     nextDueAt: partial.nextDueAt ?? null,
+    plannedPayAt: partial.plannedPayAt,
     isActive: partial.isActive ?? true,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -996,6 +997,124 @@ describe("overdue unpaid bills do not reserve the living saldo", () => {
     expect(living.reservedExpensesMinor).toBe(499_00);
     expect(living.daysUntilHorizon).toBe(20);
     expect(living.livingPoolMinor).toBe(1_977_200 - 499_00);
+  });
+});
+
+describe("planned pay date reserves the living saldo", () => {
+  const tz = "Asia/Bangkok";
+  const now = new Date("2026-10-05T03:00:00.000Z");
+
+  function cycleWith(bills: Array<{
+    name: string;
+    amountMinor: number;
+    nextDueAt: string;
+    plannedPayAt?: string | null;
+  }>) {
+    return projectPayCycle(
+      [
+        item({
+          name: "Lön sep",
+          kind: "expected",
+          amountMinor: 40_000_00,
+          cadence: "income",
+          nextDueAt: "2026-09-25T12:00:00.000Z",
+        }),
+        item({
+          name: "Lön okt",
+          kind: "expected",
+          amountMinor: 40_000_00,
+          cadence: "income",
+          nextDueAt: "2026-10-25T12:00:00.000Z",
+        }),
+        ...bills.map((bill) =>
+          item({
+            name: bill.name,
+            kind: "mandatory",
+            amountMinor: bill.amountMinor,
+            nextDueAt: bill.nextDueAt,
+            plannedPayAt: bill.plannedPayAt,
+          }),
+        ),
+      ],
+      now,
+      tz,
+    );
+  }
+
+  function livingFor(cycle: ReturnType<typeof projectPayCycle>) {
+    return projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: 1_977_200,
+      cycleSpendingMinor: 0,
+      fundingConfirmed: true,
+    });
+  }
+
+  it("reserves when planned_pay_at is inside [today, next income)", () => {
+    const cycle = cycleWith([
+      {
+        name: "Hyra sep",
+        amountMinor: 1_000_00,
+        nextDueAt: "2026-09-30T12:00:00.000Z",
+        plannedPayAt: "2026-10-08T12:00:00.000Z",
+      },
+    ]);
+    expect(cycle.expenses.map((row) => row.dueAt)).toContain("2026-09-30T12:00:00.000Z");
+    const living = livingFor(cycle);
+    expect(living.reservedExpensesMinor).toBe(1_000_00);
+    expect(living.livingPoolMinor).toBe(1_977_200 - 1_000_00);
+    expect(living.dayBudgetMinor).toBe(Math.floor((1_977_200 - 1_000_00) / 20));
+  });
+
+  it("reserves 0 when planned_pay_at is on or after the next income", () => {
+    const cycle = cycleWith([
+      {
+        name: "El",
+        amountMinor: 15_500_00,
+        nextDueAt: "2026-10-10T12:00:00.000Z",
+        plannedPayAt: "2026-10-25T12:00:00.000Z",
+      },
+    ]);
+    expect(cycle.nextPaycheckAt).toBe("2026-10-25T12:00:00.000Z");
+    expect(cycle.expenses.map((row) => row.dueAt)).toContain("2026-10-10T12:00:00.000Z");
+    const living = livingFor(cycle);
+    expect(living.reservedExpensesMinor).toBe(0);
+    expect(living.livingPoolMinor).toBe(1_977_200);
+    expect(living.dayBudgetMinor).toBe(98_860);
+  });
+
+  it("treats a past unpaid planned_pay_at as today and reserves", () => {
+    const cycle = cycleWith([
+      {
+        name: "Hyra sep",
+        amountMinor: 12_000_00,
+        nextDueAt: "2026-09-30T12:00:00.000Z",
+        plannedPayAt: "2026-10-01T12:00:00.000Z",
+      },
+    ]);
+    const living = livingFor(cycle);
+    expect(living.reservedExpensesMinor).toBe(12_000_00);
+    expect(living.daysUntilHorizon).toBe(20);
+    expect(living.livingPoolMinor).toBe(1_977_200 - 12_000_00);
+  });
+
+  it("keeps the plan month and still reserves a pay-later bill due before the cycle window", () => {
+    const cycle = cycleWith([
+      {
+        name: "Hyra",
+        amountMinor: 8_000_00,
+        nextDueAt: "2026-09-01T12:00:00.000Z",
+        plannedPayAt: "2026-10-08T12:00:00.000Z",
+      },
+    ]);
+    expect(cycle.expenses).toHaveLength(0);
+    expect(cycle.expenseMinor).toBe(0);
+    expect(cycle.payLaterOutsideWindow?.map((row) => row.item.name)).toEqual(["Hyra"]);
+    const living = livingFor(cycle);
+    expect(living.reservedExpensesMinor).toBe(8_000_00);
+    expect(living.remainingFreeMinor).toBe(cycle.freeToSpendMinor);
   });
 });
 

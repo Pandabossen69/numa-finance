@@ -1,4 +1,5 @@
 import { calendarDaysBetween, formatCountSv, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
+import { reservePayInstant } from "./planned-pay";
 import type { PayCycleProjection } from "./pay-cycle";
 import {
   labelSavingsMonthsSv,
@@ -22,9 +23,12 @@ export type LivingBudgetMode = "bridge" | "cycle" | "empty";
  * Day envelope (dagsbudget):
  * Morning sticky allowance is floor(poolWithoutTodaySpend / daysLeft).
  * The pool is cash to live on until the next paycheck: bank balance
- * minus unpaid bills and savings whose due day is still ahead
- * (today through the day before that horizon). Overdue unpaid bills
- * stay in Plan and do not reserve. Already-settled amounts stay in
+ * minus unpaid bills and savings whose effective pay day is still ahead
+ * (today through the day before that horizon). A bill uses
+ * `plannedPayAt` when set, otherwise its due date. Overdue unpaid
+ * bills without a planned date stay in Plan and do not reserve.
+ * A planned date that has already passed still reserves (counted as
+ * today). Already-settled amounts stay in
  * the ledger/saldo and are not subtracted again. Cycle mode must not
  * silently use plan `freeToSpend` when a saldo exists — that hides
  * reserved money.
@@ -128,10 +132,12 @@ export type ReservedUntilHorizon = {
  * Remaining planned bills + savings that still sit in saldo until the next
  * paycheck.
  *
- * Unpaid bills reserve only when their due day in `timeZone` is in
- * [today, next income). Overdue bills (due before today) stay visible in
- * Plan and do not reserve. Bills timestamped on or after the horizon are
- * paid from that income and stay excluded.
+ * Unpaid bills reserve only when their effective pay day in `timeZone`
+ * is in [today, next income). Effective day is `plannedPayAt` when set,
+ * otherwise the due date. Overdue bills without a planned date stay
+ * visible in Plan and do not reserve. A planned date before today still
+ * reserves, counted as today («Sen»). Bills timestamped on or after the
+ * horizon are paid from that income and stay excluded.
  */
 export function remainingReservedBreakdownUntilHorizon(
   cycle: PayCycleProjection,
@@ -140,13 +146,15 @@ export function remainingReservedBreakdownUntilHorizon(
   now: Date,
 ): ReservedUntilHorizon {
   const horizonMs = horizonIso ? Date.parse(horizonIso) : Number.POSITIVE_INFINITY;
-  const todayAnchor = zonedDayAnchorMs(now, timeZone);
   let expensesMinor = 0;
-  for (const { item, dueAt } of cycle.expenses) {
-    const due = Date.parse(dueAt);
-    if (!Number.isFinite(due)) continue;
-    if (zonedDayAnchorMs(dueAt, timeZone) < todayAnchor) continue;
-    if (Number.isFinite(horizonMs) && due >= horizonMs) continue;
+  const expenseRows = [
+    ...cycle.expenses,
+    ...(cycle.payLaterOutsideWindow ?? []),
+  ];
+  for (const { item, dueAt } of expenseRows) {
+    const reserveAt = reservePayInstant(dueAt, item.plannedPayAt, now, timeZone);
+    if (reserveAt == null) continue;
+    if (Number.isFinite(horizonMs) && reserveAt >= horizonMs) continue;
     expensesMinor += remainingOpenMinor(item);
   }
 

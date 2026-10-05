@@ -92,6 +92,7 @@ import {
   importFixedExpensesFromPreviousMonthAction,
   setMonthSavingsAction,
   confirmPlanLinkAction,
+  setPlanItemPlannedPayAction,
   setPlanItemSettledAction,
   updatePlanItemAction,
 } from "@/features/plan/actions";
@@ -182,6 +183,7 @@ export function PlanEditor({
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [partialId, setPartialId] = useState<string | null>(null);
+  const [payLaterId, setPayLaterId] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<BusyKey>(null);
@@ -409,6 +411,7 @@ export function PlanEditor({
       rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
       setEditingId(null);
       setPartialId(null);
+      setPayLaterId(null);
       setAddKind(null);
     });
     softSwitchPlanMonth(nextInput, monthPaintStamp);
@@ -692,6 +695,7 @@ export function PlanEditor({
     if (isTempPlanId(item.id)) return;
     setAddKind(null);
     setEditingId(null);
+    setPayLaterId(null);
     setPartialId(item.id);
   }, []);
 
@@ -716,6 +720,7 @@ export function PlanEditor({
     if (isTempPlanId(item.id)) return;
     setAddKind(null);
     setPartialId(null);
+    setPayLaterId(null);
     setEditingId(item.id);
   }, []);
 
@@ -776,7 +781,37 @@ export function PlanEditor({
   const cancelEdit = useCallback(() => {
     setEditingId(null);
     setPartialId(null);
+    setPayLaterId(null);
   }, []);
+
+  const savePlannedPay = useCallback((id: string, ymd: string | null) => {
+    const previous = viewItems.find((row) => row.id === id);
+    if (!previous || isTempPlanId(id)) return;
+    const next: PlanItem = {
+      ...previous,
+      plannedPayAt: ymd ? `${ymd}T12:00:00.000Z` : null,
+      updatedAt: new Date().toISOString(),
+    };
+    setPayLaterId(null);
+    void runMutation({
+      busy: `edit:${id}`,
+      apply: (rows) => replaceItemById(rows, id, next),
+      revert: (rows) => replaceItemById(rows, id, previous),
+      action: () =>
+        setPlanItemPlannedPayAction({
+          id,
+          date: ymd,
+          clientMutationId: newClientMutationId(),
+        }),
+      reconcile: (rows, result) => {
+        if (result.home || result.plan || result.refreshPending) {
+          invalidateSettledHomeSurfaces();
+          adoptMutationFinance(result);
+        }
+        return result.item ? mergeReturnedItem(rows, result.item) : rows;
+      },
+    });
+  }, [runMutation, viewItems]);
   const cancelPartial = useCallback(() => setPartialId(null), []);
   const saveEdit = useCallback((id: string, draft: PlanEditDraft) => {
     const parsed = parsePlanAmount(draft.amount);
@@ -1143,6 +1178,16 @@ export function PlanEditor({
             onCancelEdit={cancelEdit}
             onSaveEdit={saveEdit}
             onDelete={deleteRow}
+            payLaterId={payLaterId}
+            onStartPayLater={(item) => {
+              setAddKind(null);
+              setEditingId(null);
+              setPartialId(null);
+              setPayLaterId(item.id);
+            }}
+            onCancelPayLater={() => setPayLaterId(null)}
+            onSavePayLater={(id, ymd) => savePlannedPay(id, ymd)}
+            onClearPayLater={(id) => savePlannedPay(id, null)}
           />
 
           <InlineAdd
@@ -1228,6 +1273,16 @@ export function PlanEditor({
             onCancelEdit={cancelEdit}
             onSaveEdit={saveEdit}
             onDelete={deleteRow}
+            payLaterId={payLaterId}
+            onStartPayLater={(item) => {
+              setAddKind(null);
+              setEditingId(null);
+              setPartialId(null);
+              setPayLaterId(item.id);
+            }}
+            onCancelPayLater={() => setPayLaterId(null)}
+            onSavePayLater={(id, ymd) => savePlannedPay(id, ymd)}
+            onClearPayLater={(id) => savePlannedPay(id, null)}
           />
 
           <InlineAdd

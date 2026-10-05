@@ -98,6 +98,7 @@ export function normalizeStore(data: NumaStoreData): NumaStoreData {
       settledAt: item.settledAt ?? null,
       settledMinor: item.settledMinor ?? null,
       remainingDueAt: item.remainingDueAt ?? null,
+      plannedPayAt: item.plannedPayAt ?? null,
     })),
     transactions: (Array.isArray(data.transactions) ? data.transactions : []).map(
       (tx) => ({

@@ -34,7 +34,7 @@ export const ACCOUNT_SELECT = [
   "updated_at",
 ].join(", ");
 
-export const PLAN_ITEM_SELECT = [
+const PLAN_ITEM_COLUMNS = [
   "id",
   "user_id",
   "name",
@@ -49,7 +49,12 @@ export const PLAN_ITEM_SELECT = [
   "remaining_due_at",
   "created_at",
   "updated_at",
-].join(", ");
+];
+
+/** Reads that must work before `planned_pay_at` is migrated. */
+export const PLAN_ITEM_SELECT_LEGACY = PLAN_ITEM_COLUMNS.join(", ");
+
+export const PLAN_ITEM_SELECT = [...PLAN_ITEM_COLUMNS, "planned_pay_at"].join(", ");
 
 export const CHECKPOINT_SELECT = [
   "id",
