@@ -250,7 +250,8 @@ export const PlanPayLaterFields = memo(function PlanPayLaterFields({
     [timeZone],
   );
   const existing = isoToDateInput(item.plannedPayAt, timeZone);
-  const initial = existing || bounds.defaultYmd;
+  const initial =
+    existing && existing >= bounds.min ? existing : bounds.defaultYmd;
   const [date, setDate] = useState(initial);
   const outOfRange = Boolean(date) && (date < bounds.min || date > bounds.max);
   const rangeMessage = outOfRange ? payLaterRangeMessageSv(bounds.max) : null;
@@ -271,6 +272,7 @@ export const PlanPayLaterFields = memo(function PlanPayLaterFields({
             ariaLabel="Datum för Betala senare"
             min={bounds.min}
             max={bounds.max}
+            clamp={false}
           />
         </label>
         <div className="flex flex-wrap gap-2">

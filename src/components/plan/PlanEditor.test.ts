@@ -385,11 +385,14 @@ describe("Plan dates and add-form", () => {
     );
   });
 
-  it("opens Betala senare on the saved day and blocks a date outside the range", () => {
-    expect(forms).toContain("const initial = existing || bounds.defaultYmd");
+  it("opens Betala senare on a future saved day and blocks a date outside the range", () => {
+    expect(forms).toContain(
+      "existing && existing >= bounds.min ? existing : bounds.defaultYmd",
+    );
     expect(forms).toContain("payLaterRangeMessageSv");
-    expect(forms).not.toContain("existing >= bounds.min");
-    expect(dateField).not.toContain("clampBookableYmd");
+    expect(forms).toContain("clamp={false}");
+    expect(dateField).toContain("function clampBookableYmd");
+    expect(dateField).toContain("clamp = true");
     expect(dateField).toContain("min={min}");
     expect(dateField).toContain("max={max}");
   });
