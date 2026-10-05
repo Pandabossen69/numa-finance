@@ -21,7 +21,7 @@ import {
   planSettleTargetMinor,
   planAmountBelowSettledError,
   payLaterDateBounds,
-  PLAN_PAY_LATER_RANGE_SV,
+  payLaterRangeMessageSv,
   type PlanItem,
   PLAN_KIND_INVALID_SV,
   PLAN_SAVE_FAILED_SV,
@@ -760,7 +760,7 @@ export async function setPlanItemPlannedPayAction(
     if (input.date) {
       const bounds = payLaterDateBounds(new Date(), ctx.timeZone);
       if (input.date < bounds.min || input.date > bounds.max) {
-        return { ok: false, error: PLAN_PAY_LATER_RANGE_SV };
+        return { ok: false, error: payLaterRangeMessageSv(bounds.max) };
       }
       plannedPayAt = `${input.date}T12:00:00.000Z`;
     }

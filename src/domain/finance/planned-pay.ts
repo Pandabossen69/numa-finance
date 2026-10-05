@@ -1,4 +1,9 @@
-import { formatListDateSv, zonedDayAnchorMs, zonedDayKey } from "./datetime";
+import {
+  formatIsoDateOnlySv,
+  formatListDateSv,
+  zonedDayAnchorMs,
+  zonedDayKey,
+} from "./datetime";
 import type { PlanItem } from "./types";
 
 export const PLAN_PAY_LATER_UNAVAILABLE_SV =
@@ -6,6 +11,12 @@ export const PLAN_PAY_LATER_UNAVAILABLE_SV =
 
 export const PLAN_PAY_LATER_RANGE_SV =
   "Välj ett datum från idag till slutet av nästa månad.";
+
+/** Shown when Spara would otherwise clamp a day outside the picker. */
+export function payLaterRangeMessageSv(maxYmd: string): string {
+  const maxLabel = formatIsoDateOnlySv(maxYmd).replace(/\.$/, "");
+  return `Välj ett datum mellan idag och ${maxLabel}.`;
+}
 
 /** PostgREST / Postgres when `numa.plan_items.planned_pay_at` is not migrated yet. */
 export function isMissingPlannedPayColumn(error: {

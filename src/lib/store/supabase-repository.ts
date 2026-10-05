@@ -75,12 +75,12 @@ import {
   CHECKPOINT_SELECT,
   LEDGER_TRANSACTION_SELECT,
   PLAN_ITEM_SELECT,
-  PLAN_ITEM_SELECT_LEGACY,
   PROFILE_SELECT,
   numaSelect,
 } from "@/lib/supabase/selects";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { accountLifecycleFacts } from "./account-lifecycle-store";
+import { readPlanItemsSelectingPlannedPay } from "./plan-item-read";
 import { inferAccountKind } from "./account-kind-infer";
 import { resolveCheckpointFx } from "./checkpoint-fx";
 import { fetchMenuSnapshotBundle } from "./menu-snapshot-fetch";
@@ -1740,40 +1740,27 @@ export async function openingBalanceVerifiedAt(
 }
 
 /**
- * True after a read sees `planned_pay_at`. Stays unknown until then so a
- * preview that gets the migration mid-process starts returning the column
- * without a restart.
+ * False only after a read proves `planned_pay_at` is missing. Unknown and
+ * true both use the full select, so a warm process keeps returning the date.
  */
 let planItemsIncludePlannedPay: boolean | null = null;
 
 async function queryPlanItems(active: boolean): Promise<PlanItem[]> {
   const userId = await requireUserId();
   const supabase = await createSupabaseServerClient();
-  const run = (columns: string) => {
-    const query = supabase
-      .from("plan_items")
-      .select(numaSelect(columns))
-      .eq("user_id", userId)
-      .eq("is_active", active);
-    return active ? query.order("name", { ascending: true }) : query;
-  };
-
-  if (planItemsIncludePlannedPay !== true) {
-    const withPay = await run(PLAN_ITEM_SELECT);
-    if (!withPay.error) {
-      planItemsIncludePlannedPay = true;
-      return (withPay.data ?? []).map(mapPlanItem);
-    }
-    if (!isMissingPlannedPayColumn(withPay.error)) {
-      throw new Error(withPay.error.message);
-    }
-  }
-
-  const plain = await run(PLAN_ITEM_SELECT_LEGACY);
-  if (plain.error) throw new Error(plain.error.message);
-  return (plain.data ?? []).map((row) =>
-    mapPlanItem({ ...row, planned_pay_at: null }),
-  );
+  const read = await readPlanItemsSelectingPlannedPay({
+    flag: planItemsIncludePlannedPay,
+    run: (columns) => {
+      const query = supabase
+        .from("plan_items")
+        .select(numaSelect(columns))
+        .eq("user_id", userId)
+        .eq("is_active", active);
+      return active ? query.order("name", { ascending: true }) : query;
+    },
+  });
+  planItemsIncludePlannedPay = read.flag;
+  return read.rows.map((row) => mapPlanItem(row));
 }
 
 async function listPlanItemsUncached(): Promise<PlanItem[]> {

@@ -3,13 +3,6 @@
 import { formatIsoDateOnlySv } from "@/domain/finance";
 import { commitCalendarDate } from "@/components/plan/plan-format";
 
-function clampBookableYmd(raw: string, min?: string, max?: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  if (min && raw < min) return min;
-  if (max && raw > max) return max;
-  return raw;
-}
-
 export function PlanDateField({
   value,
   onChange,
@@ -25,7 +18,7 @@ export function PlanDateField({
   /** Inclusive latest day, `YYYY-MM-DD` in the user's timezone. */
   max?: string;
 }) {
-  const shown = clampBookableYmd(value, min, max);
+  const shown = value;
   return (
     <div className="relative min-h-11 min-w-[9.5rem]">
       <div
@@ -51,19 +44,9 @@ export function PlanDateField({
         min={min}
         max={max}
         aria-label={ariaLabel}
-        onChange={(e) =>
-          commitCalendarDate(
-            clampBookableYmd(e.target.value, min, max),
-            shown,
-            onChange,
-          )
-        }
+        onChange={(e) => commitCalendarDate(e.target.value, shown, onChange)}
         onInput={(e) =>
-          commitCalendarDate(
-            clampBookableYmd((e.target as HTMLInputElement).value, min, max),
-            shown,
-            onChange,
-          )
+          commitCalendarDate((e.target as HTMLInputElement).value, shown, onChange)
         }
         className="numa-date-input"
       />

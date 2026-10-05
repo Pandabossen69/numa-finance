@@ -10,6 +10,7 @@ import {
   remainingTodayOf,
 } from "./living-budget";
 import { projectPayCycle } from "./pay-cycle";
+import { plannedPayChipLabel } from "./planned-pay";
 import { MONTHLY_SAVE_NAME } from "./plan-months";
 
 function item(
@@ -1115,6 +1116,67 @@ describe("planned pay date reserves the living saldo", () => {
     const living = livingFor(cycle);
     expect(living.reservedExpensesMinor).toBe(8_000_00);
     expect(living.remainingFreeMinor).toBe(cycle.freeToSpendMinor);
+  });
+
+  it("reserves 2 000 THB inside the window and keeps 7 296,65 when the date is on or after payday", () => {
+    const saldoMinor = 14_593_300;
+    function living(plannedPayAt: string | null) {
+      const cycle = projectPayCycle(
+        [
+          item({
+            name: "Lön sep",
+            kind: "expected",
+            amountMinor: 40_000_00,
+            cadence: "income",
+            nextDueAt: "2026-09-25T12:00:00.000Z",
+          }),
+          item({
+            name: "Lön okt",
+            kind: "expected",
+            amountMinor: 40_000_00,
+            cadence: "income",
+            nextDueAt: "2026-10-25T12:00:00.000Z",
+          }),
+          item({
+            name: "Räkning",
+            kind: "mandatory",
+            amountMinor: 200_000,
+            nextDueAt: "2026-10-01T12:00:00.000Z",
+            plannedPayAt,
+          }),
+        ],
+        now,
+        tz,
+      );
+      return projectLivingBudget({
+        cycle,
+        now,
+        timeZone: tz,
+        bankBalanceMinor: saldoMinor,
+        cycleSpendingMinor: 0,
+        fundingConfirmed: true,
+      });
+    }
+
+    const base = living(null);
+    expect(base.daysUntilHorizon).toBe(20);
+    expect(base.reservedExpensesMinor).toBe(0);
+    expect(base.dayBudgetMinor).toBe(729_665);
+
+    const eighth = living("2026-10-08T12:00:00.000Z");
+    expect(eighth.reservedExpensesMinor).toBe(200_000);
+    expect(eighth.dayBudgetMinor).toBe(719_665);
+
+    const passed = living("2026-10-03T12:00:00.000Z");
+    expect(passed.reservedExpensesMinor).toBe(200_000);
+    expect(passed.dayBudgetMinor).toBe(719_665);
+    expect(
+      plannedPayChipLabel({ plannedPayAt: "2026-10-03T12:00:00.000Z" }, now, tz),
+    ).toBe("Sen");
+
+    expect(living("2026-10-25T12:00:00.000Z").dayBudgetMinor).toBe(729_665);
+    expect(living("2026-11-02T12:00:00.000Z").reservedExpensesMinor).toBe(0);
+    expect(living("2026-11-02T12:00:00.000Z").dayBudgetMinor).toBe(729_665);
   });
 });
 

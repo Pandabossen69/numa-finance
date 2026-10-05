@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isMissingPlannedPayColumn,
   payLaterDateBounds,
+  payLaterRangeMessageSv,
   plannedPayChipLabel,
   reservePayInstant,
 } from "./planned-pay";
@@ -20,6 +21,13 @@ describe("payLaterDateBounds", () => {
     const bounds = payLaterDateBounds(new Date("2026-10-04T20:00:00.000Z"), tz);
     expect(bounds.min).toBe("2026-10-05");
     expect(bounds.defaultYmd).toBe("2026-10-08");
+  });
+
+  it("names the last allowed day instead of silently moving the date", () => {
+    const bounds = payLaterDateBounds(new Date("2026-10-05T03:00:00.000Z"), tz);
+    expect(payLaterRangeMessageSv(bounds.max)).toBe(
+      "Välj ett datum mellan idag och 30 nov.",
+    );
   });
 });
 

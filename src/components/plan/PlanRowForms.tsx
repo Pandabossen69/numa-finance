@@ -5,6 +5,7 @@ import type { PlanItem } from "@/domain/finance";
 import {
   isoToDateInput,
   payLaterDateBounds,
+  payLaterRangeMessageSv,
   previewAdditionalPartialRemaining,
   remainingDueIso,
   settledAmountMinor,
@@ -249,11 +250,10 @@ export const PlanPayLaterFields = memo(function PlanPayLaterFields({
     [timeZone],
   );
   const existing = isoToDateInput(item.plannedPayAt, timeZone);
-  const initial =
-    existing && existing >= bounds.min && existing <= bounds.max
-      ? existing
-      : bounds.defaultYmd;
+  const initial = existing || bounds.defaultYmd;
   const [date, setDate] = useState(initial);
+  const outOfRange = Boolean(date) && (date < bounds.min || date > bounds.max);
+  const rangeMessage = outOfRange ? payLaterRangeMessageSv(bounds.max) : null;
 
   return (
     <li className="numa-plan-row">
@@ -276,9 +276,12 @@ export const PlanPayLaterFields = memo(function PlanPayLaterFields({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={pending || !date}
+            disabled={pending || !date || outOfRange}
             className="numa-btn numa-btn-accent min-h-10 flex-1"
-            onClick={() => onSave(item.id, date)}
+            onClick={() => {
+              if (outOfRange) return;
+              onSave(item.id, date);
+            }}
           >
             {pending ? "Sparar…" : "Spara"}
           </button>
@@ -301,6 +304,11 @@ export const PlanPayLaterFields = memo(function PlanPayLaterFields({
             </button>
           ) : null}
         </div>
+        {rangeMessage ? (
+          <p className="text-sm text-[var(--numa-danger)]" role="alert">
+            {rangeMessage}
+          </p>
+        ) : null}
       </div>
     </li>
   );

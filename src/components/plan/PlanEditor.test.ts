@@ -384,4 +384,13 @@ describe("Plan dates and add-form", () => {
       save.indexOf("void runMutation"),
     );
   });
+
+  it("opens Betala senare on the saved day and blocks a date outside the range", () => {
+    expect(forms).toContain("const initial = existing || bounds.defaultYmd");
+    expect(forms).toContain("payLaterRangeMessageSv");
+    expect(forms).not.toContain("existing >= bounds.min");
+    expect(dateField).not.toContain("clampBookableYmd");
+    expect(dateField).toContain("min={min}");
+    expect(dateField).toContain("max={max}");
+  });
 });
