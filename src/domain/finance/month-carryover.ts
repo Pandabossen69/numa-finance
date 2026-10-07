@@ -346,6 +346,19 @@ export function ovrigtTitleBreakdown(params: {
     .slice(0, limit);
 }
 
+/** Top rows plus the rest, so a collapsed Övrigt list still sums to the category. */
+export function splitOvrigtTitles(
+  titles: readonly OvrigtTitleTotal[],
+  limit = OVRIGT_TITLE_LIMIT,
+): { shown: OvrigtTitleTotal[]; rest: OvrigtTitleTotal[] } {
+  if (limit <= 0) return { shown: [], rest: [...titles] };
+  if (titles.length <= limit) return { shown: [...titles], rest: [] };
+  return {
+    shown: titles.slice(0, limit),
+    rest: titles.slice(limit),
+  };
+}
+
 export function monthKeysInclusive(fromKey: string, toKey: string): string[] {
   if (fromKey > toKey) return [];
   const keys: string[] = [];

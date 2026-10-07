@@ -185,6 +185,8 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("const hasSaldo = view.calculatedBalanceMinor != null");
     expect(src).toContain("Ingen dagsbudget än. Lägg in vad som kommer in i Plan.");
     expect(src).toContain("Ingen dagsbudget än. Sätt saldo så räknas kvar idag.");
+    expect(src).toContain("DAGSBUDGET_BILLS_EXCEED_SALDO_SV");
+    expect(src).toContain("unpaidBillsExceedSaldo");
     expect(src).toContain("Lägg in vad som kommer in →");
     expect(src).toContain("Sätt saldo →");
     expect(src).toContain('href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}');

@@ -26,6 +26,8 @@ import {
   adoptMutationFinance,
   applyMovementsEdit,
   applyMovementsVoid,
+  captureOptimisticBalance,
+  undoOptimisticBalance,
   isMovementsDirty,
   isStaleMovementsSnapshot,
   lastAccountsSnapshot,
@@ -73,7 +75,7 @@ const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: "all", label: "Alla" },
   { id: "expense", label: "Utgifter" },
   { id: "income", label: "Intäkter" },
-  { id: "other", label: "Övrigt" },
+  { id: "other", label: "Annat" },
 ];
 
 function typeLabel(type: string): string {
@@ -812,19 +814,31 @@ export function MovementsScreen({
                               actionLock.current = true;
                               setPendingAction("void");
                               setActionError(null);
+                              const before = captureOptimisticBalance();
+                              const reopen = tx.id;
+                              applyMovementsVoid(reopen);
+                              setConfirmId(null);
                               void (async () => {
                                 try {
                                   const result = await voidTransactionAction(
                                     tx.id,
                                   );
                                   if (!result.ok) {
+                                    undoOptimisticBalance(before);
+                                    setConfirmId(reopen);
                                     setActionError(result.error);
                                     return;
                                   }
-                                  setConfirmId(null);
-                                  applyMovementsVoid(tx.id);
                                   invalidateAfterPlanLinkedVoid(tx);
                                   adoptMutationFinance(result);
+                                } catch (error) {
+                                  undoOptimisticBalance(before);
+                                  setConfirmId(reopen);
+                                  setActionError(
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Kunde inte ta bort rörelsen",
+                                  );
                                 } finally {
                                   actionLock.current = false;
                                   setPendingAction(null);

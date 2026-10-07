@@ -13,6 +13,10 @@ import { MetricRow } from "@/components/ui/MetricRow";
 import { CompactPiles } from "@/components/ui/WealthScoreboard";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { BankMailHemCue } from "@/components/home/BankMailHemCue";
+import {
+  DAGSBUDGET_BILLS_EXCEED_SALDO_SV,
+  unpaidBillsExceedSaldo,
+} from "@/features/home/dagsbudget-empty";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
 import { warmupPlanPageData } from "@/components/plan/plan-cache";
 import { scheduleQuietMenuWarm } from "@/lib/nav/quiet-menu-warm";
@@ -199,6 +203,13 @@ export function HomeDashboard({
 
   const showDayEnvelope =
     view.dayBudgetMinor > 0 || (view.livingPoolMinor ?? 0) > 0;
+  const billsExceedSaldo = unpaidBillsExceedSaldo({
+    hasSaldo,
+    isEmpty,
+    showDayEnvelope,
+    unpaidMinor: view.unpaidMinor,
+    balanceMinor: view.calculatedBalanceMinor,
+  });
 
   const nextAction = lowKvarNextAction({
     dayBudgetMinor: view.dayBudgetMinor,
@@ -429,10 +440,20 @@ export function HomeDashboard({
                       </div>
                       {daysLeftChip}
                       <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                        {isBridge
-                          ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
-                          : "När planen har pengar kvar syns dagsbudgeten här."}
+                        {billsExceedSaldo
+                          ? DAGSBUDGET_BILLS_EXCEED_SALDO_SV
+                          : isBridge
+                            ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                            : "När planen har pengar kvar syns dagsbudgeten här."}
                       </p>
+                      {billsExceedSaldo ? (
+                        <Link
+                          href="/plan"
+                          className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                        >
+                          Betala senare i Plan →
+                        </Link>
+                      ) : null}
                     </>
                   )}
                 </div>

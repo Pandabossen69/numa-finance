@@ -42,9 +42,15 @@ describe("proxy and Vercel Cron", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
-  it("still sends other session-less requests to /logga-in", async () => {
+  it("still sends other session-less pages to /logga-in", async () => {
+    const res = await updateSession(request("/idag"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/logga-in`);
+  });
+
+  it("returns 401 JSON for session-less API routes instead of redirecting", async () => {
     for (const path of [
-      "/idag",
+      "/api/numa/read?part=home",
       "/api/numa-media",
       "/api/import/other",
       "/api/import/bank-mailer",
@@ -54,8 +60,12 @@ describe("proxy and Vercel Cron", () => {
       "/api/cron/other",
     ]) {
       const res = await updateSession(request(path));
-      expect(res.status, path).toBe(307);
-      expect(res.headers.get("location"), path).toBe(`${ORIGIN}/logga-in`);
+      expect(res.status, path).toBe(401);
+      expect(res.headers.get("location"), path).toBeNull();
+      await expect(res.json(), path).resolves.toEqual({
+        ok: false,
+        error: "Du måste vara inloggad",
+      });
     }
   });
 });

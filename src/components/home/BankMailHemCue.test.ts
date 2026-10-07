@@ -5,7 +5,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BankMailHemCue } from "@/components/home/BankMailHemCue";
-import { resetBankMailPendingCountForTests } from "@/features/imports/bank-mail-pending-store";
+import {
+  clearBankMailPendingCount,
+  resetBankMailPendingCountForTests,
+} from "@/features/imports/bank-mail-pending-store";
 import {
   publishBankMailPendingCount,
   seedBankMailPendingCount,
@@ -71,6 +74,19 @@ describe("BankMailHemCue last-known paint", () => {
 
     act(() => {
       publishBankMailPendingCount(0);
+    });
+    expect(host.textContent).toBe("");
+  });
+
+  it("does not bring the cookie count back after the live count is cleared", () => {
+    act(() => {
+      publishBankMailPendingCount(1);
+      root.render(createElement(BankMailHemCue, { knownCount: 2 }));
+    });
+    expect(host.textContent).toContain("Att bekräfta (1)");
+
+    act(() => {
+      clearBankMailPendingCount();
     });
     expect(host.textContent).toBe("");
   });

@@ -1,3 +1,4 @@
+import { sniffImageMime } from "@/lib/media/image-magic";
 import {
   CLIENT_UPLOAD_BUDGET_BYTES,
   IMAGE_TOO_BIG_SV,
@@ -34,8 +35,10 @@ export async function compressImageForUpload(
   const maxEdge = options?.maxEdge ?? (preserveText ? TEXT_MAX_EDGE : PHOTO_MAX_EDGE);
   const quality = options?.quality ?? UPLOAD_JPEG_QUALITY;
 
-  if (isHeic(file.type)) {
-    throw new ImagePrepareError(IMAGE_UNREADABLE_SV);
+  if (await fileIsHeic(file)) {
+    const converted = await convertHeicQuietly(file);
+    if (!converted) throw new ImagePrepareError(IMAGE_UNREADABLE_SV);
+    file = converted;
   }
 
   if (!file.type.startsWith("image/")) {
@@ -76,8 +79,45 @@ export async function compressImageForUpload(
   }
 }
 
-function isHeic(type: string): boolean {
-  return type.includes("heic") || type.includes("heif");
+const HEIC_NAME = /\.(heic|heif)$/i;
+
+export function heicMimeOrName(file: Pick<File, "type" | "name">): boolean {
+  const type = file.type.toLowerCase();
+  return type.includes("heic") || type.includes("heif") || HEIC_NAME.test(file.name);
+}
+
+/** Chrome logs a decode error for HEIC. Only WebKit can turn it into a bitmap quietly. */
+export function browserDecodesHeic(userAgent: string): boolean {
+  return /Safari/i.test(userAgent) && !/Chrome|Chromium|CriOS|FxiOS|Edg|Android/i.test(userAgent);
+}
+
+async function fileIsHeic(file: File): Promise<boolean> {
+  if (heicMimeOrName(file)) return true;
+  try {
+    const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    const sniffed = sniffImageMime(head);
+    return sniffed === "image/heic" || sniffed === "image/heif";
+  } catch {
+    return false;
+  }
+}
+
+async function convertHeicQuietly(file: File): Promise<File | null> {
+  if (typeof createImageBitmap !== "function") return null;
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  if (!browserDecodesHeic(ua)) return null;
+  try {
+    const bitmap = await createImageBitmap(file);
+    try {
+      const blob = await encodeJpeg(bitmap, PHOTO_MAX_EDGE, UPLOAD_JPEG_QUALITY);
+      if (!blob) return null;
+      return jpegFile(file, blob);
+    } finally {
+      bitmap.close();
+    }
+  } catch {
+    return null;
+  }
 }
 
 async function encodeUntilBudget(

@@ -44,10 +44,15 @@ import {
   accountsLastKnownCanPaint,
   decideAccountsLastKnown,
 } from "@/features/home/accounts-last-known";
-import { seedBankMailPendingCount } from "@/features/imports/bank-mail-pending-store";
+import {
+  bankMailPendingCountVersion,
+  seedBankMailPendingCount,
+} from "@/features/imports/bank-mail-pending-store";
 import {
   clearPersistedLastKnown,
   readPersistedLastKnown,
+  lockPendingBankMailCount,
+  pendingBankMailCountIsAuthoritative,
   rememberPendingBankMailCount,
   rememberedPendingBankMailCount,
   writePersistedLastKnown,
@@ -413,6 +418,9 @@ function rememberHydratedPendingCount(
   stored: number | null | undefined,
   cookieMatchesOwner: boolean,
 ) {
+  // A Bekräfta or Hem fetch in this session already replaced the cache.
+  if (pendingBankMailCountIsAuthoritative()) return;
+  if (bankMailPendingCountVersion() > 0) return;
   const count = knownPendingCount(stored, cookieMatchesOwner);
   if (count == null) return;
   rememberPendingBankMailCount(count);
@@ -425,7 +433,7 @@ function writeHomeCookie(snap: HomeSnapshot) {
 
 /** Keep the mail cue in the same cookie Hem already SSR-paints. */
 export function persistPendingBankMailCount(count: number) {
-  rememberPendingBankMailCount(count);
+  lockPendingBankMailCount(count);
   if (home) writeHomeCookie(home);
   schedulePersist();
 }

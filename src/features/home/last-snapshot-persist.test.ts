@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   LAST_KNOWN_STORAGE_KEY,
   clearPersistedLastKnown,
+  lockPendingBankMailCount,
   readPersistedLastKnown,
+  rememberedPendingBankMailCount,
+  resetRememberedPendingBankMailCountForTests,
   writePersistedLastKnown,
 } from "./last-snapshot-persist";
 import type { PersistedLastKnown } from "./last-snapshot-persist";
@@ -78,6 +81,7 @@ function payload(partial: Partial<PersistedLastKnown> = {}): PersistedLastKnown 
 
 describe("last-known persist", () => {
   afterEach(() => {
+    resetRememberedPendingBankMailCountForTests();
     Reflect.deleteProperty(globalThis, "localStorage");
     Reflect.deleteProperty(globalThis, "document");
   });
@@ -213,6 +217,19 @@ describe("last-known persist", () => {
     expect(next?.plan?.ledgerTransactions).toHaveLength(40);
     expect(next?.analys).toBeNull();
     expect(next?.movements).toBeNull();
+  });
+
+  it("keeps a locked mail count when a stale snapshot is written back", () => {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: memoryStorage(),
+    });
+    mockDocumentCookie();
+    writePersistedLastKnown(payload({ pendingBankMailCount: 2 }));
+    lockPendingBankMailCount(0);
+    writePersistedLastKnown(payload({ pendingBankMailCount: 2 }));
+    expect(rememberedPendingBankMailCount()).toBe(0);
+    expect(readPersistedLastKnown()?.pendingBankMailCount).toBe(0);
   });
 });
 

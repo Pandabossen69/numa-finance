@@ -22,7 +22,7 @@ export type MovementsWindow = {
   cycleEndAt?: string | null;
 };
 
-/** Same type chips Rörelser already paints (Alla / Utgifter / Intäkter / Övrigt). */
+/** Same type chips Rörelser already paints (Alla / Utgifter / Intäkter / Annat). */
 export function movementMatchesType(
   tx: Pick<MovementRow, "transactionType">,
   filter: MovementsFilter,

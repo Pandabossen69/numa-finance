@@ -31,8 +31,8 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
       ref={rootRef}
       className={
         open
-          ? "relative shrink-0 max-md:flex max-md:w-full max-md:basis-full max-md:flex-col max-md:items-end"
-          : "relative shrink-0 p-0.5"
+          ? "relative z-20 shrink-0 max-md:flex max-md:w-full max-md:basis-full max-md:flex-col max-md:items-end"
+          : "relative z-20 shrink-0"
       }
     >
       <button
