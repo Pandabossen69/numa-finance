@@ -493,6 +493,37 @@ export function projectPayCycle(
 }
 
 /**
+ * Salary-month window for one funding month: first income of that month
+ * through the next month's last income (exclusive end). Same bounds the
+ * full phase of `projectPayCycle` uses. Does not change living totals.
+ */
+export function fundingMonthWindow(
+  items: readonly PlanItem[],
+  monthKey: string,
+  timeZone: string,
+): {
+  startAt: string;
+  endAt: string;
+  startLabelSv: string;
+  endLabelSv: string;
+} | null {
+  const dated = realIncomeDates([...items], timeZone);
+  const byMonth = groupByMonth(dated);
+  const wave = byMonth.get(monthKey);
+  if (!wave || wave.length === 0) return null;
+  const first = wave[0]!;
+  const last = wave[wave.length - 1]!;
+  const { endIso } = resolveNextLastIso(byMonth, monthKey, last.iso);
+  if (!endIso || !Number.isFinite(Date.parse(endIso))) return null;
+  return {
+    startAt: first.iso,
+    endAt: endIso,
+    startLabelSv: labelDateSv(first.iso, timeZone),
+    endLabelSv: labelDateSv(endIso, timeZone),
+  };
+}
+
+/**
  * Prefer an open full wave (last landed, nextLast still ahead) so early income
  * in the next calendar month cannot steal funding mid-cycle.
  */

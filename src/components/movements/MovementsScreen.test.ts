@@ -53,9 +53,7 @@ describe("Rörelser expense color", () => {
     expect(src).toMatch(
       /import type \{ MovementsSnapshot \} from ["']@\/features\/finance\/load-movements["']/,
     );
-    expect(src).not.toContain(
-      "minorToUi(tx.nativeAmountMinor ?? tx.amountMinor)",
-    );
+    expect(src).not.toContain("minorToUi(tx.nativeAmountMinor ?? tx.amountMinor)");
   });
 
   it("gives Rörelser chips a 44px tap target", () => {
@@ -64,9 +62,7 @@ describe("Rörelser expense color", () => {
   });
 
   it("pluralizes the filtered count correctly", () => {
-    expect(src).toContain(
-      'filtered.length === 1 ? "rörelse" : "rörelser"',
-    );
+    expect(src).toContain('filtered.length === 1 ? "rörelse" : "rörelser"');
     expect(src).not.toContain("{filtered.length} rörelser");
   });
 
@@ -124,7 +120,14 @@ describe("Rörelser expense color", () => {
 
   it("clears the category chip when leaving Rörelser", () => {
     expect(src).toContain('spaTabKey(prev) === "/transaktioner"');
-    expect(src).toContain("spaTabKey(pathname) !== \"/transaktioner\"");
+    expect(src).toContain('spaTabKey(pathname) !== "/transaktioner"');
     expect(src).toContain("category: null");
+  });
+
+  it("sums a drill from the visible rows and does not store the drill chips", () => {
+    expect(src).toContain("drillSummaryFromRows(filtered");
+    expect(src).toContain("savedViewWithoutDrillFilters");
+    expect(src).toContain("data-drill-summary");
+    expect(src).toContain("expenseOnly");
   });
 });

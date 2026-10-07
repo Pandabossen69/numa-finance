@@ -166,7 +166,9 @@ describe("Analys month result color", () => {
     // Hero and comparison come from the listed rows, so they cannot
     // contradict the categories under them (Spec 4: Per kategori vs Spenderat).
     expect(src).toContain("const listedSpent = sumSpendingCategories(listedCategories)");
-    expect(src).toContain("const spentMinor = listedSpent > 0 ? listedSpent : thinFallback");
+    expect(src).toContain(
+      "const spentMinor = listedSpent > 0 ? listedSpent : thinFallback",
+    );
     expect(src).toContain("spentMinor={isEmpty ? 0 : spentMinor}");
     expect(src).toContain("spentMinor={spentMinor}");
     expect(src).not.toContain("spentMinor={month.spentMinor}");
@@ -261,6 +263,8 @@ describe("Analys month result color", () => {
     expect(src).toContain("activeMonthKey === view.monthKey");
     expect(src).toContain("labelMonthSv(activeMonthKey)");
     expect(src).not.toContain("{view.monthLabelSv}");
+    expect(src).toContain("loneManadLabelSv");
+    expect(src).toContain("data-analys-lone-manad");
   });
 
   it("teaches the purpose in the empty states and page hint", () => {
@@ -338,7 +342,9 @@ describe("Analys month result color", () => {
     expect(src).toContain("SV.analysCategoryDrillHint");
     expect(src).toContain("SV.analysOvrigtTitles");
     // Still one Spenderat: the hero is the category sum, no second total.
-    expect(src).toContain("const spentMinor = listedSpent > 0 ? listedSpent : thinFallback");
+    expect(src).toContain(
+      "const spentMinor = listedSpent > 0 ? listedSpent : thinFallback",
+    );
     expect(src).not.toContain('aria-label="Per kategori"');
   });
 
@@ -347,7 +353,9 @@ describe("Analys month result color", () => {
     const fn = src.slice(fnStart);
     expect(fnStart).toBeGreaterThan(-1);
     expect(fn).toContain("const showDrillHint = ovrigtDominatesSpend(categories)");
-    expect(fn).toContain("const ovrigtTitles = showDrillHint\n    ? ovrigtTitleBreakdown({");
+    expect(fn).toContain(
+      "const ovrigtTitles = showDrillHint\n    ? ovrigtTitleBreakdown({",
+    );
     expect(fn).toContain("transactions: ledgerTransactions");
     expect(fn).toContain("scope,");
     expect(fn).toContain("startAt: cycleStartAt");
@@ -368,7 +376,9 @@ describe("Analys month result color", () => {
     expect(titles).not.toContain("data-analys-category");
     expect(titles).not.toContain("<Link");
     expect(titles).not.toContain("href=");
-    expect(src).toContain('const spentMinor = listedSpent > 0 ? listedSpent : thinFallback');
+    expect(src).toContain(
+      "const spentMinor = listedSpent > 0 ? listedSpent : thinFallback",
+    );
   });
 
   it("shows a Swedish fail-soft if Analys never arrives", () => {

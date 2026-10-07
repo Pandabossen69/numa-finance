@@ -10,6 +10,7 @@ import { MerScreen } from "@/components/mer/MerScreen";
 import { MovementsScreen } from "@/components/movements/MovementsScreen";
 import {
   lastMovementsDrill,
+  rememberMovementsDrillFromHref,
   resetMovementsDrillForTests,
 } from "@/components/movements/movements-drill";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
@@ -288,8 +289,8 @@ describe("Analys drill vs Mer → Rörelser", () => {
   }
 
   function rorelserLink(): HTMLAnchorElement {
-    const found = [...host.querySelectorAll('a[href="/transaktioner"]')].find(
-      (el) => (el.textContent ?? "").includes("Rörelser"),
+    const found = [...host.querySelectorAll('a[href="/transaktioner"]')].find((el) =>
+      (el.textContent ?? "").includes("Rörelser"),
     );
     if (!(found instanceof HTMLAnchorElement)) {
       throw new Error("missing Mer → Rörelser");
@@ -318,6 +319,10 @@ describe("Analys drill vs Mer → Rörelser", () => {
     expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
     expect(chipOn(buttonNamed(host, "All tid"))).toBe(false);
     expect(listHeading(host)).toBe("1 rörelse · Mat");
+    const summary = host.querySelector("[data-drill-summary]");
+    expect(summary?.textContent).toContain("Mat i månaden");
+    expect(summary?.textContent).toContain("1 st");
+    expect(host.querySelector(".numa-stat-trio")).toBeNull();
   });
 
   it("drops the drill on Mer → Rörelser and keeps a Utgifter chip the user chose", () => {
@@ -354,5 +359,47 @@ describe("Analys drill vs Mer → Rörelser", () => {
     });
     expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
     expect(lastAnalysScope()).toBe("period");
+  });
+
+  it("does not keep the drill Utgifter chip when Perioden was the saved view", () => {
+    mount("period");
+    act(() => {
+      rememberMovementsView({
+        filter: "all",
+        period: "cycle",
+        category: null,
+      });
+    });
+    const category = host.querySelector("[data-analys-category='Mat']");
+    expect(category).toBeInstanceOf(HTMLAnchorElement);
+    tap(category as Element);
+    expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
+    expect(host.querySelector("[data-drill-summary]")?.textContent).toContain(
+      "Mat i perioden",
+    );
+    expect(lastMovementsView()?.filter).toBe("all");
+
+    act(() => {
+      rememberMovementsView({
+        filter: "expense",
+        period: "cycle",
+        category: "Mat",
+      });
+    });
+    expect(lastMovementsView()?.filter).toBe("expense");
+
+    act(() => {
+      rememberMovementsDrillFromHref("/mer");
+    });
+    expect(lastMovementsDrill()).toBeNull();
+    expect(lastMovementsView()).toMatchObject({
+      filter: "all",
+      period: "cycle",
+      category: null,
+    });
+    expect(chipOn(buttonNamed(host, "Alla"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "Perioden"))).toBe(true);
+    expect(host.querySelector("[data-drill-summary]")).toBeNull();
+    expect(host.querySelector(".numa-stat-trio")).not.toBeNull();
   });
 });

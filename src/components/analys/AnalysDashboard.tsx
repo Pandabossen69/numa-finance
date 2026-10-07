@@ -39,6 +39,7 @@ import {
   categoryDrillHref,
   ovrigtDominatesSpend,
 } from "@/components/analys/analys-category-drill";
+import { loneManadLabelSv } from "@/components/analys/salary-month-label";
 import { senasteRowCategoryLabel } from "@/components/analys/senaste-row";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
@@ -120,6 +121,14 @@ export function AnalysDashboard({
     rememberAnalysScope(scope);
   }, [data, scope, storedAnalys, view]);
   const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
+  const loneLabel = useMemo(() => {
+    if (scope !== "month" || !view || !activeMonthKey) return null;
+    return loneManadLabelSv({
+      monthKey: activeMonthKey,
+      planItems: view.planItems,
+      timeZone: view.timeZone,
+    });
+  }, [activeMonthKey, scope, view]);
 
   // Same numbers as the server sends for today's month, recomputed locally for
   // any other month so browsing is instant and cannot drift from Plan.
@@ -372,13 +381,23 @@ export function AnalysDashboard({
         </div>
       ) : (
         <section className="numa-scope-panel space-y-5">
-          <PlanMonthNav
-            monthKey={activeMonthKey}
-            viewYear={viewYear}
-            currentMonthKey={view.currentMonthKey}
-            onSelectMonth={selectMonth}
-            idPrefix="analys"
-          />
+          <div className="space-y-1">
+            <PlanMonthNav
+              monthKey={activeMonthKey}
+              viewYear={viewYear}
+              currentMonthKey={view.currentMonthKey}
+              onSelectMonth={selectMonth}
+              idPrefix="analys"
+            />
+            {loneLabel ? (
+              <p
+                data-analys-lone-manad=""
+                className="px-1 text-center text-[12px] leading-snug break-words text-[var(--numa-faint)]"
+              >
+                {loneLabel}
+              </p>
+            ) : null}
+          </div>
           <SpendHero
             eyebrow={SV.manad}
             title={labelMonthSv(activeMonthKey)}
