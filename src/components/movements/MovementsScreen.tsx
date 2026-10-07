@@ -48,7 +48,10 @@ import {
   lastMovementsDrill,
   rememberMovementsDrillFromHref,
   subscribeMovementsDrill,
+  type MovementsDrill,
 } from "./movements-drill";
+import { drillSummaryFromRows } from "./drill-summary";
+import { savedViewWithoutDrillFilters } from "./saved-view-drill";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
@@ -134,6 +137,12 @@ export function MovementsScreen({
     lastMovementsDrill,
     () => null,
   );
+  const drillBaselineRef = useRef<{
+    filter: Filter;
+    category: string | null;
+    drill: MovementsDrill;
+  } | null>(null);
+  const drillTouchedRef = useRef({ filter: false, category: false });
   const listRef = useRef<HTMLElement>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
@@ -192,6 +201,50 @@ export function MovementsScreen({
       });
     }
   }, [pathname]);
+
+  // Drill chips are an overlay. If Utgifter or the category were written
+  // into the saved view, put back what the user had before the drill.
+  // A chip they tap themselves is kept (drillTouchedRef).
+  useLayoutEffect(() => {
+    if (drill) {
+      if (!drillBaselineRef.current) {
+        const saved = lastMovementsView();
+        drillBaselineRef.current = {
+          filter: saved?.filter ?? "all",
+          category: saved?.category ?? null,
+          drill,
+        };
+        drillTouchedRef.current = { filter: false, category: false };
+      } else {
+        drillBaselineRef.current = { ...drillBaselineRef.current, drill };
+      }
+      return;
+    }
+    const baseline = drillBaselineRef.current;
+    if (!baseline) return;
+    drillBaselineRef.current = null;
+    const touched = drillTouchedRef.current;
+    drillTouchedRef.current = { filter: false, category: false };
+    const current = lastMovementsView();
+    if (!current) return;
+    const restored = savedViewWithoutDrillFilters({
+      before: { filter: baseline.filter, category: baseline.category },
+      current,
+      drill: baseline.drill,
+    });
+    const next = {
+      ...restored,
+      filter: touched.filter ? current.filter : restored.filter,
+      category: touched.category ? (current.category ?? null) : restored.category,
+    };
+    if (
+      next.filter === current.filter &&
+      (next.category ?? null) === (current.category ?? null)
+    ) {
+      return;
+    }
+    rememberMovementsView(next);
+  }, [drill]);
 
   useEffect(() => {
     if (!data) return;
@@ -274,11 +327,13 @@ export function MovementsScreen({
   }
 
   function chooseFilter(next: Filter) {
+    drillTouchedRef.current.filter = true;
     dropDrillOverlay();
     publishView({ filter: next });
   }
 
   function selectCategory(name: string) {
+    drillTouchedRef.current.category = true;
     dropDrillOverlay();
     const next = toggleCategory(category, name);
     publishView({ category: next });
@@ -317,6 +372,13 @@ export function MovementsScreen({
     : viewPeriod === "month"
       ? view.monthNetMinor
       : view.allNetMinor;
+  const drillSummary = drill
+    ? drillSummaryFromRows(filtered, {
+        category: viewCategory ?? "",
+        period: viewPeriod,
+        filter: viewFilter,
+      })
+    : null;
   const cycleRange = payCycleRangeLabelSv(
     liveCycle?.startAt,
     liveCycle?.endAt,
@@ -353,27 +415,48 @@ export function MovementsScreen({
         ) : null}
       </div>
 
-      <section className="numa-panel-strong numa-stat-trio animate-rise-delay-1 p-5">
-        <SummaryStat
-          label="Intäkter"
-          amountMinor={income}
-          currency={view.currency}
-          tone="positive"
-        />
-        <SummaryStat
-          label="Utgifter"
-          amountMinor={expense}
-          currency={view.currency}
-          tone="neutral"
-        />
-        <SummaryStat
-          label="Netto"
-          amountMinor={net}
-          currency={view.currency}
-          tone={net >= 0 ? "positive" : "alarm"}
-          signed
-        />
-      </section>
+      {drillSummary?.expenseOnly ? (
+        <section
+          data-drill-summary=""
+          className="numa-panel-strong animate-rise-delay-1 min-w-0 p-5"
+          aria-label={`${drillSummary.label}, ${drillSummary.count} st`}
+        >
+          <p className="numa-section-title break-words">{drillSummary.label}</p>
+          <div className="numa-hero-money mt-2 text-[var(--numa-ink)]">
+            <MoneyDisplay
+              amountMinor={drillSummary.amountMinor}
+              currency={view.currency}
+              size="md"
+              wrap={false}
+            />
+          </div>
+          <p className="mt-1 text-xs font-medium text-[var(--numa-faint)]">
+            {drillSummary.count} st
+          </p>
+        </section>
+      ) : (
+        <section className="numa-panel-strong numa-stat-trio animate-rise-delay-1 p-5">
+          <SummaryStat
+            label="Intäkter"
+            amountMinor={income}
+            currency={view.currency}
+            tone="positive"
+          />
+          <SummaryStat
+            label="Utgifter"
+            amountMinor={expense}
+            currency={view.currency}
+            tone="neutral"
+          />
+          <SummaryStat
+            label="Netto"
+            amountMinor={net}
+            currency={view.currency}
+            tone={net >= 0 ? "positive" : "alarm"}
+            signed
+          />
+        </section>
+      )}
 
       {view.hasBankTruth && view.balanceMinor != null ? (
         <section className="numa-money-stack animate-rise-delay-2 animate-scale-in">
@@ -484,6 +567,7 @@ export function MovementsScreen({
               <button
                 type="button"
                 onClick={() => {
+                  drillTouchedRef.current.category = true;
                   dropDrillOverlay();
                   publishView({ category: null });
                 }}
