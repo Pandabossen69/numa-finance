@@ -45,29 +45,38 @@ export function isAuthRateLimitMessage(message: string): boolean {
   );
 }
 
-/** Hide whether the address exists. Rate limit and real failures stay visible. */
+function authErrorBlob(message: string, code?: string | null): string {
+  return `${code ?? ""} ${message}`.toLowerCase().replaceAll("_", " ");
+}
+
+function isAuthNetworkMessage(blob: string): boolean {
+  return (
+    blob.includes("network") ||
+    blob.includes("failed to fetch") ||
+    blob.includes("fetch failed") ||
+    blob.includes("timeout") ||
+    blob.includes("timed out") ||
+    blob.includes("econn") ||
+    blob.includes("enotfound") ||
+    blob.includes("socket")
+  );
+}
+
+/**
+ * A well-formed address must always look the same. Supabase uses
+ * `email_address_invalid` for some existing accounts, which would
+ * otherwise show «Ogiltig e-postadress» and reveal that the address exists.
+ * Format errors stay on the client. Only rate limit and transport failures
+ * are shown after the request.
+ */
 export function classifyPasswordResetError(
   message: string,
-): "neutral" | "rate-limit" | "invalid-email" | "failed" {
-  const lower = message.toLowerCase();
-  if (isAuthRateLimitMessage(message)) return "rate-limit";
-  if (
-    lower.includes("user not found") ||
-    lower.includes("user does not exist") ||
-    lower.includes("email not found") ||
-    lower.includes("no user") ||
-    lower.includes("signups not allowed") ||
-    lower.includes("signup is disabled")
-  ) {
-    return "neutral";
-  }
-  if (
-    (lower.includes("invalid") && lower.includes("email")) ||
-    lower.includes("unable to validate email")
-  ) {
-    return "invalid-email";
-  }
-  return "failed";
+  code?: string | null,
+): "neutral" | "rate-limit" | "failed" {
+  const blob = authErrorBlob(message, code);
+  if (isAuthRateLimitMessage(blob)) return "rate-limit";
+  if (isAuthNetworkMessage(blob)) return "failed";
+  return "neutral";
 }
 
 export function passwordResetUserMessage(
@@ -78,9 +87,6 @@ export function passwordResetUserMessage(
   }
   if (kind === "rate-limit") {
     return { ok: false, error: PASSWORD_RESET_RATE_LIMIT_MESSAGE };
-  }
-  if (kind === "invalid-email") {
-    return { ok: false, error: PASSWORD_RESET_INVALID_EMAIL };
   }
   return { ok: false, error: PASSWORD_RESET_FAILED_MESSAGE };
 }

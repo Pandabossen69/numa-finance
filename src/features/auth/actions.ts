@@ -105,7 +105,8 @@ export async function requestPasswordResetAction(
     if (!error) {
       return { ok: true, message: PASSWORD_RESET_NEUTRAL_MESSAGE };
     }
-    return passwordResetUserMessage(classifyPasswordResetError(error.message));
+    const code = "code" in error ? (error.code ?? null) : null;
+    return passwordResetUserMessage(classifyPasswordResetError(error.message, code));
   } catch {
     return { ok: false, error: PASSWORD_RESET_FAILED_MESSAGE };
   }

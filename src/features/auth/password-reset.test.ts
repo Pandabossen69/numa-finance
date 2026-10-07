@@ -57,40 +57,57 @@ describe("password reset responses", () => {
   it("always uses the neutral copy, including when the address is unknown", () => {
     for (const message of [
       "User not found",
+      "user_not_found",
       "User does not exist",
       "Email not found",
       "Signups not allowed for this instance",
     ]) {
-      expect(classifyPasswordResetError(message)).toBe("neutral");
-      expect(passwordResetUserMessage("neutral")).toEqual({
-        ok: true,
-        message: PASSWORD_RESET_NEUTRAL_MESSAGE,
-      });
+      expect(classifyPasswordResetError(message, message)).toBe("neutral");
     }
+    expect(passwordResetUserMessage("neutral")).toEqual({
+      ok: true,
+      message: PASSWORD_RESET_NEUTRAL_MESSAGE,
+    });
     expect(PASSWORD_RESET_NEUTRAL_MESSAGE).toBe(
       "Om adressen finns skickar vi en länk inom några minuter.",
     );
   });
 
-  it("keeps rate limit and invalid email in Swedish", () => {
+  it("maps email_address_invalid to the neutral success state", () => {
+    const samples: Array<{ message: string; code: string | null }> = [
+      { message: "email_address_invalid", code: "email_address_invalid" },
+      {
+        message: 'Email address "test@gmail.com" is invalid',
+        code: "email_address_invalid",
+      },
+      { message: "Unable to validate email address", code: "validation_failed" },
+      { message: "user_not_found", code: "user_not_found" },
+    ];
+    for (const sample of samples) {
+      expect(classifyPasswordResetError(sample.message, sample.code)).toBe("neutral");
+      expect(passwordResetUserMessage("neutral")).toEqual({
+        ok: true,
+        message: "Om adressen finns skickar vi en länk inom några minuter.",
+      });
+    }
+    expect(PASSWORD_RESET_INVALID_EMAIL).toBe("Ogiltig e-postadress");
+  });
+
+  it("keeps Swedish rate-limit and network errors", () => {
     expect(classifyPasswordResetError("Email rate limit exceeded")).toBe("rate-limit");
     expect(
       classifyPasswordResetError(
         "For security purposes, you can only request this after 60 seconds",
       ),
     ).toBe("rate-limit");
+    expect(
+      classifyPasswordResetError("over_request_rate_limit", "over_request_rate_limit"),
+    ).toBe("rate-limit");
     expect(passwordResetUserMessage("rate-limit")).toEqual({
       ok: false,
       error: PASSWORD_RESET_RATE_LIMIT_MESSAGE,
     });
-    expect(classifyPasswordResetError("Unable to validate email address")).toBe(
-      "invalid-email",
-    );
-    const invalidEmail = passwordResetUserMessage("invalid-email");
-    expect(invalidEmail).toEqual({
-      ok: false,
-      error: PASSWORD_RESET_INVALID_EMAIL,
-    });
+    expect(classifyPasswordResetError("Failed to fetch", "network_error")).toBe("failed");
     expect(passwordResetUserMessage("failed")).toEqual({
       ok: false,
       error: PASSWORD_RESET_FAILED_MESSAGE,
