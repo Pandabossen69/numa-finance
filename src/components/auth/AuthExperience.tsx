@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   LOGIN_BOOT_TIMEOUT_MS,
@@ -10,9 +11,8 @@ import {
   paintLoginBoot,
 } from "@/components/auth/LoginBoot";
 import { signInAction } from "@/features/auth/actions";
-import {
-  publishBankMailPendingCount,
-} from "@/features/imports/bank-mail-queue-refresh";
+import { LOGIN_INVITE_NOTE } from "@/features/auth/password-reset";
+import { publishBankMailPendingCount } from "@/features/imports/bank-mail-queue-refresh";
 import { readHomeSnapshot } from "@/lib/numa/read-client";
 import { hasPreviewEscape, withPreviewQuery } from "@/lib/site";
 import { swedishEmailConstraintMessage } from "@/domain/identity/email";
@@ -147,6 +147,12 @@ export function AuthExperience() {
             >
               {pending ? "Loggar in…" : "Logga in"}
             </button>
+            <p className="auth-access-note">
+              <Link href="/glomt-losenord" className="auth-text-link">
+                Glömt lösenord?
+              </Link>
+            </p>
+            <p className="auth-access-note">{LOGIN_INVITE_NOTE}</p>
             <p className="auth-access-note">
               Konto skapas av NUMA · använd uppgifterna du fått.
             </p>
