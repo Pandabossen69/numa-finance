@@ -2703,6 +2703,18 @@ button.numa-chip:disabled {
   text-align: center;
 }
 
+.auth-text-link {
+  color: var(--numa-accent);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.auth-text-link:focus-visible {
+  outline: 2px solid var(--numa-accent);
+  outline-offset: 3px;
+}
+
 /* Login boot — branded hold after a successful sign-in, before Hem paints. */
 .auth-boot {
   position: fixed;

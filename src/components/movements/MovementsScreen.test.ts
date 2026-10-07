@@ -109,7 +109,10 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("const view = stored ?? data ?? null");
     expect(src).toContain("MovementsViewLoading");
     expect(src).not.toContain("pendingMovementsShell");
-    expect(src).toContain("Inga rörelser här ännu.");
+    expect(src).toContain("movementsEmptyKind");
+    expect(src).toContain("MOVEMENTS_EMPTY_LEDGER");
+    expect(src).toContain("MOVEMENTS_EMPTY_FILTER");
+    expect(src).not.toContain("Inga rörelser här ännu.");
     expect(src).toContain("lastMovementsView");
     expect(src).toContain("applyMovementsEdit");
     expect(src).toContain("applyMovementsVoid");

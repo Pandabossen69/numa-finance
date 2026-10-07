@@ -24,6 +24,10 @@ import {
  */
 const PUBLIC_PATHS = [
   "/logga-in",
+  "/glomt-losenord",
+  "/nytt-losenord",
+  "/registrera",
+  "/signup",
   "/auth",
   "/laga",
   "/api/cron/purge-observations",
@@ -70,9 +74,7 @@ function previewCookieOptions() {
 }
 
 function withPreviewOnUrl(url: URL, request: NextRequest) {
-  if (
-    hasPreviewEscape(request.nextUrl.searchParams, request.headers.get("cookie"))
-  ) {
+  if (hasPreviewEscape(request.nextUrl.searchParams, request.headers.get("cookie"))) {
     url.searchParams.set("preview", "1");
   }
   return url;
@@ -131,10 +133,7 @@ export async function updateSession(request: NextRequest) {
     return redirectToProduction(request);
   }
 
-  let supabaseResponse = stampPreviewCookie(
-    NextResponse.next({ request }),
-    request,
-  );
+  let supabaseResponse = stampPreviewCookie(NextResponse.next({ request }), request);
 
   const pathname = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some(
@@ -201,10 +200,7 @@ export async function updateSession(request: NextRequest) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        supabaseResponse = stampPreviewCookie(
-          NextResponse.next({ request }),
-          request,
-        );
+        supabaseResponse = stampPreviewCookie(NextResponse.next({ request }), request);
         for (const { name, value, options } of cookiesToSet) {
           supabaseResponse.cookies.set(name, value, options);
         }
