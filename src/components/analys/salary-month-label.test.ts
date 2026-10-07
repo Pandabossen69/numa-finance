@@ -83,6 +83,48 @@ describe("loneManadLabelSv", () => {
     ).toBe(`Lönemånad september · ${live.startLabelSv} – ${live.endLabelSv}`);
   });
 
+  it("shows the live earlier salary month while the current calendar month is open", () => {
+    const items = [
+      income("Tidig", "2026-09-03T12:00:00.000Z"),
+      income("Mellan", "2026-09-24T12:00:00.000Z"),
+      income("Lön sep", "2026-09-25T12:00:00.000Z"),
+    ];
+    const now = new Date("2026-10-07T03:00:00.000Z");
+    const live = projectPayCycle(items, now, TZ);
+    expect(live.fundingMonthKey).toBe("2026-09");
+    expect(live.startLabelSv).toBe("3 sep.");
+    expect(live.endLabelSv).toBe("25 okt.");
+
+    const current = loneManadLabelSv({
+      monthKey: "2026-10",
+      planItems: items,
+      timeZone: TZ,
+      now,
+    });
+    expect(current).toBe("Lönemånad september · 3 sep. – 25 okt.");
+    expect(current).toBe(
+      `Lönemånad september · ${live.startLabelSv} – ${live.endLabelSv}`,
+    );
+
+    expect(
+      loneManadLabelSv({
+        monthKey: "2026-09",
+        planItems: items,
+        timeZone: TZ,
+        now,
+      }),
+    ).toBe("Lönemånad september · 3 sep. – 25 okt.");
+
+    expect(
+      loneManadLabelSv({
+        monthKey: "2026-08",
+        planItems: items,
+        timeZone: TZ,
+        now,
+      }),
+    ).toBeNull();
+  });
+
   it("stays quiet when the plan has no paycheck", () => {
     expect(
       loneManadLabelSv({
