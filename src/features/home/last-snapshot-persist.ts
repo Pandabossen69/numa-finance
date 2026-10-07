@@ -34,12 +34,19 @@ export type PersistedLastKnown = {
 };
 
 let pendingBankMailCount: number | null = null;
+/** Bekräfta or a finished Hem fetch. A later disk rewrite must not replace it. */
+let pendingCountAuthoritative = false;
 
 export function rememberedPendingBankMailCount(): number | null {
   return pendingBankMailCount;
 }
 
+export function pendingBankMailCountIsAuthoritative(): boolean {
+  return pendingCountAuthoritative;
+}
+
 export function rememberPendingBankMailCount(count: number | null) {
+  if (pendingCountAuthoritative) return;
   if (count == null) {
     pendingBankMailCount = null;
     return;
@@ -48,8 +55,21 @@ export function rememberPendingBankMailCount(count: number | null) {
   pendingBankMailCount = count;
 }
 
+/** Server or Bekräfta wins over cookie / localStorage for this count. */
+export function lockPendingBankMailCount(count: number | null) {
+  if (count == null) {
+    pendingBankMailCount = null;
+  } else if (!Number.isInteger(count) || count < 0) {
+    return;
+  } else {
+    pendingBankMailCount = count;
+  }
+  pendingCountAuthoritative = true;
+}
+
 export function resetRememberedPendingBankMailCountForTests() {
   pendingBankMailCount = null;
+  pendingCountAuthoritative = false;
 }
 
 function persistStorage(): Storage | null {
@@ -107,18 +127,21 @@ export function readPersistedLastKnown(): PersistedLastKnown | null {
 }
 
 export function writePersistedLastKnown(data: PersistedLastKnown): void {
-  if (typeof data.pendingBankMailCount === "number") {
-    rememberPendingBankMailCount(data.pendingBankMailCount);
+  const incoming = data.pendingBankMailCount;
+  if (!pendingCountAuthoritative && typeof incoming === "number") {
+    rememberPendingBankMailCount(incoming);
   }
+  const pendingBankMailCount = pendingCountAuthoritative
+    ? rememberedPendingBankMailCount()
+    : typeof incoming === "number"
+      ? incoming
+      : rememberedPendingBankMailCount();
   const payload: PersistedLastKnown = {
     ...data,
     v: 1,
     movements: slimMovements(data.movements),
     analys: slimAnalys(data.analys),
-    pendingBankMailCount:
-      typeof data.pendingBankMailCount === "number"
-        ? data.pendingBankMailCount
-        : rememberedPendingBankMailCount(),
+    pendingBankMailCount,
   };
   // Cookie must land even when localStorage is unavailable — layout SSR
   // reads numa.lastHome.v1 for first Kvar/Över and the mail cue (SPEC 6b).
@@ -154,7 +177,8 @@ export function writePersistedLastKnown(data: PersistedLastKnown): void {
 }
 
 export function clearPersistedLastKnown(): void {
-  rememberPendingBankMailCount(null);
+  pendingCountAuthoritative = false;
+  pendingBankMailCount = null;
   clearBankMailPendingCount();
   writeLastHomeCookie(null);
   const storage = persistStorage();

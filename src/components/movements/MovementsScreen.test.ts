@@ -113,6 +113,14 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("lastMovementsView");
     expect(src).toContain("applyMovementsEdit");
     expect(src).toContain("applyMovementsVoid");
+    expect(src).toContain("captureOptimisticBalance");
+    expect(src).toContain("undoOptimisticBalance");
+    const voidClick = src.slice(src.indexOf('setPendingAction("void")'));
+    expect(voidClick.indexOf("applyMovementsVoid")).toBeLessThan(
+      voidClick.indexOf("await voidTransactionAction"),
+    );
+    expect(src).toContain('{ id: "other", label: "Annat" }');
+    expect(src).not.toContain('{ id: "other", label: "Övrigt" }');
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");

@@ -85,6 +85,24 @@ function stampPreviewCookie(response: NextResponse, request: NextRequest) {
   return response;
 }
 
+function unauthorizedApi(request: NextRequest) {
+  return stampPreviewCookie(
+    NextResponse.json(
+      { ok: false, error: "Du måste vara inloggad" },
+      { status: 401, headers: { "Cache-Control": "no-store" } },
+    ),
+    request,
+  );
+}
+
+/** Pages go to /logga-in. API clients must not follow a 307 into HTML. */
+function rejectAnonymous(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return unauthorizedApi(request);
+  }
+  return redirectToLogin(request);
+}
+
 function redirectToLogin(request: NextRequest) {
   const redirectUrl = request.nextUrl.clone();
   redirectUrl.pathname = "/logga-in";
@@ -127,13 +145,13 @@ export async function updateSession(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
     // Fail closed on protected routes when auth cannot be verified.
-    if (!isPublic) return redirectToLogin(request);
+    if (!isPublic) return rejectAnonymous(request);
     return supabaseResponse;
   }
 
   // Fast path: no auth cookie → skip network round-trip to Supabase.
   if (!hasSupabaseAuthCookie(request)) {
-    if (!isPublic) return redirectToLogin(request);
+    if (!isPublic) return rejectAnonymous(request);
     return supabaseResponse;
   }
 
@@ -205,12 +223,12 @@ export async function updateSession(request: NextRequest) {
   } catch (error) {
     console.error("[numa] proxy auth failed", error);
     // Fail closed: cookie present but session unverifiable.
-    if (!isPublic) return redirectToLogin(request);
+    if (!isPublic) return rejectAnonymous(request);
     return supabaseResponse;
   }
 
   if (!user && !isPublic) {
-    return redirectToLogin(request);
+    return rejectAnonymous(request);
   }
 
   if (user && pathname === "/logga-in") {

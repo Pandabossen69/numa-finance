@@ -10,6 +10,7 @@ import {
 } from "@/features/home/last-snapshot";
 import { refreshBankMailSurfacesAction } from "@/features/imports/bank-mail-actions";
 import {
+  bankMailPendingCountSnapshot,
   bankMailPendingCountVersion,
   publishBankMailPendingCount as publishCount,
 } from "@/features/imports/bank-mail-pending-store";
@@ -72,6 +73,11 @@ export async function refreshAfterBankMailQueueChange(
     publishBankMailPendingCount(
       queued.filter((row) => isPendingBankMail(row)).length,
     );
+  } else {
+    // No local queue to recount. Drop the persisted number so a stale
+    // cookie cannot outlive Bekräfta, and ignore the Hem read already
+    // in flight — the refill below publishes the server count.
+    publishBankMailPendingCount(bankMailPendingCountSnapshot() ?? 0);
   }
   invalidateSettledHomeSurfaces();
   try {

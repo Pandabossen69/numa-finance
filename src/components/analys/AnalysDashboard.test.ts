@@ -111,6 +111,7 @@ describe("Analys month result color", () => {
 
   it("lets the Analys header wrap so the formula panel can sit above the tabs", () => {
     expect(src).toContain("flex flex-wrap items-start justify-between");
+    expect(src).toContain("min-w-0 flex-1");
   });
 
   it("shows last-known Analys while a remount has no snapshot", () => {
@@ -365,12 +366,14 @@ describe("Analys month result color", () => {
     );
     expect(fn).toContain("aria-label={SV.analysOvrigtTitles}");
     expect(fn).toContain("data-analys-ovrigt-title={line.title}");
+    expect(fn).toContain("Visa alla");
+    expect(fn).toContain("splitOvrigtTitles");
     expect(fn).toContain("{line.title}");
     expect(fn).toContain("{line.count}×");
     expect(fn).toContain("amountMinor={line.amountMinor}");
     // Parent row still opens Rörelser. Title rows are display-only.
     expect(fn).toContain("data-analys-category={category.name}");
-    const titlesStart = fn.indexOf("ovrigtTitles.map");
+    const titlesStart = fn.indexOf("shownOvrigtTitles.map");
     const titles = fn.slice(titlesStart, fn.indexOf("</ul>", titlesStart));
     expect(titlesStart).toBeGreaterThan(-1);
     expect(titles).not.toContain("data-analys-category");

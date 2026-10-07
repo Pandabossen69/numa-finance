@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CanonicalTransaction } from "./types";
 import {
   OVRIGT_TITLE_LIMIT,
+  splitOvrigtTitles,
   ovrigtTitleBreakdown,
   spendingByMonthKey,
   spendingCategoriesByMonthKey,
@@ -291,6 +292,31 @@ describe("ovrigtTitleBreakdown", () => {
       600_00, 500_00, 400_00, 300_00, 200_00,
     ]);
     expect(titles.reduce((sum, line) => sum + line.amountMinor, 0)).toBeLessThan(
+      many.reduce((sum, line) => sum + line.amountMinor, 0),
+    );
+  });
+
+  it("keeps the hidden Övrigt remainder so Visa alla still sums to the category", () => {
+    const many = Array.from({ length: 6 }, (_, index) =>
+      tx({
+        amountMinor: (index + 1) * 100_00,
+        description: `Titel ${index + 1}`,
+        category: null,
+        occurredAt: "2026-08-10T09:00:00.000Z",
+      }),
+    );
+    const all = ovrigtTitleBreakdown({
+      transactions: many,
+      currency: "THB",
+      ...PERIOD,
+      limit: 100,
+    });
+    const split = splitOvrigtTitles(all);
+    expect(split.shown).toHaveLength(OVRIGT_TITLE_LIMIT);
+    expect(split.rest).toHaveLength(1);
+    const visible = split.shown.reduce((sum, line) => sum + line.amountMinor, 0);
+    const hidden = split.rest.reduce((sum, line) => sum + line.amountMinor, 0);
+    expect(visible + hidden).toBe(
       many.reduce((sum, line) => sum + line.amountMinor, 0),
     );
   });

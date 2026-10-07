@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
@@ -16,6 +16,7 @@ import {
   labelMonthNameSv,
   labelMonthSv,
   ovrigtTitleBreakdown,
+  splitOvrigtTitles,
   spendingCategoriesInWindow,
   sumSpendingCategories,
   UNCATEGORISED_SPEND_NAME,
@@ -262,8 +263,8 @@ export function AnalysDashboard({
   return (
     <div className="numa-page numa-page-wide min-w-0 space-y-6 overflow-x-hidden pb-10">
       <DestinationWarmup hrefs={["/transaktioner", "/plan"]} />
-      <header className="animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0 pr-1">
-        <div className="min-w-0">
+      <header className="animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="numa-page-title">Analys</h1>
           <p className="mt-1 max-w-[36ch] text-sm leading-snug text-[var(--numa-muted)]">
             {SV.analysHint}
@@ -644,6 +645,7 @@ function SpendByCategory({
 }) {
   const { prefetch } = usePrefetchOnIntent();
   const { markIntent } = useNavIntent();
+  const [showAllOvrigt, setShowAllOvrigt] = useState(false);
   const biggest = categories[0]?.amountMinor || 1;
   const showDrillHint = ovrigtDominatesSpend(categories);
   const ovrigtTitles = showDrillHint
@@ -655,8 +657,15 @@ function SpendByCategory({
         endAt: cycleEndAt,
         monthKey: activeMonthKey,
         timeZone,
+        limit: 500,
       })
     : [];
+  const ovrigtSplit = splitOvrigtTitles(ovrigtTitles);
+  const shownOvrigtTitles = showAllOvrigt ? ovrigtTitles : ovrigtSplit.shown;
+  const ovrigtRestMinor = ovrigtSplit.rest.reduce(
+    (sum, line) => sum + line.amountMinor,
+    0,
+  );
   return (
     <section className="space-y-3" aria-label={SV.vartGickPengarna}>
       <div className="px-0.5">
@@ -732,7 +741,7 @@ function SpendByCategory({
                   className="space-y-1.5 border-t border-[var(--numa-border)] py-2.5 pr-4 pl-8"
                   aria-label={SV.analysOvrigtTitles}
                 >
-                  {ovrigtTitles.map((line) => (
+                  {shownOvrigtTitles.map((line) => (
                     <li
                       key={line.title}
                       data-analys-ovrigt-title={line.title}
@@ -756,6 +765,27 @@ function SpendByCategory({
                       </span>
                     </li>
                   ))}
+                  {!showAllOvrigt && ovrigtRestMinor > 0 ? (
+                    <li className="numa-money-line text-xs">
+                      <button
+                        type="button"
+                        className="numa-press numa-money-line min-h-11 w-full text-left"
+                        onClick={() => setShowAllOvrigt(true)}
+                      >
+                        <span className="numa-money-line-label font-semibold text-[var(--numa-accent)]">
+                          Visa alla
+                        </span>
+                        <span className="numa-money-line-amt">
+                          <MoneyDisplay
+                            amountMinor={ovrigtRestMinor}
+                            currency={currency}
+                            size="xs"
+                            wrap={false}
+                          />
+                        </span>
+                      </button>
+                    </li>
+                  ) : null}
                 </ul>
               ) : null}
             </li>

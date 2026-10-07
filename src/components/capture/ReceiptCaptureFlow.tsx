@@ -290,14 +290,19 @@ export function ReceiptCaptureFlow({
     setError(null);
     setScanning(true);
     if (scanPreviewUrl) URL.revokeObjectURL(scanPreviewUrl);
-    const previewUrl = URL.createObjectURL(file);
-    setScanPreviewUrl(previewUrl);
+    setScanPreviewUrl(null);
 
     startTransition(async () => {
+      let previewUrl: string | null = null;
       try {
       const uploadFile = await compressImageForUpload(file, {
         preserveText: mode === "bank_sms" || mode === "bank_app",
       });
+      // Preview only a bitmap the browser can paint. A HEIC object URL
+      // logs a decode error in the console before we can catch it.
+      const objectUrl = URL.createObjectURL(uploadFile);
+      previewUrl = objectUrl;
+      setScanPreviewUrl(objectUrl);
       const fd = new FormData();
       fd.set("file", uploadFile);
       if (mode === "bank_sms") fd.set("mode", "bank_sms");
@@ -307,7 +312,7 @@ export function ReceiptCaptureFlow({
       setScanning(false);
       setScanPreviewUrl(null);
       if (!result.ok) {
-        URL.revokeObjectURL(previewUrl);
+        URL.revokeObjectURL(objectUrl);
         setError(result.error);
         return;
       }
@@ -362,7 +367,7 @@ export function ReceiptCaptureFlow({
           events.length === 0 &&
           !data.alreadyKnown)
       ) {
-        URL.revokeObjectURL(previewUrl);
+        URL.revokeObjectURL(objectUrl);
         const bankAppFallback =
           "Kunde inte läsa en komplett bankapp-transaktion (behöver belopp i THB/SEK + tidpunkt).";
         const raw =
@@ -392,7 +397,7 @@ export function ReceiptCaptureFlow({
         ocrStatus: data.ocrStatus,
         confidence: data.confidence ?? null,
         message: data.message,
-        previewUrl,
+        previewUrl: objectUrl,
         importKind,
         balanceAfterMinor: data.balanceAfterMinor,
         fingerprint: data.fingerprint,
@@ -408,7 +413,7 @@ export function ReceiptCaptureFlow({
       } catch (error) {
         setScanning(false);
         setScanPreviewUrl(null);
-        URL.revokeObjectURL(previewUrl);
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
         setError(
           error instanceof ImagePrepareError ? error.message : IMAGE_TOO_BIG_SV,
         );

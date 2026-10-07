@@ -94,16 +94,15 @@ export function CreateAccountForm({
           createAccountAction,
         );
         if (!result.ok) {
+          setSaving(false);
           setError(userFacingSaveError(result.error, "Kunde inte spara kontot"));
           return;
         }
-        mutation.clear();
         invalidateAccountsSnapshot();
         router.push(useOnIdag ? "/idag" : "/konton");
       } catch (error) {
-        setError(userFacingSaveError(error, "Kunde inte spara kontot"));
-      } finally {
         setSaving(false);
+        setError(userFacingSaveError(error, "Kunde inte spara kontot"));
       }
     });
   }

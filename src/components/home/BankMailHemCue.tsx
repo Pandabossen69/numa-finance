@@ -5,9 +5,10 @@ import Link from "next/link";
 import { bankMailConfirmHeading } from "@/features/imports/bank-mail-queue";
 import {
   bankMailPendingCountSnapshot,
+  bankMailPendingCountVersion,
   subscribeBankMailPendingCount,
 } from "@/features/imports/bank-mail-queue-refresh";
-import { serverNull } from "@/lib/react/server-snapshot";
+import { serverNull, serverZero } from "@/lib/react/server-snapshot";
 
 const HREF = "/importera#att-bekrafta";
 
@@ -26,7 +27,14 @@ export function BankMailHemCue({
     bankMailPendingCountSnapshot,
     serverNull,
   );
-  const count = publishedCount ?? knownCount;
+  const version = useSyncExternalStore(
+    subscribeBankMailPendingCount,
+    bankMailPendingCountVersion,
+    serverZero,
+  );
+  // A Bekräfta or Hem fetch (version > 0) wins over the SSR cookie. Falling
+  // back to knownCount after that brought a stale «Att bekräfta» back.
+  const count = version > 0 ? publishedCount : (publishedCount ?? knownCount);
 
   if (count == null || count <= 0) return null;
 
