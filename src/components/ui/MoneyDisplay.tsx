@@ -1,4 +1,4 @@
-import { toMajorUnits, money, type CurrencyCode } from "@/domain/money";
+import { majorUnitsForDisplay, toMajorUnits, money, type CurrencyCode } from "@/domain/money";
 import { CURRENCY_META } from "@/domain/money/currency";
 
 const GROUPING_SPACE = /[\u0020\u00A0\u202F\u2009]/;
@@ -12,11 +12,12 @@ export function formatSvGroupedNumber(majorUnits: number, fractionDigits: 0 | 2)
 }
 
 export function svAmountGroups(majorUnits: number, fractionDigits: 0 | 2): string[] {
+  const shown = majorUnitsForDisplay(majorUnits, fractionDigits);
   const raw = new Intl.NumberFormat("sv-SE", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
     useGrouping: true,
-  }).format(majorUnits);
+  }).format(shown);
   const parts = raw.split(GROUPING_SPACE).filter((part) => part.length > 0);
   return parts.length > 0 ? parts : [raw];
 }

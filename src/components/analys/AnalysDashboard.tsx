@@ -712,6 +712,7 @@ function SpendByCategory({
               scope,
               cycleStartAt,
               cycleEndAt,
+              monthKey: activeMonthKey,
             });
             return (
             <li key={category.name}>

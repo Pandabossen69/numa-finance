@@ -308,14 +308,18 @@ describe("Analys drill vs Mer → Rörelser", () => {
     expect((category as HTMLAnchorElement).getAttribute("href")).toContain(
       "filter=expense",
     );
+    expect((category as HTMLAnchorElement).getAttribute("href")).toContain(
+      "month=2026-09",
+    );
     tap(category as Element);
     expect(lastMovementsDrill()).toMatchObject({
       period: "month",
       filter: "expense",
       category: "Mat",
+      monthKey: "2026-09",
     });
     expect(lastMovementsView()).toMatchObject(SAVED_ALL);
-    expect(chipOn(buttonNamed(host, "Denna månad"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "September"))).toBe(true);
     expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
     expect(chipOn(buttonNamed(host, "All tid"))).toBe(false);
     expect(listHeading(host)).toBe("1 rörelse · Mat");
