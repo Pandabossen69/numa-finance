@@ -26,9 +26,10 @@ export type MovementsDrill = {
 /**
  * Spenderat row → Rörelser query.
  *
- * Månad always opens Denna månad + Utgifter. It must not copy a saved
- * All tid / Alla view: that mapping is why September → Övrigt showed
- * every row (prod 7dd0576 and the XA previews).
+ * Månad opens Utgifter for the browsed calendar month when `monthKey` is
+ * set. The chip is that month («September»), an overlay only — the saved
+ * All tid / Alla view is never copied (prod 7dd0576). Omitting `monthKey`
+ * leaves Rörelser on its own month.
  * Perioden uses the pay-cycle window so the list matches Spenderat.
  */
 export function movementsDrillForCategory(
@@ -37,6 +38,8 @@ export function movementsDrillForCategory(
     scope: "period" | "month";
     cycleStartAt?: string | null;
     cycleEndAt?: string | null;
+    /** Calendar month Analys is showing. Used only for scope "month". */
+    monthKey?: string | null;
   },
 ): MovementsDrill {
   if (opts.scope === "period") {
@@ -54,6 +57,7 @@ export function movementsDrillForCategory(
     category: categoryName,
     from: null,
     to: null,
+    ...(opts.monthKey ? { monthKey: opts.monthKey } : {}),
   };
 }
 

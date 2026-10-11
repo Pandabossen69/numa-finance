@@ -15,6 +15,8 @@ export function categoryDrillHref(
     scope: "period" | "month";
     cycleStartAt?: string | null;
     cycleEndAt?: string | null;
+    /** Browsed Analys month. Pins the Rörelser overlay; not a saved chip. */
+    monthKey?: string | null;
   },
 ): string {
   return movementsDrillHref(movementsDrillForCategory(categoryName, opts));

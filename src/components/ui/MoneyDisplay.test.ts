@@ -26,6 +26,17 @@ describe("formatSvGroupedNumber", () => {
     expect(text).toContain("\u202F");
     expect(normalizeSpaces(text)).toBe("12 450");
   });
+
+  it("prints a displayed zero without a minus sign", () => {
+    expect(formatSvGroupedNumber(0, 2)).toBe("0,00");
+    expect(formatSvGroupedNumber(-0, 2)).toBe("0,00");
+    expect(formatSvGroupedNumber(-0.004, 2)).toBe("0,00");
+    expect(formatSvGroupedNumber(-0.49, 0)).toBe("0");
+    expect(svAmountGroups(-0, 2)).toEqual(["0,00"]);
+    expect(formatSvGroupedNumber(-0.01, 2)).toMatch(/^[−-]/);
+    expect(normalizeSpaces(formatSvGroupedNumber(-150.5, 2))).toMatch(/^[−-]150,50$/);
+    expect(formatSvGroupedNumber(-0.5, 0)).toMatch(/^[−-]1$/);
+  });
 });
 
 describe("MoneyDisplay signed tone", () => {

@@ -317,6 +317,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("categoryDrillHref(");
     expect(src).toContain("cycleStartAt,");
     expect(src).toContain("cycleEndAt,");
+    expect(src).toContain("monthKey: activeMonthKey,");
     expect(src).not.toContain("rememberMovementsView(");
     expect(src).not.toContain("movementsViewForCategoryDrill(");
     expect(src).toContain("data-analys-category={category.name}");
@@ -369,6 +370,9 @@ describe("Analys month result color", () => {
     expect(fn).toContain("aria-label={SV.analysOvrigtTitles}");
     expect(fn).toContain("data-analys-ovrigt-title={line.title}");
     expect(fn).toContain("Visa alla");
+    expect(fn).toContain("setShowAllOvrigt(true)");
+    // Övrigt «Visa alla» expands titles on Analys. It is not a second drill.
+    expect(fn).not.toContain("categoryDrillHref(line");
     expect(fn).toContain("splitOvrigtTitles");
     expect(fn).toContain("{line.title}");
     expect(fn).toContain("{line.count}×");

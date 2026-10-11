@@ -10,6 +10,19 @@ export type FormatMoneyOptions = {
 };
 
 /**
+ * Display-only. −0 and amounts that round to 0 at `fractionDigits`
+ * (same half-away-from-zero cut as sv-SE Intl) stay unsigned.
+ * A real negative such as −0,01 is unchanged.
+ */
+export function majorUnitsForDisplay(major: number, fractionDigits: number): number {
+  if (!Number.isFinite(major)) return 0;
+  const digits = Math.max(0, Math.trunc(fractionDigits));
+  const scaled = major * 10 ** digits;
+  if (!Number.isFinite(scaled) || Math.abs(scaled) < 0.5) return 0;
+  return major;
+}
+
+/**
  * Display formatting only. Never use this string for parsing or domain math.
  *
  * THB uses the ISO code as a suffix ("10 108,04 THB") — the ฿ glyph often
@@ -21,7 +34,7 @@ export function formatMoney(
 ): string {
   const { showFraction = true, locale = "sv-SE" } = options;
   const meta = CURRENCY_META[value.currency];
-  const major = toMajorUnits(value);
+  const major = majorUnitsForDisplay(toMajorUnits(value), showFraction ? 2 : 0);
 
   const formatted = stableSvText(
     new Intl.NumberFormat(locale, {
