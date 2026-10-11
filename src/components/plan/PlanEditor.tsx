@@ -162,15 +162,6 @@ export function PlanEditor({
   );
   const monthKey = sharedMonth?.monthKey ?? currentMonthKey;
   const viewYear = sharedMonth?.viewYear ?? yearFromMonthKey(currentMonthKey);
-  // Publish the civil month once when nothing is remembered yet. Writing
-  // during render would update Analys while Plan is still rendering.
-  useEffect(() => {
-    if (lastPlanView()) return;
-    rememberPlanView({
-      monthKey: currentMonthKey,
-      viewYear: yearFromMonthKey(currentMonthKey),
-    });
-  }, [currentMonthKey]);
   const [localItems, setLocalItems] = useState(items);
   const monthKeys = useMemo(() => visibleMonthKeysForYear(viewYear), [viewYear]);
 
@@ -408,7 +399,11 @@ export function PlanEditor({
     // cache hits still paint totals in this tick (Spec P).
     const nextInput = { ...monthPaintInput, monthKey: key };
     flushSync(() => {
-      rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
+      rememberPlanView({
+        monthKey: key,
+        viewYear: yearFromMonthKey(key),
+        picked: true,
+      });
       setEditingId(null);
       setPartialId(null);
       setPayLaterId(null);

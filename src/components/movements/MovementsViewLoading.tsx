@@ -16,11 +16,11 @@ export function MovementsViewLoading() {
         <div className="numa-skel h-24 w-full" />
         <div className="numa-skel h-24 w-full" />
       </div>
-      <div className="flex flex-wrap gap-2">
-        <div className="numa-skel h-11 w-16 rounded-full" />
-        <div className="numa-skel h-11 w-20 rounded-full" />
-        <div className="numa-skel h-11 w-20 rounded-full" />
-        <div className="numa-skel h-11 w-16 rounded-full" />
+      <div className="numa-equal-chips numa-rorelser-filters is-quad">
+        <div className="numa-skel h-11 w-full rounded-full" />
+        <div className="numa-skel h-11 w-full rounded-full" />
+        <div className="numa-skel h-11 w-full rounded-full" />
+        <div className="numa-skel h-11 w-full rounded-full" />
       </div>
       <div className="numa-panel-list divide-y divide-[var(--numa-border)]">
         <div className="px-4 py-3.5">
