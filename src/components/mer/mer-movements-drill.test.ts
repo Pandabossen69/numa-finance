@@ -402,4 +402,60 @@ describe("Analys drill vs Mer → Rörelser", () => {
     expect(host.querySelector("[data-drill-summary]")).toBeNull();
     expect(host.querySelector(".numa-stat-trio")).not.toBeNull();
   });
+
+  it("labels a pay-month drill as September and leaves the saved chips", () => {
+    clearClientSessionCaches();
+    resetMovementsDrillForTests();
+    window.history.replaceState(
+      null,
+      "",
+      "/transaktioner?drill=1&period=month&filter=all&month=2026-09",
+    );
+    rememberMovementsView(SAVED_ALL);
+    rememberMovementsSnapshot({
+      ...movements,
+      monthKey: "2026-10",
+      items: [
+        ...movements.items,
+        row({
+          id: "oct",
+          occurredAt: "2026-10-02T04:00:00.000Z",
+          transactionType: "expense",
+          category: "Mat",
+        }),
+      ],
+    });
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    act(() => {
+      root.render(
+        createElement(
+          NavIntentProvider,
+          null,
+          createElement(MovementsScreen, { data: null }),
+        ),
+      );
+    });
+    const september = buttonNamed(host, "September");
+    expect(chipOn(september)).toBe(true);
+    expect(
+      [...host.querySelectorAll("button")].some((button) =>
+        (button.textContent ?? "").includes("Denna månad"),
+      ),
+    ).toBe(false);
+    expect(listHeading(host)).toBe("1 rörelse");
+    expect(lastMovementsView()).toMatchObject(SAVED_ALL);
+    expect(lastMovementsDrill()?.monthKey).toBe("2026-09");
+
+    tap(buttonNamed(host, "All tid"));
+    expect(lastMovementsDrill()).toBeNull();
+    expect(lastMovementsView()).toMatchObject({
+      filter: "all",
+      period: "all",
+      category: null,
+    });
+    expect(chipOn(buttonNamed(host, "Denna månad"))).toBe(false);
+    expect(chipOn(buttonNamed(host, "All tid"))).toBe(true);
+  });
 });

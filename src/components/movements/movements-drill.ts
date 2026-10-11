@@ -1,3 +1,5 @@
+import { labelMonthNameSv } from "@/domain/finance";
+
 /**
  * Analys → Rörelser drill lives only in the URL.
  * The remembered Rörelser view is the user's own chips and is never
@@ -83,6 +85,19 @@ export function senasteAllaHref(input: {
     to: input.cycleEndAt ?? null,
     monthKey: null,
   });
+}
+
+/**
+ * Chip label for a drill that pins a calendar month.
+ * «September», not «Denna månad». Overlay only — never a saved chip.
+ */
+export function drillMonthChipLabel(
+  monthKey: string | null | undefined,
+): string | null {
+  if (!monthKey || !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthKey)) return null;
+  const name = labelMonthNameSv(monthKey);
+  if (!name || name.toLowerCase().includes("invalid")) return null;
+  return name.charAt(0).toLocaleUpperCase("sv-SE") + name.slice(1);
 }
 
 export function movementsDrillHref(drill: MovementsDrill): string {

@@ -47,6 +47,7 @@ import {
 } from "@/features/home/last-snapshot";
 import {
   clearMovementsDrill,
+  drillMonthChipLabel,
   lastMovementsDrill,
   rememberMovementsDrillFromHref,
   subscribeMovementsDrill,
@@ -402,6 +403,9 @@ export function MovementsScreen({
     view.timeZone,
   );
   const showCycleChip = cycleRange != null || viewPeriod === "cycle";
+  // Drill month is an overlay label. It is not written into the saved chips.
+  const drillMonthLabel =
+    drill?.period === "month" ? drillMonthChipLabel(drill.monthKey) : null;
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
@@ -414,7 +418,7 @@ export function MovementsScreen({
         <PeriodChip
           active={viewPeriod === "month"}
           onClick={() => choosePeriod("month")}
-          label="Denna månad"
+          label={drillMonthLabel ?? "Denna månad"}
         />
         <PeriodChip
           active={viewPeriod === "all"}
@@ -802,7 +806,7 @@ export function MovementsScreen({
                           onClick={() =>
                             selectCategory(spendCategoryName(tx.category))
                           }
-                          className={`numa-press numa-category-chip numa-hit-44 -my-1 inline-flex min-h-8 items-center rounded-full px-2 ${
+                          className={`numa-press numa-category-chip inline-flex min-h-11 items-center rounded-full px-2 ${
                             viewCategory === spendCategoryName(tx.category)
                               ? "is-active bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                               : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
