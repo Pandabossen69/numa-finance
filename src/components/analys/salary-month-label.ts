@@ -1,7 +1,6 @@
 import {
   fundingMonthWindow,
   labelMonthNameSv,
-  monthKeyFromDate,
   projectPayCycle,
   type PlanItem,
 } from "@/domain/finance";
@@ -9,12 +8,11 @@ import {
 /**
  * Quiet caption for Analys → Månad.
  *
- * The month name is the salary month (funding wave), which can still be
- * September while the calendar month is October. The span is the live
- * pay-cycle window when the selected month is that open salary month, and
- * also when the selected month is the current calendar month but the live
- * cycle still belongs to an earlier pay month. Otherwise the span is the
- * browsed month's own funding window.
+ * The month name is the salary month (funding wave) for the month you are
+ * looking at. The span is the live pay-cycle window when that month is the
+ * open salary month. Otherwise it is the browsed month's own funding window.
+ * The calendar month does not borrow an earlier salary caption — Månad
+ * defaults to the live pay month instead, and October stays October.
  */
 export function loneManadLabelSv(input: {
   monthKey: string;
@@ -25,16 +23,6 @@ export function loneManadLabelSv(input: {
   if (!input.monthKey || input.planItems.length === 0) return null;
   const now = input.now ?? new Date();
   const live = projectPayCycle([...input.planItems], now, input.timeZone);
-  const calendarMonthKey = monthKeyFromDate(now, input.timeZone);
-  if (
-    input.monthKey === calendarMonthKey &&
-    live.fundingMonthKey != null &&
-    live.fundingMonthKey < input.monthKey &&
-    live.startLabelSv &&
-    live.endLabelSv
-  ) {
-    return caption(live.fundingMonthKey, live.startLabelSv, live.endLabelSv);
-  }
 
   let startLabel = live.fundingMonthKey === input.monthKey ? live.startLabelSv : null;
   let endLabel = live.fundingMonthKey === input.monthKey ? live.endLabelSv : null;

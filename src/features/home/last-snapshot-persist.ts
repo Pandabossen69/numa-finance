@@ -26,7 +26,7 @@ export type PersistedLastKnown = {
   accounts: AccountsSnapshot | null;
   movements: MovementsSnapshot | null;
   gettingStarted: GettingStartedView | null;
-  planView: { monthKey: string; viewYear: number } | null;
+  planView: { monthKey: string; viewYear: number; picked?: boolean } | null;
   analysScope: "period" | "month" | null;
   movementsView: MovementsView | null;
   /** Last «Att bekräfta» count. Omitted on older payloads means unknown. */

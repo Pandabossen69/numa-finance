@@ -40,7 +40,9 @@ import {
   categoryDrillHref,
   ovrigtDominatesSpend,
 } from "@/components/analys/analys-category-drill";
+import { analysActiveMonthKey } from "@/components/analys/analys-default-month";
 import { loneManadLabelSv } from "@/components/analys/salary-month-label";
+import { senasteAllaHref } from "@/components/movements/movements-drill";
 import { senasteRowCategoryLabel } from "@/components/analys/senaste-row";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
@@ -121,7 +123,15 @@ export function AnalysDashboard({
     else ensurePaintableAnalysSnapshot();
     rememberAnalysScope(scope);
   }, [data, scope, storedAnalys, view]);
-  const activeMonthKey = sharedMonth?.monthKey ?? view?.currentMonthKey ?? null;
+  const activeMonthKey = useMemo(() => {
+    if (!view) return null;
+    return analysActiveMonthKey({
+      shared: sharedMonth,
+      planItems: view.planItems,
+      currentMonthKey: view.currentMonthKey,
+      timeZone: view.timeZone,
+    });
+  }, [sharedMonth, view]);
   const loneLabel = useMemo(() => {
     if (scope !== "month" || !view || !activeMonthKey) return null;
     return loneManadLabelSv({
@@ -175,7 +185,11 @@ export function AnalysDashboard({
   const viewYear = yearFromMonthKey(activeMonthKey);
 
   function selectMonth(key: string) {
-    rememberPlanView({ monthKey: key, viewYear: yearFromMonthKey(key) });
+    rememberPlanView({
+      monthKey: key,
+      viewYear: yearFromMonthKey(key),
+      picked: true,
+    });
   }
 
   const monthCategories = view.categoriesByMonthKey[activeMonthKey] ?? [];
@@ -218,6 +232,12 @@ export function AnalysDashboard({
     scope === "month"
       ? `Inga rörelser i ${labelMonthSv(activeMonthKey)}`
       : "Inga rörelser i perioden";
+  const senasteHref = senasteAllaHref({
+    scope,
+    monthKey: activeMonthKey,
+    cycleStartAt: cycle.startAt,
+    cycleEndAt: cycle.endAt,
+  });
 
   const isBridge = cycle.livingMode === "bridge";
   const isEmpty = cycle.livingMode === "empty";
@@ -466,16 +486,16 @@ export function AnalysDashboard({
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold tracking-tight">Senaste</h2>
           <Link
-            href="/transaktioner"
+            href={senasteHref}
             prefetch={false}
             onPointerDown={() => {
               prefetch("/transaktioner");
-              markIntent("/transaktioner");
+              markIntent(senasteHref);
             }}
             onMouseEnter={() => prefetch("/transaktioner")}
             onFocus={() => prefetch("/transaktioner")}
-            onClick={() => markIntent("/transaktioner")}
-            className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
+            onClick={() => markIntent(senasteHref)}
+            className="numa-tap min-w-11 justify-end px-1 text-xs font-semibold text-[var(--numa-accent)]"
           >
             Alla →
           </Link>
