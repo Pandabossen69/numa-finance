@@ -137,5 +137,31 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("savedViewWithoutDrillFilters");
     expect(src).toContain("data-drill-summary");
     expect(src).toContain("expenseOnly");
+    expect(src).toContain("drillMonthChipLabel");
+    expect(src).toContain('label={drillMonthLabel ?? "Denna månad"}');
+    expect(src).toContain("Drill month is an overlay label");
+  });
+
+  it("gives the row category chip a 44px target clear of Ta bort", () => {
+    expect(src).toContain(
+      "numa-press numa-category-chip inline-flex min-h-11 items-center rounded-full px-2",
+    );
+    expect(src).not.toContain("numa-hit-44");
+    expect(src).not.toContain("-my-1");
+    expect(src).not.toContain("min-h-8 items-center");
+  });
+
+  it("reserves the loaded Rörelser chrome in the skeleton", () => {
+    const loading = readFileSync(
+      new URL("./MovementsViewLoading.tsx", import.meta.url),
+      "utf8",
+    );
+    expect(loading).toContain("numa-equal-chips");
+    expect(loading).toContain("col-span-2");
+    expect(loading).toContain("numa-stat-trio");
+    expect(loading).toContain("numa-money-stack");
+    expect(loading).toContain("numa-rorelser-filters");
+    expect(loading).not.toContain("sm:grid-cols-3");
+    expect(loading).not.toContain("flex gap-2");
   });
 });

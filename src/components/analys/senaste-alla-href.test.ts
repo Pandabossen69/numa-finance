@@ -9,6 +9,7 @@ import {
   movementsDrillFromHref,
   rememberMovementsDrillFromHref,
   resetMovementsDrillForTests,
+  drillMonthChipLabel,
   senasteAllaHref,
 } from "@/components/movements/movements-drill";
 
@@ -71,6 +72,13 @@ describe("senasteAllaHref", () => {
       monthKey: "2026-09",
     });
     expect(href).not.toContain("period=cycle");
+  });
+
+  it("names the drilled month on the chip and does not invent a saved period", () => {
+    expect(drillMonthChipLabel("2026-09")).toBe("September");
+    expect(drillMonthChipLabel("2026-10")).toBe("Oktober");
+    expect(drillMonthChipLabel(null)).toBeNull();
+    expect(drillMonthChipLabel("2026-13")).toBeNull();
   });
 
   it("keeps Perioden empty when there is no pay-cycle window", () => {

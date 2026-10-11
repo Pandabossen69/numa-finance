@@ -1,21 +1,30 @@
 export function MovementsViewLoading() {
   return (
     <div
-      className="numa-page numa-page-wide space-y-7"
+      className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7"
       data-numa-view-loading="true"
       aria-busy="true"
       aria-label="Laddar Rörelser"
     >
-      <div className="numa-skel h-8 w-36" />
-      <div className="flex gap-2">
-        <div className="numa-skel h-11 w-[7.5rem] rounded-full" />
-        <div className="numa-skel h-11 w-[5.5rem] rounded-full" />
+      <header>
+        <div className="numa-skel h-8 w-36" />
+      </header>
+      <div className="numa-equal-chips">
+        <div className="numa-skel h-11 w-full rounded-full" />
+        <div className="numa-skel h-11 w-full rounded-full" />
+        <div className="numa-skel col-span-2 h-11 w-full rounded-full" />
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="numa-skel h-24 w-full" />
-        <div className="numa-skel h-24 w-full" />
-        <div className="numa-skel h-24 w-full" />
-      </div>
+      <section className="numa-panel-strong numa-stat-trio p-5" aria-hidden>
+        <StatSkel />
+        <StatSkel />
+        <StatSkel />
+      </section>
+      <section className="numa-money-stack" aria-hidden>
+        <div className="numa-row">
+          <div className="numa-skel h-5 w-24" />
+          <div className="numa-skel h-5 w-20" />
+        </div>
+      </section>
       <div className="numa-equal-chips numa-rorelser-filters is-quad">
         <div className="numa-skel h-11 w-full rounded-full" />
         <div className="numa-skel h-11 w-full rounded-full" />
@@ -35,6 +44,19 @@ export function MovementsViewLoading() {
           <div className="numa-skel h-4 w-3/5" />
           <div className="numa-skel mt-2 h-3 w-1/3" />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function StatSkel() {
+  return (
+    <div className="min-w-0">
+      <p className="numa-section-title">
+        <span className="numa-skel block h-[0.92rem] w-16" />
+      </p>
+      <div className="numa-hero-money mt-2">
+        <span className="numa-skel block h-6 w-24" />
       </div>
     </div>
   );
