@@ -161,8 +161,8 @@ describe("instant tap — phone-width dest paint", () => {
 
   it("marks Analys → Transaktioner so LastViewOutlet paints Rörelser, not loading.tsx", () => {
     const analys = read("../../components/analys/AnalysDashboard.tsx");
-    expect(analys).toContain('href="/transaktioner"');
-    expect(analys).toContain("markIntent(\"/transaktioner\")");
+    expect(analys).toContain("senasteAllaHref");
+    expect(analys).toContain("markIntent(senasteHref)");
     expect(analys).toContain("prefetch={false}");
     expect(
       resolveVisibleTab({

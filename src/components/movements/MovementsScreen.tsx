@@ -57,6 +57,7 @@ import {
 } from "@/features/home/last-snapshot";
 import {
   clearMovementsDrill,
+  drillMonthChipLabel,
   lastMovementsDrill,
   rememberMovementsDrillFromHref,
   subscribeMovementsDrill,
@@ -70,6 +71,7 @@ import { spaTabKey } from "@/lib/nav/spa-tabs";
 import { spendCategoryName, toggleCategory } from "./movements-category";
 import {
   cycleWindowTotals,
+  listedMovementTotals,
   movementVisibleInRorelser,
   payCycleRangeLabelSv,
   resolveMovementsPayCycle,
@@ -281,8 +283,9 @@ export function MovementsScreen({
   // Drill is an overlay. The chips above stay the user's saved view and
   // are the only thing rememberMovementsView persists.
   const viewPeriod = drill?.period ?? period;
-  const viewFilter = drill?.filter ?? filter;
-  const viewCategory = drill?.category ?? category;
+  const viewFilter = drill ? drill.filter : filter;
+  // A list drill with no category must not fall through to a saved chip.
+  const viewCategory = drill ? drill.category : category;
   const liveCycle = view
     ? resolveMovementsPayCycle({
         planItems: planSnap?.items,
@@ -313,7 +316,10 @@ export function MovementsScreen({
           filter: viewFilter,
           period: viewPeriod,
           category: viewCategory,
-          monthKey: view.monthKey,
+          monthKey:
+            viewPeriod === "month" && drill?.monthKey
+              ? drill.monthKey
+              : view.monthKey,
           timeZone: view.timeZone,
           cycleStartAt: viewCycleStart,
           cycleEndAt: viewCycleEnd,
@@ -369,21 +375,31 @@ export function MovementsScreen({
     viewPeriod === "cycle"
       ? cycleWindowTotals(view.items, viewCycleStart, viewCycleEnd)
       : null;
-  const income = cycleTotals
-    ? cycleTotals.incomeMinor
-    : viewPeriod === "month"
-      ? view.monthIncomeMinor
-      : view.allIncomeMinor;
-  const expense = cycleTotals
-    ? cycleTotals.expenseMinor
-    : viewPeriod === "month"
-      ? view.monthExpenseMinor
-      : view.allExpenseMinor;
-  const net = cycleTotals
-    ? cycleTotals.netMinor
-    : viewPeriod === "month"
-      ? view.monthNetMinor
-      : view.allNetMinor;
+  // Senaste «Alla →» is an overlay. Sum the rows on screen so the cards
+  // match that window instead of the saved Denna månad totals.
+  const listDrillTotals =
+    drill && !drill.category ? listedMovementTotals(filtered) : null;
+  const income = listDrillTotals
+    ? listDrillTotals.incomeMinor
+    : cycleTotals
+      ? cycleTotals.incomeMinor
+      : viewPeriod === "month"
+        ? view.monthIncomeMinor
+        : view.allIncomeMinor;
+  const expense = listDrillTotals
+    ? listDrillTotals.expenseMinor
+    : cycleTotals
+      ? cycleTotals.expenseMinor
+      : viewPeriod === "month"
+        ? view.monthExpenseMinor
+        : view.allExpenseMinor;
+  const net = listDrillTotals
+    ? listDrillTotals.netMinor
+    : cycleTotals
+      ? cycleTotals.netMinor
+      : viewPeriod === "month"
+        ? view.monthNetMinor
+        : view.allNetMinor;
   const drillSummary = drill
     ? drillSummaryFromRows(filtered, {
         category: viewCategory ?? "",
@@ -397,6 +413,9 @@ export function MovementsScreen({
     view.timeZone,
   );
   const showCycleChip = cycleRange != null || viewPeriod === "cycle";
+  // Drill month is an overlay label. It is not written into the saved chips.
+  const drillMonthLabel =
+    drill?.period === "month" ? drillMonthChipLabel(drill.monthKey) : null;
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
@@ -409,7 +428,7 @@ export function MovementsScreen({
         <PeriodChip
           active={viewPeriod === "month"}
           onClick={() => choosePeriod("month")}
-          label="Denna månad"
+          label={drillMonthLabel ?? "Denna månad"}
         />
         <PeriodChip
           active={viewPeriod === "all"}
@@ -542,7 +561,7 @@ export function MovementsScreen({
         </section>
       ) : null}
 
-      <div className="numa-equal-chips is-quad animate-rise-delay-3">
+      <div className="numa-equal-chips numa-rorelser-filters is-quad animate-rise-delay-3">
         {FILTERS.map((f) => (
           <button
             key={f.id}
@@ -792,8 +811,10 @@ export function MovementsScreen({
                               ? `Visa alla kategorier`
                               : `Visa ${spendCategoryName(tx.category)}`
                           }
-                          onClick={() => selectCategory(spendCategoryName(tx.category))}
-                          className={`numa-press numa-category-chip -my-1 inline-flex min-h-8 items-center rounded-full px-2 ${
+                          onClick={() =>
+                            selectCategory(spendCategoryName(tx.category))
+                          }
+                          className={`numa-press numa-category-chip inline-flex min-h-11 items-center rounded-full px-2 ${
                             viewCategory === spendCategoryName(tx.category)
                               ? "is-active bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
                               : "bg-[var(--numa-card)] font-medium text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"

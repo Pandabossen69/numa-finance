@@ -46,6 +46,24 @@ describe("Money", () => {
     );
   });
 
+  it("prints zero without a minus, including −0 and amounts that round to 0", () => {
+    const zero = normalizeSpaces(formatMoney(money(0, "THB")));
+    const negZero = normalizeSpaces(formatMoney(money(-0, "THB")));
+    expect(zero).toBe("0,00 THB");
+    expect(negZero).toBe(zero);
+    expect(negZero).not.toMatch(/^[−-]/);
+    expect(normalizeSpaces(formatMoney(money(-1, "THB"), { showFraction: false }))).toBe(
+      "0 THB",
+    );
+    expect(normalizeSpaces(formatMoney(money(-49, "THB"), { showFraction: false }))).toBe(
+      "0 THB",
+    );
+    const realNegative = normalizeSpaces(formatMoney(money(-15050, "THB")));
+    expect(realNegative).toMatch(/^[−-]/);
+    expect(realNegative).toContain("150,50 THB");
+    expect(normalizeSpaces(formatMoney(money(-1, "THB")))).toMatch(/^[−-]0,01 THB$/);
+  });
+
   it("sanitizes legacy ฿ glyphs in stored movement labels", () => {
     expect(
       sanitizeMoneyDescription("− Utgift ฿750,00 · …X6591 · saldo ฿10 758,04"),

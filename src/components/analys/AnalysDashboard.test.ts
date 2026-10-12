@@ -126,7 +126,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
     expect(src).toContain("DestinationWarmup");
-    expect(src).toContain('markIntent("/transaktioner")');
+    expect(src).toContain("markIntent(senasteHref)");
     expect(src).toContain("prefetch={false}");
     expect(src).not.toMatch(/href="\/plan"[\s\S]{0,120}prefetch\n/);
   });
@@ -250,8 +250,8 @@ describe("Analys month result color", () => {
     expect(src).toContain(
       "useSyncExternalStore(subscribePlanView, lastPlanView, () => null)",
     );
-    expect(src).toContain("sharedMonth?.monthKey");
-    expect(src).toContain("rememberPlanView({ monthKey: key");
+    expect(src).toContain("analysActiveMonthKey");
+    expect(src).toContain("picked: true");
     expect(src).not.toContain("setMonthKey");
     const store = readFileSync(
       new URL("../../features/home/last-snapshot.ts", import.meta.url),
@@ -317,13 +317,16 @@ describe("Analys month result color", () => {
     expect(src).toContain("categoryDrillHref(");
     expect(src).toContain("cycleStartAt,");
     expect(src).toContain("cycleEndAt,");
+    expect(src).toContain("monthKey: activeMonthKey,");
     expect(src).not.toContain("rememberMovementsView(");
     expect(src).not.toContain("movementsViewForCategoryDrill(");
     expect(src).toContain("data-analys-category={category.name}");
-    expect(src).toContain('href="/transaktioner"');
+    expect(src).toContain("senasteAllaHref");
     expect(src).toContain("prefetch={false}");
-    expect(src).toContain('markIntent("/transaktioner")');
+    expect(src).toContain("markIntent(senasteHref)");
     expect(src).toContain("markIntent(href)");
+    expect(src).toContain("min-w-11");
+    expect(src).not.toContain("rememberMovementsView(");
     expect(src).toContain("onPointerDown");
     expect(src).toContain("onMouseEnter");
     expect(src).toContain("onFocus");
@@ -367,6 +370,9 @@ describe("Analys month result color", () => {
     expect(fn).toContain("aria-label={SV.analysOvrigtTitles}");
     expect(fn).toContain("data-analys-ovrigt-title={line.title}");
     expect(fn).toContain("Visa alla");
+    expect(fn).toContain("setShowAllOvrigt(true)");
+    // Övrigt «Visa alla» expands titles on Analys. It is not a second drill.
+    expect(fn).not.toContain("categoryDrillHref(line");
     expect(fn).toContain("splitOvrigtTitles");
     expect(fn).toContain("{line.title}");
     expect(fn).toContain("{line.count}×");

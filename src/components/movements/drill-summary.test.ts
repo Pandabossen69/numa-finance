@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatSvGroupedNumber } from "@/components/ui/MoneyDisplay";
 import { drillSummaryFromRows } from "./drill-summary";
 
 describe("drillSummaryFromRows", () => {
@@ -34,6 +35,17 @@ describe("drillSummaryFromRows", () => {
     expect(summary.label).toBe("Mat i månaden");
     expect(summary.amountMinor).toBe(800);
     expect(summary.count).toBe(2);
+  });
+
+  it("formats an empty expense header as unsigned zero", () => {
+    const summary = drillSummaryFromRows([], {
+      category: "Övrigt",
+      period: "month",
+      filter: "expense",
+    });
+    expect(summary.label).toBe("Övrigt i månaden");
+    expect(summary.count).toBe(0);
+    expect(formatSvGroupedNumber(summary.amountMinor / 100, 2)).toBe("0,00");
   });
 
   it("counts every visible row", () => {

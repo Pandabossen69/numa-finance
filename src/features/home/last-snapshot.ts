@@ -236,7 +236,7 @@ let homeSessionConfirmed = false;
 let homeDirty = false;
 let analys: AnalysSnapshot | null = null;
 let plan: PlanSnapshot | null = null;
-let planView: { monthKey: string; viewYear: number } | null = null;
+let planView: PlanMonthView | null = null;
 let analysScope: "period" | "month" | null = null;
 let gettingStarted: GettingStartedView | null = null;
 let movements: MovementsSnapshot | null = null;
@@ -1082,17 +1082,28 @@ export function lastPlanSnapshot(): PlanSnapshot | null {
 }
 
 /**
- * The month Plan and Analys are both looking at.
+ * The month Plan and Analys share after someone moves the month control.
  *
+ * `picked` is set by that control. A missing flag is an older save: the civil
+ * month was written when Plan mounted, so Analys must not treat it as a choice.
+ */
+export type PlanMonthView = {
+  monthKey: string;
+  viewYear: number;
+  picked?: boolean;
+};
+
+/**
  * Notifies subscribers so a screen that is already mounted follows along —
  * tabs stay mounted between visits, so reading this only at mount time would
  * leave whichever screen you opened first showing a stale month.
  */
-export function rememberPlanView(view: { monthKey: string; viewYear: number }) {
+export function rememberPlanView(view: PlanMonthView) {
   if (
     planView &&
     planView.monthKey === view.monthKey &&
-    planView.viewYear === view.viewYear
+    planView.viewYear === view.viewYear &&
+    (planView.picked ?? false) === (view.picked ?? false)
   ) {
     return;
   }
@@ -1107,7 +1118,7 @@ export function subscribePlanView(listener: () => void) {
   };
 }
 
-export function lastPlanView(): { monthKey: string; viewYear: number } | null {
+export function lastPlanView(): PlanMonthView | null {
   return planView;
 }
 

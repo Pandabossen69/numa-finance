@@ -1142,12 +1142,29 @@ body {
 }
 
 .numa-month-nav-jump {
+  position: relative;
   align-self: center;
   min-height: 2.25rem;
   padding-inline: 0.35rem;
   font-size: 0.875rem;
   font-weight: 650;
   color: var(--numa-accent);
+}
+
+/* 36px label, 44px hit. The box stays the text height. */
+.numa-month-nav-jump::before,
+.numa-hit-44::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--numa-touch));
+  height: var(--numa-touch);
+  transform: translate(-50%, -50%);
+}
+
+.numa-hit-44 {
+  position: relative;
 }
 
 .numa-month-nav-picker {
@@ -2329,6 +2346,17 @@ button.numa-chip:disabled {
   width: 100%;
   justify-content: center;
   white-space: nowrap;
+}
+
+/* Phone is 2×2. Hold that height on first paint so the chips do not pop in. */
+.numa-rorelser-filters {
+  min-height: calc(var(--numa-touch) * 2 + 0.4rem);
+}
+
+@media (min-width: 768px) {
+  .numa-rorelser-filters {
+    min-height: var(--numa-touch);
+  }
 }
 
 .numa-chip-scroll {

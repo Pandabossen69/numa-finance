@@ -68,6 +68,22 @@ export function movementVisibleInRorelser(
  * Same split as the month and all-time cards: confirmed expense debits and
  * income, not the category chip. Callers pass already-confirmed rows.
  */
+/** Income / expense / net for rows already limited to the list on screen. */
+export function listedMovementTotals(
+  items: readonly Pick<MovementRow, "transactionType" | "direction" | "amountMinor">[],
+): { incomeMinor: number; expenseMinor: number; netMinor: number } {
+  let incomeMinor = 0;
+  let expenseMinor = 0;
+  for (const tx of items) {
+    if (tx.transactionType === "expense" && tx.direction === "debit") {
+      expenseMinor += tx.amountMinor;
+    } else if (tx.transactionType === "income") {
+      incomeMinor += tx.amountMinor;
+    }
+  }
+  return { incomeMinor, expenseMinor, netMinor: incomeMinor - expenseMinor };
+}
+
 export function cycleWindowTotals(
   items: readonly Pick<
     MovementRow,
