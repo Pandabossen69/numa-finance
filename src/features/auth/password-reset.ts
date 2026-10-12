@@ -63,18 +63,22 @@ function isAuthNetworkMessage(blob: string): boolean {
 }
 
 /**
- * A well-formed address must always look the same. Supabase uses
- * `email_address_invalid` for some existing accounts, which would
- * otherwise show «Ogiltig e-postadress» and reveal that the address exists.
- * Format errors stay on the client. Only rate limit and transport failures
- * are shown after the request.
+ * A well-formed address must always look the same. Every Auth HTTP
+ * response — success, user_not_found, email_address_invalid,
+ * over_email_send_rate_limit, any 429, any other AuthApiError — uses
+ * the neutral copy. A rate-limit or “invalid email” reply would otherwise
+ * reveal that the address exists. Format errors stay on the client.
+ * Only a request that never gets an HTTP response (offline / fetch
+ * failure, status 0) is a distinct error.
  */
 export function classifyPasswordResetError(
   message: string,
   code?: string | null,
-): "neutral" | "rate-limit" | "failed" {
+  status?: number | null,
+): "neutral" | "failed" {
+  if (typeof status === "number" && status > 0) return "neutral";
+  if (status === 0) return "failed";
   const blob = authErrorBlob(message, code);
-  if (isAuthRateLimitMessage(blob)) return "rate-limit";
   if (isAuthNetworkMessage(blob)) return "failed";
   return "neutral";
 }
@@ -84,9 +88,6 @@ export function passwordResetUserMessage(
 ): { ok: true; message: string } | { ok: false; error: string } {
   if (kind === "neutral") {
     return { ok: true, message: PASSWORD_RESET_NEUTRAL_MESSAGE };
-  }
-  if (kind === "rate-limit") {
-    return { ok: false, error: PASSWORD_RESET_RATE_LIMIT_MESSAGE };
   }
   return { ok: false, error: PASSWORD_RESET_FAILED_MESSAGE };
 }

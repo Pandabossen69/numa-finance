@@ -83,8 +83,8 @@ async function requestOrigin(): Promise<string> {
 }
 
 /**
- * Always the same success copy when the address might exist.
- * Rate limit and transport failures stay Swedish and specific.
+ * Always the same success copy for any Auth HTTP response.
+ * A missing response (offline) is the only distinct error.
  */
 export async function requestPasswordResetAction(
   email: string,
@@ -106,9 +106,22 @@ export async function requestPasswordResetAction(
       return { ok: true, message: PASSWORD_RESET_NEUTRAL_MESSAGE };
     }
     const code = "code" in error ? (error.code ?? null) : null;
-    return passwordResetUserMessage(classifyPasswordResetError(error.message, code));
-  } catch {
-    return { ok: false, error: PASSWORD_RESET_FAILED_MESSAGE };
+    const status = "status" in error && typeof error.status === "number" ? error.status : null;
+    return passwordResetUserMessage(classifyPasswordResetError(error.message, code, status));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const code =
+      error && typeof error === "object" && "code" in error && typeof error.code === "string"
+        ? error.code
+        : null;
+    const status =
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      typeof error.status === "number"
+        ? error.status
+        : 0;
+    return passwordResetUserMessage(classifyPasswordResetError(message, code, status));
   }
 }
 

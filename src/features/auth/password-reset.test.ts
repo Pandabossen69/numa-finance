@@ -93,21 +93,48 @@ describe("password reset responses", () => {
     expect(PASSWORD_RESET_INVALID_EMAIL).toBe("Ogiltig e-postadress");
   });
 
-  it("keeps Swedish rate-limit and network errors", () => {
-    expect(classifyPasswordResetError("Email rate limit exceeded")).toBe("rate-limit");
+  it("maps over_email_send_rate_limit and HTTP 429 to the neutral text", () => {
+    const samples: Array<{
+      message: string;
+      code: string | null;
+      status?: number | null;
+    }> = [
+      {
+        message: "over_email_send_rate_limit",
+        code: "over_email_send_rate_limit",
+        status: 429,
+      },
+      {
+        message: "Email rate limit exceeded",
+        code: "over_email_send_rate_limit",
+        status: 429,
+      },
+      { message: "Too many requests", code: null, status: 429 },
+      {
+        message: "For security purposes, you can only request this after 60 seconds",
+        code: "over_request_rate_limit",
+        status: 429,
+      },
+      { message: "unexpected_failure", code: "unexpected_failure", status: 500 },
+    ];
+    for (const sample of samples) {
+      expect(classifyPasswordResetError(sample.message, sample.code, sample.status)).toBe(
+        "neutral",
+      );
+      expect(passwordResetUserMessage("neutral")).toEqual({
+        ok: true,
+        message: PASSWORD_RESET_NEUTRAL_MESSAGE,
+      });
+    }
     expect(
-      classifyPasswordResetError(
-        "For security purposes, you can only request this after 60 seconds",
-      ),
-    ).toBe("rate-limit");
-    expect(
-      classifyPasswordResetError("over_request_rate_limit", "over_request_rate_limit"),
-    ).toBe("rate-limit");
-    expect(passwordResetUserMessage("rate-limit")).toEqual({
-      ok: false,
-      error: PASSWORD_RESET_RATE_LIMIT_MESSAGE,
-    });
+      classifyPasswordResetError("over_email_send_rate_limit", "over_email_send_rate_limit"),
+    ).toBe("neutral");
+  });
+
+  it("shows a distinct error only when Auth never answers", () => {
+    expect(classifyPasswordResetError("Failed to fetch", "network_error", 0)).toBe("failed");
     expect(classifyPasswordResetError("Failed to fetch", "network_error")).toBe("failed");
+    expect(classifyPasswordResetError("TypeError: fetch failed", null, 0)).toBe("failed");
     expect(passwordResetUserMessage("failed")).toEqual({
       ok: false,
       error: PASSWORD_RESET_FAILED_MESSAGE,
