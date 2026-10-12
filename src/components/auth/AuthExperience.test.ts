@@ -13,6 +13,9 @@ describe("AuthExperience — public signup closed", () => {
     expect(src).not.toContain("onCreateAccount");
     expect(src).toContain("Logga in");
     expect(src).toContain("Konto skapas av NUMA");
+    expect(src).toContain('href="/glomt-losenord"');
+    expect(src).toContain("Glömt lösenord?");
+    expect(src).toContain("LOGIN_INVITE_NOTE");
     expect(src).toContain("Logga in med e-post och lösenord.");
     expect(src).toContain("auth-card");
     expect(src).toContain("auth-mark");

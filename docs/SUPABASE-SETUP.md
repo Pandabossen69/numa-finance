@@ -61,6 +61,21 @@ Do this in the dashboard as well (closing the UI is not enough — the anon key 
 
 Users log in at `/logga-in` with the e-post + lösenord Hugo set. Each user only sees their own plan, accounts, and transactions (RLS `auth.uid()`).
 
+Public self-signup stays off. `/registrera` and `/signup` explain that NUMA is invite-only. Password reset is `/glomt-losenord` → Supabase email → `/nytt-losenord`.
+
+### Redirect URLs (required for reset mail)
+
+Authentication → URL Configuration → **Redirect URLs**. Add every origin the app can send as `redirectTo` (`/nytt-losenord`). If the URL is missing, Supabase ignores it and drops the user on the Site URL without a recovery code.
+
+- `https://numa-finance.vercel.app/nytt-losenord`
+- `http://localhost:3000/nytt-losenord`
+- `http://127.0.0.1:3000/nytt-losenord`
+- Preview wildcard: `https://numa-finance-*.vercel.app/nytt-losenord`
+
+Site URL can stay `https://numa-finance.vercel.app`. The app builds `redirectTo` from the request host (`x-forwarded-host` / `host`), then `NEXT_PUBLIC_APP_URL`, then that production origin.
+
+The Reset password email template must keep `{{ .ConfirmationURL }}` so the link honors `redirectTo`. No template change is required while that variable is still there. A custom template that hard-codes a URL must use `{{ .ConfirmationURL }}` or `{{ .RedirectTo }}`. Optional cross-device link (no PKCE verifier cookie): `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery`.
+
 `SUPABASE_SERVICE_ROLE_KEY` must be set on Vercel **Preview and Production** (and `.env.local` for local). Without it, Ny användare fails closed with a Swedish error. Never put this key in `NEXT_PUBLIC_*`.
 
 ## Security

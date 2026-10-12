@@ -42,6 +42,20 @@ describe("proxy and Vercel Cron", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
+  it("lets password reset and invite pages through without a session", async () => {
+    for (const path of [
+      "/glomt-losenord",
+      "/nytt-losenord",
+      "/registrera",
+      "/signup",
+      "/auth/callback",
+    ]) {
+      const res = await updateSession(request(path));
+      expect(res.status, path).toBe(200);
+      expect(res.headers.get("location"), path).toBeNull();
+    }
+  });
+
   it("still sends other session-less pages to /logga-in", async () => {
     const res = await updateSession(request("/idag"));
     expect(res.status).toBe(307);

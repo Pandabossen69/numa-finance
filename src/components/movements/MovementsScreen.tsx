@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Link from "next/link";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -14,7 +20,11 @@ import {
 } from "@/features/finance/actions";
 import { invalidateAfterPlanLinkedVoid } from "@/features/finance/movement-void-plan";
 import { serverNull } from "@/lib/react/server-snapshot";
-import { formatListDateSv, isoToDateInput, occurredAtForBookedDay } from "@/domain/finance";
+import {
+  formatListDateSv,
+  isoToDateInput,
+  occurredAtForBookedDay,
+} from "@/domain/finance";
 import { minorToUiAmount } from "@/domain/imports/amount-parse";
 import { parseUiAmountToMinor, sanitizeMoneyDescription } from "@/domain/money";
 import type { MovementsSnapshot } from "@/features/finance/load-movements";
@@ -58,10 +68,7 @@ import { savedViewWithoutDrillFilters } from "./saved-view-drill";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
-import {
-  spendCategoryName,
-  toggleCategory,
-} from "./movements-category";
+import { spendCategoryName, toggleCategory } from "./movements-category";
 import {
   cycleWindowTotals,
   listedMovementTotals,
@@ -69,6 +76,11 @@ import {
   payCycleRangeLabelSv,
   resolveMovementsPayCycle,
 } from "./movements-window";
+import {
+  MOVEMENTS_EMPTY_FILTER,
+  MOVEMENTS_EMPTY_LEDGER,
+  movementsEmptyKind,
+} from "./movements-empty";
 
 type Filter = MovementsFilter;
 type Period = MovementsPeriod;
@@ -155,9 +167,7 @@ export function MovementsScreen({
   const [editDate, setEditDate] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(
-    null,
-  );
+  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
   const actionLock = useRef(false);
 
   useEffect(() => {
@@ -409,7 +419,7 @@ export function MovementsScreen({
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
+    <div className="numa-page numa-page-wide min-w-0 space-y-7 overflow-x-hidden">
       <header className="animate-rise">
         <h1 className="numa-page-title">Rörelser</h1>
       </header>
@@ -506,13 +516,9 @@ export function MovementsScreen({
                   <button
                     type="button"
                     aria-pressed={selected}
-                    aria-label={
-                      selected
-                        ? `Visa alla kategorier`
-                        : `Visa ${cat.name}`
-                    }
+                    aria-label={selected ? `Visa alla kategorier` : `Visa ${cat.name}`}
                     onClick={() => selectCategory(cat.name)}
-                    className={`numa-press w-full min-h-11 min-w-0 rounded-2xl px-2.5 py-2 text-left ${
+                    className={`numa-press min-h-11 w-full min-w-0 rounded-2xl px-2.5 py-2 text-left ${
                       selected
                         ? "is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]"
                         : "ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-bg)]/55"
@@ -592,7 +598,7 @@ export function MovementsScreen({
                   dropDrillOverlay();
                   publishView({ category: null });
                 }}
-                className="numa-press numa-category-chip is-active max-w-[12ch] truncate min-h-11 rounded-full bg-[var(--numa-ink)] px-3 text-xs font-semibold text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
+                className="numa-press numa-category-chip is-active min-h-11 max-w-[12ch] truncate rounded-full bg-[var(--numa-ink)] px-3 text-xs font-semibold text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
                 aria-label="Visa alla kategorier"
               >
                 {viewCategory}
@@ -618,36 +624,38 @@ export function MovementsScreen({
 
         {filtered.length === 0 ? (
           <div className="numa-panel space-y-3 p-5">
-            {view.items.length > 0 ? (
-              <p className="text-sm text-[var(--numa-muted)]">
-                Inga träffar för filtret — prova Alla, All tid eller en annan
-                kategori.
-              </p>
+            {movementsEmptyKind({
+              itemCount: view.items.length,
+              filter: viewFilter,
+              period: viewPeriod,
+              category: viewCategory,
+            }) === "filter" ? (
+              <p className="text-sm text-[var(--numa-muted)]">{MOVEMENTS_EMPTY_FILTER}</p>
             ) : (
               <>
                 <p className="text-sm text-[var(--numa-muted)]">
-                  Inga rörelser här ännu.
+                  {MOVEMENTS_EMPTY_LEDGER}
                 </p>
-                <Link
-                  href="/fota"
-                  prefetch
-                  onMouseEnter={() => prefetch("/fota")}
-                  onFocus={() => prefetch("/fota")}
-                  className="numa-btn numa-btn-accent inline-flex min-h-11 px-4"
-                >
-                  Lägg till
-                </Link>
+                {view.items.length === 0 ? (
+                  <Link
+                    href="/fota"
+                    prefetch
+                    onMouseEnter={() => prefetch("/fota")}
+                    onFocus={() => prefetch("/fota")}
+                    className="numa-btn numa-btn-accent inline-flex min-h-11 px-4"
+                  >
+                    Lägg till
+                  </Link>
+                ) : null}
               </>
             )}
           </div>
         ) : (
           <ul className="numa-panel-list divide-y divide-[var(--numa-border)]">
             {filtered.map((tx) => {
-              const signed =
-                tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
+              const signed = tx.direction === "debit" ? -tx.amountMinor : tx.amountMinor;
               const canEdit =
-                tx.transactionType === "expense" ||
-                tx.transactionType === "income";
+                tx.transactionType === "expense" || tx.transactionType === "income";
 
               if (editingId === tx.id) {
                 const accountCurrency = lastAccountsSnapshot()?.accounts.find(
@@ -685,7 +693,10 @@ export function MovementsScreen({
                     <PlanDateField
                       ariaLabel="Datum"
                       value={editDate}
-                      max={isoToDateInput(new Date().toISOString(), view.timeZone) || editDate}
+                      max={
+                        isoToDateInput(new Date().toISOString(), view.timeZone) ||
+                        editDate
+                      }
                       onChange={setEditDate}
                     />
                     <div className="flex gap-2">
@@ -699,8 +710,7 @@ export function MovementsScreen({
                           let description: string;
                           try {
                             amountMinor = parseUiAmountToMinor(editAmount);
-                            description =
-                              sanitizeMoneyDescription(editDescription);
+                            description = sanitizeMoneyDescription(editDescription);
                           } catch {
                             setActionError("Ogiltigt belopp");
                             return;
@@ -795,9 +805,7 @@ export function MovementsScreen({
                       {viewFilter === "all" || viewFilter === "expense" ? (
                         <button
                           type="button"
-                          aria-pressed={
-                            viewCategory === spendCategoryName(tx.category)
-                          }
+                          aria-pressed={viewCategory === spendCategoryName(tx.category)}
                           aria-label={
                             viewCategory === spendCategoryName(tx.category)
                               ? `Visa alla kategorier`
@@ -839,9 +847,7 @@ export function MovementsScreen({
                               setConfirmId(null);
                               void (async () => {
                                 try {
-                                  const result = await voidTransactionAction(
-                                    tx.id,
-                                  );
+                                  const result = await voidTransactionAction(tx.id);
                                   if (!result.ok) {
                                     undoOptimisticBalance(before);
                                     setConfirmId(reopen);
@@ -889,18 +895,13 @@ export function MovementsScreen({
                                 lastAccountsSnapshot()?.accounts.find(
                                   (account) => account.id === tx.accountId,
                                 )?.currency;
-                              const prefill = movementEditPrefill(
-                                tx,
-                                accountCurrency,
-                              );
+                              const prefill = movementEditPrefill(tx, accountCurrency);
                               setEditingId(tx.id);
                               setConfirmId(null);
                               setEditAmount(minorToUi(prefill.amountMinor));
                               setEditDescription(tx.description);
                               setEditCategory(tx.category ?? "");
-                              setEditDate(
-                                isoToDateInput(tx.occurredAt, view.timeZone),
-                              );
+                              setEditDate(isoToDateInput(tx.occurredAt, view.timeZone));
                               setActionError(null);
                             }}
                           >
@@ -954,7 +955,7 @@ function PeriodChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`numa-press inline-flex flex-col items-center justify-center min-h-11 rounded-full px-3 text-sm font-semibold ${
+      className={`numa-press inline-flex min-h-11 flex-col items-center justify-center rounded-full px-3 text-sm font-semibold ${
         active
           ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
           : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
@@ -962,7 +963,7 @@ function PeriodChip({
     >
       <span className="block leading-tight">{label}</span>
       {detail ? (
-        <span className="block text-xs font-medium leading-tight">{detail}</span>
+        <span className="block text-xs leading-tight font-medium">{detail}</span>
       ) : null}
     </button>
   );
