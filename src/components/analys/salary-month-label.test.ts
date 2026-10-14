@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { projectPayCycle, type PlanItem } from "@/domain/finance";
-import { loneManadLabelSv } from "./salary-month-label";
+import { loneManadLabelSv, periodPayLabelSv } from "./salary-month-label";
 
 function income(name: string, nextDueAt: string): PlanItem {
   return {
@@ -118,6 +118,33 @@ describe("loneManadLabelSv", () => {
         monthKey: "2026-08",
         planItems: items,
         timeZone: TZ,
+        now,
+      }),
+    ).toBeNull();
+  });
+
+  it("names the pay month on the period card span", () => {
+    const items = [
+      income("Tidig", "2026-09-03T12:00:00.000Z"),
+      income("Lön sep", "2026-09-25T12:00:00.000Z"),
+    ];
+    const now = new Date("2026-10-12T03:00:00.000Z");
+    const live = projectPayCycle(items, now, TZ);
+    expect(
+      periodPayLabelSv({
+        planItems: items,
+        timeZone: TZ,
+        startLabelSv: live.startLabelSv,
+        endLabelSv: live.endLabelSv,
+        now,
+      }),
+    ).toBe("Lönemånad september · 3 sep. – 25 okt.");
+    expect(
+      periodPayLabelSv({
+        planItems: [],
+        timeZone: TZ,
+        startLabelSv: "3 sep.",
+        endLabelSv: "25 okt.",
         now,
       }),
     ).toBeNull();

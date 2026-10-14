@@ -308,7 +308,8 @@ describe("Analys month result color", () => {
   it("always prints the pay-cycle start and end next to kvar", () => {
     expect(src).toContain("cycle.startLabelSv && cycle.endLabelSv");
     expect(src).toContain("cycleRangeLabel");
-    expect(src).toContain("cycleRangeLabel ??");
+    expect(src).toContain("periodPayLabel ??");
+    expect(src).toContain("periodPayLabelSv");
     expect(src).toContain("hint={periodGoingHint}");
     expect(src).toContain("{cycleRangeLabel}");
   });
@@ -369,7 +370,9 @@ describe("Analys month result color", () => {
     );
     expect(fn).toContain("aria-label={SV.analysOvrigtTitles}");
     expect(fn).toContain("data-analys-ovrigt-title={line.title}");
-    expect(fn).toContain("Visa alla");
+    expect(fn).toContain("Visa övriga ·");
+    expect(fn).toContain("formatMoneyCompact(money(ovrigtRestMinor, currency))");
+    expect(fn).not.toContain("Visa alla");
     expect(fn).toContain("setShowAllOvrigt(true)");
     // Övrigt «Visa alla» expands titles on Analys. It is not a second drill.
     expect(fn).not.toContain("categoryDrillHref(line");

@@ -2,10 +2,12 @@ import type { MovementsFilter, MovementsPeriod } from "@/features/home/last-snap
 
 export const MOVEMENTS_EMPTY_LEDGER = "Inga rörelser än";
 
+export const MOVEMENTS_EMPTY_MONTH = "Inga rörelser den här månaden än";
+
 export const MOVEMENTS_EMPTY_FILTER =
   "Inga träffar för filtret — prova Alla, All tid eller en annan kategori.";
 
-export type MovementsEmptyKind = "ledger" | "filter";
+export type MovementsEmptyKind = "ledger" | "month" | "filter";
 
 /**
  * «Alla» plus Denna månad / All tid is the open list. An empty month must
@@ -18,10 +20,13 @@ export function movementsEmptyKind(input: {
   period: MovementsPeriod;
   category: string | null;
 }): MovementsEmptyKind {
-  if (input.itemCount === 0) return "ledger";
-  if (input.filter !== "all") return "filter";
-  if (input.category?.trim()) return "filter";
+  const openList = input.filter === "all" && !input.category?.trim();
+  if (input.itemCount === 0) {
+    return openList && input.period === "month" ? "month" : "ledger";
+  }
+  if (!openList) return "filter";
   if (input.period === "cycle") return "filter";
+  if (input.period === "month") return "month";
   return "ledger";
 }
 
@@ -31,7 +36,8 @@ export function movementsEmptyCopy(input: {
   period: MovementsPeriod;
   category: string | null;
 }): string {
-  return movementsEmptyKind(input) === "ledger"
-    ? MOVEMENTS_EMPTY_LEDGER
-    : MOVEMENTS_EMPTY_FILTER;
+  const kind = movementsEmptyKind(input);
+  if (kind === "filter") return MOVEMENTS_EMPTY_FILTER;
+  if (kind === "month") return MOVEMENTS_EMPTY_MONTH;
+  return MOVEMENTS_EMPTY_LEDGER;
 }
