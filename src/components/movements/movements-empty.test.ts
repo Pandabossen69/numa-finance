@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MOVEMENTS_EMPTY_FILTER,
   MOVEMENTS_EMPTY_LEDGER,
+  MOVEMENTS_EMPTY_MONTH,
   movementsEmptyCopy,
   movementsEmptyKind,
 } from "./movements-empty";
@@ -15,13 +16,16 @@ const base = {
 
 describe("Rörelser empty copy", () => {
   it("says there are no movements yet when the ledger is empty, even with Alla", () => {
-    expect(movementsEmptyCopy(base)).toBe("Inga rörelser än");
+    expect(movementsEmptyCopy(base)).toBe(MOVEMENTS_EMPTY_MONTH);
     expect(movementsEmptyCopy({ ...base, filter: "expense" })).toBe(
       MOVEMENTS_EMPTY_LEDGER,
     );
     expect(
       movementsEmptyKind({ ...base, itemCount: 4, filter: "all", period: "month" }),
-    ).toBe("ledger");
+    ).toBe("month");
+    expect(
+      movementsEmptyCopy({ ...base, itemCount: 4, filter: "all", period: "month" }),
+    ).toBe("Inga rörelser den här månaden än");
     expect(
       movementsEmptyCopy({ ...base, itemCount: 4, filter: "all", period: "all" }),
     ).toBe(MOVEMENTS_EMPTY_LEDGER);

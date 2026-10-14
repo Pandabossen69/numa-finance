@@ -77,8 +77,7 @@ import {
   resolveMovementsPayCycle,
 } from "./movements-window";
 import {
-  MOVEMENTS_EMPTY_FILTER,
-  MOVEMENTS_EMPTY_LEDGER,
+  movementsEmptyCopy,
   movementsEmptyKind,
 } from "./movements-empty";
 
@@ -630,11 +629,23 @@ export function MovementsScreen({
               period: viewPeriod,
               category: viewCategory,
             }) === "filter" ? (
-              <p className="text-sm text-[var(--numa-muted)]">{MOVEMENTS_EMPTY_FILTER}</p>
+              <p className="text-sm text-[var(--numa-muted)]">
+                {movementsEmptyCopy({
+                  itemCount: view.items.length,
+                  filter: viewFilter,
+                  period: viewPeriod,
+                  category: viewCategory,
+                })}
+              </p>
             ) : (
               <>
                 <p className="text-sm text-[var(--numa-muted)]">
-                  {MOVEMENTS_EMPTY_LEDGER}
+                  {movementsEmptyCopy({
+                    itemCount: view.items.length,
+                    filter: viewFilter,
+                    period: viewPeriod,
+                    category: viewCategory,
+                  })}
                 </p>
                 {view.items.length === 0 ? (
                   <Link

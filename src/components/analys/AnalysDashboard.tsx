@@ -41,7 +41,10 @@ import {
   ovrigtDominatesSpend,
 } from "@/components/analys/analys-category-drill";
 import { analysActiveMonthKey } from "@/components/analys/analys-default-month";
-import { loneManadLabelSv } from "@/components/analys/salary-month-label";
+import {
+  loneManadLabelSv,
+  periodPayLabelSv,
+} from "@/components/analys/salary-month-label";
 import { senasteAllaHref } from "@/components/movements/movements-drill";
 import { senasteRowCategoryLabel } from "@/components/analys/senaste-row";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -247,7 +250,14 @@ export function AnalysDashboard({
     cycle.startLabelSv && cycle.endLabelSv
       ? `${cycle.startLabelSv} – ${cycle.endLabelSv}`
       : null;
+  const periodPayLabel = periodPayLabelSv({
+    planItems: view.planItems,
+    timeZone: view.timeZone,
+    startLabelSv: cycle.startLabelSv,
+    endLabelSv: cycle.endLabelSv,
+  });
   const cycleTitle =
+    periodPayLabel ??
     cycleRangeLabel ??
     (isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
       ? `${SV.tillNastaInkomst} · ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
@@ -793,16 +803,9 @@ function SpendByCategory({
                         className="numa-press numa-money-line min-h-11 w-full text-left"
                         onClick={() => setShowAllOvrigt(true)}
                       >
-                        <span className="numa-money-line-label font-semibold text-[var(--numa-accent)]">
-                          Visa alla
-                        </span>
-                        <span className="numa-money-line-amt">
-                          <MoneyDisplay
-                            amountMinor={ovrigtRestMinor}
-                            currency={currency}
-                            size="xs"
-                            wrap={false}
-                          />
+                        <span className="font-semibold text-[var(--numa-accent)]">
+                          Visa övriga ·{" "}
+                          {formatMoneyCompact(money(ovrigtRestMinor, currency))}
                         </span>
                       </button>
                     </li>

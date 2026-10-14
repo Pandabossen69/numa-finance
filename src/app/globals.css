@@ -1144,14 +1144,18 @@ body {
 .numa-month-nav-jump {
   position: relative;
   align-self: center;
-  min-height: 2.25rem;
-  padding-inline: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--numa-touch);
+  min-width: var(--numa-touch);
+  padding-inline: 0.75rem;
   font-size: 0.875rem;
   font-weight: 650;
   color: var(--numa-accent);
 }
 
-/* 36px label, 44px hit. The box stays the text height. */
+/* Width can stay the label; height is the 44px control itself. */
 .numa-month-nav-jump::before,
 .numa-hit-44::before {
   content: "";
@@ -2732,6 +2736,11 @@ button.numa-chip:disabled {
 }
 
 .auth-text-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--numa-touch);
+  padding-inline: 0.75rem;
   color: var(--numa-accent);
   font-weight: 650;
   text-decoration: underline;

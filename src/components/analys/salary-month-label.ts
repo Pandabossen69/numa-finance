@@ -35,6 +35,29 @@ export function loneManadLabelSv(input: {
   return caption(input.monthKey, startLabel, endLabel);
 }
 
+/**
+ * Analys → Perioden uses the same pay-month name as Månad, on the span
+ * already printed on the period card.
+ */
+export function periodPayLabelSv(input: {
+  planItems: readonly PlanItem[];
+  timeZone: string;
+  startLabelSv: string | null;
+  endLabelSv: string | null;
+  now?: Date;
+}): string | null {
+  if (!input.startLabelSv || !input.endLabelSv || input.planItems.length === 0) {
+    return null;
+  }
+  const live = projectPayCycle(
+    [...input.planItems],
+    input.now ?? new Date(),
+    input.timeZone,
+  );
+  if (!live.fundingMonthKey) return null;
+  return caption(live.fundingMonthKey, input.startLabelSv, input.endLabelSv);
+}
+
 function caption(monthKey: string, startLabel: string, endLabel: string): string {
   const name = labelMonthNameSv(monthKey).toLocaleLowerCase("sv-SE");
   return `Lönemånad ${name} · ${startLabel} – ${endLabel}`;

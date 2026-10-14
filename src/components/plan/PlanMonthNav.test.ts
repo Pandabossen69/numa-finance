@@ -49,4 +49,16 @@ describe("PlanMonthNav", () => {
     expect(css).toContain(".numa-month-nav-cell.is-active");
     expect(css).toContain(".numa-month-nav-cell.is-now");
   });
+
+  it("gives Denna månad a 44px tap target", () => {
+    const jump = css.slice(
+      css.indexOf(".numa-month-nav-jump {"),
+      css.indexOf(".numa-month-nav-jump::before"),
+    );
+    expect(jump).toContain("min-height: var(--numa-touch)");
+    expect(jump).toContain("min-width: var(--numa-touch)");
+    expect(css).toContain("--numa-touch: 2.75rem");
+    const link = css.slice(css.indexOf(".auth-text-link {"), css.indexOf(".auth-text-link:focus-visible"));
+    expect(link).toContain("min-height: var(--numa-touch)");
+  });
 });

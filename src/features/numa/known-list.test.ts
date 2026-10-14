@@ -22,7 +22,7 @@ describe("unknown is not rendered as empty", () => {
     expect(src).toContain("if (!error) return <MovementsViewLoading />");
     expect(src).not.toContain("pendingMovementsShell");
     expect(src).not.toContain("monthIncomeMinor: 0");
-    expect(src).toContain("MOVEMENTS_EMPTY_LEDGER");
+    expect(src).toContain("movementsEmptyCopy");
     const viewAt = src.indexOf("const view = stored ?? data ?? null");
     const emptyAt = src.indexOf("movementsEmptyKind", viewAt);
     expect(viewAt).toBeGreaterThan(-1);
