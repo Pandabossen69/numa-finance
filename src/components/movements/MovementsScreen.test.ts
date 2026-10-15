@@ -83,7 +83,7 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("cycleEndAt");
     expect(src).toContain("payCycleRangeLabelSv");
     expect(src).toContain("cycleWindowTotals");
-    expect(src).toContain('label="Perioden"');
+    expect(src).toContain('label="Lönemånad"');
     expect(src).toContain("detail={cycleRange}");
     expect(src).toContain('onClick={() => choosePeriod("cycle")}');
     expect(src).toContain("subscribeMovementsDrill");

@@ -30,7 +30,7 @@ const ITEMS = [
 ];
 
 describe("defaultAnalysMonthKey", () => {
-  it("opens Månad on the live pay month while the calendar month is later", () => {
+  it("opens Månad on the civil month even when the pay cycle started earlier", () => {
     expect(
       defaultAnalysMonthKey({
         planItems: ITEMS,
@@ -38,7 +38,7 @@ describe("defaultAnalysMonthKey", () => {
         timeZone: TZ,
         now: NOW,
       }),
-    ).toBe("2026-09");
+    ).toBe("2026-10");
   });
 
   it("keeps the calendar month when there is no pay cycle", () => {
@@ -99,6 +99,6 @@ describe("defaultAnalysMonthKey", () => {
         timeZone: TZ,
         now: NOW,
       }),
-    ).toBe("2026-09");
+    ).toBe("2026-10");
   });
 });

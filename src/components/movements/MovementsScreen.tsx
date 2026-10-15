@@ -438,7 +438,7 @@ export function MovementsScreen({
           <PeriodChip
             active={viewPeriod === "cycle"}
             onClick={() => choosePeriod("cycle")}
-            label="Perioden"
+            label="Lönemånad"
             detail={cycleRange}
             className="col-span-2"
           />

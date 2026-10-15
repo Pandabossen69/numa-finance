@@ -3,7 +3,7 @@ export type NavIconName = "home" | "plan" | "analys" | "mer";
 export const PRIMARY_NAV = [
   { href: "/idag", label: "Hem", hint: "Kvar idag", icon: "home" as const },
   { href: "/plan", label: "Plan", hint: "Plan och sparande", icon: "plan" as const },
-  { href: "/analys", label: "Analys", hint: "Perioden", icon: "analys" as const },
+  { href: "/analys", label: "Analys", hint: "Lönemånad", icon: "analys" as const },
   { href: "/mer", label: "Mer", hint: "Övrigt", icon: "mer" as const },
 ] as const;
 

@@ -1,9 +1,8 @@
-import { projectPayCycle, type PlanItem } from "@/domain/finance";
+import type { PlanItem } from "@/domain/finance";
 import type { PlanMonthView } from "@/features/home/last-snapshot";
 
 /**
- * Analys → Månad opens on the live salary month when a pay cycle exists.
- * No paycheck → the calendar month, same as before.
+ * Analys → Månad opens on the civil calendar month.
  * A month the user already chose (including via Plan) still wins.
  */
 export function defaultAnalysMonthKey(input: {
@@ -12,16 +11,7 @@ export function defaultAnalysMonthKey(input: {
   timeZone: string;
   now?: Date;
 }): string {
-  if (!input.currentMonthKey || input.planItems.length === 0) {
-    return input.currentMonthKey;
-  }
-  const live = projectPayCycle(
-    [...input.planItems],
-    input.now ?? new Date(),
-    input.timeZone,
-  );
-  if (!live.startAt || !live.fundingMonthKey) return input.currentMonthKey;
-  return live.fundingMonthKey;
+  return input.currentMonthKey;
 }
 
 /**

@@ -446,9 +446,7 @@ export function AnalysDashboard({
             <LeftoverVsPlanHint />
             <div className="numa-panel-list numa-money-stack px-4 py-1">
               <MetricRow
-                label={
-                  month.monthResultMinor >= 0 ? SV.overskottHittills : SV.minusMotPlanen
-                }
+                label={SV.kvarIPerioden}
                 amountMinor={month.monthResultMinor}
                 currency={currency}
                 tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}

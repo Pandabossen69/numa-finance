@@ -13,7 +13,7 @@ describe("Swedish money labels", () => {
   });
 
   it("keeps Analys scope labels short and Swedish", () => {
-    expect(SV.perioden).toBe("Perioden");
+    expect(SV.perioden).toBe("Lönemånad");
     expect(SV.manad).toBe("Månad");
     expect(SV.saRaknarNuma).toBe("Så räknas analysen");
     expect(SV.saRaknasAnalysenLead).toMatch(/inte dagsbudgeten på Hem/i);
@@ -27,7 +27,8 @@ describe("Swedish money labels", () => {
     expect(SV.analysPlanPointer).toMatch(/plan/i);
   });
 
-  it("keeps Mot planen as the Analys leftover label, not the Plan/Hem cash hero", () => {
+  it("names the Analys leftover Kvar i perioden on both scopes", () => {
+    expect(SV.kvarIPerioden).toBe("Kvar i perioden");
     expect(SV.motPlanen).toBe("Mot planen");
     expect(SV.overskottHittills).toBe("Plus mot planen");
     expect(SV.overskottHittills).not.toMatch(/överskott/i);
