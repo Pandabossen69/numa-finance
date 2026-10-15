@@ -14,14 +14,15 @@
  * - Kommer in: planned income not yet received (minus Mottagen / Delvis mottagen)
  * - Kvar att betala: planned expenses not yet paid (minus Betald / Delvis betald; not savings)
  * - Över: på kontona + kommer in − kvar att betala (Plan/Hem hero)
- * - Mot planen: calendar-month plan leftover minus actual spend (+ extra) — Analys only
- *   (inline: «Planerat kvar minus spenderat — inte pengar på kontona.»)
+ * - Kvar i perioden: leftover title on both Analys scopes (lönemånad and
+ *   calendar month). Same number math as before; the hint stays
+ *   «Planerat kvar minus spenderat — inte pengar på kontona.»
  * - Plan + sparande: leftover vs plan + avsatt/sparat (not cash on hand)
  * - Kvar i månaden (plan): income − planned expenses − savings (no actual spend)
  *
  * Analys answers two questions only: «Vart gick pengarna?» (Spenderat +
- * category split of that same number) and «Hur går det?» (Kvar i perioden /
- * Mot planen). It must not reprint Hem's day envelope or Plan's Över piles.
+ * category split of that same number) and «Hur går det?» (Kvar i perioden
+ * on both Lönemånad and Månad). It must not reprint Hem's day envelope or Plan's Över piles.
  */
 export const SV = {
   kvarIdag: "Kvar idag",
@@ -95,7 +96,8 @@ export const SV = {
   komIgång: "Kom igång",
   hurMycketKvar: "Hur mycket har du kvar på kontot?",
   visaDagsbudget: "Visa dagsbudget",
-  perioden: "Perioden",
+  /** Analys tab for the pay cycle. Card line still names the salary month. */
+  perioden: "Lönemånad",
   manad: "Månad",
   saRaknarNuma: "Så räknas analysen",
   saRaknasAnalysenLead:

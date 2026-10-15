@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("./AnalysDashboard.tsx", import.meta.url), "utf8");
 
 describe("Analys month result color", () => {
-  it("uses clay alarm for Minus mot planen, not destroy red", () => {
+  it("uses clay alarm for a negative Kvar i perioden, not destroy red", () => {
     expect(src).toContain('tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}');
     expect(src).not.toMatch(/monthResultMinor >= 0 \? "positive" : "danger"/);
   });
@@ -21,7 +21,9 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("label={SV.kommerIn}");
     expect(src).not.toContain("label={SV.kvarAttBetala}");
     expect(src).not.toContain("label={SV.motPlanen}");
-    expect(src.match(/SV\.minusMotPlanen/g) ?? []).toHaveLength(1);
+    expect(src).not.toContain("SV.minusMotPlanen");
+    expect(src).not.toContain("SV.overskottHittills");
+    expect(src).toContain("label={SV.kvarIPerioden}");
     expect(src).not.toContain("amountMinor={month.livingSaldoMinor}");
     expect(src).toContain("month.monthLeftoverHint ??");
     const monthView = readFileSync(
