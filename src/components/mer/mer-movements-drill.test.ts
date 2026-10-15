@@ -337,7 +337,7 @@ describe("Analys drill vs Mer → Rörelser", () => {
       "period=cycle",
     );
     tap(category as Element);
-    expect(chipOn(buttonNamed(host, "Perioden"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "Lönemånad"))).toBe(true);
     expect(chipOn(buttonNamed(host, "Utgifter"))).toBe(true);
     expect(listHeading(host)).toBe("1 rörelse · Mat");
     expect(lastMovementsView()).toMatchObject(SAVED_ALL);
@@ -402,7 +402,7 @@ describe("Analys drill vs Mer → Rörelser", () => {
       category: null,
     });
     expect(chipOn(buttonNamed(host, "Alla"))).toBe(true);
-    expect(chipOn(buttonNamed(host, "Perioden"))).toBe(true);
+    expect(chipOn(buttonNamed(host, "Lönemånad"))).toBe(true);
     expect(host.querySelector("[data-drill-summary]")).toBeNull();
     expect(host.querySelector(".numa-stat-trio")).not.toBeNull();
   });
