@@ -1,28 +1,20 @@
----
-description: Always tell Hugo required keys, SQL, and setup steps up front
-alwaysApply: true
----
+# Always surface setup — never omit, never dump it on Hugo
 
-# Always surface setup — never omit
+Hugo must never discover missing setup after the fact. If a change depends on anything outside the code, **the agent does it**. Tell him in Swedish only if something still blocks *him*.
 
-Hugo must never discover missing setup after the fact. If a change depends on anything outside the code, say it **immediately and explicitly** in Swedish, with exact steps.
+## Agent does this (do not ask Hugo)
 
-## Always call out (when relevant)
+1. **NUMA SQL / migrations** — apply via Supabase MCP to `hadrtlancgopyyshwhyd`, schema `numa`. File in `supabase/migrations/`. Local `supabase db push` is only if he tests locally and MCP already applied remote.
+2. **Vercel** — preview deploy happens on push. Env vars, domains, canonical URL: Vercel MCP. Redeploy if env changed.
+3. **Git + GitHub** — always commit + push the feature branch and keep the PR updated. Ask **Preview eller produktion?** before merging to `main`. Merge to production yourself with git when he says produktion. Do not ask him to Approve or Squash and merge on GitHub. (The Cursor GitHub App cannot click Approve; merge via git instead. Only ping him if GitHub requires *his* personal review.)
 
-1. **Env / API-nycklar** — e.g. `OPENAI_API_KEY`, Supabase keys, Vercel vars. Say *where* (Preview / Production / `.env.local`) and *what name*.
-2. **Supabase SQL / migrations** — which file, whether it must be applied, and how (MCP / SQL editor / `supabase db push`). Never assume it was applied.
-3. **Redeploy / restart** — if env or schema changes need a new preview deploy or local restart.
-4. **Manual one-time actions** — dashboard clicks, RLS, storage buckets, auth redirects, billing on OpenAI, etc.
+## Tell Hugo only when it actually blocks him
 
-## How to tell him
+- A secret only he has (e.g. a new `OPENAI_API_KEY` he has not created).
+- MCP/SQL/Vercel failed and needs a dashboard click he must do.
+- Auth redirect / billing / something no API can do.
+- GitHub branch protection that requires Hugo’s own review (agent Approve is 403).
 
-- Put a short **“Du behöver göra detta”** block when anything is required — not buried in a long summary.
-- Prefer checklist steps: create key → paste in Vercel → apply this SQL → open this preview URL.
-- If something is optional vs blocking, say which. Blocking setup = say it **before** or **with** “pusha till preview”, not after he tries and fails.
-- Never imply the feature “just works” if a secret, migration, or dashboard step is still missing.
+Put a short **“Du behöver göra detta”** block **only** in those cases. Prefer checklist. Blocking = say it with the preview-vs-produktion question, not after he tries and fails.
 
-## Examples that must not be skipped
-
-- Vision/OCR → `OPENAI_API_KEY` on Vercel Preview (and local if testing locally).
-- New fingerprint uniqueness / tables → apply the migration SQL to the linked Supabase project.
-- Auth / redirect URL changes → update Supabase Auth settings.
+If nothing blocks him, do **not** invent a “kör denna SQL”, “godkänn PR:en” or “squash merge” checklist.
