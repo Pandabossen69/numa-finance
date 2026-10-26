@@ -50,6 +50,7 @@ import { senasteRowCategoryLabel } from "@/components/analys/senaste-row";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { formatDaysUntilSv } from "@/domain/finance";
+import { periodEndedOnSv } from "@/features/home/dagsbudget-empty";
 import {
   formatMoneyCompact,
   humanizeMovementTitle,
@@ -244,6 +245,8 @@ export function AnalysDashboard({
 
   const isBridge = cycle.livingMode === "bridge";
   const isEmpty = cycle.livingMode === "empty";
+  const periodEnded = !isEmpty && cycle.dayEnvelopeOpen === false;
+  const periodEndedLabel = periodEnded ? periodEndedOnSv(cycle.endLabelSv) : null;
   const hasSaldo = view.hasBankTruth && view.calculatedBalanceMinor != null;
   const daysLeftLabel = formatDaysUntilSv(cycle.daysLeft);
   const cycleRangeLabel =
@@ -256,12 +259,13 @@ export function AnalysDashboard({
     startLabelSv: cycle.startLabelSv,
     endLabelSv: cycle.endLabelSv,
   });
-  const cycleTitle =
-    periodPayLabel ??
-    cycleRangeLabel ??
-    (isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
-      ? `${SV.tillNastaInkomst} · ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
-      : "Ingen period ännu");
+  const cycleTitle = periodEnded
+    ? (periodEndedLabel ?? "Perioden avslutad")
+    : (periodPayLabel ??
+      cycleRangeLabel ??
+      (isBridge && (cycle.nextIncomeLabelSv ?? cycle.startLabelSv)
+        ? `${SV.tillNastaInkomst} · ${cycle.nextIncomeLabelSv ?? cycle.startLabelSv}`
+        : "Ingen period ännu"));
   const spentLabel = scope === "month" ? SV.spenderatIManaden : SV.spenderatIPerioden;
   const spentMeta =
     spendComparison == null
@@ -275,15 +279,17 @@ export function AnalysDashboard({
     scope === "month" ? SV.analysEmptySpendMonth : SV.analysEmptySpendPeriod;
   const periodGoingHint = [
     cycleRangeLabel,
-    isBridge
-      ? hasSaldo
-        ? daysLeftLabel
-        : "Ange saldo på Hem"
-      : isEmpty
-        ? SV.analysEmptyPeriod
-        : cycle.isActive
+    periodEnded
+      ? periodEndedLabel
+      : isBridge
+        ? hasSaldo
           ? daysLeftLabel
-          : SV.analysEmptyPeriod,
+          : "Ange saldo på Hem"
+        : isEmpty
+          ? SV.analysEmptyPeriod
+          : cycle.isActive
+            ? daysLeftLabel
+            : SV.analysEmptyPeriod,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -324,13 +330,25 @@ export function AnalysDashboard({
         <div key="period" className="numa-scope-panel space-y-6">
           <SpendHero
             eyebrow={
-              isBridge ? SV.tillNastaInkomst : isEmpty ? "Ingen period" : SV.perioden
+              periodEnded
+                ? SV.perioden
+                : isBridge
+                  ? SV.tillNastaInkomst
+                  : isEmpty
+                    ? "Ingen period"
+                    : SV.perioden
             }
             title={cycleTitle}
             spentLabel={spentLabel}
             spentMinor={isEmpty ? 0 : spentMinor}
             currency={currency}
-            meta={isEmpty ? SV.analysEmptyPeriod : daysLeftLabel}
+            meta={
+              isEmpty
+                ? SV.analysEmptyPeriod
+                : periodEnded
+                  ? periodEndedLabel
+                  : daysLeftLabel
+            }
             amountKnown={ledgerSettled || (!isEmpty && spentMinor !== 0)}
           />
 
@@ -374,7 +392,13 @@ export function AnalysDashboard({
                 <div className="numa-panel-list numa-money-stack px-4 py-1">
                   {showPeriodKvar ? (
                     <MetricRow
-                      label={isBridge ? "Kvar tills nästa intäkt" : SV.kvarIPerioden}
+                      label={
+                        periodEnded
+                          ? SV.kvarIPerioden
+                          : isBridge
+                            ? "Kvar tills nästa intäkt"
+                            : SV.kvarIPerioden
+                      }
                       amountMinor={periodKvarMinor}
                       currency={currency}
                       tone={periodKvarMinor >= 0 ? "positive" : "alarm"}

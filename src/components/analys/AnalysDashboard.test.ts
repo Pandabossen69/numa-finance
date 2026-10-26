@@ -195,9 +195,9 @@ describe("Analys month result color", () => {
 
   it("keeps bridge kvar from repeating På kontona as a second hero", () => {
     expect(src).toContain("isBridge && !hasSaldo");
-    expect(src).toContain(
-      'label={isBridge ? "Kvar tills nästa intäkt" : SV.kvarIPerioden}',
-    );
+    expect(src).toContain('"Kvar tills nästa intäkt"');
+    expect(src).toContain("periodEndedOnSv");
+    expect(src).toContain("cycle.dayEnvelopeOpen === false");
     expect(src).not.toContain("amountMinor={view.calculatedBalanceMinor");
     expect(src).not.toContain("label={SV.paKontot}");
     expect(src).not.toContain('label="Kommande intäkter"');

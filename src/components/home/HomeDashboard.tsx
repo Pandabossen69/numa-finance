@@ -15,6 +15,9 @@ import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { BankMailHemCue } from "@/components/home/BankMailHemCue";
 import {
   DAGSBUDGET_BILLS_EXCEED_SALDO_SV,
+  PERIOD_ENDED_BODY_SV,
+  PERIOD_ENDED_CTA_SV,
+  PERIOD_ENDED_TITLE_SV,
   unpaidBillsExceedSaldo,
 } from "@/features/home/dagsbudget-empty";
 import { GettingStartedCard } from "@/components/home/GettingStartedCard";
@@ -177,6 +180,8 @@ export function HomeDashboard({
   const greeting = homeGreeting(view.displayName, new Date(), view.timeZone);
   const isBridge = view.livingMode === "bridge";
   const isEmpty = view.livingMode === "empty";
+  const periodEnded = !isEmpty && view.dayEnvelopeOpen === false;
+  const dayEnvelopePending = !periodEnded && view.dayEnvelopePending === true;
   const hasSaldo = view.calculatedBalanceMinor != null;
   const rawGettingStarted = gettingStarted ?? storedGettingStarted;
   const checklist = rawGettingStarted?.visible
@@ -185,9 +190,10 @@ export function HomeDashboard({
   const dayOk = remainingTodayMinor > 0;
   const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
-  const rangeLabel = view.nextIncomeLabelSv
-    ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
-    : null;
+  const rangeLabel =
+    !periodEnded && !dayEnvelopePending && view.nextIncomeLabelSv
+      ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
+      : null;
 
   const dayUsedRatio =
     view.dayBudgetMinor > 0 ? todaySpendingMinor / view.dayBudgetMinor : 0;
@@ -202,7 +208,9 @@ export function HomeDashboard({
         : null;
 
   const showDayEnvelope =
-    view.dayBudgetMinor > 0 || (view.livingPoolMinor ?? 0) > 0;
+    !periodEnded &&
+    !dayEnvelopePending &&
+    (view.dayBudgetMinor > 0 || (view.livingPoolMinor ?? 0) > 0);
   const billsExceedSaldo = unpaidBillsExceedSaldo({
     hasSaldo,
     isEmpty,
@@ -281,10 +289,15 @@ export function HomeDashboard({
               aria-labelledby="spend-heading"
             >
               <p id="spend-heading" className="numa-section-title min-w-0 px-1">
-                {SV.kvarIdag}
+                {periodEnded ? PERIOD_ENDED_TITLE_SV : SV.kvarIdag}
               </p>
 
-              {showDayEnvelope ? (
+              {dayEnvelopePending ? (
+                <div className="flex flex-col items-center gap-3 py-6" aria-busy="true">
+                  <div className="numa-skel h-40 w-40 rounded-full" />
+                  <div className="numa-skel h-3 w-24" />
+                </div>
+              ) : showDayEnvelope ? (
                 <>
                   <div className="flex flex-col items-center gap-1.5">
                     <DayDial usedRatio={dayUsedRatio} over={overToday}>
@@ -406,6 +419,18 @@ export function HomeDashboard({
                     </p>
                   ) : null}
                 </>
+              ) : periodEnded ? (
+                <div className="space-y-3 py-6 text-center">
+                  <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                    {PERIOD_ENDED_BODY_SV}
+                  </p>
+                  <Link
+                    href="/plan?steg=inkomst"
+                    className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                  >
+                    {PERIOD_ENDED_CTA_SV}
+                  </Link>
+                </div>
               ) : (
                 <div className="space-y-3 py-6 text-center">
                   {isEmpty ? (
@@ -565,6 +590,7 @@ export function HomeDashboard({
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
+            hideKvar={periodEnded || dayEnvelopePending}
           />
         </>
       ) : null}
@@ -793,6 +819,7 @@ function QuickExpense({
   disabled,
   remainingTodayMinor,
   overToday,
+  hideKvar,
 }: {
   accountId: string | null;
   accounts: Array<{
@@ -807,6 +834,7 @@ function QuickExpense({
   disabled: boolean;
   remainingTodayMinor: number;
   overToday: boolean;
+  hideKvar: boolean;
 }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -831,7 +859,7 @@ function QuickExpense({
           <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
           <p className="mt-1 text-sm text-[var(--numa-muted)]">{SV.laggtillUtgiftHint}</p>
         </div>
-        {!disabled ? (
+        {!disabled && !hideKvar ? (
           <p className="min-w-0 text-[11px] text-[var(--numa-faint)] sm:shrink-0 sm:text-right">
             {overToday || remainingTodayMinor < 0 ? SV.overDagsbudget : SV.kvarIdag}
             <br />

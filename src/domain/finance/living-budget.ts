@@ -1,4 +1,9 @@
-import { calendarDaysBetween, formatCountSv, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
+import {
+  calendarDaysBetween,
+  formatCountSv,
+  zonedDayAnchorMs,
+  zonedDayKey,
+} from "./datetime";
 import { reservePayInstant } from "./planned-pay";
 import type { PayCycleProjection } from "./pay-cycle";
 import {
@@ -77,6 +82,12 @@ export type LivingBudget = {
   nextIncomeLabelSv: string | null;
   cycleEndLabelSv: string | null;
   cycleEndInferred: boolean;
+  /**
+   * False when the next-income horizon is missing or already in the past.
+   * Today still counts (last spend day). Closed horizon must not become
+   * saldo / 1.
+   */
+  dayEnvelopeOpen: boolean;
 };
 
 /** Signed leftover of today's sticky dagsbudget. Negative means overspent. */
@@ -85,6 +96,49 @@ export function remainingTodayOf(
   spentTodayMinor: number,
 ): number {
   return dayBudgetMinor - Math.max(0, spentTodayMinor);
+}
+
+/**
+ * Spend days until `horizon`. A missing or already-passed date does not
+ * invent a 1-day envelope (saldo / 1). The horizon's own calendar day
+ * stays open — that is the last day you can still spend the budget.
+ */
+export function dayEnvelopeForHorizon(input: {
+  horizon: string | null;
+  now: Date;
+  timeZone: string;
+  poolMinor: number;
+  spentToday: number;
+}): {
+  daysLeft: number;
+  daysUntilHorizon: number;
+  dayBudgetMinor: number;
+  remainingTodayMinor: number;
+  dayEnvelopeOpen: boolean;
+} {
+  const calendarDays = input.horizon
+    ? calendarDaysBetween(input.now, input.horizon, input.timeZone)
+    : Number.NaN;
+  const open = input.horizon != null && calendarDays >= 0;
+  if (!open) {
+    return {
+      daysLeft: 1,
+      daysUntilHorizon: 0,
+      dayBudgetMinor: 0,
+      remainingTodayMinor: 0,
+      dayEnvelopeOpen: false,
+    };
+  }
+  const daysLeft = Math.max(1, calendarDays);
+  const pool = Math.max(0, input.poolMinor);
+  const dayBudgetMinor = perDayBudgetMinor(pool, daysLeft);
+  return {
+    daysLeft,
+    daysUntilHorizon: calendarDays,
+    dayBudgetMinor,
+    remainingTodayMinor: remainingTodayOf(dayBudgetMinor, input.spentToday),
+    dayEnvelopeOpen: true,
+  };
 }
 
 /**
@@ -397,25 +451,31 @@ export function livingBudgetHintSv(input: {
   return lines;
 }
 
-function bridgeHorizonIso(
+/**
+ * Next real paycheck for the day envelope.
+ * `endAt` may be an inferred +1 month after the last dated income.
+ * That date is a cycle label, not a paycheck — using it kept
+ * «Kvar idag» open the morning after payday (25 okt → 26 okt).
+ * A paycheck whose civil day is today still counts, even when its
+ * instant is not strictly after noon (`nextPaycheckAt` misses that).
+ */
+function envelopeHorizonIso(
   cycle: PayCycleProjection,
   now: Date,
   timeZone: string,
 ): string | null {
-  if (!cycle.startAt) return cycle.nextPaycheckAt ?? cycle.endAt;
-  const startDay = zonedDayAnchorMs(cycle.startAt, timeZone);
-  const todayDay = zonedDayAnchorMs(now, timeZone);
-  if (
-    todayDay < startDay ||
-    isSameZonedDay(now, cycle.startAt, timeZone)
-  ) {
-    return cycle.startAt;
-  }
-  return cycle.nextPaycheckAt ?? cycle.endAt;
-}
-
-function paycheckHorizonIso(cycle: PayCycleProjection): string | null {
-  return cycle.nextPaycheckAt ?? cycle.endAt;
+  const today = zonedDayKey(now, timeZone);
+  const dated: Array<string | null | undefined> = [
+    cycle.nextPaycheckAt,
+    cycle.startAt,
+    ...cycle.incomes.map((row) => row.nextDueAt),
+  ];
+  if (cycle.endAt && !cycle.endInferred) dated.push(cycle.endAt);
+  const upcoming = dated
+    .filter((iso): iso is string => Boolean(iso))
+    .filter((iso) => zonedDayKey(iso, timeZone) >= today)
+    .sort((a, b) => Date.parse(a) - Date.parse(b) || a.localeCompare(b));
+  return upcoming[0] ?? null;
 }
 
 function paycheckHorizonLabelSv(cycle: PayCycleProjection, horizon: string | null): string | null {
@@ -450,24 +510,24 @@ function projectBridge(input: {
   const morningAvailable = hasBalance
     ? Math.max(0, availableMinor + spentToday)
     : 0;
-  const horizon = input.nextIncomeAt;
-  const calendarDays = horizon
-    ? calendarDaysBetween(now, horizon, timeZone)
-    : 0;
-  const daysUntilHorizon = Math.max(0, calendarDays);
-  const daysLeft = Math.max(1, calendarDays);
-  const dayBudgetMinor = perDayBudgetMinor(morningAvailable, daysLeft);
-  const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
+  const envelope = dayEnvelopeForHorizon({
+    horizon: input.nextIncomeAt,
+    now,
+    timeZone,
+    poolMinor: morningAvailable,
+    spentToday,
+  });
   return {
     mode: "bridge",
     needsAvailableInput: !hasBalance,
     usesBankBalance: hasBalance,
     availableMinor,
     remainingFreeMinor: availableMinor,
-    daysLeft,
-    daysUntilHorizon,
-    dayBudgetMinor,
-    remainingTodayMinor: remainingToday,
+    daysLeft: envelope.daysLeft,
+    daysUntilHorizon: envelope.daysUntilHorizon,
+    dayBudgetMinor: envelope.dayBudgetMinor,
+    remainingTodayMinor: envelope.remainingTodayMinor,
+    dayEnvelopeOpen: envelope.dayEnvelopeOpen,
     livingPoolMinor: morningAvailable,
     ...reservedFields(reserved),
     nextIncomeAt: input.nextIncomeAt,
@@ -585,6 +645,7 @@ export function projectLivingBudget(input: {
       nextIncomeLabelSv: null,
       cycleEndLabelSv: null,
       cycleEndInferred: false,
+      dayEnvelopeOpen: false,
     };
   }
 
@@ -601,7 +662,7 @@ export function projectLivingBudget(input: {
 
   // Bridge: before first paycheck, after cycle end, or payday without bank proof.
   if (calendarWaiting || cycleClosed || waitingForBankEvidence) {
-    const horizon = bridgeHorizonIso(cycle, now, timeZone);
+    const horizon = envelopeHorizonIso(cycle, now, timeZone);
     return projectBridge({
       cycle,
       now,
@@ -614,7 +675,7 @@ export function projectLivingBudget(input: {
   }
 
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
-  const horizon = paycheckHorizonIso(cycle);
+  const horizon = envelopeHorizonIso(cycle, now, timeZone);
   const reserved = remainingReservedBreakdownUntilHorizon(
     cycle,
     horizon,
@@ -641,13 +702,13 @@ export function projectLivingBudget(input: {
     cashPoolAtMorning != null && cashPoolAtMorning > 0
       ? bankBalanceMinor! - reserved.totalMinor
       : remainingFree;
-  const calendarDays = horizon
-    ? calendarDaysBetween(now, horizon, timeZone)
-    : 0;
-  const daysUntilHorizon = Math.max(0, calendarDays);
-  const daysLeft = Math.max(1, calendarDays);
-  const dayBudgetMinor = perDayBudgetMinor(Math.max(0, poolAtMorning), daysLeft);
-  const remainingToday = remainingTodayOf(dayBudgetMinor, spentToday);
+  const envelope = dayEnvelopeForHorizon({
+    horizon,
+    now,
+    timeZone,
+    poolMinor: Math.max(0, poolAtMorning),
+    spentToday,
+  });
 
   return {
     mode: "cycle",
@@ -655,10 +716,11 @@ export function projectLivingBudget(input: {
     usesBankBalance: hasBalance,
     availableMinor,
     remainingFreeMinor: remainingFree,
-    daysLeft,
-    daysUntilHorizon,
-    dayBudgetMinor,
-    remainingTodayMinor: remainingToday,
+    daysLeft: envelope.daysLeft,
+    daysUntilHorizon: envelope.daysUntilHorizon,
+    dayBudgetMinor: envelope.dayBudgetMinor,
+    remainingTodayMinor: envelope.remainingTodayMinor,
+    dayEnvelopeOpen: envelope.dayEnvelopeOpen,
     livingPoolMinor: Math.max(0, poolAtMorning),
     ...reservedFields(reserved),
     nextIncomeAt: horizon,

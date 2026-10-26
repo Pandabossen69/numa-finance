@@ -93,6 +93,7 @@ export function homeSnapshotFromToday(
     reservedSavingsMonthKey: living.reservedSavingsMonthKey,
     daysUntilIncome: living.daysUntilHorizon,
     nextIncomeLabelSv: living.nextIncomeLabelSv,
+    dayEnvelopeOpen: living.dayEnvelopeOpen,
     extraSaldoMinor: extra.extraSaldoMinor,
     extraSaldoDrawnMinor: extra.drawnMinor,
     extraSaldoHint: extraSaldoHintSv(extra, monthKey) ?? null,

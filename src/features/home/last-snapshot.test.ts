@@ -8,6 +8,7 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { MovementRow, MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
+  applyHomeBankBalance,
   captureOptimisticBalance,
   undoOptimisticBalance,
   applyLocalTransfer,
@@ -31,6 +32,7 @@ import {
   lastSettingsSnapshot,
   lastKnownChromeDisplayName,
   hasBoundSessionOwner,
+  bindHomeCivilDayRoll,
   bindSessionOwner,
   clearClientSessionCaches,
   hydrateLastKnownFromPersist,
@@ -45,6 +47,7 @@ import {
   isLeftoverSparLivingRevert,
   rememberHomeSnapshot,
   rememberImporteraRows,
+  rollHomeLivingToNow,
   rememberMerSnapshot,
   rememberMovementsSnapshot,
   rememberMovementsView,
@@ -750,7 +753,14 @@ describe("last view memory", () => {
         },
       },
     });
-    rememberHomeSnapshot(homeSnap({ remainingTodayMinor: 640_00 }));
+    rememberHomeSnapshot(
+      homeSnap({
+        remainingTodayMinor: 640_00,
+        verifiedAt: new Date().toISOString(),
+        spendDaysLeft: 10,
+        dayEnvelopeOpen: true,
+      }),
+    );
     await Promise.resolve();
     const raw = map.get("numa.lastKnown.v1");
     expect(raw).toContain("640");
@@ -854,6 +864,9 @@ describe("last view memory", () => {
         userId: "user-test",
         remainingTodayMinor: 333_00,
         displayName: "Test",
+        verifiedAt: new Date().toISOString(),
+        spendDaysLeft: 10,
+        dayEnvelopeOpen: true,
       }),
     );
     Object.defineProperty(globalThis, "document", {
@@ -1331,6 +1344,319 @@ describe("last view memory", () => {
     });
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.todayPlannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("drops a cached 1-day budget once the income horizon has passed", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-26T05:00:00.000Z"));
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 14_593_300,
+        livingPoolMinor: 14_593_300,
+        dayBudgetMinor: 14_593_300,
+        remainingTodayMinor: 14_593_300,
+        spendDaysLeft: 1,
+        daysUntilIncome: 0,
+        dayEnvelopeOpen: true,
+        cycleIsActive: false,
+        livingMode: "bridge",
+        planMonthSavingsMinor: 0,
+        savingsTotalMinor: 0,
+      }),
+    );
+    const income = (
+      id: string,
+      name: string,
+      nextDueAt: string,
+    ): PlanItem => ({
+      id,
+      userId: "user-hugo",
+      name,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt,
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    });
+    syncHomeLivingFromPlan({
+      items: [
+        income("sep", "Lön sep", "2026-09-25T12:00:00.000Z"),
+        income("okt", "Lön okt", "2026-10-25T12:00:00.000Z"),
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 14_593_300,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "period-slut",
+      verifiedAt: "2026-11-26T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    const closed = lastHomeSnapshot();
+    expect(closed?.dayEnvelopeOpen).toBe(false);
+    expect(closed?.dayBudgetMinor).toBe(0);
+    expect(closed?.remainingTodayMinor).toBe(0);
+    expect(closed?.calculatedBalanceMinor).toBe(14_593_300);
+
+    applyHomeBankBalance(14_000_000);
+    const afterSaldo = lastHomeSnapshot();
+    expect(afterSaldo?.calculatedBalanceMinor).toBe(14_000_000);
+    expect(afterSaldo?.dayEnvelopeOpen).toBe(false);
+    expect(afterSaldo?.dayBudgetMinor).toBe(0);
+    expect(afterSaldo?.remainingTodayMinor).toBe(0);
+  });
+
+  it("recomputes the day budget across Bangkok midnight, including a same-day spar overlay", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T03:00:00.000Z"));
+    const income = (id: string, nextDueAt: string): PlanItem => ({
+      id,
+      userId: "user-hugo",
+      name: id,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt,
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    });
+    const planSnap: PlanSnapshot = {
+      items: [
+        income("aug", "2026-08-25T12:00:00.000Z"),
+        income("sep", "2026-09-25T12:00:00.000Z"),
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 10_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "day-roll",
+      verifiedAt: "2026-09-19T03:00:00.000Z",
+      truthStatus: "verified",
+    };
+    rememberPlanSnapshot(planSnap);
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 10_000_00,
+        livingPoolMinor: 10_000_00,
+        dayBudgetMinor: 275_12,
+        remainingTodayMinor: 275_12,
+        spendDaysLeft: 6,
+        daysUntilIncome: 6,
+        todaySpendingMinor: 200_00,
+        planMonthSavingsMinor: 15_000_00,
+        savingsTotalMinor: 15_000_00,
+        dayEnvelopeOpen: true,
+        financeRevision: "day-roll",
+        verifiedAt: "2026-09-19T03:00:00.000Z",
+        timeZone: "Asia/Bangkok",
+      }),
+    );
+    expect(rollHomeLivingToNow()).toBe(false);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    vi.setSystemTime(new Date("2026-09-20T03:00:00.000Z"));
+    expect(rollHomeLivingToNow()).toBe(true);
+    const rolled = lastHomeSnapshot();
+    expect(rolled?.dayBudgetMinor).not.toBe(275_12);
+    expect(rolled?.dayBudgetMinor).toBeGreaterThan(0);
+    expect(rolled?.spendDaysLeft).toBe(5);
+    expect(rolled?.todaySpendingMinor).toBe(0);
+    expect(rolled?.envelopeDayKey).toBe("2026-09-20");
+    expect(rolled?.dayEnvelopeOpen).not.toBe(false);
+    expect(rolled?.calculatedBalanceMinor).toBe(10_000_00);
+  });
+
+  it("rolls when the tab becomes visible on the next Bangkok day", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T03:00:00.000Z"));
+    rememberHomeSnapshot(
+      homeSnap({
+        dayBudgetMinor: 14_593_300,
+        remainingTodayMinor: 14_593_300,
+        livingPoolMinor: 14_593_300,
+        spendDaysLeft: 0,
+        daysUntilIncome: 0,
+        dayEnvelopeOpen: true,
+        planMonthSavingsMinor: 0,
+        savingsTotalMinor: 0,
+        verifiedAt: "2026-09-19T03:00:00.000Z",
+        timeZone: "Asia/Bangkok",
+      }),
+    );
+    const listeners = new Map<string, EventListener>();
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      addEventListener: (name: string, fn: EventListener) => {
+        listeners.set(name, fn);
+      },
+      removeEventListener: (name: string) => {
+        listeners.delete(name);
+      },
+    });
+    const stop = bindHomeCivilDayRoll();
+    vi.setSystemTime(new Date("2026-09-20T03:00:00.000Z"));
+    listeners.get("visibilitychange")?.(new Event("visibilitychange"));
+    const next = lastHomeSnapshot();
+    expect(next?.dayEnvelopeOpen).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(0);
+    expect(next?.remainingTodayMinor).toBe(0);
+    expect(next?.envelopeDayKey).toBe("2026-09-20");
+    stop();
+    vi.unstubAllGlobals();
+  });
+
+  it("switches an open last day to Perioden är slut at Bangkok midnight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-25T03:00:00.000Z"));
+    const income = (id: string, nextDueAt: string): PlanItem => ({
+      id,
+      userId: "user-hugo",
+      name: id,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt,
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    });
+    rememberPlanSnapshot({
+      items: [
+        income("sep", "2026-09-25T12:00:00.000Z"),
+        income("okt", "2026-10-25T12:00:00.000Z"),
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 14_593_300,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "last-day",
+      verifiedAt: "2026-10-25T03:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 14_593_300,
+        livingPoolMinor: 14_593_300,
+        dayBudgetMinor: 14_593_300,
+        remainingTodayMinor: 14_593_300,
+        spendDaysLeft: 0,
+        daysUntilIncome: 0,
+        dayEnvelopeOpen: true,
+        cycleIsActive: false,
+        livingMode: "bridge",
+        planMonthSavingsMinor: 0,
+        savingsTotalMinor: 0,
+        financeRevision: "last-day",
+        verifiedAt: "2026-10-25T03:00:00.000Z",
+        timeZone: "Asia/Bangkok",
+        monthKey: "2026-10",
+      }),
+    );
+    const listeners = new Map<string, EventListener>();
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      addEventListener: (name: string, fn: EventListener) => {
+        listeners.set(name, fn);
+      },
+      removeEventListener: (name: string) => {
+        listeners.delete(name);
+      },
+    });
+    const stop = bindHomeCivilDayRoll();
+    vi.setSystemTime(new Date("2026-10-26T03:00:00.000Z"));
+    listeners.get("visibilitychange")?.(new Event("visibilitychange"));
+    const next = lastHomeSnapshot();
+    expect(next?.dayEnvelopeOpen).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(0);
+    expect(next?.remainingTodayMinor).toBe(0);
+    expect(next?.calculatedBalanceMinor).toBe(14_593_300);
+    stop();
+    vi.unstubAllGlobals();
+  });
+
+  it("fires the midnight timer into Perioden är slut, not another open day budget", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-25T03:00:00.000Z"));
+    const income = (id: string, nextDueAt: string): PlanItem => ({
+      id,
+      userId: "user-hugo",
+      name: id,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt,
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    });
+    rememberPlanSnapshot({
+      items: [
+        income("sep", "2026-09-25T12:00:00.000Z"),
+        income("okt", "2026-10-25T12:00:00.000Z"),
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 14_593_300,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "last-day",
+      verifiedAt: "2026-10-25T03:00:00.000Z",
+      truthStatus: "verified",
+    });
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 14_593_300,
+        livingPoolMinor: 14_593_300,
+        dayBudgetMinor: 14_593_300,
+        remainingTodayMinor: 14_593_300,
+        spendDaysLeft: 0,
+        daysUntilIncome: 0,
+        dayEnvelopeOpen: true,
+        cycleIsActive: false,
+        livingMode: "bridge",
+        planMonthSavingsMinor: 0,
+        savingsTotalMinor: 0,
+        financeRevision: "last-day",
+        verifiedAt: "2026-10-25T03:00:00.000Z",
+        timeZone: "Asia/Bangkok",
+        monthKey: "2026-10",
+      }),
+    );
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    });
+    const stop = bindHomeCivilDayRoll();
+    vi.advanceTimersByTime(14 * 60 * 60 * 1000);
+    const next = lastHomeSnapshot();
+    expect(next?.dayEnvelopeOpen).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(0);
+    expect(next?.remainingTodayMinor).toBe(0);
+    expect(next?.dayBudgetMinor).not.toBe(14_593_300);
+    stop();
+    vi.unstubAllGlobals();
   });
 
   it("never lets a Plan ledger raise Spenderat idag", () => {

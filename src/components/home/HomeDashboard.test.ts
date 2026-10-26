@@ -188,6 +188,13 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("DAGSBUDGET_BILLS_EXCEED_SALDO_SV");
     expect(src).toContain("unpaidBillsExceedSaldo");
     expect(src).toContain("Lägg in vad som kommer in →");
+    expect(src).toContain("PERIOD_ENDED_TITLE_SV");
+    expect(src).toContain("PERIOD_ENDED_BODY_SV");
+    expect(src).toContain("PERIOD_ENDED_CTA_SV");
+    expect(src).toContain("view.dayEnvelopeOpen === false");
+    expect(src).toContain("view.dayEnvelopePending === true");
+    expect(src).toContain("numa-skel h-40 w-40 rounded-full");
+    expect(src).toContain("hideKvar={periodEnded || dayEnvelopePending}");
     expect(src).toContain("Sätt saldo →");
     expect(src).toContain('href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}');
     expect(src).toMatch(/\{hasSaldo\s*\n?\s*\?/);

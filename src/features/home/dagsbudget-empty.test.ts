@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DAGSBUDGET_BILLS_EXCEED_SALDO_SV,
+  PERIOD_ENDED_BODY_SV,
+  PERIOD_ENDED_CTA_SV,
+  PERIOD_ENDED_TITLE_SV,
+  periodEndedOnSv,
   unpaidBillsExceedSaldo,
 } from "./dagsbudget-empty";
 
@@ -40,5 +44,18 @@ describe("unpaidBillsExceedSaldo", () => {
         balanceMinor: null,
       }),
     ).toBe(false);
+  });
+});
+
+describe("period ended copy", () => {
+  it("names the closed period from the cycle date and keeps the calm Hem lines", () => {
+    expect(PERIOD_ENDED_TITLE_SV).toBe("Perioden är slut");
+    expect(PERIOD_ENDED_BODY_SV).toBe(
+      "Lägg in nästa inkomst i Plan så räknar vi ut din dagsbudget.",
+    );
+    expect(PERIOD_ENDED_CTA_SV).toBe("Lägg in inkomst");
+    expect(periodEndedOnSv("25 okt.")).toBe("Perioden avslutad 25 okt");
+    expect(periodEndedOnSv("25 okt")).toBe("Perioden avslutad 25 okt");
+    expect(periodEndedOnSv(null)).toBe("Perioden avslutad");
   });
 });

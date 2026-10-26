@@ -60,6 +60,8 @@ export type AnalysSnapshot = {
     nextIncomeLabelSv: string | null;
     dayBudgetMinor: number;
     remainingTodayMinor: number;
+    /** False when the next-income horizon is missing or already past. */
+    dayEnvelopeOpen?: boolean;
     incomes: AnalysLine[];
     expenses: AnalysLine[];
   };
@@ -264,6 +266,7 @@ function buildAnalysSnapshot(
       nextIncomeLabelSv: living.nextIncomeLabelSv,
       dayBudgetMinor: living.dayBudgetMinor,
       remainingTodayMinor: living.remainingTodayMinor,
+      dayEnvelopeOpen: living.dayEnvelopeOpen,
       incomes: cycle.incomes.map((item) =>
         toAnalysLine(item, { detail: labelIncomeDate(item.nextDueAt, timeZone) }),
       ),
@@ -379,6 +382,7 @@ export function analysSnapshotFromHome(
       nextIncomeLabelSv: home.nextIncomeLabelSv,
       dayBudgetMinor: home.dayBudgetMinor,
       remainingTodayMinor: home.remainingTodayMinor,
+      dayEnvelopeOpen: home.dayEnvelopeOpen,
       incomes: [],
       expenses: [],
     },

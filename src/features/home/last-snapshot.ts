@@ -35,6 +35,12 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
 import {
+  cachedHorizonDaysRemaining,
+  homeCacheDayEnvelope,
+  homeCacheIsOtherCivilDay,
+  msUntilNextZonedMidnight,
+} from "@/features/home/home-cache-day";
+import {
   readLastHomeCookieFromDocument,
   readPendingBankMailCountFromDocument,
   writeLastHomeCookie,
@@ -356,12 +362,57 @@ export function hydrateLastKnownFromPersist() {
     if (!mer) mer = merSnapshotFromHome(cookieHome);
   }
 } finally {
+    // Sanitize before any subscriber. localStorage is not the cookie:
+    // yesterday's Kvar must not be the first client frame.
+    alignHydratedHomeToToday();
     // Notify after the module vars are filled, still before paint when this
     // runs from AppShell's useLayoutEffect. No persist — the bytes are
     // already in localStorage / the cookie.
     publishHydratedSnapshots();
     persistPaused = false;
   }
+}
+
+/**
+ * lastKnown from another Bangkok day: project today's mode from Plan
+ * when we have it, otherwise skeleton or «Perioden är slut».
+ * Never publish yesterday's day budget, and never a closed envelope
+ * that Plan still considers open.
+ */
+function alignHydratedHomeToToday() {
+  if (!home || home.livingMode === "empty") return;
+  const now = new Date();
+  const tz = home.timeZone || "Asia/Bangkok";
+  const today = zonedDayKey(now, tz);
+  const sameDay =
+    Boolean(home.verifiedAt) && zonedDayKey(home.verifiedAt, tz) === today;
+  const horizonLeft = cachedHorizonDaysRemaining(home, now);
+  const passed =
+    home.dayEnvelopeOpen === false ||
+    (horizonLeft != null && horizonLeft < 0);
+  if (sameDay && !passed) return;
+
+  if (plan) {
+    home = {
+      ...home,
+      todaySpendingMinor: sameDay ? home.todaySpendingMinor : 0,
+      todayPlannedPaidMinor: sameDay ? home.todayPlannedPaidMinor : 0,
+      dayEnvelopePending: false,
+    };
+    const before = home;
+    syncHomeLivingFromPlan(plan);
+    if (home && home !== before) {
+      home = {
+        ...home,
+        envelopeDayKey: today,
+        dayEnvelopePending: false,
+      };
+      return;
+    }
+  }
+
+  const next = homeCacheDayEnvelope(home, now);
+  if (next !== home) home = next;
 }
 
 export function subscribeHomeSnapshot(listener: () => void) {
@@ -696,9 +747,80 @@ export function lastHomeSnapshot(): HomeSnapshot | null {
   return home;
 }
 
+/**
+ * Recompute today's envelope from the Plan snapshot already in memory.
+ * A new Bangkok day drops yesterday's Kvar and any same-day spar overlay.
+ * No network, no router.refresh.
+ */
+export function rollHomeLivingToNow(): boolean {
+  if (!home || !homeCacheIsOtherCivilDay(home)) return false;
+  const tz = home.timeZone || "Asia/Bangkok";
+  const today = zonedDayKey(new Date(), tz);
+  // Yesterday's Spenderat idag is not today's. Sync copies the home
+  // figure on purpose, so clear it before that recompute.
+  home = {
+    ...home,
+    todaySpendingMinor: 0,
+    todayPlannedPaidMinor: 0,
+  };
+  const before = home;
+  if (plan) {
+    syncHomeLivingFromPlan(plan);
+  }
+  const rolled = home !== before ? home : homeCacheDayEnvelope(before);
+  if (!rolled) return false;
+  rememberHomeSnapshot(
+    { ...rolled, envelopeDayKey: today },
+    { confirmSession: homeSessionConfirmed },
+  );
+  return true;
+}
+
+let civilDayTimer: ReturnType<typeof setTimeout> | null = null;
+
+function armHomeCivilDayTimer() {
+  if (civilDayTimer != null) clearTimeout(civilDayTimer);
+  const tz = home?.timeZone || "Asia/Bangkok";
+  civilDayTimer = setTimeout(() => {
+    civilDayTimer = null;
+    rollHomeLivingToNow();
+    armHomeCivilDayTimer();
+  }, msUntilNextZonedMidnight(new Date(), tz));
+}
+
+/** visibilitychange + one timer at the next local midnight. */
+export function bindHomeCivilDayRoll(): () => void {
+  if (typeof document === "undefined") return () => {};
+  const onVisible = () => {
+    if (document.visibilityState !== "visible") return;
+    rollHomeLivingToNow();
+    armHomeCivilDayTimer();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  armHomeCivilDayTimer();
+  return () => {
+    document.removeEventListener("visibilitychange", onVisible);
+    if (civilDayTimer != null) {
+      clearTimeout(civilDayTimer);
+      civilDayTimer = null;
+    }
+  };
+}
+
 /** Live Hem paint only — hydrate/cookie alone must not flash as current money. */
 export function lastSessionHomeSnapshot(): HomeSnapshot | null {
   return homeSessionConfirmed ? home : null;
+}
+
+/**
+ * Unconfirmed lastKnown after hydrate. Already aligned to today, so Hem
+ * can show saldo + skeleton or «Perioden är slut» before the fetch
+ * without painting yesterday's Kvar. Null once the session is confirmed
+ * — that path is lastSessionHomeSnapshot.
+ */
+export function lastKnownHomeForPaint(): HomeSnapshot | null {
+  if (!home || homeSessionConfirmed) return null;
+  return home;
 }
 
 export function applyOptimisticHomeSpend(amountMinor: number): HomeSnapshot | null {
@@ -909,6 +1031,11 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
     nextSave > 0 &&
     nextSave <= prevSave &&
     home.dayBudgetMinor !== living.dayBudgetMinor;
+  // Same-day leftover overlay (275,12) still wins over a recompute.
+  // A new civil day does not match the baseline, so a closed horizon
+  // publishes dayBudget 0 instead of yesterday's saldo/1.
+  const horizonClosed =
+    living.mode !== "empty" && living.dayEnvelopeOpen === false;
   const keepAdoptedLiving =
     leftoverBaselineMatchesCivilDay(timeZone) &&
     (restoreKeepAdopted ||
@@ -928,8 +1055,9 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
         daysLeft: living.daysLeft,
         spentTodayMinor: todaySpendingMinor,
       };
-  const adjusted =
-    leftoverPath && sparDelta > 0 && prevSave > 0
+  const adjusted = horizonClosed
+    ? living
+    : leftoverPath && sparDelta > 0 && prevSave > 0
       ? applyLeftoverSparDelta(incrementBase, sparDelta)
       : living;
   const livingPoolMinor = keepAdoptedLiving
@@ -980,6 +1108,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       reservedSavingsMonthKey: living.reservedSavingsMonthKey,
       daysUntilIncome: living.daysUntilHorizon,
       nextIncomeLabelSv: living.nextIncomeLabelSv,
+      dayEnvelopeOpen: living.dayEnvelopeOpen,
       incomingMinor: coverage.incomingMinor,
       unpaidMinor: coverage.unpaidMinor,
       overMinor,
@@ -1722,6 +1851,7 @@ export function applyOptimisticPlanSettle(input: {
   let reservedSavingsUntilIncomeMinor = previous.reservedSavingsUntilIncomeMinor;
   let reservedSavingsMonthKey = previous.reservedSavingsMonthKey;
   let usesBankBalance = previous.usesBankBalance;
+  let dayEnvelopeOpen = previous.dayEnvelopeOpen;
   if (planSnap) {
     const now = new Date();
     const cycle = projectPayCycle(planSnap.items, now, planSnap.timeZone);
@@ -1745,6 +1875,7 @@ export function applyOptimisticPlanSettle(input: {
       reservedSavingsUntilIncomeMinor = living.reservedSavingsMinor;
       reservedSavingsMonthKey = living.reservedSavingsMonthKey;
       usesBankBalance = living.usesBankBalance;
+      dayEnvelopeOpen = living.dayEnvelopeOpen;
     }
   }
   rememberHomeSnapshot(
@@ -1767,6 +1898,7 @@ export function applyOptimisticPlanSettle(input: {
       reservedSavingsUntilIncomeMinor,
       reservedSavingsMonthKey,
       usesBankBalance,
+      dayEnvelopeOpen,
       safeToSpendTodayMinor: remainingTodayMinor,
       wealthTotalMinor: planWealthTotalMinor(
         overMinor,
@@ -1820,9 +1952,10 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
   const spentToday = Math.max(0, home.todaySpendingMinor);
   const reserved = Math.max(0, home.reservedUntilIncomeMinor ?? 0);
   const refreshDayEnvelope =
-    home.needsAvailableInput ||
-    home.livingMode === "bridge" ||
-    home.usesBankBalance;
+    home.dayEnvelopeOpen !== false &&
+    (home.needsAvailableInput ||
+      home.livingMode === "bridge" ||
+      home.usesBankBalance);
   const cashPool = balanceMinor + spentToday - reserved;
   const planPool = (home.remainingFreeMinor ?? 0) + spentToday;
   const livingPoolMinor = refreshDayEnvelope

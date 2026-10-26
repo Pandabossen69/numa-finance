@@ -140,6 +140,22 @@ describe("last-home cookie", () => {
     expect(next?.displayName).toBe("Hugo");
   });
 
+  it("keeps a closed horizon in the Hem shell so the next paint is not saldo/1", () => {
+    const encoded = serializeLastHomeCookie(
+      home({
+        dayBudgetMinor: 0,
+        remainingTodayMinor: 0,
+        livingPoolMinor: 14_593_300,
+        dayEnvelopeOpen: false,
+      }),
+    );
+    expect(encoded).toBeTruthy();
+    const next = parseLastHomeCookie(encoded);
+    expect(next?.dayEnvelopeOpen).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(0);
+    expect(next?.livingPoolMinor).toBe(14_593_300);
+  });
+
   it("rejects a cookie that cannot paint Hem numbers", () => {
     expect(parseLastHomeCookie("")).toBeNull();
     expect(parseLastHomeCookie("{")).toBeNull();
