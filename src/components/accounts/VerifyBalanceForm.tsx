@@ -128,7 +128,7 @@ export function VerifyBalanceForm({
   return (
     <form onSubmit={onSubmit} className="space-y-2.5">
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Hur mycket har du just nu? ({currency})
         </span>
         <input
@@ -141,7 +141,7 @@ export function VerifyBalanceForm({
       </label>
       {needsFx ? (
         <label className="block">
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
             Växelkurs (THB per 1 {currency})
           </span>
           <input

@@ -228,7 +228,7 @@ export function HomeDashboard({
   });
 
   const daysLeftChip = !isEmpty ? (
-    <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-[11px] font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
+    <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
       {daysWord}
     </p>
   ) : null;
@@ -304,7 +304,7 @@ export function HomeDashboard({
                       {overToday ? (
                         <p className="numa-chip numa-chip-ink mb-2">Över</p>
                       ) : (
-                        <p className="mb-2 text-[11px] font-semibold tracking-[0.14em] text-[var(--numa-accent)] uppercase">
+                        <p className="mb-2 text-xs font-semibold tracking-[0.04em] text-[var(--numa-muted)] uppercase">
                           Kvar
                         </p>
                       )}
@@ -860,7 +860,7 @@ function QuickExpense({
           <p className="mt-1 text-sm text-[var(--numa-muted)]">{SV.laggtillUtgiftHint}</p>
         </div>
         {!disabled && !hideKvar ? (
-          <p className="min-w-0 text-[11px] text-[var(--numa-faint)] sm:shrink-0 sm:text-right">
+          <p className="min-w-0 text-xs text-[var(--numa-faint)] sm:shrink-0 sm:text-right">
             {overToday || remainingTodayMinor < 0 ? SV.overDagsbudget : SV.kvarIdag}
             <br />
             <span

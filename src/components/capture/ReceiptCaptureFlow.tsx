@@ -620,7 +620,7 @@ export function ReceiptCaptureFlow({
       <div className="animate-rise space-y-8">
         <BackLink onClick={resetToPick} />
         <header className="space-y-2">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+          <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
             {copy.eyebrow}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight">
@@ -820,7 +820,7 @@ export function ReceiptCaptureFlow({
         <div className="animate-rise-delay-1 space-y-1 text-center">
           {isSms && preview.balanceAfterMinor != null ? (
             <>
-              <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+              <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
                 Saldo på Hem
               </p>
               <p className="numa-hero-money money-hero money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
@@ -830,7 +830,7 @@ export function ReceiptCaptureFlow({
               </p>
             </>
           ) : (
-            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+            <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
               {isBankApp
                 ? CAPTURE_UI_COPY.bank_app.eyebrow
                 : CAPTURE_UI_COPY.bank_sms.eyebrow}
@@ -856,7 +856,7 @@ export function ReceiptCaptureFlow({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+          <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
             Kvitto · totalsumma
           </p>
           {preview.message ? (
@@ -913,7 +913,7 @@ export function ReceiptCaptureFlow({
         </ul>
       ) : (
         <div>
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-[var(--numa-faint)]">
+          <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
             Belopp
           </p>
           {amountEditable || needsManualAmount ? (

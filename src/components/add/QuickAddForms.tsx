@@ -798,7 +798,7 @@ function AmountField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
         Belopp · {currency}
       </span>
       <div className="relative">

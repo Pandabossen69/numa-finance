@@ -401,7 +401,7 @@ export function AnalysDashboard({
                       }
                       amountMinor={periodKvarMinor}
                       currency={currency}
-                      tone={periodKvarMinor >= 0 ? "positive" : "alarm"}
+                      tone={periodKvarMinor < 0 ? "alarm" : undefined}
                       hint={periodGoingHint}
                       value={
                         !ledgerSettled && periodKvarMinor === 0
@@ -473,7 +473,7 @@ export function AnalysDashboard({
                 label={SV.kvarIPerioden}
                 amountMinor={month.monthResultMinor}
                 currency={currency}
-                tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
+                tone={month.monthResultMinor < 0 ? "alarm" : undefined}
                 hint={month.monthLeftoverHint ?? undefined}
                 value={
                   !ledgerSettled && month.monthResultMinor === 0

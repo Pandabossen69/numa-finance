@@ -40,12 +40,12 @@ describe("formatSvGroupedNumber", () => {
 });
 
 describe("MoneyDisplay signed tone", () => {
-  it("colors only a strictly negative amount as alarm and a strictly positive amount as green", () => {
+  it("colors only a strictly negative amount as alarm and leaves a positive amount in ink", () => {
     expect(src).toContain('tone?: "neutral" | "signed"');
     expect(src).toContain('tone === "signed" && safeMinor < 0');
-    expect(src).toContain('? "text-[var(--numa-alarm)]"');
-    expect(src).toContain('tone === "signed" && safeMinor > 0');
-    expect(src).toContain('? "text-[var(--numa-positive)]"');
+    expect(src).toContain('"text-[var(--numa-alarm)]"');
+    expect(src).not.toContain('tone === "signed" && safeMinor > 0');
+    expect(src).not.toContain('? "text-[var(--numa-positive)]"');
     expect(src).not.toMatch(/safeMinor\s*<=\s*0/);
     expect(src).not.toMatch(/safeMinor\s*>=\s*0/);
   });

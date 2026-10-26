@@ -37,7 +37,7 @@ describe("WealthScoreboard Analys leftover", () => {
     expect(src).toContain("numa-wealth-cell");
     expect(src).toContain("numa-wealth-value");
     expect(src).toContain(
-      'livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"',
+      'livingOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-alarm)]"',
     );
     const board = src.slice(
       src.indexOf("export function WealthScoreboard"),

@@ -134,7 +134,7 @@ export function AccountsDashboard({
               <MerListGroup>
                 <MerListRow className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
                       Totalt i THB
                     </p>
                     <p className="mt-0.5 text-[13px] text-[var(--numa-muted)]">

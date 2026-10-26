@@ -158,7 +158,7 @@ export function PlanPiles({
           </p>
           {savingsTotalMinor > 0 ? (
             <div className="flex items-baseline justify-between gap-2 border-t border-[var(--numa-border)] pt-3">
-              <span className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+              <span className="text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
                 {SV.alltINuma}
               </span>
               <MoneyDisplay

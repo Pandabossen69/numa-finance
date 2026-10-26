@@ -236,7 +236,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
   return (
     <form onSubmit={onSave} className="numa-panel-strong space-y-4 p-5">
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Typ av konto
         </span>
         <select
@@ -257,7 +257,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Namn
         </span>
         <input
@@ -271,7 +271,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Valuta
         </span>
         <select
