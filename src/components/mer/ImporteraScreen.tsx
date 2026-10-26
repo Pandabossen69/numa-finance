@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
 import {
   MerListGroup,
@@ -117,6 +117,8 @@ function ObservationList({
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const shown = rows.slice(0, visibleCount);
 
   async function onReject(id: string) {
     setRejectingId(id);
@@ -145,7 +147,7 @@ function ObservationList({
 
   return (
     <MerListGroup>
-      {rows.map((o) => {
+      {shown.map((o) => {
         const removed = o.movementRemoved === true;
         const status = statusMeta(o.status, removed, o.notes);
         const detail = removed ? MOVEMENT_REMOVED_LABEL : o.notes;
@@ -213,6 +215,18 @@ function ObservationList({
           </MerListRow>
         );
       })}
+      {rows.length > visibleCount ? (
+        <MerListRow>
+          <button
+            type="button"
+            className="numa-text-link"
+            onClick={() => setVisibleCount((count) => count + 20)}
+          >
+            Visa fler
+            <Icon icon={ChevronDown} size={16} />
+          </button>
+        </MerListRow>
+      ) : null}
       {error ? (
         <MerListRow>
           <p className="text-sm text-[var(--numa-danger)]" role="alert">
@@ -244,48 +258,27 @@ export function statusMeta(
   movementRemoved: boolean,
   notes: string | null = null,
 ): { label: string; className: string } {
+  const muted =
+    "border border-[var(--numa-border-strong)] bg-transparent text-[var(--numa-muted)]";
+  const danger = "bg-[var(--numa-danger-soft)] text-[var(--numa-danger)]";
   if (movementRemoved) {
-    return {
-      label: "Borttagen",
-      className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
-    };
+    return { label: "Borttagen", className: muted };
   }
   if (status === "processed" && notes === "Avvisad") {
-    return {
-      label: "Avvisad",
-      className: "bg-[var(--numa-danger-soft)] text-[var(--numa-danger)]",
-    };
+    return { label: "Avvisad", className: danger };
   }
   switch (status) {
     case "uploaded":
-      return {
-        label: "Mottagen",
-        className: "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]",
-      };
+      return { label: "Mottagen", className: muted };
     case "extracting":
-      return {
-        label: "Läser",
-        className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
-      };
+      return { label: "Läser", className: muted };
     case "needs_review":
-      return {
-        label: "Väntar på dig",
-        className: "bg-[var(--numa-warning-soft)] text-[var(--numa-warning)]",
-      };
+      return { label: "Väntar på dig", className: muted };
     case "processed":
-      return {
-        label: "Sparad",
-        className: "bg-[var(--numa-positive-soft)] text-[var(--numa-positive)]",
-      };
+      return { label: "Sparad", className: muted };
     case "failed":
-      return {
-        label: "Kunde inte läsas",
-        className: "bg-[var(--numa-danger-soft)] text-[var(--numa-danger)]",
-      };
+      return { label: "Kunde inte läsas", className: danger };
     default:
-      return {
-        label: status,
-        className: "bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]",
-      };
+      return { label: status, className: muted };
   }
 }

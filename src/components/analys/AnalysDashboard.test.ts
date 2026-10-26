@@ -25,7 +25,7 @@ describe("Analys month result color", () => {
     expect(src).not.toContain("SV.overskottHittills");
     expect(src).toContain("label={SV.kvarIPerioden}");
     expect(src).not.toContain("amountMinor={month.livingSaldoMinor}");
-    expect(src).toContain("month.monthLeftoverHint ??");
+    expect(src).toContain("month.monthLeftoverHint &&");
     const monthView = readFileSync(
       new URL("../../features/finance/analys-month.ts", import.meta.url),
       "utf8",
@@ -276,13 +276,12 @@ describe("Analys month result color", () => {
     expect(src).toContain("SV.analysEmptyPeriod");
   });
 
-  it("explains Plus mot planen inline without a tap", () => {
+  it("explains kvar i perioden behind info, once per Hur går det", () => {
     expect(src).toContain("SV.overskottMotPlanenHint");
-    expect(src).toContain("LeftoverVsPlanHint");
-    expect(src).toContain("text-[12px] leading-snug text-[var(--numa-faint)]");
+    expect(src).toContain("HurGarDetHeading");
+    expect(src).toContain("InfoNote");
+    expect(src).not.toContain("LeftoverVsPlanHint");
     expect(src).not.toContain("Planerat kvar minus spenderat — inte kontanter");
-    // Default Analys paint is Perioden — the one-liner must sit under that
-    // Hur går det? as well, including the empty-period path.
     expect(src).toContain('lastAnalysScope() ?? "period"');
     const periodStart = src.indexOf('id="analys-hur"');
     const periodBlock = src.slice(
@@ -290,11 +289,9 @@ describe("Analys month result color", () => {
       src.indexOf("SpendByCategory", periodStart),
     );
     expect(periodStart).toBeGreaterThan(-1);
-    expect(periodBlock).toContain("<LeftoverVsPlanHint");
+    expect(periodBlock).toContain("<HurGarDetHeading");
     expect(periodBlock).not.toContain("FormulaInfo");
-    expect((src.match(/<LeftoverVsPlanHint/g) ?? []).length).toBeGreaterThanOrEqual(3);
-    // FormulaInfo stays a tap-for-more — the leftover one-liner must not
-    // live only behind that control.
+    expect((src.match(/<HurGarDetHeading/g) ?? []).length).toBeGreaterThanOrEqual(3);
     expect(src).toContain("<FormulaInfo");
     const monthStart = src.indexOf('id="analys-hur-manad"');
     const leftoverBlock = src.slice(
@@ -302,9 +299,8 @@ describe("Analys month result color", () => {
       src.indexOf("SpendByCategory", monthStart),
     );
     expect(monthStart).toBeGreaterThan(-1);
-    expect(leftoverBlock).toContain("<LeftoverVsPlanHint");
+    expect(src).toContain('<HurGarDetHeading id="analys-hur-manad"');
     expect(leftoverBlock).not.toContain("FormulaInfo");
-    expect(leftoverBlock).not.toContain("setOpen");
   });
 
   it("always prints the pay-cycle start and end next to kvar", () => {
@@ -312,7 +308,7 @@ describe("Analys month result color", () => {
     expect(src).toContain("cycleRangeLabel");
     expect(src).toContain("periodPayLabel ??");
     expect(src).toContain("periodPayLabelSv");
-    expect(src).toContain("hint={periodGoingHint}");
+    expect(src).toContain("hint={periodGoingHint ?? undefined}");
     expect(src).toContain("{cycleRangeLabel}");
   });
 

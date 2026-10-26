@@ -11,6 +11,8 @@ import {
   MerSection,
 } from "@/components/mer/MerHub";
 import { Icon } from "@/components/ui/Icon";
+import { InfoNote } from "@/components/ui/InfoNote";
+import { TextLink } from "@/components/ui/TextLink";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
@@ -78,9 +80,10 @@ export function AccountsDashboard({
             prefetch
             onMouseEnter={() => prefetch("/konton/ny")}
             onFocus={() => prefetch("/konton/ny")}
-            className="numa-tap text-[13px] font-semibold text-[var(--numa-accent)]"
+            className="numa-text-link"
           >
             Nytt konto
+            <Icon icon={ChevronRight} size={16} />
           </Link>
         }
       />
@@ -102,25 +105,23 @@ export function AccountsDashboard({
               <p className="text-sm leading-relaxed text-[var(--numa-muted)]">
                 Inga konton ännu. Snabbast är att fota bank-SMS via +.
               </p>
-              <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-semibold">
-                <Link
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <TextLink
                   href="/fota?mode=sms"
                   prefetch
                   onMouseEnter={() => prefetch("/fota?mode=sms")}
                   onFocus={() => prefetch("/fota?mode=sms")}
-                  className="numa-tap text-[var(--numa-accent)]"
                 >
-                  Fota bank-SMS →
-                </Link>
-                <Link
+                  Fota bank-SMS
+                </TextLink>
+                <TextLink
                   href="/konton/ny"
                   prefetch
                   onMouseEnter={() => prefetch("/konton/ny")}
                   onFocus={() => prefetch("/konton/ny")}
-                  className="numa-tap text-[var(--numa-accent)]"
                 >
-                  Ange manuellt →
-                </Link>
+                  Ange manuellt
+                </TextLink>
               </div>
             </MerListRow>
           </MerListGroup>
@@ -132,9 +133,7 @@ export function AccountsDashboard({
               <MerListGroup>
                 <MerListRow className="space-y-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
-                      Totalt i THB
-                    </p>
+                    <p className="numa-card-title">Totalt i THB</p>
                     <MoneyDisplay
                       amountMinor={view.totalThbMinor}
                       currency="THB"
@@ -144,9 +143,7 @@ export function AccountsDashboard({
                       wrap={false}
                     />
                   </div>
-                  <p className="text-[13px] text-[var(--numa-muted)]">
-                    {SV.saldoAllaKontonHint}
-                  </p>
+                  <InfoNote label="Om på kontona">{SV.saldoAllaKontonHint}</InfoNote>
                 </MerListRow>
               </MerListGroup>
             </MerSection>

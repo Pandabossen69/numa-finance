@@ -7,7 +7,7 @@ describe("Rörelser expense color", () => {
   it("paints Utgifter neutral and negative Netto in clay alarm", () => {
     expect(src).toContain('label="Utgifter"');
     expect(src).toContain('tone="neutral"');
-    expect(src).toContain('tone={net >= 0 ? "positive" : "alarm"}');
+    expect(src).toContain('tone={net > 0 ? "positive" : net < 0 ? "alarm" : "neutral"}');
     expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,120}tone="alarm"/);
     expect(src).not.toMatch(/label="Utgifter"[\s\S]{0,80}tone="danger"/);
   });
@@ -84,7 +84,9 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("payCycleRangeLabelSv");
     expect(src).toContain("cycleWindowTotals");
     expect(src).toContain('label="Lönemånad"');
-    expect(src).toContain("detail={cycleRange}");
+    expect(src).toContain("calendarMonthRangeLabelSv");
+    expect(src).toContain("viewPeriod === \"month\"");
+    expect(src).toContain("viewPeriod === \"cycle\" && cycleRange");
     expect(src).toContain('onClick={() => choosePeriod("cycle")}');
     expect(src).toContain("subscribeMovementsDrill");
     expect(src).toContain("clearMovementsDrill");
@@ -142,6 +144,7 @@ describe("Rörelser expense color", () => {
     expect(src).toContain("expenseOnly");
     expect(src).toContain("drillMonthChipLabel");
     expect(src).toContain('label={drillMonthLabel ?? "Denna månad"}');
+    expect(src).not.toContain("detail={cycleRange}");
     expect(src).toContain("Drill month is an overlay label");
   });
 

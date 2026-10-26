@@ -236,13 +236,13 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
   return (
     <form onSubmit={onSave} className="numa-panel-strong space-y-4 p-5">
       <label className="block">
-        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+        <span className="numa-field-label">
           Typ av konto
         </span>
         <select
           value={form.kind}
           onChange={(e) => onKindChange(e.target.value as AccountKind)}
-          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+          className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-base text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         >
           {ACCOUNT_KINDS.map((kind) => (
             <option key={kind} value={kind}>
@@ -257,13 +257,13 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+        <span className="numa-field-label">
           Namn
         </span>
         <input
           value={name}
           onChange={(e) => setNameDraft(e.target.value)}
-          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+          className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-base text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         />
         <p className="mt-1.5 text-xs leading-relaxed text-[var(--numa-faint)]">
           Namnet syns i listor och när en utgift skapas.
@@ -271,7 +271,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+        <span className="numa-field-label">
           Valuta
         </span>
         <select
@@ -283,7 +283,7 @@ export function ManageAccountForm({ account }: { account: AccountDetail }) {
             }))
           }
           disabled={currencyLocked || allowedCurrencies.length === 1}
-          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25 disabled:opacity-70"
+          className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-base text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25 disabled:opacity-70"
         >
           {(currencyLocked ? [form.currency] : allowedCurrencies).map((code) => (
             <option key={code} value={code}>

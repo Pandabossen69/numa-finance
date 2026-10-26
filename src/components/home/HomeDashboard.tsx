@@ -8,6 +8,8 @@ import { ChevronRight } from "lucide-react";
 import { DayBudgetBar } from "@/components/home/DayDial";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
 import { Icon } from "@/components/ui/Icon";
+import { InfoNote } from "@/components/ui/InfoNote";
+import { TextLink } from "@/components/ui/TextLink";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { PileLine } from "@/components/ui/PileLine";
@@ -31,7 +33,6 @@ import {
   livingBudgetHintSv,
 } from "@/domain/finance";
 import {
-  formatMoney,
   formatMoneyCompact,
   money,
   parseUiAmountToMinor,
@@ -369,7 +370,7 @@ export function HomeDashboard({
                   <p className="px-1 text-[12px] text-[var(--numa-faint)]">
                     {SV.betaldaRakningarIdag}{" "}
                     <span className="font-semibold text-[var(--numa-ink)]">
-                      {formatMoney(money(view.todayPlannedPaidMinor, currency))}
+                      {formatMoneyCompact(money(view.todayPlannedPaidMinor, currency))}
                     </span>
                   </p>
                 ) : null}
@@ -410,12 +411,7 @@ export function HomeDashboard({
                     <p className="max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
                       {PERIOD_ENDED_BODY_SV}
                     </p>
-                    <Link
-                      href="/plan?steg=inkomst"
-                      className="numa-press inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--numa-accent)]"
-                    >
-                      {PERIOD_ENDED_CTA_SV}
-                    </Link>
+                    <TextLink href="/plan?steg=inkomst">{PERIOD_ENDED_CTA_SV}</TextLink>
                   </>
                 ) : isEmpty ? (
                   <>
@@ -424,12 +420,9 @@ export function HomeDashboard({
                         ? "Ingen dagsbudget än. Lägg in vad som kommer in i Plan."
                         : "Ingen dagsbudget än. Sätt saldo så räknas kvar idag."}
                     </p>
-                    <Link
-                      href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}
-                      className="numa-press inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--numa-accent)]"
-                    >
+                    <TextLink href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}>
                       {hasSaldo ? "Lägg in vad som kommer in" : "Sätt saldo"}
-                    </Link>
+                    </TextLink>
                   </>
                 ) : (
                   <>
@@ -441,12 +434,7 @@ export function HomeDashboard({
                           : "När planen har pengar kvar syns dagsbudgeten här."}
                     </p>
                     {billsExceedSaldo ? (
-                      <Link
-                        href="/plan"
-                        className="numa-press inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--numa-accent)]"
-                      >
-                        Betala senare i Plan
-                      </Link>
+                      <TextLink href="/plan">Betala senare i Plan</TextLink>
                     ) : null}
                   </>
                 )}
@@ -492,7 +480,9 @@ export function HomeDashboard({
                   {SV.sparandeTotalt} {formatMoneyCompact(money(savingsPrior, currency))}
                 </p>
               ) : null}
-              <p className="numa-pile-hint pb-1">{SV.saldoAllaKontonHint}</p>
+              <div className="flex justify-end">
+                <InfoNote label="Om på kontona">{SV.saldoAllaKontonHint}</InfoNote>
+              </div>
               {showExtra ? (
                 <div className="border-t border-[var(--numa-border)]">
                   {view.extraCarriedInMinor > 0 ? (
@@ -500,7 +490,6 @@ export function HomeDashboard({
                       label={SV.extraMed}
                       amountMinor={view.extraCarriedInMinor}
                       currency={currency}
-                      tone="positive"
                       hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
                     />
                   ) : (

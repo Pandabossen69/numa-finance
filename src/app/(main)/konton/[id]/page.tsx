@@ -3,7 +3,7 @@ import { AccountDetailActions } from "@/components/accounts/AccountDetailActions
 import { AccountDetailHeading } from "@/components/accounts/ManageAccountForm";
 import { MerBackLink } from "@/components/mer/MerHub";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
-import { formatMoney, money } from "@/domain/money";
+import { formatMoneyCompact, money } from "@/domain/money";
 import {
   loadAccountDetail,
   type AccountDetail,
@@ -73,7 +73,7 @@ function ArchivedAccountMovements({ account }: { account: AccountDetail }) {
               </span>
               <span className="money shrink-0 text-sm font-semibold">
                 {tx.direction === "credit" ? "+" : "−"}
-                {formatMoney(money(tx.amountMinor, tx.currency))}
+                {formatMoneyCompact(money(tx.amountMinor, tx.currency))}
               </span>
             </li>
           ))}

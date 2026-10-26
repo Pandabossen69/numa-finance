@@ -135,7 +135,7 @@ describe("Plan dates and add-form", () => {
     expect(monthNav).toContain('aria-label="Föregående månad"');
     expect(monthNav).toContain('aria-label="Föregående år"');
     expect(monthNav).toContain("Bläddra bakåt och framåt — historik ändras inte");
-    expect(monthNav).toContain("min-h-11 rounded-full px-3");
+    expect(monthNav).toContain("min-h-11 items-center gap-1 rounded-full px-3");
     expect(plan).not.toContain("även år framåt");
     expect(editor).not.toContain("onShiftYear");
   });

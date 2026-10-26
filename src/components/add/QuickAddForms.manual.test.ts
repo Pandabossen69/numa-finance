@@ -60,6 +60,25 @@ function clickText(host: HTMLElement, text: string) {
   });
 }
 
+function chooseOption(host: HTMLElement, label: string, optionText: string) {
+  const span = Array.from(host.querySelectorAll("span")).find(
+    (el) => el.textContent === label,
+  );
+  const select = span?.parentElement?.querySelector("select");
+  const option = Array.from(select?.querySelectorAll("option") ?? []).find(
+    (el) => el.textContent === optionText,
+  );
+  if (!select || !option) throw new Error(`missing option ${optionText}`);
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLSelectElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(select, option.value);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+}
+
 function optionsFor(host: HTMLElement, label: string): string[] {
   const span = Array.from(host.querySelectorAll("span")).find(
     (el) => el.textContent === label,
@@ -109,7 +128,7 @@ describe("Manuellt account pickers", () => {
 
   it("shows every active account in all four modes, including after a late load", () => {
     render(stub);
-    expect(optionsFor(host, "Konto")).toEqual(["Konto · THB"]);
+    expect(optionsFor(host, "Betalat med")).toEqual(["Konto · THB", "Kontant"]);
 
     clickText(host, "Inkomst");
     expect(optionsFor(host, "Till konto")).toEqual(["Konto · THB"]);
@@ -117,7 +136,8 @@ describe("Manuellt account pickers", () => {
     clickText(host, "Flytta");
     expect(host.textContent).toContain("Lägg till ett till saldo");
 
-    clickText(host, "Kontant");
+    clickText(host, "Utgift");
+    chooseOption(host, "Betalat med", "Kontant");
     expect(host.textContent).toContain("Skapa först ett saldo");
 
     render(five);
@@ -151,8 +171,9 @@ describe("Manuellt account pickers", () => {
     ]);
 
     clickText(host, "Utgift");
-    expect(optionsFor(host, "Konto")).toContain("Bangkok Bank · THB");
-    expect(optionsFor(host, "Konto")).not.toContain("Konto · THB");
-    expect(optionsFor(host, "Konto")).toHaveLength(5);
+    expect(optionsFor(host, "Betalat med")).toContain("Bangkok Bank · THB");
+    expect(optionsFor(host, "Betalat med")).toContain("Kontant");
+    expect(optionsFor(host, "Betalat med")).not.toContain("Konto · THB");
+    expect(optionsFor(host, "Betalat med")).toHaveLength(6);
   });
 });

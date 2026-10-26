@@ -40,7 +40,7 @@ export const SV = {
   kvarIPerioden: "Kvar i perioden",
   spenderatIPerioden: "Spenderat i perioden",
   extraSaldo: "Extra saldo",
-  extraMed: "Extra med",
+  extraMed: "Extra denna period",
   iManaden: "I månaden",
   alltINuma: "Plan + sparande",
   sparandeTotalt: "Sparat från tidigare",

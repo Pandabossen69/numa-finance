@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DEFAULT_TIMEZONE, formatListDateSv, newClientMutationId } from "@/domain/finance";
-import { formatMoney, money } from "@/domain/money";
+import { formatMoneyCompact, money } from "@/domain/money";
 import type { CapturePreview } from "@/features/imports/capture-preview";
 import {
   confirmBankMailAction,
@@ -61,7 +61,7 @@ export function BankMailConfirm({
   const blocked = blockedMessage != null;
   const amountLabel =
     amountMinor != null
-      ? `−${formatMoney(money(amountMinor, preview.currency))}`
+      ? `−${formatMoneyCompact(money(amountMinor, preview.currency))}`
       : null;
 
   function onConfirm() {
@@ -133,7 +133,7 @@ export function BankMailConfirm({
 
   return (
     <div className="animate-rise space-y-7">
-      <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+      <p className="numa-section-title">
         {preview.sourceLabel ?? BANK_MAIL_SOURCE_LABEL}
       </p>
       <div className="space-y-1">
@@ -145,7 +145,7 @@ export function BankMailConfirm({
         ) : null}
         {amountMinor != null ? (
           <p className="money text-3xl font-semibold tracking-tight text-[var(--numa-ink)]">
-            −{formatMoney(money(amountMinor, preview.currency))}
+            −{formatMoneyCompact(money(amountMinor, preview.currency))}
           </p>
         ) : null}
         {when ? <p className="text-sm text-[var(--numa-muted)]">{when}</p> : null}

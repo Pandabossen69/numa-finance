@@ -1,9 +1,12 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import type { CanonicalTransaction, CashCoverageView, PlanItem } from "@/domain/finance";
 import { cashCoverageHintSv, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import { Icon } from "@/components/ui/Icon";
+import { InfoNote } from "@/components/ui/InfoNote";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { PileLine } from "@/components/ui/PileLine";
 import { parsePlanAmount } from "@/components/plan/plan-format";
@@ -83,12 +86,12 @@ export function PlanPiles({
           aria-labelledby="plan-over-heading"
         >
           <div className="min-w-0">
-            <p id="plan-over-heading" className="numa-section-title">
-              {monthName}
-            </p>
-            <p className="mt-1 text-[12px] leading-snug text-[var(--numa-faint)]">
-              {SV.saldoAllaKontonHint}
-            </p>
+            <div className="flex items-center">
+              <p id="plan-over-heading" className="numa-section-title">
+                {monthName}
+              </p>
+              <InfoNote label="Om på kontona">{SV.saldoAllaKontonHint}</InfoNote>
+            </div>
           </div>
 
           <div className="numa-pile-stack">
@@ -117,7 +120,7 @@ export function PlanPiles({
                 tone="out"
               />
             ) : null}
-            {coverage.savingsPriorMinor > 0 ? (
+            {coverage.savingsPriorMinor > 0 && !showPriorAsHero ? (
               <PileLine
                 label={SV.sparat}
                 amountMinor={coverage.savingsPriorMinor}
@@ -138,9 +141,7 @@ export function PlanPiles({
           </p>
           {savingsTotalMinor > 0 ? (
             <div className="flex items-baseline justify-between gap-2 border-t border-[var(--numa-border)] pt-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
-                {SV.alltINuma}
-              </span>
+              <span className="numa-card-title">{SV.alltINuma}</span>
               <MoneyDisplay
                 amountMinor={totalMinor}
                 currency={currency}
@@ -169,25 +170,22 @@ export function PlanPiles({
               wrap={false}
             />
           </div>
-          <p className="numa-pile-hint">
-            {hasThisMonth
-              ? `Taget från Över och dagsbudgeten i ${monthName}. Inte pengar att leva upp.`
-              : hasPrior
-                ? `Sparat från ${priorMonthName ?? "tidigare månader"} — satt av från Över. Inte att leva upp.`
-                : "Sätt av från Över det som inte ska levas upp. Sänker Över och dagsbudgeten. Nästa månad syns det som sparat."}
-          </p>
-
-          {hasThisMonth && hasPrior ? (
-            <PileLine
-              label={
-                priorMonthName
-                  ? `Sparat från ${priorMonthName}`
-                  : SV.sparandeTotalt
-              }
-              amountMinor={savingsPriorMinor}
-              currency={currency}
-            />
-          ) : null}
+          <div className="flex items-center">
+            <p className="numa-pile-hint">
+              {hasThisMonth
+                ? `Taget från Över i ${monthName}.`
+                : hasPrior
+                  ? `Sparat från ${priorMonthName ?? "tidigare månader"}.`
+                  : "Sätt av från Över."}
+            </p>
+            <InfoNote label="Om sparande">
+              {hasThisMonth
+                ? `Taget från Över och dagsbudgeten i ${monthName}. Inte pengar att leva upp.`
+                : hasPrior
+                  ? `Sparat från ${priorMonthName ?? "tidigare månader"} — satt av från Över. Inte att leva upp.`
+                  : "Sätt av från Över det som inte ska levas upp. Sänker Över och dagsbudgeten. Nästa månad syns det som sparat."}
+            </InfoNote>
+          </div>
 
           <div className="mt-auto border-t border-[var(--numa-border)] pt-2">
             <PlanSavingsDraft
@@ -295,20 +293,35 @@ const PlanSavingsDraft = memo(function PlanSavingsDraft({
     todaySpendingMinor,
   ]);
 
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (sheetOpen) {
+      if (!dialog.open) {
+        try {
+          dialog.showModal();
+        } catch {
+          dialog.setAttribute("open", "");
+        }
+      }
+      return;
+    }
+    if (dialog.open) dialog.close();
+  }, [sheetOpen]);
+
   return (
     <>
-      <div
-        className="numa-sheet-backdrop"
-        hidden={!sheetOpen}
-        role="presentation"
-        onClick={() => setSheetOpen(false)}
+      <dialog
+        ref={dialogRef}
+        className="numa-sheet-dialog"
+        aria-label={`Sätt av från Över i ${monthName}`}
+        onClose={() => setSheetOpen(false)}
+        onClick={(event) => {
+          if (event.target === dialogRef.current) setSheetOpen(false);
+        }}
       >
-        <div
-          role="dialog"
-          aria-label={`Sätt av från Över i ${monthName}`}
-          className="numa-sheet space-y-3"
-          onClick={(event) => event.stopPropagation()}
-        >
+        <div className="numa-sheet space-y-3">
           <p className="text-[15px] font-semibold tracking-tight">
             {SV.sattAvFranOver}
           </p>
@@ -351,13 +364,14 @@ const PlanSavingsDraft = memo(function PlanSavingsDraft({
             </p>
           ) : null}
         </div>
-      </div>
+      </dialog>
       <button
         type="button"
-        className="numa-press flex min-h-11 w-full items-center text-left text-sm font-semibold text-[var(--numa-accent)]"
+        className="numa-text-link w-full justify-start"
         onClick={() => setSheetOpen(true)}
       >
         {hasThisMonth ? `Ändra ${monthName}` : SV.sattAvFranOver}
+        <Icon icon={ChevronRight} size={16} />
       </button>
     </>
   );

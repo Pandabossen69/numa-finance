@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import {
   collapseGettingStartedAction,
   completeGettingStartedAction,
@@ -187,7 +189,11 @@ export function GettingStartedCard({ view }: { view: GettingStartedView }) {
                           className="flex h-8 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] px-2.5 text-[12px] font-semibold text-[var(--numa-accent-ink)]"
                           aria-hidden
                         >
-                          {isNext ? GETTING_STARTED_SV.nextChip : "→"}
+                          {isNext ? (
+                            GETTING_STARTED_SV.nextChip
+                          ) : (
+                            <Icon icon={ChevronRight} size={16} />
+                          )}
                         </span>
                       </Link>
                     </li>

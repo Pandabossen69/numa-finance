@@ -88,9 +88,8 @@ describe("Mer HIGH regress", () => {
   it("never paints Användare as a Mer fallback", () => {
     expect(merSnapshot).toContain("chromeDisplayName");
     expect(merSnapshot).not.toContain('?? "Användare"');
-    expect(mer).toContain("Inloggad som");
-    expect(mer).toContain('?? "Inloggad"');
-    expect(mer).toContain('(view.displayName ?? "·").charAt(0)');
+    expect(mer).not.toContain("Inloggad som");
+    expect(mer).not.toContain('?? "Inloggad"');
     expect(mer).not.toContain("view.displayName.charAt");
   });
 

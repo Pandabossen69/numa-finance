@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
+import { InfoNote } from "@/components/ui/InfoNote";
+import { TextLink } from "@/components/ui/TextLink";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { DestinationWarmup, usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
@@ -279,22 +281,17 @@ export function AnalysDashboard({
           )} ${spendComparison.deltaMinor > 0 ? "mer" : "mindre"} än ${spendComparison.monthName}`;
   const categoryEmpty =
     scope === "month" ? SV.analysEmptySpendMonth : SV.analysEmptySpendPeriod;
-  const periodGoingHint = [
-    cycleRangeLabel,
-    periodEnded
-      ? periodEndedLabel
-      : isBridge
-        ? hasSaldo
+  const periodGoingHint = periodEnded
+    ? null
+    : isBridge
+      ? hasSaldo
+        ? daysLeftLabel
+        : "Ange saldo på Hem"
+      : isEmpty
+        ? null
+        : cycle.isActive
           ? daysLeftLabel
-          : "Ange saldo på Hem"
-        : isEmpty
-          ? SV.analysEmptyPeriod
-          : cycle.isActive
-            ? daysLeftLabel
-            : SV.analysEmptyPeriod,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+          : null;
   const showPeriodKvar = !isEmpty && !(isBridge && !hasSaldo);
   const periodKvarMinor = isBridge && !hasSaldo ? 0 : cycle.remainingFreeMinor;
 
@@ -345,7 +342,7 @@ export function AnalysDashboard({
               isEmpty
                 ? SV.analysEmptyPeriod
                 : periodEnded
-                  ? periodEndedLabel
+                  ? null
                   : daysLeftLabel
             }
             amountKnown={ledgerSettled || (!isEmpty && spentMinor !== 0)}
@@ -356,21 +353,17 @@ export function AnalysDashboard({
               className="animate-rise-delay-2 space-y-2"
               aria-labelledby="analys-hur"
             >
-              <h2 id="analys-hur" className="numa-section-title px-1">
-                {SV.hurGarDet}
-              </h2>
-              <LeftoverVsPlanHint />
+              <HurGarDetHeading id="analys-hur" />
               <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
                 {SV.analysEmptyPeriod}{" "}
-                <Link
+                <TextLink
                   href="/plan"
                   prefetch={false}
                   onMouseEnter={() => prefetch("/plan")}
                   onFocus={() => prefetch("/plan")}
-                  className="numa-tap font-semibold text-[var(--numa-accent)]"
                 >
-                  Plan →
-                </Link>
+                  Plan
+                </TextLink>
               </p>
             </section>
           ) : (
@@ -379,10 +372,7 @@ export function AnalysDashboard({
                 className="animate-rise-delay-2 space-y-2"
                 aria-labelledby="analys-hur"
               >
-                <h2 id="analys-hur" className="numa-section-title px-1">
-                  {SV.hurGarDet}
-                </h2>
-                <LeftoverVsPlanHint />
+                <HurGarDetHeading id="analys-hur" />
                 {cycleRangeLabel ? (
                   <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
                     {cycleRangeLabel}
@@ -401,7 +391,7 @@ export function AnalysDashboard({
                       amountMinor={periodKvarMinor}
                       currency={currency}
                       tone={periodKvarMinor < 0 ? "alarm" : undefined}
-                      hint={periodGoingHint}
+                      hint={periodGoingHint ?? undefined}
                       value={
                         !ledgerSettled && periodKvarMinor === 0
                           ? unknownMoney()
@@ -411,7 +401,7 @@ export function AnalysDashboard({
                   ) : (
                     <MetricRow
                       label={SV.kvarIPerioden}
-                      hint={periodGoingHint}
+                      hint={periodGoingHint ?? undefined}
                       value={<span className="text-sm text-[var(--numa-faint)]">—</span>}
                     />
                   )}
@@ -463,17 +453,19 @@ export function AnalysDashboard({
           />
 
           <section className="space-y-2" aria-labelledby="analys-hur-manad">
-            <h2 id="analys-hur-manad" className="numa-section-title px-1">
-              {SV.hurGarDet}
-            </h2>
-            <LeftoverVsPlanHint />
+            <HurGarDetHeading id="analys-hur-manad" />
             <div className="numa-panel-list numa-money-stack px-4 py-1">
               <MetricRow
                 label={SV.kvarIPerioden}
                 amountMinor={month.monthResultMinor}
                 currency={currency}
                 tone={month.monthResultMinor < 0 ? "alarm" : undefined}
-                hint={month.monthLeftoverHint ?? undefined}
+                hint={
+                  month.monthLeftoverHint &&
+                  month.monthLeftoverHint !== SV.overskottMotPlanenHint
+                    ? month.monthLeftoverHint
+                    : undefined
+                }
                 value={
                   !ledgerSettled && month.monthResultMinor === 0
                     ? unknownMoney()
@@ -499,24 +491,23 @@ export function AnalysDashboard({
       )}
 
       <section className="animate-rise-delay-3 space-y-3">
-        <p className="px-1 text-sm leading-snug text-[var(--numa-muted)]">
-          {SV.analysPlanPointer}{" "}
-          <Link
+        <p className="flex items-center px-1">
+          <TextLink
             href="/plan"
             prefetch={false}
             onMouseEnter={() => prefetch("/plan")}
             onFocus={() => prefetch("/plan")}
-            className="numa-tap font-semibold text-[var(--numa-accent)]"
           >
-            Plan →
-          </Link>
+            Plan
+          </TextLink>
+          <InfoNote label="Om plan">{SV.analysPlanPointer}</InfoNote>
         </p>
       </section>
 
       <section className="animate-rise-delay-3 space-y-3 pb-8">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold tracking-tight">Senaste</h2>
-          <Link
+          <TextLink
             href={senasteHref}
             prefetch={false}
             onPointerDown={() => {
@@ -526,10 +517,10 @@ export function AnalysDashboard({
             onMouseEnter={() => prefetch("/transaktioner")}
             onFocus={() => prefetch("/transaktioner")}
             onClick={() => markIntent(senasteHref)}
-            className="numa-tap min-w-11 justify-end px-1 text-xs font-semibold text-[var(--numa-accent)]"
+            className="min-w-11 justify-end"
           >
-            Alla →
-          </Link>
+            Alla
+          </TextLink>
         </div>
         {recent.length === 0 ? (
           ledgerSettled ? (
@@ -579,12 +570,15 @@ export function AnalysDashboard({
   );
 }
 
-/** Always-visible leftover one-liner — default Perioden paint, no extra tap. */
-function LeftoverVsPlanHint() {
+/** Section label stays uppercase. The leftover sentence sits behind info, once. */
+function HurGarDetHeading({ id }: { id: string }) {
   return (
-    <p className="px-1 text-[12px] leading-snug text-[var(--numa-faint)]">
-      {SV.overskottMotPlanenHint}
-    </p>
+    <div className="flex items-center">
+      <h2 id={id} className="numa-section-title px-1">
+        {SV.hurGarDet}
+      </h2>
+      <InfoNote label="Om kvar i perioden">{SV.overskottMotPlanenHint}</InfoNote>
+    </div>
   );
 }
 
@@ -654,13 +648,16 @@ function SpendHero({
             amountMinor={spentMinor}
             currency={currency}
             size="xl"
+            compact
             wrap={false}
           />
         ) : (
           <div className="numa-skel h-10 w-36" aria-hidden />
         )}
       </div>
-      {meta ? <p className="text-sm text-[var(--numa-muted)]">{meta}</p> : null}
+      {meta && meta !== title ? (
+        <p className="text-sm text-[var(--numa-muted)]">{meta}</p>
+      ) : null}
     </section>
   );
 }

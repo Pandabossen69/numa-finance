@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
+import { InfoNote } from "@/components/ui/InfoNote";
 import {
   addMonthsKey,
   labelMonthChipSv,
@@ -152,11 +153,12 @@ export function PlanMonthNav({
               <button
                 type="button"
                 onClick={() => setBrowseYear((year) => (year ?? viewYear) - 1)}
-                className="numa-press min-h-11 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
+                className="numa-press inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
                 aria-label="Föregående år"
                 tabIndex={open ? 0 : -1}
               >
-                ← {pickerYear - 1}
+                <Icon icon={ChevronLeft} size={16} />
+                {pickerYear - 1}
               </button>
               <p className="min-w-[3.5rem] text-center text-base font-semibold tracking-tight">
                 {pickerYear}
@@ -164,11 +166,12 @@ export function PlanMonthNav({
               <button
                 type="button"
                 onClick={() => setBrowseYear((year) => (year ?? viewYear) + 1)}
-                className="numa-press min-h-11 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
+                className="numa-press inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-medium text-[var(--numa-muted)] hover:bg-[var(--numa-card)]"
                 aria-label="Nästa år"
                 tabIndex={open ? 0 : -1}
               >
-                {pickerYear + 1} →
+                {pickerYear + 1}
+                <Icon icon={ChevronRight} size={16} />
               </button>
             </div>
 
@@ -204,9 +207,11 @@ export function PlanMonthNav({
               })}
             </div>
 
-            <p className="numa-month-nav-hint">
-              Bläddra bakåt och framåt — historik ändras inte
-            </p>
+            <div className="flex justify-center">
+              <InfoNote label="Om månader">
+                Bläddra bakåt och framåt — historik ändras inte
+              </InfoNote>
+            </div>
           </div>
         </div>
       </div>

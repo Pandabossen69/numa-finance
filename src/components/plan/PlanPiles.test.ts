@@ -21,7 +21,7 @@ describe("Sparande empty state and Sätt av från Över", () => {
     expect(src).toContain("SV.sparandeAvsatt");
     expect(src).toContain("SV.sparat");
     expect(src).toContain("SV.sattAvFranOver");
-    expect(src).toContain("SV.sparandeTotalt");
+    expect(src).toContain("SV.sparat");
     expect(src).toContain("Taget från Över och dagsbudgeten");
     expect(src).toContain("Nästa månad syns det som sparat.");
     expect(src).not.toContain("Över på kontona ändras inte");

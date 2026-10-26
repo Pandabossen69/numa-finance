@@ -1,4 +1,6 @@
 import {
+  daysInMonthKey,
+  formatIsoDateOnlySv,
   formatListDateSv,
   isInPayCycleWindow,
   monthKeyFromDate,
@@ -103,6 +105,18 @@ export function cycleWindowTotals(
     }
   }
   return { incomeMinor, expenseMinor, netMinor: incomeMinor - expenseMinor };
+}
+
+/**
+ * Calendar month for «Denna månad», e.g. «1 okt. – 31 okt.».
+ * Display only — the list still filters on `monthKey`, not this string.
+ */
+export function calendarMonthRangeLabelSv(monthKey: string): string | null {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) return null;
+  const days = daysInMonthKey(monthKey);
+  if (!Number.isFinite(days) || days < 1) return null;
+  const end = `${monthKey}-${String(days).padStart(2, "0")}`;
+  return `${formatIsoDateOnlySv(`${monthKey}-01`)} – ${formatIsoDateOnlySv(end)}`;
 }
 
 /** Swedish range under the Perioden chip, e.g. «3 sep. – 25 okt.». */

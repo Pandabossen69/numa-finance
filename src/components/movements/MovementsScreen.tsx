@@ -9,6 +9,8 @@ import {
 } from "react";
 import Link from "next/link";
 import { SlidersHorizontal } from "lucide-react";
+import { InfoNote } from "@/components/ui/InfoNote";
+import { TextLink } from "@/components/ui/TextLink";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
 import { Icon } from "@/components/ui/Icon";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
@@ -72,6 +74,7 @@ import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { spaTabKey } from "@/lib/nav/spa-tabs";
 import { spendCategoryName, toggleCategory } from "./movements-category";
 import {
+  calendarMonthRangeLabelSv,
   cycleWindowTotals,
   listedMovementTotals,
   movementVisibleInRorelser,
@@ -425,7 +428,7 @@ export function MovementsScreen({
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 space-y-4 overflow-x-hidden">
+    <div className="numa-page numa-page-wide min-w-0 space-y-3 overflow-x-hidden">
       <header className="animate-rise">
         <h1 className="numa-page-title">Rörelser</h1>
       </header>
@@ -451,8 +454,6 @@ export function MovementsScreen({
               active={viewPeriod === "cycle"}
               onClick={() => choosePeriod("cycle")}
               label="Lönemånad"
-              detail={cycleRange}
-              className="col-span-2"
             />
           ) : null}
         </div>
@@ -470,6 +471,19 @@ export function MovementsScreen({
           <Icon icon={SlidersHorizontal} />
         </button>
       </div>
+      {viewPeriod === "month" ? (
+        <p className="px-1 text-center text-xs text-[var(--numa-faint)]">
+          {calendarMonthRangeLabelSv(
+            drill?.period === "month" && drill.monthKey
+              ? drill.monthKey
+              : view.monthKey,
+          )}
+        </p>
+      ) : viewPeriod === "cycle" && cycleRange ? (
+        <p className="px-1 text-center text-xs text-[var(--numa-faint)]">
+          {cycleRange}
+        </p>
+      ) : null}
 
       <div
         hidden={!filterOpen}
@@ -496,12 +510,14 @@ export function MovementsScreen({
         </div>
         {viewPeriod === "month" && view.monthCategories.length > 0 ? (
             <section>
-              <h2 className="numa-section-title">Per kategori</h2>
-              <p className="mt-1 text-xs leading-snug text-[var(--numa-faint)]">
-                {viewCategory
-                  ? `Visar ${viewCategory}. Tryck igen för att visa alla.`
-                  : "Tryck på en kategori för att filtrera listan."}
-              </p>
+              <div className="flex items-center">
+                <h2 className="numa-section-title">Per kategori</h2>
+                <InfoNote label="Om kategorier">
+                  {viewCategory
+                    ? `Visar ${viewCategory}. Tryck igen för att visa alla.`
+                    : "Tryck på en kategori för att filtrera listan."}
+                </InfoNote>
+              </div>
               <ul className="mt-3 space-y-2">
                 {view.monthCategories.map((cat) => {
                   const selected = viewCategory === cat.name;
@@ -586,15 +602,14 @@ export function MovementsScreen({
                 {viewCategory}
               </button>
             ) : null}
-            <Link
+            <TextLink
               href="/fota"
               prefetch
               onMouseEnter={() => prefetch("/fota")}
               onFocus={() => prefetch("/fota")}
-              className="numa-tap text-xs font-semibold text-[var(--numa-accent)]"
             >
-              + Lägg till
-            </Link>
+              Lägg till
+            </TextLink>
           </div>
         </div>
 
@@ -955,7 +970,7 @@ export function MovementsScreen({
             label="Intäkter"
             amountMinor={income}
             currency={view.currency}
-            tone="positive"
+            tone="neutral"
           />
           <SummaryStat
             label="Utgifter"
@@ -967,7 +982,7 @@ export function MovementsScreen({
             label="Netto"
             amountMinor={net}
             currency={view.currency}
-            tone={net >= 0 ? "positive" : "alarm"}
+            tone={net > 0 ? "positive" : net < 0 ? "alarm" : "neutral"}
             signed
           />
         </section>
