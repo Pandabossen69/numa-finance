@@ -12,6 +12,7 @@ import {
 import { readHomeSnapshot } from "@/lib/numa/read-client";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import {
+  bindHomeCivilDayRoll,
   isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
@@ -102,6 +103,8 @@ export function HemRouteClient({
       clearLoginBoot();
     }
   }, [stored]);
+
+  useEffect(() => bindHomeCivilDayRoll(), []);
 
   const snap = stored ?? cookieShell;
   if (!snap && !error) {

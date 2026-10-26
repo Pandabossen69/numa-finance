@@ -79,7 +79,11 @@ describe("readLastHomeCookie session bind", () => {
 
   it("same user gets the fast SSR shell", async () => {
     const { readLastHomeCookie } = await import("./last-home-cookie.server");
-    const snap = home({ remainingTodayMinor: 640_00, overMinor: 5_420_00 });
+    const snap = home({
+      remainingTodayMinor: 640_00,
+      overMinor: 5_420_00,
+      verifiedAt: new Date().toISOString(),
+    });
     cookieGet.mockReturnValue({ value: serializeLastHomeCookie(snap) });
     getSessionUser.mockResolvedValue({
       id: "u1",
@@ -93,6 +97,34 @@ describe("readLastHomeCookie session bind", () => {
     expect(next?.overMinor).toBe(5_420_00);
     expect(getSessionUser).toHaveBeenCalledTimes(1);
     expect(cookieDelete).not.toHaveBeenCalled();
+  });
+
+  it("does not SSR yesterday's Kvar when that horizon has passed", async () => {
+    const { readLastHomeCookie } = await import("./last-home-cookie.server");
+    const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+    cookieGet.mockReturnValue({
+      value: serializeLastHomeCookie(
+        home({
+          dayBudgetMinor: 14_593_300,
+          remainingTodayMinor: 14_593_300,
+          livingPoolMinor: 14_593_300,
+          spendDaysLeft: 0,
+          daysUntilIncome: 0,
+          dayEnvelopeOpen: true,
+          verifiedAt: yesterday,
+        }),
+      ),
+    });
+    getSessionUser.mockResolvedValue({
+      id: "u1",
+      email: "hugo@example.com",
+    });
+
+    const next = await readLastHomeCookie();
+    expect(next?.calculatedBalanceMinor).toBe(12_000_00);
+    expect(next?.dayEnvelopeOpen).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(0);
+    expect(next?.remainingTodayMinor).toBe(0);
   });
 
   it("another user gets no cached displayName or money", async () => {

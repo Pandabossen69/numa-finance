@@ -57,6 +57,13 @@ export type HomeSnapshot = {
    * Omitted on older last-home cookies — those still mean the envelope is open.
    */
   dayEnvelopeOpen?: boolean;
+  /**
+   * Cache is from another civil day and the horizon is still ahead.
+   * Paint a skeleton — never yesterday's Kvar.
+   */
+  dayEnvelopePending?: boolean;
+  /** Bangkok day (`YYYY-MM-DD`) the envelope numbers were last rolled for. */
+  envelopeDayKey?: string;
   extraSaldoMinor: number;
   extraSaldoDrawnMinor: number;
   extraSaldoHint: string | null;

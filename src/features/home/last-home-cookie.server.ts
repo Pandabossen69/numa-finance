@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import { getSessionUser } from "@/features/auth/session";
+import { homeCacheDayEnvelope } from "@/features/home/home-cache-day";
 import {
   LAST_HOME_COOKIE,
   lastHomeCookieForSession,
@@ -14,10 +15,11 @@ import {
  */
 export async function readLastHomeCookie(): Promise<HomeSnapshot | null> {
   const [jar, user] = await Promise.all([cookies(), getSessionUser()]);
-  return lastHomeCookieForSession(
+  const snap = lastHomeCookieForSession(
     jar.get(LAST_HOME_COOKIE)?.value,
     user?.id,
   );
+  return snap ? homeCacheDayEnvelope(snap) : null;
 }
 
 export async function clearLastHomeCookie(): Promise<void> {

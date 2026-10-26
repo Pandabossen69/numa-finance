@@ -32,6 +32,7 @@ import {
   lastSettingsSnapshot,
   lastKnownChromeDisplayName,
   hasBoundSessionOwner,
+  bindHomeCivilDayRoll,
   bindSessionOwner,
   clearClientSessionCaches,
   hydrateLastKnownFromPersist,
@@ -46,6 +47,7 @@ import {
   isLeftoverSparLivingRevert,
   rememberHomeSnapshot,
   rememberImporteraRows,
+  rollHomeLivingToNow,
   rememberMerSnapshot,
   rememberMovementsSnapshot,
   rememberMovementsView,
@@ -1398,6 +1400,111 @@ describe("last view memory", () => {
     expect(afterSaldo?.dayEnvelopeOpen).toBe(false);
     expect(afterSaldo?.dayBudgetMinor).toBe(0);
     expect(afterSaldo?.remainingTodayMinor).toBe(0);
+  });
+
+  it("recomputes the day budget across Bangkok midnight, including a same-day spar overlay", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T03:00:00.000Z"));
+    const income = (id: string, nextDueAt: string): PlanItem => ({
+      id,
+      userId: "user-hugo",
+      name: id,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt,
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    });
+    const planSnap: PlanSnapshot = {
+      items: [
+        income("aug", "2026-08-25T12:00:00.000Z"),
+        income("sep", "2026-09-25T12:00:00.000Z"),
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 10_000_00,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "day-roll",
+      verifiedAt: "2026-09-19T03:00:00.000Z",
+      truthStatus: "verified",
+    };
+    rememberPlanSnapshot(planSnap);
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 10_000_00,
+        livingPoolMinor: 10_000_00,
+        dayBudgetMinor: 275_12,
+        remainingTodayMinor: 275_12,
+        spendDaysLeft: 6,
+        daysUntilIncome: 6,
+        todaySpendingMinor: 200_00,
+        planMonthSavingsMinor: 15_000_00,
+        savingsTotalMinor: 15_000_00,
+        dayEnvelopeOpen: true,
+        financeRevision: "day-roll",
+        verifiedAt: "2026-09-19T03:00:00.000Z",
+        timeZone: "Asia/Bangkok",
+      }),
+    );
+    expect(rollHomeLivingToNow()).toBe(false);
+    expect(lastHomeSnapshot()?.dayBudgetMinor).toBe(275_12);
+
+    vi.setSystemTime(new Date("2026-09-20T03:00:00.000Z"));
+    expect(rollHomeLivingToNow()).toBe(true);
+    const rolled = lastHomeSnapshot();
+    expect(rolled?.dayBudgetMinor).not.toBe(275_12);
+    expect(rolled?.dayBudgetMinor).toBeGreaterThan(0);
+    expect(rolled?.spendDaysLeft).toBe(5);
+    expect(rolled?.todaySpendingMinor).toBe(0);
+    expect(rolled?.envelopeDayKey).toBe("2026-09-20");
+    expect(rolled?.dayEnvelopeOpen).not.toBe(false);
+    expect(rolled?.calculatedBalanceMinor).toBe(10_000_00);
+  });
+
+  it("rolls when the tab becomes visible on the next Bangkok day", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-19T03:00:00.000Z"));
+    rememberHomeSnapshot(
+      homeSnap({
+        dayBudgetMinor: 14_593_300,
+        remainingTodayMinor: 14_593_300,
+        livingPoolMinor: 14_593_300,
+        spendDaysLeft: 0,
+        daysUntilIncome: 0,
+        dayEnvelopeOpen: true,
+        planMonthSavingsMinor: 0,
+        savingsTotalMinor: 0,
+        verifiedAt: "2026-09-19T03:00:00.000Z",
+        timeZone: "Asia/Bangkok",
+      }),
+    );
+    const listeners = new Map<string, EventListener>();
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      addEventListener: (name: string, fn: EventListener) => {
+        listeners.set(name, fn);
+      },
+      removeEventListener: (name: string) => {
+        listeners.delete(name);
+      },
+    });
+    const stop = bindHomeCivilDayRoll();
+    vi.setSystemTime(new Date("2026-09-20T03:00:00.000Z"));
+    listeners.get("visibilitychange")?.(new Event("visibilitychange"));
+    const next = lastHomeSnapshot();
+    expect(next?.dayEnvelopeOpen).toBe(false);
+    expect(next?.dayBudgetMinor).toBe(0);
+    expect(next?.remainingTodayMinor).toBe(0);
+    expect(next?.envelopeDayKey).toBe("2026-09-20");
+    stop();
+    vi.unstubAllGlobals();
   });
 
   it("never lets a Plan ledger raise Spenderat idag", () => {

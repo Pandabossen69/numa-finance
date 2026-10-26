@@ -35,6 +35,11 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
 import {
+  homeCacheDayEnvelope,
+  homeCacheIsOtherCivilDay,
+  msUntilNextZonedMidnight,
+} from "@/features/home/home-cache-day";
+import {
   readLastHomeCookieFromDocument,
   readPendingBankMailCountFromDocument,
   writeLastHomeCookie,
@@ -694,6 +699,66 @@ export function rememberHomeSnapshot(
 
 export function lastHomeSnapshot(): HomeSnapshot | null {
   return home;
+}
+
+/**
+ * Recompute today's envelope from the Plan snapshot already in memory.
+ * A new Bangkok day drops yesterday's Kvar and any same-day spar overlay.
+ * No network, no router.refresh.
+ */
+export function rollHomeLivingToNow(): boolean {
+  if (!home || !homeCacheIsOtherCivilDay(home)) return false;
+  const tz = home.timeZone || "Asia/Bangkok";
+  const today = zonedDayKey(new Date(), tz);
+  // Yesterday's Spenderat idag is not today's. Sync copies the home
+  // figure on purpose, so clear it before that recompute.
+  home = {
+    ...home,
+    todaySpendingMinor: 0,
+    todayPlannedPaidMinor: 0,
+  };
+  const before = home;
+  if (plan) {
+    syncHomeLivingFromPlan(plan);
+  }
+  const rolled = home !== before ? home : homeCacheDayEnvelope(before);
+  if (!rolled) return false;
+  rememberHomeSnapshot(
+    { ...rolled, envelopeDayKey: today },
+    { confirmSession: homeSessionConfirmed },
+  );
+  return true;
+}
+
+let civilDayTimer: ReturnType<typeof setTimeout> | null = null;
+
+function armHomeCivilDayTimer() {
+  if (civilDayTimer != null) clearTimeout(civilDayTimer);
+  const tz = home?.timeZone || "Asia/Bangkok";
+  civilDayTimer = setTimeout(() => {
+    civilDayTimer = null;
+    rollHomeLivingToNow();
+    armHomeCivilDayTimer();
+  }, msUntilNextZonedMidnight(new Date(), tz));
+}
+
+/** visibilitychange + one timer at the next local midnight. */
+export function bindHomeCivilDayRoll(): () => void {
+  if (typeof document === "undefined") return () => {};
+  const onVisible = () => {
+    if (document.visibilityState !== "visible") return;
+    rollHomeLivingToNow();
+    armHomeCivilDayTimer();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  armHomeCivilDayTimer();
+  return () => {
+    document.removeEventListener("visibilitychange", onVisible);
+    if (civilDayTimer != null) {
+      clearTimeout(civilDayTimer);
+      civilDayTimer = null;
+    }
+  };
 }
 
 /** Live Hem paint only — hydrate/cookie alone must not flash as current money. */

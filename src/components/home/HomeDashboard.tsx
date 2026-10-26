@@ -181,6 +181,7 @@ export function HomeDashboard({
   const isBridge = view.livingMode === "bridge";
   const isEmpty = view.livingMode === "empty";
   const periodEnded = !isEmpty && view.dayEnvelopeOpen === false;
+  const dayEnvelopePending = !periodEnded && view.dayEnvelopePending === true;
   const hasSaldo = view.calculatedBalanceMinor != null;
   const rawGettingStarted = gettingStarted ?? storedGettingStarted;
   const checklist = rawGettingStarted?.visible
@@ -190,7 +191,7 @@ export function HomeDashboard({
   const overToday = view.dayBudgetMinor > 0 && todaySpendingMinor > view.dayBudgetMinor;
   const dialCenterMinor = remainingTodayMinor;
   const rangeLabel =
-    !periodEnded && view.nextIncomeLabelSv
+    !periodEnded && !dayEnvelopePending && view.nextIncomeLabelSv
       ? `${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}`
       : null;
 
@@ -208,6 +209,7 @@ export function HomeDashboard({
 
   const showDayEnvelope =
     !periodEnded &&
+    !dayEnvelopePending &&
     (view.dayBudgetMinor > 0 || (view.livingPoolMinor ?? 0) > 0);
   const billsExceedSaldo = unpaidBillsExceedSaldo({
     hasSaldo,
@@ -290,7 +292,12 @@ export function HomeDashboard({
                 {periodEnded ? PERIOD_ENDED_TITLE_SV : SV.kvarIdag}
               </p>
 
-              {showDayEnvelope ? (
+              {dayEnvelopePending ? (
+                <div className="flex flex-col items-center gap-3 py-6" aria-busy="true">
+                  <div className="numa-skel h-40 w-40 rounded-full" />
+                  <div className="numa-skel h-3 w-24" />
+                </div>
+              ) : showDayEnvelope ? (
                 <>
                   <div className="flex flex-col items-center gap-1.5">
                     <DayDial usedRatio={dayUsedRatio} over={overToday}>
@@ -583,7 +590,7 @@ export function HomeDashboard({
             disabled={!view.primaryAccountId}
             remainingTodayMinor={remainingTodayMinor}
             overToday={overToday}
-            hideKvar={periodEnded}
+            hideKvar={periodEnded || dayEnvelopePending}
           />
         </>
       ) : null}
