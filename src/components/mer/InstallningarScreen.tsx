@@ -10,7 +10,7 @@ import {
   MerSection,
 } from "@/components/mer/MerHub";
 import { SettingsViewLoading } from "@/components/mer/MerViewLoading";
-import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
+import { MerInstallCta } from "@/components/mer/MerInstallCta";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import {
   lastSettingsSnapshot,
@@ -37,11 +37,9 @@ export function InstallningarScreen({
       <MerPageHeader back title="Inställningar" />
 
       <div className="animate-rise-delay-1 space-y-6">
-        <div className="md:hidden">
-          <MerSection title="På hemskärmen">
-            <HomescreenInstallHint dismissible={false} />
-          </MerSection>
-        </div>
+        <MerSection title="På hemskärmen">
+          <MerInstallCta />
+        </MerSection>
 
         <MerSection title="Underhåll">
           <MerListGroup>
@@ -76,8 +74,8 @@ export function InstallningarScreen({
                 <MerMetaRow label="Tidszon" value={view.timezone} />
                 <MerMetaRow label="Valuta" value={view.primaryCurrency} />
                 <MerMetaRow
-                  label="Dataläge"
-                  value={view.supabaseReady ? "Moln" : "Lokal lagring"}
+                  label="Sparat"
+                  value={view.supabaseReady ? "Moln" : "På den här enheten"}
                 />
               </dl>
             </MerListGroup>

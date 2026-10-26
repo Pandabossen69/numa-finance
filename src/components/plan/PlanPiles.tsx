@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import type { CanonicalTransaction, CashCoverageView, PlanItem } from "@/domain/finance";
 import { cashCoverageHintSv, planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
@@ -23,8 +23,6 @@ export function PlanPiles({
   savingsTotalMinor,
   savingsThisMonthMinor,
   savingsPriorMinor,
-  savingsByMonth,
-  monthKeys,
   savingsSeed,
   savingsResetKey,
   monthKey,
@@ -69,46 +67,28 @@ export function PlanPiles({
 }) {
   const overOk = coverage.overMinor >= 0;
   const totalMinor = planWealthTotalMinor(coverage.overMinor, savingsTotalMinor);
-  const monthsWithSavings = monthKeys.filter(
-    (key) => (savingsByMonth[key] ?? 0) > 0,
-  ).length;
-  const savingsFill = monthKeys.length > 0 ? monthsWithSavings / monthKeys.length : 0;
   const hasThisMonth = savingsThisMonthMinor > 0;
   const hasPrior = savingsPriorMinor > 0;
   const showPriorAsHero = !hasThisMonth && hasPrior;
   const heroMinor = showPriorAsHero ? savingsPriorMinor : savingsThisMonthMinor;
 
-  const overChip = overOk ? SV.pengarOver : SV.rackerInte;
-  const savingsChip = hasThisMonth
-    ? "Denna månad"
-    : hasPrior
-      ? "Tidigare månader"
-      : "Inte ännu";
-
   const reserved = coverage.reservedSavingsMinor;
   const hint = cashCoverageHintSv(reserved);
 
   return (
-    <div className="space-y-4">
-      <div className="grid items-stretch gap-4 md:grid-cols-2">
+    <div className="numa-panel-list">
+      <div className="grid items-stretch md:grid-cols-2">
         <section
-          className="numa-panel-strong numa-pile flex h-full min-w-0 flex-col gap-3 p-5"
+          className="numa-pile flex h-full min-w-0 flex-col gap-3 px-4 py-4"
           aria-labelledby="plan-over-heading"
         >
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <div className="min-w-0">
-              <p id="plan-over-heading" className="numa-section-title">
-                {monthName}
-              </p>
-              <p className="mt-1 text-[12px] leading-snug text-[var(--numa-faint)]">
-                {SV.saldoAllaKontonHint}
-              </p>
-            </div>
-            <span
-              className={`numa-chip shrink-0 ${overOk ? "numa-chip-mint" : "numa-chip-ink"}`}
-            >
-              {overChip}
-            </span>
+          <div className="min-w-0">
+            <p id="plan-over-heading" className="numa-section-title">
+              {monthName}
+            </p>
+            <p className="mt-1 text-[12px] leading-snug text-[var(--numa-faint)]">
+              {SV.saldoAllaKontonHint}
+            </p>
           </div>
 
           <div className="numa-pile-stack">
@@ -173,15 +153,12 @@ export function PlanPiles({
         </section>
 
         <section
-          className="numa-panel-park numa-pile flex h-full min-w-0 flex-col gap-3 p-5"
+          className="numa-pile flex h-full min-w-0 flex-col gap-3 border-t border-[var(--numa-border)] px-4 py-4 md:border-t-0 md:border-l"
           aria-labelledby="plan-sparande-heading"
         >
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <p id="plan-sparande-heading" className="numa-section-title min-w-0">
-              {showPriorAsHero ? SV.sparat : SV.sparaI(monthName)}
-            </p>
-            <span className="numa-chip numa-chip-ink shrink-0">{savingsChip}</span>
-          </div>
+          <p id="plan-sparande-heading" className="numa-section-title min-w-0">
+            {showPriorAsHero ? SV.sparat : SV.sparaI(monthName)}
+          </p>
           <div className="text-[var(--numa-ink)]">
             <MoneyDisplay
               amountMinor={heroMinor}
@@ -200,24 +177,6 @@ export function PlanPiles({
                 : "Sätt av från Över det som inte ska levas upp. Sänker Över och dagsbudgeten. Nästa månad syns det som sparat."}
           </p>
 
-          <div className="numa-year-dots" aria-hidden>
-            {monthKeys.map((key) => (
-              <span
-                key={key}
-                className={(savingsByMonth[key] ?? 0) > 0 ? "is-on" : undefined}
-              />
-            ))}
-          </div>
-          <div className="numa-pile-meter" aria-hidden>
-            <i
-              style={{
-                transform: `scaleX(${
-                  savingsTotalMinor > 0 ? Math.max(0.08, savingsFill || 0.22) : 0
-                })`,
-              }}
-            />
-          </div>
-
           {hasThisMonth && hasPrior ? (
             <PileLine
               label={
@@ -230,10 +189,7 @@ export function PlanPiles({
             />
           ) : null}
 
-          <div className="mt-auto space-y-2 pt-1">
-            <p className="numa-section-title">
-              {hasThisMonth ? `Ändra ${monthName}` : `Sätt av i ${monthName}`}
-            </p>
+          <div className="mt-auto border-t border-[var(--numa-border)] pt-2">
             <PlanSavingsDraft
               monthName={monthName}
               hasThisMonth={hasThisMonth}
@@ -304,6 +260,7 @@ const PlanSavingsDraft = memo(function PlanSavingsDraft({
   onClear: () => Promise<boolean>;
 }) {
   const [savingsAmount, setSavingsAmount] = useValueForKey(seed, resetKey);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const draftSavingsMinor = useMemo(() => {
     const parsed = parsePlanAmount(savingsAmount.trim() === "" ? "0" : savingsAmount);
     return typeof parsed === "number" ? parsed : null;
@@ -340,44 +297,68 @@ const PlanSavingsDraft = memo(function PlanSavingsDraft({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={savingsAmount}
-          onChange={(e) => setSavingsAmount(e.target.value)}
-          placeholder="t.ex. 2 000"
+      <div
+        className="numa-sheet-backdrop"
+        hidden={!sheetOpen}
+        role="presentation"
+        onClick={() => setSheetOpen(false)}
+      >
+        <div
+          role="dialog"
           aria-label={`Sätt av från Över i ${monthName}`}
-          className="money min-h-11 w-full max-w-[9rem] min-w-0 rounded-xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
-        />
-        <button
-          type="button"
-          disabled={savingsBusy}
-          onClick={() => onSave(savingsAmount)}
-          className="numa-btn numa-btn-primary min-h-11 px-4"
+          className="numa-sheet space-y-3"
+          onClick={(event) => event.stopPropagation()}
         >
-          {savingsBusy ? "Sparar…" : hasThisMonth ? "Uppdatera" : SV.sattAvFranOver}
-        </button>
-        {hasThisMonth ? (
-          <button
-            type="button"
-            disabled={clearBusy || savingsBusy}
-            onClick={() => {
-              void onClear().then((ok) => {
-                if (ok) setSavingsAmount("");
-              });
-            }}
-            className="numa-press text-sm font-semibold text-[var(--numa-muted)] disabled:opacity-45"
-          >
-            {clearBusy ? "Sparar…" : "Nollställ"}
-          </button>
-        ) : null}
+          <p className="text-[15px] font-semibold tracking-tight">
+            {SV.sattAvFranOver}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={savingsAmount}
+              onChange={(e) => setSavingsAmount(e.target.value)}
+              placeholder="t.ex. 2 000"
+              aria-label={`Sätt av från Över i ${monthName}`}
+              className="money min-h-11 w-full min-w-0 flex-1 rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
+            />
+            <button
+              type="button"
+              disabled={savingsBusy}
+              onClick={() => onSave(savingsAmount)}
+              className="numa-btn numa-btn-primary min-h-11 px-4"
+            >
+              {savingsBusy ? "Sparar…" : hasThisMonth ? "Uppdatera" : SV.sattAvFranOver}
+            </button>
+            {hasThisMonth ? (
+              <button
+                type="button"
+                disabled={clearBusy || savingsBusy}
+                onClick={() => {
+                  void onClear().then((ok) => {
+                    if (ok) setSavingsAmount("");
+                  });
+                }}
+                className="numa-press min-h-11 px-3 text-sm font-semibold text-[var(--numa-muted)] disabled:opacity-45"
+              >
+                {clearBusy ? "Sparar…" : "Nollställ"}
+              </button>
+            ) : null}
+          </div>
+          {livePreview ? (
+            <p className="text-[12px] leading-snug text-[var(--numa-muted)]">
+              {savingsPreviewLineSv(livePreview)}
+            </p>
+          ) : null}
+        </div>
       </div>
-      {livePreview ? (
-        <p className="text-[12px] leading-snug text-[var(--numa-muted)]">
-          {savingsPreviewLineSv(livePreview)}
-        </p>
-      ) : null}
+      <button
+        type="button"
+        className="numa-press flex min-h-11 w-full items-center text-left text-sm font-semibold text-[var(--numa-accent)]"
+        onClick={() => setSheetOpen(true)}
+      >
+        {hasThisMonth ? `Ändra ${monthName}` : SV.sattAvFranOver}
+      </button>
     </>
   );
 });

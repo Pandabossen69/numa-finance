@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { Info } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { SV } from "@/features/copy/labels-sv";
 
 export function FormulaInfo({ steps }: { steps: string[] }) {
@@ -43,7 +45,7 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((value) => !value)}
       >
-        <InfoGlyph />
+        <Icon icon={Info} />
       </button>
       {open ? (
         <div
@@ -65,23 +67,3 @@ export function FormulaInfo({ steps }: { steps: string[] }) {
   );
 }
 
-function InfoGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <circle
-        cx="8"
-        cy="8"
-        r="6.25"
-        stroke="currentColor"
-        strokeWidth="1.4"
-      />
-      <path
-        d="M8 7.1v4.2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <circle cx="8" cy="5.15" r="0.85" fill="currentColor" />
-    </svg>
-  );
-}

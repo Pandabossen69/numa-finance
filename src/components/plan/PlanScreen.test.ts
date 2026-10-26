@@ -11,7 +11,7 @@ describe("PlanScreen", () => {
     expect(src).not.toContain("warmupPlanPageData");
     expect(src).toContain("PlanEditor");
     expect(src).toContain("route-islands");
-    expect(src).toContain("Vad som kommer in och vad som måste ut.");
+    expect(src).not.toContain("Vad som kommer in och vad som måste ut.");
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
   });

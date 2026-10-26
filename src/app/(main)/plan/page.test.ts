@@ -37,7 +37,7 @@ describe("/plan getting-started hints", () => {
     expect(routeClient).toContain("useSearchParams");
     expect(routeClient).toContain("focusAdd={focusAdd}");
     expect(routeClient).toContain("stepHint={stepHint}");
-    expect(screen).toContain("Vad som kommer in och vad som måste ut.");
+    expect(screen).not.toContain("Vad som kommer in och vad som måste ut.");
     expect(screen).toContain("GettingStartedCard");
   });
 

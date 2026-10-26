@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 
 const src = readFileSync(new URL("./MerInstallCta.tsx", import.meta.url), "utf8");
 const mer = readFileSync(new URL("./MerScreen.tsx", import.meta.url), "utf8");
+const settings = readFileSync(
+  new URL("./InstallningarScreen.tsx", import.meta.url),
+  "utf8",
+);
 const capture = readFileSync(
   new URL("../pwa/InstallPromptCapture.tsx", import.meta.url),
   "utf8",
@@ -45,11 +49,12 @@ describe("Mer install CTA", () => {
     expect(src).toContain("inline-flex min-h-11 w-full items-center justify-center");
   });
 
-  it("sits on Mer as an in-flow section, not a Hem overlay", () => {
-    expect(mer).toContain("MerInstallCta");
-    expect(mer).toContain("Som app");
+  it("sits in Inställningar, not on Mer or as a Hem overlay", () => {
+    expect(settings).toContain("MerInstallCta");
+    expect(settings).toContain("På hemskärmen");
+    expect(mer).not.toContain("MerInstallCta");
     expect(mer).not.toContain("HomescreenInstallHint");
-    expect(mer).not.toContain("md:hidden");
-    expect(mer).not.toContain("På telefonen (alla konton)");
+    expect(settings).not.toContain("HomescreenInstallHint");
+    expect(settings).not.toContain("På telefonen (alla konton)");
   });
 });

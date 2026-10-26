@@ -8,7 +8,9 @@ import {
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
+import { SlidersHorizontal } from "lucide-react";
 import { MovementsViewLoading } from "@/components/movements/MovementsViewLoading";
+import { Icon } from "@/components/ui/Icon";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
@@ -166,17 +168,21 @@ export function MovementsScreen({
   const [editDate, setEditDate] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
   const actionLock = useRef(false);
 
   useEffect(() => {
-    if (!confirmId) return;
+    if (!confirmId && !filterOpen) return;
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setConfirmId(null);
+      if (event.key === "Escape") {
+        if (confirmId) setConfirmId(null);
+        else setFilterOpen(false);
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [confirmId]);
+  }, [confirmId, filterOpen]);
 
   function publishView(partial: Partial<MovementsView>) {
     rememberMovementsView({
@@ -415,166 +421,143 @@ export function MovementsScreen({
   // Drill month is an overlay label. It is not written into the saved chips.
   const drillMonthLabel =
     drill?.period === "month" ? drillMonthChipLabel(drill.monthKey) : null;
+  const monthIsEmpty = income === 0 && expense === 0 && net === 0;
   const maxCategory = view.monthCategories[0]?.amountMinor || 1;
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 space-y-7 overflow-x-hidden">
+    <div className="numa-page numa-page-wide min-w-0 space-y-4 overflow-x-hidden">
       <header className="animate-rise">
         <h1 className="numa-page-title">Rörelser</h1>
       </header>
 
-      <div className="numa-equal-chips animate-rise-delay-1">
-        <PeriodChip
-          active={viewPeriod === "month"}
-          onClick={() => choosePeriod("month")}
-          label={drillMonthLabel ?? "Denna månad"}
-        />
-        <PeriodChip
-          active={viewPeriod === "all"}
-          onClick={() => choosePeriod("all")}
-          label="All tid"
-        />
-        {showCycleChip ? (
+      <div className="flex min-w-0 items-center gap-2">
+        <div
+          className="numa-equal-chips numa-segment min-w-0 flex-1"
+          role="tablist"
+          aria-label="Period"
+        >
           <PeriodChip
-            active={viewPeriod === "cycle"}
-            onClick={() => choosePeriod("cycle")}
-            label="Lönemånad"
-            detail={cycleRange}
-            className="col-span-2"
+            active={viewPeriod === "month"}
+            onClick={() => choosePeriod("month")}
+            label={drillMonthLabel ?? "Denna månad"}
           />
-        ) : null}
+          <PeriodChip
+            active={viewPeriod === "all"}
+            onClick={() => choosePeriod("all")}
+            label="All tid"
+          />
+          {showCycleChip ? (
+            <PeriodChip
+              active={viewPeriod === "cycle"}
+              onClick={() => choosePeriod("cycle")}
+              label="Lönemånad"
+              detail={cycleRange}
+              className="col-span-2"
+            />
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className={`numa-press numa-tap-icon relative shrink-0 rounded-full text-[var(--numa-ink)] ring-1 ${
+            viewFilter !== "all" || viewCategory
+              ? "ring-[var(--numa-accent)]"
+              : "ring-[var(--numa-border)]"
+          }`}
+          aria-label="Filter"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen((open) => !open)}
+        >
+          <Icon icon={SlidersHorizontal} />
+        </button>
       </div>
 
-      {drillSummary?.expenseOnly ? (
-        <section
-          data-drill-summary=""
-          className="numa-panel-strong animate-rise-delay-1 min-w-0 p-5"
-          aria-label={`${drillSummary.label}, ${drillSummary.count} st`}
-        >
-          <p className="numa-section-title break-words">{drillSummary.label}</p>
-          <div className="numa-hero-money mt-2 text-[var(--numa-ink)]">
-            <MoneyDisplay
-              amountMinor={drillSummary.amountMinor}
-              currency={view.currency}
-              size="md"
-              wrap={false}
-            />
-          </div>
-          <p className="mt-1 text-xs font-medium text-[var(--numa-faint)]">
-            {drillSummary.count} st
-          </p>
-        </section>
-      ) : (
-        <section className="numa-panel-strong numa-stat-trio animate-rise-delay-1 p-5">
-          <SummaryStat
-            label="Intäkter"
-            amountMinor={income}
-            currency={view.currency}
-            tone="positive"
-          />
-          <SummaryStat
-            label="Utgifter"
-            amountMinor={expense}
-            currency={view.currency}
-            tone="neutral"
-          />
-          <SummaryStat
-            label="Netto"
-            amountMinor={net}
-            currency={view.currency}
-            tone={net >= 0 ? "positive" : "alarm"}
-            signed
-          />
-        </section>
-      )}
-
-      {view.hasBankTruth && view.balanceMinor != null ? (
-        <section className="numa-money-stack animate-rise-delay-2 animate-scale-in">
-          <MetricRow
-            label="På kontona"
-            amountMinor={view.balanceMinor}
-            currency={view.currency}
-            tone={usesAlarmColor(view.balanceMinor) ? "alarm" : undefined}
-          />
-        </section>
-      ) : null}
-
-      {viewPeriod === "month" && view.monthCategories.length > 0 ? (
-        <section className="numa-panel animate-rise-delay-2 p-5">
-          <h2 className="numa-section-title">Per kategori</h2>
-          <p className="mt-1 text-xs leading-snug text-[var(--numa-faint)]">
-            {viewCategory
-              ? `Visar ${viewCategory}. Tryck igen för att visa alla.`
-              : "Tryck på en kategori för att filtrera listan."}
-          </p>
-          <ul className="mt-4 space-y-2">
-            {view.monthCategories.map((cat) => {
-              const selected = viewCategory === cat.name;
-              return (
-                <li key={cat.name}>
-                  <button
-                    type="button"
-                    aria-pressed={selected}
-                    aria-label={selected ? `Visa alla kategorier` : `Visa ${cat.name}`}
-                    onClick={() => selectCategory(cat.name)}
-                    className={`numa-press min-h-11 w-full min-w-0 rounded-2xl px-2.5 py-2 text-left ${
-                      selected
-                        ? "is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]"
-                        : "ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-bg)]/55"
-                    }`}
-                  >
-                    <div className="numa-money-line mb-1.5 text-sm">
-                      <span
-                        className={`numa-money-line-label ${
+      <div
+        hidden={!filterOpen}
+        className="numa-panel space-y-3 p-3"
+        role="dialog"
+        aria-label="Filter"
+      >
+        <div className="numa-equal-chips numa-rorelser-filters numa-segment is-quad">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              aria-pressed={viewFilter === f.id}
+              onClick={() => chooseFilter(f.id)}
+              className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
+                viewFilter === f.id
+                  ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
+                  : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {viewPeriod === "month" && view.monthCategories.length > 0 ? (
+            <section>
+              <h2 className="numa-section-title">Per kategori</h2>
+              <p className="mt-1 text-xs leading-snug text-[var(--numa-faint)]">
+                {viewCategory
+                  ? `Visar ${viewCategory}. Tryck igen för att visa alla.`
+                  : "Tryck på en kategori för att filtrera listan."}
+              </p>
+              <ul className="mt-3 space-y-2">
+                {view.monthCategories.map((cat) => {
+                  const selected = viewCategory === cat.name;
+                  return (
+                    <li key={cat.name}>
+                      <button
+                        type="button"
+                        aria-pressed={selected}
+                        aria-label={selected ? `Visa alla kategorier` : `Visa ${cat.name}`}
+                        onClick={() => selectCategory(cat.name)}
+                        className={`numa-press min-h-11 w-full min-w-0 rounded-[var(--numa-radius)] px-2.5 py-2 text-left ${
                           selected
-                            ? "font-semibold text-[var(--numa-ink)]"
-                            : "text-[var(--numa-muted)]"
+                            ? "is-active bg-[var(--numa-bg)] ring-2 ring-[var(--numa-ink)]"
+                            : "ring-1 ring-[var(--numa-border-strong)] hover:bg-[var(--numa-bg)]/55"
                         }`}
                       >
-                        {cat.name}
-                        <span className="ml-2 text-xs font-medium text-[var(--numa-faint)]">
-                          {cat.count}×
-                        </span>
-                      </span>
-                      <span className="numa-money-line-amt">
-                        <MoneyDisplay
-                          amountMinor={cat.amountMinor}
-                          currency={view.currency}
-                          size="sm"
-                          wrap={false}
-                        />
-                      </span>
-                    </div>
-                    <div className="numa-progress animate-bar">
-                      <span
-                        style={{
-                          width: `${Math.max(6, (cat.amountMinor / maxCategory) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
-
-      <div className="numa-equal-chips numa-rorelser-filters is-quad animate-rise-delay-3">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => chooseFilter(f.id)}
-            className={`numa-press min-h-11 rounded-full px-3 text-sm font-semibold ${
-              viewFilter === f.id
-                ? "bg-[var(--numa-ink)] text-[var(--numa-card)] shadow-[var(--numa-pill-shadow)]"
-                : "bg-[var(--numa-card)] text-[var(--numa-muted)] ring-1 ring-[var(--numa-border-strong)]"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+                        <div className="numa-money-line mb-1.5 text-sm">
+                          <span
+                            className={`numa-money-line-label ${
+                              selected
+                                ? "font-semibold text-[var(--numa-ink)]"
+                                : "text-[var(--numa-muted)]"
+                            }`}
+                          >
+                            {cat.name}
+                            <span className="ml-2 text-xs font-medium text-[var(--numa-faint)]">
+                              {cat.count}×
+                            </span>
+                          </span>
+                          <span className="numa-money-line-amt">
+                            <MoneyDisplay
+                              amountMinor={cat.amountMinor}
+                              currency={view.currency}
+                              size="sm"
+                              wrap={false}
+                            />
+                          </span>
+                        </div>
+                        <div className="numa-progress animate-bar">
+                          <span
+                            style={{
+                              width: `${Math.max(6, (cat.amountMinor / maxCategory) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : (
+            <p className="text-sm text-[var(--numa-muted)]">
+              Inga kategorier att filtrera på.
+            </p>
+          )}
       </div>
 
       <section ref={listRef} className="animate-rise-delay-3 space-y-2">
@@ -944,6 +927,62 @@ export function MovementsScreen({
           </ul>
         )}
       </section>
+
+      {drillSummary?.expenseOnly ? (
+        <section
+          data-drill-summary=""
+          className="numa-panel min-w-0 px-4 py-3"
+          aria-label={`${drillSummary.label}, ${drillSummary.count} st`}
+        >
+          <div className="numa-money-line">
+            <p className="numa-section-title break-words">{drillSummary.label}</p>
+            <div className="numa-hero-money text-[var(--numa-ink)]">
+              <MoneyDisplay
+                amountMinor={drillSummary.amountMinor}
+                currency={view.currency}
+                size="md"
+                wrap={false}
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-xs font-medium text-[var(--numa-faint)]">
+            {drillSummary.count} st
+          </p>
+        </section>
+      ) : monthIsEmpty ? null : (
+        <section className="numa-panel numa-stat-trio px-4 py-3">
+          <SummaryStat
+            label="Intäkter"
+            amountMinor={income}
+            currency={view.currency}
+            tone="positive"
+          />
+          <SummaryStat
+            label="Utgifter"
+            amountMinor={expense}
+            currency={view.currency}
+            tone="neutral"
+          />
+          <SummaryStat
+            label="Netto"
+            amountMinor={net}
+            currency={view.currency}
+            tone={net >= 0 ? "positive" : "alarm"}
+            signed
+          />
+        </section>
+      )}
+
+      {view.hasBankTruth && view.balanceMinor != null ? (
+        <section className="numa-money-stack">
+          <MetricRow
+            label="På kontona"
+            amountMinor={view.balanceMinor}
+            currency={view.currency}
+            tone={usesAlarmColor(view.balanceMinor) ? "alarm" : undefined}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

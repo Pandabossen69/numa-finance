@@ -187,6 +187,7 @@ export function AccountsDashboard({
                           amountMinor={account.thbMinor}
                           currency="THB"
                           size="sm"
+                          compact
                           tone="neutral"
                           wrap={false}
                         />

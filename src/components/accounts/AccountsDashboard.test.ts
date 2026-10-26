@@ -31,6 +31,7 @@ describe("AccountsDashboard", () => {
     expect(displays).toHaveLength(3);
     expect(displays[0]).toContain("amountMinor={view.totalThbMinor}");
     expect(displays[1]).toContain("amountMinor={account.thbMinor}");
+    expect(displays[1]).toContain("compact");
     expect(displays[2]).toContain("amountMinor={account.calculatedMinor}");
     for (const block of displays) {
       expect(block).toContain('tone="neutral"');

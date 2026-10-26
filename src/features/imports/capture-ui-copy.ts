@@ -11,7 +11,7 @@ export const CAPTURE_UI_COPY = {
     camera: "Fota skärmen nu",
     gallery: "Välj skärmdump",
     footer:
-      "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över · bilden skickas till AI och raderas efter 30 dagar",
+      "3–6 bubblor i samma bild går bra · samma SMS igen hoppas över",
     scanning: "Läser SMS…",
     scanningHint: "Du behöver inte skriva något.",
   },
@@ -22,7 +22,7 @@ export const CAPTURE_UI_COPY = {
     camera: "Fota skärmen nu",
     gallery: "Välj skärmdump",
     footer:
-      "Bäst: detalj eller lista · beloppet postas i kontots valuta · samma köp hoppas över · AI läser bilden, du raderar när du vill",
+      "Bäst: detalj eller lista · beloppet postas i kontots valuta · samma köp hoppas över",
     scanning: "Läser bankapp…",
     scanningHint: "Dubbelkolla beloppet innan du sparar.",
   },
@@ -33,7 +33,7 @@ export const CAPTURE_UI_COPY = {
     camera: "Fota kvittot",
     gallery: "Välj foto",
     footer:
-      "Beloppet synligt i bild · AI läser kvittot · du kan radera bilden efteråt",
+      "Beloppet synligt i bild",
     scanning: "Läser kvitto…",
     scanningHint: "Dubbelkolla beloppet innan du sparar.",
   },

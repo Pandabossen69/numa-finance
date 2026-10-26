@@ -14,7 +14,7 @@ describe("PlanMonthNav", () => {
     expect(src).toContain("numa-month-nav-sep");
     expect(src).toContain("Välj månad");
     expect(src).toContain("Denna månad");
-    expect(src).toContain("Visar");
+    expect(src).not.toContain("Visar");
     expect(src).toContain("addMonthsKey(monthKey, -1)");
     expect(src).toContain("addMonthsKey(monthKey, 1)");
     expect(src).toContain("onPrefetchMonth");

@@ -87,9 +87,6 @@ export function AnalysFailSoft({
           ? "Det tog längre tid än vanligt. Hämtar i bakgrunden."
           : (error ?? LOAD_TIMEOUT_MESSAGE_SV)}
       </p>
-      <p className="text-sm leading-snug text-[var(--numa-faint)]">
-        {SV.analysHint}
-      </p>
       <button
         type="button"
         className="numa-press text-sm font-semibold text-[var(--numa-accent)]"
@@ -130,9 +127,6 @@ export function AnalysPending() {
       aria-label="Hämtar analysen"
     >
       <h1 className="numa-page-title">Analys</h1>
-      <p className="max-w-[36ch] text-sm leading-snug text-[var(--numa-muted)]">
-        {SV.analysHint}
-      </p>
       <div
         className="numa-equal-chips"
         role="tablist"

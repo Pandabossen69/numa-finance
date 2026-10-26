@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { AnalysFailSoft, AnalysPending } from "@/components/layout/ViewLoading";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { DestinationWarmup, usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
@@ -302,9 +304,6 @@ export function AnalysDashboard({
       <header className="animate-rise flex flex-wrap items-start justify-between gap-3 min-w-0">
         <div className="min-w-0 flex-1">
           <h1 className="numa-page-title">Analys</h1>
-          <p className="mt-1 max-w-[36ch] text-sm leading-snug text-[var(--numa-muted)]">
-            {SV.analysHint}
-          </p>
         </div>
         <FormulaInfo steps={view.formula.steps} />
       </header>
@@ -638,7 +637,7 @@ function SpendHero({
 }) {
   return (
     <section
-      className="numa-panel-strong animate-rise-delay-1 space-y-3 p-5"
+      className="animate-rise-delay-1 space-y-2"
       aria-labelledby="analys-hero"
     >
       <p className="numa-section-title">{eyebrow}</p>
@@ -765,11 +764,9 @@ function SpendByCategory({
                 <div className="numa-money-line mb-1.5 text-sm">
                   <span className="numa-money-line-label text-[var(--numa-muted)]">
                     {category.name}
-                    <span className="ml-2 text-xs text-[var(--numa-faint)]">
+                    <span className="ml-2 inline-flex items-center gap-1 text-xs text-[var(--numa-faint)]">
                       {category.count}×
-                      <span className="ml-1.5" aria-hidden>
-                        ›
-                      </span>
+                      <Icon icon={ChevronRight} />
                     </span>
                   </span>
                   <span className="numa-money-line-amt">
