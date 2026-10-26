@@ -8,6 +8,7 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { MovementRow, MovementsSnapshot } from "@/features/finance/load-movements";
 import {
   applyAccountBalance,
+  applyHomeBankBalance,
   captureOptimisticBalance,
   undoOptimisticBalance,
   applyLocalTransfer,
@@ -1331,6 +1332,72 @@ describe("last view memory", () => {
     });
     expect(lastHomeSnapshot()?.todaySpendingMinor).toBe(1_200_00);
     expect(lastHomeSnapshot()?.todayPlannedPaidMinor).toBe(20_000_00);
+  });
+
+  it("drops a cached 1-day budget once the income horizon has passed", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-26T05:00:00.000Z"));
+    rememberHomeSnapshot(
+      homeSnap({
+        calculatedBalanceMinor: 14_593_300,
+        livingPoolMinor: 14_593_300,
+        dayBudgetMinor: 14_593_300,
+        remainingTodayMinor: 14_593_300,
+        spendDaysLeft: 1,
+        daysUntilIncome: 0,
+        dayEnvelopeOpen: true,
+        cycleIsActive: false,
+        livingMode: "bridge",
+        planMonthSavingsMinor: 0,
+        savingsTotalMinor: 0,
+      }),
+    );
+    const income = (
+      id: string,
+      name: string,
+      nextDueAt: string,
+    ): PlanItem => ({
+      id,
+      userId: "user-hugo",
+      name,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      currency: "THB",
+      cadence: "income",
+      nextDueAt,
+      isActive: true,
+      settledAt: null,
+      settledMinor: null,
+      remainingDueAt: null,
+      createdAt: "2026-09-01T00:00:00.000Z",
+      updatedAt: "2026-09-01T00:00:00.000Z",
+    });
+    syncHomeLivingFromPlan({
+      items: [
+        income("sep", "Lön sep", "2026-09-25T12:00:00.000Z"),
+        income("okt", "Lön okt", "2026-10-25T12:00:00.000Z"),
+      ],
+      currency: "THB",
+      timeZone: "Asia/Bangkok",
+      bankBalanceMinor: 14_593_300,
+      spendingByMonthKey: {},
+      ledgerTransactions: [],
+      financeRevision: "period-slut",
+      verifiedAt: "2026-11-26T05:00:00.000Z",
+      truthStatus: "verified",
+    });
+    const closed = lastHomeSnapshot();
+    expect(closed?.dayEnvelopeOpen).toBe(false);
+    expect(closed?.dayBudgetMinor).toBe(0);
+    expect(closed?.remainingTodayMinor).toBe(0);
+    expect(closed?.calculatedBalanceMinor).toBe(14_593_300);
+
+    applyHomeBankBalance(14_000_000);
+    const afterSaldo = lastHomeSnapshot();
+    expect(afterSaldo?.calculatedBalanceMinor).toBe(14_000_000);
+    expect(afterSaldo?.dayEnvelopeOpen).toBe(false);
+    expect(afterSaldo?.dayBudgetMinor).toBe(0);
+    expect(afterSaldo?.remainingTodayMinor).toBe(0);
   });
 
   it("never lets a Plan ledger raise Spenderat idag", () => {

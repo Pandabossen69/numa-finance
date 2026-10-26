@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlanItem } from "./types";
 import {
   applyLeftoverSparDelta,
+  dayEnvelopeForHorizon,
   inferReservedSavingsMinor,
   livingBudgetEquationHolds,
   livingBudgetHintSv,
@@ -1354,6 +1355,101 @@ describe("livingBudgetHintSv", () => {
     expect(text).not.toMatch(/oktober/i);
     expect(text).not.toMatch(/planerat/i);
     expect(text).not.toMatch(/15 000 THB = /);
+  });
+});
+
+describe("passed income horizon", () => {
+  const tz = "Asia/Bangkok";
+  const saldo = 14_593_300;
+
+  function income(name: string, nextDueAt: string): PlanItem {
+    return item({
+      name,
+      kind: "expected",
+      amountMinor: 40_000_00,
+      cadence: "income",
+      nextDueAt,
+    });
+  }
+
+  it("does not invent a 1-day budget when the horizon is already past", () => {
+    const now = new Date("2026-11-26T05:00:00.000Z");
+    const cycle = projectPayCycle(
+      [income("Lön sep", "2026-09-25T12:00:00.000Z"), income("Lön okt", "2026-10-25T12:00:00.000Z")],
+      now,
+      tz,
+    );
+    expect(cycle.isActive).toBe(false);
+    expect(cycle.endAt).toBe("2026-11-25T12:00:00.000Z");
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: saldo,
+      fundingConfirmed: true,
+    });
+    expect(living.dayEnvelopeOpen).toBe(false);
+    expect(living.dayBudgetMinor).toBe(0);
+    expect(living.remainingTodayMinor).toBe(0);
+    expect(living.daysUntilHorizon).toBe(0);
+    expect(living.availableMinor).toBe(saldo);
+    expect(living.livingPoolMinor).toBe(saldo);
+  });
+
+  it("does not invent a 1-day budget when the horizon is missing", () => {
+    const now = new Date("2026-10-26T05:00:00.000Z");
+    const closed = dayEnvelopeForHorizon({
+      horizon: null,
+      now,
+      timeZone: tz,
+      poolMinor: saldo,
+      spentToday: 0,
+    });
+    expect(closed.dayEnvelopeOpen).toBe(false);
+    expect(closed.dayBudgetMinor).toBe(0);
+    expect(closed.remainingTodayMinor).toBe(0);
+    expect(closed.dayBudgetMinor).not.toBe(saldo);
+  });
+
+  it("keeps the last day's budget when the horizon is today", () => {
+    const now = new Date("2026-10-26T04:00:00.000Z");
+    const cycle = projectPayCycle(
+      [income("Lön", "2026-10-26T13:00:00.000Z")],
+      now,
+      tz,
+    );
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: saldo,
+      fundingConfirmed: false,
+    });
+    expect(living.dayEnvelopeOpen).toBe(true);
+    expect(living.daysUntilHorizon).toBe(0);
+    expect(living.daysLeft).toBe(1);
+    expect(living.dayBudgetMinor).toBe(saldo);
+    expect(living.remainingTodayMinor).toBe(saldo);
+  });
+
+  it("keeps a day budget when the horizon is tomorrow", () => {
+    const now = new Date("2026-10-26T05:00:00.000Z");
+    const cycle = projectPayCycle(
+      [income("Lön", "2026-10-27T12:00:00.000Z")],
+      now,
+      tz,
+    );
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: saldo,
+      fundingConfirmed: false,
+    });
+    expect(living.dayEnvelopeOpen).toBe(true);
+    expect(living.daysUntilHorizon).toBe(1);
+    expect(living.daysLeft).toBe(1);
+    expect(living.dayBudgetMinor).toBe(saldo);
   });
 });
 

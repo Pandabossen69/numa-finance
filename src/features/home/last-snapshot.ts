@@ -909,6 +909,11 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
     nextSave > 0 &&
     nextSave <= prevSave &&
     home.dayBudgetMinor !== living.dayBudgetMinor;
+  // Same-day leftover overlay (275,12) still wins over a recompute.
+  // A new civil day does not match the baseline, so a closed horizon
+  // publishes dayBudget 0 instead of yesterday's saldo/1.
+  const horizonClosed =
+    living.mode !== "empty" && living.dayEnvelopeOpen === false;
   const keepAdoptedLiving =
     leftoverBaselineMatchesCivilDay(timeZone) &&
     (restoreKeepAdopted ||
@@ -928,8 +933,9 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
         daysLeft: living.daysLeft,
         spentTodayMinor: todaySpendingMinor,
       };
-  const adjusted =
-    leftoverPath && sparDelta > 0 && prevSave > 0
+  const adjusted = horizonClosed
+    ? living
+    : leftoverPath && sparDelta > 0 && prevSave > 0
       ? applyLeftoverSparDelta(incrementBase, sparDelta)
       : living;
   const livingPoolMinor = keepAdoptedLiving
@@ -980,6 +986,7 @@ export function syncHomeLivingFromPlan(snapshot: PlanSnapshot) {
       reservedSavingsMonthKey: living.reservedSavingsMonthKey,
       daysUntilIncome: living.daysUntilHorizon,
       nextIncomeLabelSv: living.nextIncomeLabelSv,
+      dayEnvelopeOpen: living.dayEnvelopeOpen,
       incomingMinor: coverage.incomingMinor,
       unpaidMinor: coverage.unpaidMinor,
       overMinor,
@@ -1722,6 +1729,7 @@ export function applyOptimisticPlanSettle(input: {
   let reservedSavingsUntilIncomeMinor = previous.reservedSavingsUntilIncomeMinor;
   let reservedSavingsMonthKey = previous.reservedSavingsMonthKey;
   let usesBankBalance = previous.usesBankBalance;
+  let dayEnvelopeOpen = previous.dayEnvelopeOpen;
   if (planSnap) {
     const now = new Date();
     const cycle = projectPayCycle(planSnap.items, now, planSnap.timeZone);
@@ -1745,6 +1753,7 @@ export function applyOptimisticPlanSettle(input: {
       reservedSavingsUntilIncomeMinor = living.reservedSavingsMinor;
       reservedSavingsMonthKey = living.reservedSavingsMonthKey;
       usesBankBalance = living.usesBankBalance;
+      dayEnvelopeOpen = living.dayEnvelopeOpen;
     }
   }
   rememberHomeSnapshot(
@@ -1767,6 +1776,7 @@ export function applyOptimisticPlanSettle(input: {
       reservedSavingsUntilIncomeMinor,
       reservedSavingsMonthKey,
       usesBankBalance,
+      dayEnvelopeOpen,
       safeToSpendTodayMinor: remainingTodayMinor,
       wealthTotalMinor: planWealthTotalMinor(
         overMinor,
@@ -1820,9 +1830,10 @@ export function applyHomeBankBalance(balanceMinor: number): HomeSnapshot | null 
   const spentToday = Math.max(0, home.todaySpendingMinor);
   const reserved = Math.max(0, home.reservedUntilIncomeMinor ?? 0);
   const refreshDayEnvelope =
-    home.needsAvailableInput ||
-    home.livingMode === "bridge" ||
-    home.usesBankBalance;
+    home.dayEnvelopeOpen !== false &&
+    (home.needsAvailableInput ||
+      home.livingMode === "bridge" ||
+      home.usesBankBalance);
   const cashPool = balanceMinor + spentToday - reserved;
   const planPool = (home.remainingFreeMinor ?? 0) + spentToday;
   const livingPoolMinor = refreshDayEnvelope
