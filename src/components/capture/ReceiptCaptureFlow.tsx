@@ -7,10 +7,11 @@ import {
   useSyncExternalStore,
   useTransition,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, ChevronRight, Image as ImageIcon } from "lucide-react";
 import { Icon } from "@/components/ui/Icon";
+import { InfoNote } from "@/components/ui/InfoNote";
+import { TextLink } from "@/components/ui/TextLink";
 import {
   QuickAddForms,
   type ShellAccount,
@@ -27,7 +28,7 @@ import {
   nativeToThbMinor,
   newClientMutationId,
 } from "@/domain/finance";
-import { formatMoney, money, parseUiAmountToMinor } from "@/domain/money";
+import { formatMoneyCompact, money, parseUiAmountToMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/money";
 import {
   ImagePrepareError,
@@ -622,7 +623,7 @@ export function ReceiptCaptureFlow({
       <div className="animate-rise space-y-8">
         <BackLink onClick={resetToPick} />
         <header className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+          <p className="numa-section-title">
             {copy.eyebrow}
           </p>
           <h2 className="text-2xl font-semibold tracking-tight">
@@ -693,15 +694,13 @@ export function ReceiptCaptureFlow({
         <p className="text-center text-xs text-[var(--numa-faint)]">
           {copy.footer}
         </p>
-        <p className="mx-auto max-w-[40ch] text-center text-xs leading-relaxed text-[var(--numa-faint)]">
-          Bilden skickas till AI för att läsa belopp, sparas i högst 30 dagar och kan raderas när som helst.{" "}
-          <Link
-            href="/importera"
-            prefetch={false}
-            className="font-semibold text-[var(--numa-accent)]"
-          >
+        <p className="flex items-center justify-center gap-1">
+          <TextLink href="/importera" prefetch={false}>
             Tidigare bilder
-          </Link>
+          </TextLink>
+          <InfoNote label="Om bilder">
+            Bilden skickas till AI för att läsa belopp, sparas i högst 30 dagar och kan raderas när som helst.
+          </InfoNote>
         </p>
 
         {error ? (
@@ -752,7 +751,7 @@ export function ReceiptCaptureFlow({
                 </span>
                 <span className="numa-money-line-amt money text-lg font-semibold text-[var(--numa-ink)]">
                   {event.direction === "credit" ? "+" : "−"}
-                  {formatMoney(money(event.amountMinor, preview.currency))}
+                  {formatMoneyCompact(money(event.amountMinor, preview.currency))}
                 </span>
               </li>
             ))}
@@ -821,17 +820,17 @@ export function ReceiptCaptureFlow({
         <div className="animate-rise-delay-1 space-y-1 text-center">
           {isSms && preview.balanceAfterMinor != null ? (
             <>
-              <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+              <p className="numa-section-title">
                 Saldo på Hem
               </p>
               <p className="numa-hero-money money-hero money text-4xl font-semibold tracking-tight text-[var(--numa-positive)]">
-                {formatMoney(
+                {formatMoneyCompact(
                   money(preview.balanceAfterMinor, preview.currency),
                 )}
               </p>
             </>
           ) : (
-            <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+            <p className="numa-section-title">
               {isBankApp
                 ? CAPTURE_UI_COPY.bank_app.eyebrow
                 : CAPTURE_UI_COPY.bank_sms.eyebrow}
@@ -857,7 +856,7 @@ export function ReceiptCaptureFlow({
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+          <p className="numa-section-title">
             Kvitto · totalsumma
           </p>
           {preview.message ? (
@@ -906,7 +905,7 @@ export function ReceiptCaptureFlow({
                   }`}
                 >
                   {plus ? "+" : "−"}
-                  {formatMoney(money(event.amountMinor, preview.currency))}
+                  {formatMoneyCompact(money(event.amountMinor, preview.currency))}
                 </span>
               </li>
             );
@@ -914,7 +913,7 @@ export function ReceiptCaptureFlow({
         </ul>
       ) : (
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
+          <p className="numa-section-title">
             Belopp
           </p>
           {amountEditable || needsManualAmount ? (
@@ -957,7 +956,7 @@ export function ReceiptCaptureFlow({
           {impact.canAfford ? "Inom dagsbudgeten" : "Över dagsbudgeten"}
           {" · "}
           <span className="numa-money-line-amt money">
-            {formatMoney(money(impact.remaining, currency))}
+            {formatMoneyCompact(money(impact.remaining, currency))}
           </span>{" "}
           kvar idag
         </p>
@@ -1214,10 +1213,10 @@ function ModePicker({
       </nav>
 
       {onboarding ? null : (
-      <p className="text-center text-xs text-[var(--numa-faint)]">
-        <Link href="/transaktioner" prefetch={false} className="numa-tap font-semibold text-[var(--numa-accent)]">
+      <p className="flex justify-center">
+        <TextLink href="/transaktioner" prefetch={false}>
           Se rörelser
-        </Link>
+        </TextLink>
       </p>
       )}
     </div>

@@ -8,7 +8,8 @@ describe("AppShell chrome", () => {
     expect(src).toContain("overflow-x-clip");
     expect(src).toContain("pl-[max(1rem,var(--numa-safe-left))]");
     expect(src).toContain("pr-[max(1rem,var(--numa-safe-right))]");
-    expect(src).toContain("pt-[max(0.95rem,var(--numa-safe-top))]");
+    expect(src).toContain("pt-[var(--numa-safe-top)]");
+    expect(src).toContain("h-12");
     expect(src).toContain("pb-[var(--numa-shell-pad-bottom)]");
     expect(src).toContain("md:pb-16");
     expect(src).toContain("min-h-11");

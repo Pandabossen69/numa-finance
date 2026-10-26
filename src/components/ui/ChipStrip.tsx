@@ -10,6 +10,8 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 
 type Edges = { start: boolean; end: boolean };
 
@@ -256,7 +258,7 @@ export function ChipStrip({
           disabled={!edges.start}
           onClick={() => scrollByChip(-1)}
         >
-          {edges.start ? "‹" : null}
+          {edges.start ? <Icon icon={ChevronLeft} /> : null}
         </button>
       ) : null}
       <div className="numa-month-strip-wrap">
@@ -272,7 +274,7 @@ export function ChipStrip({
           disabled={!edges.end}
           onClick={() => scrollByChip(1)}
         >
-          {edges.end ? "›" : null}
+          {edges.end ? <Icon icon={ChevronRight} /> : null}
         </button>
       ) : null}
     </div>

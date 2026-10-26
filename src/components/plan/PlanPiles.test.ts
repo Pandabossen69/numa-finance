@@ -21,7 +21,7 @@ describe("Sparande empty state and Sätt av från Över", () => {
     expect(src).toContain("SV.sparandeAvsatt");
     expect(src).toContain("SV.sparat");
     expect(src).toContain("SV.sattAvFranOver");
-    expect(src).toContain("SV.sparandeTotalt");
+    expect(src).toContain("SV.sparat");
     expect(src).toContain("Taget från Över och dagsbudgeten");
     expect(src).toContain("Nästa månad syns det som sparat.");
     expect(src).not.toContain("Över på kontona ändras inte");
@@ -54,7 +54,9 @@ describe("Plan cash coverage stack", () => {
     expect(src).toContain('tone="out"');
     expect(src).toContain("SV.kvarAttBetala");
     expect(src).toContain("SV.over");
-    expect(src).toContain("cashCoverageHintSv");
+    expect(src).toContain("planSummaryHintSv");
+    expect(src).toContain("− avsatt");
+    expect(src).toContain("− sparat");
     expect(src).toContain("numa-pile-stack");
     expect(src).toContain("<PileLine");
     expect(src).toContain('tone={overOk ? "over" : "short"}');

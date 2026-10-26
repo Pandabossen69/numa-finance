@@ -21,6 +21,10 @@ describe("voided bank-mail status is derived at read time", () => {
     expect(observationIdsWithRemovedMovement([])).toEqual(new Set());
     expect(MOVEMENT_REMOVED_LABEL).toBe("Rörelsen borttagen");
     expect(statusMeta("processed", false, "Avvisad").label).toBe("Avvisad");
+    expect(statusMeta("processed", false, "Avvisad").className).not.toContain(
+      "numa-danger",
+    );
+    expect(statusMeta("failed", false, null).className).toContain("numa-danger");
     expect(statusMeta("processed", false, "Bekräftad och sparad").label).toBe(
       "Sparad",
     );

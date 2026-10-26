@@ -10,7 +10,7 @@ describe("Flytta/Kontant empty copy", () => {
   });
 
   it("keeps mode chips equal and category chips the same 44px size", () => {
-    expect(src).toContain("numa-equal-chips is-quad");
+    expect(src).toContain("numa-equal-chips is-tri");
     expect(src).toContain("ChipStrip");
     expect(src).toContain("numa-category-chip");
     expect(src).toContain("Föregående kategorier");
@@ -42,6 +42,8 @@ describe("Flytta/Kontant empty copy", () => {
       expenseBlock.indexOf("onSuccess?.()"),
     );
     expect(expenseBlock).toContain("userFacingSaveError");
+    expect(expenseBlock).not.toContain("createCashWithdrawalAction");
+    expect(expenseBlock).not.toContain("Ta ut kontanter");
     const incomeBlock = src.slice(
       src.indexOf("function IncomeForm"),
       src.indexOf("function TransferForm"),

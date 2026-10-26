@@ -32,6 +32,7 @@ import {
   subscribeHomeSnapshot,
 } from "@/features/home/last-snapshot";
 import { ChipStrip } from "@/components/ui/ChipStrip";
+import { InfoNote } from "@/components/ui/InfoNote";
 import { PlanDateField } from "@/components/plan/PlanDateField";
 import { userFacingSaveError } from "@/lib/net/offline-save";
 import {
@@ -110,7 +111,8 @@ function ManualDateField({
   );
 }
 
-type Mode = "expense" | "income" | "transfer" | "cash";
+type Mode = "expense" | "income" | "transfer";
+type MoveKind = "transfer" | "withdraw";
 
 export function QuickAddForms({
   primaryAccountId,
@@ -122,11 +124,12 @@ export function QuickAddForms({
   onSuccess?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>("expense");
+  const [moveKind, setMoveKind] = useState<MoveKind>("transfer");
+  const [expenseAccountId, setExpenseAccountId] = useState(primaryAccountId);
   const modes: Array<{ id: Mode; label: string }> = [
     { id: "expense", label: "Utgift" },
     { id: "income", label: "Inkomst" },
     { id: "transfer", label: "Flytta" },
-    { id: "cash", label: "Kontant" },
   ];
 
   function handleSuccess() {
@@ -135,12 +138,15 @@ export function QuickAddForms({
 
   return (
     <div className="space-y-4">
-      <div className="numa-equal-chips is-quad">
+      <div className="numa-equal-chips is-tri">
         {modes.map((m) => (
           <button
             key={m.id}
             type="button"
-            onClick={() => setMode(m.id)}
+            onClick={() => {
+              setMode(m.id);
+              if (m.id !== "transfer") setMoveKind("transfer");
+            }}
             className={`numa-press min-h-11 rounded-full px-2.5 text-sm ${
               mode === m.id
                 ? "bg-[var(--numa-ink)] font-semibold text-[var(--numa-card)]"
@@ -154,8 +160,9 @@ export function QuickAddForms({
 
       {mode === "expense" ? (
         <ExpenseForm
-          accountId={primaryAccountId}
+          accountId={expenseAccountId}
           accounts={accounts}
+          onAccountChange={setExpenseAccountId}
           onSuccess={() => handleSuccess()}
         />
       ) : null}
@@ -167,18 +174,32 @@ export function QuickAddForms({
         />
       ) : null}
       {mode === "transfer" ? (
-        <TransferForm
-          primaryAccountId={primaryAccountId}
-          accounts={accounts}
-          onSuccess={() => handleSuccess()}
-        />
-      ) : null}
-      {mode === "cash" ? (
-        <CashForm
-          primaryAccountId={primaryAccountId}
-          accounts={accounts}
-          onSuccess={() => handleSuccess()}
-        />
+        <>
+          <label className="block">
+            <span className="numa-field-label">Flytta</span>
+            <select
+              value={moveKind}
+              onChange={(event) => setMoveKind(event.target.value as MoveKind)}
+              className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+            >
+              <option value="transfer">Mellan konton</option>
+              <option value="withdraw">Ta ut kontanter (uttag)</option>
+            </select>
+          </label>
+          {moveKind === "withdraw" ? (
+            <CashForm
+              primaryAccountId={primaryAccountId}
+              accounts={accounts}
+              onSuccess={() => handleSuccess()}
+            />
+          ) : (
+            <TransferForm
+              primaryAccountId={primaryAccountId}
+              accounts={accounts}
+              onSuccess={() => handleSuccess()}
+            />
+          )}
+        </>
       ) : null}
     </div>
   );
@@ -187,10 +208,12 @@ export function QuickAddForms({
 function ExpenseForm({
   accountId,
   accounts,
+  onAccountChange,
   onSuccess,
 }: {
   accountId: string;
   accounts: ShellAccount[];
+  onAccountChange: (id: string) => void;
   onSuccess?: () => void;
 }) {
   const [chosenAccountId, setChosenAccountId] = useState(accountId);
@@ -297,9 +320,12 @@ function ExpenseForm({
     >
       {accounts.length > 0 ? (
         <AccountSelect
-          label="Konto"
+          label="Betalat med"
           value={resolvedAccountId}
-          onChange={setChosenAccountId}
+          onChange={(id) => {
+            setChosenAccountId(id);
+            onAccountChange(id);
+          }}
           accounts={accounts}
         />
       ) : null}
@@ -439,9 +465,9 @@ function IncomeForm({
         });
       }}
     >
-      <p className="text-sm text-[var(--numa-muted)]">
+      <InfoNote label="Om inkomst">
         Lön, återbetalning eller annat som ökar saldot.
-      </p>
+      </InfoNote>
       {accounts.length > 0 ? (
         <AccountSelect
           label="Till konto"
@@ -742,10 +768,10 @@ function CashForm({
         });
       }}
     >
-      <p className="text-sm text-[var(--numa-muted)]">
+      <InfoNote label="Om kontant">
         Uttag från bank/konto. Räknas inte som shopping — bara att pengarna
         byter form.
-      </p>
+      </InfoNote>
       <AccountSelect
         label="Från"
         value={resolvedFromId}
@@ -798,9 +824,7 @@ function AmountField({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
-        Belopp · {currency}
-      </span>
+      <span className="numa-field-label">Belopp · {currency}</span>
       <div className="relative">
         <input
           inputMode="decimal"
@@ -808,7 +832,7 @@ function AmountField({
           placeholder="0"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="money w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4 pr-16 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
+          className="money min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 py-3 pr-16 text-3xl font-semibold outline-none ring-[var(--numa-accent)] focus:ring-2"
           aria-label={`Belopp ${currency}`}
         />
         <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-[var(--numa-muted)]">
@@ -833,7 +857,7 @@ function TextField({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-transparent px-4 py-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+      className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-transparent px-3 py-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
     />
   );
 }
@@ -851,13 +875,11 @@ function AccountSelect({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-medium text-[var(--numa-muted)]">
-        {label}
-      </span>
+      <span className="numa-field-label">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+        className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
       >
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>

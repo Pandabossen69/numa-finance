@@ -102,7 +102,7 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-month-strip-shell");
     expect(css).toContain(".numa-month-strip-slot");
     expect(css).toContain(".numa-month-strip-wrap");
-    expect(css).toContain("flex: 0 0 1.75rem");
+    expect(css).toContain("flex: 0 0 2.75rem");
     expect(css).toContain("background: var(--numa-bg)");
     expect(css).toContain("min-width: 0");
     expect(css).toContain("calc((100% - 1.6rem) / 5)");

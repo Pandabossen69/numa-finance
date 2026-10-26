@@ -212,7 +212,7 @@ describe("account detail saved balance", () => {
     });
 
     expect(moneyLabel(host, "[data-account-balance] [aria-label]")).toBe(
-      "1 000,00 THB",
+      "1 000 THB",
     );
     expect(moneyLabel(host, "a[aria-label='Bangkok Bank, öppna konto'] [aria-label]")).toBe(
       "1 000 THB",
@@ -238,7 +238,7 @@ describe("account detail saved balance", () => {
     expect(host.querySelector("form")).toBeNull();
     expect(document.body.querySelector("[role='status']")?.textContent).toBe("Sparat");
     expect(moneyLabel(host, "[data-account-balance] [aria-label]")).toBe(
-      "1 500,00 THB",
+      "1 500 THB",
     );
     expect(moneyLabel(host, "a[aria-label='Bangkok Bank, öppna konto'] [aria-label]")).toBe(
       "1 500 THB",

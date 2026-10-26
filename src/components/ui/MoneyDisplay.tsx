@@ -41,7 +41,7 @@ export function MoneyDisplay({
   amountMinor,
   currency,
   size = "md",
-  compact = false,
+  compact = true,
   tone = "neutral",
   align = "center",
   wrap = false,

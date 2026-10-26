@@ -19,7 +19,6 @@ export function ExtraSaldoRow({
       label={SV.extraSaldo}
       amountMinor={extraSaldoMinor}
       currency={currency}
-      tone={extraSaldoMinor > 0 ? "positive" : undefined}
       hint={hint ?? undefined}
     />
   );

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { UNCATEGORISED_SPEND_NAME } from "@/domain/finance";
 import {
+  calendarMonthRangeLabelSv,
   cycleWindowTotals,
   movementVisibleInRorelser,
   payCycleRangeLabelSv,
@@ -137,6 +138,17 @@ describe("cycleWindowTotals", () => {
       expenseMinor: 400,
       netMinor: 600,
     });
+  });
+});
+
+describe("calendarMonthRangeLabelSv", () => {
+  it("prints the calendar month, not the pay cycle", () => {
+    const label = calendarMonthRangeLabelSv("2026-10");
+    expect(label?.toLowerCase()).toContain("okt");
+    expect(label).toContain("–");
+    expect(label?.startsWith("1")).toBe(true);
+    expect(label).not.toContain("sep");
+    expect(calendarMonthRangeLabelSv("nope")).toBeNull();
   });
 });
 

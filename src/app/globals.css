@@ -351,6 +351,38 @@ body {
   overflow: visible;
 }
 
+.numa-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-transform: none;
+  color: var(--numa-ink);
+}
+
+.numa-field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.35;
+  text-transform: none;
+  color: var(--numa-muted);
+}
+
+.numa-text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 2.75rem;
+  padding-inline: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--numa-accent);
+}
+
 .numa-page-title {
   max-width: 19ch;
   font-size: 1.75rem;
@@ -851,8 +883,9 @@ body {
 }
 
 .numa-month-strip-slot {
-  flex: 0 0 1.75rem;
-  width: 1.75rem;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  min-width: 2.75rem;
   min-height: var(--numa-touch);
   display: inline-flex;
   align-items: center;
@@ -940,9 +973,9 @@ body {
   box-sizing: border-box;
 }
 
-/* Extra end pad so the last pill (Övrigt) can clear the edge when selected/bold. */
+/* Categories share the month scroller. No extra end pad — that indented the pills. */
 .numa-month-strip:has(.numa-category-chip) {
-  padding-inline-end: 1.25rem;
+  padding-inline-end: 0;
   scroll-snap-type: x proximity;
 }
 
@@ -1432,7 +1465,7 @@ body {
 }
 
 .numa-pile-line.is-over .numa-pile-line-label {
-  color: var(--numa-positive);
+  color: var(--numa-ink);
   font-weight: 600;
 }
 
@@ -1442,7 +1475,7 @@ body {
 }
 
 .numa-pile-line.is-in .numa-pile-line-value {
-  color: color-mix(in srgb, var(--numa-positive) 82%, var(--numa-ink));
+  color: var(--numa-ink);
 }
 
 .numa-pile-line.is-out .numa-pile-line-value {
@@ -2276,10 +2309,33 @@ button.numa-chip:disabled {
 .numa-sheet-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 80;
   display: flex;
   align-items: flex-end;
   background: color-mix(in srgb, var(--numa-ink) 28%, transparent);
+}
+
+/* Top layer so the dim covers the shell header, not only the page under it. */
+.numa-sheet-dialog {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.numa-sheet-dialog::backdrop {
+  background: color-mix(in srgb, var(--numa-ink) 28%, transparent);
+}
+
+.numa-sheet-dialog .numa-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
 }
 
 .numa-sheet-backdrop[hidden] {
@@ -2293,6 +2349,10 @@ button.numa-chip:disabled {
   border-radius: var(--numa-radius-sheet) var(--numa-radius-sheet) 0 0;
   background: var(--numa-card);
   padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+.numa-equal-chips.is-tri {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .numa-equal-chips.is-quad {
