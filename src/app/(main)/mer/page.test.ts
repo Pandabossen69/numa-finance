@@ -108,6 +108,13 @@ describe("Mer HIGH regress", () => {
     expect(settings).not.toContain("Dataläge");
     expect(settings).toContain('"Moln"');
   });
+
+  it("links Tidigare bilder to /importera from Inställningar", () => {
+    expect(settings).toContain('href="/importera"');
+    expect(settings).toContain("Tidigare bilder");
+    expect(settings).toContain('title="Bilder"');
+    expect(mer).not.toContain('href="/importera"');
+  });
 });
 
 describe("admin-only user creation security", () => {

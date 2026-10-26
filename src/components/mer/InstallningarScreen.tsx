@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Images } from "lucide-react";
 import {
   MerListGroup,
   MerListLink,
@@ -9,6 +10,7 @@ import {
   MerPageHeader,
   MerSection,
 } from "@/components/mer/MerHub";
+import { Icon } from "@/components/ui/Icon";
 import { SettingsViewLoading } from "@/components/mer/MerViewLoading";
 import { MerInstallCta } from "@/components/mer/MerInstallCta";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
@@ -51,6 +53,16 @@ export function InstallningarScreen({
               </div>
               <RepairAppButton />
             </MerListRow>
+          </MerListGroup>
+        </MerSection>
+
+        <MerSection title="Bilder">
+          <MerListGroup>
+            <MerListLink
+              href="/importera"
+              label="Tidigare bilder"
+              icon={<Icon icon={Images} />}
+            />
           </MerListGroup>
         </MerSection>
 

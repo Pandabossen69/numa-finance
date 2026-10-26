@@ -694,7 +694,14 @@ export function ReceiptCaptureFlow({
           {copy.footer}
         </p>
         <p className="mx-auto max-w-[40ch] text-center text-xs leading-relaxed text-[var(--numa-faint)]">
-          Bilden skickas till AI för att läsa belopp, sparas i högst 30 dagar och kan raderas när som helst.
+          Bilden skickas till AI för att läsa belopp, sparas i högst 30 dagar och kan raderas när som helst.{" "}
+          <Link
+            href="/importera"
+            prefetch={false}
+            className="font-semibold text-[var(--numa-accent)]"
+          >
+            Tidigare bilder
+          </Link>
         </p>
 
         {error ? (
