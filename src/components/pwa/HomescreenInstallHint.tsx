@@ -124,7 +124,7 @@ export function HomescreenInstallHint({
 
   return (
     <aside
-      className="animate-rise space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
+      className="animate-rise space-y-3 rounded-[var(--numa-radius-sheet)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
       aria-label="Lägg till på hemskärmen"
     >
       <div className="space-y-1">

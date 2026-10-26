@@ -231,7 +231,7 @@ export function AccountsDashboard({
                       <div className="grid gap-2 sm:grid-cols-2">
                         <button
                           type="button"
-                          className="numa-btn numa-btn-soft w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
+                          className="numa-btn numa-btn-soft is-accent w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
                           onClick={() => setOpenVerifyId(account.id)}
                         >
                           Uppdatera saldo

@@ -822,10 +822,10 @@ function SpendByCategory({
                     <li className="numa-money-line text-xs">
                       <button
                         type="button"
-                        className="numa-press numa-money-line min-h-11 w-full text-left"
+                        className="numa-press numa-money-line numa-accent-action min-h-11 w-full text-left"
                         onClick={() => setShowAllOvrigt(true)}
                       >
-                        <span className="font-semibold text-[var(--numa-accent)]">
+                        <span className="numa-accent-action font-semibold">
                           Visa övriga ·{" "}
                           {formatMoneyCompact(money(ovrigtRestMinor, currency))}
                         </span>

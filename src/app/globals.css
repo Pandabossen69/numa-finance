@@ -169,9 +169,6 @@ body {
 .money {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings:
-    "tnum" 1,
-    "lnum" 1;
   font-optical-sizing: auto;
   font-synthesis: none;
   letter-spacing: -0.025em;
@@ -228,9 +225,6 @@ body {
   overflow: visible;
   white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings:
-    "tnum" 1,
-    "lnum" 1;
   font-optical-sizing: auto;
   font-synthesis: none;
   letter-spacing: -0.045em;
@@ -247,12 +241,17 @@ body {
   column-gap: 0.2em;
   row-gap: 0;
   min-width: min-content;
+  font-variant-numeric: tabular-nums lining-nums;
+  /* normal so an inherited low-level feature set cannot cancel tabular figures */
+  font-feature-settings: normal;
 }
 
 .numa-money-run {
   flex: 0 0 auto;
   display: block;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: normal;
   letter-spacing: -0.045em;
   word-spacing: 0;
 }
@@ -390,9 +389,7 @@ body {
   height: 1.875rem;
   flex: 0 0 auto;
   border-radius: var(--numa-radius-sm);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--numa-border) 80%, transparent),
-    0 6px 14px -10px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--numa-border) 80%, transparent);
 }
 
 .numa-brand-lockup.is-lg .numa-brand-lockup-icon {
@@ -761,6 +758,8 @@ body {
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: normal;
 }
 
 .money-hero .numa-money-unit,
@@ -1250,6 +1249,8 @@ body {
   font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.25;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: normal;
 }
 
 .numa-wealth-value .numa-money-unit {
@@ -1383,6 +1384,8 @@ body {
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: normal;
 }
 
 .numa-pile-line .numa-money-unit {
@@ -1400,6 +1403,8 @@ body {
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: normal;
 }
 
 .numa-piles-board .is-park .numa-money-unit,
@@ -2053,6 +2058,15 @@ button.numa-chip:disabled {
   color: var(--numa-ink);
 }
 
+.numa-btn-soft.is-accent,
+.numa-btn-soft.is-accent:active:not(:disabled) {
+  color: var(--numa-accent);
+}
+
+.numa-accent-action {
+  color: var(--numa-accent);
+}
+
 .animate-bar {
   transform-origin: left center;
   animation: none;
@@ -2511,7 +2525,7 @@ button.numa-chip:disabled {
   padding-right: 5rem;
 }
 
-.auth-field-toggle {
+button.auth-field-toggle {
   position: absolute;
   top: 50%;
   right: 0.35rem;
@@ -2627,6 +2641,10 @@ button.numa-chip:disabled {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.18em;
+}
+
+.auth-access-note a.auth-text-link {
+  color: var(--numa-accent);
 }
 
 .auth-text-link:focus-visible {
