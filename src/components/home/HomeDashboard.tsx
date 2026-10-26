@@ -478,12 +478,14 @@ export function HomeDashboard({
                 currency={currency}
                 tone="out"
               />
-              <PileLine
-                label={SV.over}
-                amountMinor={view.overMinor}
-                currency={currency}
-                tone={view.overMinor >= 0 ? "over" : "short"}
-              />
+              {view.overMinor !== view.calculatedBalanceMinor ? (
+                <PileLine
+                  label={SV.over}
+                  amountMinor={view.overMinor}
+                  currency={currency}
+                  tone={view.overMinor >= 0 ? "over" : "short"}
+                />
+              ) : null}
               <PileLine label={parkHeading} amountMinor={parkAmount} currency={currency} />
               {savingsThisMonth > 0 && savingsPrior > 0 ? (
                 <p className="numa-pile-hint pb-1">

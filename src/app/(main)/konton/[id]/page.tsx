@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { AccountDetailActions } from "@/components/accounts/AccountDetailActions";
 import { AccountDetailHeading } from "@/components/accounts/ManageAccountForm";
 import { MerBackLink } from "@/components/mer/MerHub";
-import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
 import { formatMoney, money } from "@/domain/money";
 import {
@@ -37,20 +36,6 @@ export default async function KontoDetaljPage({
       </header>
       {result.ok ? (
         <>
-          <p className="text-[var(--numa-ink)]">
-            {result.data.calculatedMinor != null ? (
-              <MoneyDisplay
-                amountMinor={result.data.calculatedMinor}
-                currency={result.data.currency}
-                size="lg"
-                tone="neutral"
-                align="start"
-                wrap={false}
-              />
-            ) : (
-              <span className="text-sm text-[var(--numa-faint)]">—</span>
-            )}
-          </p>
           <AccountDetailActions account={result.data} />
           {!result.data.isActive ? (
             <ArchivedAccountMovements account={result.data} />

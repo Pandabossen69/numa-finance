@@ -55,6 +55,9 @@ describe("Hem layout", () => {
   it("does not show Mot planen as the Hem pile", () => {
     expect(src).toContain("PileLine");
     expect(src).toContain("overMinor");
+    expect(src).toContain(
+      "view.overMinor !== view.calculatedBalanceMinor",
+    );
     expect(src).not.toContain("livingSaldoMinor");
     expect(src).not.toContain("SV.motPlanen");
     expect(src).not.toContain("livingVsPlanHintSv");
