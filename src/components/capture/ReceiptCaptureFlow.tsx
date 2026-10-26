@@ -9,6 +9,8 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Camera, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import {
   QuickAddForms,
   type ShellAccount,
@@ -640,9 +642,7 @@ export function ReceiptCaptureFlow({
             onClick={() => cameraInputRef.current?.click()}
             className="numa-press group flex min-h-[9.5rem] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl bg-[var(--numa-ink)] px-3 py-5 text-[var(--numa-card)] shadow-[var(--numa-shadow)] hover:bg-[var(--numa-accent)] disabled:opacity-50"
           >
-            <span className="text-2xl font-light leading-none" aria-hidden>
-              ◉
-            </span>
+            <Icon icon={Camera} className="text-[var(--numa-card)]" />
             <span className="text-sm font-semibold tracking-tight">Kamera</span>
             <span className="text-center text-xs text-[var(--numa-card)]/70">
               {copy.camera}
@@ -654,12 +654,7 @@ export function ReceiptCaptureFlow({
             onClick={() => galleryInputRef.current?.click()}
             className="numa-press group flex min-h-[9.5rem] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl border border-[var(--numa-border-strong)] bg-[var(--numa-card)] px-3 py-5 hover:bg-[var(--numa-accent-soft)] disabled:opacity-50"
           >
-            <span
-              className="text-2xl font-light leading-none text-[var(--numa-ink)]"
-              aria-hidden
-            >
-              ▤
-            </span>
+            <Icon icon={ImageIcon} className="text-[var(--numa-ink)]" />
             <span className="text-sm font-semibold tracking-tight text-[var(--numa-ink)]">
               Galleri
             </span>
@@ -1202,11 +1197,8 @@ function ModePicker({
                   {item.hint}
                 </span>
               </span>
-              <span
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-sm font-semibold text-[var(--numa-accent-ink)]"
-                aria-hidden
-              >
-                →
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-[var(--numa-accent-ink)]">
+                <Icon icon={ChevronRight} />
               </span>
             </button>
           );
@@ -1229,9 +1221,10 @@ function BackLink({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="numa-press inline-flex min-h-11 items-center text-sm font-semibold text-[var(--numa-accent)]"
+      className="numa-press inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[var(--numa-accent)]"
     >
-      ← Tillbaka
+      <Icon icon={ArrowLeft} size={16} />
+      Tillbaka
     </button>
   );
 }

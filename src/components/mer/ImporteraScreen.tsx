@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import {
   MerListGroup,
   MerListLink,
@@ -191,9 +193,10 @@ function ObservationList({
                   prefetch
                   onMouseEnter={() => prefetch(resumeHref)}
                   onFocus={() => prefetch(resumeHref)}
-                  className="numa-tap text-sm font-semibold text-[var(--numa-accent)]"
+                  className="numa-tap inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-[var(--numa-accent)]"
                 >
-                  {o.status === "failed" ? "Fota igen →" : "Fortsätt i + →"}
+                  {o.status === "failed" ? "Fota igen" : "Fortsätt i +"}
+                  <Icon icon={ChevronRight} size={16} />
                 </Link>
                 {canReject ? (
                   <button

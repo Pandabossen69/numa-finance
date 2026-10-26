@@ -22,9 +22,12 @@ import {
 export function VerifyBalanceForm({
   accountId,
   currency = "THB",
+  onSaved,
 }: {
   accountId: string;
   currency?: CurrencyCode;
+  /** Confirmed native amount. The caller paints the detail and closes the sheet. */
+  onSaved?: (balanceMinor: number) => void;
 }) {
   const [balance, setBalance] = useState("");
   const [fxRate, setFxRate] = useState("");
@@ -90,6 +93,7 @@ export function VerifyBalanceForm({
         }
         const legacyMovements = lastMovementsSnapshot();
         if (legacyMovements) rememberMovementsSnapshot(legacyMovements);
+        onSaved?.(balanceMinor);
         return;
       }
       setBalance("");
@@ -122,6 +126,7 @@ export function VerifyBalanceForm({
       // Only the latest saldo may drop the Rörelser lock. A late response
       // for an older amount leaves the newer paint dirty.
       if (!commitAccountEdit(accountId, generation)) return;
+      onSaved?.(balanceMinor);
     });
   }
 

@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
-import {
-  AccountDetailHeading,
-  ManageAccountForm,
-} from "@/components/accounts/ManageAccountForm";
+import { AccountDetailActions } from "@/components/accounts/AccountDetailActions";
+import { AccountDetailHeading } from "@/components/accounts/ManageAccountForm";
 import { MerBackLink } from "@/components/mer/MerHub";
 import { DEFAULT_TIMEZONE, formatListDateSv } from "@/domain/finance";
 import { formatMoney, money } from "@/domain/money";
@@ -38,7 +36,7 @@ export default async function KontoDetaljPage({
       </header>
       {result.ok ? (
         <>
-          <ManageAccountForm account={result.data} />
+          <AccountDetailActions account={result.data} />
           {!result.data.isActive ? (
             <ArchivedAccountMovements account={result.data} />
           ) : null}

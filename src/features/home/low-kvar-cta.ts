@@ -36,7 +36,7 @@ export function isLowKvarToday(
 
 /**
  * Primary Hem CTA when Kvar is tight.
- * - Low but still some left + a konto → «Lägg utgift» (jump to QuickExpense)
+ * - Low but still some left + a konto → «Lägg utgift» (Fota manuellt, FAB)
  * - Kvar ≤ 0, or no konto to log against → «Öppna Plan»
  * Other Hem owners (empty / saldo-input / no dagsbudget) keep their own CTAs.
  */
@@ -50,7 +50,7 @@ export function lowKvarNextAction(input: LowKvarCtaInput): LowKvarCta | null {
   if (input.remainingTodayMinor > 0 && input.hasPrimaryAccount) {
     return {
       kind: "expense",
-      href: "#lagg-utgift",
+      href: "/fota?mode=manual",
       label: SV.laggUtgift,
       hint: SV.laggUtgiftHintLowKvar,
     };

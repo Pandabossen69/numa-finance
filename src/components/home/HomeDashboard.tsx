@@ -2,15 +2,15 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useSubmitGuard } from "@/lib/forms/submit-guard";
-import { userFacingSaveError } from "@/lib/net/offline-save";
 import { serverNull } from "@/lib/react/server-snapshot";
 import Link from "next/link";
-import { DayDial } from "@/components/home/DayDial";
-import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
+import { ChevronRight } from "lucide-react";
+import { DayBudgetBar } from "@/components/home/DayDial";
 import { ExtraSaldoRow } from "@/components/ui/ExtraSaldoRow";
+import { Icon } from "@/components/ui/Icon";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { MetricRow } from "@/components/ui/MetricRow";
-import { CompactPiles } from "@/components/ui/WealthScoreboard";
+import { PileLine } from "@/components/ui/PileLine";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import { BankMailHemCue } from "@/components/home/BankMailHemCue";
 import {
@@ -37,14 +37,10 @@ import {
   parseUiAmountToMinor,
   type CurrencyCode,
 } from "@/domain/money";
-import { nativeToThbMinor, newClientMutationId } from "@/domain/finance";
 import { SV } from "@/features/copy/labels-sv";
-import { createExpenseAction, setAvailableNowAction } from "@/features/finance/actions";
+import { setAvailableNowAction } from "@/features/finance/actions";
 import {
-  confirmOptimisticQuickAdd,
   lastQuickAddError,
-  paintOptimisticQuickAdd,
-  rollbackOptimisticQuickAdd,
   subscribeQuickAddError,
 } from "@/features/finance/quick-add-optimistic";
 import {
@@ -199,14 +195,6 @@ export function HomeDashboard({
     view.dayBudgetMinor > 0 ? todaySpendingMinor / view.dayBudgetMinor : 0;
   const daysWord = formatDaysUntilSv(view.spendDaysLeft);
 
-  const statusLine = overToday
-    ? SV.overDagsbudget
-    : view.dayBudgetMinor > 0 && todaySpendingMinor === 0
-      ? "Hela dagsbudgeten kvar"
-      : view.dayBudgetMinor > 0
-        ? `${formatMoneyHint(remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar`
-        : null;
-
   const showDayEnvelope =
     !periodEnded &&
     !dayEnvelopePending &&
@@ -227,14 +215,59 @@ export function HomeDashboard({
     hasPrimaryAccount: Boolean(view.primaryAccountId),
   });
 
-  const daysLeftChip = !isEmpty ? (
-    <p className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--numa-card)_64%,transparent)] px-2.5 py-1 text-xs font-semibold text-[var(--numa-muted)] ring-1 ring-[var(--numa-border)]">
-      {daysWord}
-    </p>
-  ) : null;
+  const heroIsDay = showDayEnvelope;
+  const heroIsSaldo = hasSaldo && !showDayEnvelope && !dayEnvelopePending;
+  const heroMinor = heroIsDay ? dialCenterMinor : view.calculatedBalanceMinor ?? 0;
+  const heroTone =
+    heroIsDay && (overToday || remainingTodayMinor < 0) ? "signed" : "neutral";
+  const keyLine = !heroIsDay
+    ? null
+    : overToday
+      ? SV.overDagsbudget
+      : todaySpendingMinor === 0 && view.dayBudgetMinor > 0
+        ? "Hela dagsbudgeten kvar"
+        : `${formatMoneyHint(todaySpendingMinor, currency)} idag`;
+  const budgetLines = heroIsDay
+    ? livingBudgetHintSv({
+        dayBudgetMinor: view.dayBudgetMinor,
+        poolMinor: view.livingPoolMinor ?? view.calculatedBalanceMinor ?? 0,
+        reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+        reservedSavingsMinor: inferReservedSavingsMinor({
+          reservedMinor: view.reservedUntilIncomeMinor ?? 0,
+          reservedSavingsMinor: view.reservedSavingsUntilIncomeMinor,
+          planSavingsMinor: view.planSavingsMinor,
+          savingsTotalMinor: view.savingsTotalMinor,
+        }),
+        reservedSavingsMonthKey: view.reservedSavingsMonthKey,
+        savingsMonthLabelSv:
+          labelSavingsMonthsSv(view.reservedSavingsMonthKey) ||
+          labelMonthNameSv(view.monthKey),
+        saldoMinor: view.calculatedBalanceMinor,
+        spentTodayMinor: todaySpendingMinor,
+        daysUntilHorizon: view.daysUntilIncome,
+        nextIncomeLabelSv: view.nextIncomeLabelSv,
+        currency,
+      })
+    : [];
+  const savingsThisMonthMinor = view.planMonthSavingsMinor ?? view.planSavingsMinor;
+  const savingsMonthName = labelMonthNameSv(view.monthKey);
+  const savingsThisMonth = Math.max(0, savingsThisMonthMinor);
+  const savingsPrior = Math.max(0, view.savingsTotalMinor - savingsThisMonth);
+  const parkHeading =
+    savingsThisMonth > 0 && savingsMonthName
+      ? SV.sparaI(savingsMonthName)
+      : savingsPrior > 0
+        ? SV.sparat
+        : SV.sparande;
+  const parkAmount = savingsThisMonth > 0 ? savingsThisMonth : view.savingsTotalMinor;
+  const showExtra =
+    view.extraCarriedInMinor > 0 ||
+    view.extraSaldoMinor > 0 ||
+    view.extraSaldoDrawnMinor > 0 ||
+    (!isBridge && view.cycleSpendingMinor > 0);
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 space-y-6">
+    <div className="numa-page numa-page-wide min-w-0 space-y-5">
       {quickAddError ? (
         <p className="text-sm text-[var(--numa-danger)]" role="alert">
           {quickAddError}
@@ -275,323 +308,251 @@ export function HomeDashboard({
       ) : null}
       {!view.needsAvailableInput ? (
         <>
-          <div className="grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6">
-            <section
-              className={[
-                "numa-panel-strong numa-day-stage animate-rise-delay-1 flex h-full min-w-0 cursor-default flex-col space-y-4 px-4 pt-4 pb-4 md:space-y-5 md:px-5 md:pt-5 md:pb-5",
-                overToday ? "is-over" : null,
-                // No dagsbudget yet: hug the copy instead of stretching to
-                // match the piles column and leaving a tall empty card.
-                showDayEnvelope ? null : "md:h-auto md:self-start",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-labelledby="spend-heading"
-            >
-              <p id="spend-heading" className="numa-section-title min-w-0 px-1">
-                {periodEnded ? PERIOD_ENDED_TITLE_SV : SV.kvarIdag}
-              </p>
+          <section
+            className={[
+              "numa-panel-strong numa-day-stage animate-rise-delay-1 flex min-w-0 cursor-default flex-col space-y-3 px-4 py-4",
+              overToday ? "is-over" : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-labelledby="spend-heading"
+          >
+            <p id="spend-heading" className="numa-section-title min-w-0 px-1">
+              {periodEnded
+                ? PERIOD_ENDED_TITLE_SV
+                : heroIsDay
+                  ? SV.kvarIdag
+                  : heroIsSaldo
+                    ? SV.saldo
+                    : SV.kvarIdag}
+            </p>
 
-              {dayEnvelopePending ? (
-                <div className="flex flex-col items-center gap-3 py-6" aria-busy="true">
-                  <div className="numa-skel h-40 w-40 rounded-full" />
-                  <div className="numa-skel h-3 w-24" />
-                </div>
-              ) : showDayEnvelope ? (
-                <>
-                  <div className="flex flex-col items-center gap-1.5">
-                    <DayDial usedRatio={dayUsedRatio} over={overToday}>
-                      {overToday ? (
-                        <p className="numa-chip numa-chip-ink mb-2">Över</p>
-                      ) : (
-                        <p className="mb-2 text-xs font-semibold tracking-[0.04em] text-[var(--numa-muted)] uppercase">
-                          Kvar
-                        </p>
-                      )}
-                      <div
-                        className={`money-hero ${
-                          overToday
-                            ? "text-[var(--numa-ink)]"
-                            : dayOk
-                              ? "text-[var(--numa-ink)]"
-                              : "text-[var(--numa-muted)]"
-                        }`}
-                      >
-                        <MoneyDisplay
-                          amountMinor={dialCenterMinor}
-                          currency={currency}
-                          size="display"
-                          compact
-                          tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
-                          wrap={false}
-                        />
-                      </div>
-                    </DayDial>
-                    {daysLeftChip}
-                  </div>
-
-                  {statusLine ? (
-                    <p
-                      className={`min-h-5 min-w-0 px-1 text-center text-[13px] leading-snug ${
-                        overToday
-                          ? "font-medium text-[var(--numa-muted)]"
-                          : "text-[var(--numa-muted)]"
-                      }`}
-                    >
-                      {statusLine}
-                    </p>
+            {dayEnvelopePending ? (
+              <div className="space-y-3 py-2" aria-busy="true">
+                <div className="numa-skel mx-auto h-10 w-40" />
+                <div className="numa-skel h-1.5 w-full rounded-full" />
+              </div>
+            ) : heroIsDay ? (
+              <>
+                <div className="space-y-3 px-1">
+                  {overToday ? (
+                    <p className="numa-chip numa-chip-ink">Över</p>
                   ) : null}
-
-                  {nextAction ? <LowKvarNextCta action={nextAction} /> : null}
-
-                  <div className="numa-day-metrics">
-                    <div className="is-budget">
-                      <p className="numa-metric-label">{SV.dagsbudget}</p>
-                      <div className="numa-metric-value text-[var(--numa-ink)]">
-                        <MoneyDisplay
-                          amountMinor={view.dayBudgetMinor}
-                          currency={currency}
-                          size="md"
-                          align="start"
-                          wrap={false}
-                        />
-                      </div>
-                      <div className="numa-living-math">
-                        {livingBudgetHintSv({
-                          dayBudgetMinor: view.dayBudgetMinor,
-                          poolMinor:
-                            view.livingPoolMinor ??
-                            view.calculatedBalanceMinor ??
-                            0,
-                          reservedMinor: view.reservedUntilIncomeMinor ?? 0,
-                          reservedSavingsMinor: inferReservedSavingsMinor({
-                            reservedMinor: view.reservedUntilIncomeMinor ?? 0,
-                            reservedSavingsMinor:
-                              view.reservedSavingsUntilIncomeMinor,
-                            planSavingsMinor: view.planSavingsMinor,
-                            savingsTotalMinor: view.savingsTotalMinor,
-                          }),
-                          reservedSavingsMonthKey: view.reservedSavingsMonthKey,
-                          savingsMonthLabelSv:
-                            labelSavingsMonthsSv(view.reservedSavingsMonthKey) ||
-                            labelMonthNameSv(view.monthKey),
-                          saldoMinor: view.calculatedBalanceMinor,
-                          spentTodayMinor: todaySpendingMinor,
-                          daysUntilHorizon: view.daysUntilIncome,
-                          nextIncomeLabelSv: view.nextIncomeLabelSv,
-                          currency,
-                        }).map((line, index) => (
-                          <p
-                            key={line}
-                            className={
-                              index === 0
-                                ? "is-lead"
-                                : index === 2
-                                  ? "is-breakdown"
-                                  : undefined
-                            }
-                          >
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="is-spent">
-                      <p className="numa-metric-label">{SV.spenderatIdag}</p>
-                      <div className="numa-metric-value text-[var(--numa-ink)]">
-                        <MoneyDisplay
-                          amountMinor={todaySpendingMinor}
-                          currency={currency}
-                          size="md"
-                          align="start"
-                          wrap={false}
-                        />
-                      </div>
-                      <p className="numa-metric-hint">{SV.spenderatIdagHint}</p>
-                    </div>
-                  </div>
-                  {view.todayPlannedPaidMinor > 0 ? (
-                    <p className="px-1 text-center text-[12px] text-[var(--numa-faint)]">
-                      {SV.betaldaRakningarIdag}{" "}
-                      <span className="font-semibold text-[var(--numa-ink)]">
-                        {formatMoney(money(view.todayPlannedPaidMinor, currency))}
-                      </span>
-                    </p>
-                  ) : null}
-                </>
-              ) : periodEnded ? (
-                <div className="space-y-3 py-6 text-center">
-                  <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                    {PERIOD_ENDED_BODY_SV}
-                  </p>
-                  <Link
-                    href="/plan?steg=inkomst"
-                    className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                  <div
+                    className={`money-hero ${
+                      overToday || dayOk
+                        ? "text-[var(--numa-ink)]"
+                        : "text-[var(--numa-muted)]"
+                    }`}
                   >
-                    {PERIOD_ENDED_CTA_SV}
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3 py-6 text-center">
-                  {isEmpty ? (
-                    <div className="space-y-3">
-                      <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                        {hasSaldo
-                          ? "Ingen dagsbudget än. Lägg in vad som kommer in i Plan."
-                          : "Ingen dagsbudget än. Sätt saldo så räknas kvar idag."}
-                      </p>
-                      <Link
-                        href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}
-                        className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
-                      >
-                        {hasSaldo ? "Lägg in vad som kommer in →" : "Sätt saldo →"}
-                      </Link>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className={`money-hero mx-auto ${
-                          dayOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-muted)]"
-                        }`}
-                      >
-                        <MoneyDisplay
-                          amountMinor={remainingTodayMinor}
-                          currency={currency}
-                          size="xl"
-                          compact
-                          tone={remainingTodayMinor < 0 ? "signed" : "neutral"}
-                          wrap={false}
-                        />
-                      </div>
-                      {daysLeftChip}
-                      <p className="mx-auto max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-                        {billsExceedSaldo
-                          ? DAGSBUDGET_BILLS_EXCEED_SALDO_SV
-                          : isBridge
-                            ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
-                            : "När planen har pengar kvar syns dagsbudgeten här."}
-                      </p>
-                      {billsExceedSaldo ? (
-                        <Link
-                          href="/plan"
-                          className="numa-press inline-flex min-h-11 items-center justify-center text-[13px] font-semibold text-[var(--numa-accent)]"
-                        >
-                          Betala senare i Plan →
-                        </Link>
+                    <MoneyDisplay
+                      amountMinor={heroMinor}
+                      currency={currency}
+                      size="display"
+                      compact
+                      tone={heroTone}
+                      wrap={false}
+                    />
+                  </div>
+                  <DayBudgetBar usedRatio={dayUsedRatio} over={overToday} />
+                  {keyLine ? (
+                    <p className="flex min-h-5 min-w-0 flex-wrap items-baseline gap-x-2 text-[13px] leading-snug text-[var(--numa-muted)]">
+                      <span>{keyLine}</span>
+                      {daysWord && keyLine !== "Hela dagsbudgeten kvar" ? (
+                        <span className="text-[var(--numa-faint)]">{daysWord}</span>
                       ) : null}
-                    </>
-                  )}
+                    </p>
+                  ) : null}
                 </div>
-              )}
-            </section>
-
-            <div className="flex h-full min-w-0 flex-col gap-5 md:gap-6">
-              <section className="animate-rise-delay-2 min-w-0 space-y-2">
-                <p className="numa-section-title px-1">{SV.saldoOchSparande}</p>
-                <p className="px-1 text-[12px] leading-snug text-[var(--numa-faint)]">
-                  {SV.saldoAllaKontonHint}
-                </p>
-                <CompactPiles
-                  saldoMinor={view.calculatedBalanceMinor}
-                  incomingMinor={view.incomingMinor}
-                  unpaidMinor={view.unpaidMinor}
-                  overMinor={view.overMinor}
-                  savingsMinor={view.savingsTotalMinor}
-                  savingsThisMonthMinor={
-                    view.planMonthSavingsMinor ?? view.planSavingsMinor
-                  }
-                  savingsMonthName={labelMonthNameSv(view.monthKey)}
-                  currency={currency}
-                />
-                {accountsView && accountsView.accounts.length > 0 ? (
-                  <Link
-                    href="/konton"
-                    className="numa-press numa-panel-list flex items-center justify-between gap-3 px-4 py-3 transition hover:border-[var(--numa-border-strong)]"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-semibold tracking-tight">
-                        {accountsView.accounts.length === 1
-                          ? accountsView.accounts[0]!.name
-                          : `${accountsView.accounts.length} konton`}
-                      </p>
-                      <p className="mt-0.5 truncate text-[12px] text-[var(--numa-faint)]">
-                        {accountsView.accounts.length === 1
-                          ? "Se och uppdatera →"
-                          : accountsView.accounts
-                              .map((a) => a.name)
-                              .slice(0, 3)
-                              .join(" · ") +
-                            (accountsView.accounts.length > 3 ? "…" : "")}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-[13px] font-semibold text-[var(--numa-accent)]">
-                      Konton →
+                {nextAction ? <LowKvarNextCta action={nextAction} /> : null}
+                {view.todayPlannedPaidMinor > 0 ? (
+                  <p className="px-1 text-[12px] text-[var(--numa-faint)]">
+                    {SV.betaldaRakningarIdag}{" "}
+                    <span className="font-semibold text-[var(--numa-ink)]">
+                      {formatMoney(money(view.todayPlannedPaidMinor, currency))}
                     </span>
-                  </Link>
-                ) : (
-                  <Link
-                    href="/konton"
-                    className="numa-press block px-1 text-[13px] font-semibold text-[var(--numa-accent)]"
-                  >
-                    Lägg till konto →
-                  </Link>
-                )}
-                {view.extraCarriedInMinor > 0 ||
-                view.extraSaldoMinor > 0 ||
-                view.extraSaldoDrawnMinor > 0 ||
-                (!isBridge && view.cycleSpendingMinor > 0) ? (
-                  <div className="numa-panel-list animate-scale-in px-4 py-1">
-                    {view.extraCarriedInMinor > 0 ? (
-                      <MetricRow
-                        label={SV.extraMed}
-                        amountMinor={view.extraCarriedInMinor}
-                        currency={currency}
-                        tone="positive"
-                        hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
-                      />
-                    ) : (
-                      <ExtraSaldoRow
-                        extraSaldoMinor={view.extraSaldoMinor}
-                        drawnMinor={view.extraSaldoDrawnMinor}
-                        hint={view.extraSaldoHint}
-                        currency={currency}
-                      />
-                    )}
-                    {!isBridge && view.cycleSpendingMinor > 0 ? (
-                      <MetricRow
-                        label={SV.spenderatIPerioden}
-                        amountMinor={view.cycleSpendingMinor}
-                        currency={currency}
-                      />
-                    ) : null}
+                  </p>
+                ) : null}
+                <details className="px-1">
+                  <summary className="flex min-h-11 cursor-pointer items-center text-[13px] font-semibold text-[var(--numa-muted)]">
+                    Så räknas det
+                  </summary>
+                  <div className="numa-living-math pb-1">
+                    {budgetLines.map((line, index) => (
+                      <p
+                        key={line}
+                        className={
+                          index === 0 ? "is-lead" : index === 2 ? "is-breakdown" : undefined
+                        }
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                </details>
+              </>
+            ) : (
+              <div className="space-y-3 px-1">
+                {heroIsSaldo ? (
+                  <div className="money-hero text-[var(--numa-ink)]">
+                    <MoneyDisplay
+                      amountMinor={heroMinor}
+                      currency={currency}
+                      size="display"
+                      compact
+                      tone="neutral"
+                      wrap={false}
+                    />
                   </div>
                 ) : null}
-              </section>
+                {periodEnded ? (
+                  <>
+                    <p className="max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                      {PERIOD_ENDED_BODY_SV}
+                    </p>
+                    <Link
+                      href="/plan?steg=inkomst"
+                      className="numa-press inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                    >
+                      {PERIOD_ENDED_CTA_SV}
+                    </Link>
+                  </>
+                ) : isEmpty ? (
+                  <>
+                    <p className="max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                      {hasSaldo
+                        ? "Ingen dagsbudget än. Lägg in vad som kommer in i Plan."
+                        : "Ingen dagsbudget än. Sätt saldo så räknas kvar idag."}
+                    </p>
+                    <Link
+                      href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}
+                      className="numa-press inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                    >
+                      {hasSaldo ? "Lägg in vad som kommer in" : "Sätt saldo"}
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="max-w-[32ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+                      {billsExceedSaldo
+                        ? DAGSBUDGET_BILLS_EXCEED_SALDO_SV
+                        : isBridge
+                          ? "Ange ditt saldo eller fota bank-SMS — då räknas dagsbudgeten."
+                          : "När planen har pengar kvar syns dagsbudgeten här."}
+                    </p>
+                    {billsExceedSaldo ? (
+                      <Link
+                        href="/plan"
+                        className="numa-press inline-flex min-h-11 items-center text-[13px] font-semibold text-[var(--numa-accent)]"
+                      >
+                        Betala senare i Plan
+                      </Link>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            )}
+          </section>
 
-              {isBridge ? (
-                <div className="animate-rise-delay-2 px-0.5 text-sm">
-                  <UpdateBalanceLink
-                    accountId={view.primaryAccountId}
-                    currency={currency}
-                  />
+          <section
+            className="animate-rise-delay-2 min-w-0"
+            aria-label={SV.saldoOchSparande}
+          >
+            <div className="numa-panel-list px-4 py-1">
+              {heroIsDay && hasSaldo ? (
+                <PileLine
+                  label={SV.saldo}
+                  amountMinor={view.calculatedBalanceMinor}
+                  currency={currency}
+                />
+              ) : null}
+              <PileLine
+                label={SV.kommerIn}
+                amountMinor={view.incomingMinor}
+                currency={currency}
+                tone="in"
+              />
+              <PileLine
+                label={SV.kvarAttBetala}
+                amountMinor={view.unpaidMinor}
+                currency={currency}
+                tone="out"
+              />
+              {view.overMinor !== view.calculatedBalanceMinor ? (
+                <PileLine
+                  label={SV.over}
+                  amountMinor={view.overMinor}
+                  currency={currency}
+                  tone={view.overMinor >= 0 ? "over" : "short"}
+                />
+              ) : null}
+              <PileLine label={parkHeading} amountMinor={parkAmount} currency={currency} />
+              {savingsThisMonth > 0 && savingsPrior > 0 ? (
+                <p className="numa-pile-hint pb-1">
+                  {SV.sparandeTotalt} {formatMoneyCompact(money(savingsPrior, currency))}
+                </p>
+              ) : null}
+              <p className="numa-pile-hint pb-1">{SV.saldoAllaKontonHint}</p>
+              {showExtra ? (
+                <div className="border-t border-[var(--numa-border)]">
+                  {view.extraCarriedInMinor > 0 ? (
+                    <MetricRow
+                      label={SV.extraMed}
+                      amountMinor={view.extraCarriedInMinor}
+                      currency={currency}
+                      tone="positive"
+                      hint={view.extraSaldoHint ?? "Följde med från tidigare månader"}
+                    />
+                  ) : (
+                    <ExtraSaldoRow
+                      extraSaldoMinor={view.extraSaldoMinor}
+                      drawnMinor={view.extraSaldoDrawnMinor}
+                      hint={view.extraSaldoHint}
+                      currency={currency}
+                    />
+                  )}
+                  {!isBridge && view.cycleSpendingMinor > 0 ? (
+                    <MetricRow
+                      label={SV.spenderatIPerioden}
+                      amountMinor={view.cycleSpendingMinor}
+                      currency={currency}
+                    />
+                  ) : null}
                 </div>
               ) : null}
+              {accountsView && accountsView.accounts.length > 0 ? (
+                <Link
+                  href="/konton"
+                  className="numa-press flex min-h-11 items-center justify-between gap-3 border-t border-[var(--numa-border)] py-2"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold tracking-tight">
+                      {accountsView.accounts.length === 1
+                        ? accountsView.accounts[0]!.name
+                        : `${accountsView.accounts.length} konton`}
+                    </span>
+                  </span>
+                  <Icon icon={ChevronRight} className="shrink-0 text-[var(--numa-faint)]" />
+                </Link>
+              ) : (
+                <Link
+                  href="/konton"
+                  className="numa-press flex min-h-11 items-center justify-between gap-3 border-t border-[var(--numa-border)] py-2 text-[15px] font-semibold"
+                >
+                  Lägg till konto
+                  <Icon icon={ChevronRight} className="shrink-0 text-[var(--numa-faint)]" />
+                </Link>
+              )}
             </div>
-          </div>
-
-          <div className="md:hidden">
-            <HomescreenInstallHint variant="bar" />
-          </div>
-
-          <QuickExpense
-            accountId={view.primaryAccountId}
-            accounts={accountsView?.accounts ?? accounts?.accounts ?? []}
-            currency={currency}
-            disabled={!view.primaryAccountId}
-            remainingTodayMinor={remainingTodayMinor}
-            overToday={overToday}
-            hideKvar={periodEnded || dayEnvelopePending}
-          />
+            {isBridge ? (
+              <div className="px-1 text-sm">
+                <UpdateBalanceLink
+                  accountId={view.primaryAccountId}
+                  currency={currency}
+                />
+              </div>
+            ) : null}
+          </section>
         </>
       ) : null}
       {!isEmpty && checklist?.visible ? <GettingStartedCard view={checklist} /> : null}
@@ -809,210 +770,5 @@ function UpdateBalanceLink({
         </span>
       ) : null}
     </span>
-  );
-}
-
-function QuickExpense({
-  accountId,
-  accounts,
-  currency,
-  disabled,
-  remainingTodayMinor,
-  overToday,
-  hideKvar,
-}: {
-  accountId: string | null;
-  accounts: Array<{
-    id: string;
-    name: string;
-    kindLabelSv?: string;
-    kind?: string;
-    currency?: CurrencyCode;
-    fxRate?: number | null;
-  }>;
-  currency: CurrencyCode;
-  disabled: boolean;
-  remainingTodayMinor: number;
-  overToday: boolean;
-  hideKvar: boolean;
-}) {
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [chosenAccountId, setChosenAccountId] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  // Guard only — never flip a busy "saving…" flag; dial updates instantly.
-  const guard = useSubmitGuard();
-  const targetAccountId = chosenAccountId || accountId;
-  const selectedAccount =
-    accounts.find((account) => account.id === targetAccountId) ?? null;
-  const nativeCurrency = selectedAccount?.currency ?? currency;
-  const fxRate = selectedAccount?.fxRate ?? (nativeCurrency === "THB" ? 1 : null);
-
-  return (
-    <section
-      id="lagg-utgift"
-      className="numa-panel animate-rise-delay-3 scroll-mt-4 scroll-mb-[var(--numa-shell-pad-bottom)] space-y-3.5 p-4"
-    >
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
-        <div className="min-w-0">
-          <h2 className="numa-section-title">{SV.laggtillUtgift}</h2>
-          <p className="mt-1 text-sm text-[var(--numa-muted)]">{SV.laggtillUtgiftHint}</p>
-        </div>
-        {!disabled && !hideKvar ? (
-          <p className="min-w-0 text-xs text-[var(--numa-faint)] sm:shrink-0 sm:text-right">
-            {overToday || remainingTodayMinor < 0 ? SV.overDagsbudget : SV.kvarIdag}
-            <br />
-            <span
-              className={`font-semibold ${
-                remainingTodayMinor < 0
-                  ? "text-[var(--numa-alarm)]"
-                  : "text-[var(--numa-ink)]"
-              }`}
-            >
-              {formatMoney(money(remainingTodayMinor, currency))}
-            </span>
-          </p>
-        ) : null}
-      </div>
-
-      {disabled ? (
-        <p className="text-sm text-[var(--numa-muted)]">
-          Behöver ett konto —{" "}
-          <Link href="/fota" prefetch className="font-semibold text-[var(--numa-accent)]">
-            fota bank-SMS
-          </Link>
-          .
-        </p>
-      ) : (
-        <>
-          {accounts.length > 1 ? (
-            <label className="block">
-              <span className="mb-1.5 block text-xs font-medium text-[var(--numa-muted)]">
-                Konto
-              </span>
-              <select
-                value={targetAccountId ?? ""}
-                onChange={(e) => setChosenAccountId(e.target.value)}
-                aria-label="Konto för utgiften"
-                className="min-h-11 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3 text-base outline-none focus:border-[var(--numa-accent)]"
-              >
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                    {account.currency ? ` · ${account.currency}` : ""}
-                    {account.kindLabelSv ? ` · ${account.kindLabelSv}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          <div className="grid gap-2 sm:grid-cols-[1fr_7.5rem_auto]">
-            <input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Vad? t.ex. Lunch"
-              aria-label="Anteckning"
-              className="min-h-12 rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)]"
-            />
-            <label className="relative block">
-              <input
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0"
-                aria-label={`Belopp ${nativeCurrency}`}
-                className="money min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 pr-12 text-base font-semibold outline-none focus:border-[var(--numa-accent)]"
-              />
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-semibold text-[var(--numa-muted)]">
-                {nativeCurrency}
-              </span>
-            </label>
-            <button
-              type="button"
-              disabled={!amount.trim()}
-              className="numa-btn numa-btn-accent min-h-12 px-4"
-              onClick={() => {
-                if (guard.isRunning() || !targetAccountId) return;
-                let amountMinor: number;
-                try {
-                  amountMinor = parseUiAmountToMinor(amount);
-                } catch {
-                  setError("Ogiltigt belopp");
-                  return;
-                }
-                if (amountMinor <= 0) {
-                  setError("Beloppet måste vara större än 0");
-                  return;
-                }
-                const thbMinor = nativeToThbMinor(amountMinor, nativeCurrency, fxRate);
-                if (thbMinor == null) {
-                  setError("Konto saknar växelkurs");
-                  return;
-                }
-                if (!guard.tryBegin()) return;
-                const description = note.trim() || "Utgift";
-                const amountInput = amount;
-                const mutationId = newClientMutationId();
-                const optimistic = paintOptimisticQuickAdd({
-                  kind: "expense",
-                  mutationId,
-                  nativeAmountMinor: amountMinor,
-                  thbMinor,
-                  description,
-                  nativeCurrency,
-                  accountId: targetAccountId,
-                  fxRate,
-                });
-                setError(null);
-                setNotice(null);
-                setAmount("");
-                setNote("");
-                void (async () => {
-                  try {
-                    const result = await createExpenseAction({
-                      accountId: targetAccountId,
-                      amount: amountInput,
-                      description,
-                      clientMutationId: mutationId,
-                    });
-                    if (!result.ok) {
-                      const message = userFacingSaveError(
-                        result.error,
-                        "Kunde inte spara utgift",
-                      );
-                      rollbackOptimisticQuickAdd(optimistic, message);
-                      return;
-                    }
-                    confirmOptimisticQuickAdd(mutationId, result);
-                    if (result.refreshPending) {
-                      setNotice(
-                        result.refreshPendingMessage ?? "Sparat. Uppdaterar siffrorna…",
-                      );
-                    }
-                  } catch (error) {
-                    const message = userFacingSaveError(
-                      error,
-                      "Kunde inte spara utgift",
-                    );
-                    rollbackOptimisticQuickAdd(optimistic, message);
-                  } finally {
-                    guard.end();
-                  }
-                })();
-              }}
-            >
-              Spara
-            </button>
-          </div>
-          {notice ? <p className="text-sm text-[var(--numa-muted)]">{notice}</p> : null}
-          {error ? (
-            <p className="text-sm text-[var(--numa-danger)]" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </>
-      )}
-    </section>
   );
 }
