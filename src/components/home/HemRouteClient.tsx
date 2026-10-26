@@ -16,6 +16,7 @@ import {
   isHomeDirty,
   lastGettingStarted,
   lastHomeSnapshot,
+  lastKnownHomeForPaint,
   lastSessionHomeSnapshot,
   rememberHomeSnapshot,
   subscribeGettingStarted,
@@ -42,7 +43,7 @@ export function HemRouteClient({
 } = {}) {
   const stored = useSyncExternalStore(
     subscribeHomeSnapshot,
-    () => lastSessionHomeSnapshot() ?? cookieShell,
+    () => lastSessionHomeSnapshot() ?? lastKnownHomeForPaint() ?? cookieShell,
     () => cookieShell,
   );
   const storedGettingStarted = useSyncExternalStore(

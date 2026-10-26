@@ -35,6 +35,7 @@ import type { PlanSnapshot } from "@/features/finance/load-plan";
 import type { GettingStartedView } from "@/features/getting-started/progress";
 import { stampPlanItems } from "@/features/plan/optimistic";
 import {
+  cachedHorizonDaysRemaining,
   homeCacheDayEnvelope,
   homeCacheIsOtherCivilDay,
   msUntilNextZonedMidnight,
@@ -361,12 +362,57 @@ export function hydrateLastKnownFromPersist() {
     if (!mer) mer = merSnapshotFromHome(cookieHome);
   }
 } finally {
+    // Sanitize before any subscriber. localStorage is not the cookie:
+    // yesterday's Kvar must not be the first client frame.
+    alignHydratedHomeToToday();
     // Notify after the module vars are filled, still before paint when this
     // runs from AppShell's useLayoutEffect. No persist — the bytes are
     // already in localStorage / the cookie.
     publishHydratedSnapshots();
     persistPaused = false;
   }
+}
+
+/**
+ * lastKnown from another Bangkok day: project today's mode from Plan
+ * when we have it, otherwise skeleton or «Perioden är slut».
+ * Never publish yesterday's day budget, and never a closed envelope
+ * that Plan still considers open.
+ */
+function alignHydratedHomeToToday() {
+  if (!home || home.livingMode === "empty") return;
+  const now = new Date();
+  const tz = home.timeZone || "Asia/Bangkok";
+  const today = zonedDayKey(now, tz);
+  const sameDay =
+    Boolean(home.verifiedAt) && zonedDayKey(home.verifiedAt, tz) === today;
+  const horizonLeft = cachedHorizonDaysRemaining(home, now);
+  const passed =
+    home.dayEnvelopeOpen === false ||
+    (horizonLeft != null && horizonLeft < 0);
+  if (sameDay && !passed) return;
+
+  if (plan) {
+    home = {
+      ...home,
+      todaySpendingMinor: sameDay ? home.todaySpendingMinor : 0,
+      todayPlannedPaidMinor: sameDay ? home.todayPlannedPaidMinor : 0,
+      dayEnvelopePending: false,
+    };
+    const before = home;
+    syncHomeLivingFromPlan(plan);
+    if (home && home !== before) {
+      home = {
+        ...home,
+        envelopeDayKey: today,
+        dayEnvelopePending: false,
+      };
+      return;
+    }
+  }
+
+  const next = homeCacheDayEnvelope(home, now);
+  if (next !== home) home = next;
 }
 
 export function subscribeHomeSnapshot(listener: () => void) {
@@ -764,6 +810,17 @@ export function bindHomeCivilDayRoll(): () => void {
 /** Live Hem paint only — hydrate/cookie alone must not flash as current money. */
 export function lastSessionHomeSnapshot(): HomeSnapshot | null {
   return homeSessionConfirmed ? home : null;
+}
+
+/**
+ * Unconfirmed lastKnown after hydrate. Already aligned to today, so Hem
+ * can show saldo + skeleton or «Perioden är slut» before the fetch
+ * without painting yesterday's Kvar. Null once the session is confirmed
+ * — that path is lastSessionHomeSnapshot.
+ */
+export function lastKnownHomeForPaint(): HomeSnapshot | null {
+  if (!home || homeSessionConfirmed) return null;
+  return home;
 }
 
 export function applyOptimisticHomeSpend(amountMinor: number): HomeSnapshot | null {

@@ -1,4 +1,9 @@
-import { calendarDaysBetween, formatCountSv, isSameZonedDay, zonedDayAnchorMs } from "./datetime";
+import {
+  calendarDaysBetween,
+  formatCountSv,
+  zonedDayAnchorMs,
+  zonedDayKey,
+} from "./datetime";
 import { reservePayInstant } from "./planned-pay";
 import type { PayCycleProjection } from "./pay-cycle";
 import {
@@ -446,25 +451,31 @@ export function livingBudgetHintSv(input: {
   return lines;
 }
 
-function bridgeHorizonIso(
+/**
+ * Next real paycheck for the day envelope.
+ * `endAt` may be an inferred +1 month after the last dated income.
+ * That date is a cycle label, not a paycheck — using it kept
+ * «Kvar idag» open the morning after payday (25 okt → 26 okt).
+ * A paycheck whose civil day is today still counts, even when its
+ * instant is not strictly after noon (`nextPaycheckAt` misses that).
+ */
+function envelopeHorizonIso(
   cycle: PayCycleProjection,
   now: Date,
   timeZone: string,
 ): string | null {
-  if (!cycle.startAt) return cycle.nextPaycheckAt ?? cycle.endAt;
-  const startDay = zonedDayAnchorMs(cycle.startAt, timeZone);
-  const todayDay = zonedDayAnchorMs(now, timeZone);
-  if (
-    todayDay < startDay ||
-    isSameZonedDay(now, cycle.startAt, timeZone)
-  ) {
-    return cycle.startAt;
-  }
-  return cycle.nextPaycheckAt ?? cycle.endAt;
-}
-
-function paycheckHorizonIso(cycle: PayCycleProjection): string | null {
-  return cycle.nextPaycheckAt ?? cycle.endAt;
+  const today = zonedDayKey(now, timeZone);
+  const dated: Array<string | null | undefined> = [
+    cycle.nextPaycheckAt,
+    cycle.startAt,
+    ...cycle.incomes.map((row) => row.nextDueAt),
+  ];
+  if (cycle.endAt && !cycle.endInferred) dated.push(cycle.endAt);
+  const upcoming = dated
+    .filter((iso): iso is string => Boolean(iso))
+    .filter((iso) => zonedDayKey(iso, timeZone) >= today)
+    .sort((a, b) => Date.parse(a) - Date.parse(b) || a.localeCompare(b));
+  return upcoming[0] ?? null;
 }
 
 function paycheckHorizonLabelSv(cycle: PayCycleProjection, horizon: string | null): string | null {
@@ -651,7 +662,7 @@ export function projectLivingBudget(input: {
 
   // Bridge: before first paycheck, after cycle end, or payday without bank proof.
   if (calendarWaiting || cycleClosed || waitingForBankEvidence) {
-    const horizon = bridgeHorizonIso(cycle, now, timeZone);
+    const horizon = envelopeHorizonIso(cycle, now, timeZone);
     return projectBridge({
       cycle,
       now,
@@ -664,7 +675,7 @@ export function projectLivingBudget(input: {
   }
 
   const spentBeforeToday = Math.max(0, cycleSpendingMinor - spentToday);
-  const horizon = paycheckHorizonIso(cycle);
+  const horizon = envelopeHorizonIso(cycle, now, timeZone);
   const reserved = remainingReservedBreakdownUntilHorizon(
     cycle,
     horizon,

@@ -1411,6 +1411,31 @@ describe("passed income horizon", () => {
     expect(closed.dayBudgetMinor).not.toBe(saldo);
   });
 
+  it("closes the day after the last dated paycheck even when the cycle end is inferred a month ahead", () => {
+    const now = new Date("2026-10-26T03:00:00.000Z");
+    const cycle = projectPayCycle(
+      [
+        income("Lön sep", "2026-09-25T12:00:00.000Z"),
+        income("Lön okt", "2026-10-25T12:00:00.000Z"),
+      ],
+      now,
+      tz,
+    );
+    expect(cycle.endAt).toBe("2026-11-25T12:00:00.000Z");
+    expect(cycle.endInferred).toBe(true);
+    const living = projectLivingBudget({
+      cycle,
+      now,
+      timeZone: tz,
+      bankBalanceMinor: saldo,
+      fundingConfirmed: false,
+    });
+    expect(living.dayEnvelopeOpen).toBe(false);
+    expect(living.dayBudgetMinor).toBe(0);
+    expect(living.remainingTodayMinor).toBe(0);
+    expect(living.availableMinor).toBe(saldo);
+  });
+
   it("keeps the last day's budget when the horizon is today", () => {
     const now = new Date("2026-10-26T04:00:00.000Z");
     const cycle = projectPayCycle(
