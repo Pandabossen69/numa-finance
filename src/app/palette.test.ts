@@ -242,8 +242,8 @@ describe("NUMA vision palette", () => {
     expect(css).toContain("white-space: nowrap");
     expect(css).toContain("min-width: min-content");
     expect(css).toContain("lining-nums");
-    expect(css).not.toContain('"tnum"');
-    expect(css).not.toContain('"lnum"');
+    expect(css).toContain('"tnum" 1');
+    expect(css).toContain('"lnum" 1');
     expect(css).toContain(".numa-pile-line {");
     expect(css).toContain(".numa-pile-line .money.numa-money-amt");
     expect(css).toContain("font-size: 1rem");
@@ -270,12 +270,21 @@ describe("NUMA vision palette", () => {
     );
     for (const block of [groups, run]) {
       expect(block).toContain("font-variant-numeric: tabular-nums lining-nums");
-      expect(block).toContain("font-feature-settings: normal");
+      expect(block).toContain('"tnum" 1');
+      expect(block).toContain('"lnum" 1');
+      expect(block).toContain("font-optical-sizing: none");
+      expect(block).not.toContain("font-feature-settings: normal");
     }
     expect(money).toContain("font-variant-numeric: tabular-nums lining-nums");
-    expect(money).not.toContain("font-feature-settings");
-    expect(amt).not.toContain('"tnum"');
-    expect(amt).not.toContain("font-feature-settings:");
+    expect(money).toContain("font-optical-sizing: none");
+    expect(amt).toContain("font-optical-sizing: none");
+    const hero = css.slice(
+      css.indexOf(".numa-hero-money .numa-money-groups,"),
+      css.indexOf(".numa-hero-money {"),
+    );
+    expect(hero).toContain(".numa-money-line-amt .numa-money-run");
+    expect(hero).toContain('"tnum" 1');
+    expect(hero).toContain("font-optical-sizing: none");
     const icon = css.slice(
       css.indexOf(".numa-brand-lockup-icon {"),
       css.indexOf(".numa-brand-lockup.is-lg .numa-brand-lockup-icon"),

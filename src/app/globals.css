@@ -169,7 +169,7 @@ body {
 .money {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
-  font-optical-sizing: auto;
+  font-optical-sizing: none;
   font-synthesis: none;
   letter-spacing: -0.025em;
   word-spacing: 0;
@@ -225,7 +225,7 @@ body {
   overflow: visible;
   white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums;
-  font-optical-sizing: auto;
+  font-optical-sizing: none;
   font-synthesis: none;
   letter-spacing: -0.045em;
   word-spacing: 0;
@@ -242,8 +242,11 @@ body {
   row-gap: 0;
   min-width: min-content;
   font-variant-numeric: tabular-nums lining-nums;
-  /* normal so an inherited low-level feature set cannot cancel tabular figures */
-  font-feature-settings: normal;
+  /* Low-level features: variable Inter ignores font-variant-numeric once opsz is live. */
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-money-run {
@@ -251,7 +254,10 @@ body {
   display: block;
   white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: normal;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
   letter-spacing: -0.045em;
   word-spacing: 0;
 }
@@ -759,7 +765,10 @@ body {
   line-height: 1;
   letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: normal;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .money-hero .numa-money-unit,
@@ -1250,7 +1259,10 @@ body {
   letter-spacing: -0.025em;
   line-height: 1.25;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: normal;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-wealth-value .numa-money-unit {
@@ -1385,7 +1397,10 @@ body {
   font-weight: 600;
   letter-spacing: -0.018em;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: normal;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-pile-line .numa-money-unit {
@@ -1404,7 +1419,10 @@ body {
   font-weight: 600;
   letter-spacing: -0.018em;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings: normal;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-piles-board .is-park .numa-money-unit,
@@ -2331,6 +2349,17 @@ button.numa-chip:disabled {
   flex-shrink: 0;
   white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums;
+}
+
+.numa-hero-money .numa-money-groups,
+.numa-hero-money .numa-money-run,
+.numa-money-line-amt .numa-money-groups,
+.numa-money-line-amt .numa-money-run {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-money-stack .numa-row {

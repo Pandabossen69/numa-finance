@@ -16,6 +16,8 @@ import "./globals.css";
 const sans = Inter({
   variable: "--font-numa-sans",
   subsets: ["latin"],
+  // opsz stays in the file so tabular digits are not dropped with the weight-only subset.
+  axes: ["opsz"],
   weight: "variable",
   display: "swap",
   preload: true,
@@ -24,6 +26,7 @@ const sans = Inter({
 const mono = Inter({
   variable: "--font-numa-mono",
   subsets: ["latin"],
+  axes: ["opsz"],
   weight: "variable",
   display: "swap",
   preload: false,

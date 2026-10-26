@@ -31,6 +31,8 @@ describe("root font loading", () => {
     expect(src).toContain("next/font/google");
     expect(src).toContain("Inter(");
     expect(src).toContain('weight: "variable"');
+    expect(src).toContain('subsets: ["latin"]');
+    expect(src).toContain('axes: ["opsz"]');
     expect(src).toMatch(/variable: "--font-numa-mono"[\s\S]*weight: "variable"/);
     expect(src).toContain("preload: true");
     expect(src).toContain("preload: false");
