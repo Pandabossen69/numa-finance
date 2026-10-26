@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const src = readFileSync(new URL("./BottomNav.tsx", import.meta.url), "utf8");
+const icon = readFileSync(new URL("../ui/Icon.tsx", import.meta.url), "utf8");
 
 describe("BottomNav a11y", () => {
   it("marks the active tab as the current page and keeps icon-only labels in aria", () => {
@@ -18,7 +19,11 @@ describe("BottomNav a11y", () => {
     expect(src).toContain("numa-fab");
     expect(src).toContain("min-h-[var(--numa-touch)]");
     expect(src).toContain("grid-cols-5");
-    expect(src).toContain("strokeWidth");
+    expect(src).toContain("<Icon ");
+    expect(icon).toContain("strokeWidth={1.75}");
+    expect(icon).toContain("size = 20");
+    expect(icon).toContain('color="currentColor"');
+    expect(icon).toContain("aria-hidden");
     expect(src).not.toContain("Lägg till</span>");
     expect(src).not.toMatch(/>\s*\{label\}\s*</);
     expect(src).not.toContain("-mt-7");

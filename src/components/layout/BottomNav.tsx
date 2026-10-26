@@ -1,10 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { Calendar, ChartColumn, Ellipsis, Home, Plus } from "lucide-react";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { PRIMARY_NAV, isNavActive, type NavIconName } from "@/components/layout/nav";
+import { Icon } from "@/components/ui/Icon";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
 import { isSpaTabHref } from "@/lib/nav/spa-tabs";
+
+const NAV_ICONS = {
+  home: Home,
+  plan: Calendar,
+  analys: ChartColumn,
+  mer: Ellipsis,
+} as const;
 
 /**
  * Icon-only edge dock: stilren B/C-mix with a symmetrical orange + in the
@@ -72,7 +81,7 @@ export function BottomNav() {
             className="numa-press numa-fab relative flex items-center justify-center rounded-full"
             aria-label="Lägg till"
           >
-            <PlusIcon />
+            <Icon icon={Plus} />
           </Link>
         </div>
         {right.map((tab) => (
@@ -131,78 +140,10 @@ function NavItem({
 }
 
 function NavIcon({ name, active }: { name: NavIconName; active: boolean }) {
-  const stroke = active ? "var(--numa-ink)" : "currentColor";
-  const common = {
-    width: 23,
-    height: 23,
-    viewBox: "0 0 24 24",
-    "aria-hidden": true as const,
-  };
-  const strokeWidth = "1.75";
-
-  switch (name) {
-    case "home":
-      return (
-        <svg {...common} fill="none">
-          <path
-            d="M4.5 10.5 12 4.5l7.5 6V19a1.5 1.5 0 0 1-1.5 1.5h-3.25v-5.25h-5.5V20.5H6A1.5 1.5 0 0 1 4.5 19v-8.5Z"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinejoin="round"
-          />
-        </svg>
-      );
-    case "plan":
-      return (
-        <svg {...common} fill="none">
-          <rect
-            x="4.5"
-            y="6"
-            width="15"
-            height="14"
-            rx="2.5"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-          />
-          <path
-            d="M8 4.5v3M16 4.5v3M4.5 10.5h15"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-    case "analys":
-      return (
-        <svg {...common} fill="none">
-          <path
-            d="M5 18.5V11M10.5 18.5V7M16 18.5v-5.5M20.5 18.5V5.5"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-          />
-        </svg>
-      );
-    case "mer":
-      return (
-        <svg {...common} fill="none">
-          <circle cx="6.5" cy="12" r="1.55" fill={stroke} />
-          <circle cx="12" cy="12" r="1.55" fill={stroke} />
-          <circle cx="17.5" cy="12" r="1.55" fill={stroke} />
-        </svg>
-      );
-  }
-}
-
-function PlusIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 5.75v12.5M5.75 12h12.5"
-        stroke="currentColor"
-        strokeWidth="2.35"
-        strokeLinecap="round"
-      />
-    </svg>
+    <Icon
+      icon={NAV_ICONS[name]}
+      className={active ? "text-[var(--numa-ink)]" : undefined}
+    />
   );
 }

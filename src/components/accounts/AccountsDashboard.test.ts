@@ -26,29 +26,31 @@ describe("AccountsDashboard", () => {
     expect(src).not.toMatch(/>\s*Totalt\s*</);
   });
 
-  it("paints the total, the THB equivalent and the account balance with signed tone", () => {
+  it("paints the total, the THB equivalent and the account balance in neutral ink", () => {
     const displays = [...src.matchAll(/<MoneyDisplay[\s\S]*?\/>/g)].map((match) => match[0]);
     expect(displays).toHaveLength(3);
     expect(displays[0]).toContain("amountMinor={view.totalThbMinor}");
     expect(displays[1]).toContain("amountMinor={account.thbMinor}");
     expect(displays[2]).toContain("amountMinor={account.calculatedMinor}");
     for (const block of displays) {
-      expect(block).toContain('tone="signed"');
+      expect(block).toContain('tone="neutral"');
     }
   });
 
-  it("keeps the empty-state Swedish copy and Fota path", () => {
+  it("keeps a row into the detail screen and folds archived accounts", () => {
     expect(src).toContain("Inga konton ännu. Snabbast är att fota bank-SMS via +.");
     expect(src).toContain("/fota?mode=sms");
     expect(src).toContain("Ange manuellt");
-    expect(src).toContain("Uppdatera saldo");
-    expect(src).toContain("numa-btn numa-btn-soft is-accent");
-    expect(src).toContain("Hantera");
-    expect(src).toContain("aria-label={`Hantera ${account.name}`}");
+    expect(src).toContain("Förvalt");
+    expect(src).not.toContain("numa-chip-mint");
+    expect(src).not.toContain("numa-btn numa-btn-soft is-accent");
+    expect(src).not.toContain("Uppdatera saldo");
     expect(src).toContain("accountEditError");
-    expect(src).toContain("Arkiverade konton");
-    expect(src).toContain("Återställ");
-    expect(src).toContain("openVerifyId");
+    expect(src).toContain("Arkiverade (");
+    expect(src).toContain("<details");
+    expect(src).toContain("Återställ eller hantera");
+    expect(src).not.toContain("openVerifyId");
+    expect(src).toContain("ChevronRight");
   });
 
   it("loads every account from one ledger plus checkpoints", () => {

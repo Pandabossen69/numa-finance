@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { Icon } from "@/components/ui/Icon";
 import { useNavIntent } from "@/components/layout/NavIntent";
 import { isHoldRoot } from "@/components/layout/nav";
 import { usePrefetchOnIntent } from "@/lib/nav/prefetch-intent";
@@ -30,7 +32,7 @@ export function MerBackLink({
       }}
       className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
     >
-      <ChevronLeft className="opacity-70" />
+      <Icon icon={ChevronLeft} size={16} className="opacity-70" />
       {label}
     </Link>
   );
@@ -188,7 +190,11 @@ export function MerListLink({
         ) : null}
       </span>
       {trailing}
-      <ChevronRight className="shrink-0 text-[var(--numa-faint)] transition group-hover:translate-x-0.5 group-hover:text-[var(--numa-accent)]" />
+      <Icon
+        icon={ChevronRight}
+        size={16}
+        className="shrink-0 text-[var(--numa-faint)] transition group-hover:translate-x-0.5 group-hover:text-[var(--numa-accent)]"
+      />
     </Link>
   );
 }
@@ -225,48 +231,6 @@ export function MerMetaRow({
         {value}
       </dd>
     </div>
-  );
-}
-
-function ChevronRight({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className={className}
-    >
-      <path
-        d="M6 3.5 10.5 8 6 12.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ChevronLeft({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-      className={className}
-    >
-      <path
-        d="M10 3.5 5.5 8 10 12.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 

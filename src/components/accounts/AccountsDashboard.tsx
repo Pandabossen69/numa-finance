@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { VerifyBalanceForm } from "@/components/accounts/VerifyBalanceForm";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { AccountsViewLoading } from "@/components/accounts/AccountsViewLoading";
 import {
-  IconWallet,
-  MerIcon,
   MerListGroup,
   MerListRow,
   MerPageHeader,
   MerSection,
 } from "@/components/mer/MerHub";
+import { Icon } from "@/components/ui/Icon";
 import { MoneyDisplay } from "@/components/ui/MoneyDisplay";
 import { RetryLoadButton } from "@/components/ui/RetryLoadButton";
 import {
@@ -37,7 +36,6 @@ export function AccountsDashboard({
   error?: string | null;
 }) {
   const { prefetch } = usePrefetchOnIntent();
-  const [openVerifyId, setOpenVerifyId] = useState<string | null>(null);
   const stored = useSyncExternalStore(
     subscribeAccountsSnapshot,
     paintableAccountsSnapshot,
@@ -128,159 +126,122 @@ export function AccountsDashboard({
           </MerListGroup>
         </MerSection>
       ) : (
-        <div className="animate-rise-delay-1 space-y-6">
+        <div className="animate-rise-delay-1 space-y-4">
           {view.totalThbMinor != null ? (
             <MerSection>
               <MerListGroup>
-                <MerListRow className="flex items-center justify-between gap-3">
-                  <div>
+                <MerListRow className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
                       Totalt i THB
                     </p>
-                    <p className="mt-0.5 text-[13px] text-[var(--numa-muted)]">
-                      {SV.saldoAllaKontonHint}
-                    </p>
+                    <MoneyDisplay
+                      amountMinor={view.totalThbMinor}
+                      currency="THB"
+                      size="md"
+                      compact
+                      tone="neutral"
+                      wrap={false}
+                    />
                   </div>
-                  <MoneyDisplay
-                    amountMinor={view.totalThbMinor}
-                    currency="THB"
-                    size="md"
-                    tone="signed"
-                    wrap={false}
-                  />
+                  <p className="text-[13px] text-[var(--numa-muted)]">
+                    {SV.saldoAllaKontonHint}
+                  </p>
                 </MerListRow>
               </MerListGroup>
             </MerSection>
           ) : null}
 
-          {view.accounts.map((account) => {
-            const open = openVerifyId === account.id;
-            return (
-              <MerSection key={account.id}>
-                <MerListGroup>
-                  <MerListRow className="flex items-center gap-3">
-                    <MerIcon tone={account.isDefault ? "positive" : "neutral"}>
-                      <IconWallet />
-                    </MerIcon>
-                    <div className="numa-money-line min-w-0 flex-1 items-start">
-                      <div className="numa-money-line-label min-w-0">
-                        <h2 className="truncate text-[15px] font-semibold tracking-tight">
-                          {account.name}
-                        </h2>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-[var(--numa-faint)]">
-                          <span>
-                            {account.kindLabelSv} · {account.currency}
-                          </span>
-                          {account.isDefault ? (
-                            <span className="numa-chip numa-chip-mint align-middle">
-                              Förvalt
-                            </span>
-                          ) : null}
-                        </p>
-                        {account.currency !== "THB" &&
-                        account.thbMinor != null &&
-                        account.calculatedMinor != null ? (
-                          <p className="mt-1 text-[12px] text-[var(--numa-muted)]">
-                            ≈{" "}
-                            <MoneyDisplay
-                              amountMinor={account.thbMinor}
-                              currency="THB"
-                              size="sm"
-                              tone="signed"
-                              wrap={false}
-                            />
-                            {account.fxRate != null
-                              ? ` · kurs ${account.fxRate}`
-                              : null}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="numa-money-line-amt">
-                        {account.calculatedMinor != null ? (
-                          <MoneyDisplay
-                            amountMinor={account.calculatedMinor}
-                            currency={account.currency}
-                            size="md"
-                            tone="signed"
-                            wrap={false}
-                          />
-                        ) : (
-                          <span className="text-sm text-[var(--numa-faint)]">
-                            —
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </MerListRow>
-                  <MerListRow className="bg-[var(--numa-bg)]/35">
-                    {open ? (
-                      <div className="space-y-2">
-                        <VerifyBalanceForm
-                          accountId={account.id}
-                          currency={account.currency}
+          <MerSection>
+            <MerListGroup>
+              {view.accounts.map((account) => (
+                <Link
+                  key={account.id}
+                  href={`/konton/${account.id}`}
+                  prefetch
+                  onMouseEnter={() => prefetch(`/konton/${account.id}`)}
+                  onFocus={() => prefetch(`/konton/${account.id}`)}
+                  aria-label={`${account.name}, öppna konto`}
+                  className="numa-press flex min-h-14 items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3 last:border-b-0"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-semibold tracking-tight text-[var(--numa-ink)]">
+                      {account.name}
+                    </span>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[12px] text-[var(--numa-faint)]">
+                      <span className="truncate">
+                        {account.kindLabelSv} · {account.currency}
+                      </span>
+                      {account.isDefault ? (
+                        <span className="inline-flex h-5 shrink-0 items-center rounded-full border border-[var(--numa-border-strong)] px-2 text-[11px] font-medium tracking-normal text-[var(--numa-muted)] normal-case">
+                          Förvalt
+                        </span>
+                      ) : null}
+                    </span>
+                    {account.currency !== "THB" &&
+                    account.thbMinor != null &&
+                    account.calculatedMinor != null ? (
+                      <span className="mt-1 block text-[12px] text-[var(--numa-muted)]">
+                        ≈{" "}
+                        <MoneyDisplay
+                          amountMinor={account.thbMinor}
+                          currency="THB"
+                          size="sm"
+                          tone="neutral"
+                          wrap={false}
                         />
-                        <button
-                          type="button"
-                          className="min-h-11 text-[13px] font-semibold text-[var(--numa-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
-                          onClick={() => setOpenVerifyId(null)}
-                        >
-                          Stäng
-                        </button>
-                      </div>
+                        {account.fxRate != null ? ` · kurs ${account.fxRate}` : null}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 text-[var(--numa-ink)]">
+                    {account.calculatedMinor != null ? (
+                      <MoneyDisplay
+                        amountMinor={account.calculatedMinor}
+                        currency={account.currency}
+                        size="md"
+                        compact
+                        tone="neutral"
+                        wrap={false}
+                      />
                     ) : (
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          className="numa-btn numa-btn-soft is-accent w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
-                          onClick={() => setOpenVerifyId(account.id)}
-                        >
-                          Uppdatera saldo
-                        </button>
-                        <Link
-                          href={`/konton/${account.id}`}
-                          prefetch
-                          onMouseEnter={() => prefetch(`/konton/${account.id}`)}
-                          onFocus={() => prefetch(`/konton/${account.id}`)}
-                          aria-label={`Hantera ${account.name}`}
-                          className="numa-btn numa-btn-soft w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
-                        >
-                          Hantera
-                        </Link>
-                      </div>
+                      <span className="text-sm text-[var(--numa-faint)]">—</span>
                     )}
-                  </MerListRow>
-                </MerListGroup>
-              </MerSection>
-            );
-          })}
+                  </span>
+                  <Icon icon={ChevronRight} className="shrink-0 text-[var(--numa-faint)]" />
+                </Link>
+              ))}
+            </MerListGroup>
+          </MerSection>
 
           {(view.archivedAccounts ?? []).length > 0 ? (
-            <MerSection title="Arkiverade konton" className="pt-2">
-              <MerListGroup>
-                {(view.archivedAccounts ?? []).map((account) => (
-                  <MerListRow key={account.id} className="flex items-center gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px] font-semibold tracking-tight">
-                        {account.name}
-                      </p>
-                      <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
-                        {account.kindLabelSv} · {account.currency} · historik sparad
-                      </p>
-                    </div>
-                    <Link
-                      href={`/konton/${account.id}`}
-                      prefetch
-                      onMouseEnter={() => prefetch(`/konton/${account.id}`)}
-                      onFocus={() => prefetch(`/konton/${account.id}`)}
-                      aria-label={`Återställ eller hantera ${account.name}`}
-                      className="numa-btn numa-btn-soft min-h-11 shrink-0 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
-                    >
-                      Återställ
-                    </Link>
-                  </MerListRow>
-                ))}
-              </MerListGroup>
-            </MerSection>
+            <details className="numa-panel-list">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[15px] font-medium text-[var(--numa-ink)] [&::-webkit-details-marker]:hidden">
+                <span>Arkiverade ({(view.archivedAccounts ?? []).length})</span>
+                <Icon icon={ChevronDown} className="text-[var(--numa-faint)]" />
+              </summary>
+              {(view.archivedAccounts ?? []).map((account) => (
+                <Link
+                  key={account.id}
+                  href={`/konton/${account.id}`}
+                  prefetch
+                  onMouseEnter={() => prefetch(`/konton/${account.id}`)}
+                  onFocus={() => prefetch(`/konton/${account.id}`)}
+                  aria-label={`Återställ eller hantera ${account.name}`}
+                  className="numa-press flex min-h-14 items-center gap-3 border-t border-[var(--numa-border)] px-4 py-3"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-semibold tracking-tight">
+                      {account.name}
+                    </span>
+                    <span className="mt-0.5 block text-[12px] text-[var(--numa-faint)]">
+                      {account.kindLabelSv} · {account.currency} · historik sparad
+                    </span>
+                  </span>
+                  <Icon icon={ChevronRight} className="shrink-0 text-[var(--numa-faint)]" />
+                </Link>
+              ))}
+            </details>
           ) : null}
         </div>
       )}

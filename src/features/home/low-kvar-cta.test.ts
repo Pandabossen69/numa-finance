@@ -47,7 +47,7 @@ describe("lowKvarNextAction", () => {
     const cta = lowKvarNextAction(input({ remainingTodayMinor: 100_00 }));
     expect(cta).toEqual({
       kind: "expense",
-      href: "#lagg-utgift",
+      href: "/fota?mode=manual",
       label: SV.laggUtgift,
       hint: SV.laggUtgiftHintLowKvar,
     });

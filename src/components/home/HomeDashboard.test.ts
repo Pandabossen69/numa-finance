@@ -3,30 +3,34 @@ import { describe, expect, it } from "vitest";
 
 const src = readFileSync(new URL("./HomeDashboard.tsx", import.meta.url), "utf8");
 
-describe("Hem PWA hint and HIGH copy", () => {
-  it("keeps the install hint below the dial as a compact bar", () => {
-    expect(src).toContain('variant="bar"');
-    expect(src.indexOf("DayDial")).toBeLessThan(src.lastIndexOf("HomescreenInstallHint"));
-    expect(src).not.toMatch(/Lägg NUMA på hemskärmen/);
+describe("Hem layout", () => {
+  it("shows one hero, a thin bar and the formula behind Så räknas det", () => {
+    expect(src).toContain("DayBudgetBar");
+    expect(src).toContain("Så räknas det");
+    expect(src).toContain("usedRatio={dayUsedRatio}");
+    expect(src).not.toContain("<DayDial");
+    expect(src).not.toContain("HomescreenInstallHint");
+    expect(src).not.toContain("function QuickExpense");
+    expect(src).not.toContain("Lägg till utgift");
+    expect(src).not.toContain('id="lagg-utgift"');
+    expect(src).not.toContain("numa-day-dial");
   });
 
-  it("keeps the signed Över chip on the dial", () => {
+  it("keeps the signed Över chip and a signed hero when kvar is negative", () => {
     expect(src).toContain("Över");
     expect(src).toContain("numa-chip-ink");
-    expect(src).toContain('remainingTodayMinor < 0');
+    expect(src).toContain("overToday || remainingTodayMinor < 0");
+    expect(src).toContain('"signed"');
     expect(src).not.toContain("numa-chip-alarm");
   });
 
   it("shows the Hem-shaped skeleton while snapshot is empty", () => {
     expect(src).toContain("HemPending");
     expect(src).not.toContain("HomeViewLoading");
+    expect(src).not.toContain("numa-skel h-40 w-40 rounded-full");
   });
 
   it("keeps last-known Hem numbers and does not refresh the page after a spend", () => {
-    expect(src).toContain("paintOptimisticQuickAdd");
-    expect(src).toContain("rollbackOptimisticQuickAdd");
-    expect(src).toContain("confirmOptimisticQuickAdd");
-    expect(src).toContain("warmupPlanPageData");
     expect(src).toContain("scheduleQuietMenuWarm");
     const adopt = src.slice(
       src.indexOf("export function HomeDashboard"),
@@ -35,10 +39,6 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(adopt).toContain("scheduleQuietMenuWarm");
     expect(adopt).not.toContain("warmupPlanPageData");
     expect(adopt).not.toContain("getHomeSnapshotAction");
-    const quickBody = src.slice(src.indexOf("function QuickExpense"));
-    expect(quickBody).not.toContain("getHomeSnapshotAction");
-    expect(quickBody).not.toContain("warmupPlanPageData");
-    expect(quickBody).not.toContain("scheduleQuietMenuWarm");
     expect(src).toContain("isHomeDirty");
     expect(src).toContain(
       "if (adoptSnap && snap && !isHomeDirty()) rememberHomeSnapshot(snap)",
@@ -49,30 +49,16 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain("refreshQuiet");
     expect(src).not.toContain("router.refresh");
     expect(src).not.toContain("useRouter");
-    // Spend path must not wait on Sparar… or a full Hem refetch.
-    const start = src.indexOf("function QuickExpense");
-    const end = src.indexOf("\nfunction ", start + 1);
-    const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
-    expect(quickExpense).not.toContain("Sparar");
-    expect(quickExpense).not.toContain("getHomeSnapshotAction");
-    expect(quickExpense).toContain("paintOptimisticQuickAdd");
-    expect(quickExpense.indexOf("paintOptimisticQuickAdd")).toBeLessThan(
-      quickExpense.indexOf("await createExpenseAction"),
-    );
-  });
-
-  it("paints signed Över on the dial, not a clamped 0", () => {
-    expect(src).toContain("dialCenterMinor");
-    expect(src).toContain("overToday || remainingTodayMinor < 0");
-    expect(src).toContain('"signed"');
+    expect(src).not.toContain("revalidatePath");
   });
 
   it("does not show Mot planen as the Hem pile", () => {
-    expect(src).toContain("CompactPiles");
+    expect(src).toContain("PileLine");
     expect(src).toContain("overMinor");
     expect(src).not.toContain("livingSaldoMinor");
     expect(src).not.toContain("SV.motPlanen");
     expect(src).not.toContain("livingVsPlanHintSv");
+    expect(src).not.toContain("CompactPiles");
   });
 
   it("says Sparar… while saldo buttons are busy, not Klart", () => {
@@ -83,60 +69,23 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(available).not.toContain("SV.komIgång");
   });
 
-  it("blocks a second QuickExpense tap while the first save is in flight", () => {
-    const start = src.indexOf("function QuickExpense");
-    const end = src.indexOf("\nfunction ", start + 1);
-    const quickExpense = end === -1 ? src.slice(start) : src.slice(start, end);
-    expect(quickExpense).toContain("if (guard.isRunning() || !targetAccountId) return");
-    expect(quickExpense).toContain("useSubmitGuard");
-    expect(quickExpense).toContain("guard.tryBegin()");
-    expect(quickExpense).toContain("guard.end()");
-    expect(quickExpense).not.toContain("Sparar");
-    expect(quickExpense).not.toContain("getHomeSnapshotAction");
-  });
-
-  it("keeps Dagsbudget and Spenderat on one line at phone width", () => {
-    expect(src).toContain("numa-day-metrics");
-    expect(src).toContain("is-budget");
-    expect(src).toContain("is-spent");
-    expect(src).toContain("numa-metric-label");
-    expect(src).toContain("wrap={false}");
-    expect(src).not.toContain("bg-[var(--numa-card)] pt-1");
-  });
-
   it("does not dress the Kvar idag card as a tap target", () => {
     expect(src).toContain("numa-day-stage");
     expect(src).toContain("cursor-default");
     expect(src).not.toMatch(/numa-day-stage[^"]*numa-press/);
   });
 
-  it("lets the ring and the sentence both talk about kvar, not spent-of-budget", () => {
-    expect(src).toContain(
+  it("keeps the key line about kvar without repeating the hero amount", () => {
+    expect(src).toContain("Hela dagsbudgeten kvar");
+    expect(src).toContain("formatMoneyCompact");
+    expect(src).not.toContain(
       "remainingTodayMinor, currency)} av ${formatMoneyHint(view.dayBudgetMinor, currency)} kvar",
     );
-    expect(src).toContain("formatMoneyCompact");
-    expect(src).toContain("usedRatio={dayUsedRatio}");
-  });
-
-  it("labels QuickExpense amount and note for a11y", () => {
-    expect(src).toContain('aria-label="Anteckning"');
-    expect(src).toContain("aria-label={`Belopp ${nativeCurrency}`}");
-    expect(src).toContain('aria-label="Konto för utgiften"');
   });
 
   it("labels days until income as idag / N dagar kvar, not a bare 4 dagar", () => {
     expect(src).toContain("formatDaysUntilSv");
     expect(src).not.toContain('formatCountSv(view.spendDaysLeft, "dag", "dagar")');
-  });
-
-  it("sits N dagar kvar under the Kvar circle, not opposite the title", () => {
-    const wrapStart = src.indexOf("flex flex-col items-center gap-1.5");
-    const wrap = src.slice(wrapStart, wrapStart + 1800);
-    expect(wrap).toContain("<DayDial");
-    expect(wrap).toContain("{daysLeftChip}");
-    expect(wrap.indexOf("<DayDial")).toBeLessThan(wrap.indexOf("{daysLeftChip}"));
-    expect(src).not.toContain("flex min-w-0 items-center justify-between gap-3 px-1");
-    expect(src).toContain("Hela dagsbudgeten kvar");
     expect(src).not.toContain("Hela dagsbudgeten kvar · ${daysWord}");
   });
 
@@ -147,7 +96,7 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).not.toContain("view.cycleStartLabelSv && view.cycleEndLabelSv");
   });
 
-  it("explains dagsbudget as cash pool ÷ days to payday", () => {
+  it("explains dagsbudget as cash pool ÷ days to payday behind the disclosure", () => {
     expect(src).toContain("livingBudgetHintSv");
     expect(src).toContain("view.dayBudgetMinor");
     expect(src).toContain("view.livingPoolMinor");
@@ -159,11 +108,9 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("view.calculatedBalanceMinor");
     expect(src).toContain("view.daysUntilIncome");
     expect(src).toContain("showDayEnvelope");
-    expect(src).toContain('showDayEnvelope ? null : "md:h-auto md:self-start"');
-    const metrics = src.slice(src.indexOf("numa-day-metrics"));
-    expect(metrics).toContain("livingBudgetHintSv");
-    expect(metrics).toContain("numa-living-math");
-    expect(metrics).not.toContain("${SV.tillNastaInkomst} · ${view.nextIncomeLabelSv}");
+    const formula = src.slice(src.indexOf("Så räknas det"));
+    expect(formula).toContain("budgetLines");
+    expect(formula).toContain("numa-living-math");
   });
 
   it("teaches empty Hem in one Swedish sentence and hosts Kom igång", () => {
@@ -187,51 +134,38 @@ describe("Hem PWA hint and HIGH copy", () => {
     expect(src).toContain("Ingen dagsbudget än. Sätt saldo så räknas kvar idag.");
     expect(src).toContain("DAGSBUDGET_BILLS_EXCEED_SALDO_SV");
     expect(src).toContain("unpaidBillsExceedSaldo");
-    expect(src).toContain("Lägg in vad som kommer in →");
+    expect(src).toContain("Lägg in vad som kommer in");
     expect(src).toContain("PERIOD_ENDED_TITLE_SV");
     expect(src).toContain("PERIOD_ENDED_BODY_SV");
     expect(src).toContain("PERIOD_ENDED_CTA_SV");
     expect(src).toContain("view.dayEnvelopeOpen === false");
     expect(src).toContain("view.dayEnvelopePending === true");
-    expect(src).toContain("numa-skel h-40 w-40 rounded-full");
-    expect(src).toContain("hideKvar={periodEnded || dayEnvelopePending}");
-    expect(src).toContain("Sätt saldo →");
+    expect(src).toContain("Sätt saldo");
     expect(src).toContain('href={hasSaldo ? "/plan?steg=inkomst" : "/kom-igang"}');
     expect(src).toMatch(/\{hasSaldo\s*\n?\s*\?/);
   });
 
-  it("stacks the dial above piles on the phone and splits them only at md", () => {
-    expect(src).toContain("grid min-w-0 items-stretch gap-5 md:grid-cols-2 md:gap-6");
-    expect(src).not.toContain("grid-cols-2 md:grid-cols-2");
-    expect(src).toContain("min-w-0 space-y-6");
-  });
-
-  it("keeps QuickExpense remaining off the title row on a 375px phone", () => {
-    expect(src).toContain(
-      "flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3",
-    );
-    expect(src).not.toContain("flex items-end justify-between gap-3");
+  it("stacks hero above one list on the phone", () => {
+    expect(src).toContain("min-w-0 space-y-5");
+    expect(src).not.toContain("md:grid-cols-2");
   });
 
   it("keeps Hem chrome tap targets at least 44px", () => {
     expect(src).toContain("min-h-12");
-    expect(src).toContain(
-      "numa-press inline-flex min-h-11 items-center font-semibold text-[var(--numa-accent)]",
-    );
+    expect(src).toContain("min-h-11");
   });
 
-  it("puts a primary low-Kvar next-action above the day metrics", () => {
-    const dial = src.indexOf("DayDial");
+  it("puts a primary low-Kvar next-action on the hero, aimed at Fota", () => {
+    const bar = src.indexOf("DayBudgetBar");
     const next = src.indexOf("LowKvarNextCta");
-    const metrics = src.indexOf("numa-day-metrics");
+    const list = src.indexOf("SV.saldoOchSparande");
     expect(src).toContain("lowKvarNextAction");
     expect(src).toContain("data-numa-next-action");
-    expect(src).toContain('id="lagg-utgift"');
     expect(src).toContain("action.href");
     expect(src).toContain("prefetch={false}");
     expect(src).toContain("SV.nastaSteg");
-    expect(next).toBeGreaterThan(dial);
-    expect(next).toBeLessThan(metrics);
+    expect(next).toBeGreaterThan(bar);
+    expect(next).toBeLessThan(list);
     expect(src).not.toContain("remainingTodayOf");
     expect(src).not.toContain("last-home-cookie");
   });
