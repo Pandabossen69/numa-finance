@@ -133,7 +133,7 @@ export function BankMailConfirm({
 
   return (
     <div className="animate-rise space-y-7">
-      <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-[var(--numa-faint)]">
+      <p className="text-xs font-medium uppercase tracking-[0.04em] text-[var(--numa-faint)]">
         {preview.sourceLabel ?? BANK_MAIL_SOURCE_LABEL}
       </p>
       <div className="space-y-1">

@@ -110,7 +110,7 @@ export default function LagaPage() {
         <span
           style={{
             fontSize: "1.35rem",
-            fontWeight: 700,
+            fontWeight: 600,
             letterSpacing: "-0.04em",
           }}
         >
@@ -228,7 +228,7 @@ const primaryButtonStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   borderRadius: 16,
-  background: "var(--numa-accent, #f0a15e)",
+  background: "var(--numa-accent, #6FB3CC)",
   color: "#1a120c",
   fontSize: 14,
   fontWeight: 600,
@@ -256,7 +256,7 @@ const primaryLinkStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   borderRadius: 16,
-  background: "var(--numa-accent, #f0a15e)",
+  background: "var(--numa-accent, #6FB3CC)",
   color: "#1a120c",
   fontSize: 14,
   fontWeight: 600,

@@ -42,8 +42,8 @@ describe("PlanMonthNav", () => {
       css.indexOf(".numa-month-nav-month {"),
       css.indexOf(".numa-month-nav-year-text {"),
     );
-    expect(month).toContain("clamp(1.22rem, 5.6vw, 1.5rem)");
-    expect(month).toContain("font-weight: 700");
+    expect(month).toContain("font-size: 1.25rem");
+    expect(month).toContain("font-weight: 600");
     expect(css).toContain("grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem");
     expect(css).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
     expect(css).toContain(".numa-month-nav-cell.is-active");

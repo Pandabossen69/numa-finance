@@ -11,19 +11,20 @@ function token(name: string): string {
 
 describe("NUMA vision palette", () => {
   it("keeps the canvas dark Steel + Orange, never paper white", () => {
-    expect(token("--numa-bg")).toBe("#05090b");
-    expect(token("--numa-bg-lift")).toBe("#0e1a1f");
+    expect(token("--numa-bg")).toBe("#0B0D10");
+    expect(token("--numa-bg-lift")).toBe("#0B0D10");
     expect(token("--numa-surface-strong")).not.toBe("#ffffff");
     expect(token("--numa-surface-solid")).not.toBe("#ffffff");
-    expect(token("--numa-card")).toBe("#0d171b");
-    expect(css).not.toMatch(/linear-gradient\(\s*165deg,\s*#ffffff/);
+    expect(token("--numa-card")).toBe("#12151A");
+    expect(css).not.toMatch(/linear-gradient/);
+    expect(css).not.toMatch(/radial-gradient/);
     expect(css).not.toContain("#f7fcf9");
     expect(css).not.toContain("#c8d6ce");
   });
 
   it("tints living, park and income/spend as separate families", () => {
-    expect(token("--numa-spend")).toBe("#f29a61");
-    expect(token("--numa-spend")).not.toBe(token("--numa-alarm"));
+    expect(token("--numa-spend")).toBe("var(--numa-warning)");
+    expect(token("--numa-alarm")).toBe("var(--numa-warning)");
     expect(token("--numa-spend")).not.toBe(token("--numa-danger"));
     expect(css).toContain(".numa-panel-strong");
     expect(css).toContain(".numa-panel-park");
@@ -33,19 +34,19 @@ describe("NUMA vision palette", () => {
     expect(css).toContain(".numa-piles-board");
     expect(css).toContain(".numa-day-metrics");
     expect(css).not.toContain("rgba(255, 255, 255, 0.75)");
-    expect(token("--numa-accent")).toBe("#f0a15e");
-    expect(token("--numa-steel")).toBe("#8ec5d8");
+    expect(token("--numa-accent")).toBe("#6FB3CC");
+    expect(token("--numa-steel")).toBe("var(--numa-accent)");
   });
 
   it("keeps over-budget clay alarm distinct from destroy red", () => {
-    expect(token("--numa-alarm")).toBe("#f3ad65");
-    expect(token("--numa-danger")).toBe("#ff756f");
+    expect(token("--numa-alarm")).toBe("var(--numa-warning)");
+    expect(token("--numa-warning")).toBe("#D9A441");
+    expect(token("--numa-danger")).toBe("#E5736A");
     expect(token("--numa-alarm")).not.toBe(token("--numa-danger"));
-    expect(token("--numa-alarm")).not.toBe(token("--numa-spend"));
   });
 
   it("names every shared surface, edge and shadow as a token", () => {
-    expect(token("--numa-field")).toBe("#071115");
+    expect(token("--numa-field")).toBe("#181C22");
     expect(token("--numa-field")).not.toBe(token("--numa-card"));
     expect(token("--numa-border-contrast")).toContain("rgba");
     expect(token("--numa-sheet-highlight")).toContain("rgba");
@@ -55,7 +56,7 @@ describe("NUMA vision palette", () => {
     expect(token("--numa-toast-shadow")).toContain("rgba");
     expect(token("--numa-chip-neutral")).toContain("rgba");
     expect(token("--numa-scan-sweep")).toContain("rgba");
-    expect(token("--numa-danger-ink")).toBe("#ffc1bc");
+    expect(token("--numa-danger-ink")).toBe("#F3C2BD");
   });
 
   it("keeps the day dial colours in tokens, not in the SVG", () => {
@@ -79,11 +80,11 @@ describe("NUMA vision palette", () => {
 
   it("keeps the day dial core smoked dark so cream digits stay readable", () => {
     // Bright cyan wash made the hero amount melt into the circle.
-    expect(token("--numa-dial-core-from")).toBe("rgba(14, 24, 28, 0.97)");
-    expect(token("--numa-dial-core-to")).toBe("rgba(38, 62, 72, 0.9)");
+    expect(token("--numa-dial-core-from")).toBe("#12151A");
+    expect(token("--numa-dial-core-to")).toBe("#12151A");
     expect(token("--numa-dial-core-to")).not.toContain("143, 217, 232");
-    expect(token("--numa-dial-mint-from")).toBe("#6fa9bc");
-    expect(token("--numa-dial-halo")).toBe("rgba(110, 168, 184, 0.12)");
+    expect(token("--numa-dial-mint-from")).toBe("#6FB3CC");
+    expect(token("--numa-dial-halo")).toBe("transparent");
     expect(css).toContain("Quiet card wash — no bright cyan bloom behind the dial.");
     expect(css).toContain("Soft steel-ink, not neon cyan competing with the amount.");
   });
@@ -91,7 +92,7 @@ describe("NUMA vision palette", () => {
   it("gives Plan a single month+year control whose title stays readable at ~390", () => {
     expect(css).toContain(".numa-month-nav {");
     expect(css).toContain(".numa-month-nav-title {");
-    expect(css).toContain("clamp(1.22rem, 5.6vw, 1.5rem)");
+    expect(css).toContain("font-size: 1.25rem");
     expect(css).toContain(".numa-month-nav-picker {");
     expect(css).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
     expect(css).toContain(".numa-month-nav-cell.is-active");
@@ -132,9 +133,9 @@ describe("NUMA vision palette", () => {
     const chip = css.slice(css.indexOf(".numa-chip {"), css.indexOf(".numa-chip-mint"));
     expect(chip).toContain("white-space: nowrap");
     expect(chip).toContain("flex-shrink: 0");
-    expect(chip).toContain("font-size: 0.625rem");
-    expect(chip).toContain("font-weight: 650");
-    expect(chip).toContain("letter-spacing: 0.08em");
+    expect(chip).toContain("font-size: 0.75rem");
+    expect(chip).toContain("font-weight: 600");
+    expect(chip).toContain("letter-spacing: 0.04em");
     expect(chip).toContain("height: 1.4rem");
     expect(chip).toContain("min-height: 1.4rem");
     expect(chip).toContain("max-height: 1.4rem");
@@ -150,9 +151,9 @@ describe("NUMA vision palette", () => {
     expect(chipType).not.toContain("text-transform: inherit");
     expect(chipType).toContain("span.numa-chip");
     expect(chipType).toContain("p.numa-chip");
-    expect(chipType).toContain("font-size: 0.625rem");
-    expect(chipType).toContain("font-weight: 650");
-    expect(chipType).toContain("letter-spacing: 0.08em");
+    expect(chipType).toContain("font-size: 0.75rem");
+    expect(chipType).toContain("font-weight: 600");
+    expect(chipType).toContain("letter-spacing: 0.04em");
     expect(chipType).toContain("text-transform: uppercase");
     expect(chipType).toContain("line-height: 1");
     const planChip = css.slice(
@@ -160,7 +161,7 @@ describe("NUMA vision palette", () => {
       css.indexOf(".numa-plan-menu"),
     );
     expect(planChip).toContain("min-width: 4.75rem");
-    expect(planChip).toContain("font-size: 0.625rem");
+    expect(planChip).toContain("font-size: 0.75rem");
     expect(planChip).toContain("height: 1.4rem");
   });
 
@@ -245,7 +246,7 @@ describe("NUMA vision palette", () => {
     expect(css).toContain('"lnum" 1');
     expect(css).toContain(".numa-pile-line {");
     expect(css).toContain(".numa-pile-line .money.numa-money-amt");
-    expect(css).toContain("font-size: 0.9375rem");
+    expect(css).toContain("font-size: 1rem");
     expect(css).toContain("overflow-wrap: break-word");
     expect(css).not.toContain("overflow-wrap: anywhere");
     expect(css).not.toContain(
@@ -253,9 +254,48 @@ describe("NUMA vision palette", () => {
     );
   });
 
+  it("keeps tabular figures on the digit runs", () => {
+    const groups = css.slice(
+      css.indexOf(".numa-money-groups {"),
+      css.indexOf(".numa-money-run {"),
+    );
+    const run = css.slice(
+      css.indexOf(".numa-money-run {"),
+      css.indexOf(".numa-money.is-end .numa-money-amt"),
+    );
+    const money = css.slice(css.indexOf(".money {"), css.indexOf(".money-currency {"));
+    const amt = css.slice(
+      css.indexOf(".numa-money-amt {"),
+      css.indexOf(".numa-money-groups {"),
+    );
+    for (const block of [groups, run]) {
+      expect(block).toContain("font-variant-numeric: tabular-nums lining-nums");
+      expect(block).toContain('"tnum" 1');
+      expect(block).toContain('"lnum" 1');
+      expect(block).toContain("font-optical-sizing: none");
+      expect(block).not.toContain("font-feature-settings: normal");
+    }
+    expect(money).toContain("font-variant-numeric: tabular-nums lining-nums");
+    expect(money).toContain("font-optical-sizing: none");
+    expect(amt).toContain("font-optical-sizing: none");
+    const hero = css.slice(
+      css.indexOf(".numa-hero-money .numa-money-groups,"),
+      css.indexOf(".numa-hero-money {"),
+    );
+    expect(hero).toContain(".numa-money-line-amt .numa-money-run");
+    expect(hero).toContain('"tnum" 1');
+    expect(hero).toContain("font-optical-sizing: none");
+    const icon = css.slice(
+      css.indexOf(".numa-brand-lockup-icon {"),
+      css.indexOf(".numa-brand-lockup.is-lg .numa-brand-lockup-icon"),
+    );
+    expect(icon).not.toMatch(/rgba\(0,\s*0,\s*0,\s*0\.55\)/);
+  });
+
   it("gives Hem a Steel + Orange wash login does not use", () => {
     expect(css).toContain(".numa-day-stage");
-    expect(css).toContain("var(--numa-accent-glow)");
+    expect(token("--numa-accent-glow")).toBe("transparent");
+    expect(css).not.toContain("var(--numa-accent-glow)");
     expect(css).toContain("var(--numa-steel-soft)");
     expect(css).toContain(".auth-mark-icon");
     expect(css).toContain(".numa-brand-lockup");
@@ -264,8 +304,8 @@ describe("NUMA vision palette", () => {
   });
 
   it("keeps cards round and cream so numbers sit on a clear sheet", () => {
-    expect(token("--numa-radius")).toBe("1.85rem");
-    expect(token("--numa-radius-sm")).toBe("1.4rem");
+    expect(token("--numa-radius")).toBe("12px");
+    expect(token("--numa-radius-sm")).toBe("8px");
     expect(css).toContain("border-radius: var(--numa-radius)");
     expect(css).toContain(".numa-money-unit");
     expect(css).toContain("font-variant-numeric: tabular-nums lining-nums");

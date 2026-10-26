@@ -7,7 +7,7 @@ describe("PWA viewport", () => {
   it("covers the notch and uses a translucent status bar on the dark shell", () => {
     expect(src).toContain('viewportFit: "cover"');
     expect(src).toContain('statusBarStyle: "black-translucent"');
-    expect(src).toContain('themeColor: "#05090b"');
+    expect(src).toContain('themeColor: "#0B0D10"');
     expect(src).toContain('colorScheme: "dark"');
     expect(src).not.toContain('statusBarStyle: "default"');
   });
@@ -29,11 +29,16 @@ describe("PWA viewport", () => {
 describe("root font loading", () => {
   it("preloads only the UI face and keeps money mono off the critical path", () => {
     expect(src).toContain("next/font/google");
+    expect(src).toContain("Inter(");
     expect(src).toContain('weight: "variable"');
-    expect(src).toMatch(/JetBrains_Mono\([\s\S]*weight: "variable"/);
+    expect(src).toContain('subsets: ["latin"]');
+    expect(src).toContain('axes: ["opsz"]');
+    expect(src).toMatch(/variable: "--font-numa-mono"[\s\S]*weight: "variable"/);
     expect(src).toContain("preload: true");
     expect(src).toContain("preload: false");
     expect(src).not.toContain("fonts.googleapis.com");
-    expect(src).not.toMatch(/JetBrains_Mono\([\s\S]*preload:\s*true/);
+    expect(src).not.toContain("JetBrains_Mono");
+    expect(src).not.toContain("Sora");
+    expect(src).not.toMatch(/variable: "--font-numa-mono"[\s\S]*preload:\s*true/);
   });
 });

@@ -75,7 +75,7 @@ export function MerInstallCta() {
   if (installed) {
     return (
       <aside
-        className="space-y-1 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
+        className="space-y-1 rounded-[var(--numa-radius-sheet)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
         aria-label="NUMA är en app här"
         data-numa-install="installed"
       >
@@ -102,7 +102,7 @@ export function MerInstallCta() {
 
   return (
     <aside
-      className="space-y-3 rounded-[1.35rem] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
+      className="space-y-3 rounded-[var(--numa-radius-sheet)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-4 py-4"
       aria-label={title}
       data-numa-install={canPrompt ? "bip" : platform}
     >

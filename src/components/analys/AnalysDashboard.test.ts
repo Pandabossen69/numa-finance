@@ -5,7 +5,7 @@ const src = readFileSync(new URL("./AnalysDashboard.tsx", import.meta.url), "utf
 
 describe("Analys month result color", () => {
   it("uses clay alarm for a negative Kvar i perioden, not destroy red", () => {
-    expect(src).toContain('tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}');
+    expect(src).toContain('tone={month.monthResultMinor < 0 ? "alarm" : undefined}');
     expect(src).not.toMatch(/monthResultMinor >= 0 \? "positive" : "danger"/);
   });
 

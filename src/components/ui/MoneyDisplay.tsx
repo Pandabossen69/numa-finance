@@ -34,7 +34,7 @@ function AmountRuns({ text }: { text: string }) {
 }
 
 /**
- * Money display: amount in tabular mono, currency code in a fixed unit column.
+ * Money display: amount in tabular sans, currency code in a fixed unit column.
  * THB shows as "10 108,04 THB" — never the ฿ glyph (reads as $ in many fonts).
  */
 export function MoneyDisplay({
@@ -50,7 +50,7 @@ export function MoneyDisplay({
   currency: CurrencyCode;
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "display";
   compact?: boolean;
-  /** Color negative amounts as clay alarm when "signed" — not destroy red. */
+  /** Color a strictly negative amount as warning. Positive stays ink. */
   tone?: "neutral" | "signed";
   align?: "start" | "center" | "end";
   /** When true, the unit may wrap under the amount. Digits never wrap. */
@@ -66,36 +66,32 @@ export function MoneyDisplay({
 
   const sizeClass =
     size === "display"
-      ? "text-[clamp(2.35rem,9vw,4.1rem)] leading-[0.96] font-[750]"
+      ? "text-[2.5rem] leading-[0.96] font-semibold"
       : size === "xl"
-        ? "text-[clamp(1.9rem,6vw,2.8rem)] leading-[1] font-[740]"
+        ? "text-[1.75rem] leading-[1] font-semibold"
         : size === "lg"
-          ? "text-[1.55rem] leading-[1.05] font-bold"
+          ? "text-[1.75rem] leading-[1.05] font-semibold"
           : size === "md"
-            ? "text-[1.125rem] leading-[1.1] font-bold"
+            ? "text-[1.25rem] leading-[1.1] font-semibold"
             : size === "sm"
-              ? "text-[1rem] leading-[1.15] font-bold"
-              : "text-[0.8125rem] leading-[1.2] font-semibold";
+              ? "text-[1rem] leading-[1.15] font-semibold"
+              : "text-[0.875rem] leading-[1.2] font-semibold";
 
   const codeSize =
     size === "display"
-      ? "text-[clamp(0.74rem,2.4vw,0.9rem)] font-semibold"
+      ? "text-[0.75rem] font-semibold"
       : size === "xl"
-        ? "text-[clamp(0.72rem,2vw,0.84rem)] font-semibold"
+        ? "text-[0.75rem] font-semibold"
         : size === "lg"
-          ? "text-[0.72rem] font-semibold"
+          ? "text-[0.75rem] font-semibold"
           : size === "md"
-            ? "text-[0.68rem] font-semibold"
+            ? "text-[0.75rem] font-semibold"
             : size === "sm"
-              ? "text-[0.65rem] font-semibold"
-              : "text-[0.6rem] font-medium";
+              ? "text-[0.75rem] font-semibold"
+              : "text-[0.75rem] font-medium";
 
   const toneClass =
-    tone === "signed" && safeMinor < 0
-      ? "text-[var(--numa-alarm)]"
-      : tone === "signed" && safeMinor > 0
-        ? "text-[var(--numa-positive)]"
-        : "";
+    tone === "signed" && safeMinor < 0 ? "text-[var(--numa-alarm)]" : "";
 
   const alignClass =
     align === "start" ? "is-start" : align === "end" ? "is-end" : "is-center";

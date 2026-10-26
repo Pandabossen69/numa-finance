@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Sora, JetBrains_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { CanonicalHostRedirect } from "@/components/pwa/CanonicalHostRedirect";
 import { FrozenHomescreenGuard } from "@/components/pwa/FrozenHomescreenGuard";
 import { InstallPromptCapture } from "@/components/pwa/InstallPromptCapture";
@@ -13,17 +13,20 @@ import {
 import { PRODUCTION_ORIGIN } from "@/lib/site";
 import "./globals.css";
 
-const sans = Sora({
+const sans = Inter({
   variable: "--font-numa-sans",
   subsets: ["latin"],
+  // opsz stays in the file so tabular digits are not dropped with the weight-only subset.
+  axes: ["opsz"],
   weight: "variable",
   display: "swap",
   preload: true,
 });
 
-const mono = JetBrains_Mono({
+const mono = Inter({
   variable: "--font-numa-mono",
   subsets: ["latin"],
+  axes: ["opsz"],
   weight: "variable",
   display: "swap",
   preload: false,
@@ -63,7 +66,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Allow pinch-zoom; inputs use 16px so iOS won't auto-zoom on focus.
   viewportFit: "cover",
-  themeColor: "#05090b",
+  themeColor: "#0B0D10",
   colorScheme: "dark",
 };
 

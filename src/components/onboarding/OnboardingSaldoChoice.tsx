@@ -56,7 +56,7 @@ function ChoiceLink({
       className="numa-press group flex min-h-[5.25rem] w-full min-w-0 items-center gap-3.5 overflow-hidden rounded-[1.6rem] border border-[var(--numa-border-strong)] bg-[var(--numa-surface-solid)] px-3.5 py-3.5 text-left shadow-[var(--numa-shadow-sm)] transition hover:-translate-y-0.5 hover:bg-[var(--numa-card)] hover:shadow-[var(--numa-shadow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2 md:min-h-36 md:items-start md:px-5 md:py-5"
     >
       <span
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-[11px] font-bold tracking-[0.08em] text-[var(--numa-accent-ink)] md:h-11 md:w-11"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--numa-accent-soft)] text-xs font-semibold tracking-[0.04em] text-[var(--numa-accent-ink)] md:h-11 md:w-11"
         aria-hidden
       >
         {index}

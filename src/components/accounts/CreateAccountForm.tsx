@@ -110,7 +110,7 @@ export function CreateAccountForm({
   return (
     <form onSubmit={onSubmit} className="numa-panel-strong space-y-4 p-5">
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Typ av konto
         </span>
         <select
@@ -127,7 +127,7 @@ export function CreateAccountForm({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Namn
         </span>
         <input
@@ -138,7 +138,7 @@ export function CreateAccountForm({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Valuta
         </span>
         <select
@@ -173,7 +173,7 @@ export function CreateAccountForm({
       </label>
 
       <label className="block">
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+        <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
           Hur mycket har du just nu?
         </span>
         <input
@@ -189,7 +189,7 @@ export function CreateAccountForm({
 
       {needsFx ? (
         <label className="block">
-          <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
             Växelkurs (THB per 1 {form.currency})
           </span>
           <input

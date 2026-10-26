@@ -93,10 +93,10 @@ export function FrozenHomescreenGuard() {
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 16,
-            background: "#f0a15e",
+            background: "#6FB3CC",
             color: "#0a1216",
             fontSize: 14,
-            fontWeight: 700,
+            fontWeight: 600,
             textDecoration: "none",
           }}
         >

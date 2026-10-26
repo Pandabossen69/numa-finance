@@ -134,7 +134,7 @@ export function AccountsDashboard({
               <MerListGroup>
                 <MerListRow className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--numa-faint)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.04em] text-[var(--numa-faint)]">
                       Totalt i THB
                     </p>
                     <p className="mt-0.5 text-[13px] text-[var(--numa-muted)]">
@@ -231,7 +231,7 @@ export function AccountsDashboard({
                       <div className="grid gap-2 sm:grid-cols-2">
                         <button
                           type="button"
-                          className="numa-btn numa-btn-soft w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
+                          className="numa-btn numa-btn-soft is-accent w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)]"
                           onClick={() => setOpenVerifyId(account.id)}
                         >
                           Uppdatera saldo

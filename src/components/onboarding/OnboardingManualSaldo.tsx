@@ -85,7 +85,7 @@ export function OnboardingManualSaldo({
                 placeholder="0,00"
                 className="money min-h-[4.5rem] w-full rounded-[1.35rem] border border-[var(--numa-border-strong)] bg-[var(--numa-card)] px-4 pr-20 text-[1.8rem] font-bold tracking-[-0.04em] outline-none transition placeholder:text-[var(--numa-faint)]/55 focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/20"
               />
-              <span className="money-currency pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[11px] font-semibold text-[var(--numa-faint)]">
+              <span className="money-currency pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-xs font-semibold text-[var(--numa-faint)]">
                 {currency}
               </span>
             </span>

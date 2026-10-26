@@ -16,8 +16,8 @@ describe("PWA manifest", () => {
     expect(web.start_url).toBe("/idag");
     expect(web.scope).toBe("/");
     expect(web.display).toBe("standalone");
-    expect(web.background_color).toBe("#05090b");
-    expect(web.theme_color).toBe("#05090b");
+    expect(web.background_color).toBe("#0B0D10");
+    expect(web.theme_color).toBe("#0B0D10");
     expect(web.icons?.map((icon) => icon.src)).toEqual([
       BRAND_ICON_192,
       BRAND_ICON_512,

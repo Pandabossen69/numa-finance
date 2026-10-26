@@ -27,7 +27,7 @@ export function WealthScoreboard({
       <div className="numa-wealth-cell is-live">
         <p className="numa-section-title">{livingLabel}</p>
         <div
-          className={`numa-wealth-value ${livingOk ? "text-[var(--numa-positive)]" : "text-[var(--numa-alarm)]"}`}
+          className={`numa-wealth-value ${livingOk ? "text-[var(--numa-ink)]" : "text-[var(--numa-alarm)]"}`}
         >
           <MoneyDisplay
             amountMinor={livingMinor}

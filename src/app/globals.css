@@ -1,80 +1,77 @@
 @import "tailwindcss";
 
 /*
- * NUMA visual system — dark Steel + Orange.
- * Premium finance atmosphere: smoked steel, black glass, restrained copper.
- * Keep numbers and forms calm; let the icon language live in the shell.
+ * NUMA visual system — dark neutral, one steel accent.
+ * Flat surfaces. Numbers stay calm and tabular.
  */
 :root {
-  --numa-bg: #05090b;
-  --numa-bg-lift: #0e1a1f;
-  --numa-bg-deep: #020304;
-  --numa-ink: #f6f1e9;
-  --numa-muted: #b9c5c5;
-  --numa-faint: #7f8f91;
-  --numa-surface: rgba(10, 18, 21, 0.9);
-  --numa-surface-solid: #0c171b;
-  --numa-surface-strong: #14242a;
-  --numa-card: #0d171b;
+  --numa-bg: #0B0D10;
+  --numa-bg-lift: #0B0D10;
+  --numa-bg-deep: #0B0D10;
+  --numa-ink: #ECEFF3;
+  --numa-muted: #9AA3AF;
+  /* Lifted above the spec gray so body text stays at least 4.5:1 on surface-strong. */
+  --numa-faint: #7D858F;
+  --numa-surface: #12151A;
+  --numa-surface-solid: #12151A;
+  --numa-surface-strong: #181C22;
+  --numa-card: #12151A;
   /* Inputs sit one step under the card so a form reads as recessed. */
-  --numa-field: #071115;
-  --numa-border: rgba(180, 217, 222, 0.14);
-  --numa-border-strong: rgba(226, 239, 240, 0.22);
-  --numa-border-contrast: rgba(255, 197, 139, 0.34);
+  --numa-field: #181C22;
+  --numa-border: rgba(255, 255, 255, 0.08);
+  --numa-border-strong: rgba(255, 255, 255, 0.14);
+  --numa-border-contrast: rgba(255, 255, 255, 0.14);
   --numa-sheet-highlight: rgba(255, 255, 255, 0.08);
-  --numa-button-highlight: rgba(255, 255, 255, 0.16);
-  --numa-accent: #f0a15e;
-  --numa-accent-soft: rgba(240, 161, 94, 0.16);
-  --numa-accent-ink: #ffd2a1;
-  --numa-accent-glow: rgba(240, 140, 72, 0.28);
-  --numa-steel: #8ec5d8;
-  --numa-steel-soft: rgba(92, 179, 199, 0.16);
-  --numa-steel-glow: rgba(80, 201, 224, 0.22);
-  --numa-sun: rgba(126, 213, 229, 0.22);
-  --numa-sun-warm: rgba(240, 161, 94, 0.16);
+  --numa-button-highlight: rgba(255, 255, 255, 0.08);
+  --numa-accent: #6FB3CC;
+  --numa-accent-soft: rgba(111, 179, 204, 0.14);
+  --numa-accent-ink: #C5E6F2;
+  --numa-accent-glow: transparent;
+  --numa-steel: var(--numa-accent);
+  --numa-steel-soft: rgba(111, 179, 204, 0.14);
+  --numa-steel-glow: transparent;
+  --numa-sun: transparent;
+  --numa-sun-warm: transparent;
   --numa-stone: rgba(0, 0, 0, 0.34);
-  --numa-danger: #ff756f;
-  --numa-danger-soft: rgba(255, 117, 111, 0.14);
+  --numa-danger: #E5736A;
+  --numa-danger-soft: rgba(229, 115, 106, 0.14);
   /* Body copy on danger-soft needs more than the fill colour gives. */
-  --numa-danger-ink: #ffc1bc;
-  --numa-alarm: #f3ad65;
-  --numa-alarm-soft: rgba(243, 173, 101, 0.15);
-  --numa-positive: #6bd7c3;
-  --numa-positive-soft: rgba(91, 215, 193, 0.14);
-  --numa-spend: #f29a61;
-  --numa-spend-soft: rgba(242, 154, 97, 0.14);
+  --numa-danger-ink: #F3C2BD;
+  --numa-alarm: var(--numa-warning);
+  --numa-alarm-soft: rgba(217, 164, 65, 0.14);
+  --numa-positive: #5FBF9F;
+  --numa-positive-soft: rgba(95, 191, 159, 0.14);
+  --numa-spend: var(--numa-warning);
+  --numa-spend-soft: rgba(217, 164, 65, 0.14);
   --numa-money-unit: 2.4rem;
-  --numa-radius: 1.85rem;
-  --numa-radius-sm: 1.4rem;
-  --numa-warning: #f2b466;
-  --numa-warning-soft: rgba(242, 180, 102, 0.15);
-  /* Smoked glass lift. Deep enough for finance, still tactile. */
-  --numa-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.24), 0 8px 20px -8px rgba(0, 0, 0, 0.46),
-    0 24px 48px -20px rgba(0, 0, 0, 0.58);
-  --numa-shadow-sm:
-    0 1px 2px rgba(0, 0, 0, 0.2), 0 6px 14px -6px rgba(0, 0, 0, 0.4),
-    0 16px 32px -16px rgba(0, 0, 0, 0.52);
-  --numa-shadow-ink: 0 10px 24px rgba(0, 0, 0, 0.28);
+  --numa-radius: 12px;
+  --numa-radius-sm: 8px;
+  --numa-radius-sheet: 16px;
+  --numa-warning: #D9A441;
+  --numa-warning-soft: rgba(217, 164, 65, 0.14);
+  /* One elevation. Borders carry the edge. Toast may sit a step deeper. */
+  --numa-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --numa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --numa-shadow-ink: 0 1px 2px rgba(0, 0, 0, 0.3);
   /* Selected pill / chip on ink. One value so every screen matches. */
-  --numa-pill-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
-  --numa-toast-shadow: 0 8px 24px rgba(0, 0, 0, 0.34);
-  --numa-chip-neutral: rgba(226, 239, 240, 0.08);
-  /* Day dial: calm smoked core so cream digits stay crisp; steel lives on the arc. */
-  --numa-dial-mint-from: #6fa9bc;
-  --numa-dial-mint-to: #2f9a8a;
-  --numa-dial-clay-from: #ffbf7d;
-  --numa-dial-clay-to: #d96c3b;
-  --numa-dial-core-from: rgba(14, 24, 28, 0.97);
-  --numa-dial-core-to: rgba(38, 62, 72, 0.9);
-  --numa-dial-core-over-from: rgba(26, 18, 12, 0.96);
-  --numa-dial-core-over-to: rgba(86, 48, 26, 0.78);
-  --numa-dial-track: rgba(120, 168, 184, 0.14);
-  --numa-dial-halo: rgba(110, 168, 184, 0.12);
-  --numa-dial-halo-over: rgba(240, 140, 72, 0.2);
-  --numa-dial-inner-line: rgba(255, 255, 255, 0.12);
-  --numa-scan-sweep: rgba(93, 207, 225, 0.34);
-  --numa-nav: rgba(7, 15, 18, 0.84);
+  --numa-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --numa-toast-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 20px rgba(0, 0, 0, 0.28);
+  --numa-chip-neutral: rgba(255, 255, 255, 0.08);
+  /* Day dial: flat track and arc. Halo stays transparent. */
+  --numa-dial-mint-from: #6FB3CC;
+  --numa-dial-mint-to: #6FB3CC;
+  --numa-dial-clay-from: #D9A441;
+  --numa-dial-clay-to: #D9A441;
+  --numa-dial-core-from: #12151A;
+  --numa-dial-core-to: #12151A;
+  --numa-dial-core-over-from: #12151A;
+  --numa-dial-core-over-to: #12151A;
+  --numa-dial-track: rgba(255, 255, 255, 0.08);
+  --numa-dial-halo: transparent;
+  --numa-dial-halo-over: transparent;
+  --numa-dial-inner-line: rgba(255, 255, 255, 0.08);
+  --numa-scan-sweep: rgba(111, 179, 204, 0.34);
+  --numa-nav: #0B0D10;
   --numa-safe-bottom: env(safe-area-inset-bottom, 0px);
   --numa-safe-top: env(safe-area-inset-top, 0px);
   --numa-safe-left: env(safe-area-inset-left, 0px);
@@ -138,16 +135,7 @@ body {
   min-height: 100dvh;
   overflow-x: clip;
   background-color: var(--numa-bg);
-  background-image:
-    radial-gradient(ellipse 86% 42% at 18% -8%, var(--numa-steel-glow), transparent 62%),
-    radial-gradient(ellipse 76% 38% at 88% 6%, var(--numa-accent-glow), transparent 60%),
-    radial-gradient(ellipse 112% 54% at 50% 112%, rgba(3, 6, 8, 0.78), transparent 74%),
-    linear-gradient(
-      180deg,
-      var(--numa-bg-lift) 0%,
-      var(--numa-bg) 46%,
-      var(--numa-bg-deep) 100%
-    );
+  background-image: none;
   background-repeat: no-repeat;
   color: var(--numa-ink);
   /* Faces come from next/font in layout.tsx — never @import Google Fonts here. */
@@ -179,12 +167,9 @@ body {
 }
 
 .money {
-  font-family: var(--font-numa-mono), ui-monospace, monospace;
+  font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings:
-    "tnum" 1,
-    "lnum" 1;
-  font-optical-sizing: auto;
+  font-optical-sizing: none;
   font-synthesis: none;
   letter-spacing: -0.025em;
   word-spacing: 0;
@@ -192,7 +177,7 @@ body {
 
 .money-currency {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
-  font-variant-numeric: lining-nums;
+  font-variant-numeric: tabular-nums lining-nums;
   font-weight: 600;
   letter-spacing: 0.1em;
   line-height: 1;
@@ -240,10 +225,7 @@ body {
   overflow: visible;
   white-space: nowrap;
   font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings:
-    "tnum" 1,
-    "lnum" 1;
-  font-optical-sizing: auto;
+  font-optical-sizing: none;
   font-synthesis: none;
   letter-spacing: -0.045em;
   word-spacing: 0;
@@ -259,12 +241,23 @@ body {
   column-gap: 0.2em;
   row-gap: 0;
   min-width: min-content;
+  font-variant-numeric: tabular-nums lining-nums;
+  /* Low-level features: variable Inter ignores font-variant-numeric once opsz is live. */
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-money-run {
   flex: 0 0 auto;
   display: block;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
   letter-spacing: -0.045em;
   word-spacing: 0;
 }
@@ -348,9 +341,9 @@ body {
 }
 
 .numa-section-title {
-  font-size: 0.68rem;
-  font-weight: 640;
-  letter-spacing: 0.115em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   line-height: 1.35;
   text-transform: uppercase;
   color: var(--numa-muted);
@@ -360,17 +353,17 @@ body {
 
 .numa-page-title {
   max-width: 19ch;
-  font-size: clamp(1.95rem, 5.8vw, 2.45rem);
+  font-size: 1.75rem;
   line-height: 1.02;
-  font-weight: 680;
+  font-weight: 600;
   letter-spacing: -0.062em;
   color: var(--numa-ink);
   text-wrap: balance;
 }
 
 .numa-brand-mark {
-  font-size: 1.42rem;
-  font-weight: 720;
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.065em;
   line-height: 1;
   color: var(--numa-ink);
@@ -384,7 +377,7 @@ body {
   margin-left: 0.45rem;
   margin-bottom: 0.18rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--numa-steel), var(--numa-accent));
+  background: var(--numa-accent);
   vertical-align: middle;
 }
 
@@ -401,20 +394,18 @@ body {
   width: 1.875rem;
   height: 1.875rem;
   flex: 0 0 auto;
-  border-radius: 0.58rem;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--numa-border) 80%, transparent),
-    0 6px 14px -10px rgba(0, 0, 0, 0.55);
+  border-radius: var(--numa-radius-sm);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--numa-border) 80%, transparent);
 }
 
 .numa-brand-lockup.is-lg .numa-brand-lockup-icon {
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 0.7rem;
+  border-radius: var(--numa-radius);
 }
 
 .numa-brand-lockup.is-lg .numa-brand-mark {
-  font-size: 1.85rem;
+  font-size: 1.75rem;
   letter-spacing: -0.055em;
 }
 
@@ -509,13 +500,7 @@ body {
   justify-self: center;
   align-self: stretch;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    transparent 8%,
-    var(--numa-border-strong) 30%,
-    var(--numa-border-strong) 70%,
-    transparent 92%
-  );
+  background: var(--numa-border-strong);
 }
 
 @keyframes numa-rise {
@@ -562,13 +547,8 @@ body {
   isolation: isolate;
   cursor: default;
   /* Quiet card wash — no bright cyan bloom behind the dial. */
-  background:
-    radial-gradient(ellipse 92% 60% at 22% 0%, rgba(58, 96, 110, 0.14), transparent 64%),
-    radial-gradient(ellipse 86% 56% at 80% 18%, var(--numa-accent-glow), transparent 72%),
-    var(--numa-card);
-  box-shadow:
-    0 22px 54px rgba(0, 0, 0, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: var(--numa-card);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-day-stage::before {
@@ -576,13 +556,7 @@ body {
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.08),
-    transparent 34%,
-    transparent 72%,
-    rgba(240, 161, 94, 0.06)
-  );
+  background: transparent;
   content: "";
   pointer-events: none;
 }
@@ -601,18 +575,7 @@ body {
 }
 
 .numa-day-stage.is-over {
-  background:
-    radial-gradient(
-      ellipse 110% 72% at 50% -12%,
-      rgba(232, 176, 110, 0.28),
-      transparent 62%
-    ),
-    radial-gradient(
-      ellipse 86% 56% at 50% 24%,
-      rgba(168, 107, 58, 0.13),
-      transparent 72%
-    ),
-    var(--numa-card);
+  background: var(--numa-card);
 }
 
 .numa-day-dial {
@@ -625,24 +588,14 @@ body {
   inset: 4%;
   z-index: -1;
   border-radius: inherit;
-  background:
-    radial-gradient(circle at 34% 22%, rgba(255, 255, 255, 0.12), transparent 34%),
-    radial-gradient(circle at 50% 62%, rgba(58, 96, 110, 0.28), transparent 70%);
-  box-shadow:
-    0 16px 36px rgba(0, 0, 0, 0.42),
-    0 0 28px rgba(90, 145, 160, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  background: transparent;
+  box-shadow: var(--numa-shadow);
   content: "";
 }
 
 .numa-day-dial.is-over::before {
-  background:
-    radial-gradient(circle at 34% 22%, rgba(255, 236, 214, 0.1), transparent 34%),
-    radial-gradient(circle at 50% 62%, rgba(140, 78, 40, 0.22), transparent 70%);
-  box-shadow:
-    0 16px 34px rgba(0, 0, 0, 0.4),
-    0 0 24px rgba(180, 100, 50, 0.1),
-    inset 0 0 0 1px rgba(255, 220, 180, 0.1);
+  background: transparent;
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-day-dial svg {
@@ -650,19 +603,19 @@ body {
 }
 
 .numa-day-dial .is-core {
-  filter: drop-shadow(0 10px 20px rgba(42, 81, 67, 0.08));
+  filter: none;
 }
 
 .numa-day-dial.is-over .is-core {
-  filter: drop-shadow(0 10px 20px rgba(108, 72, 45, 0.07));
+  filter: none;
 }
 
 .numa-day-dial .is-track {
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.72));
+  filter: none;
 }
 
 .numa-day-dial .is-arc-halo {
-  filter: blur(1.5px);
+  filter: none;
 }
 
 .numa-day-metrics {
@@ -696,23 +649,15 @@ body {
 }
 
 .numa-day-metrics > .is-budget {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--numa-steel-soft) 36%, transparent),
-    color-mix(in srgb, var(--numa-steel-soft) 60%, transparent)
-  );
+  background: transparent;
 }
 
 .numa-day-metrics > .is-spent {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--numa-spend-soft) 28%, transparent),
-    color-mix(in srgb, var(--numa-spend-soft) 54%, transparent)
-  );
+  background: transparent;
 }
 
 .numa-metric-label {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   line-height: 1.2;
@@ -724,11 +669,12 @@ body {
   min-height: 1.45rem;
   min-width: 0;
   overflow: visible;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .numa-metric-hint {
   margin-top: 0.28rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1.3;
   color: var(--numa-faint);
 }
@@ -742,7 +688,7 @@ body {
 
 .numa-living-math p {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.35;
   color: var(--numa-muted);
 }
@@ -779,9 +725,7 @@ body {
 }
 
 .numa-piles-board > .is-live {
-  background:
-    radial-gradient(circle at 8% 0%, var(--numa-steel-soft), transparent 38%),
-    linear-gradient(165deg, var(--numa-steel-soft), var(--numa-card) 68%);
+  background: var(--numa-card);
 }
 
 .numa-piles-board > .is-park {
@@ -796,7 +740,7 @@ body {
 
 .numa-day-dial-arc {
   animation: none;
-  filter: drop-shadow(0 1px 2px rgba(90, 145, 160, 0.28));
+  filter: none;
   transition: stroke-dasharray 180ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -816,21 +760,26 @@ body {
 .money-hero .money.numa-money-amt,
 .money-hero .numa-money-groups,
 .money-hero .numa-money-run {
-  font-size: clamp(1.55rem, 7.4vw, 3.1rem);
-  font-weight: 720;
+  font-size: 1.75rem;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .money-hero .numa-money-unit,
 .money-hero .money-currency {
   align-self: flex-end;
   padding-bottom: 0.25rem;
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0.06em;
   /* Soft steel-ink, not neon cyan competing with the amount. */
-  color: color-mix(in srgb, var(--numa-muted) 72%, var(--numa-steel) 28%);
+  color: var(--numa-muted);
 }
 
 @keyframes numa-scan {
@@ -914,8 +863,8 @@ body {
   background: var(--numa-bg);
   position: relative;
   z-index: 2;
-  font-size: 1.15rem;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
   line-height: 1;
   color: color-mix(in srgb, var(--numa-muted) 88%, var(--numa-ink));
   user-select: none;
@@ -1051,9 +1000,9 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  font-size: 1.35rem;
-  font-weight: 700;
+  border-radius: var(--numa-radius);
+  font-size: 1.25rem;
+  font-weight: 600;
   line-height: 1;
   color: color-mix(in srgb, var(--numa-muted) 88%, var(--numa-ink));
   background: var(--numa-card);
@@ -1074,7 +1023,7 @@ body {
   justify-content: center;
   gap: 0.12rem;
   padding: 0.35rem 0.5rem 0.4rem;
-  border-radius: 1.15rem;
+  border-radius: var(--numa-radius-sheet);
   background: var(--numa-card);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -1086,9 +1035,9 @@ body {
 }
 
 .numa-month-nav-kicker {
-  font-size: 0.62rem;
-  font-weight: 640;
-  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   line-height: 1.2;
   text-transform: uppercase;
   color: var(--numa-faint);
@@ -1105,21 +1054,21 @@ body {
 }
 
 .numa-month-nav-sep {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--numa-faint);
 }
 
 .numa-month-nav-month {
-  font-size: clamp(1.22rem, 5.6vw, 1.5rem);
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.045em;
   text-transform: lowercase;
 }
 
 .numa-month-nav-year-text {
-  font-size: 0.98rem;
-  font-weight: 620;
+  font-size: 1rem;
+  font-weight: 500;
   letter-spacing: -0.02em;
   color: var(--numa-muted);
 }
@@ -1151,7 +1100,7 @@ body {
   min-width: var(--numa-touch);
   padding-inline: 0.75rem;
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--numa-accent);
 }
 
@@ -1204,7 +1153,7 @@ body {
   padding-inline: 0.2rem;
   border-radius: 999px;
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1;
   text-transform: lowercase;
   color: var(--numa-muted);
@@ -1235,8 +1184,8 @@ body {
 .numa-month-nav-hint {
   margin-top: 0.75rem;
   text-align: center;
-  font-size: 0.72rem;
-  font-weight: 550;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1.35;
   color: var(--numa-faint);
 }
@@ -1281,9 +1230,9 @@ body {
 }
 
 .numa-wealth-cell .numa-section-title {
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   line-height: 1.35;
   margin: 0;
   min-width: 0;
@@ -1305,15 +1254,20 @@ body {
 .numa-wealth-value .money.numa-money-amt,
 .numa-wealth-value .numa-money-groups,
 .numa-wealth-value .numa-money-run {
-  font-size: 1.16rem;
-  font-weight: 720;
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.25;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-wealth-value .numa-money-unit {
   font-size: 0.75rem;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.04em;
 }
 
@@ -1323,8 +1277,8 @@ body {
   justify-content: center;
   height: 0.85rem;
   padding: 0;
-  font-size: 0.85rem;
-  font-weight: 650;
+  font-size: 0.875rem;
+  font-weight: 600;
   line-height: 1;
   color: var(--numa-faint);
 }
@@ -1351,7 +1305,7 @@ body {
   }
 
   .numa-wealth-cell.is-live {
-    background: linear-gradient(165deg, var(--numa-steel-soft) 0%, var(--numa-card) 68%);
+    background: var(--numa-card);
   }
 
   .numa-wealth-cell.is-park {
@@ -1359,7 +1313,7 @@ body {
   }
 
   .numa-wealth-cell.is-all {
-    background: linear-gradient(165deg, var(--numa-steel-soft) 0%, var(--numa-card) 70%);
+    background: var(--numa-card);
   }
 
   .numa-wealth-value {
@@ -1413,8 +1367,8 @@ body {
 .numa-pile-line-label {
   flex: 0 1 auto;
   min-width: min-content;
-  font-size: 0.8125rem;
-  font-weight: 520;
+  font-size: 0.875rem;
+  font-weight: 500;
   line-height: 1.35;
   letter-spacing: 0;
   text-transform: none;
@@ -1440,13 +1394,18 @@ body {
 .numa-pile-line .numa-money-groups,
 .numa-pile-line .numa-money-run {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-pile-line .numa-money-unit {
-  font-size: 0.6875rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
 }
 
@@ -1457,24 +1416,29 @@ body {
 .numa-pile .numa-money-groups,
 .numa-pile .numa-money-run {
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.018em;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-piles-board .is-park .numa-money-unit,
 .numa-pile .numa-money-unit {
-  font-size: 0.6875rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .numa-pile-line.is-over .numa-pile-line-label {
   color: var(--numa-positive);
-  font-weight: 680;
+  font-weight: 600;
 }
 
 .numa-pile-line.is-short .numa-pile-line-label {
   color: var(--numa-ink);
-  font-weight: 680;
+  font-weight: 600;
 }
 
 .numa-pile-line.is-in .numa-pile-line-value {
@@ -1524,7 +1488,7 @@ body {
   align-self: center;
   padding-bottom: 0;
   color: var(--numa-faint);
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
 }
 
@@ -1542,11 +1506,11 @@ body {
   border: 0;
   border-radius: 999px;
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.625rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   font-style: normal;
   font-variant: normal;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1571,9 +1535,7 @@ body {
 .numa-chip-alarm {
   background: color-mix(in srgb, var(--numa-alarm-soft) 86%, var(--numa-card));
   color: color-mix(in srgb, var(--numa-alarm) 88%, var(--numa-ink));
-  box-shadow:
-    inset 0 0 0 1px rgba(240, 161, 94, 0.12),
-    0 4px 12px rgba(240, 140, 72, 0.1);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-chip-ink {
@@ -1585,10 +1547,10 @@ button.numa-chip,
 span.numa-chip,
 p.numa-chip {
   font-family: var(--font-numa-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.625rem;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 600;
   font-style: normal;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -1638,7 +1600,7 @@ button.numa-chip:disabled {
 }
 
 .numa-plan-name {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1.3;
@@ -1669,9 +1631,9 @@ button.numa-chip:disabled {
   height: 1.4rem;
   min-height: 1.4rem;
   max-height: 1.4rem;
-  font-size: 0.625rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   line-height: 1;
 }
 
@@ -1738,7 +1700,7 @@ button.numa-chip:disabled {
 
 .numa-settle-eq .is-remain {
   color: var(--numa-accent-ink);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .numa-settle-rest {
@@ -1746,7 +1708,7 @@ button.numa-chip:disabled {
 }
 
 .numa-partial-preview {
-  border-radius: 1rem;
+  border-radius: var(--numa-radius-sheet);
   background: var(--numa-card);
   border: 1px solid var(--numa-border);
   padding: 0.9rem 1rem;
@@ -1770,11 +1732,11 @@ button.numa-chip:disabled {
 }
 
 .numa-pile-meter > i.is-danger {
-  background: linear-gradient(90deg, #d3453a 0%, var(--numa-danger) 100%);
+  background: var(--numa-danger);
 }
 
 .numa-pile-meter > i.is-alarm {
-  background: linear-gradient(90deg, #d4925a 0%, var(--numa-alarm) 100%);
+  background: var(--numa-alarm);
 }
 
 .numa-year-dots {
@@ -1794,7 +1756,7 @@ button.numa-chip:disabled {
 }
 
 .numa-skel {
-  border-radius: 1.25rem;
+  border-radius: var(--numa-radius-sheet);
   background: color-mix(in srgb, var(--numa-card) 72%, var(--numa-bg));
   box-shadow: inset 0 0 0 1px var(--numa-border);
 }
@@ -1892,15 +1854,10 @@ button.numa-chip:disabled {
   padding-bottom: var(--numa-safe-bottom);
   border: none;
   border-radius: 0;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--numa-nav) 62%, transparent) 0%,
-    color-mix(in srgb, var(--numa-nav) 92%, transparent) 38%,
-    color-mix(in srgb, var(--numa-nav) 96%, transparent) 100%
-  );
-  box-shadow: 0 -18px 36px -24px rgba(0, 0, 0, 0.62);
-  -webkit-backdrop-filter: blur(26px) saturate(1.35);
-  backdrop-filter: blur(26px) saturate(1.35);
+  background: var(--numa-nav);
+  box-shadow: var(--numa-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Soft top wash + side-faded hairline — no hard slab edge. */
@@ -1910,22 +1867,9 @@ button.numa-chip:disabled {
   inset: 0 0 auto;
   height: 1.5rem;
   pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.055) 0%,
-    rgba(255, 255, 255, 0.02) 45%,
-    transparent 100%
-  );
+  background: transparent;
   border-top: 1px solid transparent;
-  border-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.12) 18%,
-      rgba(255, 255, 255, 0.14) 50%,
-      rgba(255, 255, 255, 0.12) 82%,
-      transparent 100%
-    )
-    1;
+  border-image: none;
 }
 
 .numa-bottom-nav-item {
@@ -1950,7 +1894,7 @@ button.numa-chip:disabled {
   height: 0.22rem;
   border-radius: 999px;
   background: var(--numa-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--numa-accent) 48%, transparent);
+  box-shadow: none;
   transform: translateX(-50%);
 }
 
@@ -1965,26 +1909,16 @@ button.numa-chip:disabled {
 .numa-fab {
   width: 2.85rem;
   height: 2.85rem;
-  background: linear-gradient(152deg, #ffe0bc 0%, var(--numa-accent) 46%, #d26534 100%);
-  box-shadow:
-    0 0 0 1px rgba(255, 236, 214, 0.18),
-    0 10px 22px -6px rgba(240, 140, 72, 0.42),
-    0 2px 6px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.34),
-    inset 0 -2px 5px rgba(90, 36, 12, 0.22);
-  color: #0a1216;
+  background: var(--numa-accent);
+  box-shadow: var(--numa-shadow);
+  color: var(--numa-bg);
   transition:
     transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
     box-shadow 80ms cubic-bezier(0.34, 1.15, 0.64, 1);
 }
 
 .numa-fab:active {
-  box-shadow:
-    0 0 0 1px rgba(255, 236, 214, 0.12),
-    0 4px 12px -4px rgba(240, 140, 72, 0.3),
-    0 1px 3px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 3px rgba(90, 36, 12, 0.28);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-side-nav-item {
@@ -1995,11 +1929,7 @@ button.numa-chip:disabled {
 }
 
 .numa-side-nav-item.is-active {
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--numa-steel-soft) 70%, var(--numa-card)) 0%,
-    color-mix(in srgb, var(--numa-accent-soft) 70%, var(--numa-card)) 100%
-  );
+  background: var(--numa-accent-soft);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 3px 0 0 var(--numa-accent),
@@ -2075,8 +2005,8 @@ button.numa-chip:disabled {
   justify-content: center;
   min-height: 3rem;
   padding: 0 1.1rem;
-  border-radius: 999px;
-  font-size: 0.9375rem;
+  border-radius: var(--numa-radius);
+  font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   touch-action: manipulation;
@@ -2097,19 +2027,20 @@ button.numa-chip:disabled {
 }
 
 .numa-btn:disabled {
-  opacity: 0.45;
+  opacity: 1;
+  background: var(--numa-surface-strong);
+  color: var(--numa-muted);
+  box-shadow: none;
 }
 
 .numa-btn-primary {
-  background: linear-gradient(155deg, #f9f4eb 0%, var(--numa-ink) 100%);
-  color: #061014;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 4px 14px rgba(0, 0, 0, 0.24);
+  background: var(--numa-ink);
+  color: var(--numa-bg);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(155deg, #ffffff 0%, #e8dfd0 100%);
+  background: var(--numa-ink);
 }
 
 .numa-btn-primary:focus-visible {
@@ -2118,25 +2049,21 @@ button.numa-chip:disabled {
 }
 
 .numa-btn-primary:active:not(:disabled) {
-  background: linear-gradient(155deg, #e8dfd0 0%, #d8cbbb 100%);
+  background: var(--numa-ink);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .numa-btn-accent {
-  background: linear-gradient(155deg, #ffd0a0 0%, var(--numa-accent) 48%, #d96c3b 100%);
-  color: #061014;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 4px 14px var(--numa-accent-glow);
+  background: var(--numa-accent);
+  color: var(--numa-bg);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-btn-accent:active:not(:disabled) {
-  background: linear-gradient(155deg, var(--numa-accent) 0%, #c85b34 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 2px 8px rgba(240, 140, 72, 0.2);
+  background: var(--numa-accent);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-btn-soft {
@@ -2147,6 +2074,15 @@ button.numa-chip:disabled {
 .numa-btn-soft:active:not(:disabled) {
   background: color-mix(in srgb, var(--numa-steel-soft) 56%, var(--numa-chip-neutral));
   color: var(--numa-ink);
+}
+
+.numa-btn-soft.is-accent,
+.numa-btn-soft.is-accent:active:not(:disabled) {
+  color: var(--numa-accent);
+}
+
+.numa-accent-action {
+  color: var(--numa-accent);
 }
 
 .animate-bar {
@@ -2168,17 +2104,11 @@ button.numa-chip:disabled {
 }
 
 .numa-cta-glow {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 4px 18px rgba(22, 21, 19, 0.2),
-    0 0 0 1px rgba(22, 21, 19, 0.04);
+  box-shadow: var(--numa-shadow);
 }
 
 .numa-cta-glow.numa-btn-accent {
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 4px 18px var(--numa-accent-glow),
-    0 0 0 1px rgba(240, 161, 94, 0.12);
+  box-shadow: var(--numa-shadow);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2256,16 +2186,7 @@ button.numa-chip:disabled {
   pointer-events: none;
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 86% 42% at 18% -8%, var(--numa-steel-glow), transparent 62%),
-    radial-gradient(ellipse 76% 36% at 88% 8%, var(--numa-accent-glow), transparent 58%),
-    radial-gradient(ellipse 140% 58% at 50% 118%, rgba(0, 0, 0, 0.7), transparent 72%),
-    linear-gradient(
-      180deg,
-      var(--numa-bg-lift) 0%,
-      var(--numa-bg) 46%,
-      var(--numa-bg-deep) 100%
-    );
+  background: transparent;
 }
 
 .auth-glow::after {
@@ -2277,12 +2198,7 @@ button.numa-chip:disabled {
   aspect-ratio: 1;
   transform: translateX(-50%);
   border-radius: 999px;
-  background: radial-gradient(
-    circle at 42% 42%,
-    rgba(126, 213, 229, 0.22),
-    rgba(240, 161, 94, 0.08) 50%,
-    transparent 72%
-  );
+  background: transparent;
 }
 
 .auth-frame {
@@ -2308,9 +2224,9 @@ button.numa-chip:disabled {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   line-height: 1;
   text-transform: uppercase;
   color: var(--numa-ink);
@@ -2321,7 +2237,7 @@ button.numa-chip:disabled {
   width: 2.5rem;
   height: 2.5rem;
   flex: 0 0 auto;
-  border-radius: 0.62rem;
+  border-radius: var(--numa-radius-sm);
 }
 
 /*
@@ -2432,6 +2348,18 @@ button.numa-chip:disabled {
 .numa-money-line-amt {
   flex-shrink: 0;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.numa-hero-money .numa-money-groups,
+.numa-hero-money .numa-money-run,
+.numa-money-line-amt .numa-money-groups,
+.numa-money-line-amt .numa-money-run {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1;
+  font-optical-sizing: none;
 }
 
 .numa-money-stack .numa-row {
@@ -2448,6 +2376,7 @@ button.numa-chip:disabled {
   overflow-wrap: normal;
   word-break: keep-all;
   max-width: 100%;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .numa-hero-money .money,
@@ -2518,14 +2447,14 @@ button.numa-chip:disabled {
   box-shadow:
     0 1px 0 var(--numa-sheet-highlight) inset,
     var(--numa-shadow);
-  backdrop-filter: blur(24px) saturate(1.16);
+  backdrop-filter: none;
 }
 
 .auth-welcome-line {
   max-width: 11ch;
   margin-top: 0.8rem;
-  font-size: clamp(2.15rem, 8.6vw, 2.6rem);
-  font-weight: 680;
+  font-size: 2.5rem;
+  font-weight: 600;
   letter-spacing: -0.062em;
   line-height: 1.01;
   text-wrap: balance;
@@ -2543,16 +2472,16 @@ button.numa-chip:disabled {
 }
 
 .auth-login-title {
-  font-size: 1.32rem;
-  font-weight: 680;
-  letter-spacing: -0.045em;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: normal;
   line-height: 1.15;
 }
 
 .auth-login-sub {
   margin-top: 0.35rem;
   color: var(--numa-muted);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -2572,8 +2501,8 @@ button.numa-chip:disabled {
   display: block;
   margin-bottom: 0.45rem;
   color: var(--numa-muted);
-  font-size: 0.8125rem;
-  font-weight: 550;
+  font-size: 0.875rem;
+  font-weight: 500;
   letter-spacing: -0.005em;
 }
 
@@ -2585,11 +2514,11 @@ button.numa-chip:disabled {
 .auth-field {
   min-height: 3.5rem;
   width: 100%;
-  border-radius: 1.15rem;
+  border-radius: var(--numa-radius-sm);
   border: 1px solid var(--numa-border-strong);
   background: var(--numa-field);
   padding: 0 1.05rem;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--numa-ink);
   outline: none;
   transition:
@@ -2609,7 +2538,7 @@ button.numa-chip:disabled {
 .auth-field:focus {
   border-color: var(--numa-accent);
   background: var(--numa-surface-strong);
-  box-shadow: 0 0 0 3px var(--numa-accent-glow);
+  box-shadow: 0 0 0 2px var(--numa-accent);
 }
 
 .auth-field:-webkit-autofill,
@@ -2625,7 +2554,7 @@ button.numa-chip:disabled {
   padding-right: 5rem;
 }
 
-.auth-field-toggle {
+button.auth-field-toggle {
   position: absolute;
   top: 50%;
   right: 0.35rem;
@@ -2635,9 +2564,9 @@ button.numa-chip:disabled {
   transform: translateY(-50%);
   align-items: center;
   justify-content: center;
-  border-radius: 0.9rem;
+  border-radius: var(--numa-radius-sm);
   padding: 0 0.55rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--numa-accent);
 }
@@ -2660,7 +2589,7 @@ button.numa-chip:disabled {
 .auth-error {
   display: flex;
   gap: 0.5rem;
-  border-radius: 0.95rem;
+  border-radius: var(--numa-radius-sheet);
   background: var(--numa-danger-soft);
   padding: 0.65rem 0.8rem;
   font-size: 0.875rem;
@@ -2683,14 +2612,14 @@ button.numa-chip:disabled {
   margin-top: 1.15rem;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: linear-gradient(155deg, #ffd0a0 0%, var(--numa-accent) 48%, #d96c3b 100%);
+  border-radius: var(--numa-radius);
+  background: var(--numa-accent);
   box-shadow:
     0 1px 0 var(--numa-button-highlight) inset,
     var(--numa-shadow-ink);
-  color: #061014;
-  font-size: 0.9375rem;
-  font-weight: 650;
+  color: var(--numa-bg);
+  font-size: 1rem;
+  font-weight: 600;
   letter-spacing: -0.012em;
   transition:
     transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
@@ -2715,13 +2644,9 @@ button.numa-chip:disabled {
 
 .auth-primary-button:disabled {
   border: 1px solid var(--numa-border);
-  background: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--numa-steel-soft) 54%, var(--numa-card)),
-    color-mix(in srgb, var(--numa-accent-soft) 44%, var(--numa-card))
-  );
+  background: var(--numa-surface-strong);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: var(--numa-faint);
+  color: var(--numa-muted);
   transform: none;
 }
 
@@ -2742,9 +2667,13 @@ button.numa-chip:disabled {
   min-height: var(--numa-touch);
   padding-inline: 0.75rem;
   color: var(--numa-accent);
-  font-weight: 650;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 0.18em;
+}
+
+.auth-access-note a.auth-text-link {
+  color: var(--numa-accent);
 }
 
 .auth-text-link:focus-visible {
@@ -2774,8 +2703,8 @@ button.numa-chip:disabled {
 
 .auth-boot-title {
   margin: 0;
-  font-size: 1.32rem;
-  font-weight: 680;
+  font-size: 1.25rem;
+  font-weight: 600;
   letter-spacing: -0.045em;
   line-height: 1.15;
 }
@@ -2784,7 +2713,7 @@ button.numa-chip:disabled {
   margin: 0;
   max-width: 22ch;
   color: var(--numa-muted);
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.5;
 }
 
@@ -2805,7 +2734,7 @@ button.numa-chip:disabled {
   .auth-welcome-line {
     max-width: 10ch;
     margin-top: 1.15rem;
-    font-size: clamp(2.8rem, 5.2vw, 3.85rem);
+    font-size: 2.5rem;
   }
 
   .auth-card {

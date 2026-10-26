@@ -156,7 +156,7 @@ function ObservationList({
                 {kindLabel(o.kind)}
               </p>
               <span
-                className={`numa-status-chip text-[11px] font-medium ${status.className}`}
+                className={`numa-status-chip text-xs font-medium ${status.className}`}
               >
                 {status.label}
               </span>

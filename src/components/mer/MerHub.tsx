@@ -120,7 +120,7 @@ export function MerIcon({
   return (
     <span
       aria-hidden
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.85rem] ${MER_ICON_TONE_CLASS[tone]}`}
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--numa-radius)] ${MER_ICON_TONE_CLASS[tone]}`}
     >
       {children}
     </span>

@@ -401,7 +401,7 @@ export function AnalysDashboard({
                       }
                       amountMinor={periodKvarMinor}
                       currency={currency}
-                      tone={periodKvarMinor >= 0 ? "positive" : "alarm"}
+                      tone={periodKvarMinor < 0 ? "alarm" : undefined}
                       hint={periodGoingHint}
                       value={
                         !ledgerSettled && periodKvarMinor === 0
@@ -473,7 +473,7 @@ export function AnalysDashboard({
                 label={SV.kvarIPerioden}
                 amountMinor={month.monthResultMinor}
                 currency={currency}
-                tone={month.monthResultMinor >= 0 ? "positive" : "alarm"}
+                tone={month.monthResultMinor < 0 ? "alarm" : undefined}
                 hint={month.monthLeftoverHint ?? undefined}
                 value={
                   !ledgerSettled && month.monthResultMinor === 0
@@ -822,10 +822,10 @@ function SpendByCategory({
                     <li className="numa-money-line text-xs">
                       <button
                         type="button"
-                        className="numa-press numa-money-line min-h-11 w-full text-left"
+                        className="numa-press numa-money-line numa-accent-action min-h-11 w-full text-left"
                         onClick={() => setShowAllOvrigt(true)}
                       >
-                        <span className="font-semibold text-[var(--numa-accent)]">
+                        <span className="numa-accent-action font-semibold">
                           Visa övriga ·{" "}
                           {formatMoneyCompact(money(ovrigtRestMinor, currency))}
                         </span>
