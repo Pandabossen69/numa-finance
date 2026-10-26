@@ -265,7 +265,7 @@ export function statusMeta(
     return { label: "Borttagen", className: muted };
   }
   if (status === "processed" && notes === "Avvisad") {
-    return { label: "Avvisad", className: danger };
+    return { label: "Avvisad", className: muted };
   }
   switch (status) {
     case "uploaded":

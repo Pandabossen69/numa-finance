@@ -54,7 +54,9 @@ describe("Plan cash coverage stack", () => {
     expect(src).toContain('tone="out"');
     expect(src).toContain("SV.kvarAttBetala");
     expect(src).toContain("SV.over");
-    expect(src).toContain("cashCoverageHintSv");
+    expect(src).toContain("planSummaryHintSv");
+    expect(src).toContain("− avsatt");
+    expect(src).toContain("− sparat");
     expect(src).toContain("numa-pile-stack");
     expect(src).toContain("<PileLine");
     expect(src).toContain('tone={overOk ? "over" : "short"}');

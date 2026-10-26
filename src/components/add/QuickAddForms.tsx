@@ -112,8 +112,7 @@ function ManualDateField({
 }
 
 type Mode = "expense" | "income" | "transfer";
-
-const CASH_PAY = "__kontant__";
+type MoveKind = "transfer" | "withdraw";
 
 export function QuickAddForms({
   primaryAccountId,
@@ -125,7 +124,7 @@ export function QuickAddForms({
   onSuccess?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>("expense");
-  const [payCash, setPayCash] = useState(false);
+  const [moveKind, setMoveKind] = useState<MoveKind>("transfer");
   const [expenseAccountId, setExpenseAccountId] = useState(primaryAccountId);
   const modes: Array<{ id: Mode; label: string }> = [
     { id: "expense", label: "Utgift" },
@@ -146,7 +145,7 @@ export function QuickAddForms({
             type="button"
             onClick={() => {
               setMode(m.id);
-              if (m.id !== "expense") setPayCash(false);
+              if (m.id !== "transfer") setMoveKind("transfer");
             }}
             className={`numa-press min-h-11 rounded-full px-2.5 text-sm ${
               mode === m.id
@@ -159,22 +158,11 @@ export function QuickAddForms({
         ))}
       </div>
 
-      {mode === "expense" && payCash ? (
-        <CashForm
-          primaryAccountId={primaryAccountId}
-          accounts={accounts}
-          onChooseAccount={(id) => {
-            setExpenseAccountId(id);
-            setPayCash(false);
-          }}
-          onSuccess={() => handleSuccess()}
-        />
-      ) : null}
-      {mode === "expense" && !payCash ? (
+      {mode === "expense" ? (
         <ExpenseForm
           accountId={expenseAccountId}
           accounts={accounts}
-          onChooseCash={() => setPayCash(true)}
+          onAccountChange={setExpenseAccountId}
           onSuccess={() => handleSuccess()}
         />
       ) : null}
@@ -186,11 +174,32 @@ export function QuickAddForms({
         />
       ) : null}
       {mode === "transfer" ? (
-        <TransferForm
-          primaryAccountId={primaryAccountId}
-          accounts={accounts}
-          onSuccess={() => handleSuccess()}
-        />
+        <>
+          <label className="block">
+            <span className="numa-field-label">Flytta</span>
+            <select
+              value={moveKind}
+              onChange={(event) => setMoveKind(event.target.value as MoveKind)}
+              className="min-h-11 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-3 text-base outline-none focus:ring-2 focus:ring-[var(--numa-accent)]"
+            >
+              <option value="transfer">Mellan konton</option>
+              <option value="withdraw">Ta ut kontanter (uttag)</option>
+            </select>
+          </label>
+          {moveKind === "withdraw" ? (
+            <CashForm
+              primaryAccountId={primaryAccountId}
+              accounts={accounts}
+              onSuccess={() => handleSuccess()}
+            />
+          ) : (
+            <TransferForm
+              primaryAccountId={primaryAccountId}
+              accounts={accounts}
+              onSuccess={() => handleSuccess()}
+            />
+          )}
+        </>
       ) : null}
     </div>
   );
@@ -199,12 +208,12 @@ export function QuickAddForms({
 function ExpenseForm({
   accountId,
   accounts,
-  onChooseCash,
+  onAccountChange,
   onSuccess,
 }: {
   accountId: string;
   accounts: ShellAccount[];
-  onChooseCash: () => void;
+  onAccountChange: (id: string) => void;
   onSuccess?: () => void;
 }) {
   const [chosenAccountId, setChosenAccountId] = useState(accountId);
@@ -314,11 +323,10 @@ function ExpenseForm({
           label="Betalat med"
           value={resolvedAccountId}
           onChange={(id) => {
-            if (id === CASH_PAY) onChooseCash();
-            else setChosenAccountId(id);
+            setChosenAccountId(id);
+            onAccountChange(id);
           }}
           accounts={accounts}
-          extraOptions={[{ value: CASH_PAY, label: "Kontant" }]}
         />
       ) : null}
       <AmountField
@@ -661,12 +669,10 @@ function TransferForm({
 function CashForm({
   primaryAccountId,
   accounts,
-  onChooseAccount,
   onSuccess,
 }: {
   primaryAccountId: string;
   accounts: ShellAccount[];
-  onChooseAccount?: (id: string) => void;
   onSuccess?: () => void;
 }) {
   const cashAccounts = useMemo(
@@ -762,15 +768,6 @@ function CashForm({
         });
       }}
     >
-      <AccountSelect
-        label="Betalat med"
-        value={CASH_PAY}
-        onChange={(id) => {
-          if (id !== CASH_PAY) onChooseAccount?.(id);
-        }}
-        accounts={accounts}
-        extraOptions={[{ value: CASH_PAY, label: "Kontant" }]}
-      />
       <InfoNote label="Om kontant">
         Uttag från bank/konto. Räknas inte som shopping — bara att pengarna
         byter form.
@@ -870,13 +867,11 @@ function AccountSelect({
   value,
   onChange,
   accounts,
-  extraOptions = [],
 }: {
   label: string;
   value: string;
   onChange: (id: string) => void;
   accounts: ShellAccount[];
-  extraOptions?: Array<{ value: string; label: string }>;
 }) {
   return (
     <label className="block">
@@ -890,11 +885,6 @@ function AccountSelect({
           <option key={a.id} value={a.id}>
             {a.name}
             {a.currency ? ` · ${a.currency}` : ""}
-          </option>
-        ))}
-        {extraOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
           </option>
         ))}
       </select>

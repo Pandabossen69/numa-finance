@@ -3,7 +3,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import type { CanonicalTransaction, CashCoverageView, PlanItem } from "@/domain/finance";
-import { cashCoverageHintSv, planWealthTotalMinor } from "@/domain/finance";
+import { planWealthTotalMinor } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
 import { Icon } from "@/components/ui/Icon";
 import { InfoNote } from "@/components/ui/InfoNote";
@@ -75,8 +75,11 @@ export function PlanPiles({
   const showPriorAsHero = !hasThisMonth && hasPrior;
   const heroMinor = showPriorAsHero ? savingsPriorMinor : savingsThisMonthMinor;
 
-  const reserved = coverage.reservedSavingsMinor;
-  const hint = cashCoverageHintSv(reserved);
+  const showSparatInSummary = coverage.savingsPriorMinor > 0 && !showPriorAsHero;
+  const hint = planSummaryHintSv({
+    showAvsatt: coverage.savingsThisMonthMinor > 0,
+    showSparat: showSparatInSummary,
+  });
 
   return (
     <div className="numa-panel-list">
@@ -120,7 +123,7 @@ export function PlanPiles({
                 tone="out"
               />
             ) : null}
-            {coverage.savingsPriorMinor > 0 && !showPriorAsHero ? (
+            {showSparatInSummary ? (
               <PileLine
                 label={SV.sparat}
                 amountMinor={coverage.savingsPriorMinor}
@@ -214,6 +217,17 @@ export function PlanPiles({
       </div>
     </div>
   );
+}
+
+/** Display only. Names the rows actually in the summary, not the Över-beräkning. */
+function planSummaryHintSv(input: {
+  showAvsatt: boolean;
+  showSparat: boolean;
+}): string {
+  const parts = ["På kontona + kommer in − kvar att betala"];
+  if (input.showAvsatt) parts.push("− avsatt");
+  if (input.showSparat) parts.push("− sparat");
+  return parts.join(" ");
 }
 
 const PlanSavingsDraft = memo(function PlanSavingsDraft({

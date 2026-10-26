@@ -42,6 +42,8 @@ describe("Flytta/Kontant empty copy", () => {
       expenseBlock.indexOf("onSuccess?.()"),
     );
     expect(expenseBlock).toContain("userFacingSaveError");
+    expect(expenseBlock).not.toContain("createCashWithdrawalAction");
+    expect(expenseBlock).not.toContain("Ta ut kontanter");
     const incomeBlock = src.slice(
       src.indexOf("function IncomeForm"),
       src.indexOf("function TransferForm"),

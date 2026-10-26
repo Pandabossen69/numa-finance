@@ -128,16 +128,19 @@ describe("Manuellt account pickers", () => {
 
   it("shows every active account in all four modes, including after a late load", () => {
     render(stub);
-    expect(optionsFor(host, "Betalat med")).toEqual(["Konto · THB", "Kontant"]);
+    expect(optionsFor(host, "Betalat med")).toEqual(["Konto · THB"]);
+    expect(host.textContent).not.toContain("Spara uttag");
 
     clickText(host, "Inkomst");
     expect(optionsFor(host, "Till konto")).toEqual(["Konto · THB"]);
 
     clickText(host, "Flytta");
     expect(host.textContent).toContain("Lägg till ett till saldo");
-
-    clickText(host, "Utgift");
-    chooseOption(host, "Betalat med", "Kontant");
+    expect(optionsFor(host, "Flytta")).toEqual([
+      "Mellan konton",
+      "Ta ut kontanter (uttag)",
+    ]);
+    chooseOption(host, "Flytta", "Ta ut kontanter (uttag)");
     expect(host.textContent).toContain("Skapa först ett saldo");
 
     render(five);
@@ -147,7 +150,7 @@ describe("Manuellt account pickers", () => {
     expect(optionsFor(host, "Från")).toContain("Bangkok Bank · THB");
     expect(optionsFor(host, "Från")).not.toContain("Testkontant · THB");
 
-    clickText(host, "Flytta");
+    chooseOption(host, "Flytta", "Mellan konton");
     expect(host.textContent).not.toContain("Lägg till ett till saldo");
     expect(optionsFor(host, "Från")).toEqual([
       "Bangkok Bank · THB",
@@ -172,8 +175,34 @@ describe("Manuellt account pickers", () => {
 
     clickText(host, "Utgift");
     expect(optionsFor(host, "Betalat med")).toContain("Bangkok Bank · THB");
-    expect(optionsFor(host, "Betalat med")).toContain("Kontant");
+    expect(optionsFor(host, "Betalat med")).toContain("Testkontant · THB");
+    expect(optionsFor(host, "Betalat med")).not.toContain("Kontant");
     expect(optionsFor(host, "Betalat med")).not.toContain("Konto · THB");
-    expect(optionsFor(host, "Betalat med")).toHaveLength(6);
+    expect(optionsFor(host, "Betalat med")).toHaveLength(5);
+    expect(host.textContent).toContain("Spara utgift");
+    expect(host.textContent).not.toContain("Spara uttag");
+  });
+
+  it("books a cash account as an expense and keeps the withdrawal under Flytta", () => {
+    render(five);
+    expect(optionsFor(host, "Betalat med")).toContain("Testkontant · THB");
+    chooseOption(host, "Betalat med", "Testkontant · THB");
+    expect(host.textContent).toContain("Spara utgift");
+    expect(host.textContent).not.toContain("Spara uttag");
+    expect(host.textContent).not.toContain("Till kontanter");
+
+    clickText(host, "Flytta");
+    expect(optionsFor(host, "Flytta")).toContain("Ta ut kontanter (uttag)");
+    expect(host.textContent).not.toContain("Spara uttag");
+    chooseOption(host, "Flytta", "Ta ut kontanter (uttag)");
+    expect(host.textContent).toContain("Spara uttag");
+    expect(host.textContent).toContain("Till kontanter");
+
+    clickText(host, "Inkomst");
+    clickText(host, "Utgift");
+    expect(optionsFor(host, "Betalat med")).toContain("Testkontant · THB");
+    expect(host.textContent).toContain("Spara utgift");
+    expect(host.textContent).not.toContain("Spara uttag");
+    expect(host.textContent).not.toContain("Till kontanter");
   });
 });
