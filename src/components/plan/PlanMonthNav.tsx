@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import {
   addMonthsKey,
   labelMonthChipSv,
@@ -93,7 +95,7 @@ export function PlanMonthNav({
           className="numa-press numa-month-nav-step"
           aria-label="Föregående månad"
         >
-          ‹
+          <Icon icon={ChevronLeft} />
         </button>
 
         <button
@@ -104,13 +106,10 @@ export function PlanMonthNav({
           aria-label={`Välj månad, ${title}`}
           onClick={togglePicker}
         >
-          <span className="numa-month-nav-kicker">
-            {isCurrent ? "Denna månad" : "Visar"}
-          </span>
           <span className="numa-month-nav-title">
             <span className="numa-month-nav-month">{labelMonthNameSv(monthKey)}</span>
             <span className="numa-month-nav-sep" aria-hidden>
-              ·
+              {" "}
             </span>
             <span className="numa-month-nav-year-text">{yearFromMonthKey(monthKey)}</span>
             <i
@@ -128,7 +127,7 @@ export function PlanMonthNav({
           className="numa-press numa-month-nav-step"
           aria-label="Nästa månad"
         >
-          ›
+          <Icon icon={ChevronRight} />
         </button>
       </div>
 

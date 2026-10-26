@@ -23,7 +23,7 @@ describe("Mer menu wiring", () => {
     expect(mer).not.toContain("beforeIntent");
     expect(mer).not.toContain("data-mer-movements");
     expect(mer).not.toContain('window.addEventListener("pointerdown"');
-    expect(mer).toContain('href: "/transaktioner"');
+    expect(mer).toContain('href="/transaktioner"');
     expect(hub).not.toContain("beforeIntent");
     expect(hub).not.toContain("data-mer-movements");
     expect(hub).toContain("markIntent(href)");

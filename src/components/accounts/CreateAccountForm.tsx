@@ -116,7 +116,7 @@ export function CreateAccountForm({
         <select
           value={form.kind}
           onChange={(e) => onKindChange(e.target.value as AccountKind)}
-          className="min-h-14 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)]"
+          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)]"
         >
           {ACCOUNT_KINDS.map((kind) => (
             <option key={kind} value={kind}>
@@ -133,7 +133,7 @@ export function CreateAccountForm({
         <input
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          className="min-h-14 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         />
       </label>
 
@@ -151,7 +151,7 @@ export function CreateAccountForm({
             }))
           }
           disabled={allowedCurrencies.length === 1}
-          className="min-h-14 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] disabled:opacity-70"
+          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] disabled:opacity-70"
         >
           {allowedCurrencies.map((code) => (
             <option key={code} value={code}>
@@ -183,7 +183,7 @@ export function CreateAccountForm({
           }
           placeholder="t.ex. 10058,04"
           inputMode="decimal"
-          className="min-h-14 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+          className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         />
       </label>
 
@@ -197,7 +197,7 @@ export function CreateAccountForm({
             onChange={(e) => setForm((f) => ({ ...f, fxRate: e.target.value }))}
             placeholder="Lämna tomt för marknadspris"
             inputMode="decimal"
-            className="min-h-14 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+            className="min-h-14 w-full rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 text-[16px] text-[var(--numa-ink)] outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
           />
           <p className="mt-1.5 text-xs text-[var(--numa-faint)]">
             Kursen låses när du sparar.
@@ -205,7 +205,7 @@ export function CreateAccountForm({
         </label>
       ) : null}
 
-      <label className="numa-press flex min-h-11 items-start gap-3 rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3 transition hover:border-[var(--numa-border-strong)]">
+      <label className="numa-press flex min-h-11 items-start gap-3 rounded-[var(--numa-radius-sm)] border border-[var(--numa-border)] bg-[var(--numa-bg)] px-4 py-3 transition hover:border-[var(--numa-border-strong)]">
         <input
           type="checkbox"
           checked={useOnIdag}

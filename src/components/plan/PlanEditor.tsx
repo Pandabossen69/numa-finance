@@ -1009,7 +1009,7 @@ export function PlanEditor({
         </section>
       ) : null}
 
-      <div className="animate-rise-delay-2 grid gap-4">
+      <div className="numa-panel-list animate-rise-delay-2">
         <PlanCard
           title="Intäkter"
           totalLabel="Kvar att få"
@@ -1090,9 +1090,6 @@ export function PlanEditor({
             }}
           />
         </PlanCard>
-      </div>
-
-      <div className="animate-rise-delay-3 grid gap-4 lg:grid-cols-2">
         <PlanCard
           title="Fasta utgifter"
           hint="Gäller bara den här månaden."
@@ -1106,7 +1103,7 @@ export function PlanEditor({
             <button
               type="button"
               disabled={busy === "import"}
-              className="numa-btn numa-btn-soft w-full"
+              className="numa-press flex min-h-11 w-full items-center px-1 text-left text-sm font-semibold text-[var(--numa-accent)]"
               onClick={() => {
                 const temps = importableFixed.map((src) =>
                   optimisticPlanItem({

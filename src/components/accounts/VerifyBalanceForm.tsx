@@ -141,7 +141,7 @@ export function VerifyBalanceForm({
           onChange={(e) => setBalance(e.target.value)}
           inputMode="decimal"
           placeholder="t.ex. 10058,04"
-          className="money min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+          className="money min-h-12 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base font-semibold outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
         />
       </label>
       {needsFx ? (
@@ -154,7 +154,7 @@ export function VerifyBalanceForm({
             onChange={(e) => setFxRate(e.target.value)}
             inputMode="decimal"
             placeholder="Tomt = marknadspris"
-            className="min-h-12 w-full rounded-2xl border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
+            className="min-h-12 w-full rounded-[var(--numa-radius)] border border-[var(--numa-border)] bg-[var(--numa-card)] px-3.5 text-base outline-none focus:border-[var(--numa-accent)] focus:ring-2 focus:ring-[var(--numa-accent)]/25"
           />
         </label>
       ) : null}

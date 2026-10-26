@@ -18,6 +18,7 @@ describe("PileLine cash rows", () => {
     expect(src).toContain('tone === "over"');
     expect(src).toContain('tone === "short"');
     expect(src).toContain("usesAlarmColor(amountMinor)");
+    expect(src).toContain("amountMinor > 0");
     expect(src).toContain('? "signed"');
     expect(src).not.toContain("numa-amt-out");
   });

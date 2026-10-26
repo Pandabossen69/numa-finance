@@ -62,8 +62,9 @@ describe("Mer HIGH regress", () => {
     expect(merPage).toContain("MerRouteClient");
     expect(merClient).toContain("readMerSnapshot");
     expect(merSnapshot).toContain("currentUserIsNumaAdmin");
-    expect(mer).toContain("Ny användare");
-    expect(mer).toContain("view.isAdmin");
+    expect(mer).not.toContain("Ny användare");
+    expect(settings).toContain("Ny användare");
+    expect(settings).toContain("view?.isAdmin");
     expect(settingsPage).toContain("currentUserIsNumaAdmin");
     expect(settings).toContain("/installningar/ny-anvandare");
   });
@@ -93,16 +94,26 @@ describe("Mer HIGH regress", () => {
     expect(mer).not.toContain("view.displayName.charAt");
   });
 
-  it("keeps the existing Mer items around the install CTA", () => {
-    expect(mer).toContain("MerInstallCta");
-    expect(mer).toContain("Som app");
+  it("keeps Mer as Konton, Rörelser, Inställningar and Logga ut", () => {
     expect(mer).toContain("Rörelser");
     expect(mer).toContain("Konton");
-    expect(mer).toContain("Tidigare bilder");
     expect(mer).toContain("Inställningar");
-    expect(mer).toContain("Uppdatera appen");
     expect(mer).toContain("SignOutButton");
-    expect(mer).toContain("PRODUCTION_ORIGIN");
+    expect(mer).not.toContain("MerInstallCta");
+    expect(mer).not.toContain("Tidigare bilder");
+    expect(mer).not.toContain("Uppdatera appen");
+    expect(mer).not.toContain("PRODUCTION_ORIGIN");
+    expect(settings).toContain("MerInstallCta");
+    expect(settings).toContain("Uppdatera appen");
+    expect(settings).not.toContain("Dataläge");
+    expect(settings).toContain('"Moln"');
+  });
+
+  it("links Tidigare bilder to /importera from Inställningar", () => {
+    expect(settings).toContain('href="/importera"');
+    expect(settings).toContain("Tidigare bilder");
+    expect(settings).toContain('title="Bilder"');
+    expect(mer).not.toContain('href="/importera"');
   });
 });
 

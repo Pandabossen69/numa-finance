@@ -25,7 +25,8 @@ describe("first-paint pending", () => {
     expect(analys).toContain("Månad");
     expect(analys).toContain("Vart gick pengarna");
     expect(analys).toContain("Hur går det");
-    expect(analys).toContain("Se vart pengarna gick");
+    expect(analys).toContain("Analys");
+    expect(analys).not.toContain("Se vart pengarna gick");
     expect(analys).not.toContain("Kvar idag");
     expect(analysSrc).toContain("analysPendingHasExpired");
     expect(analysSrc).toContain("AnalysFailSoft");

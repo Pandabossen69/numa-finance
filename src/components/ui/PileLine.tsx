@@ -18,19 +18,20 @@ export function PileLine({
   tone?: "plain" | "in" | "out" | "over" | "short";
 }) {
   const missing = amountMinor == null;
+  const incoming = tone === "in" && typeof amountMinor === "number" && amountMinor > 0;
   const rowTone =
     tone === "over"
       ? " is-over"
       : tone === "short"
         ? " is-short"
-        : tone === "in"
+        : incoming
           ? " is-in"
           : tone === "out"
             ? " is-out"
             : "";
   const valueTone = missing
     ? "text-[var(--numa-faint)]"
-    : tone === "in"
+    : incoming
       ? "numa-amt-in"
       : "";
   const moneyTone =

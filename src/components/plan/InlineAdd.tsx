@@ -126,7 +126,11 @@ export function InlineAdd({
           </div>
         </div>
       ) : (
-        <button type="button" className="numa-btn numa-btn-soft w-full" onClick={onOpen}>
+        <button
+          type="button"
+          className="numa-press flex min-h-11 w-full items-center text-left text-sm font-semibold text-[var(--numa-accent)]"
+          onClick={onOpen}
+        >
           {collapsedLabel}
         </button>
       )}

@@ -12,7 +12,6 @@ export function AuthCard({
 }) {
   return (
     <div className="auth-stage">
-      <div className="auth-glow" aria-hidden />
       <div className="auth-frame">
         <div className="auth-hero">
           <p className="auth-mark">
@@ -25,7 +24,6 @@ export function AuthCard({
             />
             NUMA
           </p>
-          <p className="auth-welcome-line">Vad du kan använda idag.</p>
         </div>
         <div className="auth-card">
           <header className="auth-card-header">

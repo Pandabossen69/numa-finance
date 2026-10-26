@@ -32,7 +32,7 @@ export function MerBackLink({
       }}
       className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[var(--numa-muted)] transition hover:text-[var(--numa-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--numa-accent)] focus-visible:ring-offset-2"
     >
-      <Icon icon={ChevronLeft} size={16} className="opacity-70" />
+      <Icon icon={ChevronLeft} className="opacity-70" />
       {label}
     </Link>
   );
@@ -192,7 +192,6 @@ export function MerListLink({
       {trailing}
       <Icon
         icon={ChevronRight}
-        size={16}
         className="shrink-0 text-[var(--numa-faint)] transition group-hover:translate-x-0.5 group-hover:text-[var(--numa-accent)]"
       />
     </Link>
@@ -234,153 +233,3 @@ export function MerMetaRow({
   );
 }
 
-function iconProps() {
-  return {
-    width: 17,
-    height: 17,
-    viewBox: "0 0 20 20",
-    fill: "none" as const,
-    "aria-hidden": true,
-  };
-}
-
-export function IconRorelser() {
-  return (
-    <svg {...iconProps()}>
-      <path
-        d="M5 4.5h10a1 1 0 0 1 1 1v9.6a.8.8 0 0 1-1.24.67l-1.1-.73a.8.8 0 0 0-.92.03l-.98.76a.8.8 0 0 1-.98 0l-.98-.76a.8.8 0 0 0-.98 0l-.98.76a.8.8 0 0 1-.98 0l-.98-.76a.8.8 0 0 0-.92-.03l-1.1.73A.8.8 0 0 1 4 15.1V5.5a1 1 0 0 1 1-1Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7 8h6M7 10.6h6"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-export function IconWallet() {
-  return (
-    <svg {...iconProps()}>
-      <path
-        d="M3.5 7.2a1.7 1.7 0 0 1 1.7-1.7h9.6a1.7 1.7 0 0 1 1.7 1.7v6.6a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7V7.2Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-      />
-      <path
-        d="M12.2 10.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
-        fill="currentColor"
-      />
-      <path d="M6 5.5 12 3.3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function IconCamera() {
-  return (
-    <svg {...iconProps()}>
-      <path
-        d="M4 7.4a1 1 0 0 1 1-1h1.3l.7-1.3a1 1 0 0 1 .88-.5h4.24a1 1 0 0 1 .88.5l.7 1.3H15a1 1 0 0 1 1 1v6.9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7.4Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <circle cx="10" cy="10.8" r="2.35" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
-}
-
-export function IconImages() {
-  return (
-    <svg {...iconProps()}>
-      <rect
-        x="3.6"
-        y="4.6"
-        width="10.8"
-        height="9.4"
-        rx="1.4"
-        stroke="currentColor"
-        strokeWidth="1.4"
-      />
-      <circle cx="6.9" cy="7.9" r="1.1" fill="currentColor" />
-      <path
-        d="M5 12.6 8 9.9l1.7 1.5 2.4-2.5 3 3.6"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function IconGear() {
-  return (
-    <svg {...iconProps()}>
-      <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M10 3.6v1.6M10 14.8v1.6M16.4 10h-1.6M5.2 10H3.6M14.5 5.5l-1.13 1.13M6.63 13.37 5.5 14.5M14.5 14.5l-1.13-1.13M6.63 6.63 5.5 5.5"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-export function IconWrench() {
-  return (
-    <svg {...iconProps()}>
-      <path
-        d="M12.1 4.4a3.1 3.1 0 0 0-3.9 3.9L4 12.5v2.1l1.4 1.4h2.1l4.2-4.2a3.1 3.1 0 0 0 3.9-3.9l-2 2-1.7-.5-.5-1.7 2-2Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-export function IconLink() {
-  return (
-    <svg {...iconProps()}>
-      <path
-        d="M8.4 11.6a2.6 2.6 0 0 1 0-3.68l1.7-1.7a2.6 2.6 0 0 1 3.68 3.68l-.9.9"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M11.6 8.4a2.6 2.6 0 0 1 0 3.68l-1.7 1.7a2.6 2.6 0 0 1-3.68-3.68l.9-.9"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-export function IconPersonPlus() {
-  return (
-    <svg {...iconProps()}>
-      <circle cx="8.1" cy="7.6" r="2.35" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M3.7 15.5c.4-2.5 2.1-3.9 4.4-3.9s4 1.4 4.4 3.9"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M15 6.6v3.4M13.3 8.3h3.4"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}

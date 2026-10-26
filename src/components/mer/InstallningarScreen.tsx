@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Images } from "lucide-react";
 import {
   MerListGroup,
   MerListLink,
@@ -9,8 +10,9 @@ import {
   MerPageHeader,
   MerSection,
 } from "@/components/mer/MerHub";
+import { Icon } from "@/components/ui/Icon";
 import { SettingsViewLoading } from "@/components/mer/MerViewLoading";
-import { HomescreenInstallHint } from "@/components/pwa/HomescreenInstallHint";
+import { MerInstallCta } from "@/components/mer/MerInstallCta";
 import { RepairAppButton } from "@/components/pwa/RepairAppButton";
 import {
   lastSettingsSnapshot,
@@ -37,11 +39,9 @@ export function InstallningarScreen({
       <MerPageHeader back title="Inställningar" />
 
       <div className="animate-rise-delay-1 space-y-6">
-        <div className="md:hidden">
-          <MerSection title="På hemskärmen">
-            <HomescreenInstallHint dismissible={false} />
-          </MerSection>
-        </div>
+        <MerSection title="På hemskärmen">
+          <MerInstallCta />
+        </MerSection>
 
         <MerSection title="Underhåll">
           <MerListGroup>
@@ -53,6 +53,16 @@ export function InstallningarScreen({
               </div>
               <RepairAppButton />
             </MerListRow>
+          </MerListGroup>
+        </MerSection>
+
+        <MerSection title="Bilder">
+          <MerListGroup>
+            <MerListLink
+              href="/importera"
+              label="Tidigare bilder"
+              icon={<Icon icon={Images} />}
+            />
           </MerListGroup>
         </MerSection>
 
@@ -76,8 +86,8 @@ export function InstallningarScreen({
                 <MerMetaRow label="Tidszon" value={view.timezone} />
                 <MerMetaRow label="Valuta" value={view.primaryCurrency} />
                 <MerMetaRow
-                  label="Dataläge"
-                  value={view.supabaseReady ? "Moln" : "Lokal lagring"}
+                  label="Sparat"
+                  value={view.supabaseReady ? "Moln" : "På den här enheten"}
                 />
               </dl>
             </MerListGroup>

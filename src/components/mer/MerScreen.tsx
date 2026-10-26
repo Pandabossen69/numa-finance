@@ -1,97 +1,25 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { useEffect } from "react";
+import { ArrowLeftRight, Settings, Wallet } from "lucide-react";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import {
-  IconGear,
-  IconImages,
-  IconLink,
-  IconPersonPlus,
-  IconRorelser,
-  IconWallet,
-  IconWrench,
   MerAvatar,
   MerListGroup,
   MerListLink,
-  MerListRow,
   MerPageHeader,
   MerSection,
-  type MerIconTone,
 } from "@/components/mer/MerHub";
-import { MerInstallCta } from "@/components/mer/MerInstallCta";
+import { Icon } from "@/components/ui/Icon";
 import { MerViewLoading } from "@/components/mer/MerViewLoading";
 import {
   ensurePaintableMerSnapshot,
   lastMerSnapshot,
   rememberMerSnapshot,
 } from "@/features/home/last-snapshot";
-import { PRODUCTION_HOST, PRODUCTION_ORIGIN } from "@/lib/site";
 import { DestinationWarmup } from "@/lib/nav/prefetch-intent";
 
-type MerItem = {
-  href: string;
-  label: string;
-  hint?: string;
-  icon: ReactNode;
-  tone: MerIconTone;
-};
-
-const sections: Array<{ title: string; items: MerItem[] }> = [
-  {
-    title: "Pengar",
-    items: [
-      {
-        href: "/transaktioner",
-        label: "Rörelser",
-        hint: "Historik",
-        icon: <IconRorelser />,
-        tone: "neutral",
-      },
-      {
-        href: "/konton",
-        label: "Konton",
-        hint: "Alla plånböcker i THB",
-        icon: <IconWallet />,
-        tone: "positive",
-      },
-      {
-        href: "/importera",
-        label: "Tidigare bilder",
-        hint: "Kvitton och SMS du fotat",
-        icon: <IconImages />,
-        tone: "accent",
-      },
-    ],
-  },
-  {
-    title: "App",
-    items: [
-      {
-        href: "/installningar",
-        label: "Inställningar",
-        icon: <IconGear />,
-        tone: "neutral",
-      },
-      {
-        href: "/laga",
-        label: "Uppdatera appen",
-        hint: "Hämta senaste versionen",
-        icon: <IconWrench />,
-        tone: "neutral",
-      },
-    ],
-  },
-];
-
-export const MER_WARM_HREFS = [
-  "/transaktioner",
-  "/konton",
-  "/importera",
-  "/installningar",
-  "/laga",
-  "/konton/ny",
-] as const;
+export const MER_WARM_HREFS = ["/konton", "/transaktioner", "/installningar"] as const;
 
 export function MerScreen({
   data,
@@ -107,7 +35,7 @@ export function MerScreen({
   if (!view) return <MerViewLoading />;
 
   return (
-    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-7">
+    <div className="numa-page numa-page-wide min-w-0 overflow-x-hidden space-y-6">
       <DestinationWarmup hrefs={MER_WARM_HREFS} />
       <MerPageHeader
         title="Mer"
@@ -116,79 +44,41 @@ export function MerScreen({
         }
       />
 
-      <div className="animate-rise-delay-1 space-y-6">
-        <MerSection title="Som app">
-          <MerInstallCta />
-          <div className="pt-2">
-            <MerListGroup>
-              <MerListLink
-                href={PRODUCTION_ORIGIN}
-                label={PRODUCTION_HOST}
-                hint="Samma länk för dig, familj och vänner"
-                icon={<IconLink />}
-                tone="accent"
+      <nav className="animate-rise-delay-1" aria-label="Mer-meny">
+        <MerListGroup>
+          <MerListLink
+            href="/konton"
+            label="Konton"
+            icon={<Icon icon={Wallet} />}
+          />
+          <MerListLink
+            href="/transaktioner"
+            label="Rörelser"
+            icon={<Icon icon={ArrowLeftRight} />}
+          />
+          <MerListLink
+            href="/installningar"
+            label="Inställningar"
+            icon={<Icon icon={Settings} />}
+          />
+        </MerListGroup>
+
+        <MerSection title="Konto" className="mt-6">
+          <MerListGroup>
+            <div className="flex min-h-11 items-center gap-3 border-b border-[var(--numa-border)] px-4 py-3">
+              <MerAvatar
+                initial={(view.displayName ?? "·").charAt(0).toUpperCase()}
               />
-            </MerListGroup>
-          </div>
+              <span className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight">
+                {view.displayName ?? "Inloggad"}
+              </span>
+            </div>
+            <div className="px-2 py-1">
+              <SignOutButton />
+            </div>
+          </MerListGroup>
         </MerSection>
-
-        <nav className="space-y-6" aria-label="Mer-meny">
-          {sections.map((section) => (
-            <MerSection key={section.title} title={section.title}>
-              <MerListGroup>
-                {section.items.map((item) => (
-                  <MerListLink
-                    key={item.href}
-                    href={item.href}
-                    label={item.label}
-                    hint={item.hint}
-                    icon={item.icon}
-                    tone={item.tone}
-                  />
-                ))}
-              </MerListGroup>
-            </MerSection>
-          ))}
-
-          {view.isAdmin ? (
-            <MerSection title="Administration">
-              <MerListGroup>
-                <MerListLink
-                  href="/installningar/ny-anvandare"
-                  label="Ny användare"
-                  hint="Skapa inloggning. Börjar tomt."
-                  icon={<IconPersonPlus />}
-                  tone="accent"
-                />
-              </MerListGroup>
-            </MerSection>
-          ) : null}
-
-          <MerSection title="Konto">
-            <MerListGroup>
-              <MerListRow className="flex items-center gap-3">
-                <MerAvatar
-                  initial={(view.displayName ?? "·").charAt(0).toUpperCase()}
-                />
-                <span className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-semibold tracking-tight">
-                    {view.displayName ?? "Inloggad"}
-                  </p>
-                  <p className="mt-0.5 text-[12px] text-[var(--numa-faint)]">
-                    Inloggad nu
-                  </p>
-                </span>
-              </MerListRow>
-              <MerListRow className="py-3">
-                <p className="mb-2 text-[12px] leading-snug text-[var(--numa-faint)]">
-                  Avslutar sessionen på den här enheten
-                </p>
-                <SignOutButton />
-              </MerListRow>
-            </MerListGroup>
-          </MerSection>
-        </nav>
-      </div>
+      </nav>
     </div>
   );
 }

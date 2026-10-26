@@ -24,7 +24,7 @@ export function PlanCard({
   return (
     <section
       ref={cardRef}
-      className="numa-panel flex scroll-mt-[5.5rem] flex-col gap-4 p-6"
+      className="flex scroll-mt-[5.5rem] flex-col gap-2 border-b border-[var(--numa-border)] px-4 py-3 last:border-b-0"
     >
       {banner ? (
         <p className="rounded-[1.15rem] bg-[var(--numa-accent-soft)] px-4 py-3 text-sm leading-relaxed text-[var(--numa-accent-ink)]">

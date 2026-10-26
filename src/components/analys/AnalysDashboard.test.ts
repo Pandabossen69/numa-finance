@@ -271,7 +271,7 @@ describe("Analys month result color", () => {
   });
 
   it("teaches the purpose in the empty states and page hint", () => {
-    expect(src).toContain("SV.analysHint");
+    expect(src).not.toContain("SV.analysHint");
     expect(src).toContain("SV.hurGarDet");
     expect(src).toContain("SV.analysEmptyPeriod");
   });

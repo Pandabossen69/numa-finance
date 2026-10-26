@@ -93,7 +93,6 @@ export function AuthExperience() {
   return (
     <div className="auth-stage" aria-busy={booting || pending || undefined}>
       {booting ? <LoginBoot announced={false} /> : null}
-      <div className="auth-glow" aria-hidden />
 
       <div className="auth-frame">
         <div className="auth-hero">
@@ -107,17 +106,11 @@ export function AuthExperience() {
             />
             NUMA
           </p>
-          <p className="auth-welcome-line">Vad du kan använda idag.</p>
         </div>
 
         <div className="auth-card">
-          <form onSubmit={submitLogin} className="auth-form">
-            <header className="auth-card-header">
-              <h1 className="auth-login-title">Logga in</h1>
-              <p className="auth-login-sub">Logga in med e-post och lösenord.</p>
-            </header>
-
-            <div className="auth-fields">
+          <form onSubmit={submitLogin} className="auth-form" aria-label="Inloggning">
+            <div className="auth-fields auth-fields-plain">
               <Field
                 label="E-post"
                 type="email"

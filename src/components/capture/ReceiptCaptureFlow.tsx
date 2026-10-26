@@ -47,7 +47,6 @@ import {
   type CaptureMethodChoice,
 } from "@/features/imports/fota-quick-path";
 import { ONBOARDING_SV } from "@/features/onboarding/copy";
-import { SV } from "@/features/copy/labels-sv";
 import {
   CAPTURE_CATEGORIES,
   categoryForCapturePreview,
@@ -549,13 +548,14 @@ export function ReceiptCaptureFlow({
           </p>
           <button
             type="button"
-            className="numa-press numa-tap text-sm font-semibold text-[var(--numa-accent)]"
+            className="numa-press numa-tap gap-1 text-sm font-semibold text-[var(--numa-accent)]"
             onClick={() => {
               rememberLastCaptureMethod("bank_sms");
               setMode("bank_sms");
             }}
           >
-            Fota bank-SMS →
+            Fota bank-SMS
+            <Icon icon={ChevronRight} />
           </button>
         </div>
       );
@@ -694,8 +694,14 @@ export function ReceiptCaptureFlow({
           {copy.footer}
         </p>
         <p className="mx-auto max-w-[40ch] text-center text-xs leading-relaxed text-[var(--numa-faint)]">
-          Bilden skickas till AI för att läsa belopp. Vi sparar den i högst 30
-          dagar. Du kan radera den när som helst.
+          Bilden skickas till AI för att läsa belopp, sparas i högst 30 dagar och kan raderas när som helst.{" "}
+          <Link
+            href="/importera"
+            prefetch={false}
+            className="font-semibold text-[var(--numa-accent)]"
+          >
+            Tidigare bilder
+          </Link>
         </p>
 
         {error ? (
@@ -1162,9 +1168,11 @@ function ModePicker({
         <h2 className="text-2xl font-semibold tracking-tight">
           {onboarding ? ONBOARDING_SV.fotaPickTitle : "Fota"}
         </h2>
-        <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
-          {onboarding ? ONBOARDING_SV.fotaPickHint : SV.fotaHint}
-        </p>
+        {onboarding ? (
+          <p className="max-w-[34ch] text-sm leading-relaxed text-[var(--numa-muted)]">
+            {ONBOARDING_SV.fotaPickHint}
+          </p>
+        ) : null}
       </header>
 
       <nav className="grid gap-3">
@@ -1223,7 +1231,7 @@ function BackLink({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="numa-press inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-[var(--numa-accent)]"
     >
-      <Icon icon={ArrowLeft} size={16} />
+      <Icon icon={ArrowLeft} />
       Tillbaka
     </button>
   );

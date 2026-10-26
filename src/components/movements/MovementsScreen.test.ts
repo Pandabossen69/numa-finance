@@ -160,10 +160,9 @@ describe("Rörelser expense color", () => {
       "utf8",
     );
     expect(loading).toContain("numa-equal-chips");
-    expect(loading).toContain("col-span-2");
-    expect(loading).toContain("numa-stat-trio");
-    expect(loading).toContain("numa-money-stack");
-    expect(loading).toContain("numa-rorelser-filters");
+    expect(loading).toContain("numa-segment");
+    expect(loading).toContain("numa-panel-list");
+    expect(loading).not.toContain("numa-stat-trio");
     expect(loading).not.toContain("sm:grid-cols-3");
     expect(loading).not.toContain("flex gap-2");
   });

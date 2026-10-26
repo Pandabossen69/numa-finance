@@ -33,7 +33,7 @@ describe("ReceiptCaptureFlow copy wiring", () => {
   });
 
   it("teaches Fota in one spoken Swedish sentence, never as a Kom igång tour", () => {
-    expect(src).toContain("SV.fotaHint");
+    expect(src).not.toContain("SV.fotaHint");
     expect(src).toContain("ONBOARDING_SV.fotaPickTitle");
     expect(src).toContain("ONBOARDING_SV.fotaPickHint");
     expect(src).not.toContain('"Kom igång"');

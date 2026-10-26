@@ -2226,9 +2226,8 @@ button.numa-chip:disabled {
   gap: 0.65rem;
   font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: normal;
   line-height: 1;
-  text-transform: uppercase;
   color: var(--numa-ink);
 }
 
@@ -2249,6 +2248,51 @@ button.numa-chip:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.4rem;
+}
+
+.numa-segment.numa-equal-chips {
+  display: flex;
+  align-items: stretch;
+  gap: 0.15rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: var(--numa-chip-neutral);
+}
+
+.numa-segment.numa-equal-chips > * {
+  flex: 1 1 0;
+  width: auto;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.numa-segment.numa-equal-chips > *[aria-pressed="true"] {
+  background: var(--numa-card);
+  color: var(--numa-ink);
+  box-shadow: var(--numa-shadow-sm);
+}
+
+.numa-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  background: color-mix(in srgb, var(--numa-ink) 28%, transparent);
+}
+
+.numa-sheet-backdrop[hidden] {
+  display: none;
+}
+
+.numa-sheet {
+  width: 100%;
+  max-height: min(88dvh, 36rem);
+  overflow: auto;
+  border-radius: var(--numa-radius-sheet) var(--numa-radius-sheet) 0 0;
+  background: var(--numa-card);
+  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
 }
 
 .numa-equal-chips.is-quad {
@@ -2443,11 +2487,8 @@ button.numa-chip:disabled {
   padding: 1.5rem 1.3rem 1.35rem;
   border: 1px solid var(--numa-border);
   border-radius: var(--numa-radius);
-  background: color-mix(in srgb, var(--numa-card) 90%, transparent);
-  box-shadow:
-    0 1px 0 var(--numa-sheet-highlight) inset,
-    var(--numa-shadow);
-  backdrop-filter: none;
+  background: var(--numa-card);
+  box-shadow: var(--numa-shadow-sm);
 }
 
 .auth-welcome-line {
@@ -2490,6 +2531,10 @@ button.numa-chip:disabled {
   flex-direction: column;
   gap: 1.05rem;
   padding-top: 1.25rem;
+}
+
+.auth-fields-plain {
+  padding-top: 0;
 }
 
 .auth-label {
@@ -2620,7 +2665,7 @@ button.auth-field-toggle {
   color: var(--numa-bg);
   font-size: 1rem;
   font-weight: 600;
-  letter-spacing: -0.012em;
+  letter-spacing: normal;
   transition:
     transform 80ms cubic-bezier(0.34, 1.15, 0.64, 1),
     filter 100ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -2643,10 +2688,10 @@ button.auth-field-toggle {
 }
 
 .auth-primary-button:disabled {
-  border: 1px solid var(--numa-border);
-  background: var(--numa-surface-strong);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: var(--numa-muted);
+  border: 1px solid var(--numa-accent);
+  background: var(--numa-card);
+  box-shadow: none;
+  color: var(--numa-accent);
   transform: none;
 }
 
@@ -2655,7 +2700,7 @@ button.auth-field-toggle {
   margin: 0.9rem auto 0;
   color: var(--numa-faint);
   font-size: 0.75rem;
-  letter-spacing: 0.01em;
+  letter-spacing: normal;
   line-height: 1.55;
   text-align: center;
 }
