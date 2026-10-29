@@ -20,6 +20,7 @@ import {
   type FxCheckpoint,
 } from "@/domain/finance";
 import type { CurrencyCode } from "@/domain/money";
+import { resetAnalysClientFetch } from "@/features/finance/analys-client-fetch";
 import { analysSnapshotFromHome } from "@/features/finance/analys-from-known";
 import type { AnalysSnapshot } from "@/features/finance/load-analys";
 import type {
@@ -510,6 +511,7 @@ function wipeSessionCaches() {
   importera = null;
   importeraHandled.clear();
   settings = null;
+  resetAnalysClientFetch();
   emit(homeListeners);
   emit(planListeners);
   emit(gettingStartedListeners);

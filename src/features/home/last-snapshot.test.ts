@@ -1,7 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CanonicalTransaction, PlanItem } from "@/domain/finance";
 import { analysSnapshotHasDatapaint } from "@/features/finance/analys-from-known";
-import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
+import {
+  analysLedgerKnown,
+  analysPendingHasExpired,
+  analysViewCanPaint,
+  fetchAnalysSnapshotClient,
+  lastAnalysFetchResult,
+  markAnalysLedgerKnown,
+  markAnalysPendingStarted,
+  resetAnalysClientFetchForTests,
+} from "@/features/finance/analys-client-fetch";
 import { upgradeAnalysFromPlanNow } from "@/features/finance/ensure-analys-last-known";
 import type { HomeSnapshot } from "@/features/finance/load-home";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
@@ -182,6 +191,7 @@ describe("last view memory", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    resetAnalysClientFetchForTests();
   });
 
   it("keeps Plan month and Analys scope across remounts", () => {
@@ -693,6 +703,57 @@ describe("last view memory", () => {
     expect(hasBoundSessionOwner()).toBe(false);
     expect(lastKnownChromeDisplayName()).toBeNull();
     expect(lastMerSnapshot()).toBeNull();
+  });
+
+  async function settlePreviousSessionEmptyAnalys() {
+    rememberHomeSnapshot(homeSnap());
+    const thin = lastAnalysSnapshot();
+    expect(thin).not.toBeNull();
+    expect(analysViewCanPaint(thin)).toBe(true);
+    expect(analysSnapshotHasDatapaint(thin)).toBe(false);
+    markAnalysLedgerKnown();
+    const result = await fetchAnalysSnapshotClient(async () => ({
+      ok: true,
+      data: thin!,
+    }));
+    expect(result.ok).toBe(true);
+    expect(analysLedgerKnown()).toBe(true);
+    expect(lastAnalysFetchResult()).toEqual(result);
+    markAnalysPendingStarted(1_000);
+    return thin;
+  }
+
+  function expectAnalysFetchUnknownUntilFreshRead() {
+    expect(lastAnalysSnapshot()).toBeNull();
+    expect(analysLedgerKnown()).toBe(false);
+    expect(lastAnalysFetchResult()).toBeNull();
+    expect(analysPendingHasExpired(1_000 + 4_500)).toBe(false);
+  }
+
+  it("logout forgets a settled empty Analys ledger until a fresh read", async () => {
+    await settlePreviousSessionEmptyAnalys();
+    clearClientSessionCaches();
+    expectAnalysFetchUnknownUntilFreshRead();
+
+    rememberHomeSnapshot(homeSnap());
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(analysSnapshotHasDatapaint(lastAnalysSnapshot())).toBe(false);
+    expect(analysLedgerKnown()).toBe(false);
+    expect(lastAnalysFetchResult()).toBeNull();
+  });
+
+  it("owner change forgets a settled empty Analys ledger until a fresh read", async () => {
+    await settlePreviousSessionEmptyAnalys();
+    bindSessionOwner("user-christian");
+    expectAnalysFetchUnknownUntilFreshRead();
+
+    rememberHomeSnapshot(
+      homeSnap({ userId: "user-christian", displayName: "Christian" }),
+    );
+    expect(analysViewCanPaint(lastAnalysSnapshot())).toBe(true);
+    expect(analysSnapshotHasDatapaint(lastAnalysSnapshot())).toBe(false);
+    expect(analysLedgerKnown()).toBe(false);
+    expect(lastAnalysFetchResult()).toBeNull();
   });
 
   it("clears numa.lastHome.v1 immediately when another user binds", () => {
