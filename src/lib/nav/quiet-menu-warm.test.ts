@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountsSnapshot } from "@/features/finance/load-accounts";
 import type { PlanSnapshot } from "@/features/finance/load-plan";
 import {
@@ -67,6 +67,10 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
     resetAnalysPlanUpgradeForTests();
     resetQuietMenuWarmForTests();
     clearClientSessionCaches();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("schedules idle warm from Hem without racing adopt on warmupPlanPageData", () => {
@@ -255,6 +259,9 @@ describe("quiet menu warm — NextStep-style last-known fill", () => {
   });
 
   it("upgrades quiet-warm Plan ledger into first bars without Flight", () => {
+    // first-bars windows against new Date(); fixture rows are 2026-10-01
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T05:00:00.000Z"));
     rememberHomeSnapshot({
       userId: "user-hugo",
       displayName: "Hugo",
