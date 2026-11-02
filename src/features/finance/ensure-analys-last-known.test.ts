@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { analysViewCanPaint } from "@/features/finance/analys-client-fetch";
 import {
   analysSnapshotFirstBarsFromPlan,
@@ -129,6 +129,7 @@ function heavyPlanLedger(): PlanSnapshot {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   resetAnalysPlanUpgradeForTests();
   clearClientSessionCaches();
 });
@@ -228,6 +229,9 @@ describe("ensurePaintableAnalysSnapshot", () => {
 
 describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
   it("upgrades Hem-thin to first bars without a Flight", () => {
+    // first-bars windows against new Date(); fixture rows are 2026-10-01
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T05:00:00.000Z"));
     rememberHomeSnapshot(home);
     rememberPlanSnapshot({
       ...plan,
@@ -271,6 +275,9 @@ describe("upgradeAnalysFromPlanNow — datapaint after chrome", () => {
   });
 
   it("first-bars datapaint stays cheaper than full-history derive", () => {
+    // first-bars windows against new Date(); fixture rows are 2026-10-01
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T05:00:00.000Z"));
     const old = Array.from({ length: 2_500 }, (_, i) => ({
       id: `tx-old-${i}`,
       accountId: "acc",

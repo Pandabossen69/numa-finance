@@ -1968,6 +1968,9 @@ describe("last view memory", () => {
   });
 
   it("Konton adopt still invalidates stale accounts after Analys first-bars", () => {
+    // first-bars windows against new Date(); fixture rows are 2026-10-01
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-15T05:00:00.000Z"));
     rememberHomeSnapshot(homeSnap({ calculatedBalanceMinor: 3_421_95 }));
     rememberPlanSnapshot({
       items: [],
